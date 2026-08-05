@@ -1,0 +1,192 @@
+/* =========================================
+   ESTRUCTURA PRINCIPAL
+   ========================================= */
+
+.app {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  background:
+    radial-gradient(
+      circle at 70% 0%,
+      color-mix(in srgb, var(--accent) 12%, transparent),
+      transparent 34%
+    ),
+    var(--background);
+  transition: background 300ms ease;
+}
+
+.app__content {
+  min-width: 0;
+  min-height: 100vh;
+}
+
+
+/* =========================================
+   PANTALLA DE CARGA
+   ========================================= */
+
+.app-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: var(--gold);
+  background: var(--background);
+}
+
+.app-loading span {
+  font-size: 2rem;
+  animation: velvet-loading 900ms infinite alternate;
+}
+
+.app-loading p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.2rem;
+}
+
+@keyframes velvet-loading {
+  from {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+
+/* =========================================
+   PANTALLAS VACÍAS
+   CHATS Y CHARACTERS
+   ========================================= */
+
+.empty-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  padding: 30px;
+  text-align: center;
+}
+
+.empty-page > span {
+  color: var(--gold);
+  font-size: 2rem;
+}
+
+.empty-page > p:first-of-type {
+  margin: 18px 0 5px;
+  color: var(--gold);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+}
+
+.empty-page h1 {
+  margin: 0;
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(3.5rem, 8vw, 6rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.empty-page > p:last-of-type {
+  max-width: 480px;
+  margin: 18px 0 0;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.empty-page button {
+  margin-top: 24px;
+  padding: 14px 22px;
+  color: #fff7ed;
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    var(--accent-dark)
+  );
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  box-shadow: 0 12px 28px
+    color-mix(in srgb, var(--accent) 24%, transparent);
+  cursor: pointer;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.empty-page button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px
+    color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+.empty-page button:active {
+  transform: translateY(0);
+}
+
+
+/* =========================================
+   TABLET
+   ========================================= */
+
+@media (max-width: 1000px) {
+  .app {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    width: 220px;
+  }
+}
+
+
+/* =========================================
+   CELULAR
+   ========================================= */
+
+@media (max-width: 760px) {
+  .app {
+    display: block;
+  }
+
+  .app__content {
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .empty-page {
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .empty-page h1 {
+    font-size: clamp(3rem, 15vw, 4.5rem);
+  }
+}
+
+
+/* =========================================
+   ACCESIBILIDAD
+   ========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .app,
+  .empty-page button,
+  .app-loading span {
+    animation: none;
+    transition: none;
+  }
+}
