@@ -14,6 +14,7 @@ This build fixes the narrative engine without changing the app design.
 - Sending an empty message or `.` now triggers a voice-led continuation instead of another narration-only pause.
 - Repeated dots are counted: the engine must change the beat, make a decision, close the interaction, or move the scene forward instead of recycling atmosphere.
 - Existing silent-continuation messages from older versions remain hidden in the chat UI.
+- A second consecutive dot automatically returns the camera to the main created character after a secondary-character beat, matching Character.AI-style continuation.
 
 ## Publish the update
 

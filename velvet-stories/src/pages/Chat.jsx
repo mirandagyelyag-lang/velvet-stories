@@ -46,7 +46,7 @@ import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
 import "../styles/chat.css";
 
-const SILENT_CONTINUE_MESSAGE = "[Continue the story for me. Treat this as silence from the user: they did not speak, move, react, decide, or perform any new action. Do not acknowledge this instruction or force the user to participate. Advance through character voice and choice, not another narration-only pause: use natural dialogue, a character speaking to themself, a direct inner thought, an established NPC interaction, or a meaningful transition. Avoid decorative room, weather, phone, breathing, staring, and body-language description. If recent silent continues already lingered on this moment, change the beat or move the scene forward.]";
+const SILENT_CONTINUE_MESSAGE = "[Continue the story for me. Treat this as silence from the user: they did not speak, move, react, decide, or perform any new action. Do not acknowledge this instruction or force the user to participate. Advance through character voice and choice, not another narration-only pause: use natural dialogue, a character speaking to themself, a direct inner thought, an established NPC interaction, or a meaningful transition. Avoid decorative room, weather, phone, breathing, staring, and body-language description. The first silent continue may finish a secondary character's beat; after two consecutive silent continues, return automatically to the main character's POV and keep that character central unless the user requests another POV.]";
 
 function Chat({ character, conversationId, onBack, onDeleted }) {
   const { settings } = useSettings();

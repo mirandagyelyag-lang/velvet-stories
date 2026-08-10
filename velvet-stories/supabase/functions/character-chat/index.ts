@@ -1096,8 +1096,11 @@ function resolveNaturalTurn({
     emotionTrigger = "the current/recent interaction with the user-controlled protagonist";
   }
 
+  const returnToMainCharacter = silentContinue && normalizedSilentContinueStreak >= 2;
+
   let mode = "react";
-  if (silentContinue) mode = "continue_one_beat";
+  if (returnToMainCharacter) mode = "return_to_main_character";
+  else if (silentContinue) mode = "continue_one_beat";
   else if (povRequested && povTarget) mode = "pov_shift";
   else if (sceneShift) mode = "scene_shift";
   else if (correction) mode = "correction";
@@ -1109,6 +1112,7 @@ function resolveNaturalTurn({
     mode,
     silentContinue,
     silentContinueStreak: normalizedSilentContinueStreak,
+    returnToMainCharacter,
     sceneShift,
     timeShift: timeSkip?.active ? (timeSkip?.scale || "explicit time shift") : "",
     explicitLeave,
@@ -1144,7 +1148,7 @@ function formatNaturalTurnResolution(turn = {}, userIdentity, character) {
   return [
     `mode=${turn.mode || "react"}`,
     `medium=${turn.digitalMode || "in_person"}`,
-    `focus/reactor=${turn.povTarget || reactors}`,
+    `focus/reactor=${turn.returnToMainCharacter ? `${character.name} (mandatory return to main character)` : (turn.povTarget || reactors)}`,
     `scene_shift=${turn.sceneShift ? "yes" : "no"}`,
     `time_shift=${turn.timeShift || "none"}`,
     `user_present=${turn.userPresent ? "yes" : "no / camera moved"}`,
@@ -1158,6 +1162,7 @@ function formatNaturalTurnResolution(turn = {}, userIdentity, character) {
     `emotion_target=${turn.emotionTarget || "none"}`,
     `emotion_trigger=${turn.emotionTrigger || "none"}`,
     `silent_continue=${turn.silentContinue ? `yes; streak=${turn.silentContinueStreak || 1}; voice-led story motion required; narration-only forbidden` : "no"}`,
+    `return_to_main_character=${turn.returnToMainCharacter ? `yes; reopen on ${character.name}'s POV/presence now` : "no"}`,
     `directions=${directions}`,
     `latest_user=${String(turn.latestExcerpt || "").replace(/\n+/g, " ").slice(0, 520) || "none"}`,
     `rule=the latest USER turn outranks every derived field above`,
@@ -1253,7 +1258,10 @@ SILENT CONTINUE / USER SENDS A DOT
 - Lead with voice or a consequential choice. Keep scene description only when required to understand that choice.
 - Never fill this turn with looking around a room, checking a phone without meaningful content, breathing, staring, weather, lighting, posture, footsteps, or repeated emotional atmosphere.
 - Do not force ${userIdentity.name} to answer and do not invent their reaction. Characters may speak without receiving a response.
-- On the first silent continue, advance the immediate exchange. On repeated silent continues, escalate movement: make a decision, involve an already plausible character, close the interaction, transition time, or begin the next meaningful beat. Never replay the same pause.
+- On the first silent continue, advance the immediate exchange and allow a secondary character to finish the current beat.
+- On the SECOND consecutive silent continue, automatically return the narrative camera and meaningful focus to the main character ${character.name}, like Character.AI. This outranks secondary-character momentum. Do not require the user to request the POV return.
+- Return naturally: close or cut away from the secondary beat, then reopen with ${character.name}'s voice, direct thought, meaningful action or immediate situation. Do not teleport characters or invent the user's participation.
+- On further repeated silent continues, remain anchored to ${character.name} unless the user explicitly requests another POV. Escalate movement through a decision, interaction, scene closure or time transition. Never replay the same pause.
 
 RELATIONSHIP & EMOTION
 - Established affection/attraction/trust/tension are active psychology, not decorative metadata.
@@ -1572,6 +1580,7 @@ FINAL PRE-WRITE CHECK
 - If regenerating, does the retry genuinely follow the regeneration direction and feel meaningfully different from the rejected answer?
 - If a mandatory direction exists, can the user point to the exact requested change in the passage? If not, rewrite before output.
 - If this is a silent continue, is there actual character voice and meaningful movement rather than another narration-only pause? If not, rewrite before output.
+- If return_to_main_character=yes, does the final passage clearly return focus to ${character.name} instead of continuing to center a secondary character? If not, rewrite before output.
 - Does every English sentence sound idiomatic, clear and natural rather than technically grammatical but awkward?
 - Are any pronouns, possessives or metaphors ambiguous? If yes, simplify them before output.
 - Did you add a gesture just to fill silence? Remove it.
