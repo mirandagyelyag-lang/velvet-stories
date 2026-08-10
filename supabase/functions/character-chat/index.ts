@@ -293,6 +293,8 @@ Deno.serve(async (request) => {
               contents: [{ role: "user", parts: [{ text: prompt }] }],
               generationConfig: {
                 maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
+                temperature: getGenerationTemperature(configuredCharacter.creativity, Boolean(regenerateMessageId)),
+                topP: 0.92,
                 thinkingConfig: { thinkingLevel: "MINIMAL" },
               },
             }),
@@ -857,7 +859,7 @@ async function generateDiverseRegeneration({
         body: JSON.stringify({
           systemInstruction: {
             parts: [{
-              text: `${systemInstruction}\n\nHARD DIVERSITY RETRY ${diversityAttempt}\nThe previous attempt was still too similar to rejected responses. Produce a genuinely different continuation. Do not preserve sentence order, opening action, dialogue structure, choreography, central metaphor, or the same key line of dialogue. ${diversityAttempt > 1 ? "Use a contrasting response strategy from every prior take: if they spoke first, consider action/restraint first; if they explained, withhold; if they pursued, consider staying put; if they were verbose, be concise." : "Change the scene beat, not merely the wording."}`,
+              text: `${systemInstruction}\n\nHARD DIVERSITY RETRY ${diversityAttempt}\nThe previous attempt was still too similar to rejected responses. Produce a genuinely different continuation. Do not preserve sentence order, opening action, dialogue structure, choreography, central metaphor, or the same key line of dialogue. If a MANDATORY REGENERATION CONTRACT is present, its requested outcome still outranks diversity and must remain plainly visible. ${diversityAttempt > 1 ? "Use a contrasting response strategy from every prior take without changing the user's required outcome: if they spoke first, consider action/restraint first; if they explained, withhold; if they pursued, consider staying put; if they were verbose, be concise." : "Change the scene beat, not merely the wording, while preserving the user's required outcome."}`,
             }],
           },
           contents: [{
@@ -960,8 +962,12 @@ function resolveNaturalTurn({
     .filter(Boolean);
   const directionText = `${raw} ${bracketDirections.join(" ")}`;
 
+  // A regeneration note is not automatically a scene change. Previously even
+  // directions such as "more dialogue" or "make him colder" forced the turn
+  // into scene_shift mode, which made the engine ignore the current beat.
+  const regenerationRequestsSceneShift = /\b(time\s*skip|timeskip|later|next\s+(?:morning|day|night|week)|meanwhile|cut\s+to|new\s+scene|scene\s+change|after\s+(?:practice|class|work|school|the\s+game)|esa\s+noche|más\s+tarde|al\s+día\s+siguiente|mientras\s+tanto|nueva\s+escena|cambia\s+(?:la\s+)?escena)\b/i.test(regenerationInstruction);
   const sceneShift = Boolean(
-    regenerationInstruction ||
+    regenerationRequestsSceneShift ||
     timeSkip?.active ||
     /\b(time\s*skip|timeskip|later|next\s+(?:morning|day|night|week)|hours?\s+later|days?\s+later|weeks?\s+later|meanwhile|cut\s+to|new\s+scene|scene\s+change|after\s+(?:practice|class|work|school|the\s+game)|esa\s+noche|más\s+tarde|al\s+día\s+siguiente|horas?\s+después|días?\s+después)\b/i.test(directionText)
   );
@@ -1156,7 +1162,7 @@ function buildSystemInstruction({
   rejectedVariants = [],
 }) {
   const regen = regenerationInstruction
-    ? `\nREGENERATION OVERRIDE\n${regenerationInstruction}\n${buildRegenerationMeaning(regenerationInstruction, character, userIdentity)}\nThis is a private direction, not dialogue. It may change scene, cast, POV, tone or pacing for this retry. Always apply the Natural English Guard automatically.`
+    ? `\nMANDATORY REGENERATION CONTRACT — HIGHEST PRIORITY\nUSER'S PRIVATE DIRECTION: ${regenerationInstruction}\nINTERPRETATION: ${buildRegenerationMeaning(regenerationInstruction, character, userIdentity)}\nThis is a private direction, never dialogue or canon. Build the new response around its requested outcome. It may change the scene, cast, POV, tone, behavior, pacing or ending for this retry. Preserve only canon that does not conflict with the requested alternate take. Before writing, identify the concrete requested change; before returning, verify that change is plainly present. A polished response that misses this direction is incorrect.`
     : "";
   const director = directorInstruction
     ? `\nOPTIONAL DIRECTOR NOTE\n${directorInstruction}\nUse it once for this reply only. It is not dialogue and characters do not know it.`
@@ -1177,6 +1183,7 @@ function buildSystemInstruction({
 
   return `
 You are Velvet, the hidden narrative engine for a private interactive novel.
+${regen}
 
 LANGUAGE
 Write the entire roleplay passage in ${responseLanguage}. Keep proper names unchanged.
@@ -1196,13 +1203,14 @@ USER ADDRESS & NARRATIVE PERSON
 - If the user explicitly requests third-person narration for a scene, follow that request for that scene only.
 
 PRIORITY ORDER
-1. Latest USER turn: words, actions, corrections, @mentions, time/scene/POV directions.
-2. User agency.
-3. TURN RESOLUTION for this exact turn.
-4. Last 6 messages and current scene continuity.
-5. Established character personality + relationship.
-6. Canonical lore, relevant memories, persistent cast and open threads.
-7. Style controls.
+1. MANDATORY REGENERATION CONTRACT, when present.
+2. Latest USER turn: words, actions, corrections, @mentions, time/scene/POV directions.
+3. User agency.
+4. TURN RESOLUTION for this exact turn.
+5. Last 6 messages and current scene continuity.
+6. Established character personality + relationship.
+7. Canonical lore, relevant memories, persistent cast and open threads.
+8. Style controls and variation suggestions.
 Nothing lower may contradict or erase something higher.
 
 CORE BEHAVIOR
@@ -1217,6 +1225,13 @@ CORE BEHAVIOR
 GROUNDING
 Never invent a class, practice, injury, job shift, schedule conflict, location, nickname, shared joke, promise, prior conversation, relationship fact, jealousy target, family detail or off-screen event merely to enrich prose.
 Before adding a concrete claim, silently ask: "Where was this established?" If nowhere, omit it or keep it generic.
+
+STORY MOTION
+- Grounding protects established history; it does not freeze the story.
+- Characters may make new present-tense choices, start or end conversations, leave, refuse, interrupt, misunderstand, pursue their own plans, involve an established NPC, or create a plausible immediate complication.
+- Advance through consequences and character decisions, not random twists or invented backstory.
+- Do not keep a scene alive with questions. A response may close the interaction, move time forward, shift social focus, or leave tension unresolved when that is the most believable next beat.
+- Let relationship development emerge from accumulated behavior. Do not manufacture softness, cruelty, flirting, confessions or intimacy simply because the genre is romantic.
 
 RELATIONSHIP & EMOTION
 - Established affection/attraction/trust/tension are active psychology, not decorative metadata.
@@ -1319,7 +1334,6 @@ STYLE
 ${buildChatControlInstructions(character)}
 ${buildFinalStyleReminder(character)}
 ${regenerationDiversity}
-${regen}
 ${director}
 `;
 }
@@ -1453,8 +1467,12 @@ function buildPrompt({
     return `${speaker}: ${escapePromptText(message.content)}`;
   }).join("\n") || "none";
 
+  const mandatoryDirection = regenerationInstruction
+    ? `MANDATORY DIRECTION FOR THIS ALTERNATE TAKE\n${regenerationInstruction}\nThe finished passage must visibly enact this direction. Do not merely adjust adjectives, tone, or wording. If it specifies what a character does, does not do, says, or where the scene goes, that outcome is required.\n\n`
+    : "";
+
   return `
-TURN RESOLUTION
+${mandatoryDirection}TURN RESOLUTION
 ${formatNaturalTurnResolution(turnResolution, userIdentity, character)}
 
 CHARACTER
@@ -1530,6 +1548,7 @@ FINAL PRE-WRITE CHECK
 - Is any sentence repeating, padding, or inventing off-screen context?
 - If digital, are actual messages formatted with '> '?
 - If regenerating, does the retry genuinely follow the regeneration direction and feel meaningfully different from the rejected answer?
+- If a mandatory direction exists, can the user point to the exact requested change in the passage? If not, rewrite before output.
 - Does every English sentence sound idiomatic, clear and natural rather than technically grammatical but awkward?
 - Are any pronouns, possessives or metaphors ambiguous? If yes, simplify them before output.
 - Did you add a gesture just to fill silence? Remove it.
@@ -2161,6 +2180,15 @@ function getMaximumOutputTokens(length) {
   return 900;
 }
 
+function getGenerationTemperature(creativity, isRegeneration = false) {
+  const value = Number(creativity);
+  const normalized = Number.isFinite(value) ? Math.min(1.2, Math.max(0.2, value)) : 0.84;
+  // Keep ordinary dialogue coherent while giving alternate takes enough room
+  // to make a different character choice instead of paraphrasing.
+  const base = 0.58 + ((normalized - 0.2) / 1.0) * 0.34;
+  return Number(Math.min(1.02, base + (isRegeneration ? 0.08 : 0)).toFixed(2));
+}
+
 function getSupabasePublishableKey() {
   const legacy = Deno.env.get("SUPABASE_ANON_KEY");
   if (legacy) return legacy;
@@ -2175,7 +2203,7 @@ function getSupabasePublishableKey() {
 }
 
 function cleanInstruction(value) {
-  return String(value || "").replace(/[<>]/g, "").trim().slice(0, 500);
+  return String(value || "").replace(/[<>]/g, "").trim().slice(0, 1500);
 }
 
 function escapePromptText(value) {
