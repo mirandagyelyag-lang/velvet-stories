@@ -356,6 +356,27 @@ Deno.serve(async (request) => {
       .join("")
       .trim() || "";
 
+    // Prompt instructions alone are not reliable enough for silent continues.
+    // Enforce them with a dedicated, concise pass before the reply can reach
+    // the UI. A second dot always routes back to the main character; a first
+    // dot is repaired whenever Gemini returns narration without character voice.
+    if (
+      generatedReply &&
+      turnResolution.silentContinue &&
+      (turnResolution.returnToMainCharacter || !hasAudibleCharacterVoice(generatedReply))
+    ) {
+      generatedReply = await enforceSilentContinuation({
+        apiKey: geminiApiKey,
+        prompt,
+        rejectedDraft: generatedReply,
+        character: configuredCharacter,
+        userIdentity,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+        returnToMainCharacter: Boolean(turnResolution.returnToMainCharacter),
+      });
+    }
+
         // Cheap local review catches the most damaging routing mistakes without
     // adding another model call to every turn. Severe user-POV violations are
     // still repaired by the dedicated repair pass below.
@@ -888,6 +909,92 @@ async function generateDiverseRegeneration({
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function hasAudibleCharacterVoice(value = "") {
+  const text = String(value || "");
+  return (
+    /["“][^"”\n]{2,}["”]/.test(text) ||
+    /^\s*>\s*\S/m.test(text)
+  );
+}
+
+function visiblyReturnsToMainCharacter(value = "", characterName = "") {
+  const opening = String(value || "").slice(0, 700);
+  const escapedName = String(characterName || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Boolean(escapedName) && new RegExp(`\\b${escapedName}\\b`, "i").test(opening) && hasAudibleCharacterVoice(opening);
+}
+
+async function enforceSilentContinuation({
+  apiKey,
+  prompt,
+  rejectedDraft,
+  character,
+  userIdentity,
+  language,
+  medium,
+  returnToMainCharacter,
+}) {
+  let rejected = String(rejectedDraft || "").trim();
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 16000 : 12000);
+
+    try {
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{
+                text: `You are repairing a failed continuation in a private interactive novel. Output only the replacement roleplay passage in ${language}. The user exclusively controls ${userIdentity.name}; never invent their dialogue, action, thought, feeling, reaction or decision. Communication medium: ${medium}. Main created character: ${character.name}.\n\n${returnToMainCharacter
+                  ? `NON-NEGOTIABLE CAMERA RETURN: The prior response wrongly remained centered on a secondary character. Cut away from that secondary beat and return the meaningful narrative focus to ${character.name} NOW. Name ${character.name} naturally in the opening paragraph so the return is unambiguous. Open with ${character.name}'s spoken dialogue, distinct direct thought, or consequential action. A secondary character may receive at most one brief bridge line and may not remain the focalizer.`
+                  : "NON-NEGOTIABLE VOICE RULE: The prior response was narration-only. Replace it with a concise continuation containing actual quoted spoken dialogue, a line spoken aloud to oneself, or a meaningful established digital exchange. Unquoted thoughts and italicized actions do not satisfy this rule."}\n\nDo not describe idle room details, rain, lighting, steam, kettles, doors, breathing, staring, phones without meaningful content, posture, or repetitive micro-actions. Do not merely rewrite the same inactivity. Advance through a character decision, voice, consequence, interaction, scene closure, or meaningful transition. Preserve established canon and personality.`,
+              }],
+            },
+            contents: [{
+              role: "user",
+              parts: [{
+                text: `${prompt}\n\nREJECTED DRAFT — DO NOT POLISH OR PARAPHRASE THIS FAILURE:\n${rejected.slice(0, 5000)}\n\nWrite the corrected continuation now.`,
+              }],
+            }],
+            generationConfig: {
+              maxOutputTokens: getMaximumOutputTokens(character.response_length),
+              temperature: 0.76,
+              topP: 0.9,
+              thinkingConfig: { thinkingLevel: "MINIMAL" },
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) continue;
+      const data = await response.json();
+      const candidate = data?.candidates?.[0]?.content?.parts
+        ?.filter((part) => typeof part.text === "string" && !part.thought)
+        .map((part) => part.text)
+        .join("")
+        .trim() || "";
+
+      const valid = returnToMainCharacter
+        ? visiblyReturnsToMainCharacter(candidate, character.name)
+        : hasAudibleCharacterVoice(candidate);
+      if (valid) return candidate;
+      if (candidate) rejected = candidate;
+    } catch {
+      // Retry once with the last failed draft.
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new Error(returnToMainCharacter
+    ? `Velvet could not return to ${character.name}'s point of view. Try the continuation again.`
+    : "Velvet could not produce a dialogue-led continuation. Try again.");
 }
 
 async function saveCharacterReply({ supabase, conversationId, userId, reply }) {

@@ -15,6 +15,7 @@ This build fixes the narrative engine without changing the app design.
 - Repeated dots are counted: the engine must change the beat, make a decision, close the interaction, or move the scene forward instead of recycling atmosphere.
 - Existing silent-continuation messages from older versions remain hidden in the chat UI.
 - A second consecutive dot automatically returns the camera to the main created character after a secondary-character beat, matching Character.AI-style continuation.
+- Silent continuations now pass a server-side voice check. Narration-only drafts are discarded and regenerated before they can be shown; a failed second-dot return is rejected instead of displaying more secondary-character filler.
 
 ## Publish the update
 
