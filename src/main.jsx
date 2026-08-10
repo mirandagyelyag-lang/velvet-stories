@@ -13,6 +13,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 
 import App from "./App";
 import "./index.css";
+import "./styles/mobile-v71.css";
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
