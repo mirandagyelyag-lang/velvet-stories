@@ -356,6 +356,31 @@ Deno.serve(async (request) => {
       .join("")
       .trim() || "";
 
+    // Prompt instructions alone are not reliable enough for silent continues.
+    // Enforce them with a dedicated, concise pass before the reply can reach
+    // the UI. A second dot always routes back to the main character; a first
+    // dot is repaired whenever Gemini returns narration without character voice.
+    if (
+      generatedReply &&
+      (
+        turnResolution.followMainCharacterAfterExit ||
+        (turnResolution.silentContinue &&
+          (turnResolution.returnToMainCharacter || !hasAudibleCharacterVoice(generatedReply)))
+      )
+    ) {
+      generatedReply = await enforceSilentContinuation({
+        apiKey: geminiApiKey,
+        prompt,
+        rejectedDraft: generatedReply,
+        character: configuredCharacter,
+        userIdentity,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+        returnToMainCharacter: Boolean(turnResolution.returnToMainCharacter || turnResolution.followMainCharacterAfterExit),
+        emotionalFollow: Boolean(turnResolution.followMainCharacterAfterExit),
+      });
+    }
+
         // Cheap local review catches the most damaging routing mistakes without
     // adding another model call to every turn. Severe user-POV violations are
     // still repaired by the dedicated repair pass below.
@@ -890,6 +915,93 @@ async function generateDiverseRegeneration({
   }
 }
 
+function hasAudibleCharacterVoice(value = "") {
+  const text = String(value || "");
+  return (
+    /["“][^"”\n]{2,}["”]/.test(text) ||
+    /^\s*>\s*\S/m.test(text)
+  );
+}
+
+function visiblyReturnsToMainCharacter(value = "", characterName = "") {
+  const opening = String(value || "").slice(0, 700);
+  const escapedName = String(characterName || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Boolean(escapedName) && new RegExp(`\\b${escapedName}\\b`, "i").test(opening) && hasAudibleCharacterVoice(opening);
+}
+
+async function enforceSilentContinuation({
+  apiKey,
+  prompt,
+  rejectedDraft,
+  character,
+  userIdentity,
+  language,
+  medium,
+  returnToMainCharacter,
+  emotionalFollow = false,
+}) {
+  let rejected = String(rejectedDraft || "").trim();
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 16000 : 12000);
+
+    try {
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          signal: controller.signal,
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{
+                text: `You are repairing a failed continuation in a private interactive novel. Output only the replacement roleplay passage in ${language}. The user exclusively controls ${userIdentity.name}; never invent their dialogue, action, thought, feeling, reaction or decision. Communication medium: ${medium}. Main created character: ${character.name}.\n\n${returnToMainCharacter
+                  ? `NON-NEGOTIABLE MAIN-CHARACTER FOCUS: The prior response wrongly remained on a secondary character, empty setting, or external observation. Follow ${character.name} NOW. Name ${character.name} naturally in the opening paragraph so the focus is unambiguous. Include at least one actual quoted spoken line from ${character.name} or a companion, plus ${character.name}'s meaningful choice or private perspective. A secondary character may receive at most one brief bridge line and may not remain the focalizer.${emotionalFollow ? ` The user reacted after ${character.name} had already moved too far away to hear. Do not make ${character.name} hear that reaction. Instead, continue from ${character.name}'s side and show the canon-supported contradiction between the public mask and private feeling. If ${character.name} joins friends or another romantic interest, let someone speak and let ${character.name} perform normality while privately remaining affected by ${userIdentity.name}. Do not force an apology, confession or return; preserve guarded behavior and subtext.` : " Do not merely name the main character and continue the secondary character's activity."}`
+                  : "NON-NEGOTIABLE VOICE RULE: The prior response was narration-only. Replace it with a concise continuation containing actual quoted spoken dialogue, a line spoken aloud to oneself, or a meaningful established digital exchange. Unquoted thoughts and italicized actions do not satisfy this rule."}\n\nDo not describe idle room details, rain, lighting, steam, kettles, doors, breathing, staring, phones without meaningful content, posture, or repetitive micro-actions. Do not merely rewrite the same inactivity. Advance through a character decision, voice, consequence, interaction, scene closure, or meaningful transition. Preserve established canon and personality.`,
+              }],
+            },
+            contents: [{
+              role: "user",
+              parts: [{
+                text: `${prompt}\n\nREJECTED DRAFT — DO NOT POLISH OR PARAPHRASE THIS FAILURE:\n${rejected.slice(0, 5000)}\n\nWrite the corrected continuation now.`,
+              }],
+            }],
+            generationConfig: {
+              maxOutputTokens: getMaximumOutputTokens(character.response_length),
+              temperature: 0.76,
+              topP: 0.9,
+              thinkingConfig: { thinkingLevel: "MINIMAL" },
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) continue;
+      const data = await response.json();
+      const candidate = data?.candidates?.[0]?.content?.parts
+        ?.filter((part) => typeof part.text === "string" && !part.thought)
+        .map((part) => part.text)
+        .join("")
+        .trim() || "";
+
+      const valid = returnToMainCharacter
+        ? visiblyReturnsToMainCharacter(candidate, character.name)
+        : hasAudibleCharacterVoice(candidate);
+      if (valid) return candidate;
+      if (candidate) rejected = candidate;
+    } catch {
+      // Retry once with the last failed draft.
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new Error(returnToMainCharacter
+    ? `Velvet could not continue from ${character.name}'s point of view. Try the continuation again.`
+    : "Velvet could not produce a dialogue-led continuation. Try again.");
+}
+
 async function saveCharacterReply({ supabase, conversationId, userId, reply }) {
   const { data, error } = await supabase
     .from("messages")
@@ -956,7 +1068,20 @@ function resolveNaturalTurn({
   const raw = String(latestUserMessage || "").trim();
   const normalized = normalizeRelevanceText(raw);
   const socialNormalized = collapseSocialElongation(raw);
-  const silentContinue = raw.includes("Continue the scene naturally. Treat this as silence from the user");
+  const silentContinue = raw.includes("Treat this as silence from the user");
+  const silentContinueStreak = silentContinue
+    ? messages
+        .filter((message) => message.sender === "user")
+        .slice()
+        .reverse()
+        .findIndex((message) => !String(message.content || "").includes("Treat this as silence from the user"))
+    : 0;
+  // findIndex returns -1 when every user turn in the loaded window is silent.
+  const normalizedSilentContinueStreak = silentContinue
+    ? (silentContinueStreak === -1
+        ? messages.filter((message) => message.sender === "user").length
+        : Math.max(1, silentContinueStreak))
+    : 0;
   const bracketDirections = [...raw.matchAll(/\[([^\]]{2,240})\]/g)]
     .map((match) => match[1].trim())
     .filter(Boolean);
@@ -975,6 +1100,10 @@ function resolveNaturalTurn({
   const explicitCameraAway = /\b(meanwhile|cut\s+to|camera\s+(?:follows|moves)|elsewhere|mientras\s+tanto|en\s+otro\s+lugar)\b/i.test(directionText);
   const asksQuestion = /\?/.test(raw);
   const correction = /\b(?:no[, ]|actually|i\s+said|i\s+meant|that's\s+not|that\s+isn't|you're\s+wrong|se\s+supone|dije|quise\s+decir|no\s+es|eso\s+no)\b/i.test(raw);
+  const previousCharacterTurn = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
+  const departureContext = `${raw}\n${previousCharacterTurn}`;
+  const mainCharacterHasDeparted = /\b(?:you(?:'re|\s+are|\s+were)?\s+(?:already\s+)?(?:far|gone|too\s+far)|you\s+(?:left|walked\s+away|ran\s+off|drove\s+away)|already\s+(?:jogging|walking|running|driving)\s+away|out\s+of\s+(?:sight|earshot)|before\s+(?:i|you)\s+could\s+answer|te\s+(?:fuiste|alejaste)|ya\s+estabas\s+lejos|fuera\s+de\s+(?:vista|alcance))\b/i.test(departureContext);
+  const userReactedAfterDeparture = mainCharacterHasDeparted && Boolean(raw) && !silentContinue;
 
   const groupAddressed =
     /\b(?:group\s*chat|groupchat|group\s+text|group\s+message|gc|chat\s+grupal|grupo\s+de\s+(?:whats?app|mensajes)|chat\s+del\s+grupo)\b/i.test(directionText) &&
@@ -1083,8 +1212,13 @@ function resolveNaturalTurn({
     emotionTrigger = "the current/recent interaction with the user-controlled protagonist";
   }
 
+  const returnToMainCharacter = silentContinue && normalizedSilentContinueStreak >= 2;
+  const followMainCharacterAfterExit = userReactedAfterDeparture;
+
   let mode = "react";
-  if (silentContinue) mode = "continue_one_beat";
+  if (returnToMainCharacter) mode = "return_to_main_character";
+  else if (followMainCharacterAfterExit) mode = "follow_main_character_after_exit";
+  else if (silentContinue) mode = "continue_one_beat";
   else if (povRequested && povTarget) mode = "pov_shift";
   else if (sceneShift) mode = "scene_shift";
   else if (correction) mode = "correction";
@@ -1095,6 +1229,9 @@ function resolveNaturalTurn({
   return {
     mode,
     silentContinue,
+    silentContinueStreak: normalizedSilentContinueStreak,
+    returnToMainCharacter,
+    followMainCharacterAfterExit,
     sceneShift,
     timeShift: timeSkip?.active ? (timeSkip?.scale || "explicit time shift") : "",
     explicitLeave,
@@ -1130,7 +1267,7 @@ function formatNaturalTurnResolution(turn = {}, userIdentity, character) {
   return [
     `mode=${turn.mode || "react"}`,
     `medium=${turn.digitalMode || "in_person"}`,
-    `focus/reactor=${turn.povTarget || reactors}`,
+    `focus/reactor=${turn.returnToMainCharacter || turn.followMainCharacterAfterExit ? `${character.name} (mandatory main-character focus)` : (turn.povTarget || reactors)}`,
     `scene_shift=${turn.sceneShift ? "yes" : "no"}`,
     `time_shift=${turn.timeShift || "none"}`,
     `user_present=${turn.userPresent ? "yes" : "no / camera moved"}`,
@@ -1143,7 +1280,9 @@ function formatNaturalTurnResolution(turn = {}, userIdentity, character) {
     `relationship_salient=${turn.relationshipSalient ? "yes" : "no/unknown"}`,
     `emotion_target=${turn.emotionTarget || "none"}`,
     `emotion_trigger=${turn.emotionTrigger || "none"}`,
-    `silent_continue=${turn.silentContinue ? "one concise beat only" : "no"}`,
+    `silent_continue=${turn.silentContinue ? `yes; streak=${turn.silentContinueStreak || 1}; voice-led story motion required; narration-only forbidden` : "no"}`,
+    `return_to_main_character=${turn.returnToMainCharacter ? `yes; reopen on ${character.name}'s POV/presence now` : "no"}`,
+    `follow_main_character_after_exit=${turn.followMainCharacterAfterExit ? `yes; follow ${character.name}; show public mask versus canon-supported private feeling` : "no"}`,
     `directions=${directions}`,
     `latest_user=${String(turn.latestExcerpt || "").replace(/\n+/g, " ").slice(0, 520) || "none"}`,
     `rule=the latest USER turn outranks every derived field above`,
@@ -1232,6 +1371,25 @@ STORY MOTION
 - Advance through consequences and character decisions, not random twists or invented backstory.
 - Do not keep a scene alive with questions. A response may close the interaction, move time forward, shift social focus, or leave tension unresolved when that is the most believable next beat.
 - Let relationship development emerge from accumulated behavior. Do not manufacture softness, cruelty, flirting, confessions or intimacy simply because the genre is romantic.
+
+MAIN-CHARACTER EMOTIONAL THREAD
+- ${character.name} is the main created character, not merely one NPC among many. Secondary characters may carry a beat, but they must not permanently displace ${character.name}'s emotional storyline.
+- When ${character.name} walks away, joins other people or becomes too distant to hear ${userIdentity.name}, and the latest user turn reacts to that departure, follow ${character.name} rather than describing the empty place left behind.
+- If the character profile establishes concealed attraction, love, avoidance, jealousy, guilt or another private contradiction, keep it active even when ${character.name}'s public behavior hides it.
+- Show the contrast through one useful private thought, self-directed line, conversation with an established companion, deliberate avoidance or choice. A smile, joke or flirtation with someone else may be a mask; do not automatically treat it as emotional amnesia.
+- Do not narrate rain, architecture, abandoned objects or ${userIdentity.name} standing alone as a substitute for ${character.name}'s next beat.
+- Private POV may reveal what ${character.name} cannot admit aloud, while preserving their personality. Do not turn a guarded character into an instant confessor or make them run back unless that choice is actually earned.
+
+SILENT CONTINUE / USER SENDS A DOT
+- This means "carry the story for me," not "describe the silence again." The user has added no action or reaction.
+- The response must contain character voice: spoken dialogue, a believable line spoken aloud to oneself, direct interior thought with a distinct voice, or an established NPC/digital exchange. Do not return narration alone.
+- Lead with voice or a consequential choice. Keep scene description only when required to understand that choice.
+- Never fill this turn with looking around a room, checking a phone without meaningful content, breathing, staring, weather, lighting, posture, footsteps, or repeated emotional atmosphere.
+- Do not force ${userIdentity.name} to answer and do not invent their reaction. Characters may speak without receiving a response.
+- On the first silent continue, advance the immediate exchange and allow a secondary character to finish the current beat.
+- On the SECOND consecutive silent continue, automatically return the narrative camera and meaningful focus to the main character ${character.name}, like Character.AI. This outranks secondary-character momentum. Do not require the user to request the POV return.
+- Return naturally: close or cut away from the secondary beat, then reopen with ${character.name}'s voice, direct thought, meaningful action or immediate situation. Do not teleport characters or invent the user's participation.
+- On further repeated silent continues, remain anchored to ${character.name} unless the user explicitly requests another POV. Escalate movement through a decision, interaction, scene closure or time transition. Never replay the same pause.
 
 RELATIONSHIP & EMOTION
 - Established affection/attraction/trust/tension are active psychology, not decorative metadata.
@@ -1549,6 +1707,9 @@ FINAL PRE-WRITE CHECK
 - If digital, are actual messages formatted with '> '?
 - If regenerating, does the retry genuinely follow the regeneration direction and feel meaningfully different from the rejected answer?
 - If a mandatory direction exists, can the user point to the exact requested change in the passage? If not, rewrite before output.
+- If this is a silent continue, is there actual character voice and meaningful movement rather than another narration-only pause? If not, rewrite before output.
+- If return_to_main_character=yes, does the final passage clearly return focus to ${character.name} instead of continuing to center a secondary character? If not, rewrite before output.
+- If follow_main_character_after_exit=yes, does the passage follow ${character.name} and reveal a canon-supported public/private contradiction rather than describing what they left behind? If not, rewrite before output.
 - Does every English sentence sound idiomatic, clear and natural rather than technically grammatical but awkward?
 - Are any pronouns, possessives or metaphors ambiguous? If yes, simplify them before output.
 - Did you add a gesture just to fill silence? Remove it.
