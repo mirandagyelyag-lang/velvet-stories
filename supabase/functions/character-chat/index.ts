@@ -929,6 +929,22 @@ function visiblyReturnsToMainCharacter(value = "", characterName = "") {
   return Boolean(escapedName) && new RegExp(`\\b${escapedName}\\b`, "i").test(opening) && hasAudibleCharacterVoice(opening);
 }
 
+function inventsUnsupportedLogistics(value = "", factualPrompt = "") {
+  const candidate = normalizeText(value);
+  const canon = normalizeText(factualPrompt);
+  const suspiciousClaims = [
+    "traffic", "stuck in traffic", "running late", "took you long enough", "late again",
+    "meeting", "appointment", "reservation", "work shift", "practice ran late",
+    "class ran late", "game ran late", "missed the bus", "parking", "deadline",
+    "promised to meet", "waiting for hours",
+  ];
+
+  return suspiciousClaims.some((claim) => {
+    const normalizedClaim = normalizeText(claim);
+    return candidate.includes(normalizedClaim) && !canon.includes(normalizedClaim);
+  });
+}
+
 async function enforceSilentContinuation({
   apiKey,
   prompt,
@@ -958,7 +974,7 @@ async function enforceSilentContinuation({
               parts: [{
                 text: `You are repairing a failed continuation in a private interactive novel. Output only the replacement roleplay passage in ${language}. The user exclusively controls ${userIdentity.name}; never invent their dialogue, action, thought, feeling, reaction or decision. Communication medium: ${medium}. Main created character: ${character.name}.\n\n${returnToMainCharacter
                   ? `NON-NEGOTIABLE MAIN-CHARACTER FOCUS: The prior response wrongly remained on a secondary character, empty setting, or external observation. Follow ${character.name} NOW. Name ${character.name} naturally in the opening paragraph so the focus is unambiguous. Include at least one actual quoted spoken line from ${character.name} or a companion, plus ${character.name}'s meaningful choice or private perspective. A secondary character may receive at most one brief bridge line and may not remain the focalizer.${emotionalFollow ? ` The user reacted after ${character.name} had already moved too far away to hear. Do not make ${character.name} hear that reaction. Instead, continue from ${character.name}'s side and show the canon-supported contradiction between the public mask and private feeling. If ${character.name} joins friends or another romantic interest, let someone speak and let ${character.name} perform normality while privately remaining affected by ${userIdentity.name}. Do not force an apology, confession or return; preserve guarded behavior and subtext.` : " Do not merely name the main character and continue the secondary character's activity."}`
-                  : "NON-NEGOTIABLE VOICE RULE: The prior response was narration-only. Replace it with a concise continuation containing actual quoted spoken dialogue, a line spoken aloud to oneself, or a meaningful established digital exchange. Unquoted thoughts and italicized actions do not satisfy this rule."}\n\nDo not describe idle room details, rain, lighting, steam, kettles, doors, breathing, staring, phones without meaningful content, posture, or repetitive micro-actions. Do not merely rewrite the same inactivity. Advance through a character decision, voice, consequence, interaction, scene closure, or meaningful transition. Preserve established canon and personality.`,
+                  : "NON-NEGOTIABLE VOICE RULE: The prior response was narration-only. Replace it with a concise continuation containing actual quoted spoken dialogue, a line spoken aloud to oneself, or a meaningful established digital exchange. Unquoted thoughts and italicized actions do not satisfy this rule."}\n\nFACT BOUNDARY: Dialogue may react to the visible current situation or established canon only. Never invent traffic, lateness, driving, a meeting, practice, class, work, a reservation, schedule, promise, shared plan, prior conversation or off-screen incident to give characters something to say. If no canon topic exists, use a simple greeting, a comment about what is visibly happening, a companion noticing ${character.name}'s distraction, or brief socially natural banter without factual claims. Do not invent touching, romantic familiarity or sexual behavior with a third party merely to prove ${character.name} is performing normality.\n\nDo not describe idle room details, rain, lighting, steam, kettles, doors, breathing, staring, phones without meaningful content, posture, or repetitive micro-actions. Do not merely rewrite the same inactivity. Advance through a character decision, voice, consequence, interaction, scene closure, or meaningful transition. Preserve established canon and personality.`,
               }],
             },
             contents: [{
@@ -985,9 +1001,10 @@ async function enforceSilentContinuation({
         .join("")
         .trim() || "";
 
-      const valid = returnToMainCharacter
+      const structurallyValid = returnToMainCharacter
         ? visiblyReturnsToMainCharacter(candidate, character.name)
         : hasAudibleCharacterVoice(candidate);
+      const valid = structurallyValid && !inventsUnsupportedLogistics(candidate, prompt);
       if (valid) return candidate;
       if (candidate) rejected = candidate;
     } catch {
