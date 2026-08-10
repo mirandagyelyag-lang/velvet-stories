@@ -378,6 +378,7 @@ Deno.serve(async (request) => {
         medium: turnResolution.digitalMode || "in_person",
         returnToMainCharacter: Boolean(turnResolution.returnToMainCharacter || turnResolution.followMainCharacterAfterExit),
         emotionalFollow: Boolean(turnResolution.followMainCharacterAfterExit),
+        latestUserMessage,
       });
     }
 
@@ -925,8 +926,16 @@ function hasAudibleCharacterVoice(value = "") {
 
 function visiblyReturnsToMainCharacter(value = "", characterName = "") {
   const opening = String(value || "").slice(0, 700);
-  const escapedName = String(characterName || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return Boolean(escapedName) && new RegExp(`\\b${escapedName}\\b`, "i").test(opening) && hasAudibleCharacterVoice(opening);
+  const nameParts = String(characterName || "").trim().split(/\s+/).filter(Boolean);
+  const acceptableNames = [...new Set([
+    String(characterName || "").trim(),
+    nameParts[0] || "",
+  ].filter((name) => name.length >= 2))];
+  const nameVisible = acceptableNames.some((name) => {
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escapedName}\\b`, "i").test(opening);
+  });
+  return nameVisible && hasAudibleCharacterVoice(opening);
 }
 
 function inventsUnsupportedLogistics(value = "", factualPrompt = "") {
@@ -955,6 +964,7 @@ async function enforceSilentContinuation({
   medium,
   returnToMainCharacter,
   emotionalFollow = false,
+  latestUserMessage = "",
 }) {
   let rejected = String(rejectedDraft || "").trim();
 
@@ -1004,7 +1014,10 @@ async function enforceSilentContinuation({
       const structurallyValid = returnToMainCharacter
         ? visiblyReturnsToMainCharacter(candidate, character.name)
         : hasAudibleCharacterVoice(candidate);
-      const valid = structurallyValid && !inventsUnsupportedLogistics(candidate, prompt);
+      // Only the user's latest authoritative turn may justify suspicious new
+      // logistics here. A hallucination from an older AI response must never
+      // become permission to repeat itself as canon.
+      const valid = structurallyValid && !inventsUnsupportedLogistics(candidate, latestUserMessage);
       if (valid) return candidate;
       if (candidate) rejected = candidate;
     } catch {
