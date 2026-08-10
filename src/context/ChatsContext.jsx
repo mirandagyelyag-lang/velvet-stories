@@ -536,6 +536,10 @@ export function ChatsProvider({
       await bumpStoryRevision(characterId);
     }
 
+    const regenerationMessage = options.regenerateMessageId
+      ? (conversation.messages || []).find((item) => item.id === options.regenerateMessageId) || null
+      : null;
+
     const requestController = new AbortController();
     const requestId = crypto.randomUUID();
     const generationId = crypto.randomUUID();
@@ -548,7 +552,8 @@ export function ChatsProvider({
     let reader = null;
 
     // A stale UI-only stream from an interrupted request must never block
-    // future sends. The database contains only completed messages.
+    // future sends. For regeneration, hide the rejected response immediately
+    // so the user sees only Velvet's typing state, like Character.AI.
     setChats((currentChats) => {
       const currentChat = currentChats[characterId];
       if (!currentChat) return currentChats;
@@ -556,7 +561,9 @@ export function ChatsProvider({
         ...currentChats,
         [characterId]: {
           ...currentChat,
-          messages: (currentChat.messages || []).filter((item) => !item.isStreaming),
+          messages: (currentChat.messages || []).filter((item) =>
+            !item.isStreaming && item.id !== options.regenerateMessageId
+          ),
         },
       };
     });
@@ -673,10 +680,6 @@ export function ChatsProvider({
 
       if (!response.body) {
         throw new Error("The AI returned an empty response.");
-      }
-
-      if (options.regenerateMessageId) {
-        removeMessageFromState(characterId, options.regenerateMessageId);
       }
 
       reader = response.body.getReader();
@@ -857,6 +860,17 @@ export function ChatsProvider({
       };
     } catch (error) {
       cleanupStreamingBubble();
+
+      if (regenerationMessage) {
+        // The old response remains canonical in the database unless the Edge
+        // Function successfully replaces it. Reload first so failures and Stop
+        // restore the correct version instead of leaving a visual hole.
+        try {
+          await reloadConversationMessages(characterId);
+        } catch {
+          appendMessageToState(characterId, regenerationMessage);
+        }
+      }
 
       if (requestWasCancelled() || error?.name === "AbortError") {
         throw cancellationError();
