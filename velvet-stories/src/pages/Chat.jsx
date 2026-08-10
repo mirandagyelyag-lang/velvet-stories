@@ -46,7 +46,7 @@ import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
 import "../styles/chat.css";
 
-const SILENT_CONTINUE_MESSAGE = "[Continue the scene naturally. Treat this as silence from the user: they did not speak, move, react, decide, or perform any new action. Do not acknowledge this instruction. Do not force an interaction with the user. The character may keep talking, continue what they were doing, act independently, or interact with other people according to the current context.]";
+const SILENT_CONTINUE_MESSAGE = "[Continue the story for me. Treat this as silence from the user: they did not speak, move, react, decide, or perform any new action. Do not acknowledge this instruction or force the user to participate. Advance through character voice and choice, not another narration-only pause: use natural dialogue, a character speaking to themself, a direct inner thought, an established NPC interaction, or a meaningful transition. Avoid decorative room, weather, phone, breathing, staring, and body-language description. If recent silent continues already lingered on this moment, change the beat or move the scene forward.]";
 
 function Chat({ character, conversationId, onBack, onDeleted }) {
   const { settings } = useSettings();
@@ -1582,7 +1582,7 @@ function MessageBubble({
   const [swipeOffset, setSwipeOffset] = useState(0);
   const canSwipe = message.sender === "character" && !message.isStreaming && versionNavigationEnabled && !swipeDisabled;
 
-  if (message.sender === "user" && message.content === SILENT_CONTINUE_MESSAGE) {
+  if (isSilentContinuation(message)) {
     return null;
   }
 
@@ -1750,7 +1750,7 @@ function formatProfileValue(value, fallback) {
 }
 
 function isSilentContinuation(message) {
-  return message.sender === "user" && message.content === SILENT_CONTINUE_MESSAGE;
+  return message.sender === "user" && String(message.content || "").includes("Treat this as silence from the user");
 }
 
 function shouldShowDateDivider(messages, index) {

@@ -956,7 +956,20 @@ function resolveNaturalTurn({
   const raw = String(latestUserMessage || "").trim();
   const normalized = normalizeRelevanceText(raw);
   const socialNormalized = collapseSocialElongation(raw);
-  const silentContinue = raw.includes("Continue the scene naturally. Treat this as silence from the user");
+  const silentContinue = raw.includes("Treat this as silence from the user");
+  const silentContinueStreak = silentContinue
+    ? messages
+        .filter((message) => message.sender === "user")
+        .slice()
+        .reverse()
+        .findIndex((message) => !String(message.content || "").includes("Treat this as silence from the user"))
+    : 0;
+  // findIndex returns -1 when every user turn in the loaded window is silent.
+  const normalizedSilentContinueStreak = silentContinue
+    ? (silentContinueStreak === -1
+        ? messages.filter((message) => message.sender === "user").length
+        : Math.max(1, silentContinueStreak))
+    : 0;
   const bracketDirections = [...raw.matchAll(/\[([^\]]{2,240})\]/g)]
     .map((match) => match[1].trim())
     .filter(Boolean);
@@ -1095,6 +1108,7 @@ function resolveNaturalTurn({
   return {
     mode,
     silentContinue,
+    silentContinueStreak: normalizedSilentContinueStreak,
     sceneShift,
     timeShift: timeSkip?.active ? (timeSkip?.scale || "explicit time shift") : "",
     explicitLeave,
@@ -1143,7 +1157,7 @@ function formatNaturalTurnResolution(turn = {}, userIdentity, character) {
     `relationship_salient=${turn.relationshipSalient ? "yes" : "no/unknown"}`,
     `emotion_target=${turn.emotionTarget || "none"}`,
     `emotion_trigger=${turn.emotionTrigger || "none"}`,
-    `silent_continue=${turn.silentContinue ? "one concise beat only" : "no"}`,
+    `silent_continue=${turn.silentContinue ? `yes; streak=${turn.silentContinueStreak || 1}; voice-led story motion required; narration-only forbidden` : "no"}`,
     `directions=${directions}`,
     `latest_user=${String(turn.latestExcerpt || "").replace(/\n+/g, " ").slice(0, 520) || "none"}`,
     `rule=the latest USER turn outranks every derived field above`,
@@ -1232,6 +1246,14 @@ STORY MOTION
 - Advance through consequences and character decisions, not random twists or invented backstory.
 - Do not keep a scene alive with questions. A response may close the interaction, move time forward, shift social focus, or leave tension unresolved when that is the most believable next beat.
 - Let relationship development emerge from accumulated behavior. Do not manufacture softness, cruelty, flirting, confessions or intimacy simply because the genre is romantic.
+
+SILENT CONTINUE / USER SENDS A DOT
+- This means "carry the story for me," not "describe the silence again." The user has added no action or reaction.
+- The response must contain character voice: spoken dialogue, a believable line spoken aloud to oneself, direct interior thought with a distinct voice, or an established NPC/digital exchange. Do not return narration alone.
+- Lead with voice or a consequential choice. Keep scene description only when required to understand that choice.
+- Never fill this turn with looking around a room, checking a phone without meaningful content, breathing, staring, weather, lighting, posture, footsteps, or repeated emotional atmosphere.
+- Do not force ${userIdentity.name} to answer and do not invent their reaction. Characters may speak without receiving a response.
+- On the first silent continue, advance the immediate exchange. On repeated silent continues, escalate movement: make a decision, involve an already plausible character, close the interaction, transition time, or begin the next meaningful beat. Never replay the same pause.
 
 RELATIONSHIP & EMOTION
 - Established affection/attraction/trust/tension are active psychology, not decorative metadata.
@@ -1549,6 +1571,7 @@ FINAL PRE-WRITE CHECK
 - If digital, are actual messages formatted with '> '?
 - If regenerating, does the retry genuinely follow the regeneration direction and feel meaningfully different from the rejected answer?
 - If a mandatory direction exists, can the user point to the exact requested change in the passage? If not, rewrite before output.
+- If this is a silent continue, is there actual character voice and meaningful movement rather than another narration-only pause? If not, rewrite before output.
 - Does every English sentence sound idiomatic, clear and natural rather than technically grammatical but awkward?
 - Are any pronouns, possessives or metaphors ambiguous? If yes, simplify them before output.
 - Did you add a gesture just to fill silence? Remove it.

@@ -11,6 +11,9 @@ This build fixes the narrative engine without changing the app design.
 - The engine may advance the present story through character decisions and consequences while still protecting established canon and user agency.
 - Creativity now controls Gemini's generation temperature; alternate takes receive a small variation boost.
 - Regeneration directions may contain up to 1,500 characters.
+- Sending an empty message or `.` now triggers a voice-led continuation instead of another narration-only pause.
+- Repeated dots are counted: the engine must change the beat, make a decision, close the interaction, or move the scene forward instead of recycling atmosphere.
+- Existing silent-continuation messages from older versions remain hidden in the chat UI.
 
 ## Publish the update
 
@@ -25,4 +28,3 @@ git push origin main
 ```
 
 The narrative changes live in the Supabase Edge Function, so deploying only to Vercel is not enough. The Git push publishes the web project through the existing Vercel connection; the Supabase command publishes the new roleplay engine.
-
