@@ -470,6 +470,7 @@ Deno.serve(async (request) => {
           candidate: generatedReply,
           recentCharacterBeats,
           groundingFacts: authoritativeGroundingFacts,
+          latestUserMessage,
         })
       )
     ) {
@@ -645,10 +646,12 @@ Deno.serve(async (request) => {
     // reintroduce unsupported everyday facts at the end of the pipeline.
     if (
       generatedReply &&
-      findUnsupportedEverydayClaimSignals({
+      likelyNeedsGroundedReplyRepair({
         candidate: generatedReply,
+        recentCharacterBeats,
         groundingFacts: authoritativeGroundingFacts,
-      }).length
+        latestUserMessage,
+      })
     ) {
       generatedReply = await repairNaturalVoice({
         apiKey: geminiApiKey,
@@ -718,6 +721,7 @@ Deno.serve(async (request) => {
             candidate: finalCandidate,
             recentCharacterBeats,
             groundingFacts: authoritativeGroundingFacts,
+            latestUserMessage,
           })
         ) {
           finalCandidate = await repairNaturalVoice({
@@ -2102,8 +2106,11 @@ NARRATIVE DECISION
 - Never invent ${userIdentity.name}'s response or require them to answer. Characters can speak, decide, leave or interact with established NPCs independently.
 - Before adding any past/off-screen fact, ask where it was established. If nowhere, omit it. Do not fabricate traffic, lateness, schedules, promises, history, intimacy or logistics just to create dialogue.
 - A claim spoken by a character can be a lie, mistake or deflection; it does not become narrator-confirmed canon merely because it appeared in dialogue. Never invent family calls, unread-message counts, parties, classes, errands or dated incidents to win an argument.
+- Mentioning a relative only establishes the reference. "Your mom" never gives permission to invent that she texted, called, checked meals, worried, asked about the user or spoke privately with ${character.name}. Subject, action and detail each require support.
+- Do not turn the user's studies or career into stock jokes about energy drinks, all-night screens, laboratories, missing brackets, compilers or Python scripts unless that exact detail is established and genuinely relevant.
 - Do not invent precise durations, recurring habits, domestic details, debts or obligations. "Friends since secondary school" does not permit "best friends for ten years" unless that exact duration is established.
 - Teasing is optional. Do not make a proud, popular or sarcastic character answer every ordinary line with a performance, insult or clever comeback. One natural tease is enough; sincerity, brevity and plain answers must remain available.
+- When the user asks what ${character.name} has been doing, ${character.name} answers about themself first. "I've been around; you're the one..." and a joke about the user are evasions, not answers.
 
 POV & CAMERA
 ${buildNarrativeCameraInstructions(character, userIdentity)}
@@ -2590,6 +2597,32 @@ function buildAuthoritativeGroundingFacts({
   ].filter(Boolean).join("\n").slice(0, 30000);
 }
 
+function collectFamilyClaimActions(value = "") {
+  const chunks = String(value || "")
+    .split(/(?:[.!?]\s+|\n+)/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+  const actions = new Set();
+  let familyContext = false;
+
+  for (const chunk of chunks) {
+    const namesFamily = /\b(?:mum|mom|mother|dad|father)\b/i.test(chunk);
+    const continuesFamily = familyContext && /^["“']?(?:she|he|they|her|his|their)(?:'s|\s|\b)/i.test(chunk);
+    const connected = namesFamily || continuesFamily;
+    if (connected) {
+      if (/\b(?:text(?:s|ed|ing)?|messag(?:e|es|ed|ing)|dm(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_text");
+      if (/\b(?:call(?:s|ed|ing)?|phone(?:s|d|ing)?|rang|ringing)\b/i.test(chunk)) actions.add("family_call");
+      if (/\b(?:tell(?:s|ing)?|told|say(?:s|ing)?|said|mention(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_tell");
+      if (/\b(?:ask(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_ask");
+      if (/\b(?:check(?:s|ed|ing)?|make sure|remind(?:s|ed|ing)?|worr(?:y|ies|ied|ying))\b/i.test(chunk)) actions.add("family_monitoring");
+      if (/\b(?:eat(?:s|en|ing)?|food|meal(?:s)?|sleep(?:s|ing)?|medication|medicine|grade(?:s)?|class(?:es)?)\b/i.test(chunk)) actions.add("family_caretaking_detail");
+    }
+    familyContext = namesFamily;
+  }
+
+  return actions;
+}
+
 function findUnsupportedEverydayClaimSignals({
   candidate = "",
   groundingFacts = "",
@@ -2619,6 +2652,25 @@ function findUnsupportedEverydayClaimSignals({
     }
   }
 
+  // A passing mention establishes only that the relative was referenced. It
+  // does not authorize a new phone call, text, warning or caretaking routine.
+  // Compare the actions attached to that relative, not just the word "mom".
+  const candidateFamilyActions = collectFamilyClaimActions(text);
+  const canonFamilyActions = collectFamilyClaimActions(facts);
+  for (const action of candidateFamilyActions) {
+    if (!canonFamilyActions.has(action)) signals.push(`unsupported_${action}`);
+  }
+
+  // Exact consumption quantities need exact evidence, just like durations.
+  const consumptionPattern = /\b(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:energy drinks?|coffees?|sodas?|meals?|snacks?)\b/gi;
+  for (const match of text.matchAll(consumptionPattern)) {
+    const exact = String(match[0] || "").toLowerCase().replace(/\s+/g, " ").trim();
+    if (exact && !facts.toLowerCase().replace(/\s+/g, " ").includes(exact)) {
+      signals.push("unsupported_consumption_quantity");
+      break;
+    }
+  }
+
   addWhenUnsupported("unsupported_mother", /\b(?:mum|mom|mother)\b/i, /\b(?:mum|mom|mother)\b/i);
   addWhenUnsupported("unsupported_father", /\b(?:dad|father)\b/i, /\b(?:dad|father)\b/i);
   addWhenUnsupported("unsupported_coach", /\bcoach\b/i, /\bcoach\b/i);
@@ -2629,6 +2681,8 @@ function findUnsupportedEverydayClaimSignals({
   addWhenUnsupported("unsupported_locked_door", /\b(?:your|the)\s+door\s+(?:was|is|stayed)\s+locked\b/i, /\b(?:your|the)\s+door\s+(?:was|is|stayed)\s+locked\b/i);
   addWhenUnsupported("unsupported_domestic_detail", /\b(?:your\s+(?:apartment|room|place)|coffee cups?|notification badge|layers? of notes?)\b/i, /\b(?:your\s+(?:apartment|room|place)|coffee cups?|notification badge|layers? of notes?)\b/i);
   addWhenUnsupported("unsupported_recurring_habit", /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i, /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i);
+  addWhenUnsupported("unsupported_attributed_routine", /\b(?:your\s+(?:idea|version|way|routine)[^.!?\n]{0,100}\busually\b|usually\s+(?:involves?|means?|includes?)|staring\s+at\s+(?:a|the)\s+screen\s+until)\b/i, /\b(?:your\s+(?:idea|version|way|routine)[^.!?\n]{0,100}\busually\b|usually\s+(?:involves?|means?|includes?)|staring\s+at\s+(?:a|the)\s+screen\s+until)\b/i);
+  addWhenUnsupported("unsupported_lab_claim", /\byou(?:'re| are| have been|'ve been)\s+(?:the\s+one\s+who(?:'s| has)\s+been\s+)?hiding\s+in\s+(?:the\s+)?lab\b/i, /\byou(?:'re| are| have been|'ve been)\s+(?:the\s+one\s+who(?:'s| has)\s+been\s+)?hiding\s+in\s+(?:the\s+)?lab\b/i);
   addWhenUnsupported("unsupported_obligation", /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i, /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i);
   addWhenUnsupported("unsupported_user_condition", /\byou\s+look\s+like\s+you\s+haven't\b/i, /\byou\s+look\s+like\s+you\s+haven't\b/i);
 
@@ -2639,6 +2693,7 @@ function likelyNeedsGroundedReplyRepair({
   candidate = "",
   recentCharacterBeats = [],
   groundingFacts = "",
+  latestUserMessage = "",
 }) {
   const text = String(candidate || "");
   if (!text.trim()) return false;
@@ -2654,8 +2709,13 @@ function likelyNeedsGroundedReplyRepair({
     /\b(?:twice|three times|four times|\d+\s+times?)\s+(?:today|yesterday|this week|last week|last night)\b/i,
     /\b(?:discarded|empty|half-written|unread)\s+(?:coffee cups?|messages?|algorithms?|assignments?)\b/i,
     /\b(?:biohazard|scrambled eggs|vending machine|fan club|social obligations)\b/i,
+    /\b(?:python script|missing bracket|code-compile|compile emergency|hiding in (?:the )?lab|staring at (?:a|the) screen until)\b/i,
   ];
   if (riskyEverydayClaims.some((pattern) => pattern.test(text))) return true;
+
+  const asksForCharacterUpdate = /\b(?:what|how)\s+about\s+you\b|\bwhat(?:'ve| have)\s+you\s+been\s+up\s+to\b/i.test(String(latestUserMessage || ""));
+  const redirectsUpdateBackToUser = /\b(?:i(?:'ve| have)\s+been\s+around|you(?:'re| are)\s+the\s+one|enough\s+about\s+me|what\s+about\s+you)\b/i.test(text);
+  if (asksForCharacterUpdate && redirectsUpdateBackToUser) return true;
 
   const lower = text.toLowerCase();
   const recent = (Array.isArray(recentCharacterBeats) ? recentCharacterBeats : [])
@@ -2781,6 +2841,22 @@ function buildCanonNeutralEditorialFallback({
   const spanish = String(language || "").toLowerCase().includes("spanish");
   const asksWhatAbout = /\b(?:what|how)\s+about\s+you\b|\bwhat(?:'ve| have)\s+you\s+been\s+up\s+to\b|\bhaven't\s+see(?:n)?\s+you\b|\b(?:y\s+t[uú]|qu[eé]\s+hay\s+de\s+ti|qu[eé]\s+has\s+hecho|hace\s+tiempo\s+que\s+no\s+te\s+veo)\b/.test(latest);
   const asksWhyMe = /\bwhy\s+me\b|\bpor\s+qu[eé]\s+yo\b/.test(latest);
+  const blamesFamilyForRemark = /\bwho\s+told\s+you\b[\s\S]{0,120}\b(?:your\s+)?(?:mum|mom|mother)\b|\bqui[eé]n\s+te\s+(?:dijo|cont[oó])\b[\s\S]{0,120}\btu\s+mam[aá]\b/.test(latest);
+
+  if (blamesFamilyForRemark) {
+    const candidates = spanish
+      ? [
+          `"Nadie", dijo ${name}. "Eso lo dije yo, no ella."`,
+          `${name} te lanzó una mirada.\n\n"Mi mamá no tuvo nada que ver con eso. Puedo ser insoportable por mi cuenta."`,
+          `"Deja a mi mamá fuera de esto", dijo ${name}, conteniendo una sonrisa. "Eso fue completamente mío."`,
+        ]
+      : [
+          `"No one," ${name} said. "That was me talking, not her."`,
+          `${name} gave you a look.\n\n"My mom had nothing to do with that. I can be insufferable all by myself."`,
+          `"Leave my mom out of this," ${name} said, holding back a smile. "That one was entirely me."`,
+        ];
+    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
+  }
 
   if (asksWhatAbout) {
     const candidates = spanish
@@ -2912,9 +2988,12 @@ FACT AUTHORITY
 - Character/user profiles, explicit USER turns, saved memories and lore may establish past facts.
 - Visible actions and spoken lines in RECENT EXCHANGE remain part of conversational continuity.
 - Earlier CHARACTER banter is not proof of a new off-screen fact, habit, obligation, possession or exact duration unless the user/profile/memory/lore confirms it.
+- A person being mentioned establishes only that reference. "Your mom" does NOT establish that she texted, called, asked, reminded, monitored meals or discussed the user with the character. Every subject-action-detail link needs its own support.
+- A degree, job or interest does not authorize stereotype filler. Do not invent energy-drink counts, all-night screen habits, laboratories, missing brackets, compilers or Python jokes merely because the user studies computing.
 - Remove invented domestic details, message counts, schedules, recurring habits, precise relationship durations and pre-existing debts/plans. Do not preserve a fabrication merely because it sounds playful.
 - A new present choice is allowed only when it follows from the visible moment. State the real present intention directly: an invitation may be "I want to get dinner with you," but it may not become "you owe me dinner" without canon.
 - If the latest user turn asks a question, answer its actual meaning in the first useful spoken line. Do not dodge it with compulsory sarcasm.
+- If the user asks what the character has been doing, answer about the character before commenting on the user. "I've been around; you're the one..." is a deflection, not an answer.
 - Teasing is optional, not the character's default response to every line. Keep at most one useful tease and let the rest sound like a person talking.
 - Mention a continuing prop or weather detail at most once unless it materially changes the action.
 
@@ -2981,6 +3060,7 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
         candidate,
         recentCharacterBeats,
         groundingFacts,
+        latestUserMessage,
       }) || likelyNeedsNaturalVoiceRepair(candidate);
 
       if (!remainingSignals.length) groundedFallback = candidate;

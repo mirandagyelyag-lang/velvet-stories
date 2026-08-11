@@ -113,7 +113,7 @@ check(
 
 let groundedReplyApi = null;
 try {
-  const groundedStart = edge.indexOf("function findUnsupportedEverydayClaimSignals");
+  const groundedStart = edge.indexOf("function collectFamilyClaimActions");
   const groundedEnd = edge.indexOf("function likelyNeedsNaturalVoiceRepair", groundedStart);
   if (groundedStart >= 0 && groundedEnd > groundedStart) {
     groundedReplyApi = new Function(
@@ -165,6 +165,53 @@ check(
     "unsupported_user_condition",
   ].every((signal) => rowanInventedSignals.includes(signal)),
 );
+const rowanTechStereotypeReply = `"Just studying? Right. Because your idea of 'just studying' usually involves three energy drinks and staring at a screen until your eyes cross."\n\nHe tilted the umbrella slightly more over your side.\n\n"As for me, I've been around. You're the one who's been hiding in the lab. Honestly, I was starting to think you'd finally replaced me with a Python script."`;
+const rowanTechSignals = groundedReplyApi?.findUnsupportedEverydayClaimSignals({
+  candidate: rowanTechStereotypeReply,
+  groundingFacts: `USER: Nothing really, just studying, what about you i haven't seen you in a while`,
+}) || [];
+check(
+  "Rowan energy-drink/lab routine is rejected",
+  [
+    "unsupported_consumption_quantity",
+    "unsupported_attributed_routine",
+    "unsupported_lab_claim",
+  ].every((signal) => rowanTechSignals.includes(signal)) &&
+    groundedReplyApi?.likelyNeedsGroundedReplyRepair({
+      candidate: rowanTechStereotypeReply,
+      recentCharacterBeats: [],
+      groundingFacts: `USER: Nothing really, just studying, what about you i haven't seen you in a while`,
+      latestUserMessage: `Nothing really, just studying, what about you i haven't seen you in a while`,
+    }),
+);
+check(
+  "what-about-you cannot be answered by redirecting blame",
+  groundedReplyApi?.likelyNeedsGroundedReplyRepair({
+    candidate: `"I've been around. You're the one who disappeared."`,
+    recentCharacterBeats: [],
+    groundingFacts: `USER: Nothing really, what about you?`,
+    latestUserMessage: `Nothing really, what about you?`,
+  }),
+);
+const rowanInventedMotherReply = `"My mom doesn't need to tell me anything," Rowan said. "She's too busy texting me to make sure you're actually eating."`;
+const rowanMotherSignals = groundedReplyApi?.findUnsupportedEverydayClaimSignals({
+  candidate: rowanInventedMotherReply,
+  groundingFacts: `USER: Yeah, sure. Who told you that? Your mom`,
+}) || [];
+check(
+  "mentioning Rowan's mom does not authorize invented texts or caretaking",
+  [
+    "unsupported_family_text",
+    "unsupported_family_monitoring",
+    "unsupported_family_caretaking_detail",
+  ].every((signal) => rowanMotherSignals.includes(signal)) &&
+    groundedReplyApi?.likelyNeedsGroundedReplyRepair({
+      candidate: rowanInventedMotherReply,
+      recentCharacterBeats: [],
+      groundingFacts: `USER: Yeah, sure. Who told you that? Your mom`,
+      latestUserMessage: `Yeah, sure. Who told you that? Your mom`,
+    }),
+);
 check(
   "supported profile facts remain available to the editor",
   groundedReplyApi && !groundedReplyApi.findUnsupportedEverydayClaimSignals({
@@ -176,7 +223,9 @@ check(
   "grounded editor distinguishes visible continuity from factual authority",
   edge.includes("Earlier CHARACTER banter is not proof of a new off-screen fact") &&
     edge.includes("an invitation may be \"I want to get dinner with you,\"") &&
-    edge.includes("Teasing is optional, not the character's default response to every line"),
+    edge.includes("Teasing is optional, not the character's default response to every line") &&
+    edge.includes("Every subject-action-detail link needs its own support") &&
+    edge.includes("does NOT establish that she texted, called, asked, reminded, monitored meals"),
 );
 check(
   "editorial rewrites are revalidated before display",
@@ -238,6 +287,18 @@ check(
     Boolean(rowanRegeneratedFallback) &&
     rowanSafeFallback !== rowanRegeneratedFallback &&
     !/^Rowan (?:Hayes )?looked at you\.\s+"Okay,"/i.test(rowanRegeneratedFallback),
+);
+const rowanMotherFallback = editorialFallbackApi?.buildCanonNeutralEditorialFallback({
+  characterName: "Rowan Hayes",
+  latestUserMessage: "Yeah, sure. Who told you that? Your mom",
+  language: "English",
+  seedText: rowanInventedMotherReply,
+}) || "";
+check(
+  "Rowan mother fallback denies the invented off-screen exchange",
+  Boolean(rowanMotherFallback) &&
+    /(?:no one|nothing to do with that|entirely me)/i.test(rowanMotherFallback) &&
+    !/text(?:s|ed|ing)?|make sure (?:you(?:'re| are) )?eat/i.test(rowanMotherFallback),
 );
 
 let dialogueGuardApi = null;

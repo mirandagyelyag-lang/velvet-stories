@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.6)
+# Velvet Stories — motor narrativo consolidado (v0.9.7)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -55,6 +55,16 @@ en los archivos reales de la app.
 - Las salidas de emergencia responden al sentido del último turno, usan sólo el
   primer nombre del personaje y ofrecen variantes distintas al regenerar. Ya no
   reducen una conversación a `"Okay"` ni repiten el nombre completo como robot.
+- La autorización factual deja de basarse solamente en palabras presentes. Una
+  mención como `your mom` no permite inventar que ella escribió, llamó, vigiló
+  comidas o habló en privado: Velvet valida por separado sujeto, acción y detalle.
+- Las rutinas atribuidas a la usuaria, cantidades de comida o bebidas, lugares
+  fuera de escena y estereotipos de programación activan reparación si no están
+  respaldados. Estudiar informática no implica bebidas energéticas, laboratorio,
+  pantallas toda la noche, compiladores ni bromas sobre Python.
+- Cuando la usuaria pregunta `what about you?`, el personaje debe hablar de sí
+  mismo antes de comentar sobre ella; `I've been around; you're the one...` se
+  trata como evasión y vuelve al editor.
 - Una última barrera factual se ejecuta después de las correcciones de progreso,
   mensajes y cámara, para impedir que una etapa posterior vuelva a introducir
   hechos falsos antes de mostrar la respuesta.
