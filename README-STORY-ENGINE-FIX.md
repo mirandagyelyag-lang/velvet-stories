@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.4)
+# Velvet Stories — motor narrativo consolidado (v0.9.5)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -42,6 +42,16 @@ en los archivos reales de la app.
   duraciones potencialmente inventadas. El diálogo previo del personaje no se
   acepta como prueba de una historia fuera de escena que la usuaria nunca
   confirmó.
+- El perfil, los mensajes de la usuaria, las memorias y el lore forman un
+  registro factual autoritativo. Detalles cotidianos nuevos —duraciones exactas,
+  familiares, entrenadores, prácticas, exámenes, visitas, puertas cerradas o
+  planes de fin de semana— se eliminan si ese registro no los respalda.
+- Cada texto producido por el editor se valida nuevamente antes de aceptarse.
+  Si Gemini falla, devuelve vacío o insiste en inventar, Velvet usa una respuesta
+  breve y neutral al canon en vez de recuperar el borrador contaminado.
+- Una última barrera factual se ejecuta después de las correcciones de progreso,
+  mensajes y cámara, para impedir que una etapa posterior vuelva a introducir
+  hechos falsos antes de mostrar la respuesta.
 - El editor también interviene antes cuando detecta varias muletillas de IA o
   reutilización excesiva de lluvia, paraguas, miradas y movimientos de relleno.
 - `gemini-3.6-flash` es el modelo principal y `gemini-3.5-flash` queda como

@@ -113,11 +113,11 @@ check(
 
 let groundedReplyApi = null;
 try {
-  const groundedStart = edge.indexOf("function likelyNeedsGroundedReplyRepair");
+  const groundedStart = edge.indexOf("function findUnsupportedEverydayClaimSignals");
   const groundedEnd = edge.indexOf("function likelyNeedsNaturalVoiceRepair", groundedStart);
   if (groundedStart >= 0 && groundedEnd > groundedStart) {
     groundedReplyApi = new Function(
-      `${edge.slice(groundedStart, groundedEnd)}\nreturn { likelyNeedsGroundedReplyRepair };`,
+      `${edge.slice(groundedStart, groundedEnd)}\nreturn { findUnsupportedEverydayClaimSignals, likelyNeedsGroundedReplyRepair };`,
     )();
   }
 } catch {
@@ -145,11 +145,51 @@ check(
     recentCharacterBeats: [],
   }),
 );
+const rowanInventedUpdate = `"It's been four days, Toni. Coach has been on a tear about practice times, and my mum's already texting me about weekend plans. Besides, every time I stopped by your place, your door was locked. You look like you haven't seen sun in a week."`;
+const rowanAuthoritativeFacts = `Rowan and Toni have been friends since secondary school. Toni said: I haven't see you in a while.`;
+const rowanInventedSignals = groundedReplyApi?.findUnsupportedEverydayClaimSignals({
+  candidate: rowanInventedUpdate,
+  groundingFacts: rowanAuthoritativeFacts,
+}) || [];
+check(
+  "Rowan four-days/coach/mum/visit hallucination is rejected",
+  [
+    "unsupported_exact_duration",
+    "unsupported_mother",
+    "unsupported_coach",
+    "unsupported_practice",
+    "unsupported_weekend_plan",
+    "unsupported_visit",
+    "unsupported_locked_door",
+    "unsupported_recurring_habit",
+    "unsupported_user_condition",
+  ].every((signal) => rowanInventedSignals.includes(signal)),
+);
+check(
+  "supported profile facts remain available to the editor",
+  groundedReplyApi && !groundedReplyApi.findUnsupportedEverydayClaimSignals({
+    candidate: `Rowan's coach called about practice.`,
+    groundingFacts: `Rowan plays polo and his coach schedules practice.`,
+  }).length,
+);
 check(
   "grounded editor distinguishes visible continuity from factual authority",
   edge.includes("Earlier CHARACTER banter is not proof of a new off-screen fact") &&
     edge.includes("an invitation may be \"I want to get dinner with you,\"") &&
     edge.includes("Teasing is optional, not the character's default response to every line"),
+);
+check(
+  "editorial rewrites are revalidated before display",
+  edge.includes("for (let attempt = 1; attempt <= 2; attempt += 1)") &&
+    edge.includes("Editorial repair candidate rejected") &&
+    edge.includes("Editorial repair exhausted factual retries; using canon-neutral fallback") &&
+    edge.includes("findUnsupportedEverydayClaimSignals({") &&
+    edge.includes("buildCanonNeutralEditorialFallback({"),
+);
+check(
+  "downstream rewrites receive final factual validation",
+  edge.includes("// FINAL factual validation.") &&
+    edge.indexOf("// FINAL factual validation.") < edge.indexOf("// FINAL regeneration validation."),
 );
 
 let dialogueGuardApi = null;

@@ -221,6 +221,13 @@ Deno.serve(async (request) => {
     const latestUserMessage = [...messages].reverse().find((message) => message.sender === "user")?.content || "";
     const previousCharacterMessage = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
     const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
+    const authoritativeGroundingFacts = buildAuthoritativeGroundingFacts({
+      character: configuredCharacter,
+      userIdentity,
+      messages,
+      memories,
+      loreEntries,
+    });
     const timeSkip = analyzeTimeSkip(latestUserMessage);
     const latestUserRecord = [...messages].reverse().find((message) => message.sender === "user") || null;
     if (expectedUserMessageId && latestUserRecord?.id !== expectedUserMessageId) {
@@ -462,6 +469,7 @@ Deno.serve(async (request) => {
         likelyNeedsGroundedReplyRepair({
           candidate: generatedReply,
           recentCharacterBeats,
+          groundingFacts: authoritativeGroundingFacts,
         })
       )
     ) {
@@ -479,6 +487,7 @@ Deno.serve(async (request) => {
         memories,
         loreEntries,
         conversationSummary: conversation.summary || "",
+        groundingFacts: authoritativeGroundingFacts,
       });
       generatedReply = applyNaturalOutputGuard({
         text: generatedReply,
@@ -630,6 +639,49 @@ Deno.serve(async (request) => {
       }
     }
 
+    // FINAL factual validation. Progression, digital-reply and camera rewrites
+    // happen after the first editorial pass, so they must not get a chance to
+    // reintroduce unsupported everyday facts at the end of the pipeline.
+    if (
+      generatedReply &&
+      findUnsupportedEverydayClaimSignals({
+        candidate: generatedReply,
+        groundingFacts: authoritativeGroundingFacts,
+      }).length
+    ) {
+      generatedReply = await repairNaturalVoice({
+        apiKey: geminiApiKey,
+        text: generatedReply,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+        userName: userIdentity.name,
+        latestUserMessage,
+        recentCharacterBeats,
+        recentMessages: messages,
+        character: configuredCharacter,
+        userIdentity,
+        memories,
+        loreEntries,
+        conversationSummary: conversation.summary || "",
+        groundingFacts: authoritativeGroundingFacts,
+      });
+      generatedReply = applyNaturalOutputGuard({
+        text: generatedReply,
+        turnResolution,
+        characterName: configuredCharacter.name,
+      });
+
+      if (likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
+        generatedReply = await repairUserPOVViolation({
+          apiKey: geminiApiKey,
+          text: generatedReply,
+          userName: userIdentity.name,
+          latestUserMessage,
+          language: responseLanguage,
+        });
+      }
+    }
+
     // FINAL regeneration validation. Every rewrite above can alter phrasing,
     // so diversity must be checked after voice, POV, digital-reply and camera
     // repairs. One copied signature line is enough to reject the take.
@@ -663,6 +715,7 @@ Deno.serve(async (request) => {
           likelyNeedsGroundedReplyRepair({
             candidate: finalCandidate,
             recentCharacterBeats,
+            groundingFacts: authoritativeGroundingFacts,
           })
         ) {
           finalCandidate = await repairNaturalVoice({
@@ -679,6 +732,7 @@ Deno.serve(async (request) => {
             memories,
             loreEntries,
             conversationSummary: conversation.summary || "",
+            groundingFacts: authoritativeGroundingFacts,
           });
           finalCandidate = applyNaturalOutputGuard({
             text: finalCandidate,
@@ -2478,27 +2532,123 @@ ${text.slice(0, 12000)}` }] }],
   }
 }
 
+function buildAuthoritativeGroundingFacts({
+  character = {} as Record<string, any>,
+  userIdentity = {} as Record<string, any>,
+  messages = [],
+  memories = [],
+  loreEntries = [],
+}) {
+  const characterProfile = [
+    character.name,
+    character.role,
+    character.description,
+    character.personality,
+    character.relationship,
+    character.character_values,
+    character.fears,
+    character.habits,
+    character.contradictions,
+    character.speech_style,
+    character.scenario,
+    character.world,
+    character.first_message,
+  ].filter(Boolean).join("\n");
+  const userProfile = [
+    userIdentity.name,
+    userIdentity.role,
+    userIdentity.background,
+    userIdentity.personality,
+    userIdentity.goals,
+    userIdentity.preferences,
+    userIdentity.notes,
+  ].filter(Boolean).join("\n");
+  const explicitUserHistory = (Array.isArray(messages) ? messages : [])
+    .filter((message) => message.sender === "user")
+    .slice(-32)
+    .map((message) => compactMessageForPrompt(message.content))
+    .join("\n");
+  const durableMemories = (Array.isArray(memories) ? memories : [])
+    .slice(0, 24)
+    .map((memory) => String(memory?.content || "").trim())
+    .filter(Boolean)
+    .join("\n");
+  const lore = (Array.isArray(loreEntries) ? loreEntries : [])
+    .slice(0, 18)
+    .map((entry) => `${entry?.name || "Lore"}: ${entry?.content || ""}`)
+    .join("\n");
+
+  return [
+    "CHARACTER PROFILE", characterProfile,
+    "USER PROFILE", userProfile,
+    "EXPLICIT USER TURNS", explicitUserHistory,
+    "DURABLE MEMORIES", durableMemories,
+    "LORE", lore,
+  ].filter(Boolean).join("\n").slice(0, 30000);
+}
+
+function findUnsupportedEverydayClaimSignals({
+  candidate = "",
+  groundingFacts = "",
+}) {
+  const text = String(candidate || "");
+  if (!text.trim()) return [];
+  const facts = String(groundingFacts || "");
+  const signals = [];
+
+  const addWhenUnsupported = (label, candidatePattern, canonPattern = candidatePattern) => {
+    if (candidatePattern.test(text) && !canonPattern.test(facts)) signals.push(label);
+  };
+
+  // Exact quantities and durations need exact support. "In a while" cannot be
+  // silently upgraded to four days, a week or ten years.
+  const durationPatterns = [
+    /\b(?:it(?:'s| has)\s+been|been|for|of|since|in)\s+(?:(?:nearly|almost|over|about|the last)\s+)?(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:days?|weeks?|months?|years?)\b/gi,
+  ];
+  for (const pattern of durationPatterns) {
+    const matches = [...text.matchAll(pattern)];
+    for (const match of matches) {
+      const exact = String(match[0] || "").toLowerCase().replace(/\s+/g, " ").trim();
+      if (exact && !facts.toLowerCase().replace(/\s+/g, " ").includes(exact)) {
+        signals.push("unsupported_exact_duration");
+        break;
+      }
+    }
+  }
+
+  addWhenUnsupported("unsupported_mother", /\b(?:mum|mom|mother)\b/i, /\b(?:mum|mom|mother)\b/i);
+  addWhenUnsupported("unsupported_father", /\b(?:dad|father)\b/i, /\b(?:dad|father)\b/i);
+  addWhenUnsupported("unsupported_coach", /\bcoach\b/i, /\bcoach\b/i);
+  addWhenUnsupported("unsupported_practice", /\bpractice(?:s|d|ing)?\b/i, /\bpractice(?:s|d|ing)?\b/i);
+  addWhenUnsupported("unsupported_exam_schedule", /\b(?:finals?|midterms?|exam(?:s)?)\b/i, /\b(?:finals?|midterms?|exam(?:s)?)\b/i);
+  addWhenUnsupported("unsupported_weekend_plan", /\b(?:weekend plans?|plans? for (?:the )?weekend)\b/i, /\b(?:weekend plans?|plans? for (?:the )?weekend)\b/i);
+  addWhenUnsupported("unsupported_visit", /\b(?:stopped|came|went|dropped|swung)\s+by\b/i, /\b(?:stopped|came|went|dropped|swung)\s+by\b/i);
+  addWhenUnsupported("unsupported_locked_door", /\b(?:your|the)\s+door\s+(?:was|is|stayed)\s+locked\b/i, /\b(?:your|the)\s+door\s+(?:was|is|stayed)\s+locked\b/i);
+  addWhenUnsupported("unsupported_domestic_detail", /\b(?:your\s+(?:apartment|room|place)|coffee cups?|notification badge|layers? of notes?)\b/i, /\b(?:your\s+(?:apartment|room|place)|coffee cups?|notification badge|layers? of notes?)\b/i);
+  addWhenUnsupported("unsupported_recurring_habit", /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i, /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i);
+  addWhenUnsupported("unsupported_obligation", /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i, /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i);
+  addWhenUnsupported("unsupported_user_condition", /\byou\s+look\s+like\s+you\s+haven't\b/i, /\byou\s+look\s+like\s+you\s+haven't\b/i);
+
+  return [...new Set(signals)];
+}
+
 function likelyNeedsGroundedReplyRepair({
   candidate = "",
   recentCharacterBeats = [],
+  groundingFacts = "",
 }) {
   const text = String(candidate || "");
   if (!text.trim()) return false;
+
+  if (findUnsupportedEverydayClaimSignals({ candidate: text, groundingFacts }).length) return true;
 
   // These patterns do not prove that a claim is false. They mark claims that
   // require an evidence-aware editorial pass: invented routines, possessions,
   // obligations and precise relationship history are the most common way a
   // superficially fluent reply quietly breaks canon.
   const riskyEverydayClaims = [
-    /\byou(?:'ve| have)?\s+(?:always|never|usually|constantly)\b/i,
-    /\byou\s+owe\s+(?:me|him|her|them)\b/i,
-    /\b(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)\b/i,
-    /\b(?:our|the)\s+usual\b/i,
     /\blike\s+(?:last time|you always do)\b/i,
-    /\b(?:for|of|since)\s+(?:(?:nearly|almost|over|about|the last)\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:days?|weeks?|months?|years?)\b/i,
-    /\b(?:every|each)\s+(?:day|night|week|time|semester|morning|weekend)\b/i,
     /\b(?:twice|three times|four times|\d+\s+times?)\s+(?:today|yesterday|this week|last week|last night)\b/i,
-    /\byour\s+(?:apartment|room|phone|notification badge|mother|mom|father|dad|family|roommate|professor|boss)\b/i,
     /\b(?:discarded|empty|half-written|unread)\s+(?:coffee cups?|messages?|algorithms?|assignments?)\b/i,
     /\b(?:biohazard|scrambled eggs|vending machine|fan club|social obligations)\b/i,
   ];
@@ -2571,6 +2721,37 @@ function likelyNeedsNaturalVoiceRepair(value = "") {
   return hits >= 2 || (hits >= 1 && paragraphs <= 2);
 }
 
+function buildCanonNeutralEditorialFallback({
+  characterName,
+  latestUserMessage = "",
+  language = "English",
+}) {
+  const name = String(characterName || "The character").trim();
+  const latest = String(latestUserMessage || "").toLowerCase();
+  const spanish = String(language || "").toLowerCase().includes("spanish");
+  const asksWhatAbout = /\b(?:what|how)\s+about\s+you\b|\bwhat(?:'ve| have)\s+you\s+been\s+up\s+to\b|\bhaven't\s+see(?:n)?\s+you\b/.test(latest);
+  const asksWhyMe = /\bwhy\s+me\b/.test(latest);
+
+  if (asksWhatAbout) {
+    return spanish
+      ? `${name} te miró.\n\n"Nada demasiado interesante", dijo ${name}. "Y sí. También sé que ha pasado un tiempo."`
+      : `${name} looked over at you.\n\n"Nothing too interesting," ${name} said. "And yeah. I know it's been a while too."`;
+  }
+  if (asksWhyMe) {
+    return spanish
+      ? `${name} te miró.\n\n"Porque quería hacerlo", dijo ${name}. "Eso es todo."`
+      : `${name} looked at you.\n\n"Because I wanted to," ${name} said. "That's all."`;
+  }
+  if (looksLikeDirectQuestion(latestUserMessage)) {
+    return spanish
+      ? `${name} te miró antes de responder.\n\n"No lo sé", admitió ${name}.`
+      : `${name} looked at you before answering.\n\n"I don't know," ${name} admitted.`;
+  }
+  return spanish
+    ? `${name} te miró.\n\n"Está bien", dijo ${name}.`
+    : `${name} looked at you.\n\n"Okay," ${name} said.`;
+}
+
 async function repairNaturalVoice({
   apiKey,
   text,
@@ -2585,9 +2766,8 @@ async function repairNaturalVoice({
   memories = [],
   loreEntries = [],
   conversationSummary = "",
+  groundingFacts = "",
 }) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
   const recentAvoidanceBrief = buildDiversityAvoidanceBrief(recentCharacterBeats);
   const recentExchange = (Array.isArray(recentMessages) ? recentMessages : [])
     .slice(-12)
@@ -2607,13 +2787,24 @@ async function repairNaturalVoice({
     .slice(0, 12)
     .map((entry) => `${entry?.name || "Lore"}: ${entry?.content || ""}`)
     .join("\n");
-  try {
-    const response = await fetch(GEMINI_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. Preserve visible events and established character intent, but audit every factual claim before preserving it. Make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages.
+  const initialSignals = findUnsupportedEverydayClaimSignals({ candidate: text, groundingFacts });
+  console.warn("Editorial repair triggered", {
+    groundingSignals: initialSignals,
+    voiceRisk: likelyNeedsNaturalVoiceRepair(text),
+  });
+  let failedDraft = String(text || "").trim();
+  let groundedFallback = "";
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 15000 : 12000);
+    try {
+      const response = await fetch(GEMINI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. This is strict editorial attempt ${attempt} of 2. Preserve visible events and established character intent, but audit every factual claim before preserving it. Make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages.
 
 CHARACTER PROFILE — authoritative
 Name: ${character?.name || "unknown"}
@@ -2636,6 +2827,9 @@ FACT AUTHORITY
 - If the latest user turn asks a question, answer its actual meaning in the first useful spoken line. Do not dodge it with compulsory sarcasm.
 - Teasing is optional, not the character's default response to every line. Keep at most one useful tease and let the rest sound like a person talking.
 - Mention a continuing prop or weather detail at most once unless it materially changes the action.
+
+AUTHORITATIVE FACT LEDGER — if a claimed past fact is absent here, remove it
+${String(groundingFacts || "none").slice(0, 30000)}
 
 EXPLICIT USER-AUTHORED RECENT FACTS
 ${userAuthoredFacts || "none"}
@@ -2661,22 +2855,72 @@ LATEST USER TURN
 ${String(latestUserMessage || "").slice(0, 2500)}
 
 PASSAGE TO REPAIR
-${String(text || "").slice(0, 12000)}` }] }],
-        generationConfig: { maxOutputTokens: 1700 },
-      }),
-    });
-    if (!response.ok) return text;
-    const data = await response.json();
-    return data?.candidates?.[0]?.content?.parts
-      ?.filter((part) => typeof part.text === "string" && !part.thought)
-      .map((part) => part.text)
-      .join("")
-      .trim() || text;
-  } catch {
-    return text;
-  } finally {
-    clearTimeout(timeout);
+${String(failedDraft || "").slice(0, 12000)}` }] }],
+          generationConfig: {
+            maxOutputTokens: 1200,
+            temperature: attempt === 1 ? 0.48 : 0.32,
+            topP: 0.84,
+            thinkingConfig: { thinkingLevel: "LOW" },
+          },
+        }),
+      });
+      if (!response.ok) {
+        console.warn("Editorial repair request failed", { attempt, status: response.status });
+        continue;
+      }
+      const data = await response.json();
+      const candidate = data?.candidates?.[0]?.content?.parts
+        ?.filter((part) => typeof part.text === "string" && !part.thought)
+        .map((part) => part.text)
+        .join("")
+        .trim() || "";
+      if (!candidate) {
+        console.warn("Editorial repair returned empty text", { attempt });
+        continue;
+      }
+
+      const remainingSignals = findUnsupportedEverydayClaimSignals({
+        candidate,
+        groundingFacts,
+      });
+      const remainingStyleRisk = likelyNeedsGroundedReplyRepair({
+        candidate,
+        recentCharacterBeats,
+        groundingFacts,
+      }) || likelyNeedsNaturalVoiceRepair(candidate);
+
+      if (!remainingSignals.length) groundedFallback = candidate;
+      if (!remainingSignals.length && !remainingStyleRisk) return candidate;
+
+      console.warn("Editorial repair candidate rejected", {
+        attempt,
+        groundingSignals: remainingSignals,
+        styleRisk: remainingStyleRisk,
+      });
+      failedDraft = candidate;
+    } catch (error) {
+      console.warn("Editorial repair attempt failed", {
+        attempt,
+        error: getErrorName(error) || "unknown",
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+
+  if (groundedFallback) {
+    console.warn("Editorial repair exhausted style retries; using grounded candidate");
+    return groundedFallback;
+  }
+
+  console.warn("Editorial repair exhausted factual retries; using canon-neutral fallback", {
+    groundingSignals: initialSignals,
+  });
+  return buildCanonNeutralEditorialFallback({
+    characterName: character?.name,
+    latestUserMessage,
+    language,
+  });
 }
 
 async function repairConversationProgression({
