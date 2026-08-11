@@ -89,6 +89,69 @@ check(
   edge.includes("Do not invent family calls, message counts, schedules, dated incidents, errands, parties or classes"),
 );
 
+let naturalTurnApi = null;
+try {
+  const naturalTurnStart = edge.indexOf("function looksLikeDirectQuestion");
+  const naturalTurnEnd = edge.indexOf("function resolveNaturalTurn", naturalTurnStart);
+  if (naturalTurnStart >= 0 && naturalTurnEnd > naturalTurnStart) {
+    naturalTurnApi = new Function(
+      `${edge.slice(naturalTurnStart, naturalTurnEnd)}\nreturn { looksLikeDirectQuestion };`,
+    )();
+  }
+} catch {
+  naturalTurnApi = null;
+}
+
+check(
+  "questions without punctuation are still answered",
+  naturalTurnApi?.looksLikeDirectQuestion("Nothing really just studying, what about you i haven't see you in a while"),
+);
+check(
+  "ordinary statements do not become questions",
+  naturalTurnApi && !naturalTurnApi.looksLikeDirectQuestion("Nothing really, I've just been studying lately"),
+);
+
+let groundedReplyApi = null;
+try {
+  const groundedStart = edge.indexOf("function likelyNeedsGroundedReplyRepair");
+  const groundedEnd = edge.indexOf("function likelyNeedsNaturalVoiceRepair", groundedStart);
+  if (groundedStart >= 0 && groundedEnd > groundedStart) {
+    groundedReplyApi = new Function(
+      `${edge.slice(groundedStart, groundedEnd)}\nreturn { likelyNeedsGroundedReplyRepair };`,
+    )();
+  }
+} catch {
+  groundedReplyApi = null;
+}
+
+check(
+  "invented everyday habits and debts trigger editorial repair",
+  groundedReplyApi?.likelyNeedsGroundedReplyRepair({
+    candidate: `"Your apartment is a biohazard of discarded coffee cups. You owe me dinner."`,
+    recentCharacterBeats: [],
+  }),
+);
+check(
+  "invented precise relationship durations trigger editorial repair",
+  groundedReplyApi?.likelyNeedsGroundedReplyRepair({
+    candidate: `"Because you're my best friend of ten years."`,
+    recentCharacterBeats: [],
+  }),
+);
+check(
+  "a direct present intention remains canon-safe",
+  groundedReplyApi && !groundedReplyApi.likelyNeedsGroundedReplyRepair({
+    candidate: `Rowan glanced at you. "Because I haven't seen you in a while, and I want to have dinner with you."`,
+    recentCharacterBeats: [],
+  }),
+);
+check(
+  "grounded editor distinguishes visible continuity from factual authority",
+  edge.includes("Earlier CHARACTER banter is not proof of a new off-screen fact") &&
+    edge.includes("an invitation may be \"I want to get dinner with you,\"") &&
+    edge.includes("Teasing is optional, not the character's default response to every line"),
+);
+
 let dialogueGuardApi = null;
 try {
   const guardStart = edge.indexOf("function normalizeForRegenerationComparison");
@@ -157,9 +220,9 @@ check(
 check("safe repair fallback avoids brittle false errors", edge.includes("if (safeFallback) return safeFallback"));
 check("directed continuation never exposes a validator error", edge.includes("buildDirectedContinuationFallback({") && !edge.includes("Velvet could not continue from"));
 check(
-  "Gemini Flash is primary and Lite is fallback",
-  edge.includes('Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash"') &&
-    edge.includes('Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite"') &&
+  "Gemini 3.6 Flash is primary and 3.5 Flash is fallback",
+  edge.includes('Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash"') &&
+    edge.includes('Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash"') &&
     edge.includes("useFallbackModel ? GEMINI_FALLBACK_ENDPOINT : GEMINI_ENDPOINT"),
 );
 check(

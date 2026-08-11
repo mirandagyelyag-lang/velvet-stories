@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.3)
+# Velvet Stories — motor narrativo consolidado (v0.9.4)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -35,9 +35,18 @@ en los archivos reales de la app.
   getting drained»— y la envía a reparación.
 - Los resúmenes se actualizan cada cinco turnos y también después de regenerar;
   no convierten acusaciones o anécdotas inventadas por un personaje en canon.
-- `gemini-3.5-flash` es el modelo principal recomendado y
-  `gemini-3.5-flash-lite` queda como fallback automático ante errores
-  transitorios o límites temporales.
+- Las preguntas coloquiales sin signo final —por ejemplo, `what about you i
+  haven't seen you`— se reconocen como preguntas y deben recibir una respuesta
+  antes de que el personaje cambie de tema.
+- Una edición factual se activa ante hábitos, posesiones, deudas, planes o
+  duraciones potencialmente inventadas. El diálogo previo del personaje no se
+  acepta como prueba de una historia fuera de escena que la usuaria nunca
+  confirmó.
+- El editor también interviene antes cuando detecta varias muletillas de IA o
+  reutilización excesiva de lluvia, paraguas, miradas y movimientos de relleno.
+- `gemini-3.6-flash` es el modelo principal y `gemini-3.5-flash` queda como
+  fallback automático ante errores transitorios o límites temporales. El nivel
+  de razonamiento sube de mínimo a bajo para priorizar coherencia y canon.
 - Un mensaje vacío, `.`, `..` o `…` se guarda como una señal interna compacta y
   nunca se muestra en el chat.
 - El primer silencio termina el beat actual; el segundo devuelve la cámara al

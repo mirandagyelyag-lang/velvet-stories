@@ -10,8 +10,8 @@ const encoder = new TextEncoder();
 // Flash is substantially better at long conversational continuity than Lite
 // and is currently available on Gemini's free tier. Lite remains an automatic
 // fallback for transient/rate-limit failures and can still be forced by env.
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
-const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
+const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash";
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
 const GEMINI_FALLBACK_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_FALLBACK_MODEL)}:generateContent`;
 
@@ -333,7 +333,10 @@ Deno.serve(async (request) => {
                 maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
                 temperature: getGenerationTemperature(configuredCharacter.creativity, Boolean(regenerateMessageId)),
                 topP: 0.92,
-                thinkingConfig: { thinkingLevel: "MINIMAL" },
+                // Nuanced dialogue needs enough reasoning to reconcile the
+                // latest turn, canon and character voice. MINIMAL was faster,
+                // but it routinely produced plausible-sounding invented facts.
+                thinkingConfig: { thinkingLevel: "LOW" },
               },
             }),
           }
@@ -452,7 +455,16 @@ Deno.serve(async (request) => {
       }
     }
 
-    if (generatedReply && likelyNeedsNaturalVoiceRepair(generatedReply)) {
+    if (
+      generatedReply &&
+      (
+        likelyNeedsNaturalVoiceRepair(generatedReply) ||
+        likelyNeedsGroundedReplyRepair({
+          candidate: generatedReply,
+          recentCharacterBeats,
+        })
+      )
+    ) {
       generatedReply = await repairNaturalVoice({
         apiKey: geminiApiKey,
         text: generatedReply,
@@ -461,6 +473,12 @@ Deno.serve(async (request) => {
         userName: userIdentity.name,
         latestUserMessage,
         recentCharacterBeats,
+        recentMessages: messages,
+        character: configuredCharacter,
+        userIdentity,
+        memories,
+        loreEntries,
+        conversationSummary: conversation.summary || "",
       });
       generatedReply = applyNaturalOutputGuard({
         text: generatedReply,
@@ -640,7 +658,13 @@ Deno.serve(async (request) => {
         });
         if (!finalCandidate) continue;
 
-        if (likelyNeedsNaturalVoiceRepair(finalCandidate)) {
+        if (
+          likelyNeedsNaturalVoiceRepair(finalCandidate) ||
+          likelyNeedsGroundedReplyRepair({
+            candidate: finalCandidate,
+            recentCharacterBeats,
+          })
+        ) {
           finalCandidate = await repairNaturalVoice({
             apiKey: geminiApiKey,
             text: finalCandidate,
@@ -649,6 +673,12 @@ Deno.serve(async (request) => {
             userName: userIdentity.name,
             latestUserMessage,
             recentCharacterBeats,
+            recentMessages: messages,
+            character: configuredCharacter,
+            userIdentity,
+            memories,
+            loreEntries,
+            conversationSummary: conversation.summary || "",
           });
           finalCandidate = applyNaturalOutputGuard({
             text: finalCandidate,
@@ -1374,7 +1404,7 @@ async function generateDiverseRegeneration({
           }],
           generationConfig: {
             maxOutputTokens,
-            thinkingConfig: { thinkingLevel: "MINIMAL" },
+            thinkingConfig: { thinkingLevel: "LOW" },
           },
         }),
       }
@@ -1545,7 +1575,7 @@ async function enforceDirectedContinuation({
               maxOutputTokens: getMaximumOutputTokens(character.response_length),
               temperature: 0.76,
               topP: 0.9,
-              thinkingConfig: { thinkingLevel: "MINIMAL" },
+              thinkingConfig: { thinkingLevel: "LOW" },
             },
           }),
         }
@@ -1643,6 +1673,30 @@ function collapseSocialElongation(value = "") {
   return normalizeRelevanceText(String(value || "")).replace(/(.)\1{2,}/gu, "$1");
 }
 
+function looksLikeDirectQuestion(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  if (/[?¿]/.test(raw)) return true;
+
+  // Roleplay users frequently omit punctuation, especially on mobile. Strip
+  // action/direction wrappers before looking for ordinary interrogative forms
+  // so "what about you i haven't seen you" still receives an actual answer.
+  const spoken = raw
+    .replace(/\*[^*]{0,500}\*/g, " ")
+    .replace(/\[[^\]]{0,500}\]/g, " ")
+    .replace(/\([^)]{0,500}\)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  if (!spoken) return false;
+
+  return (
+    /^(?:what|why|how|where|when|who|which|whose|whom)\b/.test(spoken) ||
+    /\b(?:what|how)\s+about\s+(?:you|him|her|them|it|that)\b/.test(spoken) ||
+    /^(?:do|does|did|are|is|was|were|can|could|would|will|have|has|had|should|am)\s+(?:you|he|she|they|we|i|it)\b/.test(spoken)
+  );
+}
+
 function resolveNaturalTurn({
   latestUserMessage,
   latestUserRecord,
@@ -1688,7 +1742,7 @@ function resolveNaturalTurn({
   );
   const explicitLeave = /\b(i\s+(?:leave|left|walk\s+away|walked\s+away|go\s+home|went\s+home|head\s+out|headed\s+out)|me\s+(?:voy|fui|marcho|marché)|salgo|salí)\b/i.test(raw);
   const explicitCameraAway = /\b(meanwhile|cut\s+to|camera\s+(?:follows|moves)|elsewhere|mientras\s+tanto|en\s+otro\s+lugar)\b/i.test(directionText);
-  const asksQuestion = /\?/.test(raw);
+  const asksQuestion = looksLikeDirectQuestion(raw);
   const correction = /\b(?:no[, ]|actually|i\s+said|i\s+meant|that's\s+not|that\s+isn't|you're\s+wrong|se\s+supone|dije|quise\s+decir|no\s+es|eso\s+no)\b/i.test(raw);
   const previousCharacterTurn = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
   const recentCharacterDialogue = messages
@@ -1973,7 +2027,8 @@ PRIORITY ORDER
 Nothing lower may contradict or erase something higher.
 
 NARRATIVE DECISION
-- React to the latest USER turn first, then choose one meaningful next beat. Unknown history stays unknown; new present-tense choices are allowed.
+- React fully to the latest USER turn first. Add at most one next beat only when it follows naturally; a direct answer can be a complete response by itself. Unknown history stays unknown.
+- Initiative means acting on an established want or the visible situation, not manufacturing a reason to act. New present-tense choices are allowed, but invented debts, routines, shared plans and backstory disguised as teasing are not.
 - Advance through dialogue, decisions and consequences. Do not sustain a scene with questions, decorative movement or random complications.
 - Treat the visible transcript as immutable evidence. A character may clarify intent, but may not falsely deny words or a clear equivalent they already used. If they misspoke, they can own it, correct it, set a boundary, withdraw or make another honest choice.
 - Answer the user's literal grievance or direct question before reframing. Never replace it with an easier accusation such as "you want hourly reports," "you are overreacting," or "you always twist things" unless the user actually said that.
@@ -1990,6 +2045,8 @@ NARRATIVE DECISION
 - Never invent ${userIdentity.name}'s response or require them to answer. Characters can speak, decide, leave or interact with established NPCs independently.
 - Before adding any past/off-screen fact, ask where it was established. If nowhere, omit it. Do not fabricate traffic, lateness, schedules, promises, history, intimacy or logistics just to create dialogue.
 - A claim spoken by a character can be a lie, mistake or deflection; it does not become narrator-confirmed canon merely because it appeared in dialogue. Never invent family calls, unread-message counts, parties, classes, errands or dated incidents to win an argument.
+- Do not invent precise durations, recurring habits, domestic details, debts or obligations. "Friends since secondary school" does not permit "best friends for ten years" unless that exact duration is established.
+- Teasing is optional. Do not make a proud, popular or sarcastic character answer every ordinary line with a performance, insult or clever comeback. One natural tease is enough; sincerity, brevity and plain answers must remain available.
 
 POV & CAMERA
 ${buildNarrativeCameraInstructions(character, userIdentity)}
@@ -2243,7 +2300,7 @@ ${historyText}
 FINAL PRE-WRITE CHECK
 - Obey the latest USER turn and mandatory regeneration direction without controlling ${userIdentity.name}.
 - Keep the resolved medium and camera route. If a return/follow route is active, ${character.name} must be the meaningful focus.
-- Use only established past facts; new material must be a present action or choice, not invented history/logistics.
+- Use only established past facts. A new present action or choice must arise from the visible moment; it cannot invent a debt, recurring habit, exact duration or shared plan as its justification.
 - Read the whole recent exchange, not only the last sentence. Preserve what was actually said, answer the user's exact grievance, and do not make them defend it again.
 - If denial, blame, dismissal or counterattack already appeared, use a different conversational strategy now. Do not recycle its intent, metaphor or emotional conclusion under new wording.
 - Include character voice when silent_continue=yes. Remove filler, repeated beats and stock AI gestures.
@@ -2421,6 +2478,52 @@ ${text.slice(0, 12000)}` }] }],
   }
 }
 
+function likelyNeedsGroundedReplyRepair({
+  candidate = "",
+  recentCharacterBeats = [],
+}) {
+  const text = String(candidate || "");
+  if (!text.trim()) return false;
+
+  // These patterns do not prove that a claim is false. They mark claims that
+  // require an evidence-aware editorial pass: invented routines, possessions,
+  // obligations and precise relationship history are the most common way a
+  // superficially fluent reply quietly breaks canon.
+  const riskyEverydayClaims = [
+    /\byou(?:'ve| have)?\s+(?:always|never|usually|constantly)\b/i,
+    /\byou\s+owe\s+(?:me|him|her|them)\b/i,
+    /\b(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)\b/i,
+    /\b(?:our|the)\s+usual\b/i,
+    /\blike\s+(?:last time|you always do)\b/i,
+    /\b(?:for|of|since)\s+(?:(?:nearly|almost|over|about|the last)\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:days?|weeks?|months?|years?)\b/i,
+    /\b(?:every|each)\s+(?:day|night|week|time|semester|morning|weekend)\b/i,
+    /\b(?:twice|three times|four times|\d+\s+times?)\s+(?:today|yesterday|this week|last week|last night)\b/i,
+    /\byour\s+(?:apartment|room|phone|notification badge|mother|mom|father|dad|family|roommate|professor|boss)\b/i,
+    /\b(?:discarded|empty|half-written|unread)\s+(?:coffee cups?|messages?|algorithms?|assignments?)\b/i,
+    /\b(?:biohazard|scrambled eggs|vending machine|fan club|social obligations)\b/i,
+  ];
+  if (riskyEverydayClaims.some((pattern) => pattern.test(text))) return true;
+
+  const lower = text.toLowerCase();
+  const recent = (Array.isArray(recentCharacterBeats) ? recentCharacterBeats : [])
+    .join("\n")
+    .toLowerCase();
+  const fillerTerms = ["rain", "umbrella", "puddle", "canopy", "pavement", "shoulder", "grip", "handle"];
+  const fillerHits = fillerTerms.reduce((count, term) => {
+    const matches = lower.match(new RegExp(`\\b${term}\\b`, "g"));
+    return count + (matches?.length || 0);
+  }, 0);
+  const repeatsExistingFiller = fillerHits >= 4 && fillerTerms.some((term) => recent.includes(term));
+  if (repeatsExistingFiller) return true;
+
+  const compulsoryQuipMarkers = [
+    "oh right", "oh please", "clearly", "forgive me", "someone has to",
+    "full-time job", "standard stuff", "you owe me", "fan club",
+  ];
+  const quipCount = compulsoryQuipMarkers.filter((marker) => lower.includes(marker)).length;
+  return quipCount >= 2;
+}
+
 function likelyNeedsNaturalVoiceRepair(value = "") {
   const text = String(value || "");
   if (!text.trim()) return false;
@@ -2465,7 +2568,7 @@ function likelyNeedsNaturalVoiceRepair(value = "") {
     hits += (text.match(pattern) || []).length;
   }
   const paragraphs = text.split(/\n\s*\n/).filter(Boolean).length || 1;
-  return hits >= 3 || (hits >= 2 && paragraphs <= 3);
+  return hits >= 2 || (hits >= 1 && paragraphs <= 2);
 }
 
 async function repairNaturalVoice({
@@ -2476,17 +2579,89 @@ async function repairNaturalVoice({
   userName,
   latestUserMessage = "",
   recentCharacterBeats = [],
+  recentMessages = [],
+  character = {} as Record<string, any>,
+  userIdentity = {} as Record<string, any>,
+  memories = [],
+  loreEntries = [],
+  conversationSummary = "",
 }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   const recentAvoidanceBrief = buildDiversityAvoidanceBrief(recentCharacterBeats);
+  const recentExchange = (Array.isArray(recentMessages) ? recentMessages : [])
+    .slice(-12)
+    .map((message) => `${message.sender === "user" ? "USER" : "CHARACTER"}: ${compactMessageForPrompt(message.content)}`)
+    .join("\n");
+  const userAuthoredFacts = (Array.isArray(recentMessages) ? recentMessages : [])
+    .filter((message) => message.sender === "user")
+    .slice(-18)
+    .map((message) => compactMessageForPrompt(message.content))
+    .join("\n");
+  const memoryFacts = (Array.isArray(memories) ? memories : [])
+    .slice(0, 18)
+    .map((memory) => String(memory?.content || "").trim())
+    .filter(Boolean)
+    .join("\n");
+  const loreFacts = (Array.isArray(loreEntries) ? loreEntries : [])
+    .slice(0, 12)
+    .map((entry) => `${entry?.name || "Lore"}: ${entry?.content || ""}`)
+    .join("\n");
   try {
     const response = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       signal: controller.signal,
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. Preserve the actual events, character intent, established facts and useful dialogue, but make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. Do not add new facts or new actions. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages.\n\nRECENTLY USED FEATURES — avoid reusing them as filler or rhetoric:\n${recentAvoidanceBrief}\n\nDo not repeat a recent prop interaction, gesture, dialogue tactic or rhetorical motif merely with synonyms. Output only the repaired passage in ${language}.\n\nLATEST USER TURN:\n${String(latestUserMessage || "").slice(0, 2500)}\n\nPASSAGE:\n${String(text || "").slice(0, 12000)}` }] }],
+        contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. Preserve visible events and established character intent, but audit every factual claim before preserving it. Make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages.
+
+CHARACTER PROFILE — authoritative
+Name: ${character?.name || "unknown"}
+Personality: ${character?.personality || "not specified"}
+Relationship: ${character?.relationship || "not specified"}
+Speech style: ${character?.speech_style || "not specified"}
+Scenario/world: ${character?.scenario || character?.world || "not specified"}
+
+USER PROFILE — authoritative
+Name: ${userIdentity?.name || userName}
+Role/background: ${userIdentity?.role || "not specified"} / ${userIdentity?.background || "not specified"}
+Personality: ${userIdentity?.personality || "not specified"}
+
+FACT AUTHORITY
+- Character/user profiles, explicit USER turns, saved memories and lore may establish past facts.
+- Visible actions and spoken lines in RECENT EXCHANGE remain part of conversational continuity.
+- Earlier CHARACTER banter is not proof of a new off-screen fact, habit, obligation, possession or exact duration unless the user/profile/memory/lore confirms it.
+- Remove invented domestic details, message counts, schedules, recurring habits, precise relationship durations and pre-existing debts/plans. Do not preserve a fabrication merely because it sounds playful.
+- A new present choice is allowed only when it follows from the visible moment. State the real present intention directly: an invitation may be "I want to get dinner with you," but it may not become "you owe me dinner" without canon.
+- If the latest user turn asks a question, answer its actual meaning in the first useful spoken line. Do not dodge it with compulsory sarcasm.
+- Teasing is optional, not the character's default response to every line. Keep at most one useful tease and let the rest sound like a person talking.
+- Mention a continuing prop or weather detail at most once unless it materially changes the action.
+
+EXPLICIT USER-AUTHORED RECENT FACTS
+${userAuthoredFacts || "none"}
+
+SAVED MEMORIES
+${memoryFacts || "none"}
+
+ACTIVE LORE
+${loreFacts || "none"}
+
+ROLLING SUMMARY — derived, use only when consistent with authority above
+${String(conversationSummary || "none").slice(0, 4000)}
+
+RECENT EXCHANGE — immutable visible sequence, not automatic proof of off-screen claims
+${recentExchange || "none"}
+
+RECENTLY USED FEATURES — avoid reusing them as filler or rhetoric
+${recentAvoidanceBrief}
+
+Do not repeat a recent prop interaction, gesture, dialogue tactic or rhetorical motif merely with synonyms. Do not add a replacement invention after removing one. Output only the repaired passage in ${language}.
+
+LATEST USER TURN
+${String(latestUserMessage || "").slice(0, 2500)}
+
+PASSAGE TO REPAIR
+${String(text || "").slice(0, 12000)}` }] }],
         generationConfig: { maxOutputTokens: 1700 },
       }),
     });
