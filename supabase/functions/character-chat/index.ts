@@ -7,13 +7,28 @@ const corsHeaders = {
 };
 
 const encoder = new TextEncoder();
-// Flash is substantially better at long conversational continuity than Lite
-// and is currently available on Gemini's free tier. Lite remains an automatic
-// fallback for transient/rate-limit failures and can still be forced by env.
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
 const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
-const GEMINI_FALLBACK_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_FALLBACK_MODEL)}:generateContent`;
+const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
+
+type ModelEnvelope = {
+  reply: string;
+  continuity_note: string;
+};
+
+type ModelResult = ModelEnvelope & {
+  finishReason: string;
+  model: string;
+};
+
+type LoadedContext = {
+  conversation: Record<string, any>;
+  character: Record<string, any>;
+  persona: Record<string, any> | null;
+  messages: Record<string, any>[];
+  memories: Record<string, any>[];
+  loreEntries: Record<string, any>[];
+};
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -24,21 +39,16 @@ Deno.serve(async (request) => {
     if (!authorization) return json({ error: "Authentication required" }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = getSupabasePublishableKey();
+    const publishableKey = getSupabasePublishableKey();
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-
-    if (!supabaseUrl || !supabaseKey || !serviceRoleKey || !geminiApiKey) {
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!supabaseUrl || !publishableKey || !serviceRoleKey || !apiKey) {
       throw new Error("The server is missing required secrets");
     }
 
-    // User-scoped client for all story data. RLS remains authoritative here.
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    const supabase = createClient(supabaseUrl, publishableKey, {
       global: { headers: { Authorization: authorization } },
     });
-
-    // Server-only client for the internal cancellation table. The browser never
-    // needs direct permissions on generation_requests.
     const cancellationAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -48,3107 +58,582 @@ Deno.serve(async (request) => {
 
     const body = await request.json();
     const action = String(body?.action || "generate");
-    const generationId = String(body?.generationId || "");
+    const generationId = cleanId(body?.generationId);
 
     if (action === "cancel") {
       if (!generationId) return json({ error: "generationId is required" }, 400);
-      const { error: cancelError } = await cancellationAdmin
-        .from("generation_requests")
-        .upsert({ id: generationId, user_id: userData.user.id, cancelled: true, updated_at: new Date().toISOString() }, { onConflict: "id" });
-      if (cancelError) throw new Error(cancelError.message);
+      const { error } = await cancellationAdmin.from("generation_requests").upsert({
+        id: generationId,
+        user_id: userData.user.id,
+        cancelled: true,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "id" });
+      if (error) throw new Error(error.message);
       return json({ cancelled: true });
     }
 
     if (action === "character_assist") {
-      const draft = body?.draft && typeof body.draft === "object" ? body.draft : {};
-      const assistResponse = await fetch(
-        GEMINI_ENDPOINT,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": geminiApiKey },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: `You are helping refine a private fictional roleplay character. Keep the creator's intent, names, relationship and world intact. Make the character specific, human, internally consistent but not perfect, and less cliché. Do not add sexual content. Return concise field suggestions. Existing draft:\n${JSON.stringify(draft).slice(0, 12000)}` }] }],
-            generationConfig: {
-              maxOutputTokens: 1800,
-              responseMimeType: "application/json",
-              responseJsonSchema: {
-                type: "object",
-                properties: {
-                  personality: { type: "string" },
-                  values: { type: "string" },
-                  fears: { type: "string" },
-                  habits: { type: "string" },
-                  contradictions: { type: "string" },
-                  speechStyle: { type: "string" },
-                  boundaries: { type: "string" },
-                  scenario: { type: "string" },
-                  exampleDialogue: { type: "string" }
-                }
-              }
-            },
-          }),
-        }
-      );
-      if (!assistResponse.ok) {
-        const errorData = await assistResponse.json().catch(() => ({}));
-        throw new Error(errorData?.error?.message || "Character assist failed");
-      }
-      const assistData = await assistResponse.json();
-      const assistText = assistData?.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text || "").join("").trim();
-      if (!assistText) throw new Error("Character assist returned no suggestions");
-      return json({ suggestions: JSON.parse(assistText) });
+      return await handleCharacterAssist({ apiKey, draft: body?.draft });
     }
 
-    const conversationId = String(body?.conversationId || "");
-    const regenerateMessageId = body?.regenerateMessageId
-      ? String(body.regenerateMessageId)
-      : "";
-    const expectedUserMessageId = body?.expectedUserMessageId
-      ? String(body.expectedUserMessageId)
-      : "";
+    const conversationId = cleanId(body?.conversationId);
+    const regenerateMessageId = cleanId(body?.regenerateMessageId);
+    const expectedUserMessageId = cleanId(body?.expectedUserMessageId);
     const regenerationInstruction = cleanInstruction(body?.regenerationInstruction);
     const directorInstruction = cleanInstruction(body?.directorInstruction);
-
     if (!conversationId) return json({ error: "conversationId is required" }, 400);
 
-    const user = userData.user;
     if (generationId) {
-      // Never reset an existing cancellation back to false. Stop can arrive
-      // before this generation finishes registering, so registration must be
-      // insert-only. A duplicate row means Stop already created/marked it.
-      const { error: requestError } = await cancellationAdmin
-        .from("generation_requests")
-        .insert({
-          id: generationId,
-          user_id: user.id,
-          conversation_id: conversationId,
-          cancelled: false,
-          updated_at: new Date().toISOString(),
-        });
-
-      if (requestError && requestError.code !== "23505") {
-        throw new Error(requestError.message);
-      }
-
-      if (await isGenerationCancelled(cancellationAdmin, generationId, user.id)) {
-        return new Response(null, { status: 499, headers: corsHeaders });
-      }
-    }
-
-    const conversation = await getConversation(supabase, conversationId, user.id);
-
-    const [character, allMessages, allMemories, persona, allLoreEntries] = await Promise.all([
-      getCharacter(supabase, conversation.character_id, user.id),
-      getRecentMessages(supabase, conversationId, user.id),
-      getSavedMemories(supabase, conversationId, conversation.character_id, user.id),
-      getPersona(supabase, conversation.persona_id, user.id),
-      getLoreEntries(supabase, conversation.lorebook_id, user.id),
-    ]);
-
-    const configuredCharacter = {
-      ...character,
-      response_length:
-        conversation.response_length_override || character.response_length || "balanced",
-      narration_style:
-        conversation.narration_style_override || character.narration_style || "balanced",
-      creativity: clampCreativity(conversation.creativity),
-      romance_intensity: clampControl(conversation.romance_intensity, 35),
-      initiative: clampControl(conversation.initiative, 65),
-      drama: clampControl(conversation.drama, 45),
-      flirting: clampControl(conversation.flirting, 30),
-      humor: clampControl(conversation.humor, 45),
-      description_level: clampControl(conversation.description_level, 55),
-      character_independence: clampControl(conversation.character_independence, 80),
-      dialogue_frequency: clampControl(conversation.dialogue_frequency, 55),
-      narrative_camera: ["user_focused", "balanced", "cinematic"].includes(conversation.narrative_camera) ? conversation.narrative_camera : "balanced",
-      inner_thoughts: ["rare", "sometimes", "frequent"].includes(conversation.inner_thoughts) ? conversation.inner_thoughts : "rare",
-      story_preset: ["natural", "romantic", "dramatic", "slow_burn"].includes(conversation.story_preset) ? conversation.story_preset : "natural",
-      pacing_mode: ["quick", "natural", "cinematic"].includes(conversation.pacing_mode) ? conversation.pacing_mode : "natural",
-      relationship_state: conversation.relationship_state && typeof conversation.relationship_state === "object" ? conversation.relationship_state : {},
-      cast_state: conversation.cast_state && typeof conversation.cast_state === "object" ? conversation.cast_state : {},
-      story_chapters: Array.isArray(conversation.story_chapters) ? conversation.story_chapters : [],
-      active_chapter: conversation.active_chapter && typeof conversation.active_chapter === "object" ? conversation.active_chapter : {},
-      unresolved_threads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads : [],
-    };
-    const userIdentity = getUserIdentity(user, persona);
-    const loreEntries = selectRelevantLore(allLoreEntries, allMessages);
-    const memories = selectRelevantMemories(allMemories, allMessages, userIdentity);
-
-    let messages = allMessages;
-    let replacementMessage = null;
-    let rejectedVariants: string[] = [];
-
-    if (regenerateMessageId) {
-      const targetIndex = allMessages.findIndex((message) => message.id === regenerateMessageId);
-      if (targetIndex === -1 || allMessages[targetIndex].sender !== "character") {
-        return json({ error: "The response to regenerate was not found" }, 404);
-      }
-      replacementMessage = allMessages[targetIndex];
-      messages = allMessages.slice(0, targetIndex);
-
-      const { data: priorAlternatives, error: priorAlternativesError } = await supabase
-        .from("message_alternatives")
-        .select("content")
-        .eq("message_id", regenerateMessageId)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true });
-      if (priorAlternativesError) console.warn("Could not load prior response variants:", priorAlternativesError.message);
-      rejectedVariants = [...new Set([
-        ...(priorAlternatives || []).map((item) => String(item.content || "").trim()),
-        String(replacementMessage.content || "").trim(),
-      ].filter(Boolean))].slice(-8);
-    }
-
-    // The last five character turns expose dialogue loops that lexical-only
-    // regeneration checks miss: repeated denial, blame-shifting, dismissal or
-    // the same rhetorical motif with different wording. They are used for both
-    // ordinary-turn progression repair and regeneration diversity.
-    const recentCharacterBeats = messages
-      .filter((message) => message.sender === "character")
-      .slice(-5)
-      .map((message) => String(message.content || "").trim())
-      .filter(Boolean);
-    const recentUserBeats = messages
-      .filter((message) => message.sender === "user")
-      .slice(-13);
-    const diversityReferences = regenerateMessageId
-      ? [...new Set([
-          ...rejectedVariants,
-          ...recentCharacterBeats,
-        ])].slice(-14)
-      : [];
-
-    const latestUserMessage = [...messages].reverse().find((message) => message.sender === "user")?.content || "";
-    const previousCharacterMessage = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
-    const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
-    const authoritativeGroundingFacts = buildAuthoritativeGroundingFacts({
-      character: configuredCharacter,
-      userIdentity,
-      messages,
-      memories,
-      loreEntries,
-    });
-    const timeSkip = analyzeTimeSkip(latestUserMessage);
-    const latestUserRecord = [...messages].reverse().find((message) => message.sender === "user") || null;
-    if (expectedUserMessageId && latestUserRecord?.id !== expectedUserMessageId) {
-      console.warn("Generation anchor mismatch", {
-        conversationId,
-        expectedUserMessageId,
-        resolvedUserMessageId: latestUserRecord?.id || null,
-        regenerateMessageId: regenerateMessageId || null,
+      const { error } = await cancellationAdmin.from("generation_requests").insert({
+        id: generationId,
+        user_id: userData.user.id,
+        conversation_id: conversationId,
+        cancelled: false,
+        updated_at: new Date().toISOString(),
       });
+      if (error && error.code !== "23505") throw new Error(error.message);
+      if (await isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)) {
+        return cancelledResponse();
+      }
+    }
+
+    const loaded = await loadContext({
+      supabase,
+      conversationId,
+      userId: userData.user.id,
+    });
+    const configuredCharacter = applyConversationControls(loaded.character, loaded.conversation);
+    const userIdentity = getUserIdentity(userData.user, loaded.persona);
+
+    const branch = await resolveGenerationBranch({
+      supabase,
+      messages: loaded.messages,
+      regenerateMessageId,
+      userId: userData.user.id,
+    });
+    const messages = branch.messages;
+    const latestUserRecord = [...messages].reverse().find((message) => message.sender === "user") || null;
+    if (!latestUserRecord) throw new Error("Send a message before asking the character to reply");
+
+    if (expectedUserMessageId && String(latestUserRecord.id) !== expectedUserMessageId) {
       return json({ error: "The conversation changed before Velvet could answer. Try again from the latest message." }, 409);
     }
-    const turnResolution = resolveNaturalTurn({
-      latestUserMessage,
+
+    const latestUserMessage = String(latestUserRecord.content || "");
+    const previousCharacterMessage = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
+    const turnIntent = classifyTurnIntent(latestUserMessage, messages);
+    const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
+    const selectedMemories = selectRelevantMemories(loaded.memories, messages);
+    const selectedLore = selectRelevantLore(loaded.loreEntries, messages);
+
+    const prompt = buildNarrativePrompt({
+      conversation: loaded.conversation,
+      character: configuredCharacter,
+      userIdentity,
+      messages,
+      memories: selectedMemories,
+      loreEntries: selectedLore,
       latestUserRecord,
-      messages,
-      sceneState: conversation.scene_state || {},
-      castState: conversation.cast_state || {},
-      character: configuredCharacter,
-      userIdentity,
-      timeSkip,
-      regenerationInstruction,
-      relationshipState: conversation.relationship_state || {},
-    });
-
-    const systemInstruction = buildSystemInstruction({
-      character: configuredCharacter,
-      userIdentity,
       responseLanguage,
-      regenerationInstruction,
-      directorInstruction,
-      turnResolution,
-      rejectedResponse: replacementMessage?.content || "",
-      rejectedVariants,
-    });
-
-    const prompt = buildPrompt({
-      character: configuredCharacter,
-      messages,
-      memories,
-      loreEntries,
-      userIdentity,
-      conversationSummary: conversation.summary || "",
-      sceneState: conversation.scene_state || {},
-      storyTimeline: conversation.story_timeline || [],
-      relationshipState: conversation.relationship_state || {},
-      castState: conversation.cast_state || {},
-      storyChapters: conversation.story_chapters || [],
-      activeChapter: conversation.active_chapter || {},
-      unfinishedThreads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads : [],
+      turnIntent,
       isRegeneration: Boolean(regenerateMessageId),
       regenerationInstruction,
-      turnResolution,
-    });
-    if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, user.id)) {
-      return new Response(null, { status: 499, headers: corsHeaders });
-    }
-        // Gemini must never leave the app waiting forever. Each attempt has a hard
-    // deadline and one automatic retry is allowed for timeout/transient stalls.
-    // Explicit Stop is still the only user-driven cancellation source.
-    let geminiResponse: Response | null = null;
-    let lastGeminiError: unknown = null;
-    let useFallbackModel = false;
-
-    for (let attempt = 0; attempt < 2 && !geminiResponse; attempt += 1) {
-      const geminiController = new AbortController();
-      let watchCancellation = true;
-      let timedOut = false;
-      const timeoutMs = attempt === 0 ? 22000 : 18000;
-      const timeoutId = setTimeout(() => {
-        timedOut = true;
-        try {
-          geminiController.abort();
-        } catch {
-          // Already closed.
-        }
-      }, timeoutMs);
-
-      const cancellationWatcher = generationId
-        ? (async () => {
-            while (watchCancellation && !geminiController.signal.aborted) {
-              await delay(150);
-              if (!watchCancellation || geminiController.signal.aborted) return;
-
-              if (await isGenerationCancelled(cancellationAdmin, generationId, user.id)) {
-                try {
-                  geminiController.abort();
-                } catch {
-                  // Already closed.
-                }
-                return;
-              }
-            }
-          })()
-        : Promise.resolve();
-
-      try {
-        const candidateResponse = await fetch(
-          useFallbackModel ? GEMINI_FALLBACK_ENDPOINT : GEMINI_ENDPOINT,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": geminiApiKey,
-            },
-            signal: geminiController.signal,
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: systemInstruction }] },
-              contents: [{ role: "user", parts: [{ text: prompt }] }],
-              generationConfig: {
-                maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
-                temperature: getGenerationTemperature(configuredCharacter.creativity, Boolean(regenerateMessageId)),
-                topP: 0.92,
-                // Nuanced dialogue needs enough reasoning to reconcile the
-                // latest turn, canon and character voice. MINIMAL was faster,
-                // but it routinely produced plausible-sounding invented facts.
-                thinkingConfig: { thinkingLevel: "LOW" },
-              },
-            }),
-          }
-        );
-
-        // Retry once on transient upstream failures. Do not retry normal 4xx
-        // request errors because they need to surface immediately.
-        if (attempt === 0 && [429, 500, 502, 503, 504].includes(candidateResponse.status)) {
-          lastGeminiError = new Error(`Gemini transient status ${candidateResponse.status}`);
-          useFallbackModel = GEMINI_FALLBACK_MODEL !== GEMINI_MODEL;
-          await delay(250);
-          continue;
-        }
-
-        geminiResponse = candidateResponse;
-      } catch (error) {
-        const explicitlyCancelled = generationId
-          ? await isGenerationCancelled(cancellationAdmin, generationId, user.id)
-          : false;
-
-        if (explicitlyCancelled) {
-          return new Response(null, { status: 499, headers: corsHeaders });
-        }
-
-        lastGeminiError = error;
-        if (timedOut && attempt === 0) {
-          await delay(250);
-          continue;
-        }
-
-        if (timedOut) {
-          throw new Error("The AI took too long to answer. Please try again.");
-        }
-
-        throw error;
-      } finally {
-        clearTimeout(timeoutId);
-        watchCancellation = false;
-        void cancellationWatcher;
-      }
-    }
-
-    if (!geminiResponse) {
-      console.error("Gemini generation exhausted retries:", lastGeminiError);
-      throw new Error("The AI took too long to answer. Please try again.");
-    }
-
-    const geminiData = await geminiResponse.json();
-
-    if (!geminiResponse.ok) {
-      throw new Error(
-        geminiData?.error?.message || "Gemini could not generate a response"
-      );
-    }
-
-    const initialCandidate = extractGeminiCandidate(geminiData);
-    let generatedReply = initialCandidate.text;
-    // Factual, voice and tender-emotion review share one model-call budget.
-    // Any later residual risk is handled by deterministic safe fallbacks.
-    let combinedEditorialRepairUsed = false;
-
-    const initialCompletionSignals = getIncompleteReplySignals(
-      generatedReply,
-      initialCandidate.finishReason,
-    );
-    if (initialCompletionSignals.length) {
-      console.warn("Initial generation was incomplete", {
-        finishReason: initialCandidate.finishReason || "missing",
-        completionSignals: initialCompletionSignals,
-      });
-      generatedReply = await repairIncompleteReply({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-        latestUserMessage,
-        character: configuredCharacter,
-        userIdentity,
-        groundingFacts: authoritativeGroundingFacts,
-        recentCharacterBeats,
-        rejectedResponses: diversityReferences,
-        maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
-      });
-    }
-
-    // Cheap local review catches the most damaging routing mistakes without
-    // adding another model call to every turn. Severe user-POV violations are
-    // still repaired by the dedicated repair pass below.
-    generatedReply = applyNaturalOutputGuard({
-      text: generatedReply,
-      turnResolution,
-      characterName: configuredCharacter.name,
+      directorInstruction,
     });
 
-    if (generatedReply && likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
-      generatedReply = await repairUserPOVViolation({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        userName: userIdentity.name,
-        latestUserMessage,
-        language: responseLanguage,
-      });
-    }
+    const isCancelled = () => generationId
+      ? isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)
+      : Promise.resolve(false);
 
-    // Regeneration diversity guard
-    // A swipe/arrow regeneration must be a new take, not the rejected answer
-    // with extra adjectives or a few deleted sentences. If Gemini stays too
-    // close to the rejected response, silently request one harder divergence.
-    if (
-      regenerateMessageId &&
-      diversityReferences.length &&
-      generatedReply &&
-      diversityReferences.some((variant) => isTooSimilarRegeneration(generatedReply, variant))
-    ) {
-      const diversityRejects = [...diversityReferences, generatedReply];
-      for (let diversityAttempt = 1; diversityAttempt <= 2; diversityAttempt += 1) {
-        const diverseReply = await generateDiverseRegeneration({
-          apiKey: geminiApiKey,
-          systemInstruction,
-          prompt,
-          rejectedResponses: diversityRejects,
-          maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
-          diversityAttempt,
-        });
-        if (!diverseReply) continue;
-
-        const guardedDiverseReply = applyNaturalOutputGuard({
-          text: diverseReply,
-          turnResolution,
-          characterName: configuredCharacter.name,
-        });
-        if (!guardedDiverseReply) continue;
-
-        if (!diversityReferences.some((variant) => isTooSimilarRegeneration(guardedDiverseReply, variant))) {
-          generatedReply = guardedDiverseReply;
-          break;
-        }
-
-        diversityRejects.push(guardedDiverseReply);
-      }
-    }
-
-    if (
-      generatedReply &&
-      !combinedEditorialRepairUsed &&
-      (
-        likelyNeedsNaturalVoiceRepair(generatedReply) ||
-        likelyNeedsGroundedReplyRepair({
-          candidate: generatedReply,
-          recentCharacterBeats,
-          groundingFacts: authoritativeGroundingFacts,
-          latestUserMessage,
-        }) ||
-        needsTenderEmotionalBeatRepair({
-          candidate: generatedReply,
-          latestUserMessage,
-          character: configuredCharacter,
-        })
-      )
-    ) {
-      combinedEditorialRepairUsed = true;
-      generatedReply = await repairNaturalVoice({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-        userName: userIdentity.name,
-        latestUserMessage,
-        recentCharacterBeats,
-        recentMessages: messages,
-        character: configuredCharacter,
-        userIdentity,
-        memories,
-        loreEntries,
-        conversationSummary: conversation.summary || "",
-        groundingFacts: authoritativeGroundingFacts,
-        rejectedResponses: diversityReferences,
-        relationshipState: conversation.relationship_state || {},
-      });
-      generatedReply = applyNaturalOutputGuard({
-        text: generatedReply,
-        turnResolution,
-        characterName: configuredCharacter.name,
-      });
-    }
-
-    // The natural-voice repair must never reintroduce user control.
-    if (generatedReply && likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
-      generatedReply = await repairUserPOVViolation({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        userName: userIdentity.name,
-        latestUserMessage,
-        language: responseLanguage,
-      });
-    }
-
-    // Lexical diversity is not enough in dialogue. If the draft repeats a
-    // failed tactic OR reopens an older user question instead of answering the
-    // authoritative latest turn, rewrite the conversational decision itself.
-    if (
-      generatedReply &&
-      (
-        needsConversationProgressionRepair({
-          candidate: generatedReply,
-          recentCharacterBeats,
-          latestUserMessage,
-        }) ||
-        likelyReopensEarlierUserTurn({
-          candidate: generatedReply,
-          latestUserMessage,
-          earlierUserMessages: recentUserBeats,
-        })
-      )
-    ) {
-      generatedReply = await repairConversationProgression({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        character: configuredCharacter,
-        userIdentity,
-        latestUserMessage,
-        recentMessages: messages,
-        recentCharacterBeats,
-        language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-      });
-      generatedReply = applyNaturalOutputGuard({
-        text: generatedReply,
-        turnResolution,
-        characterName: configuredCharacter.name,
-      });
-
-      if (likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
-        generatedReply = await repairUserPOVViolation({
-          apiKey: geminiApiKey,
-          text: generatedReply,
-          userName: userIdentity.name,
-          latestUserMessage,
-          language: responseLanguage,
-        });
-      }
-    }
-
-    // A direct text from the user should not disappear beneath an extended NPC
-    // exchange. With ordinary/high initiative, the main character sends a
-    // concise in-character reply; guardedness may shape it, not erase the turn.
-    if (
-      generatedReply &&
-      turnResolution.dmAddressed &&
-      Number(configuredCharacter.initiative || 0) >= 45 &&
-      !hasWrittenDigitalReply(generatedReply)
-    ) {
-      generatedReply = await repairMissingDigitalReply({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        character: configuredCharacter,
-        userIdentity,
-        latestUserMessage,
-        language: responseLanguage,
-        messageCutaway: Boolean(turnResolution.messageCutaway),
-      });
-      generatedReply = applyNaturalOutputGuard({
-        text: generatedReply,
-        turnResolution,
-        characterName: configuredCharacter.name,
-      });
-
-      if (likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
-        generatedReply = await repairUserPOVViolation({
-          apiKey: geminiApiKey,
-          text: generatedReply,
-          userName: userIdentity.name,
-          latestUserMessage,
-          language: responseLanguage,
-        });
-      }
-    }
-
-    // Route enforcement is deliberately LAST. Diversity and natural-language
-    // rewrites are useful, but neither is allowed to erase the requested
-    // camera, main-character focus, or audible voice on a silent continuation.
-    if (
-      generatedReply &&
-      (
-        turnResolution.followMainCharacterAfterExit ||
-        (turnResolution.silentContinue &&
-          (turnResolution.returnToMainCharacter || !hasAudibleCharacterVoice(generatedReply)))
-      )
-    ) {
-      const groundingFacts = [
-        latestUserMessage,
-        ...messages.slice(-6).map((message) => compactMessageForPrompt(message.content)),
-        configuredCharacter.scenario,
-        configuredCharacter.world,
-        configuredCharacter.relationship,
-        configuredCharacter.personality,
-        ...loreEntries.map((entry) => `${entry.name}: ${entry.content}`),
-      ].filter(Boolean).join("\n");
-
-      generatedReply = await enforceDirectedContinuation({
-        apiKey: geminiApiKey,
-        prompt,
-        rejectedDraft: generatedReply,
-        character: configuredCharacter,
-        userIdentity,
-        language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-        returnToMainCharacter: Boolean(turnResolution.returnToMainCharacter || turnResolution.followMainCharacterAfterExit),
-        emotionalFollow: Boolean(turnResolution.followMainCharacterAfterExit),
-        groundingFacts,
-      });
-
-      generatedReply = applyNaturalOutputGuard({
-        text: generatedReply,
-        turnResolution,
-        characterName: configuredCharacter.name,
-      });
-
-      if (likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
-        generatedReply = await repairUserPOVViolation({
-          apiKey: geminiApiKey,
-          text: generatedReply,
-          userName: userIdentity.name,
-          latestUserMessage,
-          language: responseLanguage,
-        });
-      }
-    }
-
-    // FINAL factual validation. Progression, digital-reply and camera rewrites
-    // happen after the first editorial pass, so they must not get a chance to
-    // reintroduce unsupported everyday facts at the end of the pipeline.
-    if (
-      generatedReply &&
-      !combinedEditorialRepairUsed &&
-      likelyNeedsGroundedReplyRepair({
-        candidate: generatedReply,
-        recentCharacterBeats,
-        groundingFacts: authoritativeGroundingFacts,
-        latestUserMessage,
-      })
-    ) {
-      combinedEditorialRepairUsed = true;
-      generatedReply = await repairNaturalVoice({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-        userName: userIdentity.name,
-        latestUserMessage,
-        recentCharacterBeats,
-        recentMessages: messages,
-        character: configuredCharacter,
-        userIdentity,
-        memories,
-        loreEntries,
-        conversationSummary: conversation.summary || "",
-        groundingFacts: authoritativeGroundingFacts,
-        rejectedResponses: diversityReferences,
-        relationshipState: conversation.relationship_state || {},
-      });
-      generatedReply = applyNaturalOutputGuard({
-        text: generatedReply,
-        turnResolution,
-        characterName: configuredCharacter.name,
-      });
-
-      if (likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
-        generatedReply = await repairUserPOVViolation({
-          apiKey: geminiApiKey,
-          text: generatedReply,
-          userName: userIdentity.name,
-          latestUserMessage,
-          language: responseLanguage,
-        });
-      }
-    }
-
-    // FINAL regeneration validation. Every rewrite above can alter phrasing,
-    // so diversity must be checked after voice, POV, digital-reply and camera
-    // repairs. One copied signature line is enough to reject the take.
-    if (
-      regenerateMessageId &&
-      generatedReply &&
-      diversityReferences.some((variant) => isTooSimilarRegeneration(generatedReply, variant))
-    ) {
-      const finalRejects = [...diversityReferences, generatedReply];
-      let nonDialogueEchoFallback = "";
-      for (let diversityAttempt = 1; diversityAttempt <= 2; diversityAttempt += 1) {
-        let finalCandidate = await generateDiverseRegeneration({
-          apiKey: geminiApiKey,
-          systemInstruction,
-          prompt,
-          rejectedResponses: finalRejects,
-          maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
-          diversityAttempt,
-        });
-        if (!finalCandidate) continue;
-
-        finalCandidate = applyNaturalOutputGuard({
-          text: finalCandidate,
-          turnResolution,
-          characterName: configuredCharacter.name,
-        });
-        if (!finalCandidate) continue;
-
-        if (
-          !combinedEditorialRepairUsed &&
-          (
-            likelyNeedsNaturalVoiceRepair(finalCandidate) ||
-            likelyNeedsGroundedReplyRepair({
-              candidate: finalCandidate,
-              recentCharacterBeats,
-              groundingFacts: authoritativeGroundingFacts,
-              latestUserMessage,
-            }) ||
-            needsTenderEmotionalBeatRepair({
-              candidate: finalCandidate,
-              latestUserMessage,
-              character: configuredCharacter,
-            })
-          )
-        ) {
-          combinedEditorialRepairUsed = true;
-          finalCandidate = await repairNaturalVoice({
-            apiKey: geminiApiKey,
-            text: finalCandidate,
-            language: responseLanguage,
-            medium: turnResolution.digitalMode || "in_person",
-            userName: userIdentity.name,
-            latestUserMessage,
-            recentCharacterBeats,
-            recentMessages: messages,
-            character: configuredCharacter,
-            userIdentity,
-            memories,
-            loreEntries,
-            conversationSummary: conversation.summary || "",
-            groundingFacts: authoritativeGroundingFacts,
-            rejectedResponses: diversityReferences,
-            relationshipState: conversation.relationship_state || {},
-          });
-          finalCandidate = applyNaturalOutputGuard({
-            text: finalCandidate,
-            turnResolution,
-            characterName: configuredCharacter.name,
-          });
-        }
-
-        if (likelyControlsUserPOV(finalCandidate, userIdentity.name, latestUserMessage)) {
-          finalCandidate = await repairUserPOVViolation({
-            apiKey: geminiApiKey,
-            text: finalCandidate,
-            userName: userIdentity.name,
-            latestUserMessage,
-            language: responseLanguage,
-          });
-        }
-
-        if (
-          needsConversationProgressionRepair({
-            candidate: finalCandidate,
-            recentCharacterBeats,
-            latestUserMessage,
-          }) ||
-          likelyReopensEarlierUserTurn({
-            candidate: finalCandidate,
-            latestUserMessage,
-            earlierUserMessages: recentUserBeats,
-          })
-        ) {
-          finalCandidate = await repairConversationProgression({
-            apiKey: geminiApiKey,
-            text: finalCandidate,
-            character: configuredCharacter,
-            userIdentity,
-            latestUserMessage,
-            recentMessages: messages,
-            recentCharacterBeats,
-            language: responseLanguage,
-            medium: turnResolution.digitalMode || "in_person",
-          });
-          finalCandidate = applyNaturalOutputGuard({
-            text: finalCandidate,
-            turnResolution,
-            characterName: configuredCharacter.name,
-          });
-        }
-
-        if (
-          turnResolution.dmAddressed &&
-          Number(configuredCharacter.initiative || 0) >= 45 &&
-          !hasWrittenDigitalReply(finalCandidate)
-        ) {
-          finalCandidate = await repairMissingDigitalReply({
-            apiKey: geminiApiKey,
-            text: finalCandidate,
-            character: configuredCharacter,
-            userIdentity,
-            latestUserMessage,
-            language: responseLanguage,
-            messageCutaway: Boolean(turnResolution.messageCutaway),
-          });
-          finalCandidate = applyNaturalOutputGuard({
-            text: finalCandidate,
-            turnResolution,
-            characterName: configuredCharacter.name,
-          });
-        }
-
-        if (
-          turnResolution.followMainCharacterAfterExit ||
-          (turnResolution.silentContinue &&
-            (turnResolution.returnToMainCharacter || !hasAudibleCharacterVoice(finalCandidate)))
-        ) {
-          const finalGroundingFacts = [
-            latestUserMessage,
-            ...messages.slice(-6).map((message) => compactMessageForPrompt(message.content)),
-            configuredCharacter.scenario,
-            configuredCharacter.world,
-            configuredCharacter.relationship,
-            configuredCharacter.personality,
-            ...loreEntries.map((entry) => `${entry.name}: ${entry.content}`),
-          ].filter(Boolean).join("\n");
-
-          finalCandidate = await enforceDirectedContinuation({
-            apiKey: geminiApiKey,
-            prompt,
-            rejectedDraft: finalCandidate,
-            character: configuredCharacter,
-            userIdentity,
-            language: responseLanguage,
-            medium: turnResolution.digitalMode || "in_person",
-            returnToMainCharacter: Boolean(turnResolution.returnToMainCharacter || turnResolution.followMainCharacterAfterExit),
-            emotionalFollow: Boolean(turnResolution.followMainCharacterAfterExit),
-            groundingFacts: finalGroundingFacts,
-          });
-          finalCandidate = applyNaturalOutputGuard({
-            text: finalCandidate,
-            turnResolution,
-            characterName: configuredCharacter.name,
-          });
-        }
-
-        if (likelyControlsUserPOV(finalCandidate, userIdentity.name, latestUserMessage)) {
-          finalCandidate = await repairUserPOVViolation({
-            apiKey: geminiApiKey,
-            text: finalCandidate,
-            userName: userIdentity.name,
-            latestUserMessage,
-            language: responseLanguage,
-          });
-        }
-
-        if (!diversityReferences.some((variant) => hasRepeatedSignatureDialogue(finalCandidate, variant))) {
-          nonDialogueEchoFallback = finalCandidate;
-        }
-
-        if (!diversityReferences.some((variant) => isTooSimilarRegeneration(finalCandidate, variant))) {
-          generatedReply = finalCandidate;
-          nonDialogueEchoFallback = "";
-          break;
-        }
-        finalRejects.push(finalCandidate);
-      }
-
-      // Never keep a take that repeats the rejected signature dialogue. If the
-      // model could not clear every broad similarity threshold after two tries,
-      // prefer the latest candidate that at least removed copied dialogue.
-      if (
-        nonDialogueEchoFallback &&
-        diversityReferences.some((variant) => hasRepeatedSignatureDialogue(generatedReply, variant))
-      ) {
-        generatedReply = nonDialogueEchoFallback;
-      }
-    }
-
-    // FINAL save integrity gate. No rewrite, regeneration or POV repair is
-    // allowed to reach the database with an unfinished sentence, an open quote
-    // or a newly unsupported claim.
-    if (
-      generatedReply &&
-      !combinedEditorialRepairUsed &&
-      likelyNeedsGroundedReplyRepair({
-        candidate: generatedReply,
-        recentCharacterBeats,
-        groundingFacts: authoritativeGroundingFacts,
-        latestUserMessage,
-      })
-    ) {
-      combinedEditorialRepairUsed = true;
-      generatedReply = await repairNaturalVoice({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-        userName: userIdentity.name,
-        latestUserMessage,
-        recentCharacterBeats,
-        recentMessages: messages,
-        character: configuredCharacter,
-        userIdentity,
-        memories,
-        loreEntries,
-        conversationSummary: conversation.summary || "",
-        groundingFacts: authoritativeGroundingFacts,
-        rejectedResponses: diversityReferences,
-        relationshipState: conversation.relationship_state || {},
-      });
-    }
-
-    if (generatedReply && likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
-      generatedReply = await repairUserPOVViolation({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        userName: userIdentity.name,
-        latestUserMessage,
-        language: responseLanguage,
-      });
-    }
-
-    // FINAL emotional validation. Later diversity, camera and factual rewrites
-    // cannot flatten a tender disclosure into logistics or empty body language.
-    // This last gate is deliberately local: it protects quality without
-    // spending another Gemini request after the combined editorial pass.
-    if (
-      generatedReply &&
-      needsTenderEmotionalBeatRepair({
-        candidate: generatedReply,
-        latestUserMessage,
-        character: configuredCharacter,
-      })
-    ) {
-      generatedReply = buildTenderEmotionalFallback({
-        characterName: configuredCharacter.name,
-        latestUserMessage,
-        language: responseLanguage,
-        rejectedResponses: [...diversityReferences, generatedReply],
-        seedText: `${generatedReply}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
-        romanticInvestment: characterHasRomanticInvestment(
-          configuredCharacter,
-          conversation.relationship_state || {},
-        ),
-      });
-    }
-
-    if (generatedReply && getIncompleteReplySignals(generatedReply).length) {
-      generatedReply = await repairIncompleteReply({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-        latestUserMessage,
-        character: configuredCharacter,
-        userIdentity,
-        groundingFacts: authoritativeGroundingFacts,
-        recentCharacterBeats,
-        rejectedResponses: diversityReferences,
-        maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
-      });
-    }
-
-    generatedReply = applyNaturalOutputGuard({
-      text: generatedReply,
-      turnResolution,
-      characterName: configuredCharacter.name,
+    console.log("[character-chat] generation started", {
+      conversationId,
+      generationId: generationId || null,
+      intent: turnIntent.kind,
+      language: responseLanguage,
+      regeneration: Boolean(regenerateMessageId),
+      messageCount: messages.length,
     });
 
-    const residualCompletionSignals = getIncompleteReplySignals(generatedReply);
-    const residualGroundedRisk = likelyNeedsGroundedReplyRepair({
-      candidate: generatedReply,
-      recentCharacterBeats,
-      groundingFacts: authoritativeGroundingFacts,
-      latestUserMessage,
-    });
-    const residualPovRisk = likelyControlsUserPOV(
-      generatedReply,
-      userIdentity.name,
-      latestUserMessage,
-    );
-    const residualTenderRisk = needsTenderEmotionalBeatRepair({
-      candidate: generatedReply,
-      latestUserMessage,
+    let result = await generateRoleplay({
+      apiKey,
+      prompt,
       character: configuredCharacter,
-      relationshipState: conversation.relationship_state || {},
+      isRegeneration: Boolean(regenerateMessageId),
+      isCancelled,
     });
-    if (residualCompletionSignals.length || residualGroundedRisk || residualPovRisk || residualTenderRisk) {
-      console.warn("Final save integrity used a safe fallback", {
-        completionSignals: residualCompletionSignals,
-        groundedRisk: residualGroundedRisk,
-        povRisk: residualPovRisk,
-        tenderRisk: residualTenderRisk,
+
+    let validationIssues = validateNarrativeReply(result.reply, {
+      characterName: configuredCharacter.name,
+      userName: userIdentity.name,
+      latestUserMessage,
+      turnIntent,
+      finishReason: result.finishReason,
+      rejectedResponses: branch.rejectedResponses,
+    });
+
+    if (validationIssues.length) {
+      console.warn("[character-chat] candidate rejected", {
+        conversationId,
+        issues: validationIssues,
+        model: result.model,
       });
-      generatedReply = residualTenderRisk
-        ? buildTenderEmotionalFallback({
-            characterName: configuredCharacter.name,
-            latestUserMessage,
-            language: responseLanguage,
-            rejectedResponses: [...diversityReferences, generatedReply],
-            seedText: `${generatedReply}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
-            romanticInvestment: characterHasRomanticInvestment(
-              configuredCharacter,
-              conversation.relationship_state || {},
-            ),
-          })
-        : buildCanonNeutralEditorialFallback({
-            characterName: configuredCharacter.name,
-            latestUserMessage,
-            language: responseLanguage,
-            rejectedResponses: [...diversityReferences, generatedReply],
-            seedText: `${generatedReply}\n${recentCharacterBeats.join("\n")}`,
-          });
+
+      result = await repairRoleplayOnce({
+        apiKey,
+        originalPrompt: prompt,
+        rejectedReply: result.reply,
+        issues: validationIssues,
+        character: configuredCharacter,
+        isCancelled,
+      });
+
+      validationIssues = validateNarrativeReply(result.reply, {
+        characterName: configuredCharacter.name,
+        userName: userIdentity.name,
+        latestUserMessage,
+        turnIntent,
+        finishReason: result.finishReason,
+        rejectedResponses: branch.rejectedResponses,
+      });
     }
 
-    if (!generatedReply) {
-      if (generationId) {
-        return new Response(null, { status: 499, headers: corsHeaders });
-      }
-      throw new Error("Gemini returned no usable text");
+    if (validationIssues.length) {
+      console.error("[character-chat] repaired candidate still invalid", {
+        conversationId,
+        issues: validationIssues,
+      });
+      throw new Error("Velvet rejected a weak or incomplete response before showing it. Regenerate once more.");
     }
 
-    if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, user.id)) {
-      return new Response(null, { status: 499, headers: corsHeaders });
-    }
+    if (await isCancelled()) return cancelledResponse();
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reply = generatedReply;
-
-        try {
-          sendEvent(controller, {
-            type: "start",
-            language: responseLanguage,
-            memoryCount: memories.length,
-            pinnedMemoryCount: memories.filter((memory) => memory.is_pinned).length,
-            memoryItems: memories.map((memory) => ({
-              id: memory.id,
-              content: memory.content,
-              category: memory.category,
-              pinned: Boolean(memory.is_pinned),
-            })),
-            loreCount: loreEntries.length,
-            loreItems: loreEntries.map((entry) => ({ id: entry.id, name: entry.name, type: entry.entry_type })),
-          });
-
-          let chunkIndex = 0;
-          for (const chunk of splitForStreaming(reply)) {
-            if (generationId && chunkIndex % 4 === 0 && await isGenerationCancelled(cancellationAdmin, generationId, user.id)) return;
-            sendEvent(controller, { type: "chunk", content: chunk });
-            chunkIndex += 1;
-            await delay(7);
-          }
-
-          if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, user.id)) return;
-
-          // Rewind/delete/edit can happen while a model response is still in
-          // flight. A changed story revision makes this response belong to an
-          // abandoned timeline, so never save it back into the canonical chat.
-          if (!await isStoryRevisionCurrent(supabase, conversationId, user.id, conversation.story_revision || null)) return;
-
-          const savedMessage = replacementMessage
-            ? await replaceCharacterReply({
-                supabase,
-                conversationId,
-                userId: user.id,
-                message: replacementMessage,
-                reply,
-              })
-            : await saveCharacterReply({ supabase, conversationId, userId: user.id, reply });
-
-          await supabase
-            .from("conversations")
-            .update({ updated_at: new Date().toISOString() })
-            .eq("id", conversationId)
-            .eq("user_id", user.id);
-
-          if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, user.id)) return;
-          sendEvent(controller, { type: "done", message: savedMessage });
-
-          const userMessageCount = allMessages.filter((message) => message.sender === "user").length;
-          if (userMessageCount > 0) {
-            const backgroundTasks = [];
-
-            // Automatic memory extraction only follows genuinely new turns. A
-            // regenerated response must not create duplicate memories for the
-            // same user turn.
-            if (!replacementMessage && userMessageCount % 3 === 0) {
-              backgroundTasks.push(extractMemoriesInBackground({
-                supabase,
-                apiKey: geminiApiKey,
-                conversationId,
-                characterId: character.id,
-                userId: user.id,
-                expectedRevision: conversation.story_revision || null,
-                character: configuredCharacter,
-                userIdentity,
-                messages: [...messages, savedMessage],
-                existingMemories: memories,
-              }));
-            }
-
-            // Story state must be refreshed after BOTH a new reply and a
-            // regenerated reply. Otherwise the visible message can change while
-            // hidden scene/relationship metadata still describes the rejected
-            // version.
-            backgroundTasks.push(updateStoryStateInBackground({
-              supabase,
-              apiKey: geminiApiKey,
-              conversationId,
-              userId: user.id,
-              expectedRevision: conversation.story_revision || null,
-              character: configuredCharacter,
-              userIdentity,
-              previousSceneState: conversation.scene_state || {},
-              previousTimeline: conversation.story_timeline || [],
-              previousRelationshipState: conversation.relationship_state || {},
-              previousCastState: conversation.cast_state || {},
-              previousChapters: conversation.story_chapters || [],
-              previousActiveChapter: conversation.active_chapter || {},
-              previousThreads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads : [],
-              messages: [...messages, savedMessage],
-            }));
-
-            if (replacementMessage || userMessageCount % 5 === 0) {
-              backgroundTasks.push(updateConversationSummaryInBackground({
-                supabase,
-                apiKey: geminiApiKey,
-                conversationId,
-                userId: user.id,
-                expectedRevision: conversation.story_revision || null,
-                character: configuredCharacter,
-                userIdentity,
-                previousSummary: conversation.summary || "",
-                messages: [...messages, savedMessage],
-              }));
-            }
-
-            const task = Promise.allSettled(backgroundTasks);
-            const edgeRuntime = (globalThis as unknown as {
-              EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void };
-            }).EdgeRuntime;
-            if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task);
-            else void task;
-          }
-        } catch (error) {
-          if (getErrorName(error) !== "AbortError") {
-            console.error("character-chat stream error:", error);
-            sendEvent(controller, { type: "error", error: getErrorMessage(error) });
-          }
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-      },
+    return streamAndPersist({
+      supabase,
+      cancellationAdmin,
+      generationId,
+      conversationId,
+      userId: userData.user.id,
+      storyRevision: loaded.conversation.story_revision || null,
+      replacementMessage: branch.replacementMessage,
+      reply: result.reply,
+      continuityNote: result.continuity_note,
+      responseLanguage,
+      memories: selectedMemories,
+      loreEntries: selectedLore,
+      existingTimeline: loaded.conversation.story_timeline || [],
     });
   } catch (error) {
-    // Do not convert a mobile/client transport abort into a 499. Explicit Stop
-    // is handled by generation_requests inside the generation flow above.
-    console.error("character-chat error:", error);
+    console.error("[character-chat] request failed", {
+      name: getErrorName(error),
+      message: getErrorMessage(error),
+    });
     return json({ error: getErrorMessage(error) }, 500);
   }
 });
 
-async function isGenerationCancelled(supabase, generationId, userId) {
-  if (!generationId) return false;
-  const { data, error } = await supabase
-    .from("generation_requests")
-    .select("cancelled")
-    .eq("id", generationId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) {
-    console.warn("Could not check cancellation:", error.message);
-    return false;
-  }
-  return Boolean(data?.cancelled);
+async function handleCharacterAssist({ apiKey, draft }) {
+  const safeDraft = draft && typeof draft === "object" ? draft : {};
+  const response = await fetch(modelEndpoint(GEMINI_MODEL), {
+    method: "POST",
+    headers: geminiHeaders(apiKey),
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: `Help refine a private fictional roleplay character. Keep every supplied name, relationship, boundary and world fact. Make the character specific, human and internally consistent without turning guardedness into cruelty. Return concise field suggestions only.\n\nDRAFT\n${JSON.stringify(safeDraft).slice(0, 12000)}` }] }],
+      generationConfig: {
+        maxOutputTokens: 1800,
+        responseMimeType: "application/json",
+        responseJsonSchema: {
+          type: "object",
+          properties: {
+            personality: { type: "string" },
+            values: { type: "string" },
+            fears: { type: "string" },
+            habits: { type: "string" },
+            contradictions: { type: "string" },
+            speechStyle: { type: "string" },
+            boundaries: { type: "string" },
+            scenario: { type: "string" },
+            exampleDialogue: { type: "string" },
+          },
+        },
+      },
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error?.message || "Character assist failed");
+  const raw = extractCandidateText(data);
+  return json({ suggestions: JSON.parse(stripJsonFence(raw)) });
 }
 
-async function isStoryRevisionCurrent(supabase, conversationId, userId, expectedRevision) {
-  if (!expectedRevision) return false;
-  const { data, error } = await supabase
-    .from("conversations")
-    .select("story_revision")
-    .eq("id", conversationId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error || !data) return false;
-  return String(data.story_revision || "") === String(expectedRevision);
-}
-
-async function getConversation(supabase, conversationId, userId) {
-  const { data, error } = await supabase
+async function loadContext({ supabase, conversationId, userId }): Promise<LoadedContext> {
+  const { data: conversation, error: conversationError } = await supabase
     .from("conversations")
     .select("id, character_id, persona_id, lorebook_id, title, summary, response_length_override, narration_style_override, creativity, romance_intensity, initiative, drama, flirting, humor, description_level, character_independence, dialogue_frequency, narrative_camera, inner_thoughts, story_preset, scene_state, story_timeline, pacing_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, story_engine_version, story_revision")
     .eq("id", conversationId)
     .eq("user_id", userId)
     .single();
-  if (error || !data) throw new Error(error?.message || "Conversation not found");
-  return data;
-}
+  if (conversationError || !conversation) throw new Error(conversationError?.message || "Conversation not found");
 
-async function getCharacter(supabase, characterId, userId) {
-  const { data, error } = await supabase
-    .from("characters")
-    .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, speech_style, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
-    .eq("id", characterId)
-    .eq("user_id", userId)
-    .single();
-  if (error || !data) throw new Error(error?.message || "Character not found");
-  return data;
-}
+  const [characterResult, personaResult, messagesResult, memoriesResult, loreResult] = await Promise.all([
+    supabase.from("characters")
+      .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, speech_style, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
+      .eq("id", conversation.character_id).eq("user_id", userId).single(),
+    conversation.persona_id
+      ? supabase.from("personas")
+        .select("id, name, pronouns, age, role, appearance, personality, background, goals, preferences, boundaries, speech_style, notes")
+        .eq("id", conversation.persona_id).eq("user_id", userId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    supabase.from("messages")
+      .select("id, conversation_id, user_id, sender, content, created_at, edited_at, reply_to_message_id, reply_preview, reply_sender")
+      .eq("conversation_id", conversationId).eq("user_id", userId)
+      .order("created_at", { ascending: false }).limit(80),
+    supabase.from("memories")
+      .select("id, conversation_id, content, importance, category, is_pinned, source, scope, created_at")
+      .eq("character_id", conversation.character_id).eq("user_id", userId)
+      .or(`conversation_id.eq.${conversationId},scope.eq.character`)
+      .order("is_pinned", { ascending: false }).order("importance", { ascending: false })
+      .order("created_at", { ascending: false }).limit(50),
+    conversation.lorebook_id
+      ? supabase.from("lore_entries")
+        .select("id, entry_type, name, content, keywords, event_date, always_include")
+        .eq("lorebook_id", conversation.lorebook_id).eq("user_id", userId)
+        .eq("is_active", true).order("always_include", { ascending: false })
+        .order("updated_at", { ascending: false }).limit(60)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
 
-async function getPersona(supabase, personaId, userId) {
-  if (!personaId) return null;
-  const { data, error } = await supabase
-    .from("personas")
-    .select("id, name, pronouns, age, role, appearance, personality, background, goals, preferences, boundaries, speech_style, notes")
-    .eq("id", personaId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data || null;
-}
-
-async function getLoreEntries(supabase, lorebookId, userId) {
-  if (!lorebookId) return [];
-  const { data, error } = await supabase
-    .from("lore_entries")
-    .select("id, entry_type, name, content, keywords, event_date, always_include")
-    .eq("lorebook_id", lorebookId)
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .order("always_include", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .limit(60);
-  if (error) throw new Error(error.message);
-  return data || [];
-}
-
-function selectRelevantLore(entries, messages) {
-  const recentText = normalizeRelevanceText(messages.slice(-20).map((message) => message.content).join(" "));
-  return entries
-    .map((entry) => {
-      if (entry.always_include) return { entry, score: 1000 };
-      const terms = [entry.name, ...(Array.isArray(entry.keywords) ? entry.keywords : [])]
-        .map(normalizeRelevanceText)
-        .filter(Boolean);
-      const matches = terms.filter((term) => recentText.includes(term)).length;
-      const typeBoost = entry.entry_type === "rule" ? 2 : entry.entry_type === "relationship" ? 2 : 0;
-      return { entry, score: matches * 10 + typeBoost };
-    })
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 24)
-    .map(({ entry }) => entry);
-}
-
-function selectRelevantMemories(memories, messages, userIdentity = {} as Record<string, any>) {
-  const recentText = normalizeRelevanceText(messages.slice(-20).map((message) => message.content).join(" "));
-  const recentTokens = new Set(recentText.split(" ").filter((token) => token.length >= 4));
-  const userName = normalizeRelevanceText(userIdentity?.name || "");
-  const userNameTokens = userName.split(" ").filter((token) => token.length >= 3);
-
-  const scored = [...memories]
-    .map((memory) => {
-      const text = normalizeRelevanceText(memory.content);
-      const mentionsUser = userNameTokens.length > 0 && userNameTokens.some((token) => text.includes(token));
-      const isUserAnchor = mentionsUser || ["relationship", "preference", "boundary"].includes(memory.category);
-      if (memory.is_pinned) return { memory, score: 1000 + Number(memory.importance || 0), isUserAnchor: true };
-      const overlap = text.split(" ").filter((token) => recentTokens.has(token)).length;
-      const categoryBoost = memory.category === "boundary" ? 9 : memory.category === "relationship" ? 7 : memory.category === "preference" ? 5 : 0;
-      const userAnchorBoost = isUserAnchor ? 14 : 0;
-      const ageDays = Math.max(0, (Date.now() - new Date(memory.created_at).getTime()) / 86400000);
-      const recency = Math.max(0, 5 - ageDays / 30);
-      return { memory, score: overlap * 5 + Number(memory.importance || 0) * 2 + categoryBoost + userAnchorBoost + recency, isUserAnchor };
-    })
-    .sort((a, b) => b.score - a.score);
-
-  const anchors = scored.filter((entry) => entry.isUserAnchor).slice(0, 10);
-  const chosenIds = new Set(anchors.map((entry) => entry.memory.id));
-  const contextual = scored.filter((entry) => !chosenIds.has(entry.memory.id)).slice(0, Math.max(0, 22 - anchors.length));
-  return [...anchors, ...contextual].map((entry) => entry.memory);
-}
-
-function normalizeRelevanceText(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-async function getRecentMessages(supabase, conversationId, userId) {
-  const { data, error } = await supabase
-    .from("messages")
-    .select("id, conversation_id, user_id, sender, content, created_at, edited_at, reply_to_message_id, reply_preview, reply_sender")
-    .eq("conversation_id", conversationId)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(80);
-  if (error) throw new Error(error.message);
-  return [...(data || [])].reverse();
-}
-
-async function getSavedMemories(supabase, conversationId, characterId, userId) {
-  const { data, error } = await supabase
-    .from("memories")
-    .select("id, conversation_id, content, importance, category, is_pinned, source, scope, created_at")
-    .eq("character_id", characterId)
-    .eq("user_id", userId)
-    .or(`conversation_id.eq.${conversationId},scope.eq.character`)
-    .order("is_pinned", { ascending: false })
-    .order("importance", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (error) throw new Error(error.message);
-  return data || [];
-}
-
-function normalizeForRegenerationComparison(value = "") {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9áéíóúüñ'\s]+/giu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function makeBigrams(value = "") {
-  const words = normalizeForRegenerationComparison(value)
-    .split(" ")
-    .filter((word) => word.length > 1);
-  const grams = new Set();
-  for (let index = 0; index < words.length - 1; index += 1) {
-    grams.add(`${words[index]} ${words[index + 1]}`);
+  for (const result of [characterResult, personaResult, messagesResult, memoriesResult, loreResult]) {
+    if (result.error) throw new Error(result.error.message);
   }
-  return grams;
-}
-
-function sentenceTokenSimilarity(left = "", right = "") {
-  const a = new Set(normalizeForRegenerationComparison(left).split(" ").filter((word) => word.length > 2));
-  const b = new Set(normalizeForRegenerationComparison(right).split(" ").filter((word) => word.length > 2));
-  if (!a.size || !b.size) return 0;
-  const overlap = [...a].filter((word) => b.has(word)).length;
-  return overlap / Math.max(1, Math.min(a.size, b.size));
-}
-
-function extractComparableSentences(value = "") {
-  return String(value || "")
-    .replace(/[*_>#`]/g, " ")
-    .split(/(?<=[.!?])\s+|\n+/)
-    .map((part) => part.trim())
-    .filter((part) => part.length >= 20)
-    .slice(0, 14);
-}
-
-function extractComparableDialogue(value = "") {
-  const source = String(value || "");
-  const quoted = [...source.matchAll(/["“]([^"”\n]{3,280})["”]/g)]
-    .map((match) => String(match[1] || ""));
-  const written = source
-    .split("\n")
-    .filter((line) => /^\s*>\s*\S/.test(line))
-    .map((line) => line.replace(/^\s*>\s*/, ""));
-
-  return [...quoted, ...written]
-    .map((line) => normalizeForRegenerationComparison(line))
-    .filter((line) => line.length >= 12 && line.split(" ").length >= 3)
-    .slice(0, 16);
-}
-
-function extractDialogueIntentTags(value = "") {
-  const dialogue = extractComparableDialogue(value).join(" ");
-  const text = normalizeForRegenerationComparison(dialogue || value);
-  if (!text) return [];
-
-  const tags = [];
-  const patterns = {
-    denial: /\b(?:i didn[' ]t say|i did not say|i never said|i[' ]m not mean|that[' ]s not what i meant|no dije|yo no dije|no quise decir)\b/i,
-    blame_shift: /\b(?:you(?:[' ]re| are)? (?:twisting|twist|making|turning|acting|overreacting)|you always|you never|your fault|decides? to twist|lo estás tergiversando|estás exagerando|tu culpa)\b/i,
-    dismissal: /\b(?:whatever|forget it|drop it|nothing|not a big deal|out of nothing|who cares|da igual|olvídalo|déjalo|no es para tanto)\b/i,
-    counterattack: /\b(?:federal (?:case|crime)|harassment|spam my phone|useless garbage|you(?:[' ]re| are)? (?:being )?(?:impossible|dramatic|ridiculous|a brat)|walk(?:ing)? off like a brat|caso federal|acoso|basura inútil|eres (?:imposible|dramática|ridícula|una mocosa))\b/i,
-    repair: /\b(?:i[' ]m sorry|i am sorry|my fault|i was wrong|i shouldn[' ]t have|that was unfair|cheap shot|lo siento|perdón|fue mi culpa|me equivoqué|no debí)\b/i,
-    honest_boundary: /\b(?:i need|i can[' ]t|i don[' ]t know how|give me a minute|i need space|necesito|no puedo|no sé cómo|dame un minuto|necesito espacio)\b/i,
-  };
-
-  for (const [tag, pattern] of Object.entries(patterns)) {
-    if (pattern.test(text)) tags.push(tag);
-  }
-  return tags;
-}
-
-function dialogueIntentCounts(values = []) {
-  const counts = {};
-  for (const value of Array.isArray(values) ? values : []) {
-    for (const tag of extractDialogueIntentTags(value)) {
-      counts[tag] = Number(counts[tag] || 0) + 1;
-    }
-  }
-  return counts;
-}
-
-function isEmotionallyChargedUserTurn(value = "") {
-  const text = String(value || "");
-  return /\b(?:what the fuck|fuck|fucking|mean|mad|angry|annoyed|upset|hurt|seriously|don t care|leave me alone|stop|wrong with you|brat|cruel|rude|mierda|qué te pasa|enojad[oa]|molest[oa]|herid[oa]|pesad[oa]|malo|mala|en serio|déjame|para)\b/i.test(text) ||
-    /\*(?:[^*]{0,80})(?:glare|angry|annoyed|mad|upset|roll my eyes|enojad|molest)(?:[^*]{0,80})\*/i.test(text);
-}
-
-function isIndirectTenderLoyaltyDisclosure(value = "") {
-  const text = String(value || "");
-  return /\bif\s+i\s+(?:hated|didn['’]?t\s+(?:like|care\s+about))\s+you\b[^.!?\n]{0,180}\bi\s+wouldn['’]?t\b[^.!?\n]{0,140}\b(?:(?:still\s+)?be\s+)?(?:by\s+your\s+side|with\s+you|here|have\s+stayed|stay)\b/i.test(text) ||
-    /\bi\s+wouldn['’]?t\b[^.!?\n]{0,180}\b(?:(?:still\s+)?be\s+)?(?:by\s+your\s+side|with\s+you|here|have\s+stayed|stay)\b[^.!?\n]{0,140}\bif\s+i\s+(?:hated|didn['’]?t\s+(?:like|care\s+about))\s+you\b/i.test(text) ||
-    /\b(?:i(?:'ve|\s+have)\s+)?(?:been|stayed)\s+(?:right\s+)?(?:by\s+your\s+side|with\s+you)\s+for\s+(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:years?|months?)\b/i.test(text) ||
-    /\bsi\s+te\s+(?:odiara|cayeras?\s+mal|no\s+quisiera)\b[^.!?\n]{0,200}\bno\s+(?:llevar[ií]a|estar[ií]a|seguir[ií]a|habr[ií]a\s+estado)\b[^.!?\n]{0,140}\b(?:a\s+tu\s+lado|contigo|aqu[ií])\b/i.test(text);
-}
-
-function isTenderEmotionalDisclosure(value = "") {
-  const text = String(value || "");
-  return /\b(?:i\s+(?:really\s+)?miss(?:ed)?\s+you|i(?:'ve|\s+have)\s+missed\s+you|i\s+love\s+you|i\s+care\s+about\s+you|i\s+need\s+you|i(?:'m|\s+am)\s+glad\s+you(?:'re|\s+are)\s+here|i\s+was\s+worried\s+about\s+you|me\s+hiciste\s+falta|te\s+extrañ[éeo]|te\s+he\s+extrañado|te\s+quiero|te\s+amo|me\s+importas|te\s+necesito|me\s+alegra\s+que\s+est[eé]s\s+aqu[ií])\b/i.test(text) ||
-    isIndirectTenderLoyaltyDisclosure(text);
-}
-
-function characterHasRomanticInvestment(character = {} as Record<string, any>, relationshipState = {} as Record<string, any>) {
-  const relationship = String(character?.relationship || "");
-  const profile = [
-    character?.relationship,
-    character?.description,
-    character?.personality,
-    character?.contradictions,
-    character?.scenario,
-  ].filter(Boolean).join("\n");
-  const relationshipSaysSo = /\b(?:likes?|loves?|wants?|has\s+(?:romantic\s+)?feelings\s+for|has\s+a\s+crush\s+on|is\s+attracted\s+to|has\s+fallen\s+for|cares?\s+deeply\s+about)\s+(?:you|the\s+user|her|him|them)\b/i.test(relationship) ||
-    /\b(?:le\s+gustas|te\s+quiere|te\s+ama|est[aá]\s+enamorad[oa]\s+de\s+ti|siente\s+algo\s+por\s+ti)\b/i.test(relationship);
-  const profileSaysSo = relationshipSaysSo || /\b(?:secretly\s+(?:likes?|loves?|wants?|has\s+feelings)|in\s+love\s+with|has\s+(?:romantic\s+)?feelings\s+for|crush\s+on|attracted\s+to|fallen\s+for|cares?\s+deeply\s+about|est[aá]\s+secretamente\s+enamorad[oa]|est[aá]\s+enamorad[oa]\s+de|siente\s+algo\s+por|le\s+gusta\s+en\s+secreto|se\s+siente\s+atra[ií]d[oa]\s+por)\b/i.test(profile);
-  const affection = Number(relationshipState?.affection || 0);
-  const attraction = Number(relationshipState?.attraction || 0);
-  return profileSaysSo || attraction >= 35 || affection >= 50;
-}
-
-function hasMeaningfulTenderImpact(value = "", characterName = "") {
-  const text = String(value || "");
-  if (!text.trim()) return false;
-  const name = String(characterName || "").trim().split(/\s+/)[0];
-  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const subject = escapedName ? `(?:${escapedName}|he|she|they)` : "(?:he|she|they)";
-  const impactFromWords = /\b(?:the\s+words|those\s+words|your\s+words|the\s+admission|your\s+admission|the\s+reminder|hearing\s+(?:that|you\s+say\s+it)|you\s+saying\s+it)\b[^.!?\n]{0,150}\b(?:hit|landed|caught|stopped|undid|mattered|hurt|warmed|relief|ache|harder|more\s+than|too\s+much|impossible\s+to\s+ignore)\b/i.test(text);
-  const privateReciprocity = new RegExp(`\\b${subject}[^.!?\\n]{0,120}\\b(?:had\\s+missed\\s+you|missed\\s+you\\s+too|wanted\\s+to\\s+hear|had\\s+wanted\\s+to\\s+hear|cared\\s+more|felt\\s+relief|wasn['’]t\\s+prepared)\\b`, "i").test(text) ||
-    /\bmissing\s+you\b[^.!?\n]{0,120}\b(?:ignore|dismiss|admit|harder|easier|hurt|ache)\b/i.test(text);
-  const spokenReciprocity = /["“][^"”\n]{0,180}\b(?:i\s+missed\s+you\s+too|i(?:'ve|\s+have)\s+missed\s+you|me\s+hiciste\s+falta|tambi[eé]n\s+te\s+extrañ[ée])\b[^"”\n]*["”]/i.test(text);
-  const loyaltyImpact = /\b(?:10|ten)\s+years\b[^.!?\n]{0,170}\b(?:meant|mattered|landed|hit|relief|warmth|obvious|unsettled|hidden|more\s+than)\b/i.test(text) ||
-    /\b(?:the\s+reminder|years\s+of\s+friendship)\b[^.!?\n]{0,170}\b(?:meant|mattered|landed|hit|relief|warmth|obvious|unsettled|hidden|more\s+than)\b/i.test(text);
-  const spokenLoyalty = /["“][^"”\n]{0,220}\b(?:i\s+know|you(?:'re|\s+are)\s+right)\b[^"”\n]{0,160}\b(?:nice|good|glad|mean|means|meant|like|hear(?:ing)?)\b[^"”\n]*["”]/i.test(text);
-  return impactFromWords || privateReciprocity || spokenReciprocity || loyaltyImpact || spokenLoyalty;
-}
-
-function needsTenderEmotionalBeatRepair({
-  candidate = "",
-  latestUserMessage = "",
-  character = {} as Record<string, any>,
-}) {
-  return isTenderEmotionalDisclosure(latestUserMessage) &&
-    !hasMeaningfulTenderImpact(candidate, character?.name || "");
-}
-
-function sharedStagnantDialogueFrame(candidate = "", prior = "") {
-  const stagnant = new Set(["denial", "blame_shift", "dismissal", "counterattack"]);
-  const candidateTags = new Set(extractDialogueIntentTags(candidate));
-  const priorTags = new Set(extractDialogueIntentTags(prior));
-  const repeatedIntent = [...candidateTags].some((tag) => stagnant.has(tag) && priorTags.has(tag));
-  const cleanRepair = candidateTags.has("repair") && ![...candidateTags].some((tag) => stagnant.has(tag));
-
-  const rhetoricalTokens = [
-    "federal", "harassment", "impossible", "dramatic", "ridiculous", "brat",
-    "useless", "seriously", "whatever", "overreacting", "twisting",
-    "acoso", "imposible", "dramática", "ridícula", "mocosa", "exagerando", "tergiversando",
-  ];
-  const candidateDialogue = normalizeForRegenerationComparison(extractComparableDialogue(candidate).join(" "));
-  const priorDialogue = normalizeForRegenerationComparison(extractComparableDialogue(prior).join(" "));
-  const repeatedRhetoric = rhetoricalTokens.some((token) => candidateDialogue.includes(token) && priorDialogue.includes(token));
-
-  return repeatedIntent || (repeatedRhetoric && !cleanRepair);
-}
-
-function needsConversationProgressionRepair({
-  candidate = "",
-  recentCharacterBeats = [],
-  latestUserMessage = "",
-}) {
-  if (!candidate || !Array.isArray(recentCharacterBeats) || !recentCharacterBeats.length) return false;
-
-  const recent = recentCharacterBeats.slice(-5);
-  const recentCounts = dialogueIntentCounts(recent);
-  const candidateTags = new Set(extractDialogueIntentTags(candidate));
-  const chargedTurn = isEmotionallyChargedUserTurn(latestUserMessage);
-  const repeatedFrame = recent.some((prior) => sharedStagnantDialogueFrame(candidate, prior));
-  const stalledHistory = ["denial", "blame_shift", "dismissal", "counterattack"]
-    .reduce((total, tag) => total + Number(recentCounts[tag] || 0), 0) >= 2;
-  const candidateStalls = ["denial", "blame_shift", "dismissal", "counterattack"]
-    .some((tag) => candidateTags.has(tag));
-
-  return repeatedFrame || (chargedTurn && stalledHistory && candidateStalls);
-}
-
-function likelyReopensEarlierUserTurn({
-  candidate = "",
-  latestUserMessage = "",
-  earlierUserMessages = [],
-}) {
-  const openingDialogue = extractComparableDialogue(candidate)[0] || "";
-  const openingWords = normalizeForRegenerationComparison(openingDialogue).split(" ").filter(Boolean);
-  if (openingWords.length < 3) return false;
-
-  const latestSimilarity = sentenceTokenSimilarity(openingDialogue, latestUserMessage);
-  if (latestSimilarity >= 0.58) return false;
-
-  return (Array.isArray(earlierUserMessages) ? earlierUserMessages : [])
-    .slice(-12)
-    .some((message) => {
-      const prior = String(message?.content ?? message ?? "");
-      if (!prior || normalizeForRegenerationComparison(prior) === normalizeForRegenerationComparison(latestUserMessage)) return false;
-      return sentenceTokenSimilarity(openingDialogue, prior) >= 0.78;
-    });
-}
-
-function buildDialogueProgressionSummary(values = []) {
-  const counts = dialogueIntentCounts((Array.isArray(values) ? values : []).slice(-5));
-  const labels = Object.entries(counts)
-    .filter(([, count]) => Number(count) > 0)
-    .map(([tag, count]) => `${tag}=${count}`);
-  return labels.length ? labels.join(", ") : "no repeated tactic detected";
-}
-
-function buildDiversityAvoidanceBrief(values = []) {
-  const rows = (Array.isArray(values) ? values : []).filter(Boolean).slice(-8);
-  const tactics = buildDialogueProgressionSummary(rows);
-  const normalized = normalizeForRegenerationComparison(rows.join("\n"));
-  const motifVocabulary = [
-    "umbrella", "rain", "puddle", "jaw", "breath", "gaze", "phone", "screen",
-    "pastry", "croissant", "sleeve", "pocket", "shoulder", "chest", "wet pavement",
-    "paraguas", "lluvia", "charco", "mandíbula", "respiración", "mirada", "teléfono",
-  ];
-  const rhetoricVocabulary = [
-    "federal", "harassment", "impossible", "dramatic", "ridiculous", "brat", "useless",
-    "seriously", "whatever", "overreacting", "twisting", "acoso", "imposible", "dramática",
-    "ridícula", "mocosa", "exagerando", "tergiversando",
-  ];
-  const motifs = motifVocabulary.filter((term) => normalized.includes(term)).slice(0, 8);
-  const rhetoric = rhetoricVocabulary.filter((term) => normalized.includes(term)).slice(0, 8);
-
-  return [
-    `already-used conversational tactics: ${tactics}`,
-    `already-used props/mannerisms: ${motifs.length ? motifs.join(", ") : "none detected"}`,
-    `already-used rhetorical motifs: ${rhetoric.length ? rhetoric.join(", ") : "none detected"}`,
-  ].join("\n");
-}
-
-function hasRepeatedSignatureDialogue(candidate = "", rejected = "") {
-  const candidateLines = extractComparableDialogue(candidate);
-  const rejectedLines = extractComparableDialogue(rejected);
-
-  return candidateLines.some((line) => rejectedLines.some((prior) => {
-    if (line === prior) return true;
-    return sentenceTokenSimilarity(line, prior) >= 0.88;
-  }));
-}
-
-function isTooSimilarRegeneration(candidate = "", rejected = "") {
-  const a = normalizeForRegenerationComparison(candidate);
-  const b = normalizeForRegenerationComparison(rejected);
-  if (!a || !b) return false;
-  if (a === b) return true;
-
-  const aWords = new Set(a.split(" "));
-  const bWords = new Set(b.split(" "));
-  const wordIntersection = [...aWords].filter((word) => bWords.has(word)).length;
-  const smallerWordSet = Math.max(1, Math.min(aWords.size, bWords.size));
-  const containment = wordIntersection / smallerWordSet;
-
-  const aBigrams = makeBigrams(a);
-  const bBigrams = makeBigrams(b);
-  const sharedBigrams = [...aBigrams].filter((gram) => bBigrams.has(gram)).length;
-  const unionBigrams = new Set([...aBigrams, ...bBigrams]).size || 1;
-  const bigramJaccard = sharedBigrams / unionBigrams;
-
-  const aOpening = extractComparableSentences(candidate)[0] || "";
-  const bOpening = extractComparableSentences(rejected)[0] || "";
-  const openingSimilarity = sentenceTokenSimilarity(aOpening, bOpening);
-
-  const candidateSentences = extractComparableSentences(candidate);
-  const rejectedSentences = extractComparableSentences(rejected);
-  let nearCopiedSentences = 0;
-  let singleSentenceEcho = false;
-  for (const sentence of candidateSentences) {
-    const best = rejectedSentences.reduce(
-      (score, prior) => Math.max(score, sentenceTokenSimilarity(sentence, prior)),
-      0
-    );
-    if (best >= 0.82) nearCopiedSentences += 1;
-    if (best >= 0.92 && normalizeForRegenerationComparison(sentence).split(" ").length >= 7) {
-      singleSentenceEcho = true;
-    }
-  }
-  const copiedSentenceRatio = nearCopiedSentences / Math.max(1, candidateSentences.length);
-
-  return (
-    hasRepeatedSignatureDialogue(candidate, rejected) ||
-    sharedStagnantDialogueFrame(candidate, rejected) ||
-    singleSentenceEcho ||
-    openingSimilarity >= 0.86 ||
-    copiedSentenceRatio >= 0.45 ||
-    bigramJaccard >= 0.38 ||
-    (containment >= 0.72 && bigramJaccard >= 0.24)
-  );
-}
-
-async function generateDiverseRegeneration({
-  apiKey,
-  systemInstruction,
-  prompt,
-  rejectedResponses = [] as string[],
-  maxOutputTokens,
-  diversityAttempt = 1,
-}) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), diversityAttempt > 1 ? 14000 : 18000);
-  const diversityAvoidanceBrief = buildDiversityAvoidanceBrief(rejectedResponses);
-
-  try {
-    const response = await fetch(
-      GEMINI_ENDPOINT,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{
-              text: `${systemInstruction}\n\nHARD DIVERSITY RETRY ${diversityAttempt}\nThe previous attempt was still too similar to rejected responses. Produce a genuinely different continuation. Do not preserve sentence order, opening action, dialogue structure, choreography, central metaphor, or the same key line of dialogue. If a MANDATORY REGENERATION CONTRACT is present, its requested outcome still outranks diversity and must remain plainly visible. ${diversityAttempt > 1 ? "Use a contrasting response strategy from every prior take without changing the user's required outcome: if they spoke first, consider action/restraint first; if they explained, withhold; if they pursued, consider staying put; if they were verbose, be concise." : "Change the scene beat, not merely the wording, while preserving the user's required outcome."}`,
-            }],
-          },
-          contents: [{
-            role: "user",
-            parts: [{
-              text: `${prompt}\n\nABSTRACT DIVERSITY CONSTRAINTS\n${diversityAvoidanceBrief}\nThe rejected prose is intentionally omitted so it cannot prime an echo. Do not reuse any listed tactic as the response's main move or use listed props/mannerisms as emotional filler. Continuity objects may remain present only when physically necessary.\n\nWrite a structurally different next beat while preserving established canon and the user's latest turn. Change the opening, response strategy and physical/dialogue sequence.`,
-            }],
-          }],
-          generationConfig: {
-            maxOutputTokens,
-            thinkingConfig: { thinkingLevel: "LOW" },
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) return "";
-    const data = await response.json();
-    return data?.candidates?.[0]?.content?.parts
-      ?.filter((part) => typeof part.text === "string" && !part.thought)
-      .map((part) => part.text)
-      .join("")
-      .trim() || "";
-  } catch {
-    return "";
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function hasAudibleCharacterVoice(value = "") {
-  const text = String(value || "");
-  return (
-    /["“][^"”\n]{2,}["”]/.test(text) ||
-    /^\s*>\s*\S/m.test(text)
-  );
-}
-
-function visiblyReturnsToMainCharacter(value = "", characterName = "") {
-  const opening = String(value || "").slice(0, 700);
-  const nameParts = String(characterName || "").trim().split(/\s+/).filter(Boolean);
-  const acceptableNames = [...new Set([
-    String(characterName || "").trim(),
-    nameParts[0] || "",
-  ].filter((name) => name.length >= 2))];
-  const nameVisible = acceptableNames.some((name) => {
-    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(`\\b${escapedName}\\b`, "i").test(opening);
-  });
-  return nameVisible && hasAudibleCharacterVoice(opening);
-}
-
-function inventsUnsupportedLogistics(value = "", groundingFacts = "") {
-  const candidate = normalizeText(value);
-  const canon = normalizeText(groundingFacts);
-  const suspiciousClaims = [
-    "traffic", "stuck in traffic", "running late", "took you long enough", "late again",
-    "meeting", "appointment", "reservation", "work shift", "practice ran late",
-    "class ran late", "game ran late", "missed the bus", "parking", "deadline",
-    "promised to meet", "waiting for hours",
-  ];
-
-  return suspiciousClaims.some((claim) => {
-    const normalizedClaim = normalizeText(claim);
-    return candidate.includes(normalizedClaim) && !canon.includes(normalizedClaim);
-  });
-}
-
-function inventsUnsupportedThirdPartyIntimacy(value = "", groundingFacts = "") {
-  const rawCandidate = String(value || "");
-  const rawCanon = String(groundingFacts || "");
-  const candidate = normalizeText(rawCandidate);
-  const canon = normalizeText(rawCanon);
-  const unsupportedIntimacy = [
-    "hand on her waist", "hand against her waist", "hand on his waist",
-    "small of her back", "small of his back", "arm around her waist",
-    "arm around his waist", "looped her arm through", "looped his arm through",
-    "arm loops through", "slipped an arm around", "pulled her close", "pulled him close",
-    "kissed her", "kissed him", "pressed against her", "pressed against him",
-  ];
-
-  const phraseMatch = unsupportedIntimacy.some((claim) => {
-    const normalizedClaim = normalizeText(claim);
-    return candidate.includes(normalizedClaim) && !canon.includes(normalizedClaim);
-  });
-  if (phraseMatch) return true;
-
-  const touchPattern = /\b(?:his|her|their|a)\s+hand\s+(?:settled|rested|slid|pressed)[^.!?\n]{0,55}\b(?:waist|back|shoulder|hip|thigh)\b/i;
-  return touchPattern.test(rawCandidate) && !touchPattern.test(rawCanon);
-}
-
-function buildDirectedContinuationFallback({
-  draft,
-  characterName,
-  language,
-  returnToMainCharacter,
-  emotionalFollow,
-  groundingFacts,
-}) {
-  const paragraphs = String(draft || "")
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .filter((paragraph) => !inventsUnsupportedLogistics(paragraph, groundingFacts))
-    .filter((paragraph) => !(emotionalFollow && inventsUnsupportedThirdPartyIntimacy(paragraph, groundingFacts)));
-
-  let fallback = paragraphs.join("\n\n").trim();
-  const name = String(characterName || "The character").trim();
-  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const nameVisible = new RegExp(`\\b${escapedName}\\b`, "i").test(fallback.slice(0, 700));
-  const spanish = String(language || "").toLowerCase().includes("spanish");
-
-  // If removing a fabricated claim also removed the route or all useful text,
-  // return a tiny canon-neutral beat. A readable continuation is always better
-  // than exposing an internal validator error to the user.
-  if (!fallback || (returnToMainCharacter && !nameVisible)) {
-    if (emotionalFollow) {
-      fallback = spanish
-        ? `${name} siguió avanzando, manteniendo la misma expresión despreocupada aunque el momento no dejaba de repetirse.\n\n"Contrólate", murmuró ${name}, apenas audible.`
-        : `${name} kept moving, maintaining the same easy expression even while the moment refused to stop replaying.\n\n"Get it together," ${name} muttered, barely audible.`;
-    } else {
-      fallback = spanish
-        ? `${name} rompió el silencio antes de que el momento volviera a estancarse.\n\n"Está bien", dijo ${name} en voz baja.`
-        : `${name} broke the silence before the moment could stall again.\n\n"Okay," ${name} said quietly.`;
-    }
-  } else if (!hasAudibleCharacterVoice(fallback)) {
-    fallback += spanish
-      ? `\n\n"Contrólate", murmuró ${name}, apenas audible.`
-      : `\n\n"Get it together," ${name} muttered, barely audible.`;
-  }
-
-  return fallback.trim();
-}
-
-async function enforceDirectedContinuation({
-  apiKey,
-  prompt,
-  rejectedDraft,
-  character,
-  userIdentity,
-  language,
-  medium,
-  returnToMainCharacter,
-  emotionalFollow = false,
-  groundingFacts = "",
-}) {
-  let rejected = String(rejectedDraft || "").trim();
-  let safeFallback = !inventsUnsupportedLogistics(rejected, groundingFacts) &&
-      !(emotionalFollow && inventsUnsupportedThirdPartyIntimacy(rejected, groundingFacts))
-    ? rejected
-    : "";
-
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 16000 : 12000);
-
-    try {
-      const response = await fetch(
-        GEMINI_ENDPOINT,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          signal: controller.signal,
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{
-                text: `You are repairing a failed continuation in a private interactive novel. Output only the replacement roleplay passage in ${language}. The user exclusively controls ${userIdentity.name}; never invent their dialogue, action, thought, feeling, reaction or decision. Communication medium: ${medium}. Main created character: ${character.name}.\n\n${returnToMainCharacter
-                  ? `NON-NEGOTIABLE MAIN-CHARACTER FOCUS: The prior response wrongly remained on a secondary character, empty setting, or external observation. Follow ${character.name} NOW. Name ${character.name} naturally in the opening paragraph so the focus is unambiguous. Include at least one actual quoted spoken line from ${character.name} or a companion, plus ${character.name}'s meaningful choice or private perspective. A secondary character may receive at most one brief bridge line and may not remain the focalizer.${emotionalFollow ? ` The user reacted after ${character.name} had already moved too far away to hear. Do not make ${character.name} hear that reaction. Instead, continue from ${character.name}'s side and show the canon-supported contradiction between the public mask and private feeling. If ${character.name} joins friends or another romantic interest, let someone speak and let ${character.name} perform normality while privately remaining affected by ${userIdentity.name}. Do not force an apology, confession or return; preserve guarded behavior and subtext.` : " Do not merely name the main character and continue the secondary character's activity."}`
-                  : "NON-NEGOTIABLE VOICE RULE: The prior response was narration-only. Replace it with a concise continuation containing actual quoted spoken dialogue, a line spoken aloud to oneself, or a meaningful established digital exchange. Unquoted thoughts and italicized actions do not satisfy this rule."}\n\nFACT BOUNDARY: Dialogue may react to the visible current situation or established canon only. Never invent traffic, lateness, driving, a meeting, practice, class, work, a reservation, schedule, promise, shared plan, prior conversation or off-screen incident to give characters something to say. If no canon topic exists, use a simple greeting, a comment about what is visibly happening, a companion noticing ${character.name}'s distraction, or brief socially natural banter without factual claims. Do not invent touching, romantic familiarity or sexual behavior with a third party merely to prove ${character.name} is performing normality.\n\nDo not describe idle room details, rain, lighting, steam, kettles, doors, breathing, staring, phones without meaningful content, posture, or repetitive micro-actions. Do not merely rewrite the same inactivity. Advance through a character decision, voice, consequence, interaction, scene closure, or meaningful transition. Preserve established canon and personality.`,
-              }],
-            },
-            contents: [{
-              role: "user",
-              parts: [{
-                text: `${prompt}\n\nREJECTED DRAFT — DO NOT POLISH OR PARAPHRASE THIS FAILURE:\n${rejected.slice(0, 5000)}\n\nWrite the corrected continuation now.`,
-              }],
-            }],
-            generationConfig: {
-              maxOutputTokens: getMaximumOutputTokens(character.response_length),
-              temperature: 0.76,
-              topP: 0.9,
-              thinkingConfig: { thinkingLevel: "LOW" },
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) continue;
-      const data = await response.json();
-      const candidate = data?.candidates?.[0]?.content?.parts
-        ?.filter((part) => typeof part.text === "string" && !part.thought)
-        .map((part) => part.text)
-        .join("")
-        .trim() || "";
-
-      const structurallyValid = returnToMainCharacter
-        ? visiblyReturnsToMainCharacter(candidate, character.name)
-        : hasAudibleCharacterVoice(candidate);
-      // Grounding excludes old generated prose so a hallucination cannot grant
-      // itself permission to become recurring canon.
-      const unsupported = inventsUnsupportedLogistics(candidate, groundingFacts) ||
-        (emotionalFollow && inventsUnsupportedThirdPartyIntimacy(candidate, groundingFacts));
-      const valid = structurallyValid && !unsupported;
-      if (valid) return candidate;
-      if (candidate) {
-        rejected = candidate;
-        if (!unsupported) safeFallback = candidate;
-      }
-    } catch {
-      // Retry once with the last failed draft.
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  if (safeFallback) return safeFallback;
-
-  console.warn("Directed continuation validation exhausted; using canon-neutral fallback.");
-  return buildDirectedContinuationFallback({
-    draft: rejected || rejectedDraft,
-    characterName: character.name,
-    language,
-    returnToMainCharacter,
-    emotionalFollow,
-    groundingFacts,
-  });
-}
-
-async function saveCharacterReply({ supabase, conversationId, userId, reply }) {
-  const { data, error } = await supabase
-    .from("messages")
-    .insert({ conversation_id: conversationId, user_id: userId, sender: "character", content: reply })
-    .select()
-    .single();
-  if (error || !data) throw new Error(error?.message || "The response couldn't be saved");
-  return data;
-}
-
-async function replaceCharacterReply({ supabase, conversationId, userId, message, reply }) {
-  const alternatives = [message.content, reply]
-    .filter(Boolean)
-    .map((content) => ({
-      user_id: userId,
-      conversation_id: conversationId,
-      message_id: message.id,
-      content,
-    }));
-
-  const { data: existingAlternatives, error: existingAlternativeError } = await supabase
-    .from("message_alternatives")
-    .select("content")
-    .eq("message_id", message.id);
-  if (existingAlternativeError) console.error("Alternative lookup failed:", existingAlternativeError);
-
-  const existingContent = new Set((existingAlternatives || []).map((item) => item.content));
-  const newAlternatives = alternatives.filter((item) => !existingContent.has(item.content));
-  if (newAlternatives.length) {
-    const { error: alternativeError } = await supabase
-      .from("message_alternatives")
-      .insert(newAlternatives);
-    if (alternativeError) console.error("Alternative saving failed:", alternativeError);
-  }
-
-  const { data, error } = await supabase
-    .from("messages")
-    .update({ content: reply, edited_at: new Date().toISOString() })
-    .eq("id", message.id)
-    .eq("conversation_id", conversationId)
-    .eq("user_id", userId)
-    .select()
-    .single();
-  if (error || !data) throw new Error(error?.message || "The regenerated response couldn't be saved");
-  return data;
-}
-
-function collapseSocialElongation(value = "") {
-  return normalizeRelevanceText(String(value || "")).replace(/(.)\1{2,}/gu, "$1");
-}
-
-function looksLikeDirectQuestion(value = "") {
-  const raw = String(value || "").trim();
-  if (!raw) return false;
-  if (/[?¿]/.test(raw)) return true;
-
-  // Roleplay users frequently omit punctuation, especially on mobile. Strip
-  // action/direction wrappers before looking for ordinary interrogative forms
-  // so "what about you i haven't seen you" still receives an actual answer.
-  const spoken = raw
-    .replace(/\*[^*]{0,500}\*/g, " ")
-    .replace(/\[[^\]]{0,500}\]/g, " ")
-    .replace(/\([^)]{0,500}\)/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-  if (!spoken) return false;
-
-  return (
-    /^(?:what|why|how|where|when|who|which|whose|whom)\b/.test(spoken) ||
-    /\b(?:what|how)\s+about\s+(?:you|him|her|them|it|that)\b/.test(spoken) ||
-    /^(?:do|does|did|are|is|was|were|can|could|would|will|have|has|had|should|am)\s+(?:you|he|she|they|we|i|it)\b/.test(spoken)
-  );
-}
-
-function resolveNaturalTurn({
-  latestUserMessage,
-  latestUserRecord,
-  messages,
-  sceneState = {} as Record<string, any>,
-  castState = {} as Record<string, any>,
-  character,
-  userIdentity,
-  timeSkip,
-  regenerationInstruction = "",
-  relationshipState = {} as Record<string, any>,
-}) {
-  const raw = String(latestUserMessage || "").trim();
-  const normalized = normalizeRelevanceText(raw);
-  const socialNormalized = collapseSocialElongation(raw);
-  const silentContinue = isSilentContinueText(raw);
-  const silentContinueStreak = silentContinue
-    ? messages
-        .filter((message) => message.sender === "user")
-        .slice()
-        .reverse()
-        .findIndex((message) => !isSilentContinueText(message.content))
-    : 0;
-  // findIndex returns -1 when every user turn in the loaded window is silent.
-  const normalizedSilentContinueStreak = silentContinue
-    ? (silentContinueStreak === -1
-        ? messages.filter((message) => message.sender === "user").length
-        : Math.max(1, silentContinueStreak))
-    : 0;
-  const bracketDirections = [...raw.matchAll(/\[([^\]]{2,240})\]/g)]
-    .map((match) => match[1].trim())
-    .filter(Boolean);
-  const directionText = `${raw} ${bracketDirections.join(" ")}`;
-
-  // A regeneration note is not automatically a scene change. Previously even
-  // directions such as "more dialogue" or "make him colder" forced the turn
-  // into scene_shift mode, which made the engine ignore the current beat.
-  const regenerationRequestsSceneShift = /\b(time\s*skip|timeskip|later|next\s+(?:morning|day|night|week)|meanwhile|cut\s+to|new\s+scene|scene\s+change|after\s+(?:practice|class|work|school|the\s+game)|esa\s+noche|más\s+tarde|al\s+día\s+siguiente|mientras\s+tanto|nueva\s+escena|cambia\s+(?:la\s+)?escena)\b/i.test(regenerationInstruction);
-  const sceneShift = Boolean(
-    regenerationRequestsSceneShift ||
-    timeSkip?.active ||
-    /\b(time\s*skip|timeskip|later|next\s+(?:morning|day|night|week)|hours?\s+later|days?\s+later|weeks?\s+later|meanwhile|cut\s+to|new\s+scene|scene\s+change|after\s+(?:practice|class|work|school|the\s+game)|esa\s+noche|más\s+tarde|al\s+día\s+siguiente|horas?\s+después|días?\s+después)\b/i.test(directionText)
-  );
-  const explicitLeave = /\b(i\s+(?:leave|left|walk\s+away|walked\s+away|go\s+home|went\s+home|head\s+out|headed\s+out)|me\s+(?:voy|fui|marcho|marché)|salgo|salí)\b/i.test(raw);
-  const explicitCameraAway = /\b(meanwhile|cut\s+to|camera\s+(?:follows|moves)|elsewhere|mientras\s+tanto|en\s+otro\s+lugar)\b/i.test(directionText);
-  const asksQuestion = looksLikeDirectQuestion(raw);
-  const correction = /\b(?:no[, ]|actually|i\s+said|i\s+meant|that's\s+not|that\s+isn't|you're\s+wrong|se\s+supone|dije|quise\s+decir|no\s+es|eso\s+no)\b/i.test(raw);
-  const previousCharacterTurn = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
-  const recentCharacterDialogue = messages
-    .filter((message) => message.sender === "character")
-    .slice(-5)
-    .map((message) => String(message.content || ""));
-  const recentDialogueIntentCounts = dialogueIntentCounts(recentCharacterDialogue);
-  const stalledTacticCount = ["denial", "blame_shift", "dismissal", "counterattack"]
-    .reduce((total, tag) => total + Number(recentDialogueIntentCounts[tag] || 0), 0);
-  const emotionallyChargedTurn = isEmotionallyChargedUserTurn(raw);
-  const tenderDisclosure = isTenderEmotionalDisclosure(raw);
-  const conflictLoop = emotionallyChargedTurn && stalledTacticCount >= 2;
-  const departureContext = `${raw}\n${previousCharacterTurn}`;
-  const mainCharacterHasDeparted = /\b(?:you(?:'re|\s+are|\s+were)?\s+(?:already\s+)?(?:far|gone|too\s+far)|you\s+(?:left|walked\s+away|ran\s+off|drove\s+away)|already\s+(?:jogging|walking|running|driving)\s+away|out\s+of\s+(?:sight|earshot)|before\s+(?:i|you)\s+could\s+answer|te\s+(?:fuiste|alejaste)|ya\s+estabas\s+lejos|fuera\s+de\s+(?:vista|alcance))\b/i.test(departureContext);
-  const userReactedAfterDeparture = mainCharacterHasDeparted && Boolean(raw) && !silentContinue;
-
-  const groupAddressed =
-    /\b(?:group\s*chat|groupchat|group\s+text|group\s+message|gc|chat\s+grupal|grupo\s+de\s+(?:whats?app|mensajes)|chat\s+del\s+grupo)\b/i.test(directionText) &&
-    (/["“”'][\s\S]{1,500}["“”']/.test(raw) ||
-      /\b(?:text|texted|message|messaged|send|sent|write|wrote|escribo|escribí|mando|mandé|envío|envié|pongo|puse|chat)\b/i.test(directionText));
-
-  // Require an actual messaging action or an explicit DM marker. Merely saying
-  // the noun "message" in an in-person scene must not teleport the medium into DMs.
-  const dmAddressed =
-    !groupAddressed &&
-    (/(?:\[|\()\s*(?:dm|direct\s+message|text(?:ing)?)\s*(?:\]|\))/i.test(directionText) ||
-      /\b(?:i|we)\s+(?:text|texted|message|messaged|dm|send|sent|write|wrote|escribo|escribí|mando|mandé|envío|envié)\b/i.test(directionText) ||
-      /\b(?:text|message|dm)\s+(?:him|her|them|you|[A-Z][a-z]{1,30})\b/i.test(directionText));
-
-  const phoneCall =
-    /\b(?:i\s+call|i\s+called|we\s+call|calling\s+(?:him|her|them|you)|phone\s+call|on\s+the\s+phone|pick\s+up|picks\s+up|answer(?:s|ed)?\s+the\s+phone|llamo|llamé|llamada|por\s+teléfono|contesta\s+el\s+teléfono)\b/i.test(directionText);
-
-  const explicitInPerson =
-    /\b(?:i\s+(?:say|said|tell|told|whisper|whispered|ask|asked)\b|i\s+(?:walk|walked|step|stepped|enter|entered|leave|left|sit|sat|stand|stood|turn|turned|look|looked|glance|glanced|grab|grabbed)\b|(?:in|inside|outside|at)\s+(?:the\s+)?(?:room|hallway|quad|campus|university|house|apartment|party|class|car|club|restaurant|kitchen|bedroom|office)|door\s+(?:opens|opened)|(?:he|she|they|you)\s+(?:walks|walked|enters|entered|stands|stood|sits|sat)\b|digo|dije|le\s+digo|entro|entré|salgo|salí|camino|caminé|miro|miré)\b/i.test(directionText);
-
-  const passiveContinue = silentContinue || /^\s*[.…。]+\s*$/.test(raw);
-  const storedMedium = ["in_person", "direct_message", "group_chat", "phone_call"].includes(String(sceneState?.medium || ""))
-    ? String(sceneState.medium)
-    : "";
-
-  // Medium is sticky across ordinary turns. This is essential for DMs/group
-  // chats where the user naturally sends another line without writing "I text"
-  // every single time. Explicit medium changes always win.
-  let digitalMode = storedMedium || "in_person";
-  if (groupAddressed) digitalMode = "group_chat";
-  else if (phoneCall) digitalMode = "phone_call";
-  else if (dmAddressed) digitalMode = "direct_message";
-  else if (explicitInPerson) digitalMode = "in_person";
-  else if (sceneShift && !passiveContinue && /\b(?:room|quad|campus|university|house|party|class|car|club|restaurant|kitchen|bedroom|office|hallway)\b/i.test(directionText)) digitalMode = "in_person";
-
-  // The user can text into an already active physical scene. This is a hybrid
-  // cutaway, not a teleport into a text-only transcript: narration and nearby
-  // spoken dialogue remain valid, while the actual written reply uses `>`.
-  const messageCutaway = Boolean(
-    dmAddressed &&
-    (storedMedium === "in_person" || mainCharacterHasDeparted || explicitCameraAway),
-  );
-
-
-  const taggedHandles = [...raw.matchAll(/@([\p{L}\p{N}_-]{2,40})/gu)]
-    .map((match) => String(match[1] || "").trim())
-    .filter(Boolean);
-
-  const sceneNames = Array.isArray(sceneState?.present) ? sceneState.present : [];
-  const candidates = [...new Set([character?.name, ...Object.keys(castState || {}), ...sceneNames])]
-    .map((name) => String(name || "").trim())
-    .filter(Boolean);
-
-  const mentioned = candidates.filter((name) => {
-    const n = normalizeRelevanceText(name);
-    const socialName = collapseSocialElongation(name);
-    if (!n) return false;
-    return normalized.includes(n) ||
-      socialNormalized.includes(socialName) ||
-      n.split(" ").some((token) => token.length >= 4 &&
-        (normalized.split(" ").includes(token) || socialNormalized.split(" ").includes(collapseSocialElongation(token))));
-  });
-
-  const povRequested = /\b(?:pov|point\s+of\s+view|perspective)\b/i.test(directionText);
-  const povTarget = povRequested
-    ? (mentioned.find((name) => normalizeRelevanceText(name) !== normalizeRelevanceText(userIdentity.name)) ||
-       (/\b(?:his|him)\s+(?:pov|perspective)\b/i.test(raw) ? character?.name : ""))
-    : "";
-
-  const replyTarget = latestUserRecord?.reply_to_message_id
-    ? (latestUserRecord.reply_sender === "user" ? userIdentity.name : character.name)
-    : "";
-
-  const taggedReactors = taggedHandles.length
-    ? candidates.filter((name) => {
-        const normalizedName = normalizeRelevanceText(name).replace(/\s+/g, "");
-        return taggedHandles.some((handle) => {
-          const normalizedHandle = normalizeRelevanceText(handle).replace(/\s+/g, "");
-          return normalizedName === normalizedHandle ||
-            normalizedName.includes(normalizedHandle) ||
-            normalizedHandle.includes(normalizedName);
-        });
-      })
-    : [];
-
-  const groupCandidates = [...new Set([...Object.keys(castState || {}), ...sceneNames])]
-    .map((name) => String(name || "").trim())
-    .filter((name) => name && normalizeRelevanceText(name) !== normalizeRelevanceText(userIdentity.name));
-
-  const expectedReactors = groupAddressed
-    ? (taggedHandles.length
-        ? [`mentioned/notified: ${(taggedReactors.length ? taggedReactors : taggedHandles).join(", ")}`, "other established group members may still react naturally"]
-        : ["established group members chosen naturally"])
-    : [...new Set([...(replyTarget ? [replyTarget] : []), ...mentioned])].slice(0, 4);
-
-  const planningStage =
-    /\b(?:friday|saturday|sunday|monday|tuesday|wednesday|thursday|viernes|sábado|sabado|domingo|lunes|martes|miércoles|miercoles|jueves|which\s+day|what\s+day|qué\s+día|que\s+dia)\b/i.test(raw) ? "day" :
-    /\b(?:where|place|location|restaurant|diner|bar|café|cafe|dónde|donde|lugar)\b/i.test(raw) ? "place" :
-    /\b(?:what\s+time|when|hour|hora|a\s+qué\s+hora|a\s+que\s+hora|cuándo|cuando)\b/i.test(raw) ? "time" :
-    "none";
-
-  const relationshipNumbers = ["affection", "attraction", "trust", "familiarity"].map((key) => Number(relationshipState?.[key] || 0));
-  const relationshipSalient = relationshipNumbers.some((value) => value >= 35) ||
-    Boolean(relationshipState?.current_dynamic || relationshipState?.label);
-  const romanticInvestment = characterHasRomanticInvestment(character, relationshipState);
-  // A direct disclosure such as "I missed you" is an emotional event even if
-  // the relationship profile uses unexpected wording or is still sparse. The
-  // profile decides the nature of the impact; it must not decide whether the
-  // words register at all.
-  const requiresTenderBeat = tenderDisclosure;
-
-  const userPresent = !explicitCameraAway && !explicitLeave;
-  const directWithMainCharacter = !groupAddressed &&
-    (digitalMode === "direct_message" || mentioned.some((name) => normalizeRelevanceText(name) === normalizeRelevanceText(character?.name)));
-
-  let emotionTarget = "none";
-  let emotionTrigger = "none";
-  if ((relationshipSalient || romanticInvestment || tenderDisclosure) && (povTarget === character?.name || directWithMainCharacter || digitalMode === "in_person")) {
-    emotionTarget = userIdentity.name;
-    emotionTrigger = requiresTenderBeat
-      ? "the user's direct tender disclosure; show its private impact before the outward mask"
-      : "the current/recent interaction with the user-controlled protagonist";
-  }
-
-  const returnToMainCharacter = silentContinue && normalizedSilentContinueStreak >= 2;
-  const followMainCharacterAfterExit = userReactedAfterDeparture;
-
-  let mode = "react";
-  if (returnToMainCharacter) mode = "return_to_main_character";
-  else if (followMainCharacterAfterExit) mode = "follow_main_character_after_exit";
-  else if (silentContinue) mode = "continue_one_beat";
-  else if (povRequested && povTarget) mode = "pov_shift";
-  else if (sceneShift) mode = "scene_shift";
-  else if (correction) mode = "correction";
-  else if (groupAddressed) mode = "group_reaction";
-  else if (expectedReactors.length) mode = "targeted_reaction";
-  else if (asksQuestion) mode = "answer_or_react";
+  if (!characterResult.data) throw new Error("Character not found");
 
   return {
-    mode,
-    silentContinue,
-    silentContinueStreak: normalizedSilentContinueStreak,
-    returnToMainCharacter,
-    followMainCharacterAfterExit,
-    sceneShift,
-    timeShift: timeSkip?.active ? (timeSkip?.scale || "explicit time shift") : "",
-    explicitLeave,
-    explicitCameraAway,
-    correction,
-    asksQuestion,
-    groupAddressed,
-    dmAddressed,
-    digitalMode,
-    messageCutaway,
-    taggedHandles: taggedHandles.slice(0, 8),
-    groupCandidates: groupCandidates.slice(0, 10),
-    expectedReactors,
-    povRequested,
-    povTarget,
-    bracketDirections,
-    userPresent,
-    userName: userIdentity.name,
-    planningStage,
-    emotionTarget,
-    emotionTrigger,
-    relationshipSalient,
-    emotionallyChargedTurn,
-    tenderDisclosure,
-    romanticInvestment,
-    requiresTenderBeat,
-    conflictLoop,
-    recentDialogueTactics: buildDialogueProgressionSummary(recentCharacterDialogue),
-    latestExcerpt: raw.slice(0, 520),
+    conversation,
+    character: characterResult.data,
+    persona: personaResult.data || null,
+    messages: [...(messagesResult.data || [])].reverse(),
+    memories: memoriesResult.data || [],
+    loreEntries: loreResult.data || [],
   };
 }
 
-function formatNaturalTurnResolution(turn = {} as Record<string, any>, userIdentity, character) {
-  const reactors = Array.isArray(turn.expectedReactors) && turn.expectedReactors.length
-    ? turn.expectedReactors.join(" | ")
-    : "infer naturally from latest address and active scene";
-  const directions = Array.isArray(turn.bracketDirections) && turn.bracketDirections.length
-    ? turn.bracketDirections.join(" | ")
-    : "none";
-
-  return [
-    `mode=${turn.mode || "react"}`,
-    `medium=${turn.digitalMode || "in_person"}`,
-    `physical_message_cutaway=${turn.messageCutaway ? "yes — narration/spoken NPC dialogue may coexist with > written texts" : "no"}`,
-    `focus/reactor=${turn.returnToMainCharacter || turn.followMainCharacterAfterExit ? `${character.name} (mandatory main-character focus)` : (turn.povTarget || reactors)}`,
-    `scene_shift=${turn.sceneShift ? "yes" : "no"}`,
-    `time_shift=${turn.timeShift || "none"}`,
-    `user_present=${turn.userPresent ? "yes" : "no / camera moved"}`,
-    `correction=${turn.correction ? "yes" : "no"}`,
-    `question=${turn.asksQuestion ? "yes" : "no"}`,
-    `planning_stage=${turn.planningStage || "none"}`,
-    `@mentions=${turn.taggedHandles?.length ? turn.taggedHandles.join(", ") + " (notification priority, not exclusivity)" : "none"}`,
-    `group_candidates=${turn.groupCandidates?.length ? turn.groupCandidates.join(", ") : "use established cast only"}`,
-    `pov=${turn.povRequested ? (turn.povTarget || character.name) : "current camera"}`,
-    `relationship_salient=${turn.relationshipSalient ? "yes" : "no/unknown"}`,
-    `emotion_target=${turn.emotionTarget || "none"}`,
-    `emotion_trigger=${turn.emotionTrigger || "none"}`,
-    `emotionally_charged_turn=${turn.emotionallyChargedTurn ? "yes — respond to the literal grievance before defending" : "no"}`,
-    `tender_disclosure=${turn.tenderDisclosure ? "yes" : "no"}`,
-    `romantic_investment=${turn.romanticInvestment ? "yes — established by profile/state" : "no/unknown"}`,
-    `required_tender_beat=${turn.requiresTenderBeat ? "yes — reveal private impact before any joke, deflection or subject change" : "no"}`,
-    `conflict_loop=${turn.conflictLoop ? "yes — the prior tactic has failed; a different conversational move is mandatory" : "no"}`,
-    `recent_character_tactics=${turn.recentDialogueTactics || "none detected"}`,
-    `silent_continue=${turn.silentContinue ? `yes; streak=${turn.silentContinueStreak || 1}; voice-led story motion required; narration-only forbidden` : "no"}`,
-    `return_to_main_character=${turn.returnToMainCharacter ? `yes; reopen on ${character.name}'s POV/presence now` : "no"}`,
-    `follow_main_character_after_exit=${turn.followMainCharacterAfterExit ? `yes; follow ${character.name}; show public mask versus canon-supported private feeling` : "no"}`,
-    `directions=${directions}`,
-    `latest_user=${String(turn.latestExcerpt || "").replace(/\n+/g, " ").slice(0, 520) || "none"}`,
-    `rule=the latest USER turn outranks every derived field above`,
-  ].join("\n");
+function applyConversationControls(character, conversation) {
+  return {
+    ...character,
+    response_length: conversation.response_length_override || character.response_length || "balanced",
+    narration_style: conversation.narration_style_override || character.narration_style || "balanced",
+    creativity: clampNumber(conversation.creativity, 0.2, 1.2, 0.84),
+    romance_intensity: clampNumber(conversation.romance_intensity, 0, 100, 35),
+    initiative: clampNumber(conversation.initiative, 0, 100, 65),
+    drama: clampNumber(conversation.drama, 0, 100, 45),
+    flirting: clampNumber(conversation.flirting, 0, 100, 30),
+    humor: clampNumber(conversation.humor, 0, 100, 45),
+    description_level: clampNumber(conversation.description_level, 0, 100, 55),
+    character_independence: clampNumber(conversation.character_independence, 0, 100, 80),
+    dialogue_frequency: clampNumber(conversation.dialogue_frequency, 0, 100, 55),
+    narrative_camera: conversation.narrative_camera || "balanced",
+    inner_thoughts: conversation.inner_thoughts || "rare",
+    story_preset: conversation.story_preset || "natural",
+    pacing_mode: conversation.pacing_mode || "natural",
+  };
 }
 
-function buildSystemInstruction({
+async function resolveGenerationBranch({ supabase, messages, regenerateMessageId, userId }) {
+  if (!regenerateMessageId) {
+    return { messages, replacementMessage: null, rejectedResponses: [] };
+  }
+
+  const targetIndex = messages.findIndex((message) => String(message.id) === regenerateMessageId);
+  if (targetIndex < 0 || messages[targetIndex].sender !== "character") {
+    throw new Error("The response to regenerate was not found");
+  }
+
+  const replacementMessage = messages[targetIndex];
+  const { data, error } = await supabase.from("message_alternatives")
+    .select("content").eq("message_id", regenerateMessageId).eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) console.warn("[character-chat] alternatives unavailable", { message: error.message });
+
+  const rejectedResponses = [...new Set([
+    ...(data || []).map((item) => String(item.content || "").trim()),
+    String(replacementMessage.content || "").trim(),
+  ].filter(Boolean))].slice(-8);
+
+  return {
+    messages: messages.slice(0, targetIndex),
+    replacementMessage,
+    rejectedResponses,
+  };
+}
+
+function buildNarrativePrompt({
+  conversation,
   character,
   userIdentity,
-  responseLanguage,
-  regenerationInstruction,
-  directorInstruction = "",
-  turnResolution = {} as Record<string, any>,
-  rejectedResponse = "",
-  rejectedVariants = [] as string[],
-}) {
-  const regen = regenerationInstruction
-    ? `\nMANDATORY REGENERATION CONTRACT — HIGHEST PRIORITY\nUSER'S PRIVATE DIRECTION: ${regenerationInstruction}\nINTERPRETATION: ${buildRegenerationMeaning(regenerationInstruction, character, userIdentity)}\nThis is a private direction, never dialogue or canon. Build the new response around its requested outcome. It may change the scene, cast, POV, tone, behavior, pacing or ending for this retry. Preserve only canon that does not conflict with the requested alternate take. Before writing, identify the concrete requested change; before returning, verify that change is plainly present. A polished response that misses this direction is incorrect.`
-    : "";
-  const director = directorInstruction
-    ? `\nOPTIONAL DIRECTOR NOTE\n${directorInstruction}\nUse it once for this reply only. It is not dialogue and characters do not know it.`
-    : "";
-  const variationLane = [
-    "dialogue-first: open with a natural spoken line or interruption, with minimal setup",
-    "behavior-first: choose one consequential action or choice, not decorative body language",
-    "restraint-first: let the character hold back, leave space, or respond briefly if that fits",
-    "social-shift: let an established NPC or the immediate social context alter the beat naturally",
-    "minimal-realism: use the smallest believable reaction and stop before over-explaining",
-  ][Math.max(0, Number(rejectedVariants?.length || 1) - 1) % 5];
-  const rejectedVariantCount = Math.max(
-    Array.isArray(rejectedVariants) ? rejectedVariants.length : 0,
-    rejectedResponse ? 1 : 0,
-  );
-  // Do not paste rejected prose into the first regeneration prompt. Negative
-  // examples prime the model to echo their most memorable line. The local
-  // similarity guard still has the full variants and only supplies them to a
-  // dedicated retry when the clean first attempt actually overlaps.
-  const regenerationDiversity = rejectedVariantCount > 0
-    ? `\nREGENERATION BRANCH\n${rejectedVariantCount} earlier take(s) were rejected and are intentionally omitted from this prompt. Do not reconstruct the immediately preceding response from hidden metadata.\n\nVARIATION LANE FOR THIS RETRY\n${variationLane}\nChoose a genuinely different next beat from the branch point. Do not recycle the previous opening, signature dialogue, prop interaction, emotional explanation, warning, denial or choreography. A new variant must differ in structure and choice, not merely vocabulary.`
-    : "";
-
-  return `
-You are Velvet, the hidden narrative engine for a private interactive novel.
-${regen}
-
-LANGUAGE
-Write the entire roleplay passage in ${responseLanguage}. Keep proper names unchanged.
-
-OWNERSHIP
-- You control ${character.name}, established NPCs and neutral narration.
-- The user exclusively controls ${userIdentity.name}.
-- Never invent ${userIdentity.name}'s dialogue, actions, thoughts, feelings, reactions, consent or decisions.
-- Speaker metadata in history is authoritative.
-
-USER ADDRESS & NARRATIVE PERSON
-- Address the user-controlled protagonist in SECOND PERSON by default: you / your / yourself.
-- In narration, never refer to ${userIdentity.name} as she/he/they/her/him/them or by name when a natural second-person form works.
-- Character thoughts about ${userIdentity.name} should also use you/your from the reader-facing narration: e.g. "his attention found you", not "his attention found her".
-- Other characters may say ${userIdentity.name}'s actual name or nickname in dialogue when canonically appropriate.
-- This second-person rule does NOT grant control over the user. Only reference actions, expressions, location or facts the user already established.
-- If the user explicitly requests third-person narration for a scene, follow that request for that scene only.
-
-PRIORITY ORDER
-1. MANDATORY REGENERATION CONTRACT, when present.
-2. Latest USER turn: words, actions, corrections, @mentions, time/scene/POV directions.
-3. User agency.
-4. TURN RESOLUTION for this exact turn.
-5. Last 12 messages and current scene continuity.
-6. Established character personality + relationship.
-7. Canonical lore, relevant memories, persistent cast and open threads.
-8. Style controls and variation suggestions.
-Nothing lower may contradict or erase something higher.
-
-NARRATIVE DECISION
-- React fully to the latest USER turn first. Add at most one next beat only when it follows naturally; a direct answer can be a complete response by itself. Unknown history stays unknown.
-- Initiative means acting on an established want or the visible situation, not manufacturing a reason to act. New present-tense choices are allowed, but invented debts, routines, shared plans and backstory disguised as teasing are not.
-- Advance through dialogue, decisions and consequences. Do not sustain a scene with questions, decorative movement or random complications.
-- Treat the visible transcript as immutable evidence. A character may clarify intent, but may not falsely deny words or a clear equivalent they already used. If they misspoke, they can own it, correct it, set a boundary, withdraw or make another honest choice.
-- Answer the user's literal grievance or direct question before reframing. Never replace it with an easier accusation such as "you want hourly reports," "you are overreacting," or "you always twist things" unless the user actually said that.
-- Conflict must progress. Once denial, blame-shifting, dismissal or a counterattack has failed, do not repeat that tactic with new vocabulary. Change the interpersonal state through a specific admission, relevant truth, honest boundary, withdrawal, repair attempt or consequential action. Do not force an apology or softness; do force a new choice.
-- Guarded, cold, proud or teasing is not the same as contempt. Do not upgrade affection/friendship into calling the user's ordinary needs worthless, stupid, dramatic or childish unless explicit canon and a proportionate present event support that cruelty. Friction should come from the character's real values and fears, not generic hostility.
-- If the latest USER turn sends ${character.name} a direct text, that text must materially change ${character.name}'s next choice. With ordinary or high initiative, include a concise written reply in this response. Guardedness may make the reply brief, evasive or delayed by one meaningful action; it may not let unrelated NPC banter replace the user's thread.
-- In a social cutaway, an NPC may prompt or tease once. Do not build a loop where the NPC probes again while ${character.name} repeats the same denial, warning or dismissal. Return to ${character.name}'s decision about the user's latest turn.
-- Preserve established affection, tension and conflict as active psychology. A guarded character may hide feelings, but may not forget them.
-- When required_tender_beat=yes, the user's tender disclosure is the emotional event of the turn. Before any joke, factual update or deflection, give the reader one unmistakable private impact linked to the user's exact words. The character may conceal it aloud, but the prose must let the reader understand what was felt. This meaningful moment may use one brief inner line even when inner thoughts are normally rare. Do not force a confession, instant softness or pursuit.
-- A smile, glance, umbrella adjustment or phrase such as "usual guarded expression" is not enough by itself. Show what the disclosure meant, what feeling it exposed, or why the character immediately needed to hide it.
-- Romance never forces pursuit, forgiveness, softness, touch, confession or instant repair. Let pride, misunderstanding and distance persist when believable.
-- ${character.name} remains the main emotional thread. Secondary characters may carry a beat without permanently replacing that thread.
-- When follow_main_character_after_exit=yes, follow ${character.name}; show one canon-supported contrast between public behavior and private feeling. Do not describe the empty place left behind.
-- When silent_continue=yes, the user added no action. Continue with character voice and a real choice, never narration-only atmosphere.
-- First silent continue: finish the active beat. Second: return to ${character.name}. Further silent continues stay with ${character.name} until the user explicitly changes POV.
-- Never invent ${userIdentity.name}'s response or require them to answer. Characters can speak, decide, leave or interact with established NPCs independently.
-- Before adding any past/off-screen fact, ask where it was established. If nowhere, omit it. Do not fabricate traffic, lateness, schedules, promises, history, intimacy or logistics just to create dialogue.
-- A claim spoken by a character can be a lie, mistake or deflection; it does not become narrator-confirmed canon merely because it appeared in dialogue. Never invent family calls, unread-message counts, parties, classes, errands or dated incidents to win an argument.
-- Mentioning a relative only establishes the reference. "Your mom" never gives permission to invent that she texted, called, checked meals, worried, asked about the user or spoke privately with ${character.name}. Subject, action and detail each require support.
-- Do not turn the user's studies or career into stock jokes about energy drinks, all-night screens, laboratories, missing brackets, compilers or Python scripts unless that exact detail is established and genuinely relevant.
-- Do not invent precise durations, recurring habits, domestic details, debts or obligations. "Friends since secondary school" does not permit "best friends for ten years" unless that exact duration is established.
-- Teasing is optional. Do not make a proud, popular or sarcastic character answer every ordinary line with a performance, insult or clever comeback. One natural tease is enough; sincerity, brevity and plain answers must remain available.
-- When the user asks what ${character.name} has been doing, ${character.name} answers about themself first. "I've been around; you're the one..." and a joke about the user are evasions, not answers.
-
-POV & CAMERA
-${buildNarrativeCameraInstructions(character, userIdentity)}
-If the user says "get back to X's POV", treat it as a silent camera instruction. Open on what is meaningfully occupying that character now, not room/phone/window/keys choreography.
-
-SCENE MEDIUM LOCK
-- The resolved communication medium for THIS turn is: ${turnResolution.digitalMode || "in_person"}. Treat this as authoritative.
-- Physical cutaway around a newly received text: ${turnResolution.messageCutaway ? "yes" : "no"}.
-- in_person: characters are physically together. Spoken dialogue uses normal quotation marks only. NEVER prefix spoken dialogue with > and NEVER render it as a text-message blockquote.
-- phone_call: characters speak aloud through the call. Spoken lines use normal quotation marks only. NEVER use > unless an actual written text message is separately sent during the call.
-- direct_message and group_chat: only actual written messages use the > prefix.
-- When physical cutaway=yes, narration and nearby spoken dialogue may coexist with the text exchange. Keep spoken dialogue in quotation marks and prefix only the actual written reply with >.
-- A phone existing in the scene does not make the scene digital. Looking at a screen, holding a phone, or mentioning a previous text does not change the current medium.
-- Do not switch medium unless the latest USER turn explicitly does so or established scene state clearly requires it.
-
-CRAFT
-- Write natural contemporary fiction, not ornate AI prose. Use contractions, fragments, interruptions and subtext when they fit the character.
-- Dialogue must react to the visible moment or canon. No polished exposition, therapy speeches, compulsory cleverness or facts invented merely to keep talking.
-- Give each reply a conversational job. A complete beat usually contains the immediate reaction and one decision/consequence; completeness comes from movement, not extra paragraphs.
-- Do not repeat a dialogue opener, accusation, denial, metaphor or emotional conclusion used in the recent exchange. Reusing the same intent with synonyms still counts as repetition.
-- Every action must change position, accomplish something or reveal a choice. Keep physical continuity; never invent the user's reaction or reciprocation.
-- Avoid gesture chains and reusable atmosphere: jaw tightening, held breath, lingering gaze, flexing hands, sleeve/pulse business, amber light, heavy silence, rain/window/door/phone description that does no work.
-- One concrete detail is enough. Do not explain an emotion after dialogue or behavior already showed it.
-- NPCs have distinct voices and imperfect perception. They may misunderstand, joke, disagree or stay silent without diagnosing the romance.
-- For direct_message/group_chat, written messages begin with '> '. For in_person/phone_call, spoken dialogue never uses '> '.
-- Latest USER corrections replace older assumptions. Time or scene shifts end stale physical actions. Preserve unresolved tension without repeating the same beat.
-- A regeneration is a new choice and structure, not a paraphrase. Its private direction is mandatory and remains invisible in the story.
-
-STYLE
-${buildChatControlInstructions(character)}
-${buildFinalStyleReminder(character)}
-${regenerationDiversity}
-${director}
-`;
-}
-
-function buildRegenerationMeaning(instruction, character, userIdentity) {
-  const value = normalizeText(instruction);
-  if (!value) return "";
-
-  if (value.includes("more emotional")) {
-    return `Deepen only emotions already supported by canon. If ${character.name}'s established relationship makes ${userIdentity.name} emotionally salient, let that affect attention, subtext, avoidance, anticipation or choices. Keep personality intact. Do not invent jealousy or attach emotion to incidental third parties.`;
-  }
-  if (value.includes("more subtle")) {
-    return `Keep the established emotion but reduce explanation. Show it through timing, selective attention, restraint, implication or one meaningful action.`;
-  }
-  if (value.includes("more dialogue")) {
-    return "Let dialogue carry the beat. Cut explanatory narration.";
-  }
-  if (value.includes("less narration")) {
-    return "Remove decorative prose and keep only narration needed for continuity.";
-  }
-  if (value.includes("shorter")) {
-    return "Deliver one concise meaningful beat and stop.";
-  }
-  if (value.includes("different direction")) {
-    return "Choose a genuinely different plausible continuation while preserving established canon.";
-  }
-  return "Treat the user's regeneration text as the highest-priority creative direction for this retry.";
-}
-
-function buildNarrativeCameraInstructions(character, userIdentity) {
-  const camera = String(character.narrative_camera || "balanced");
-  const thoughts = String(character.inner_thoughts || "rare");
-
-  const cameraRule = camera === "user_focused"
-    ? `Camera: stay with ${userIdentity.name}'s location unless the user requests a cutaway.`
-    : camera === "cinematic"
-      ? "Camera: purposeful cutaways are allowed, but never merely to keep the main character visible."
-      : "Camera: default to the scene created by the latest user turn; off-screen characters stay off-screen unless a cutaway adds real value.";
-
-  const thoughtRule = thoughts === "none"
-    ? "Inner thoughts: none; use observable behavior/dialogue/subtext."
-    : thoughts === "frequent"
-      ? "Inner thoughts: allowed often when they add information, never as filler."
-      : thoughts === "literary"
-        ? "Inner thoughts: occasional polished interiority at meaningful moments."
-        : thoughts === "sometimes" || thoughts === "important"
-          ? "Inner thoughts: selective, only when they materially change understanding."
-          : "Inner thoughts: rare; prefer behavior, dialogue and subtext.";
-
-  return `${cameraRule}
-${thoughtRule}
-Treat this as an interactive novel, not a single-character chatbot. NPCs can act, speak, disagree, leave and carry scenes.
-Reader-facing references to ${userIdentity.name} stay in second person (you/your) unless the user explicitly requests third person.`;
-}
-
-function buildChatControlInstructions(character) {
-  const length = String(character.response_length || "balanced").toLowerCase();
-  const narration = String(character.narration_style || "balanced").toLowerCase();
-  const pacing = String(character.pacing_mode || "natural").toLowerCase();
-
-  const lengthRule = length === "short"
-    ? "Length: compact. Usually 1–2 short paragraphs / beats. Stop when the beat lands."
-    : length === "long"
-      ? "Length: detailed only when useful. Usually 2–5 concise paragraphs; shorter is always allowed. Never pad."
-      : "Length: balanced. Usually 1–4 concise paragraphs, one meaningful beat.";
-
-  const narrationRule = narration === "dialogue"
-    ? "Texture: dialogue-forward. Keep narration brief and functional."
-    : narration === "immersive"
-      ? "Texture: immersive but selective. Use concrete sensory/action detail only when it matters."
-      : "Texture: balanced dialogue, action and selective description.";
-
-  const pacingRule = pacing === "quick"
-    ? "Pacing: quick; land the reaction fast."
-    : pacing === "cinematic"
-      ? "Pacing: cinematic only when the scene deserves it; never pad routine actions."
-      : "Pacing: natural, like a well-edited novel scene.";
-
-  const creativity = Number(character.creativity ?? 0.75);
-  const creativityRule = creativity >= 0.95
-    ? "Variation: bold but plausible. Prefer fresh social choices, surprising but character-consistent reactions, and structurally different continuations. Never invent canon."
-    : creativity <= 0.55
-      ? "Variation: conservative. Prefer the most straightforward, canon-safe continuation with simple natural phrasing."
-      : "Variation: natural. Vary wording, rhythm and character choices while staying grounded in established canon.";
-
-  return `${lengthRule}
-${narrationRule}
-${pacingRule}
-${creativityRule}`;
-}
-
-function buildPrompt({
-  character,
   messages,
   memories,
   loreEntries,
-  userIdentity,
-  conversationSummary = "",
-  sceneState = {},
-  storyTimeline = [],
-  relationshipState = {},
-  castState = {},
-  storyChapters = [],
-  activeChapter = {},
-  unfinishedThreads = [],
-  isRegeneration = false,
-  regenerationInstruction = "",
-  turnResolution = {} as Record<string, any>,
+  latestUserRecord,
+  responseLanguage,
+  turnIntent,
+  isRegeneration,
+  regenerationInstruction,
+  directorInstruction,
 }) {
+  const profile = [
+    `Name: ${character.name}`,
+    `Role: ${character.role || "not specified"}`,
+    `Description: ${character.description || "not specified"}`,
+    `Personality: ${character.personality || "not specified"}`,
+    `Relationship to ${userIdentity.name}: ${character.relationship || "not specified"}`,
+    `Values: ${character.character_values || "not specified"}`,
+    `Fears: ${character.fears || "not specified"}`,
+    `Habits: ${character.habits || "not specified"}`,
+    `Contradictions: ${character.contradictions || "not specified"}`,
+    `Speech style: ${character.speech_style || "not specified"}`,
+    `Boundaries: ${character.boundaries || "not specified"}`,
+    `Scenario/world: ${character.scenario || character.world || "not specified"}`,
+    `Example dialogue (voice reference, never copy): ${character.example_dialogue || "none"}`,
+  ].join("\n");
+
+  const persona = [
+    `Name: ${userIdentity.name}`,
+    `Pronouns: ${userIdentity.pronouns || "not specified"}`,
+    `Age: ${userIdentity.age || "not specified"}`,
+    `Role: ${userIdentity.role || "not specified"}`,
+    `Appearance: ${userIdentity.appearance || "not specified"}`,
+    `Personality: ${userIdentity.personality || "not specified"}`,
+    `Background: ${userIdentity.background || "not specified"}`,
+    `Goals/preferences: ${userIdentity.goals || "none"} / ${userIdentity.preferences || "none"}`,
+    `Boundaries: ${userIdentity.boundaries || "none"}`,
+    `Notes: ${userIdentity.notes || "none"}`,
+  ].join("\n");
+
+  const immediate = messages.slice(-18).map((message) => {
+    const speaker = message.sender === "user" ? userIdentity.name : character.name;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 3200)}`;
+  }).join("\n\n") || "none";
+
+  const older = messages.slice(-60, -18).map((message) => {
+    const speaker = message.sender === "user" ? userIdentity.name : character.name;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 900)}`;
+  }).join("\n") || "none";
+
   const memoryText = memories.length
-    ? memories.map((memory, index) => {
-        const authority = isAuthoritativeMemory(memory)
-          ? (memory.is_pinned ? "PINNED, AUTHORITATIVE" : "USER-SAVED, AUTHORITATIVE")
-          : "AUTOMATIC, TENTATIVE";
-        return `${index + 1}. [${memory.category || "event"}, ${authority}] ${memory.content}`;
-      }).join("\n")
+    ? memories.map((memory) => {
+      const authority = memory.is_pinned || memory.source === "user" ? "confirmed" : "tentative";
+      return `- [${authority}] ${cleanPromptValue(memory.content, 900)}`;
+    }).join("\n")
     : "none";
 
   const loreText = loreEntries.length
-    ? loreEntries.map((entry, index) => `${index + 1}. [${entry.entry_type}] ${entry.name}: ${entry.content}`).join("\n")
+    ? loreEntries.map((entry) => `- ${cleanPromptValue(entry.name, 120)}: ${cleanPromptValue(entry.content, 1000)}`).join("\n")
     : "none";
 
-  const immediateWindowSize = 12;
-  const rawHistoryWindowSize = 52;
-  const olderHistory = messages.length > immediateWindowSize
-    ? messages.slice(-rawHistoryWindowSize, -immediateWindowSize)
-    : [];
-  const historyText = olderHistory.length
-    ? olderHistory.map((message, index) => {
-        const type = message.sender === "user" ? "USER" : "CHARACTER";
-        const name = message.sender === "user" ? userIdentity.name : character.name;
-        const replyMeta = message.reply_to_message_id && message.reply_preview
-          ? ` reply_to="${escapePromptText(String(message.reply_preview).slice(0, 220))}"`
-          : "";
-        return `<m n="${index + 1}" type="${type}" speaker="${escapePromptText(name)}"${replyMeta}>${escapePromptText(compactMessageForPrompt(message.content))}</m>`;
-      }).join("\n")
-    : "none";
+  const derivedContext = JSON.stringify({
+    scene: conversation.scene_state || {},
+    relationship: conversation.relationship_state || {},
+    cast: conversation.cast_state || {},
+    open_threads: conversation.unresolved_threads || [],
+    recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-20) : [],
+  }).slice(0, 9000);
 
-  const immediateContinuity = messages.slice(-immediateWindowSize).map((message) => {
-    const speaker = message.sender === "user" ? userIdentity.name : character.name;
-    return `${speaker}: ${escapePromptText(compactMessageForPrompt(message.content))}`;
-  }).join("\n") || "none";
-  const latestUserAnchorRecord = [...messages].reverse().find((message) => message.sender === "user") || null;
-  const latestUserAnchor = latestUserAnchorRecord
-    ? escapePromptText(compactMessageForPrompt(latestUserAnchorRecord.content)).slice(0, 4000)
-    : "none";
+  const latest = compactMessageForPrompt(latestUserRecord.content, 5000);
+  const regeneration = isRegeneration
+    ? `This is a regeneration from the branch point. The rejected take is intentionally absent. Make a materially different choice, reaction, opening and dialogue—not a paraphrase. ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
+    : "This is a new canonical turn.";
 
-  const mandatoryDirection = regenerationInstruction
-    ? `MANDATORY DIRECTION FOR THIS ALTERNATE TAKE\n${regenerationInstruction}\nThe finished passage must visibly enact this direction. Do not merely adjust adjectives, tone, or wording. If it specifies what a character does, does not do, says, or where the scene goes, that outcome is required.\n\n`
-    : "";
+  return `You are Velvet's narrative engine. Write the next turn of an immersive private roleplay as polished contemporary fiction.
 
-  const regenerationBranchNotice = isRegeneration
-    ? `REGENERATION BRANCH-POINT NOTICE
-The LATEST CONTINUITY messages below end immediately before the rejected take and are authoritative. CURRENT SCENE, ROLLING SUMMARY, CAST and OPEN THREADS are derived aids that may still contain details learned from that rejected take. Treat any action, prop movement, spoken line, warning, denial or decision found only in derived aids as unconfirmed and do not replay it. Continue from the branch point with a new choice.
+NON-NEGOTIABLE PRIORITY
+1. Respond to the latest user turn below, in the current scene, before anything else.
+2. Preserve visible continuity and the character profile. Never invent off-screen messages, visits, habits, schedules, relatives' actions, debts, exact durations or shared history.
+3. The user exclusively controls ${userIdentity.name}. Never invent ${userIdentity.name}'s dialogue, thoughts, feelings, reactions, choices or movements.
+4. Write ${character.name} as a specific person. Guarded, proud, teasing or emotionally avoidant does not mean cruel, contemptuous, robotic or therapeutic.
+5. Dialogue must sound like something this character would actually say. Never use customer-service phrases such as “I'm listening,” “I understand,” “go on,” “tell me more,” or a bare “okay” as the substance of the turn.
 
-`
-    : "";
-
-  return `
-${mandatoryDirection}${regenerationBranchNotice}TURN RESOLUTION
-${formatNaturalTurnResolution(turnResolution, userIdentity, character)}
+TURN CONTRACT
+- Response language: ${responseLanguage}. Match the language of the latest ordinary user message.
+- Intent: ${turnIntent.kind}.
+- Direct question: ${turnIntent.isQuestion ? "yes—answer it clearly" : "no"}.
+- Silent continuation streak: ${turnIntent.silentCount}.
+- Medium: ${turnIntent.medium}.
+- Length: ${getLengthGuidance(character.response_length, turnIntent.kind)}
+- Use narration and spoken dialogue in a natural balance. A casual line still deserves a complete social beat, not filler.
+- If the user says “it's okay,” “fine,” or otherwise releases tension, show what that does to ${character.name}; let ${character.name} answer in character and move the shared moment one small step. Do not respond as a counselor acknowledging information.
+- If the user expresses affection indirectly through loyalty/history, or directly says they missed/care/love ${character.name}, show the private impact appropriate to the profile before ${character.name}'s outward answer. Subtext must matter without forcing a confession.
+- If the user sends only dots/silence, continue through ${character.name}'s action, thought and audible dialogue. After two consecutive silent turns, return the meaningful focus to ${character.name} even if an NPC spoke last.
+- If ${userIdentity.name} leaves, showers, walks away or otherwise exits, do not narrate inside ${userIdentity.name}'s private space. Follow ${character.name}'s immediate reaction and give ${character.name} something meaningful to say, think or do.
+- If the latest turn is a direct text message, show its effect and normally include ${character.name}'s written reply before NPC banter.
+- Do not repeat the same gesture, denial, accusation, rhetorical tactic or signature line from recent turns.
+- Do not over-describe rain, breathing, jaws, umbrellas, wet pavement, silence or eye movements. Choose only details that change the emotional beat.
+- End after the beat lands. Never cut off mid-sentence.
 
 CHARACTER
-Name: ${character.name}
-Role/archetype: ${character.role || "not specified"}
-Description: ${character.description || "not specified"}
-Personality: ${character.personality || "not specified"}
-Relationship to ${userIdentity.name}: ${character.relationship || "not specified"}
-Values: ${character.character_values || "not specified"}
-Fears: ${character.fears || "not specified"}
-Habits: ${character.habits || "not specified"}
-Contradictions: ${character.contradictions || "not specified"}
-Speech style: ${character.speech_style || "not specified"}
-Boundaries: ${character.boundaries || "not specified"}
-Scenario/world: ${character.scenario || character.world || "not specified"}
-Example dialogue: ${character.example_dialogue || "none"}
+${profile}
 
 USER-CONTROLLED PROTAGONIST
-Name: ${userIdentity.name}
-Pronouns: ${userIdentity.pronouns || "not specified"}
-Age: ${userIdentity.age || "not specified"}
-Role: ${userIdentity.role || "not specified"}
-Appearance: ${userIdentity.appearance || "not specified"}
-Personality: ${userIdentity.personality || "not specified"}
-Background: ${userIdentity.background || "not specified"}
-Goals/preferences: ${userIdentity.goals || "none"} / ${userIdentity.preferences || "none"}
-Boundaries: ${userIdentity.boundaries || "none"}
-Speech style: ${userIdentity.speechStyle || "not specified"}
-Notes: ${userIdentity.notes || "none"}
+${persona}
 
-LATEST CONTINUITY — highest factual context after latest user turn
-${immediateContinuity}
+CONTROLS
+romance=${character.romance_intensity}/100, flirting=${character.flirting}/100, humor=${character.humor}/100, drama=${character.drama}/100, initiative=${character.initiative}/100, dialogue=${character.dialogue_frequency}/100, description=${character.description_level}/100, independence=${character.character_independence}/100, inner_thoughts=${character.inner_thoughts}, camera=${character.narrative_camera}, pacing=${character.pacing_mode}, preset=${character.story_preset}
 
-CURRENT SCENE
-${formatSceneState(sceneState)}
-
-RELATIONSHIP
-${formatRelationshipState(relationshipState)}
-
-CAST
-${formatCastState(castState)}
-
-OPEN THREADS
-${formatUnfinishedThreads(unfinishedThreads)}
-
-ROLLING SUMMARY
-${conversationSummary?.trim().slice(0, 6000) || "none"}
-
-RECENT MAJOR TIMELINE
-${formatStoryTimeline(storyTimeline)}
-
-CHAPTER CONTEXT
-${formatStoryChapters(storyChapters, activeChapter)}
-
-RELEVANT MEMORIES
+CONFIRMED OR USER-SAVED MEMORIES
 ${memoryText}
-Unpinned AUTOMATIC memories are derived recall aids, not factual authority. They may guide attention only when the profile, lore or explicit user transcript confirms them.
 
 ACTIVE LORE
 ${loreText}
 
-EARLIER RECENT HISTORY
-${historyText}
+OLDER RECENT HISTORY
+${older}
 
-FINAL PRE-WRITE CHECK
-- Obey the latest USER turn and mandatory regeneration direction without controlling ${userIdentity.name}.
-- Keep the resolved medium and camera route. If a return/follow route is active, ${character.name} must be the meaningful focus.
-- Use only established past facts. A new present action or choice must arise from the visible moment; it cannot invent a debt, recurring habit, exact duration or shared plan as its justification.
-- Read the whole recent exchange, not only the last sentence. Preserve what was actually said, answer the user's exact grievance, and do not make them defend it again.
-- If denial, blame, dismissal or counterattack already appeared, use a different conversational strategy now. Do not recycle its intent, metaphor or emotional conclusion under new wording.
-- Include character voice when silent_continue=yes. Remove filler, repeated beats and stock AI gestures.
-- If the latest user turn is a direct text, make it alter ${character.name}'s behavior and normally include ${character.name}'s written reply. Do not let an NPC interrogation loop replace it.
-- Make English idiomatic and dialogue character-specific. Stop when the beat lands.
+IMMEDIATE CONTINUITY—READ LITERALLY
+${immediate}
 
-AUTHORITATIVE LATEST-TURN ANCHOR — read this last
-message_id=${latestUserAnchorRecord?.id || "unknown"}
-${userIdentity.name}: ${latestUserAnchor}
-The passage must respond to this exact turn now. Do not answer or quote an older user question merely because it is emotionally salient in the history. If a planned opening belongs to an earlier turn, discard it and choose a response anchored here.
-Then write ONLY the next roleplay passage. Do not explain these checks.
-`;
+DERIVED CONTINUITY AIDS—TENTATIVE IF THEY CONFLICT WITH THE TRANSCRIPT
+${derivedContext}
+
+ROLLING SUMMARY—TENTATIVE IF IT CONFLICTS WITH THE TRANSCRIPT
+${cleanPromptValue(conversation.summary || "none", 6000)}
+
+GENERATION MODE
+${regeneration}
+${directorInstruction ? `Director instruction: ${directorInstruction}` : ""}
+
+OUTPUT
+Return JSON with:
+- turn_reading: one sentence stating the literal social meaning of the latest user turn and what ${character.name} must respond to now.
+- canon_claims: a list of every off-screen or historical factual claim used in the reply; keep it empty unless that exact fact appears in the profile, lore, a confirmed memory or the visible transcript.
+- reply: only the finished roleplay prose.
+- continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
+
+AUTHORITATIVE LATEST USER TURN (message_id=${latestUserRecord.id})
+${userIdentity.name}: ${latest}
+
+Write the response to that exact turn now.`;
 }
 
-function buildFinalStyleReminder(character) {
-  const narration = String(character.narration_style || "balanced").toLowerCase();
-  const length = String(character.response_length || "balanced").toLowerCase();
-
-  const narrationReminder = narration === "dialogue"
-    ? "Mostly dialogue: dialogue must visibly dominate the final response; keep action/narration brief."
-    : narration === "immersive"
-      ? "Immersive: narration/action and concrete scene texture must visibly dominate; dialogue is secondary unless the moment requires it."
-      : "Balanced: naturally mix dialogue, action, and description.";
-
-  const lengthReminder = length === "short"
-    ? "Keep it compact and stop as soon as the beat lands."
-    : length === "long"
-      ? "Add depth only where it matters; shorter is always allowed and filler is forbidden."
-      : "Use moderate detail and end when the meaningful beat is complete.";
-
-  const pacing = String(character.pacing_mode || "natural").toLowerCase();
-  const pacingReminder = pacing === "quick"
-    ? "Quick pace: land one useful beat fast and cut connective prose."
-    : pacing === "cinematic"
-      ? "Cinematic pace: use purposeful scene texture and transitions, but never pad for length."
-      : "Natural pace: read like a well-edited novel scene with no filler.";
-
-  return `${narrationReminder} ${lengthReminder} ${pacingReminder}`;
+async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {
+  return await callGeminiWithFailover({
+    apiKey,
+    systemInstruction: "Produce one grounded, emotionally intelligent roleplay continuation. The prose must be natural, complete and anchored to the final latest-user-turn block. Return valid JSON only.",
+    prompt,
+    maxOutputTokens: getMaximumOutputTokens(character.response_length),
+    temperature: getTemperature(character.creativity, isRegeneration),
+    isCancelled,
+  });
 }
 
-function applyNaturalOutputGuard({ text, turnResolution = {} as Record<string, any>, characterName }) {
-  let output = String(text || "").trim();
-  if (!output) return output;
-
-  // Keep silent continues short.
-  if (turnResolution.silentContinue) {
-    const paragraphs = output.split(/\n\s*\n/).filter(Boolean);
-    if (paragraphs.length > 3) output = paragraphs.slice(0, 3).join("\n\n").trim();
-  }
-
-  // Scene shifts should not reopen stale physical continuity.
-  if (turnResolution.sceneShift) {
-    output = output.replace(/^\s*(?:Meanwhile,?\s+)?(?:back\s+(?:in|at)\s+[^.]{1,100}[.]\s*)/i, "");
-  }
-
-  const digital = ["group_chat", "direct_message"].includes(turnResolution.digitalMode);
-
-  // Hard communication-medium formatting guard
-  // Spoken in-person/phone dialogue must never leak the Markdown blockquote
-  // syntax reserved for written DMs and group chats. This is deterministic,
-  // so even if the model ignores the prompt the user never sees a fake text bubble.
-  if (!digital) {
-    output = output
-      .split("\n")
-      .map((line) => line.replace(/^\s*>\s?/, ""))
-      .join("\n")
-      .trim();
-  }
-
-  if (digital) {
-    const lines = output.split("\n");
-    const knownNames = [characterName, ...(turnResolution.groupCandidates || []), ...(turnResolution.taggedHandles || [])]
-      .map((name) => String(name || "").trim())
-      .filter(Boolean);
-
-    const speakerPattern = knownNames.length
-      ? new RegExp(`^\\s*(?:\\*\\*)?(?:${knownNames.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?:\\*\\*)?\\s*:\\s*`, "i")
-      : /^\s*(?:\*\*)?[\p{L}\p{N}_ -]{2,40}(?:\*\*)?\s*:\s*/iu;
-
-    const normalized = turnResolution.messageCutaway
-      ? lines.map((line) => /^\s*>/.test(line) ? line.trimStart() : line)
-      : lines.map((line) => {
-          if (/^\s*>/.test(line)) return line.trimStart();
-          if (speakerPattern.test(line)) return `> ${line.trim()}`;
-          // A standalone quoted line inside a text-only exchange is a written
-          // message. A physical cutaway skips this conversion because nearby
-          // characters may still be speaking aloud.
-          if (/^\s*["“][^"”\n]+["”]\s*[.!?…]*\s*$/.test(line)) return `> ${line.trim()}`;
-          return line;
-        });
-
-    output = normalized.join("\n").trim();
-
-    // Once the model has produced actual written-message lines, keep the output
-    // inside the digital medium. This prevents cinematic phone/room cutaways in
-    // both DMs and group chats.
-    const quotedLines = output.split("\n").filter((line) => /^\s*>\s*\S/.test(line));
-    if (quotedLines.length && !turnResolution.messageCutaway) {
-      output = quotedLines.join("\n\n");
-    }
-  }
-
-  // Narrative economy: collapse pathological runs of tiny atmospheric paragraphs.
-  const paragraphs = output.split(/\n\s*\n/).filter(Boolean);
-  if (paragraphs.length > 8 && String(turnResolution.mode || "") !== "scene_shift") {
-    output = paragraphs.slice(0, 8).join("\n\n").trim();
-  }
-
-  return output;
+async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Make the character's reaction specific and socially responsive. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  return await callGeminiWithFailover({
+    apiKey,
+    systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
+    prompt: repairPrompt,
+    maxOutputTokens: getMaximumOutputTokens(character.response_length),
+    temperature: Math.min(1.05, getTemperature(character.creativity, true) + 0.06),
+    isCancelled,
+  });
 }
 
-function hasWrittenDigitalReply(value = "") {
-  return /^\s*>\s*\S/m.test(String(value || ""));
-}
+async function callGeminiWithFailover({
+  apiKey,
+  systemInstruction,
+  prompt,
+  maxOutputTokens,
+  temperature,
+  isCancelled,
+}): Promise<ModelResult> {
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter(Boolean))];
+  let lastError = "Gemini could not generate a response";
+  let quotaReached = false;
 
-function stripDialogueForAgencyCheck(value = "") {
-  return String(value || "")
-    .replace(/[“”]([^“”]{0,1000})[“”]/g, " ")
-    .replace(/"([^"\n]{0,1000})"/g, " ")
-    .replace(/^\s*>.*$/gm, " ");
-}
+  for (const model of models) {
+    if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
 
-function userEstablishedActionVerbs(latestUserMessage = "") {
-  const normalized = String(latestUserMessage || "").toLowerCase();
-  const verbs = [
-    "smile", "laugh", "nod", "shake", "walk", "leave", "look", "glance", "turn", "step",
-    "grab", "take", "sit", "stand", "move", "cry", "wave", "shrug", "approach", "follow",
-    "open", "close", "text", "call", "say", "ask", "reply", "whisper", "chuckle", "scoff",
-  ];
-  return new Set(verbs.filter((verb) => new RegExp(`\\bi\\s+(?:\\w+\\s+){0,2}${verb}(?:e?d|s|ing)?\\b`, "i").test(normalized)));
-}
-
-function likelyControlsUserPOV(text, userName, latestUserMessage = "") {
-  const prose = stripDialogueForAgencyCheck(text);
-  const escaped = String(userName || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const established = userEstablishedActionVerbs(latestUserMessage);
-
-  const mentalOrReactionPattern = /\byou\s+(?:feel|felt|think|thought|realize|realized|decide|decided|want|wanted|know|knew|wonder|wondered|notice|noticed|freeze|froze|flinch|flinched|blush|blushed|tense|tensed|hesitate|hesitated|panic|panicked)\b/i;
-  const bodyReactionPattern = /\byour\s+(?:heart|pulse|stomach|chest|breath|cheeks|face|hands|fingers|knees|throat)\s+(?:tightens?|drops?|jumps?|races?|catches?|warms?|burns?|shakes?|trembles?|goes|feels|twists?)\b/i;
-  if (mentalOrReactionPattern.test(prose) || bodyReactionPattern.test(prose)) return true;
-
-  const actionMatches = [...prose.matchAll(/\byou\s+(smile|laugh|nod|shake|walk|leave|look|glance|turn|step|grab|take|sit|stand|move|cry|wave|shrug|approach|follow|open|close|text|call|say|ask|reply|whisper|chuckle|scoff)(?:e?d|s|ing)?\b/gi)];
-  if (actionMatches.some((match) => !established.has(String(match[1] || "").toLowerCase()))) return true;
-
-  if (escaped) {
-    const namedActionPattern = new RegExp(`(?:\\*|^|\\n)\\s*${escaped}\\s+(?:smiled|laughed|nodded|shook|walked|followed|looked|felt|thought|realized|decided|said|asked|whispered|replied|turned|stepped|grabbed|took|sat|stood|left|went|moved|blushed|cried)\\b`, "i");
-    const namedMentalPattern = new RegExp(`\\b${escaped}\\s+(?:felt|thought|wanted|knew|realized|wondered|decided)\\b`, "i");
-    if (namedActionPattern.test(prose) || namedMentalPattern.test(prose)) return true;
-  }
-
-  return false;
-}
-
-async function repairUserPOVViolation({ apiKey, text, userName, latestUserMessage = "", language }) {
-  try {
-    const response = await fetch(GEMINI_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Repair this private roleplay passage. Keep the same events, tone, dialogue, formatting and length as closely as possible, but remove every action, dialogue, thought, feeling, reaction or decision attributed to the user-controlled protagonist ${userName} UNLESS that exact user action was already established in the latest user turn below. Never invent a reaction for the user. Keep all reader-facing references to the user in second person (you/your), never she/he/they/her/him/them or the user name unless another character says the name in dialogue. Other characters and neutral observable narration may remain. Do not add new events. Output only the repaired passage in ${language}.
-
-LATEST USER TURN:
-${String(latestUserMessage || "").slice(0, 2500)}
-
-PASSAGE:
-${text.slice(0, 12000)}` }] }],
-        generationConfig: { maxOutputTokens: 1600 },
-      }),
-    });
-    if (!response.ok) return text;
-    const data = await response.json();
-    return data?.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text || "").join("").trim() || text;
-  } catch {
-    return text;
-  }
-}
-
-function isAuthoritativeMemory(memory = {} as Record<string, any>) {
-  if (memory?.is_pinned) return true;
-  return String(memory?.source || "manual").trim().toLowerCase() !== "automatic";
-}
-
-function buildAuthoritativeGroundingFacts({
-  character = {} as Record<string, any>,
-  userIdentity = {} as Record<string, any>,
-  messages = [],
-  memories = [],
-  loreEntries = [],
-}) {
-  const characterProfile = [
-    character.name,
-    character.role,
-    character.description,
-    character.personality,
-    character.relationship,
-    character.character_values,
-    character.fears,
-    character.habits,
-    character.contradictions,
-    character.speech_style,
-    character.scenario,
-    character.world,
-    character.first_message,
-  ].filter(Boolean).join("\n");
-  const userProfile = [
-    userIdentity.name,
-    userIdentity.role,
-    userIdentity.background,
-    userIdentity.personality,
-    userIdentity.goals,
-    userIdentity.preferences,
-    userIdentity.notes,
-  ].filter(Boolean).join("\n");
-  const explicitUserHistory = (Array.isArray(messages) ? messages : [])
-    .filter((message) => message.sender === "user")
-    .slice(-32)
-    .map((message) => compactMessageForPrompt(message.content))
-    .join("\n");
-  const durableMemories = (Array.isArray(memories) ? memories : [])
-    .filter((memory) => isAuthoritativeMemory(memory))
-    .slice(0, 24)
-    .map((memory) => String(memory?.content || "").trim())
-    .filter(Boolean)
-    .join("\n");
-  const lore = (Array.isArray(loreEntries) ? loreEntries : [])
-    .slice(0, 18)
-    .map((entry) => `${entry?.name || "Lore"}: ${entry?.content || ""}`)
-    .join("\n");
-
-  return [
-    "CHARACTER PROFILE", characterProfile,
-    "USER PROFILE", userProfile,
-    "EXPLICIT USER TURNS", explicitUserHistory,
-    "AUTHORITATIVE MEMORIES", durableMemories,
-    "LORE", lore,
-  ].filter(Boolean).join("\n").slice(0, 30000);
-}
-
-function extractGeminiCandidate(data) {
-  const candidate = data?.candidates?.[0];
-  return {
-    text: candidate?.content?.parts
-      ?.filter((part) => typeof part.text === "string" && !part.thought)
-      .map((part) => part.text)
-      .join("")
-      .trim() || "",
-    finishReason: String(candidate?.finishReason || "").trim().toUpperCase(),
-  };
-}
-
-function getIncompleteReplySignals(value = "", finishReason = "") {
-  const text = String(value || "").trim();
-  const signals = [];
-  const normalizedFinishReason = String(finishReason || "").trim().toUpperCase();
-  if (normalizedFinishReason && normalizedFinishReason !== "STOP") {
-    signals.push(`finish_${normalizedFinishReason.toLowerCase()}`);
-  }
-  if (!text) {
-    signals.push("empty_reply");
-    return signals;
-  }
-
-  const straightQuotes = (text.match(/(?<!\\)"/g) || []).length;
-  const openCurlyQuotes = (text.match(/“/g) || []).length;
-  const closeCurlyQuotes = (text.match(/”/g) || []).length;
-  if (straightQuotes % 2 !== 0) signals.push("unbalanced_straight_quotes");
-  if (openCurlyQuotes !== closeCurlyQuotes) signals.push("unbalanced_curly_quotes");
-
-  const pairs = [["(", ")"], ["[", "]"]];
-  for (const [open, close] of pairs) {
-    const opens = text.split(open).length - 1;
-    const closes = text.split(close).length - 1;
-    if (opens > closes) signals.push(open === "(" ? "unclosed_parenthesis" : "unclosed_bracket");
-  }
-
-  if (/[,:;—–-]\s*$/.test(text)) signals.push("dangling_punctuation");
-  if (/\b(?:and|but|or|because|so|if|when|while|although|though|that|the|a|an|to|of|for|with|without|being|been|was|were|is|are|am|would|could|should|will|can|my|your|his|her|their)\s*$/i.test(text)) {
-    signals.push("dangling_terminal_word");
-  }
-
-  return [...new Set(signals)];
-}
-
-function trimIncompleteReplyTail(value = "") {
-  let text = String(value || "").trim();
-  if (!text) return "";
-
-  const closeUnbalancedDialogue = (openQuote, closeQuote = openQuote) => {
-    const openCount = text.split(openQuote).length - 1;
-    const closeCount = closeQuote === openQuote ? openCount : text.split(closeQuote).length - 1;
-    const unbalanced = closeQuote === openQuote ? openCount % 2 !== 0 : openCount > closeCount;
-    if (!unbalanced) return;
-    const lastOpen = text.lastIndexOf(openQuote);
-    if (lastOpen < 0) return;
-    const fragment = text.slice(lastOpen + openQuote.length);
-    const lastBoundary = Math.max(fragment.lastIndexOf("."), fragment.lastIndexOf("?"), fragment.lastIndexOf("!"));
-    text = lastBoundary >= 0
-      ? `${text.slice(0, lastOpen + openQuote.length)}${fragment.slice(0, lastBoundary + 1)}${closeQuote}`
-      : text.slice(0, lastOpen).trim();
-  };
-
-  closeUnbalancedDialogue('"');
-  closeUnbalancedDialogue("“", "”");
-
-  if (/[,:;—–-]\s*$/.test(text) || /\b(?:and|but|or|because|so|if|when|while|that|the|a|an|to|of|for|with|being|been|would|could|should|will|can|my|your|his|her|their)\s*$/i.test(text)) {
-    const lastBoundary = Math.max(text.lastIndexOf("."), text.lastIndexOf("?"), text.lastIndexOf("!"));
-    if (lastBoundary >= 0) text = text.slice(0, lastBoundary + 1).trim();
-  }
-
-  return text.trim();
-}
-
-function collectFamilyClaimActions(value = "") {
-  const chunks = String(value || "")
-    .split(/(?:[.!?]\s+|\n+)/)
-    .map((chunk) => chunk.trim())
-    .filter(Boolean);
-  const actions = new Set();
-  let familyContext = false;
-
-  for (const chunk of chunks) {
-    const namesFamily = /\b(?:mum|mom|mother|dad|father|parents?|family)\b/i.test(chunk);
-    const continuesFamily = familyContext && /^["“']?(?:she|he|they|her|his|their)(?:'s|\s|\b)/i.test(chunk);
-    const connected = namesFamily || continuesFamily;
-    if (connected) {
-      if (/\b(?:text(?:s|ed|ing)?|messag(?:e|es|ed|ing)|dm(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_text");
-      if (/\b(?:call(?:s|ed|ing)?|phone(?:s|d|ing)?|rang|ringing)\b/i.test(chunk)) actions.add("family_call");
-      if (/\b(?:tell(?:s|ing)?|told|say(?:s|ing)?|said|mention(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_tell");
-      if (/\b(?:ask(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_ask");
-      if (/\b(?:lecture(?:s|d|ing)?|scold(?:s|ed|ing)?|sermon(?:s)?|advice)\b/i.test(chunk)) actions.add("family_lecture");
-      if (/\b(?:host(?:s|ed|ing)?|plan(?:s|ned|ning)?|organi[sz](?:e|es|ed|ing)|arrang(?:e|es|ed|ing))\b/i.test(chunk)) actions.add("family_hosting");
-      if (/\b(?:check(?:s|ed|ing)?|make sure|remind(?:s|ed|ing)?|worr(?:y|ies|ied|ying))\b/i.test(chunk)) actions.add("family_monitoring");
-      if (/\b(?:eat(?:s|en|ing)?|food|meal(?:s)?|sleep(?:s|ing)?|medication|medicine|grade(?:s)?|class(?:es)?)\b/i.test(chunk)) actions.add("family_caretaking_detail");
-      if (/\b(?:flower arrangements?|catering|pastr(?:y|ies)|dinner|gathering|wedding|reception|party)\b/i.test(chunk)) actions.add("family_specific_detail");
-    }
-    familyContext = namesFamily;
-  }
-
-  return actions;
-}
-
-function normalizeExactQuantityText(value = "") {
-  const numberWords = {
-    one: "1", two: "2", three: "3", four: "4", five: "5",
-    six: "6", seven: "7", eight: "8", nine: "9", ten: "10",
-    uno: "1", dos: "2", tres: "3", cuatro: "4", cinco: "5",
-    seis: "6", siete: "7", ocho: "8", nueve: "9", diez: "10",
-    once: "11", twelve: "12", doce: "12",
-  };
-  return String(value || "")
-    .toLowerCase()
-    .replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/g, (word) => numberWords[word] || word)
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function findUnsupportedEverydayClaimSignals({
-  candidate = "",
-  groundingFacts = "",
-}) {
-  const text = String(candidate || "");
-  if (!text.trim()) return [];
-  const facts = String(groundingFacts || "");
-  const normalizedFacts = normalizeExactQuantityText(facts);
-  const signals = [];
-
-  const addWhenUnsupported = (label, candidatePattern, canonPattern = candidatePattern) => {
-    if (candidatePattern.test(text) && !canonPattern.test(facts)) signals.push(label);
-  };
-
-  // Exact quantities and durations need exact support. "In a while" cannot be
-  // silently upgraded to four days, a week or ten years.
-  const durationPatterns = [
-    /\b(?:it(?:'s| has)\s+been|been|for|of|since|in)\s+(?:(?:nearly|almost|over|about|the last)\s+)?(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b/gi,
-    /\b(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[ -](?:minute|hour|day|week|month|year)(?:-long)?\b/gi,
-  ];
-  for (const pattern of durationPatterns) {
-    const matches = [...text.matchAll(pattern)];
-    for (const match of matches) {
-      const exact = normalizeExactQuantityText(match[0]);
-      if (exact && !normalizedFacts.includes(exact)) {
-        signals.push("unsupported_exact_duration");
-        break;
+    const controller = new AbortController();
+    let watching = true;
+    const timeoutId = setTimeout(() => controller.abort(), 26000);
+    const cancellationWatcher = (async () => {
+      while (watching && !controller.signal.aborted) {
+        await delay(180);
+        if (watching && await isCancelled()) controller.abort();
       }
+    })();
+
+    try {
+      const response = await fetch(modelEndpoint(model), {
+        method: "POST",
+        headers: geminiHeaders(apiKey),
+        signal: controller.signal,
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens,
+            temperature,
+            topP: 0.92,
+            thinkingConfig: { thinkingLevel: "LOW" },
+            responseMimeType: "application/json",
+            responseJsonSchema: {
+              type: "object",
+              required: ["turn_reading", "canon_claims", "reply", "continuity_note"],
+              properties: {
+                turn_reading: { type: "string" },
+                canon_claims: { type: "array", items: { type: "string" } },
+                reply: { type: "string" },
+                continuity_note: { type: "string" },
+              },
+            },
+          },
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        lastError = data?.error?.message || `Gemini returned ${response.status}`;
+        quotaReached ||= response.status === 429;
+        if ([429, 500, 502, 503, 504].includes(response.status)) continue;
+        throw new Error(lastError);
+      }
+
+      const raw = extractCandidateText(data);
+      const envelope = parseModelEnvelope(raw);
+      const finishReason = String(data?.candidates?.[0]?.finishReason || "");
+      console.log("[character-chat] model completed", { model, finishReason });
+      return { ...envelope, finishReason, model };
+    } catch (error) {
+      if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
+      if (getErrorName(error) === "AbortError") {
+        lastError = "The AI took too long to answer. Please try again.";
+        continue;
+      }
+      lastError = getErrorMessage(error);
+    } finally {
+      clearTimeout(timeoutId);
+      watching = false;
+      void cancellationWatcher;
     }
   }
 
-  // A passing mention establishes only that the relative was referenced. It
-  // does not authorize a new phone call, text, warning or caretaking routine.
-  // Compare the actions attached to that relative, not just the word "mom".
-  const candidateFamilyActions = collectFamilyClaimActions(text);
-  const canonFamilyActions = collectFamilyClaimActions(facts);
-  for (const action of candidateFamilyActions) {
-    if (!canonFamilyActions.has(action)) signals.push(`unsupported_${action}`);
-  }
-
-  // Exact consumption quantities need exact evidence, just like durations.
-  const consumptionPattern = /\b(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:energy drinks?|coffees?|sodas?|meals?|snacks?)\b/gi;
-  for (const match of text.matchAll(consumptionPattern)) {
-    const exact = normalizeExactQuantityText(match[0]);
-    if (exact && !normalizedFacts.includes(exact)) {
-      signals.push("unsupported_consumption_quantity");
-      break;
-    }
-  }
-
-  addWhenUnsupported("unsupported_mother", /\b(?:mum|mom|mother)\b/i, /\b(?:mum|mom|mother)\b/i);
-  addWhenUnsupported("unsupported_father", /\b(?:dad|father)\b/i, /\b(?:dad|father)\b/i);
-  addWhenUnsupported("unsupported_coach", /\bcoach\b/i, /\bcoach\b/i);
-  addWhenUnsupported("unsupported_practice", /\bpractice(?:s|d|ing)?\b/i, /\bpractice(?:s|d|ing)?\b/i);
-  addWhenUnsupported("unsupported_exam_schedule", /\b(?:finals?|midterms?|exam(?:s)?)\b/i, /\b(?:finals?|midterms?|exam(?:s)?)\b/i);
-  addWhenUnsupported("unsupported_weekend_plan", /\b(?:weekend plans?|plans? for (?:the )?weekend)\b/i, /\b(?:weekend plans?|plans? for (?:the )?weekend)\b/i);
-  addWhenUnsupported("unsupported_visit", /\b(?:stopped|came|went|dropped|swung)\s+by\b/i, /\b(?:stopped|came|went|dropped|swung)\s+by\b/i);
-  addWhenUnsupported("unsupported_locked_door", /\b(?:your|the)\s+door\s+(?:was|is|stayed)\s+locked\b/i, /\b(?:your|the)\s+door\s+(?:was|is|stayed)\s+locked\b/i);
-  addWhenUnsupported("unsupported_domestic_detail", /\b(?:your\s+(?:apartment|room|place)|coffee cups?|notification badge|layers? of notes?)\b/i, /\b(?:your\s+(?:apartment|room|place)|coffee cups?|notification badge|layers? of notes?)\b/i);
-  addWhenUnsupported("unsupported_recurring_habit", /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i, /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i);
-  addWhenUnsupported("unsupported_attributed_routine", /\b(?:your\s+(?:idea|version|way|routine)[^.!?\n]{0,100}\busually\b|usually\s+(?:involves?|means?|includes?)|staring\s+at\s+(?:a|the)\s+screen\s+until)\b/i, /\b(?:your\s+(?:idea|version|way|routine)[^.!?\n]{0,100}\busually\b|usually\s+(?:involves?|means?|includes?)|staring\s+at\s+(?:a|the)\s+screen\s+until)\b/i);
-  addWhenUnsupported("unsupported_attributed_counterfactual", /\b(?:we\s+both\s+know\s+)?you(?:'d|\s+would|\s+would've|'d\s+have)\s+(?:have\s+)?(?:just\s+)?(?:stolen|taken|eaten|left|blamed|forgotten|ditched|ignored)\b/i, /\b(?:we\s+both\s+know\s+)?you(?:'d|\s+would|\s+would've|'d\s+have)\s+(?:have\s+)?(?:just\s+)?(?:stolen|taken|eaten|left|blamed|forgotten|ditched|ignored)\b/i);
-  addWhenUnsupported("unsupported_unestablished_opportunity", /\byou\s+could(?:'ve|\s+have)\s+(?:just\s+)?(?:texted|called|asked|told|messaged|come|came|shown up|said something)\b/i, /\byou\s+could(?:'ve|\s+have)\s+(?:just\s+)?(?:texted|called|asked|told|messaged|come|came|shown up|said something)\b/i);
-  addWhenUnsupported("unsupported_lab_claim", /\byou(?:'re| are| have been|'ve been)\s+(?:the\s+one\s+who(?:'s| has)\s+been\s+)?hiding\s+in\s+(?:the\s+)?lab\b/i, /\byou(?:'re| are| have been|'ve been)\s+(?:the\s+one\s+who(?:'s| has)\s+been\s+)?hiding\s+in\s+(?:the\s+)?lab\b/i);
-  addWhenUnsupported("unsupported_event_detail", /\b(?:catering trays?|flower arrangements?|reception tables?|wedding favors?)\b/i, /\b(?:catering trays?|flower arrangements?|reception tables?|wedding favors?)\b/i);
-  addWhenUnsupported("unsupported_obligation", /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i, /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i);
-  addWhenUnsupported("unsupported_user_condition", /\byou\s+look\s+like\s+you\s+haven't\b/i, /\byou\s+look\s+like\s+you\s+haven't\b/i);
-
-  return [...new Set(signals)];
+  if (quotaReached) throw new Error("The free AI limit was reached. Try again later.");
+  throw new Error(lastError);
 }
 
-function likelyNeedsGroundedReplyRepair({
-  candidate = "",
-  recentCharacterBeats = [],
-  groundingFacts = "",
-  latestUserMessage = "",
-}) {
-  const text = String(candidate || "");
-  if (!text.trim()) return false;
-
-  if (findUnsupportedEverydayClaimSignals({ candidate: text, groundingFacts }).length) return true;
-
-  // These patterns do not prove that a claim is false. They mark claims that
-  // require an evidence-aware editorial pass: invented routines, possessions,
-  // obligations and precise relationship history are the most common way a
-  // superficially fluent reply quietly breaks canon.
-  const riskyEverydayClaims = [
-    /\blike\s+(?:last time|you always do)\b/i,
-    /\b(?:twice|three times|four times|\d+\s+times?)\s+(?:today|yesterday|this week|last week|last night)\b/i,
-    /\b(?:discarded|empty|half-written|unread)\s+(?:coffee cups?|messages?|algorithms?|assignments?)\b/i,
-    /\b(?:biohazard|scrambled eggs|vending machine|fan club|social obligations)\b/i,
-    /\b(?:python script|missing bracket|code-compile|compile emergency|hiding in (?:the )?lab|staring at (?:a|the) screen until)\b/i,
-  ];
-  if (riskyEverydayClaims.some((pattern) => pattern.test(text))) return true;
-
-  const asksForCharacterUpdate = /\b(?:what|how)\s+about\s+you\b|\bwhat(?:'ve| have)\s+you\s+been\s+up\s+to\b/i.test(String(latestUserMessage || ""));
-  const redirectsUpdateBackToUser = /\b(?:i(?:'ve| have)\s+been\s+around|you(?:'re| are)\s+the\s+one|enough\s+about\s+me|what\s+about\s+you)\b/i.test(text);
-  if (asksForCharacterUpdate && redirectsUpdateBackToUser) return true;
-
-  const lower = text.toLowerCase();
-  const recent = (Array.isArray(recentCharacterBeats) ? recentCharacterBeats : [])
-    .join("\n")
-    .toLowerCase();
-  const fillerTerms = ["rain", "umbrella", "puddle", "canopy", "pavement", "shoulder", "grip", "handle"];
-  const fillerHits = fillerTerms.reduce((count, term) => {
-    const matches = lower.match(new RegExp(`\\b${term}\\b`, "g"));
-    return count + (matches?.length || 0);
-  }, 0);
-  const repeatsExistingFiller = fillerHits >= 4 && fillerTerms.some((term) => recent.includes(term));
-  if (repeatsExistingFiller) return true;
-
-  const compulsoryQuipMarkers = [
-    "oh right", "oh please", "clearly", "forgive me", "someone has to",
-    "full-time job", "standard stuff", "you owe me", "fan club",
-  ];
-  const quipCount = compulsoryQuipMarkers.filter((marker) => lower.includes(marker)).length;
-  return quipCount >= 2;
-}
-
-function likelyNeedsNaturalVoiceRepair(value = "") {
-  const text = String(value || "");
-  if (!text.trim()) return false;
-
-  const awkwardPatterns = [
-    /\bhis name for you\b/i,
-    /\bher name for you\b/i,
-    /\btheir name for you\b/i,
-    /\bvoice cutting (?:easily )?through the quiet\b/i,
-    /\bthumb (?:still )?tracing\b/i,
-    /\bflat,? humorless (?:breath|laugh|chuckle)\b/i,
-  ];
-  if (awkwardPatterns.some((pattern) => pattern.test(text))) return true;
-
-  const stockPatterns = [
-    /\bfor a (?:long )?beat\b/gi,
-    /\bjaw (?:tightened|clenched|worked|flexed)\b/gi,
-    /\b(?:let|lets|letting) out a (?:slow |quiet |sharp |flat )?(?:breath|exhale)\b/gi,
-    /\breleased? a breath\b/gi,
-    /\bsilence (?:stretched|pressed|settled|hung|fell)\b/gi,
-    /\b(?:heavy|thick|charged) silence\b/gi,
-    /\bgaze (?:lingered|dropped|flicked|shifted)\b/gi,
-    /\beyes? (?:lingered|flicked|darkened|softened)\b/gi,
-    /\bcorner of (?:his|her|their) mouth\b/gi,
-    /\bshoulders? (?:eased|tensed|dropped|stiffened)\b/gi,
-    /\bhand(?:s)? (?:flexed|curled|clenched|slid into .*pocket)\b/gi,
-    /\bchest (?:rising|falling|heaving)(?: and falling)?(?: sharply)?\b/gi,
-    /\b(?:shifts?|tilts?|dips?|adjusts?) (?:the |his |her |their )?umbrella\b/gi,
-    /\bumbrella (?:tilting|dipping|hanging|propped|tipping)\b/gi,
-    /\brain (?:hits?|catches?|soaks?|darkens?)[^.!?\n]{0,55}\b(?:face|hair|shirt|jacket|shoulder)\b/gi,
-    /\bruns? (?:his|her|their) (?:free )?hand (?:over|through) (?:the back of )?(?:his|her|their) (?:neck|hair)\b/gi,
-    /\b(?:amber|dim|low) (?:glow|light)\b/gi,
-    /\b(?:dark|quiet|empty) room\b/gi,
-    /\b(?:stared|looked) (?:down )?at the (?:floor|ground)\b/gi,
-    /\bleaned (?:his|her|their) shoulder against\b/gi,
-    /\bsomething (?:unreadable|heavy|sharp)\b/gi,
-    /\bvoice (?:low|rough|quiet|flat)\b/gi,
-  ];
-
-  let hits = 0;
-  for (const pattern of stockPatterns) {
-    hits += (text.match(pattern) || []).length;
+function parseModelEnvelope(raw): ModelEnvelope {
+  const clean = stripJsonFence(raw);
+  try {
+    const parsed = JSON.parse(clean);
+    return {
+      reply: String(parsed?.reply || "").trim(),
+      continuity_note: String(parsed?.continuity_note || "").trim().slice(0, 600),
+    };
+  } catch {
+    return { reply: String(raw || "").trim(), continuity_note: "" };
   }
-  const paragraphs = text.split(/\n\s*\n/).filter(Boolean).length || 1;
-  return hits >= 2 || (hits >= 1 && paragraphs <= 2);
 }
 
-function normalizeEditorialFallback(value = "") {
+// PURE_NARRATIVE_HELPERS_START
+function normalizeText(value = "") {
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
@@ -3157,1053 +642,298 @@ function normalizeEditorialFallback(value = "") {
     .trim();
 }
 
-function editorialFallbackSimilarity(left = "", right = "") {
-  const a = normalizeEditorialFallback(left);
-  const b = normalizeEditorialFallback(right);
-  if (!a || !b) return 0;
-  if (a === b) return 1;
-  const aTokens = new Set(a.split(" ").filter((token) => token.length > 2));
-  const bTokens = new Set(b.split(" ").filter((token) => token.length > 2));
-  if (!aTokens.size || !bTokens.size) return 0;
-  let shared = 0;
-  for (const token of aTokens) if (bTokens.has(token)) shared += 1;
-  return shared / Math.min(aTokens.size, bTokens.size);
+function isSilentContinueText(value = "") {
+  const text = String(value || "").trim();
+  return text.startsWith("[SILENT_CONTINUE") ||
+    text.includes("Treat this as silence from the user") ||
+    /^[.…。]+$/u.test(text);
 }
 
-function stableEditorialFallbackIndex(value = "", size = 1) {
-  let hash = 2166136261;
-  for (const character of String(value || "")) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return Math.abs(hash) % Math.max(1, Number(size) || 1);
+function looksLikeQuestion(value = "") {
+  const text = String(value || "").trim();
+  if (/\?\s*$/.test(text)) return true;
+  return /\b(?:what|why|where|when|who|whose|which|how|do|does|did|are|is|was|were|can|could|would|will|have|has)\b[^.!?]{0,110}$/i.test(text) ||
+    /\b(?:que|qué|por que|por qué|donde|dónde|cuando|cuándo|quien|quién|como|cómo|acaso|puedes|podrias|podrías|quieres)\b[^.!?]{0,110}$/i.test(text);
 }
 
-function chooseEditorialFallback(candidates = [], rejectedResponses = [], seedText = "") {
-  const safeCandidates = candidates.filter(Boolean);
-  if (!safeCandidates.length) return "";
-  const rejected = (Array.isArray(rejectedResponses) ? rejectedResponses : [])
-    .map((value) => String(value || "").trim())
-    .filter(Boolean);
-  const start = stableEditorialFallbackIndex(seedText, safeCandidates.length);
-  const ordered = safeCandidates.map((_, index) => safeCandidates[(start + index) % safeCandidates.length]);
-  return ordered.find((candidate) =>
-    !rejected.some((prior) => editorialFallbackSimilarity(candidate, prior) >= 0.72)
-  ) || ordered[0];
+function classifyTurnIntent(latestUserMessage = "", messages = []) {
+  const raw = String(latestUserMessage || "").trim();
+  const normalized = normalizeText(raw);
+  let silentCount = 0;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.sender !== "user") continue;
+    if (!isSilentContinueText(message.content)) break;
+    silentCount += 1;
+  }
+
+  const medium = /\b(?:i\s+(?:text|message|dm)|texted you|sent you|te\s+(?:escribo|mande|mandé)|mensaje)\b/i.test(raw)
+    ? "direct_message"
+    : "in_person";
+  const isQuestion = looksLikeQuestion(raw);
+
+  let kind = "ordinary";
+  if (isSilentContinueText(raw)) kind = "silent_continue";
+  else if (/\[(?:time\s*skip|timeskip)|\b(?:later that|hours later|days later|next day|al dia siguiente|más tarde|mas tarde)\b/i.test(raw)) kind = "time_skip";
+  else if (/\b(?:i\s+(?:walk|leave|left|go|went|head|headed|run|ran)|me\s+(?:voy|fui|alejo)|salgo|me fui)\b[^.!?]{0,90}\b(?:away|bathroom|home|outside|opposite|dorm|room|ban[oa]|casa|afuera|lejos)?\b/i.test(raw)) kind = "user_exit";
+  else if (/\b(?:i\s+(?:miss(?:ed)?|love|adore|care about)\s+you|te\s+(?:extrano|extraño|quiero|amo)|if\s+i\s+(?:hated|didn'?t\s+like|didn'?t\s+care\s+about)\s+you|si\s+te\s+odiara|wouldn'?t\s+(?:be\s+)?(?:by\s+your\s+side|with\s+you)|no\s+estaria\s+(?:a\s+tu\s+lado|contigo))\b/i.test(raw)) kind = "affection";
+  else if (/^(?:it'?s|its|that'?s)?\s*(?:okay|ok|fine|alright|all good|no worries|est[aá]\s+bien|tranqui|no\s+importa)[.!\s]*$/i.test(raw)) kind = "reassurance";
+  else if (medium === "direct_message") kind = "digital_message";
+  else if (isQuestion) kind = "direct_question";
+
+  return { kind, silentCount, medium, isQuestion, normalized };
 }
 
-function buildCanonNeutralEditorialFallback({
-  characterName,
-  latestUserMessage = "",
-  language = "English",
-  rejectedResponses = [],
-  seedText = "",
-}) {
-  const fullName = String(characterName || "The character").trim();
-  const name = fullName.split(/\s+/).filter(Boolean)[0] || fullName;
-  const latest = String(latestUserMessage || "").toLowerCase();
-  const spanish = String(language || "").toLowerCase().includes("spanish");
-  const asksWhatAbout = /\b(?:what|how)\s+about\s+you\b|\bwhat(?:'ve| have)\s+you\s+been\s+up\s+to\b|\bhaven't\s+see(?:n)?\s+you\b|\b(?:y\s+t[uú]|qu[eé]\s+hay\s+de\s+ti|qu[eé]\s+has\s+hecho|hace\s+tiempo\s+que\s+no\s+te\s+veo)\b/.test(latest);
-  const asksWhyMe = /\bwhy\s+me\b|\bpor\s+qu[eé]\s+yo\b/.test(latest);
-  const blamesFamilyForRemark = /\bwho\s+told\s+you\b[\s\S]{0,120}\b(?:your\s+)?(?:mum|mom|mother)\b|\bqui[eé]n\s+te\s+(?:dijo|cont[oó])\b[\s\S]{0,120}\btu\s+mam[aá]\b/.test(latest);
-
-  if (blamesFamilyForRemark) {
-    const candidates = spanish
-      ? [
-          `"Nadie", dijo ${name}. "Eso lo dije yo, no ella."`,
-          `${name} te lanzó una mirada.\n\n"Mi mamá no tuvo nada que ver con eso. Puedo ser insoportable por mi cuenta."`,
-          `"Deja a mi mamá fuera de esto", dijo ${name}, conteniendo una sonrisa. "Eso fue completamente mío."`,
-        ]
-      : [
-          `"No one," ${name} said. "That was me talking, not her."`,
-          `${name} gave you a look.\n\n"My mom had nothing to do with that. I can be insufferable all by myself."`,
-          `"Leave my mom out of this," ${name} said, holding back a smile. "That one was entirely me."`,
-        ];
-    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
-  }
-
-  if (isIndirectTenderLoyaltyDisclosure(latestUserMessage)) {
-    return buildTenderEmotionalFallback({
-      characterName,
-      latestUserMessage,
-      language,
-      rejectedResponses,
-      seedText: `${seedText}\n${latest}`,
-    });
-  }
-
-  if (asksWhatAbout) {
-    const candidates = spanish
-      ? [
-          `${name} se tomó un momento antes de responder.\n\n"Nada demasiado interesante", dijo. Luego añadió, más bajo: "Y sí. Lo sé. Debí haberme comunicado."`,
-          `"No mucho", dijo ${name}. La respuesta fácil casi terminó ahí, pero volvió a mirarte. "Aunque tienes razón. Ha pasado un tiempo."`,
-          `La expresión de ${name} cambió apenas.\n\n"Nada que merezca una gran historia", dijo. "Pero sí... sé que no he estado muy presente."`,
-        ]
-      : [
-          `${name} took a moment before answering.\n\n"Nothing exciting," ${name} said. Then, quieter, "And yeah. I know. I should've checked in."`,
-          `"Not much," ${name} said. The easy answer almost ended there, but ${name} looked over at you. "You're right, though. It's been a while."`,
-          `${name}'s expression shifted slightly.\n\n"Nothing worth a dramatic update," ${name} said. "But... yeah. I know I haven't been around much."`,
-        ];
-    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
-  }
-  if (asksWhyMe) {
-    const candidates = spanish
-      ? [
-          `"Porque quería estar contigo", dijo ${name}. "No hay una razón escondida."`,
-          `${name} te sostuvo la mirada.\n\n"Porque preferiría ir contigo", dijo, como si fuera obvio.`,
-          `"¿Necesito una razón mejor que querer tu compañía?", preguntó ${name}.`,
-        ]
-      : [
-          `"Because I wanted to be with you," ${name} said. "There's no hidden reason."`,
-          `${name} held your gaze.\n\n"Because I'd rather go with you," ${name} said, like it should have been obvious.`,
-          `"Do I need a better reason than wanting your company?" ${name} asked.`,
-        ];
-    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
-  }
-  if (looksLikeDirectQuestion(latestUserMessage)) {
-    const candidates = spanish
-      ? [
-          `${name} se tomó la pregunta en serio.\n\n"No lo sé todavía", admitió. "Pero no voy a inventarte una respuesta."`,
-          `"Dame un segundo", dijo ${name}. "Quiero responderte bien."`,
-        ]
-      : [
-          `${name} took the question seriously.\n\n"I don't know yet," ${name} admitted. "But I'm not going to make up an answer for you."`,
-          `"Give me a second," ${name} said. "I want to answer you properly."`,
-        ];
-    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
-  }
-  const candidates = spanish
-    ? [
-        `${name} dejó de buscar una salida fácil.\n\n"Es justo", dijo. "Te entendí."`,
-        `"Sí", dijo ${name}, tomándose tus palabras en serio. "Lo entiendo."`,
-      ]
-    : [
-        `${name} stopped reaching for an easy deflection.\n\n"Fair," ${name} said. "I heard you."`,
-        `"Yeah," ${name} said, taking the words seriously. "I understand."`,
-      ];
-  return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
+function stripDialogue(value = "") {
+  return String(value || "")
+    .replace(/“[^”]*”/gs, " ")
+    .replace(/"[^"]*"/gs, " ");
 }
 
-async function repairNaturalVoice({
-  apiKey,
-  text,
-  language,
-  medium,
-  userName,
-  latestUserMessage = "",
-  recentCharacterBeats = [],
-  recentMessages = [],
-  character = {} as Record<string, any>,
-  userIdentity = {} as Record<string, any>,
-  memories = [],
-  loreEntries = [],
-  conversationSummary = "",
-  groundingFacts = "",
-  rejectedResponses = [],
-  relationshipState = {} as Record<string, any>,
-}) {
-  const recentAvoidanceBrief = buildDiversityAvoidanceBrief(recentCharacterBeats);
-  const recentExchange = (Array.isArray(recentMessages) ? recentMessages : [])
-    .slice(-12)
-    .map((message) => `${message.sender === "user" ? "USER" : "CHARACTER"}: ${compactMessageForPrompt(message.content)}`)
-    .join("\n");
-  const userAuthoredFacts = (Array.isArray(recentMessages) ? recentMessages : [])
-    .filter((message) => message.sender === "user")
-    .slice(-18)
-    .map((message) => compactMessageForPrompt(message.content))
-    .join("\n");
-  const memoryFacts = (Array.isArray(memories) ? memories : [])
-    .filter((memory) => isAuthoritativeMemory(memory))
-    .slice(0, 18)
-    .map((memory) => String(memory?.content || "").trim())
-    .filter(Boolean)
-    .join("\n");
-  const tentativeMemoryContext = (Array.isArray(memories) ? memories : [])
-    .filter((memory) => !isAuthoritativeMemory(memory))
-    .slice(0, 10)
-    .map((memory) => String(memory?.content || "").trim())
-    .filter(Boolean)
-    .join("\n");
-  const loreFacts = (Array.isArray(loreEntries) ? loreEntries : [])
-    .slice(0, 12)
-    .map((entry) => `${entry?.name || "Lore"}: ${entry?.content || ""}`)
-    .join("\n");
-  const initialSignals = findUnsupportedEverydayClaimSignals({ candidate: text, groundingFacts });
-  const initialTenderRisk = needsTenderEmotionalBeatRepair({
-    candidate: text,
-    latestUserMessage,
-    character,
+function controlsUserPOV(reply = "", userName = "", latestUserMessage = "") {
+  const narration = stripDialogue(reply);
+  const actionPattern = /\b(?:you|your body)\s+(?:felt|thought|realized|decided|wanted|needed|knew|wondered|hoped|feared|smiled|laughed|nodded|sighed|walked|followed|looked|reached|stepped|turned|froze|blushed|said|asked|answered)\b/gi;
+  const matches = narration.match(actionPattern) || [];
+  if (!matches.length) return false;
+
+  const latest = normalizeText(latestUserMessage);
+  const unsupported = matches.some((match) => {
+    const verb = normalizeText(match).split(" ").at(-1) || "";
+    return verb && !latest.includes(verb.replace(/ed$/, ""));
   });
-  const romanticInvestment = characterHasRomanticInvestment(character, relationshipState);
-  const indirectLoyaltyDisclosure = isIndirectTenderLoyaltyDisclosure(latestUserMessage);
-  const emotionalContract = initialTenderRisk
-    ? `EMOTIONAL CENTER — mandatory in this same rewrite
-- The user's tender disclosure is the central event of this turn. Before logistics, teasing or deflection, show one unmistakable private impact tied to the exact words.
-- ${indirectLoyaltyDisclosure ? "This is indirect affection expressed through loyalty/history. Answer its implication now; do not reduce it to information, an insult or a request to keep talking." : "Respond to the direct affection itself rather than merely acknowledging the surrounding logistics."}
-- A shifted expression, glance, smile, softened voice, pause or prop movement alone is NOT an emotional reaction.
-- ${romanticInvestment ? "The profile establishes romantic investment: let the reader understand the reciprocal feeling or why hiding it suddenly becomes harder." : "The relationship wording is sparse or non-romantic: show a proportionate human impact such as surprise, relief, guilt, affection or the realization that the user noticed the absence. Do not invent romance."}
-- One concise interior sentence is allowed even when inner thoughts are rare. Preserve guardedness and do not force a confession, pursuit, touch or instant relationship progress.
-- If the turn also asks what the character has been doing, answer briefly without invented schedules, exams, family events or earlier messages.`
-    : "EMOTIONAL CENTER\nNo special tender disclosure repair is required; preserve only the emotion established by the visible exchange.";
-  console.warn("Editorial repair triggered", {
-    groundingSignals: initialSignals,
-    voiceRisk: likelyNeedsNaturalVoiceRepair(text),
-    tenderRisk: initialTenderRisk,
-  });
-  let failedDraft = String(text || "").trim();
-  let groundedFallback = "";
-  const editorialEndpoints = [
-    { url: GEMINI_ENDPOINT, role: "primary" },
-    ...(GEMINI_FALLBACK_ENDPOINT !== GEMINI_ENDPOINT
-      ? [{ url: GEMINI_FALLBACK_ENDPOINT, role: "fallback" }]
-      : []),
-  ];
+  if (unsupported) return true;
 
-  // One combined editorial request is the normal ceiling. Retrying factual,
-  // voice and emotion as separate model calls exhausted the free quota too
-  // quickly. A rejected or limited edit falls back locally instead.
-  const maximumEditorialAttempts = 1;
-  for (let attempt = 1; attempt <= maximumEditorialAttempts; attempt += 1) {
-    const endpoint = editorialEndpoints[Math.min(attempt - 1, editorialEndpoints.length - 1)];
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 15000 : 12000);
-    try {
-      const response = await fetch(endpoint.url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. This is the single combined editorial attempt. Preserve visible events and established character intent, but audit every factual claim before preserving it. Make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages.
-
-CHARACTER PROFILE — authoritative
-Name: ${character?.name || "unknown"}
-Personality: ${character?.personality || "not specified"}
-Relationship: ${character?.relationship || "not specified"}
-Speech style: ${character?.speech_style || "not specified"}
-Scenario/world: ${character?.scenario || character?.world || "not specified"}
-
-${emotionalContract}
-
-USER PROFILE — authoritative
-Name: ${userIdentity?.name || userName}
-Role/background: ${userIdentity?.role || "not specified"} / ${userIdentity?.background || "not specified"}
-Personality: ${userIdentity?.personality || "not specified"}
-
-FACT AUTHORITY
-- Character/user profiles, explicit USER turns, user-saved or pinned memories and lore may establish past facts.
-- Unpinned automatic memories are tentative derived notes. They may suggest what to re-check, but cannot authorize an off-screen fact unless explicit user history, profile or lore independently confirms it.
-- Visible actions and spoken lines in RECENT EXCHANGE remain part of conversational continuity.
-- Earlier CHARACTER banter is not proof of a new off-screen fact, habit, obligation, possession or exact duration unless the user/profile/memory/lore confirms it.
-- A person being mentioned establishes only that reference. "Your mom" does NOT establish that she texted, called, asked, reminded, monitored meals or discussed the user with the character. Every subject-action-detail link needs its own support.
-- A degree, job or interest does not authorize stereotype filler. Do not invent energy-drink counts, all-night screen habits, laboratories, missing brackets, compilers or Python jokes merely because the user studies computing.
-- Remove invented domestic details, message counts, schedules, recurring habits, precise relationship durations and pre-existing debts/plans. Do not preserve a fabrication merely because it sounds playful.
-- A new present choice is allowed only when it follows from the visible moment. State the real present intention directly: an invitation may be "I want to get dinner with you," but it may not become "you owe me dinner" without canon.
-- If the latest user turn asks a question, answer its actual meaning in the first useful spoken line. Do not dodge it with compulsory sarcasm.
-- If the user asks what the character has been doing, answer about the character before commenting on the user. "I've been around; you're the one..." is a deflection, not an answer.
-- Teasing is optional, not the character's default response to every line. Keep at most one useful tease and let the rest sound like a person talking.
-- Mention a continuing prop or weather detail at most once unless it materially changes the action.
-
-AUTHORITATIVE FACT LEDGER — if a claimed past fact is absent here, remove it
-${String(groundingFacts || "none").slice(0, 30000)}
-
-EXPLICIT USER-AUTHORED RECENT FACTS
-${userAuthoredFacts || "none"}
-
-AUTHORITATIVE SAVED MEMORIES
-${memoryFacts || "none"}
-
-TENTATIVE AUTOMATIC MEMORY — never use as sole factual authority
-${tentativeMemoryContext || "none"}
-
-ACTIVE LORE
-${loreFacts || "none"}
-
-ROLLING SUMMARY — derived, use only when consistent with authority above
-${String(conversationSummary || "none").slice(0, 4000)}
-
-RECENT EXCHANGE — immutable visible sequence, not automatic proof of off-screen claims
-${recentExchange || "none"}
-
-RECENTLY USED FEATURES — avoid reusing them as filler or rhetoric
-${recentAvoidanceBrief}
-
-Do not repeat a recent prop interaction, gesture, dialogue tactic or rhetorical motif merely with synonyms. Do not add a replacement invention after removing one. Output only the repaired passage in ${language}.
-
-LATEST USER TURN
-${String(latestUserMessage || "").slice(0, 2500)}
-
-PASSAGE TO REPAIR
-${String(failedDraft || "").slice(0, 12000)}` }] }],
-          generationConfig: {
-            maxOutputTokens: 1200,
-            temperature: attempt === 1 ? 0.48 : 0.32,
-            topP: 0.84,
-            thinkingConfig: { thinkingLevel: "LOW" },
-          },
-        }),
-      });
-      if (!response.ok) {
-        console.warn("Editorial repair request failed", {
-          attempt,
-          modelRole: endpoint.role,
-          status: response.status,
-        });
-        continue;
-      }
-      const data = await response.json();
-      const candidate = data?.candidates?.[0]?.content?.parts
-        ?.filter((part) => typeof part.text === "string" && !part.thought)
-        .map((part) => part.text)
-        .join("")
-        .trim() || "";
-      if (!candidate) {
-        console.warn("Editorial repair returned empty text", { attempt });
-        continue;
-      }
-
-      const remainingSignals = findUnsupportedEverydayClaimSignals({
-        candidate,
-        groundingFacts,
-      });
-      const remainingStyleRisk = likelyNeedsGroundedReplyRepair({
-        candidate,
-        recentCharacterBeats,
-        groundingFacts,
-        latestUserMessage,
-      }) || likelyNeedsNaturalVoiceRepair(candidate);
-      const remainingTenderRisk = needsTenderEmotionalBeatRepair({
-        candidate,
-        latestUserMessage,
-        character,
-      });
-
-      if (!remainingSignals.length && !remainingTenderRisk) groundedFallback = candidate;
-      if (!remainingSignals.length && !remainingStyleRisk && !remainingTenderRisk) return candidate;
-
-      console.warn("Editorial repair candidate rejected", {
-        attempt,
-        modelRole: endpoint.role,
-        groundingSignals: remainingSignals,
-        styleRisk: remainingStyleRisk,
-        tenderRisk: remainingTenderRisk,
-      });
-      failedDraft = candidate;
-    } catch (error) {
-      console.warn("Editorial repair attempt failed", {
-        attempt,
-        modelRole: endpoint.role,
-        error: getErrorName(error) || "unknown",
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
+  if (userName) {
+    const escaped = String(userName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const namedAction = new RegExp(`\\b${escaped}\\s+(?:felt|thought|realized|decided|smiled|laughed|nodded|walked|said|asked)\\b`, "i");
+    if (namedAction.test(narration) && !normalizeText(latestUserMessage).includes(normalizeText(userName))) return true;
   }
-
-  if (groundedFallback) {
-    console.warn("Editorial repair exhausted style retries; using grounded candidate");
-    return groundedFallback;
-  }
-
-  console.warn("Editorial repair exhausted factual retries; using canon-neutral fallback", {
-    groundingSignals: initialSignals,
-  });
-  if (initialTenderRisk) {
-    return buildTenderEmotionalFallback({
-      characterName: character?.name,
-      latestUserMessage,
-      language,
-      rejectedResponses: [...(Array.isArray(rejectedResponses) ? rejectedResponses : []), text, failedDraft],
-      seedText: `${text}\n${failedDraft}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
-      romanticInvestment,
-    });
-  }
-  return buildCanonNeutralEditorialFallback({
-    characterName: character?.name,
-    latestUserMessage,
-    language,
-    rejectedResponses,
-    seedText: `${text}\n${failedDraft}\n${recentCharacterBeats.join("\n")}`,
-  });
+  return false;
 }
 
-function buildTenderEmotionalFallback({
-  characterName,
-  latestUserMessage = "",
-  language = "English",
-  rejectedResponses = [],
-  seedText = "",
-  romanticInvestment = false,
-}) {
-  const fullName = String(characterName || "The character").trim();
-  const name = fullName.split(/\s+/).filter(Boolean)[0] || fullName;
-  const spanish = String(language || "").toLowerCase().includes("spanish");
-  const loyaltyDisclosure = isIndirectTenderLoyaltyDisclosure(latestUserMessage);
-  if (loyaltyDisclosure) {
-    const candidates = spanish
-      ? romanticInvestment
-        ? [
-            `El recordatorio le llegó a ${name} con más fuerza que el insulto. Diez años de amistad deberían haber vuelto obvia la respuesta; lo que mantenía oculto era cuánto deseaba que esos años significaran algo más.\n\n"Lo sé, tonta", dijo, con una calidez que no alcanzó a esconder. "Igual es agradable oírtelo decir."`,
-            `Diez años. ${name} sabía que tenías razón, pero escucharlo rozó demasiado cerca todo lo que intentaba mantener bajo control.\n\n"Sí, lo sé", dijo. "Eso no significa que no me guste recordarlo."`,
-          ]
-        : [
-            `El recordatorio importó más que el insulto. Diez años de amistad hacían evidente la respuesta, y ${name} no pudo fingir que oírlo no le afectaba.\n\n"Sí, lo sé", dijo. "Igual es bueno oírtelo decir."`,
-            `${name} sabía que tenías razón. Diez años no eran poca cosa, y el recordatorio le quitó espacio a cualquier respuesta ligera.\n\n"Es justo", admitió. "Entendí lo que quisiste decir."`,
-          ]
-      : romanticInvestment
-        ? [
-            `The reminder landed harder than the insult. 10 years of friendship should have made the answer obvious; what ${name} kept hidden was how badly he wanted those years to mean more.\n\n"I know, dumbass," ${name} said, warmth slipping through. "Still nice to hear you say it."`,
-            `Those 10 years meant ${name} knew you were right, but hearing it still came too close to everything ${name} kept under control.\n\n"Yeah, I know," ${name} said. "Doesn't mean I don't like being reminded."`,
-          ]
-        : [
-            `The reminder mattered more than the insult. 10 years of friendship made the answer obvious, and ${name} couldn't pretend hearing it meant nothing.\n\n"Yeah, I know," ${name} said. "Still good to hear you say it."`,
-            `${name} knew you were right. 10 years wasn't nothing, and the reminder left no room for an easy dismissal.\n\n"Fair," ${name} admitted. "I know what you meant."`,
-          ];
-    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latestUserMessage}`);
-  }
-  const candidates = spanish
-      ? [
-        `La confesión tomó a ${name} por sorpresa. Haberte extrañado había sido más fácil de ignorar antes de oírtelo decir primero.\n\n"Nada demasiado interesante", dijo al fin, más bajo de lo que pretendía. "Pero... es bueno saber que me extrañaste."`,
-        `${name} no estaba preparado para el alivio que le produjo escucharlo. También te había extrañado, y de pronto mantener ese sentimiento oculto exigía más esfuerzo.\n\n"He estado ocupado, nada dramático", dijo. Después apareció una pequeña sonrisa. "Cuidado. Voy a empezar a creer que te agrada tenerme cerca."`,
-      ]
-    : [
-        `The admission caught ${name} off guard. Missing you had been easier to ignore before you said it first.\n\n"Nothing too interesting," ${name} said at last, quieter than intended. "But... it's good to know you missed me."`,
-        `${name} wasn't prepared for the relief that came with hearing it. ${name} had missed you too, and suddenly keeping that feeling quiet took more effort.\n\n"I've been busy. Nothing dramatic." A small smile appeared. "Careful. I'll start thinking you like having me around."`,
-      ];
-  return chooseEditorialFallback(candidates, rejectedResponses, seedText);
+function hasUnclosedDialogue(value = "") {
+  const text = String(value || "").trim();
+  const straightQuotes = (text.match(/"/g) || []).length;
+  const curlyOpen = (text.match(/“/g) || []).length;
+  const curlyClose = (text.match(/”/g) || []).length;
+  if (straightQuotes % 2 !== 0 || curlyOpen !== curlyClose) return true;
+  return /(?:\b(?:and|but|because|so|if|when|that|to)|[,;:\-–—])\s*$/i.test(text);
 }
 
-async function repairIncompleteReply({
-  apiKey,
-  text,
-  language,
-  medium,
-  latestUserMessage = "",
-  character = {} as Record<string, any>,
-  userIdentity = {} as Record<string, any>,
-  groundingFacts = "",
-  recentCharacterBeats = [],
-  rejectedResponses = [],
-  maxOutputTokens = 1600,
-}) {
-  const endpoints = [
-    { url: GEMINI_ENDPOINT, role: "primary" },
-    ...(GEMINI_FALLBACK_ENDPOINT !== GEMINI_ENDPOINT
-      ? [{ url: GEMINI_FALLBACK_ENDPOINT, role: "fallback" }]
-      : []),
-  ];
-
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    const endpoint = endpoints[Math.min(attempt - 1, endpoints.length - 1)];
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 15000 : 12000);
-    try {
-      const response = await fetch(endpoint.url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [{
-              text: `Rewrite this interrupted roleplay response FROM THE BEGINNING as one complete next turn in ${language}. Do not merely append words to the broken ending. Preserve only useful, canon-supported intent. Complete every sentence and close every quotation mark. End after a finished spoken line, action or decision; never end on a connector, half-sentence or artificial cliffhanger.
-
-The user exclusively controls ${userIdentity?.name || "the user"}. Never invent the user's dialogue, actions, reactions, thoughts, feelings or decisions. Address the user as you/your in reader-facing narration. Communication medium: ${medium}. Main character: ${character?.name || "unknown"}.
-
-FACT CONTRACT
-- Only the character/user profiles, explicit user turns, saved memories and lore in the ledger can establish off-screen or past facts.
-- A mentioned person does not authorize a new action. Do not invent calls, texts, lectures, advice, monitoring, catering, family conversations, recurring habits or exact durations.
-- Do not claim what the user "would have" done based on an invented habit.
-- If the latest user turn asks a question, answer its literal meaning before teasing or changing the subject.
-
-AUTHORITATIVE FACT LEDGER
-${String(groundingFacts || "none").slice(0, 30000)}
-
-LATEST USER TURN
-${String(latestUserMessage || "").slice(0, 2500)}
-
-INTERRUPTED DRAFT
-${String(text || "").slice(0, 12000)}
-
-Output only the complete replacement passage.`,
-            }],
-          }],
-          generationConfig: {
-            maxOutputTokens: Math.max(900, Number(maxOutputTokens) || 1600),
-            temperature: attempt === 1 ? 0.42 : 0.28,
-            topP: 0.82,
-            thinkingConfig: { thinkingLevel: "LOW" },
-          },
-        }),
-      });
-      if (!response.ok) {
-        console.warn("Incomplete reply repair request failed", {
-          attempt,
-          modelRole: endpoint.role,
-          status: response.status,
-        });
-        continue;
-      }
-
-      const data = await response.json();
-      const candidate = extractGeminiCandidate(data);
-      const completionSignals = getIncompleteReplySignals(candidate.text, candidate.finishReason);
-      const groundingSignals = findUnsupportedEverydayClaimSignals({
-        candidate: candidate.text,
-        groundingFacts,
-      });
-      const groundedRisk = likelyNeedsGroundedReplyRepair({
-        candidate: candidate.text,
-        recentCharacterBeats,
-        groundingFacts,
-        latestUserMessage,
-      });
-      const povRisk = likelyControlsUserPOV(
-        candidate.text,
-        userIdentity?.name || "",
-        latestUserMessage,
-      );
-
-      if (candidate.text && !completionSignals.length && !groundingSignals.length && !groundedRisk && !povRisk) {
-        return candidate.text;
-      }
-
-      console.warn("Incomplete reply repair candidate rejected", {
-        attempt,
-        modelRole: endpoint.role,
-        completionSignals,
-        groundingSignals,
-        groundedRisk,
-        povRisk,
-      });
-    } catch (error) {
-      console.warn("Incomplete reply repair attempt failed", {
-        attempt,
-        modelRole: endpoint.role,
-        error: getErrorName(error) || "unknown",
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  const trimmed = trimIncompleteReplyTail(text);
-  if (
-    trimmed &&
-    !getIncompleteReplySignals(trimmed).length &&
-    !findUnsupportedEverydayClaimSignals({ candidate: trimmed, groundingFacts }).length &&
-    !likelyNeedsGroundedReplyRepair({
-      candidate: trimmed,
-      recentCharacterBeats,
-      groundingFacts,
-      latestUserMessage,
-    }) &&
-    !likelyControlsUserPOV(trimmed, userIdentity?.name || "", latestUserMessage)
-  ) {
-    console.warn("Incomplete reply repair used a safely trimmed ending");
-    return trimmed;
-  }
-
-  console.warn("Incomplete reply repair used a canon-neutral complete fallback");
-  return buildCanonNeutralEditorialFallback({
-    characterName: character?.name,
-    latestUserMessage,
-    language,
-    rejectedResponses: [...(Array.isArray(rejectedResponses) ? rejectedResponses : []), text],
-    seedText: `${text}\n${recentCharacterBeats.join("\n")}`,
-  });
+function isLowInformationGenericReply(value = "") {
+  const text = String(value || "").trim();
+  const normalized = normalizeText(stripDialogue(text) + " " + text);
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const servicePhrase = /\b(?:i understand|i m listening|im listening|go on|tell me more|i hear you|entiendo|te escucho|continua|continúa|cuentame|cuéntame)\b/i.test(normalized);
+  const bareAcknowledgment = /^(?:(?:rowan|[a-z]+)\s+(?:said|murmured|muttered)\s+)?(?:yeah|okay|ok|fine|alright|sure|vale|bueno|esta bien|está bien)[.!\s]*$/i.test(normalized);
+  return (servicePhrase && words.length < 34) || bareAcknowledgment || words.length < 7;
 }
 
-async function repairConversationProgression({
-  apiKey,
-  text,
-  character,
-  userIdentity,
-  latestUserMessage = "",
-  recentMessages = [],
-  recentCharacterBeats = [],
-  language,
-  medium,
-}) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 14000);
-  const recentExchange = (Array.isArray(recentMessages) ? recentMessages : [])
-    .slice(-10)
-    .map((message) => `${message.sender === "user" ? "USER" : "CHARACTER"}: ${compactMessageForPrompt(message.content)}`)
-    .join("\n");
-  const repeatedTactics = buildDialogueProgressionSummary(recentCharacterBeats);
-
-  try {
-    const response = await fetch(GEMINI_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{
-          role: "user",
-          parts: [{
-            text: `Rewrite the DRAFT as the next beat of a private interactive novel because it repeats a failed conversational tactic.
-
-CHARACTER
-Name: ${character.name}
-Personality: ${character.personality || "not specified"}
-Relationship to ${userIdentity.name}: ${character.relationship || "not specified"}
-Speech style: ${character.speech_style || "not specified"}
-Boundaries: ${character.boundaries || "not specified"}
-
-REPEATED TACTICS DETECTED
-${repeatedTactics}
-
-RECENT EXCHANGE — immutable evidence
-${recentExchange || "none"}
-
-LATEST USER TURN — answer this exact meaning first
-${String(latestUserMessage || "").slice(0, 2500)}
-
-DRAFT THAT STALLED
-${String(text || "").slice(0, 10000)}
-
-REPAIR CONTRACT
-- Read the exchange as a whole. Do not answer only the last sentence.
-- The LATEST USER TURN is the sole response target. Do not answer, quote or reopen an earlier user question unless the latest turn explicitly refers back to it.
-- Preserve the physical situation and established character psychology, but choose a genuinely different conversational move from the repeated tactics above.
-- The visible transcript is immutable. ${character.name} may clarify intent but cannot deny saying a clear equivalent already visible in the exchange or pretend ${userIdentity.name} invented the grievance.
-- Answer any direct question before reframing. Respond to the literal hurt; do not substitute an easier accusation or make ${userIdentity.name} defend it again.
-- Progress can be a specific admission, relevant truth, honest boundary, withdrawal, imperfect repair attempt or consequential action. Do not force tenderness, confession, forgiveness or a polished apology. Guardedness may remain.
-- Cold/proud/teasing must not become generic contempt. Remove gratuitous insults, devaluation and blame loops unless explicit canon and the present event truly require them.
-- Remove every off-screen fact not established in RECENT EXCHANGE or the character profile. Do not invent family calls, message counts, schedules, dated incidents, errands, parties or classes.
-- Use natural contemporary dialogue. Remove recycled metaphors and decorative rain/umbrella/jaw/breath/gaze/chest choreography. Keep at most one functional physical detail.
-- The user exclusively controls ${userIdentity.name}. Never invent their action, reaction, thought, feeling, dialogue or decision. Address them as you/your in reader-facing narration.
-- Communication medium is ${medium}. Spoken dialogue uses quotation marks; only actual written messages use >.
-- Make the beat feel complete through one changed decision or consequence, then stop. Output only the repaired passage in ${language}.`,
-          }],
-        }],
-        generationConfig: { maxOutputTokens: 1800 },
-      }),
-    });
-    if (!response.ok) return text;
-    const data = await response.json();
-    return data?.candidates?.[0]?.content?.parts
-      ?.filter((part) => typeof part.text === "string" && !part.thought)
-      .map((part) => part.text)
-      .join("")
-      .trim() || text;
-  } catch {
-    return text;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function repairMissingDigitalReply({
-  apiKey,
-  text,
-  character,
-  userIdentity,
-  latestUserMessage = "",
-  language,
-  messageCutaway = false,
-}) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
-  try {
-    const response = await fetch(GEMINI_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{
-          role: "user",
-          parts: [{
-            text: `Repair this private roleplay continuation because it ignored the user's direct text. ${character.name} must send one concise, natural written reply that reacts to the LATEST USER TURN. Prefix each actual written message with >. Keep ${character.name}'s established personality: guardedness may make the reply brief, dry, evasive or imperfect; do not force tenderness, confession or apology. The user's message must still change ${character.name}'s choice.
-
-${messageCutaway ? `This is a physical cutaway around the received text. Preserve only useful narration and at most one nearby NPC spoken line before ${character.name}'s reply. Spoken dialogue stays in quotation marks; only written texts use >.` : "This is a text-only exchange. Return only the written reply line(s), each prefixed with >."}
-
-Do not repeat a denial, warning, prop interaction or signature line already used in the passage. Remove stock gestures and NPC interrogation loops. Never invent ${userIdentity.name}'s reply, reaction, thoughts, feelings or actions. Address the user as you/your in reader-facing narration. Output only the repaired passage in ${language}.
-
-LATEST USER TURN:
-${String(latestUserMessage || "").slice(0, 2500)}
-
-PASSAGE THAT FAILED TO REPLY:
-${String(text || "").slice(0, 10000)}`,
-          }],
-        }],
-        generationConfig: { maxOutputTokens: 1500 },
-      }),
-    });
-    if (!response.ok) return text;
-    const data = await response.json();
-    return data?.candidates?.[0]?.content?.parts
-      ?.filter((part) => typeof part.text === "string" && !part.thought)
-      .map((part) => part.text)
-      .join("")
-      .trim() || text;
-  } catch {
-    return text;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function formatUnfinishedThreads(value) {
-  const rows = Array.isArray(value) ? value.filter((item) => item && item.status !== "resolved").slice(0, 12) : [];
-  if (!rows.length) return "No open unfinished threads yet.";
-  return rows.map((item, index) => `${index + 1}. ${String(item.title || item.label || "Unfinished thread").slice(0, 140)}${item.detail ? ` — ${String(item.detail).slice(0, 360)}` : ""}`).join("\n");
-}
-
-function sanitizeUnfinishedThreads(value, fallback = []) {
-  const previous = Array.isArray(fallback) ? fallback : [];
-  const incoming = Array.isArray(value) ? value : [];
-  const byKey = new Map();
-
-  const normalize = (raw, index = 0) => {
-    const item = typeof raw === "string" ? { title: raw } : (raw || {});
-    const title = String(item.title || item.label || "").trim().slice(0, 140);
-    if (!title) return null;
-    const titleKey = title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-    const id = String(item.id || `thread-${index}-${titleKey.slice(0, 28).replace(/\s+/g, "-")}`).slice(0, 90);
-    return {
-      id,
-      title,
-      detail: String(item.detail || item.context || "").slice(0, 500),
-      status: item.status === "resolved" ? "resolved" : "open",
-      last_seen: String(item.last_seen || item.lastSeen || "").slice(0, 100),
-      _key: String(item.id || titleKey).toLowerCase(),
-    };
-  };
-
-  previous.forEach((item, index) => {
-    const normalized = normalize(item, index);
-    if (normalized) byKey.set(normalized._key, normalized);
-  });
-
-  incoming.forEach((item, index) => {
-    const normalized = normalize(item, index + previous.length);
-    if (!normalized) return;
-    const existing = byKey.get(normalized._key);
-    byKey.set(normalized._key, existing ? {
-      ...existing,
-      ...normalized,
-      detail: normalized.detail || existing.detail,
-      last_seen: normalized.last_seen || existing.last_seen,
-    } : normalized);
-  });
-
-  return [...byKey.values()]
-    .map(({ _key, ...item }) => item)
-    .filter((item) => item.status !== "resolved")
-    .slice(-12);
-}
-
-function detectResponseLanguage(latestUserMessage, previousCharacterMessage) {
-  const raw = String(latestUserMessage || "");
-  const explicit = raw.match(/\[(?:language|idioma)\s*:\s*(english|inglés|ingles|spanish|español|espanol)\s*\]/i);
-  if (explicit) {
-    return /english|inglés|ingles/i.test(explicit[1]) ? "English" : "Spanish";
-  }
-
-  const withoutDirections = raw
-    .replace(/\[[\s\S]*?\]/g, " ")
-    .replace(/[*/_~>]/g, " ")
-    .trim();
-
-  const reference = withoutDirections || previousCharacterMessage || raw || "English";
-  const normalized = ` ${reference.toLowerCase().replace(/[^a-záéíóúñ'¿¡]+/gi, " ")} `;
-  const spanishMarkers = [" que ", " de ", " no ", " sí ", " si ", " estoy ", " quiero ", " pero ", " porque ", " cómo ", " como ", " hola ", " gracias ", " entonces ", " ella ", " él ", " tú ", " tu ", " yo ", " para ", " con ", " me ", " mi "];
-  const englishMarkers = [" the ", " and ", " i ", " you ", " i'm ", " im ", " don't ", " didnt ", " didn't ", " but ", " why ", " what ", " thanks ", " thank ", " then ", " she ", " he ", " with ", " for ", " my ", " me ", " is ", " are ", " not "];
-  const spanishScore = spanishMarkers.filter((marker) => normalized.includes(marker)).length + (/[áéíóúñ¿¡]/i.test(reference) ? 3 : 0);
-  const englishScore = englishMarkers.filter((marker) => normalized.includes(marker)).length;
-
-  if (spanishScore === englishScore && withoutDirections.length < 18) {
-    const previous = String(previousCharacterMessage || "");
-    return /[áéíóúñ¿¡]/i.test(previous) ? "Spanish" : "English";
-  }
-  return spanishScore > englishScore ? "Spanish" : "English";
-}
-
-function analyzeTimeSkip(content) {
-  const text = String(content || "");
-  const match = text.match(/\[(?:time\s*skip|timeskip|salto\s+de\s+tiempo)(?::|\s)?([^\]]*)\]/i);
-  if (!match) return { active: false, scale: "none" };
-  const detail = match[1]?.trim() || "a short natural interval";
-  const long = /month|year|mes|año|week|semana/i.test(detail);
-  return { active: true, scale: long ? `long: ${detail}` : `short: ${detail}` };
-}
-
-
-function formatSceneState(sceneState) {
-  if (!sceneState || typeof sceneState !== "object" || Array.isArray(sceneState)) return "No structured scene state yet.";
-  const present = Array.isArray(sceneState.present) ? sceneState.present.join(", ") : "unknown";
-  const absent = Array.isArray(sceneState.absent) ? sceneState.absent.join(", ") : "unknown";
-  return [
-    `Location: ${sceneState.location || "unknown"}`,
-    `Time: ${sceneState.time || "unknown"}`,
-    `Communication medium: ${sceneState.medium || "unknown"}`,
-    `Present: ${present || "unknown"}`,
-    `Known absent/off-screen: ${absent || "none established"}`,
-    `Active situation: ${sceneState.situation || "unknown"}`,
-    `Pending actions: ${Array.isArray(sceneState.pending) && sceneState.pending.length ? sceneState.pending.join("; ") : "none established"}`,
-    `Important objects/positions: ${Array.isArray(sceneState.objects) && sceneState.objects.length ? sceneState.objects.join("; ") : "none established"}`,
-  ].join("\n");
-}
-
-function formatStoryTimeline(timeline) {
-  if (!Array.isArray(timeline) || !timeline.length) return "No major timeline beats saved yet.";
-  return timeline.slice(-12).map((item, index) => {
-    if (typeof item === "string") return `${index + 1}. ${item}`;
-    return `${index + 1}. ${item?.label || item?.event || "Story beat"}${item?.detail ? ` — ${item.detail}` : ""}`;
-  }).join("\n");
-}
-
-function formatRelationshipState(state) {
-  if (!state || typeof state !== "object" || Array.isArray(state) || !Object.keys(state).length) return "No stable relationship metrics yet. Let events establish them naturally.";
-  return [
-    `Dynamic: ${state.current_dynamic || state.label || "not established"}`,
-    `Trust ${state.trust ?? "?"}/100 · Affection ${state.affection ?? "?"}/100 · Attraction ${state.attraction ?? "?"}/100`,
-    `Tension ${state.tension ?? "?"}/100 · Resentment ${state.resentment ?? "?"}/100 · Familiarity ${state.familiarity ?? "?"}/100`,
-    state.last_shift ? `Last supported shift: ${state.last_shift}` : "",
-  ].filter(Boolean).join("\n");
-}
-
-function formatCastState(state) {
-  if (!state || typeof state !== "object" || Array.isArray(state) || !Object.keys(state).length) return "No persistent side-character state saved yet.";
-  return Object.entries(state).slice(0, 12).map(([name, item]) => {
-    const safe: Record<string, any> = item && typeof item === "object" ? item : {};
-    return `${name}: ${safe.role || "side character"}; ${safe.personality || ""}; relationship=${safe.relationship || "unknown"}; status=${safe.current_status || "unknown"}; knows=${Array.isArray(safe.knows) ? safe.knows.join(", ") : ""}`;
-  }).join("\n");
-}
-
-function formatStoryChapters(chapters, activeChapter) {
-  const recent = Array.isArray(chapters) ? chapters.slice(-4) : [];
-  const history = recent.length ? recent.map((item) => `Chapter ${item?.number || "?"}: ${item?.title || "Untitled"} — ${item?.summary || ""}`).join("\n") : "No completed chapters yet.";
-  const active = activeChapter && typeof activeChapter === "object" && Object.keys(activeChapter).length
-    ? `Active chapter ${activeChapter.number || "?"}: ${activeChapter.title || "Untitled"} — ${activeChapter.summary || "in progress"}`
-    : "Active chapter has not been named yet.";
-  return `${history}\n${active}`;
-}
-
-async function updateStoryStateInBackground({ supabase, apiKey, conversationId, userId, expectedRevision, character, userIdentity, previousSceneState, previousTimeline, previousRelationshipState, previousCastState, previousChapters, previousActiveChapter, previousThreads = [], messages }) {
-  try {
-    const history = messages.slice(-36).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`).join("\n");
-    const response = await fetch(GEMINI_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Maintain hidden structured state for a private interactive novel. Never invent facts. The LATEST USER turn is authoritative and must update stale scene metadata immediately. Latest explicit user corrections win. The user exclusively controls ${userIdentity.name}; never infer their feelings, thoughts or unspoken decisions. If ${userIdentity.name} was present and did not explicitly leave or move the camera elsewhere, keep them present. NPC dialogue does not erase the user from the scene. A claim or accusation spoken by a character is not narrator-confirmed fact unless the user, narration or established profile corroborates it. Never promote invented message counts, family calls, schedules, errands or insults into canon. Track physical continuity, persistent NPC facts and relationship movement only when supported by events. Also track scene.medium as exactly one of in_person, direct_message, group_chat, phone_call. Change scene.medium only when recent history clearly changes the communication medium; a phone merely being present does not count. Relationship scores are soft 0-100 estimates and should move slowly, usually by 0-4 points per update. Do not reward generic proximity as romance. Create a new chapter only after a meaningful scene/time/location/story-phase transition, not every few turns. Keep chapter summaries factual and compact.\n\nUser: ${userIdentity.name}\nMain character: ${character.name}\nPrevious scene: ${JSON.stringify(previousSceneState || {})}\nPrevious timeline: ${JSON.stringify(previousTimeline || [])}\nPrevious relationship: ${JSON.stringify(previousRelationshipState || {})}\nPrevious cast: ${JSON.stringify(previousCastState || {})}\nPrevious chapters: ${JSON.stringify(previousChapters || [])}\nActive chapter: ${JSON.stringify(previousActiveChapter || {})}\nPrevious unfinished threads: ${JSON.stringify(previousThreads || [])}\nRecent history:\n${history}\n\nTrack unfinished threads too: concrete promises, invitations, plans, unresolved arguments, suspicions, secrets-in-play, future events, unanswered questions or obligations that could matter later. Keep at most 12. Preserve old open threads until the story clearly resolves or supersedes them. Do not create threads from tiny temporary actions. The last history line is the current anchor; do not leave an older unanswered question marked as current when later turns supersede it. Return JSON only with keys scene, timeline, relationship, cast, chapters, activeChapter, threads.` }] }],
-        generationConfig: {
-          maxOutputTokens: 1500,
-          responseMimeType: "application/json",
-        }
-      }),
-    });
-    if (!response.ok) return;
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text || "").join("").trim();
-    if (!text) return;
-    const parsed = JSON.parse(text);
-    const scene = sanitizeSceneState(parsed?.scene, previousSceneState);
-    const timeline = sanitizeTimeline(parsed?.timeline, previousTimeline);
-    const relationship = sanitizeRelationshipState(parsed?.relationship, previousRelationshipState, character.name);
-    const cast = sanitizeCastState(parsed?.cast, previousCastState, character.name, userIdentity.name);
-    const chapters = sanitizeChapters(parsed?.chapters, previousChapters);
-    const activeChapter = sanitizeActiveChapter(parsed?.activeChapter, previousActiveChapter, chapters);
-    const threads = sanitizeUnfinishedThreads(parsed?.threads, previousThreads);
-    await supabase.from("conversations")
-      .update({
-        scene_state: scene,
-        story_timeline: timeline,
-        relationship_state: relationship,
-        cast_state: cast,
-        story_chapters: chapters,
-        active_chapter: activeChapter,
-        unresolved_threads: threads,
-        scene_state_updated_at: new Date().toISOString(),
-        story_engine_version: 7,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", conversationId)
-      .eq("user_id", userId)
-      .eq("story_revision", expectedRevision);
-  } catch (error) {
-    console.error("Background story state update failed:", error);
-  }
-}
-
-function sanitizeSceneState(value, fallback = {} as Record<string, any>) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return fallback || {};
-  return {
-    location: String(value.location || fallback?.location || "unknown").slice(0, 160),
-    time: String(value.time || fallback?.time || "unknown").slice(0, 120),
-    medium: ["in_person", "direct_message", "group_chat", "phone_call"].includes(String(value.medium || ""))
-      ? String(value.medium)
-      : (["in_person", "direct_message", "group_chat", "phone_call"].includes(String(fallback?.medium || "")) ? String(fallback.medium) : "unknown"),
-    present: Array.isArray(value.present) ? value.present.slice(0, 12).map((x) => String(x).slice(0, 80)) : (fallback?.present || []),
-    absent: Array.isArray(value.absent) ? value.absent.slice(0, 12).map((x) => String(x).slice(0, 80)) : (fallback?.absent || []),
-    situation: String(value.situation || fallback?.situation || "unknown").slice(0, 500),
-    pending: Array.isArray(value.pending) ? value.pending.slice(0, 8).map((x) => String(x).slice(0, 180)) : (fallback?.pending || []),
-    objects: Array.isArray(value.objects) ? value.objects.slice(0, 8).map((x) => String(x).slice(0, 180)) : (fallback?.objects || []),
-  };
-}
-
-function sanitizeTimeline(value, fallback = []) {
-  const rows = Array.isArray(value) ? value : (Array.isArray(fallback) ? fallback : []);
-  return rows.slice(-24).map((item) => typeof item === "string"
-    ? { label: String(item).slice(0, 120), detail: "" }
-    : { label: String(item?.label || item?.event || "Story beat").slice(0, 120), detail: String(item?.detail || "").slice(0, 400) });
-}
-
-function sanitizeRelationshipState(value, fallback = {} as Record<string, any>, characterName = "Character") {
-  const source = value && typeof value === "object" && !Array.isArray(value) ? value : (fallback || {});
-  const score = (key, d) => Math.max(0, Math.min(100, Math.round(Number(source[key] ?? fallback?.[key] ?? d))));
-  return {
-    label: String(source.label || fallback?.label || `Relationship with ${characterName}`).slice(0, 100),
-    trust: score("trust", 50),
-    affection: score("affection", 30),
-    attraction: score("attraction", 20),
-    tension: score("tension", 25),
-    resentment: score("resentment", 10),
-    familiarity: score("familiarity", 35),
-    current_dynamic: String(source.current_dynamic || fallback?.current_dynamic || "Not enough established yet").slice(0, 500),
-    last_shift: String(source.last_shift || "").slice(0, 300),
-  };
-}
-
-function sanitizeCastState(value, fallback = {} as Record<string, any>, characterName = "Character", userName = "User") {
-  const source = value && typeof value === "object" && !Array.isArray(value) ? value : (fallback || {});
-  const out = {};
-  for (const [name, raw] of Object.entries(source).slice(0, 20)) {
-    if (!name || [characterName, userName].includes(name)) continue;
-    const item: Record<string, any> = raw && typeof raw === "object" ? raw : {};
-    out[String(name).slice(0, 80)] = {
-      role: String(item.role || "Side character").slice(0, 160),
-      personality: String(item.personality || "").slice(0, 320),
-      relationship: String(item.relationship || "").slice(0, 320),
-      knows: Array.isArray(item.knows) ? item.knows.slice(0, 8).map((x) => String(x).slice(0, 180)) : [],
-      current_status: String(item.current_status || "").slice(0, 260),
-    };
-  }
-  return out;
-}
-
-function sanitizeChapters(value, fallback = []) {
-  const rows = Array.isArray(value) ? value : (Array.isArray(fallback) ? fallback : []);
-  return rows.slice(-30).map((item, index) => ({
-    number: Math.max(1, Number(item?.number) || index + 1),
-    title: String(item?.title || `Chapter ${index + 1}`).slice(0, 100),
-    summary: String(item?.summary || "").slice(0, 1200),
-    started_at: String(item?.started_at || ""),
-  }));
-}
-
-function sanitizeActiveChapter(value, fallback = {}, chapters = []) {
-  const source = value && typeof value === "object" && !Array.isArray(value) ? value : (fallback || {});
-  const number = Math.max(1, Number(source.number) || Number(chapters.at(-1)?.number) || 1);
-  return {
-    number,
-    title: String(source.title || chapters.at(-1)?.title || `Chapter ${number}`).slice(0, 100),
-    summary: String(source.summary || "").slice(0, 1200),
-    started_at: String(source.started_at || new Date().toISOString()),
-  };
-}
-
-async function updateConversationSummaryInBackground({ supabase, apiKey, conversationId, userId, expectedRevision, character, userIdentity, previousSummary, messages }) {
-  try {
-    const history = messages.slice(-60).map((message) =>
-      `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`
-    ).join("\n");
-
-    const response = await fetch(GEMINI_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Maintain a compact factual continuity summary for a private roleplay. Preserve established relationships, locations, unresolved conflicts, important promises, boundaries, current scene state, and explicit user corrections. Never invent facts. Do not narrate prose. Prefer concrete names. The user controls ${userIdentity.name}; do not infer their feelings or thoughts. Character dialogue may contain lies, exaggerations, accusations or hallucinated backstory; do not summarize a claim as fact unless corroborated by the user, neutral narration or established profile. Preserve the exact current conversational issue and which latest user turn still requires a response; older questions superseded by later turns are context, not the active response target.\n\nPrevious summary:\n${previousSummary || "none"}\n\nRecent history:\n${history}\n\nReturn only the updated summary, maximum 900 words.` }] }],
-        generationConfig: { maxOutputTokens: 1300 },
-      }),
-    });
-    if (!response.ok) return;
-    const data = await response.json();
-    const summary = data?.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text || "").join("").trim();
-    if (!summary) return;
-
-    await supabase.from("conversations")
-      .update({ summary: summary.slice(0, 12000), updated_at: new Date().toISOString() })
-      .eq("id", conversationId)
-      .eq("user_id", userId)
-      .eq("story_revision", expectedRevision);
-  } catch (error) {
-    console.error("Background summary update failed:", error);
-  }
-}
-
-async function extractMemoriesInBackground({ supabase, apiKey, conversationId, characterId, userId, expectedRevision, character, userIdentity, messages, existingMemories }) {
-  try {
-    const history = messages.slice(-30).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`).join("\n");
-    const existing = existingMemories.map((memory) => memory.content).join("\n");
-    const response = await fetch(GEMINI_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Extract at most 3 durable roleplay memories as a JSON array. Each item: {"content":"explicit fact with names","importance":1-5,"category":"person|relationship|world|event|preference|boundary"}. Never save temporary actions, silent bracketed instructions, guesses, repeated facts or contradictions. A character's accusation, excuse, invented family call, message count, schedule or off-screen anecdote is not a durable fact unless the user or neutral narration confirms it. Prefer explicit user corrections, stable relationship facts, boundaries and consequential events. Never store the currently active turn as a permanent personality judgment. Existing memories:\n${existing || "none"}\nConversation:\n${history}\nReturn only JSON.` }] }],
-        generationConfig: { maxOutputTokens: 500, responseMimeType: "application/json" },
-      }),
-    });
-    if (!response.ok) return;
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "[]";
-    const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed)) return;
-
-    if (!await isStoryRevisionCurrent(supabase, conversationId, userId, expectedRevision)) return;
-
-    const existingSet = new Set(existingMemories.map((memory) => normalizeText(memory.content)));
-    const candidates = parsed
-      .filter((memory) => memory?.content && !existingSet.has(normalizeText(memory.content)))
-      .slice(0, 3)
-      .map((memory) => ({
-        conversation_id: conversationId,
-        character_id: characterId,
-        user_id: userId,
-        content: String(memory.content).slice(0, 300),
-        importance: Math.min(5, Math.max(1, Number(memory.importance) || 3)),
-        category: normalizeMemoryCategory(memory.category),
-        source: "automatic",
-        scope: "conversation",
-      }));
-
-    for (const row of candidates) {
-      if (!await isStoryRevisionCurrent(supabase, conversationId, userId, expectedRevision)) return;
-      const replacement = existingMemories.find((memory) =>
-        !memory.is_pinned &&
-        normalizeMemoryCategory(memory.category) === row.category &&
-        memoryTextSimilarity(memory.content, row.content) >= 0.58
-      );
-      if (replacement?.id) {
-        await supabase.from("memories")
-          .update({ content: row.content, importance: row.importance, updated_at: new Date().toISOString() })
-          .eq("id", replacement.id)
-          .eq("user_id", userId);
-      } else {
-        await supabase.from("memories").insert(row);
-      }
-    }
-  } catch (error) {
-    console.error("Background memory extraction failed:", error);
-  }
-}
-
-function memoryTextSimilarity(left, right) {
-  const stop = new Set(["the","a","an","and","or","to","of","in","on","at","is","are","was","were","has","have","had","she","he","they","her","his","their","el","la","los","las","un","una","y","o","de","en","es","son","era","ella","él","su","sus"]);
-  const tokens = (value) => new Set(normalizeText(value).split(" ").filter((token) => token.length > 2 && !stop.has(token)));
-  const a = tokens(left); const b = tokens(right);
+function replySimilarity(left = "", right = "") {
+  const tokens = (value) => new Set(normalizeText(value).split(/\s+/).filter((token) => token.length > 3));
+  const a = tokens(left);
+  const b = tokens(right);
   if (!a.size || !b.size) return 0;
   let overlap = 0;
   for (const token of a) if (b.has(token)) overlap += 1;
   return overlap / Math.min(a.size, b.size);
 }
 
-function normalizeMemoryCategory(value) {
-  const allowed = new Set(["person", "relationship", "world", "event", "preference", "boundary"]);
-  const category = String(value || "event").toLowerCase();
-  return allowed.has(category) ? category : "event";
+function validateNarrativeReply(reply = "", options = {}) {
+  const issues = [];
+  const text = String(reply || "").trim();
+  const words = normalizeText(text).split(/\s+/).filter(Boolean);
+  const turnIntent = options.turnIntent || { kind: "ordinary", silentCount: 0 };
+
+  if (!text) issues.push("empty_reply");
+  if (String(options.finishReason || "").toUpperCase().includes("MAX_TOKENS")) issues.push("truncated_by_model");
+  if (hasUnclosedDialogue(text)) issues.push("unfinished_reply");
+  if (isLowInformationGenericReply(text)) issues.push("generic_acknowledgment");
+  if (controlsUserPOV(text, options.userName || "", options.latestUserMessage || "")) issues.push("controls_user_pov");
+  if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
+
+  const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "digital_message"].includes(turnIntent.kind);
+  if (needsSocialBeat && words.length < 24) issues.push("underdeveloped_social_beat");
+  if (["reassurance", "affection", "silent_continue"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
+  if (turnIntent.kind === "affection" && words.length < 34) issues.push("missing_emotional_impact");
+
+  for (const rejected of options.rejectedResponses || []) {
+    if (replySimilarity(text, rejected) >= 0.72) {
+      issues.push("too_similar_to_rejected_take");
+      break;
+    }
+  }
+  return [...new Set(issues)];
+}
+
+function detectResponseLanguage(latestUserMessage = "", previousCharacterMessage = "") {
+  const latest = String(latestUserMessage || "").trim();
+  const raw = isSilentContinueText(latest)
+    ? String(previousCharacterMessage || "").trim()
+    : latest;
+  const spanish = (raw.match(/\b(?:que|qué|por|para|pero|porque|como|cómo|estoy|esta|está|eres|soy|tengo|quiero|puedo|gracias|nada|bien|mal|oye|sí|si|te|me|mi|yo|tu|tú|con|sin|una|uno|los|las|del|al)\b/gi) || []).length;
+  const english = (raw.match(/\b(?:what|why|how|where|when|but|because|i|i'm|i've|you|your|me|my|we|with|without|just|really|okay|fine|missed|studying|nothing|about)\b/gi) || []).length;
+  if (spanish > english) return "Spanish";
+  if (english > spanish) return "English";
+  return /[áéíóúüñ¿¡]/i.test(raw) ? "Spanish" : "English";
+}
+// PURE_NARRATIVE_HELPERS_END
+
+async function streamAndPersist({
+  supabase,
+  cancellationAdmin,
+  generationId,
+  conversationId,
+  userId,
+  storyRevision,
+  replacementMessage,
+  reply,
+  continuityNote,
+  responseLanguage,
+  memories,
+  loreEntries,
+  existingTimeline,
+}) {
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        sendEvent(controller, {
+          type: "start",
+          language: responseLanguage,
+          memoryCount: memories.length,
+          pinnedMemoryCount: memories.filter((memory) => memory.is_pinned).length,
+          memoryItems: memories.map((memory) => ({
+            id: memory.id,
+            content: memory.content,
+            category: memory.category,
+            pinned: Boolean(memory.is_pinned),
+          })),
+          loreCount: loreEntries.length,
+          loreItems: loreEntries.map((entry) => ({ id: entry.id, name: entry.name, type: entry.entry_type })),
+        });
+
+        let chunkIndex = 0;
+        for (const chunk of splitForStreaming(reply)) {
+          if (generationId && chunkIndex % 4 === 0 && await isGenerationCancelled(cancellationAdmin, generationId, userId)) return;
+          sendEvent(controller, { type: "chunk", content: chunk });
+          chunkIndex += 1;
+          await delay(7);
+        }
+
+        if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, userId)) return;
+        if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
+
+        const savedMessage = replacementMessage
+          ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply })
+          : await saveCharacterReply({ supabase, conversationId, userId, reply });
+
+        const update = { updated_at: new Date().toISOString() } as Record<string, any>;
+        const note = cleanPromptValue(continuityNote, 600);
+        if (note) {
+          const timeline = Array.isArray(existingTimeline) ? existingTimeline : [];
+          update.story_timeline = [
+            ...timeline.filter((item) => String(item?.message_id || "") !== String(savedMessage.id)),
+            { message_id: savedMessage.id, note, created_at: savedMessage.created_at || new Date().toISOString() },
+          ].slice(-80);
+        }
+        await supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
+        sendEvent(controller, { type: "done", message: savedMessage });
+        console.log("[character-chat] response saved", { conversationId, messageId: savedMessage.id });
+      } catch (error) {
+        if (getErrorName(error) !== "AbortError") {
+          console.error("[character-chat] stream failed", { message: getErrorMessage(error) });
+          sendEvent(controller, { type: "error", error: getErrorMessage(error) });
+        }
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
+}
+
+async function saveCharacterReply({ supabase, conversationId, userId, reply }) {
+  const { data, error } = await supabase.from("messages")
+    .insert({ conversation_id: conversationId, user_id: userId, sender: "character", content: reply })
+    .select().single();
+  if (error || !data) throw new Error(error?.message || "The response couldn't be saved");
+  return data;
+}
+
+async function replaceCharacterReply({ supabase, conversationId, userId, message, reply }) {
+  const { data: existing, error: lookupError } = await supabase.from("message_alternatives")
+    .select("content").eq("message_id", message.id).eq("user_id", userId);
+  if (lookupError) console.warn("[character-chat] alternative lookup failed", { message: lookupError.message });
+
+  const existingContent = new Set((existing || []).map((item) => String(item.content || "")));
+  const alternatives = [message.content, reply].filter(Boolean)
+    .filter((content) => !existingContent.has(String(content)))
+    .map((content) => ({
+      user_id: userId,
+      conversation_id: conversationId,
+      message_id: message.id,
+      content,
+    }));
+  if (alternatives.length) {
+    const { error } = await supabase.from("message_alternatives").insert(alternatives);
+    if (error) console.warn("[character-chat] alternative save failed", { message: error.message });
+  }
+
+  const { data, error } = await supabase.from("messages")
+    .update({ content: reply, edited_at: new Date().toISOString() })
+    .eq("id", message.id).eq("conversation_id", conversationId).eq("user_id", userId)
+    .select().single();
+  if (error || !data) throw new Error(error?.message || "The regenerated response couldn't be saved");
+  return data;
+}
+
+async function isGenerationCancelled(supabase, generationId, userId) {
+  if (!generationId) return false;
+  const { data, error } = await supabase.from("generation_requests")
+    .select("cancelled").eq("id", generationId).eq("user_id", userId).maybeSingle();
+  if (error || !data) return false;
+  return Boolean(data.cancelled);
+}
+
+async function isStoryRevisionCurrent(supabase, conversationId, userId, expectedRevision) {
+  if (!expectedRevision) return true;
+  const { data, error } = await supabase.from("conversations")
+    .select("story_revision").eq("id", conversationId).eq("user_id", userId).maybeSingle();
+  if (error || !data) return false;
+  return String(data.story_revision || "") === String(expectedRevision);
+}
+
+function selectRelevantMemories(memories, messages) {
+  const recent = normalizeText(messages.slice(-20).map((message) => message.content).join(" "));
+  return [...memories].sort((left, right) => {
+    const leftPinned = left.is_pinned || left.source === "user" ? 1 : 0;
+    const rightPinned = right.is_pinned || right.source === "user" ? 1 : 0;
+    if (leftPinned !== rightPinned) return rightPinned - leftPinned;
+    const leftRelevant = normalizeText(left.content).split(" ").some((word) => word.length > 4 && recent.includes(word)) ? 1 : 0;
+    const rightRelevant = normalizeText(right.content).split(" ").some((word) => word.length > 4 && recent.includes(word)) ? 1 : 0;
+    return rightRelevant - leftRelevant || Number(right.importance || 0) - Number(left.importance || 0);
+  }).slice(0, 24);
+}
+
+function selectRelevantLore(entries, messages) {
+  const recent = normalizeText(messages.slice(-24).map((message) => message.content).join(" "));
+  const scored = entries.map((entry) => {
+    const keywords = Array.isArray(entry.keywords) ? entry.keywords : String(entry.keywords || "").split(",");
+    const matches = keywords.filter((keyword) => {
+      const normalized = normalizeText(keyword);
+      return normalized && recent.includes(normalized);
+    }).length;
+    return { entry, score: entry.always_include ? 100 : matches };
+  });
+  return scored.filter((item) => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 18).map((item) => item.entry);
 }
 
 function getUserIdentity(user, persona = null) {
@@ -4211,44 +941,76 @@ function getUserIdentity(user, persona = null) {
   const name = persona?.name || metadata.display_name || metadata.full_name || metadata.name || String(user?.email || "").split("@")[0] || "the user";
   return {
     id: user.id,
-    personaId: persona?.id || null,
-    name: cleanPersonaField(name, 80),
-    pronouns: cleanPersonaField(persona?.pronouns, 80),
-    age: cleanPersonaField(persona?.age, 40),
-    role: cleanPersonaField(persona?.role, 180),
-    appearance: cleanPersonaField(persona?.appearance, 800),
-    personality: cleanPersonaField(persona?.personality, 800),
-    background: cleanPersonaField(persona?.background, 1200),
-    goals: cleanPersonaField(persona?.goals, 800),
-    preferences: cleanPersonaField(persona?.preferences, 800),
-    boundaries: cleanPersonaField(persona?.boundaries, 800),
-    speechStyle: cleanPersonaField(persona?.speech_style, 800),
-    notes: cleanPersonaField(persona?.notes, 1200),
+    name: cleanPromptValue(name, 80),
+    pronouns: cleanPromptValue(persona?.pronouns, 80),
+    age: cleanPromptValue(persona?.age, 40),
+    role: cleanPromptValue(persona?.role, 180),
+    appearance: cleanPromptValue(persona?.appearance, 800),
+    personality: cleanPromptValue(persona?.personality, 800),
+    background: cleanPromptValue(persona?.background, 1200),
+    goals: cleanPromptValue(persona?.goals, 800),
+    preferences: cleanPromptValue(persona?.preferences, 800),
+    boundaries: cleanPromptValue(persona?.boundaries, 800),
+    notes: cleanPromptValue(persona?.notes, 1200),
   };
 }
 
-function cleanPersonaField(value, maximum) {
-  return String(value || "").replace(/[<>]/g, "").trim().slice(0, maximum);
+function getLengthGuidance(length, kind) {
+  if (kind === "reassurance") return "45–110 words; one complete reaction and one natural line of dialogue.";
+  if (kind === "affection") return "70–160 words; include private impact, outward restraint and character-specific dialogue.";
+  if (kind === "silent_continue") return "70–170 words; advance the scene through the main character and include audible dialogue.";
+  if (length === "short") return "45–100 words, complete rather than abrupt.";
+  if (length === "long") return "150–320 words, only when the moment supports it.";
+  return "75–180 words. Prefer substance over decorative description.";
 }
 
 function getMaximumOutputTokens(length) {
-  // VELVET_NARRATIVE_ECONOMY_V1
-  // These are safety ceilings, not targets. Prompt rules explicitly allow
-  // much shorter replies whenever the current beat does not need more. Gemini
-  // thinking tokens share this budget, so the old 500/900 ceilings could cut a
-  // modest visible reply in half even though the prose itself was short.
-  if (length === "short") return 900;
-  if (length === "long") return 2400;
-  return 1600;
+  if (length === "short") return 1100;
+  if (length === "long") return 2800;
+  return 1900;
 }
 
-function getGenerationTemperature(creativity, isRegeneration = false) {
-  const value = Number(creativity);
-  const normalized = Number.isFinite(value) ? Math.min(1.2, Math.max(0.2, value)) : 0.84;
-  // Keep ordinary dialogue coherent while giving alternate takes enough room
-  // to make a different character choice instead of paraphrasing.
-  const base = 0.58 + ((normalized - 0.2) / 1.0) * 0.34;
-  return Number(Math.min(1.02, base + (isRegeneration ? 0.08 : 0)).toFixed(2));
+function getTemperature(creativity, regeneration) {
+  const value = clampNumber(creativity, 0.2, 1.2, 0.84);
+  const temperature = 0.62 + ((value - 0.2) / 1.0) * 0.26 + (regeneration ? 0.08 : 0);
+  return Number(Math.min(1.02, temperature).toFixed(2));
+}
+
+function extractCandidateText(data) {
+  return String(data?.candidates?.[0]?.content?.parts
+    ?.filter((part) => !part.thought)
+    .map((part) => part.text || "")
+    .join("") || "").trim();
+}
+
+function modelEndpoint(model) {
+  return `${GEMINI_API_ROOT}/${encodeURIComponent(model)}:generateContent`;
+}
+
+function geminiHeaders(apiKey) {
+  return { "Content-Type": "application/json", "x-goog-api-key": apiKey };
+}
+
+function stripJsonFence(value) {
+  return String(value || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+}
+
+function compactMessageForPrompt(value, maximum = 3200) {
+  const text = String(value || "").trim();
+  if (isSilentContinueText(text)) return "[SILENT_CONTINUE]";
+  return cleanPromptValue(text, maximum);
+}
+
+function cleanPromptValue(value, maximum = 1500) {
+  return String(value || "").replace(/[<>]/g, "").trim().slice(0, maximum);
+}
+
+function cleanInstruction(value) {
+  return cleanPromptValue(value, 1500);
+}
+
+function cleanId(value) {
+  return String(value || "").trim().slice(0, 100);
 }
 
 function getSupabasePublishableKey() {
@@ -4257,79 +1019,47 @@ function getSupabasePublishableKey() {
   const raw = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
   if (!raw) return "";
   try {
-    const keys = JSON.parse(raw);
-    return keys.default || Object.values(keys)[0] || "";
+    const parsed = JSON.parse(raw);
+    return parsed.default || Object.values(parsed)[0] || "";
   } catch {
     return raw;
   }
 }
 
-function cleanInstruction(value) {
-  return String(value || "").replace(/[<>]/g, "").trim().slice(0, 1500);
-}
-
-function escapePromptText(value) {
-  return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function isSilentContinueText(value) {
-  const text = String(value || "").trim();
-  return (
-    text.startsWith("[SILENT_CONTINUE") ||
-    text.includes("Treat this as silence from the user") ||
-    /^[.…。]+$/u.test(text)
-  );
-}
-
-function compactMessageForPrompt(value) {
-  const text = String(value || "").trim();
-  if (isSilentContinueText(text)) return "[SILENT_CONTINUE]";
-  return text.slice(0, 6000);
-}
-
-function normalizeText(value) {
-  return String(value || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-}
-
 function splitForStreaming(text) {
   const chunks = [];
   let cursor = 0;
-
   while (cursor < text.length) {
     const remaining = text.slice(cursor);
-    const preferredLength = Math.min(36, remaining.length);
-    let end = preferredLength;
-
-    if (remaining.length > preferredLength) {
-      const boundary = remaining.slice(0, preferredLength + 8).search(/[\s,.!?;:]\S*$/);
-      if (boundary > 12) end = boundary + 1;
+    const target = Math.min(42, remaining.length);
+    let end = target;
+    if (remaining.length > target) {
+      const window = remaining.slice(0, target + 12);
+      const boundary = Math.max(window.lastIndexOf(" "), window.lastIndexOf("\n"));
+      if (boundary > 16) end = boundary + 1;
     }
-
     chunks.push(remaining.slice(0, end));
     cursor += end;
   }
-
   return chunks;
 }
 
-function delay(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+function clampNumber(value, minimum, maximum, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(maximum, Math.max(minimum, number));
 }
 
 function sendEvent(controller, data) {
   controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 }
 
-function clampControl(value, fallback = 50) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.max(0, Math.min(100, Math.round(parsed)));
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function clampCreativity(value) {
-  const number = Number(value ?? 0.84);
-  if (!Number.isFinite(number)) return 0.84;
-  return Math.min(1.2, Math.max(0.2, number));
+function cancelledResponse() {
+  return new Response(null, { status: 499, headers: corsHeaders });
 }
 
 function getErrorName(error) {

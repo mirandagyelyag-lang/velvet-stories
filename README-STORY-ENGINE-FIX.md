@@ -1,161 +1,70 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.11)
+# Velvet Stories — motor narrativo nuevo (v1.0.0)
 
-Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
-proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
-`v5`–`v8` fueron retirados del paquete; sus cambios válidos quedaron integrados
-en los archivos reales de la app.
+La v1.0 reemplaza por completo la cadena histórica de parches de
+`character-chat`. No borra personajes, chats, memorias, lorebooks, UI ni tablas.
+Conserva el contrato de Supabase y cambia únicamente cómo se decide, genera,
+valida y guarda el próximo turno narrativo.
 
-## Comportamiento consolidado
+## Arquitectura
 
-- La instrucción privada de **regenerar** tiene prioridad y no se convierte en
-  cambio de escena salvo que lo pida explícitamente.
-- Al regenerar, la respuesta rechazada desaparece antes de la primera espera de
-  red. Si falla o se detiene la generación, la versión guardada se restaura.
-- Las variantes rechazadas ya no se pegan completas en los reintentos. Velvet
-  recibe un resumen abstracto de tácticas, recursos y muletillas que debe evitar,
-  reduciendo el efecto de repetición por *negative-example priming*.
-- La diversidad se comprueba contra los últimos cinco turnos del personaje y
-  también por intención conversacional: negación, desvío de culpa, descarte y
-  contraataque no pueden repetirse simplemente con sinónimos.
-- En conflictos, el personaje debe respetar el significado literal del diálogo
-  visible, responder el agravio real y cambiar de estrategia cuando la anterior
-  ya falló. Ser frío, orgulloso o reservado no se convierte automáticamente en
-  desprecio o insultos genéricos.
-- Una reparación específica de progreso puede transformar un bucle defensivo en
-  una admisión concreta, límite honesto, retirada, verdad relevante, intento de
-  reparación o acción con consecuencias, sin obligar ternura ni disculpas.
-- La ventana de continuidad textual aumenta de 18 a 52 mensajes y el backend
-  conserva 80 mensajes recientes para selección de memoria/lore. Los últimos 12
-  turnos permanecen en el bloque de máxima prioridad sin duplicarse.
-- El último mensaje de la usuaria se repite como ancla autoritativa al final del
-  prompt y su ID viaja desde el frontend hasta Supabase. Si la rama cambió antes
-  de responder, la generación se detiene en vez de contestar un turno antiguo.
-- Un detector específico reconoce cuando la apertura de la IA vuelve a una
-  pregunta anterior —por ejemplo, responder «What do I want?» después de «I'm
-  getting drained»— y la envía a reparación.
-- Los resúmenes se actualizan cada cinco turnos y también después de regenerar;
-  no convierten acusaciones o anécdotas inventadas por un personaje en canon.
-- Las preguntas coloquiales sin signo final —por ejemplo, `what about you i
-  haven't seen you`— se reconocen como preguntas y deben recibir una respuesta
-  antes de que el personaje cambie de tema.
-- Una confesión afectiva directa —por ejemplo, `I missed you`— siempre se
-  convierte en el centro emocional del turno, aunque el campo de relación esté
-  vacío o use palabras inesperadas. El perfil define si la reacción es
-  romántica, amistosa, culpable o reservada, pero ya no puede hacer que Velvet
-  ignore la confesión. Debe mostrar primero qué provocaron esas palabras por
-  dentro; una expresión que «cambia ligeramente», una sonrisa o un movimiento
-  del paraguas no bastan.
-- Esa reacción privada no obliga al personaje a confesarse, perseguir a la
-  protagonista ni volverse repentinamente tierno. Permite una línea interior
-  breve incluso con pensamientos configurados como raros, conservando su
-  contradicción entre lo que siente y lo que deja ver.
-- El afecto indirecto también cuenta. Frases como `If I hated you, I wouldn't be
-  by your side for 10 years` se leen como una declaración de lealtad, no como
-  información neutra ni como una invitación a seguir hablando. Rowan debe
-  reaccionar a lo que implican esos diez años y puede devolver el insulto con
-  cariño o cubrir su emoción, pero no responder `Okay, I'm listening`.
-- Las cantidades escritas con cifras y palabras se normalizan al validar canon:
-  si la usuaria establece `10 years`, el personaje puede decir `ten years` sin
-  que una equivalencia de formato active por error el fallback genérico.
-- Una edición factual se activa ante hábitos, posesiones, deudas, planes o
-  duraciones potencialmente inventadas. El diálogo previo del personaje no se
-  acepta como prueba de una historia fuera de escena que la usuaria nunca
-  confirmó.
-- El perfil, los mensajes de la usuaria, las memorias manuales o fijadas y el
-  lore forman un registro factual autoritativo. Las memorias aprendidas
-  automáticamente quedan como pistas tentativas hasta que la usuaria las fije o
-  otra fuente autoritativa las confirme; así una alucinación antigua no se
-  convierte sola en canon. Detalles cotidianos nuevos —duraciones exactas,
-  familiares, entrenadores, prácticas, exámenes, visitas, puertas cerradas o
-  planes de fin de semana— se eliminan si ese registro no los respalda.
-- Cada texto producido por el editor se valida nuevamente antes de aceptarse.
-  Si Gemini falla, devuelve vacío o insiste en inventar, Velvet usa una respuesta
-  breve y neutral al canon en vez de recuperar el borrador contaminado.
-- Canon, voz natural y reacción afectiva se corrigen en una sola revisión con un
-  presupuesto máximo de una solicitud adicional. Si esa revisión falla, queda
-  limitada o todavía ignora el centro emocional, Velvet utiliza un fallback
-  local completo; ya no gasta dos llamadas factuales y otras dos emocionales
-  para responder un solo mensaje.
-- Las salidas de emergencia responden al sentido del último turno, usan sólo el
-  primer nombre del personaje y ofrecen variantes distintas al regenerar. Ya no
-  reducen una conversación a `"Okay"` ni repiten el nombre completo como robot.
-- La autorización factual deja de basarse solamente en palabras presentes. Una
-  mención como `your mom` no permite inventar que ella escribió, llamó, vigiló
-  comidas o habló en privado: Velvet valida por separado sujeto, acción y detalle.
-- Las rutinas atribuidas a la usuaria, cantidades de comida o bebidas, lugares
-  fuera de escena y estereotipos de programación activan reparación si no están
-  respaldados. Estudiar informática no implica bebidas energéticas, laboratorio,
-  pantallas toda la noche, compiladores ni bromas sobre Python.
-- Cuando la usuaria pregunta `what about you?`, el personaje debe hablar de sí
-  mismo antes de comentar sobre ella; `I've been around; you're the one...` se
-  trata como evasión y vuelve al editor.
-- Velvet conserva y revisa el `finishReason` de Gemini. `MAX_TOKENS`, bloqueos,
-  comillas abiertas, paréntesis sin cerrar, conectores finales y puntuación
-  colgante activan una reparación antes de que el mensaje pueda guardarse.
-- Los techos de salida suben a 900/1600/2400 tokens para corto/equilibrado/largo.
-  Son máximos, no objetivos de longitud; dejan espacio porque el razonamiento
-  interno de Gemini comparte el presupuesto con el texto visible.
-- La reparación de integridad vuelve a escribir el turno completo; no pega una
-  continuación improvisada al fragmento. Si ambos modelos fallan, recorta sólo
-  hasta una frase cerrada y respaldada o utiliza un fallback completo y seguro.
-- La última puerta antes de la base de datos vuelve a comprobar canon, POV y
-  finalización, incluso después de regeneraciones y ediciones posteriores.
-- Lecturas familiares, duraciones en horas, detalles de catering y afirmaciones
-  sobre lo que la usuaria `would've` hecho ya requieren respaldo explícito.
-- Exámenes, cenas o reuniones familiares y reproches como `you could've just
-  texted` también requieren respaldo explícito; ya no pueden reemplazar la
-  reacción emocional del personaje con logística inventada.
-- Una última barrera factual se ejecuta después de las correcciones de progreso,
-  mensajes y cámara, para impedir que una etapa posterior vuelva a introducir
-  hechos falsos antes de mostrar la respuesta.
-- El editor también interviene antes cuando detecta varias muletillas de IA o
-  reutilización excesiva de lluvia, paraguas, miradas y movimientos de relleno.
-- `gemini-3.6-flash` es el modelo principal y `gemini-3.5-flash-lite` queda como
-  fallback automático ante errores transitorios o límites temporales. El modelo
-  Lite distribuye mejor la cuota gratuita, mientras el nivel de razonamiento
-  principal se mantiene bajo para priorizar coherencia y canon.
-- Un mensaje vacío, `.`, `..` o `…` se guarda como una señal interna compacta y
-  nunca se muestra en el chat.
-- El primer silencio termina el beat actual; el segundo devuelve la cámara al
-  personaje principal y los siguientes permanecen con él hasta una instrucción
-  explícita de POV.
-- Si el personaje principal ya se alejó y la protagonista reacciona fuera de su
-  alcance, la cámara lo sigue sin hacerle oír lo imposible. Su conducta pública
-  puede contradecir su emoción privada, siempre apoyada por el canon.
-- La continuación silenciosa exige voz de personaje y una decisión útil: no se
-  permite encadenar decoración de habitación, lluvia, puertas, teléfono o
-  microgestos sin contenido.
-- El motor rechaza logística inventada como tráfico, atrasos, reuniones o planes
-  no establecidos, y no inventa intimidad con terceros para producir drama.
-- Si una reparación agota sus intentos, Velvet entrega una continuación breve y
-  segura en vez de mostrar un error interno de validación de POV.
-- La usuaria conserva control exclusivo sobre sus acciones, diálogo, emociones,
-  pensamientos, reacciones, consentimiento y decisiones.
+Cada turno sigue una sola ruta:
 
-## Verificación local
+1. Cargar perfil, controles, últimos 80 mensajes, memoria y lore.
+2. Resolver la intención real del último mensaje.
+3. Pedir a Gemini una respuesta y una nota breve de continuidad en la misma llamada.
+4. Aplicar una única validación local de integridad.
+5. Si hace falta, permitir una sola reescritura contextual.
+6. Guardar y transmitir la respuesta completa.
+
+No existen respuestas narrativas locales prefabricadas. Si la generación y su
+única reparación siguen siendo vacías, genéricas, cortadas, repetidas o controlan
+el POV de la usuaria, Velvet muestra un error de regeneración. Nunca sustituye el
+turno por `Okay`, `I understand`, `I'm listening` ni una frase equivalente.
+
+## Comportamiento narrativo
+
+- `It's okay`, `fine`, `alright` y equivalentes son actos sociales que liberan
+  tensión. El personaje debe recibirlos, mostrar un efecto proporcional,
+  responder con su propia voz y mover la escena un paso pequeño.
+- `I missed you`, `I love you` y la lealtad indirecta —por ejemplo, `If I hated
+  you, I wouldn't be by your side for ten years`— activan impacto privado y
+  subtexto antes de la respuesta exterior. No obligan una confesión romántica.
+- Las preguntas coloquiales sin `?` se reconocen y deben contestarse.
+- Un punto es silencio narrativo. Dos silencios consecutivos devuelven el foco
+  significativo al personaje principal, con diálogo audible.
+- Si la protagonista se va, la cámara sigue la reacción posible del personaje;
+  no entra en el baño, dormitorio o pensamientos de la usuaria.
+- Un texto directo debe afectar al personaje y normalmente recibir respuesta
+  escrita antes de que intervengan secundarios.
+- Regenerar parte desde el mismo punto de la historia sin pegar la respuesta
+  rechazada en el prompt, y una toma demasiado parecida no puede guardarse.
+- El modelo recibe una prohibición única y explícita de inventar comunicaciones,
+  visitas, rutinas, horarios, familiares, deudas, duraciones o historia compartida
+  fuera de escena.
+- El último turno de la usuaria se repite al final del prompt como ancla
+  autoritativa. El ID del frontend debe coincidir con el de Supabase.
+
+## Cuota y continuidad
+
+- Modelo principal configurable: `GEMINI_MODEL`.
+- Fallback configurable: `GEMINI_FALLBACK_MODEL`.
+- La nota de continuidad viaja dentro de la misma respuesta JSON, por lo que ya
+  no se gastan llamadas separadas para resumen, estado y extracción automática
+  de memoria después de cada mensaje.
+- Si ambos modelos alcanzan la cuota, la app muestra `The free AI limit was
+  reached. Try again later.` en vez de fabricar roleplay débil.
+- Las memorias manuales/fijadas, lore, resumen existente, continuidad derivada y
+  los últimos 80 mensajes siguen disponibles al modelo.
+
+## Verificación
 
 ```bash
-npm ci
 npm run verify:story
+npm run verify:ui
 npm run lint
 npm run build
 ```
 
-## Publicación
-
-Desde Git Bash, dentro de la carpeta raíz correcta (la que contiene
-`package.json`):
-
-```bash
-bash APPLY-AUDIT-CLEANUP.sh
-npm ci
-npm run verify:story
-npx supabase db push
-npx supabase functions deploy character-chat
-git add .
-git commit -m "Consolidate Velvet story engine"
-git push origin main
-```
-
-El comando de Supabase publica el motor narrativo. El `git push` publica la
-interfaz mediante la conexión existente del repositorio.
+`verify:story` ejecuta casos concretos para conversación casual, `It's okay`,
+afecto directo e indirecto, preguntas sin puntuación, silencio, salida de escena,
+mensajes digitales, POV, completitud y diversidad al regenerar.

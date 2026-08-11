@@ -1,7 +1,7 @@
 # Velvet Stories
 
 Private AI roleplay/story PWA built with React, Vite, Supabase and Gemini.
-Current consolidated release: **v0.8.0**.
+Current consolidated release: **v1.0.0**.
 
 ## Local setup
 
@@ -38,7 +38,7 @@ Then commit and push to `main` for the Vercel deployment.
 
 - `src/context/ChatsContext.jsx`: conversation state, generation, Stop, Rewind, variants, memory operations.
 - `src/pages/Chat.jsx`: chat UI, response-version navigation, swipe interactions and message actions.
-- `supabase/functions/character-chat/index.ts`: story engine, medium routing, prompt, output guards, regeneration diversity and background state updates.
+- `supabase/functions/character-chat/index.ts`: single-path story engine, turn intent, grounded prompt, one validation pass and optional repair.
 - `supabase/migrations/202608100001_story_revision_guard.sql`: timeline revision guard.
 - `supabase/migrations/202608100002_generation_requests_private.sql`: keeps cancellation lifecycle rows server-only.
 - `QA-STORY-ENGINE.md`: short manual test for silence, POV return, post-exit emotion and regeneration.
