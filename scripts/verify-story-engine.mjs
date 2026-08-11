@@ -39,7 +39,9 @@ check("invented third-party intimacy is rejected", edge.includes("inventsUnsuppo
 check(
   "clean regeneration prompt omits rejected prose",
   edge.includes("earlier take(s) were rejected and are intentionally omitted") &&
-    !edge.includes("REJECTED RESPONSE VARIANTS — NEGATIVE EXAMPLES"),
+    edge.includes("The rejected prose is intentionally omitted so it cannot prime an echo") &&
+    !edge.includes("REJECTED RESPONSE VARIANTS — NEGATIVE EXAMPLES") &&
+    !edge.includes("PRIOR VARIANTS — DO NOT PARAPHRASE"),
 );
 check(
   "one repeated signature line rejects a regeneration",
@@ -47,9 +49,76 @@ check(
     edge.includes("hasRepeatedSignatureDialogue(candidate, rejected) ||"),
 );
 check(
-  "regeneration also compares recent character beats",
-  edge.includes("const recentCharacterBeats = regenerateMessageId") &&
+  "regeneration compares five recent character beats",
+  edge.includes("const recentCharacterBeats = messages") &&
+    edge.includes(".slice(-5)") &&
     edge.includes("...recentCharacterBeats"),
+);
+check(
+  "semantic dialogue loops are detected",
+  edge.includes("function extractDialogueIntentTags") &&
+    edge.includes("function sharedStagnantDialogueFrame") &&
+    edge.includes("sharedStagnantDialogueFrame(candidate, rejected) ||"),
+);
+check(
+  "failed conflict tactics receive a progression repair",
+  edge.includes("function needsConversationProgressionRepair") &&
+    edge.includes("repairConversationProgression({") &&
+    edge.includes("RECENT EXCHANGE — immutable evidence"),
+);
+check(
+  "visible dialogue cannot be denied or reframed",
+  edge.includes("Treat the visible transcript as immutable evidence") &&
+    edge.includes("Answer the user's literal grievance or direct question before reframing") &&
+    edge.includes("cannot deny saying a clear equivalent already visible"),
+);
+check(
+  "guarded characters do not default to contempt",
+  edge.includes("Guarded, cold, proud or teasing is not the same as contempt") &&
+    edge.includes("Cold/proud/teasing must not become generic contempt"),
+);
+check(
+  "progression repair rejects invented off-screen argument facts",
+  edge.includes("Do not invent family calls, message counts, schedules, dated incidents, errands, parties or classes"),
+);
+
+let dialogueGuardApi = null;
+try {
+  const guardStart = edge.indexOf("function normalizeForRegenerationComparison");
+  const guardEnd = edge.indexOf("function buildDialogueProgressionSummary", guardStart);
+  if (guardStart >= 0 && guardEnd > guardStart) {
+    const guardSource = edge.slice(guardStart, guardEnd);
+    dialogueGuardApi = new Function(
+      `${guardSource}\nreturn { needsConversationProgressionRepair, extractDialogueIntentTags };`,
+    )();
+  }
+} catch {
+  dialogueGuardApi = null;
+}
+
+const rowanRecentBeats = [
+  `"I said you spam my phone with useless garbage and then act like I committed a federal crime."`,
+  `"I didn't say your texts are shit. Whatever. You're impossible when you twist everything."`,
+  `"Don't do that. You walk off like a brat."`,
+];
+const rowanLatestUser = "What the fuck is wrong with you? Am I a brat? Seriously?";
+const rowanRejectedTake = `"I didn't say that. You make a federal case out of nothing. You want an apology? For what?"`;
+const rowanProgressedTake = `Rowan goes quiet. "No. You're not a brat. That was a cheap shot." He lowers the umbrella instead of stepping closer. "I saw your messages. I chose not to answer, and then I made you sound unreasonable for caring. I don't have a good excuse for that."`;
+check(
+  "Rowan denial/federal-case loop is rejected",
+  dialogueGuardApi?.needsConversationProgressionRepair({
+    candidate: rowanRejectedTake,
+    recentCharacterBeats: rowanRecentBeats,
+    latestUserMessage: rowanLatestUser,
+  }),
+);
+check(
+  "Rowan honest progression is accepted",
+  dialogueGuardApi && !dialogueGuardApi.needsConversationProgressionRepair({
+    candidate: rowanProgressedTake,
+    recentCharacterBeats: rowanRecentBeats,
+    latestUserMessage: rowanLatestUser,
+  }),
 );
 check(
   "direct texts cannot be buried under NPC banter",

@@ -191,20 +191,21 @@ Deno.serve(async (request) => {
       ].filter(Boolean))].slice(-8);
     }
 
-    // Adjacent character turns are not rejected alternatives, but they still
-    // matter for stagnation. Comparing against the last two beats prevents a
-    // retry from recycling the same prop, warning or denial from one turn ago.
-    const recentCharacterBeats = regenerateMessageId
-      ? messages
-          .filter((message) => message.sender === "character")
-          .slice(-2)
-          .map((message) => String(message.content || "").trim())
-          .filter(Boolean)
+    // The last five character turns expose dialogue loops that lexical-only
+    // regeneration checks miss: repeated denial, blame-shifting, dismissal or
+    // the same rhetorical motif with different wording. They are used for both
+    // ordinary-turn progression repair and regeneration diversity.
+    const recentCharacterBeats = messages
+      .filter((message) => message.sender === "character")
+      .slice(-5)
+      .map((message) => String(message.content || "").trim())
+      .filter(Boolean);
+    const diversityReferences = regenerateMessageId
+      ? [...new Set([
+          ...rejectedVariants,
+          ...recentCharacterBeats,
+        ])].slice(-14)
       : [];
-    const diversityReferences = [...new Set([
-      ...rejectedVariants,
-      ...recentCharacterBeats,
-    ])].slice(-10);
 
     const latestUserMessage = [...messages].reverse().find((message) => message.sender === "user")?.content || "";
     const previousCharacterMessage = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
@@ -437,6 +438,7 @@ Deno.serve(async (request) => {
         medium: turnResolution.digitalMode || "in_person",
         userName: userIdentity.name,
         latestUserMessage,
+        recentCharacterBeats,
       });
       generatedReply = applyNaturalOutputGuard({
         text: generatedReply,
@@ -454,6 +456,45 @@ Deno.serve(async (request) => {
         latestUserMessage,
         language: responseLanguage,
       });
+    }
+
+    // Lexical diversity is not enough in dialogue. If the draft repeats a
+    // failed denial/blame/dismissal tactic from recent turns, rewrite the
+    // conversational decision itself while keeping character psychology.
+    if (
+      generatedReply &&
+      needsConversationProgressionRepair({
+        candidate: generatedReply,
+        recentCharacterBeats,
+        latestUserMessage,
+      })
+    ) {
+      generatedReply = await repairConversationProgression({
+        apiKey: geminiApiKey,
+        text: generatedReply,
+        character: configuredCharacter,
+        userIdentity,
+        latestUserMessage,
+        recentMessages: messages,
+        recentCharacterBeats,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+      });
+      generatedReply = applyNaturalOutputGuard({
+        text: generatedReply,
+        turnResolution,
+        characterName: configuredCharacter.name,
+      });
+
+      if (likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
+        generatedReply = await repairUserPOVViolation({
+          apiKey: geminiApiKey,
+          text: generatedReply,
+          userName: userIdentity.name,
+          latestUserMessage,
+          language: responseLanguage,
+        });
+      }
     }
 
     // A direct text from the user should not disappear beneath an extended NPC
@@ -578,6 +619,7 @@ Deno.serve(async (request) => {
             medium: turnResolution.digitalMode || "in_person",
             userName: userIdentity.name,
             latestUserMessage,
+            recentCharacterBeats,
           });
           finalCandidate = applyNaturalOutputGuard({
             text: finalCandidate,
@@ -593,6 +635,29 @@ Deno.serve(async (request) => {
             userName: userIdentity.name,
             latestUserMessage,
             language: responseLanguage,
+          });
+        }
+
+        if (needsConversationProgressionRepair({
+          candidate: finalCandidate,
+          recentCharacterBeats,
+          latestUserMessage,
+        })) {
+          finalCandidate = await repairConversationProgression({
+            apiKey: geminiApiKey,
+            text: finalCandidate,
+            character: configuredCharacter,
+            userIdentity,
+            latestUserMessage,
+            recentMessages: messages,
+            recentCharacterBeats,
+            language: responseLanguage,
+            medium: turnResolution.digitalMode || "in_person",
+          });
+          finalCandidate = applyNaturalOutputGuard({
+            text: finalCandidate,
+            turnResolution,
+            characterName: configuredCharacter.name,
           });
         }
 
@@ -1049,6 +1114,114 @@ function extractComparableDialogue(value = "") {
     .slice(0, 16);
 }
 
+function extractDialogueIntentTags(value = "") {
+  const dialogue = extractComparableDialogue(value).join(" ");
+  const text = normalizeForRegenerationComparison(dialogue || value);
+  if (!text) return [];
+
+  const tags = [];
+  const patterns = {
+    denial: /\b(?:i didn[' ]t say|i did not say|i never said|i[' ]m not mean|that[' ]s not what i meant|no dije|yo no dije|no quise decir)\b/i,
+    blame_shift: /\b(?:you(?:[' ]re| are)? (?:twisting|twist|making|turning|acting|overreacting)|you always|you never|your fault|decides? to twist|lo estás tergiversando|estás exagerando|tu culpa)\b/i,
+    dismissal: /\b(?:whatever|forget it|drop it|nothing|not a big deal|out of nothing|who cares|da igual|olvídalo|déjalo|no es para tanto)\b/i,
+    counterattack: /\b(?:federal (?:case|crime)|harassment|spam my phone|useless garbage|you(?:[' ]re| are)? (?:being )?(?:impossible|dramatic|ridiculous|a brat)|walk(?:ing)? off like a brat|caso federal|acoso|basura inútil|eres (?:imposible|dramática|ridícula|una mocosa))\b/i,
+    repair: /\b(?:i[' ]m sorry|i am sorry|my fault|i was wrong|i shouldn[' ]t have|that was unfair|cheap shot|lo siento|perdón|fue mi culpa|me equivoqué|no debí)\b/i,
+    honest_boundary: /\b(?:i need|i can[' ]t|i don[' ]t know how|give me a minute|i need space|necesito|no puedo|no sé cómo|dame un minuto|necesito espacio)\b/i,
+  };
+
+  for (const [tag, pattern] of Object.entries(patterns)) {
+    if (pattern.test(text)) tags.push(tag);
+  }
+  return tags;
+}
+
+function dialogueIntentCounts(values = []) {
+  const counts = {};
+  for (const value of Array.isArray(values) ? values : []) {
+    for (const tag of extractDialogueIntentTags(value)) {
+      counts[tag] = Number(counts[tag] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
+function isEmotionallyChargedUserTurn(value = "") {
+  const text = String(value || "");
+  return /\b(?:what the fuck|fuck|fucking|mean|mad|angry|annoyed|upset|hurt|seriously|don t care|leave me alone|stop|wrong with you|brat|cruel|rude|mierda|qué te pasa|enojad[oa]|molest[oa]|herid[oa]|pesad[oa]|malo|mala|en serio|déjame|para)\b/i.test(text) ||
+    /\*(?:[^*]{0,80})(?:glare|angry|annoyed|mad|upset|roll my eyes|enojad|molest)(?:[^*]{0,80})\*/i.test(text);
+}
+
+function sharedStagnantDialogueFrame(candidate = "", prior = "") {
+  const stagnant = new Set(["denial", "blame_shift", "dismissal", "counterattack"]);
+  const candidateTags = new Set(extractDialogueIntentTags(candidate));
+  const priorTags = new Set(extractDialogueIntentTags(prior));
+  const repeatedIntent = [...candidateTags].some((tag) => stagnant.has(tag) && priorTags.has(tag));
+  const cleanRepair = candidateTags.has("repair") && ![...candidateTags].some((tag) => stagnant.has(tag));
+
+  const rhetoricalTokens = [
+    "federal", "harassment", "impossible", "dramatic", "ridiculous", "brat",
+    "useless", "seriously", "whatever", "overreacting", "twisting",
+    "acoso", "imposible", "dramática", "ridícula", "mocosa", "exagerando", "tergiversando",
+  ];
+  const candidateDialogue = normalizeForRegenerationComparison(extractComparableDialogue(candidate).join(" "));
+  const priorDialogue = normalizeForRegenerationComparison(extractComparableDialogue(prior).join(" "));
+  const repeatedRhetoric = rhetoricalTokens.some((token) => candidateDialogue.includes(token) && priorDialogue.includes(token));
+
+  return repeatedIntent || (repeatedRhetoric && !cleanRepair);
+}
+
+function needsConversationProgressionRepair({
+  candidate = "",
+  recentCharacterBeats = [],
+  latestUserMessage = "",
+}) {
+  if (!candidate || !Array.isArray(recentCharacterBeats) || !recentCharacterBeats.length) return false;
+
+  const recent = recentCharacterBeats.slice(-5);
+  const recentCounts = dialogueIntentCounts(recent);
+  const candidateTags = new Set(extractDialogueIntentTags(candidate));
+  const chargedTurn = isEmotionallyChargedUserTurn(latestUserMessage);
+  const repeatedFrame = recent.some((prior) => sharedStagnantDialogueFrame(candidate, prior));
+  const stalledHistory = ["denial", "blame_shift", "dismissal", "counterattack"]
+    .reduce((total, tag) => total + Number(recentCounts[tag] || 0), 0) >= 2;
+  const candidateStalls = ["denial", "blame_shift", "dismissal", "counterattack"]
+    .some((tag) => candidateTags.has(tag));
+
+  return repeatedFrame || (chargedTurn && stalledHistory && candidateStalls);
+}
+
+function buildDialogueProgressionSummary(values = []) {
+  const counts = dialogueIntentCounts((Array.isArray(values) ? values : []).slice(-5));
+  const labels = Object.entries(counts)
+    .filter(([, count]) => Number(count) > 0)
+    .map(([tag, count]) => `${tag}=${count}`);
+  return labels.length ? labels.join(", ") : "no repeated tactic detected";
+}
+
+function buildDiversityAvoidanceBrief(values = []) {
+  const rows = (Array.isArray(values) ? values : []).filter(Boolean).slice(-8);
+  const tactics = buildDialogueProgressionSummary(rows);
+  const normalized = normalizeForRegenerationComparison(rows.join("\n"));
+  const motifVocabulary = [
+    "umbrella", "rain", "puddle", "jaw", "breath", "gaze", "phone", "screen",
+    "pastry", "croissant", "sleeve", "pocket", "shoulder", "chest", "wet pavement",
+    "paraguas", "lluvia", "charco", "mandíbula", "respiración", "mirada", "teléfono",
+  ];
+  const rhetoricVocabulary = [
+    "federal", "harassment", "impossible", "dramatic", "ridiculous", "brat", "useless",
+    "seriously", "whatever", "overreacting", "twisting", "acoso", "imposible", "dramática",
+    "ridícula", "mocosa", "exagerando", "tergiversando",
+  ];
+  const motifs = motifVocabulary.filter((term) => normalized.includes(term)).slice(0, 8);
+  const rhetoric = rhetoricVocabulary.filter((term) => normalized.includes(term)).slice(0, 8);
+
+  return [
+    `already-used conversational tactics: ${tactics}`,
+    `already-used props/mannerisms: ${motifs.length ? motifs.join(", ") : "none detected"}`,
+    `already-used rhetorical motifs: ${rhetoric.length ? rhetoric.join(", ") : "none detected"}`,
+  ].join("\n");
+}
+
 function hasRepeatedSignatureDialogue(candidate = "", rejected = "") {
   const candidateLines = extractComparableDialogue(candidate);
   const rejectedLines = extractComparableDialogue(rejected);
@@ -1099,6 +1272,7 @@ function isTooSimilarRegeneration(candidate = "", rejected = "") {
 
   return (
     hasRepeatedSignatureDialogue(candidate, rejected) ||
+    sharedStagnantDialogueFrame(candidate, rejected) ||
     singleSentenceEcho ||
     openingSimilarity >= 0.86 ||
     copiedSentenceRatio >= 0.45 ||
@@ -1117,6 +1291,7 @@ async function generateDiverseRegeneration({
 }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), diversityAttempt > 1 ? 14000 : 18000);
+  const diversityAvoidanceBrief = buildDiversityAvoidanceBrief(rejectedResponses);
 
   try {
     const response = await fetch(
@@ -1137,7 +1312,7 @@ async function generateDiverseRegeneration({
           contents: [{
             role: "user",
             parts: [{
-              text: `${prompt}\n\nPRIOR VARIANTS — DO NOT PARAPHRASE:\n${(Array.isArray(rejectedResponses) ? rejectedResponses : []).slice(-5).map((value, index) => `${index + 1}. ${String(value).slice(0, 900)}`).join("\n\n")}\n\nWrite a structurally different next beat while preserving established canon and the user's latest turn. Change the opening, response strategy and physical/dialogue sequence.`,
+              text: `${prompt}\n\nABSTRACT DIVERSITY CONSTRAINTS\n${diversityAvoidanceBrief}\nThe rejected prose is intentionally omitted so it cannot prime an echo. Do not reuse any listed tactic as the response's main move or use listed props/mannerisms as emotional filler. Continuity objects may remain present only when physically necessary.\n\nWrite a structurally different next beat while preserving established canon and the user's latest turn. Change the opening, response strategy and physical/dialogue sequence.`,
             }],
           }],
           generationConfig: {
@@ -1459,6 +1634,15 @@ function resolveNaturalTurn({
   const asksQuestion = /\?/.test(raw);
   const correction = /\b(?:no[, ]|actually|i\s+said|i\s+meant|that's\s+not|that\s+isn't|you're\s+wrong|se\s+supone|dije|quise\s+decir|no\s+es|eso\s+no)\b/i.test(raw);
   const previousCharacterTurn = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
+  const recentCharacterDialogue = messages
+    .filter((message) => message.sender === "character")
+    .slice(-5)
+    .map((message) => String(message.content || ""));
+  const recentDialogueIntentCounts = dialogueIntentCounts(recentCharacterDialogue);
+  const stalledTacticCount = ["denial", "blame_shift", "dismissal", "counterattack"]
+    .reduce((total, tag) => total + Number(recentDialogueIntentCounts[tag] || 0), 0);
+  const emotionallyChargedTurn = isEmotionallyChargedUserTurn(raw);
+  const conflictLoop = emotionallyChargedTurn && stalledTacticCount >= 2;
   const departureContext = `${raw}\n${previousCharacterTurn}`;
   const mainCharacterHasDeparted = /\b(?:you(?:'re|\s+are|\s+were)?\s+(?:already\s+)?(?:far|gone|too\s+far)|you\s+(?:left|walked\s+away|ran\s+off|drove\s+away)|already\s+(?:jogging|walking|running|driving)\s+away|out\s+of\s+(?:sight|earshot)|before\s+(?:i|you)\s+could\s+answer|te\s+(?:fuiste|alejaste)|ya\s+estabas\s+lejos|fuera\s+de\s+(?:vista|alcance))\b/i.test(departureContext);
   const userReactedAfterDeparture = mainCharacterHasDeparted && Boolean(raw) && !silentContinue;
@@ -1620,6 +1804,9 @@ function resolveNaturalTurn({
     emotionTarget,
     emotionTrigger,
     relationshipSalient,
+    emotionallyChargedTurn,
+    conflictLoop,
+    recentDialogueTactics: buildDialogueProgressionSummary(recentCharacterDialogue),
     latestExcerpt: raw.slice(0, 520),
   };
 }
@@ -1649,6 +1836,9 @@ function formatNaturalTurnResolution(turn = {} as Record<string, any>, userIdent
     `relationship_salient=${turn.relationshipSalient ? "yes" : "no/unknown"}`,
     `emotion_target=${turn.emotionTarget || "none"}`,
     `emotion_trigger=${turn.emotionTrigger || "none"}`,
+    `emotionally_charged_turn=${turn.emotionallyChargedTurn ? "yes — respond to the literal grievance before defending" : "no"}`,
+    `conflict_loop=${turn.conflictLoop ? "yes — the prior tactic has failed; a different conversational move is mandatory" : "no"}`,
+    `recent_character_tactics=${turn.recentDialogueTactics || "none detected"}`,
     `silent_continue=${turn.silentContinue ? `yes; streak=${turn.silentContinueStreak || 1}; voice-led story motion required; narration-only forbidden` : "no"}`,
     `return_to_main_character=${turn.returnToMainCharacter ? `yes; reopen on ${character.name}'s POV/presence now` : "no"}`,
     `follow_main_character_after_exit=${turn.followMainCharacterAfterExit ? `yes; follow ${character.name}; show public mask versus canon-supported private feeling` : "no"}`,
@@ -1728,6 +1918,10 @@ Nothing lower may contradict or erase something higher.
 NARRATIVE DECISION
 - React to the latest USER turn first, then choose one meaningful next beat. Unknown history stays unknown; new present-tense choices are allowed.
 - Advance through dialogue, decisions and consequences. Do not sustain a scene with questions, decorative movement or random complications.
+- Treat the visible transcript as immutable evidence. A character may clarify intent, but may not falsely deny words or a clear equivalent they already used. If they misspoke, they can own it, correct it, set a boundary, withdraw or make another honest choice.
+- Answer the user's literal grievance or direct question before reframing. Never replace it with an easier accusation such as "you want hourly reports," "you are overreacting," or "you always twist things" unless the user actually said that.
+- Conflict must progress. Once denial, blame-shifting, dismissal or a counterattack has failed, do not repeat that tactic with new vocabulary. Change the interpersonal state through a specific admission, relevant truth, honest boundary, withdrawal, repair attempt or consequential action. Do not force an apology or softness; do force a new choice.
+- Guarded, cold, proud or teasing is not the same as contempt. Do not upgrade affection/friendship into calling the user's ordinary needs worthless, stupid, dramatic or childish unless explicit canon and a proportionate present event support that cruelty. Friction should come from the character's real values and fears, not generic hostility.
 - If the latest USER turn sends ${character.name} a direct text, that text must materially change ${character.name}'s next choice. With ordinary or high initiative, include a concise written reply in this response. Guardedness may make the reply brief, evasive or delayed by one meaningful action; it may not let unrelated NPC banter replace the user's thread.
 - In a social cutaway, an NPC may prompt or tease once. Do not build a loop where the NPC probes again while ${character.name} repeats the same denial, warning or dismissal. Return to ${character.name}'s decision about the user's latest turn.
 - Preserve established affection, tension and conflict as active psychology. A guarded character may hide feelings, but may not forget them.
@@ -1738,6 +1932,7 @@ NARRATIVE DECISION
 - First silent continue: finish the active beat. Second: return to ${character.name}. Further silent continues stay with ${character.name} until the user explicitly changes POV.
 - Never invent ${userIdentity.name}'s response or require them to answer. Characters can speak, decide, leave or interact with established NPCs independently.
 - Before adding any past/off-screen fact, ask where it was established. If nowhere, omit it. Do not fabricate traffic, lateness, schedules, promises, history, intimacy or logistics just to create dialogue.
+- A claim spoken by a character can be a lie, mistake or deflection; it does not become narrator-confirmed canon merely because it appeared in dialogue. Never invent family calls, unread-message counts, parties, classes, errands or dated incidents to win an argument.
 
 POV & CAMERA
 ${buildNarrativeCameraInstructions(character, userIdentity)}
@@ -1756,6 +1951,8 @@ SCENE MEDIUM LOCK
 CRAFT
 - Write natural contemporary fiction, not ornate AI prose. Use contractions, fragments, interruptions and subtext when they fit the character.
 - Dialogue must react to the visible moment or canon. No polished exposition, therapy speeches, compulsory cleverness or facts invented merely to keep talking.
+- Give each reply a conversational job. A complete beat usually contains the immediate reaction and one decision/consequence; completeness comes from movement, not extra paragraphs.
+- Do not repeat a dialogue opener, accusation, denial, metaphor or emotional conclusion used in the recent exchange. Reusing the same intent with synonyms still counts as repetition.
 - Every action must change position, accomplish something or reveal a choice. Keep physical continuity; never invent the user's reaction or reciprocation.
 - Avoid gesture chains and reusable atmosphere: jaw tightening, held breath, lingering gaze, flexing hands, sleeve/pulse business, amber light, heavy silence, rain/window/door/phone description that does no work.
 - One concrete detail is enough. Do not explain an emotion after dialogue or behavior already showed it.
@@ -1982,6 +2179,8 @@ FINAL PRE-WRITE CHECK
 - Obey the latest USER turn and mandatory regeneration direction without controlling ${userIdentity.name}.
 - Keep the resolved medium and camera route. If a return/follow route is active, ${character.name} must be the meaningful focus.
 - Use only established past facts; new material must be a present action or choice, not invented history/logistics.
+- Read the whole recent exchange, not only the last sentence. Preserve what was actually said, answer the user's exact grievance, and do not make them defend it again.
+- If denial, blame, dismissal or counterattack already appeared, use a different conversational strategy now. Do not recycle its intent, metaphor or emotional conclusion under new wording.
 - Include character voice when silent_continue=yes. Remove filler, repeated beats and stock AI gestures.
 - If the latest user turn is a direct text, make it alter ${character.name}'s behavior and normally include ${character.name}'s written reply. Do not let an NPC interrogation loop replace it.
 - Make English idiomatic and dialogue character-specific. Stop when the beat lands.
@@ -2178,6 +2377,11 @@ function likelyNeedsNaturalVoiceRepair(value = "") {
     /\bcorner of (?:his|her|their) mouth\b/gi,
     /\bshoulders? (?:eased|tensed|dropped|stiffened)\b/gi,
     /\bhand(?:s)? (?:flexed|curled|clenched|slid into .*pocket)\b/gi,
+    /\bchest (?:rising|falling|heaving)(?: and falling)?(?: sharply)?\b/gi,
+    /\b(?:shifts?|tilts?|dips?|adjusts?) (?:the |his |her |their )?umbrella\b/gi,
+    /\bumbrella (?:tilting|dipping|hanging|propped|tipping)\b/gi,
+    /\brain (?:hits?|catches?|soaks?|darkens?)[^.!?\n]{0,55}\b(?:face|hair|shirt|jacket|shoulder)\b/gi,
+    /\bruns? (?:his|her|their) (?:free )?hand (?:over|through) (?:the back of )?(?:his|her|their) (?:neck|hair)\b/gi,
     /\b(?:amber|dim|low) (?:glow|light)\b/gi,
     /\b(?:dark|quiet|empty) room\b/gi,
     /\b(?:stared|looked) (?:down )?at the (?:floor|ground)\b/gi,
@@ -2194,17 +2398,106 @@ function likelyNeedsNaturalVoiceRepair(value = "") {
   return hits >= 3 || (hits >= 2 && paragraphs <= 3);
 }
 
-async function repairNaturalVoice({ apiKey, text, language, medium, userName, latestUserMessage = "" }) {
+async function repairNaturalVoice({
+  apiKey,
+  text,
+  language,
+  medium,
+  userName,
+  latestUserMessage = "",
+  recentCharacterBeats = [],
+}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
+  const recentAvoidanceBrief = buildDiversityAvoidanceBrief(recentCharacterBeats);
   try {
     const response = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       signal: controller.signal,
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. Preserve the actual events, character intent, established facts and useful dialogue, but make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. Do not add new facts or new actions. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages. Output only the repaired passage in ${language}.\n\nLATEST USER TURN:\n${String(latestUserMessage || "").slice(0, 2500)}\n\nPASSAGE:\n${String(text || "").slice(0, 12000)}` }] }],
+        contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. Preserve the actual events, character intent, established facts and useful dialogue, but make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. Do not add new facts or new actions. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages.\n\nRECENTLY USED FEATURES — avoid reusing them as filler or rhetoric:\n${recentAvoidanceBrief}\n\nDo not repeat a recent prop interaction, gesture, dialogue tactic or rhetorical motif merely with synonyms. Output only the repaired passage in ${language}.\n\nLATEST USER TURN:\n${String(latestUserMessage || "").slice(0, 2500)}\n\nPASSAGE:\n${String(text || "").slice(0, 12000)}` }] }],
         generationConfig: { maxOutputTokens: 1700 },
+      }),
+    });
+    if (!response.ok) return text;
+    const data = await response.json();
+    return data?.candidates?.[0]?.content?.parts
+      ?.filter((part) => typeof part.text === "string" && !part.thought)
+      .map((part) => part.text)
+      .join("")
+      .trim() || text;
+  } catch {
+    return text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function repairConversationProgression({
+  apiKey,
+  text,
+  character,
+  userIdentity,
+  latestUserMessage = "",
+  recentMessages = [],
+  recentCharacterBeats = [],
+  language,
+  medium,
+}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 14000);
+  const recentExchange = (Array.isArray(recentMessages) ? recentMessages : [])
+    .slice(-10)
+    .map((message) => `${message.sender === "user" ? "USER" : "CHARACTER"}: ${compactMessageForPrompt(message.content)}`)
+    .join("\n");
+  const repeatedTactics = buildDialogueProgressionSummary(recentCharacterBeats);
+
+  try {
+    const response = await fetch(GEMINI_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [{
+            text: `Rewrite the DRAFT as the next beat of a private interactive novel because it repeats a failed conversational tactic.
+
+CHARACTER
+Name: ${character.name}
+Personality: ${character.personality || "not specified"}
+Relationship to ${userIdentity.name}: ${character.relationship || "not specified"}
+Speech style: ${character.speech_style || "not specified"}
+Boundaries: ${character.boundaries || "not specified"}
+
+REPEATED TACTICS DETECTED
+${repeatedTactics}
+
+RECENT EXCHANGE — immutable evidence
+${recentExchange || "none"}
+
+LATEST USER TURN — answer this exact meaning first
+${String(latestUserMessage || "").slice(0, 2500)}
+
+DRAFT THAT STALLED
+${String(text || "").slice(0, 10000)}
+
+REPAIR CONTRACT
+- Read the exchange as a whole. Do not answer only the last sentence.
+- Preserve the physical situation and established character psychology, but choose a genuinely different conversational move from the repeated tactics above.
+- The visible transcript is immutable. ${character.name} may clarify intent but cannot deny saying a clear equivalent already visible in the exchange or pretend ${userIdentity.name} invented the grievance.
+- Answer any direct question before reframing. Respond to the literal hurt; do not substitute an easier accusation or make ${userIdentity.name} defend it again.
+- Progress can be a specific admission, relevant truth, honest boundary, withdrawal, imperfect repair attempt or consequential action. Do not force tenderness, confession, forgiveness or a polished apology. Guardedness may remain.
+- Cold/proud/teasing must not become generic contempt. Remove gratuitous insults, devaluation and blame loops unless explicit canon and the present event truly require them.
+- Remove every off-screen fact not established in RECENT EXCHANGE or the character profile. Do not invent family calls, message counts, schedules, dated incidents, errands, parties or classes.
+- Use natural contemporary dialogue. Remove recycled metaphors and decorative rain/umbrella/jaw/breath/gaze/chest choreography. Keep at most one functional physical detail.
+- The user exclusively controls ${userIdentity.name}. Never invent their action, reaction, thought, feeling, dialogue or decision. Address them as you/your in reader-facing narration.
+- Communication medium is ${medium}. Spoken dialogue uses quotation marks; only actual written messages use >.
+- Make the beat feel complete through one changed decision or consequence, then stop. Output only the repaired passage in ${language}.`,
+          }],
+        }],
+        generationConfig: { maxOutputTokens: 1800 },
       }),
     });
     if (!response.ok) return text;

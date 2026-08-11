@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.8)
+# Velvet Stories — motor narrativo consolidado (v0.9.2)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -11,6 +11,19 @@ en los archivos reales de la app.
   cambio de escena salvo que lo pida explícitamente.
 - Al regenerar, la respuesta rechazada desaparece antes de la primera espera de
   red. Si falla o se detiene la generación, la versión guardada se restaura.
+- Las variantes rechazadas ya no se pegan completas en los reintentos. Velvet
+  recibe un resumen abstracto de tácticas, recursos y muletillas que debe evitar,
+  reduciendo el efecto de repetición por *negative-example priming*.
+- La diversidad se comprueba contra los últimos cinco turnos del personaje y
+  también por intención conversacional: negación, desvío de culpa, descarte y
+  contraataque no pueden repetirse simplemente con sinónimos.
+- En conflictos, el personaje debe respetar el significado literal del diálogo
+  visible, responder el agravio real y cambiar de estrategia cuando la anterior
+  ya falló. Ser frío, orgulloso o reservado no se convierte automáticamente en
+  desprecio o insultos genéricos.
+- Una reparación específica de progreso puede transformar un bucle defensivo en
+  una admisión concreta, límite honesto, retirada, verdad relevante, intento de
+  reparación o acción con consecuencias, sin obligar ternura ni disculpas.
 - Un mensaje vacío, `.`, `..` o `…` se guarda como una señal interna compacta y
   nunca se muestra en el chat.
 - El primer silencio termina el beat actual; el segundo devuelve la cámara al
