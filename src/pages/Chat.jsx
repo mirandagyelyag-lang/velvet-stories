@@ -46,7 +46,7 @@ import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
 import "../styles/chat.css";
 
-const SILENT_CONTINUE_MESSAGE = "[Continue the scene naturally. Treat this as silence from the user: they did not speak, move, react, decide, or perform any new action. Do not acknowledge this instruction. Do not force an interaction with the user. The character may keep talking, continue what they were doing, act independently, or interact with other people according to the current context.]";
+const SILENT_CONTINUE_MESSAGE = "[SILENT_CONTINUE]";
 
 function Chat({ character, conversationId, onBack, onDeleted }) {
   const { settings } = useSettings();
@@ -438,7 +438,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     const cleanMessage = message.trim();
     if (busy || !conversationReady) return;
 
-    const messageToSend = cleanMessage === "" || cleanMessage === "."
+    const messageToSend = cleanMessage === "" || /^[.…。]+$/u.test(cleanMessage)
       ? SILENT_CONTINUE_MESSAGE
       : cleanMessage;
 
@@ -1017,9 +1017,14 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     }
   }
 
+  const chatHeroImage = character.coverUrl || character.imageUrl;
+
   return (
     <section className="chat">
-      <header className="chat__header">
+      <header
+        className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
+        style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
+      >
         <button className="chat__icon-button" onClick={onBack} aria-label="Go back">
           <ArrowLeft size={20} />
         </button>
@@ -1582,7 +1587,7 @@ function MessageBubble({
   const [swipeOffset, setSwipeOffset] = useState(0);
   const canSwipe = message.sender === "character" && !message.isStreaming && versionNavigationEnabled && !swipeDisabled;
 
-  if (message.sender === "user" && message.content === SILENT_CONTINUE_MESSAGE) {
+  if (isSilentContinuation(message)) {
     return null;
   }
 
@@ -1750,7 +1755,12 @@ function formatProfileValue(value, fallback) {
 }
 
 function isSilentContinuation(message) {
-  return message.sender === "user" && message.content === SILENT_CONTINUE_MESSAGE;
+  const content = String(message?.content || "").trim();
+  return message?.sender === "user" && (
+    content === SILENT_CONTINUE_MESSAGE ||
+    content.startsWith("[SILENT_CONTINUE") ||
+    content.includes("Treat this as silence from the user")
+  );
 }
 
 function shouldShowDateDivider(messages, index) {

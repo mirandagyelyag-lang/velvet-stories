@@ -1,4 +1,8 @@
 {
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false
+  },
   "imports": {
     "@supabase/functions-js": "jsr:@supabase/functions-js@^2",
     "@supabase/server": "npm:@supabase/server@^1"

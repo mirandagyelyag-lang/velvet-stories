@@ -2,6 +2,7 @@
 node_modules/
 dist/
 dist-ssr/
+supabase/.temp/
 
 # Logs
 logs/
@@ -27,3 +28,10 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Audit/export artifacts that must never become a second source of truth
+velvet-stories/
+character-chat-v*.ts
+ChatsContext-v*.jsx
+*auditoria*.zip
+supabase/functions/swift-task/

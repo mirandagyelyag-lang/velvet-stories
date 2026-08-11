@@ -7,13 +7,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import velvetLogo from "../assets/velvet-logo.png";
+import velvetLogo from "../assets/velvet-logo.webp";
 import "../styles/sidebar.css";
 
 const navigation = [
-  { id: "chats", label: "Chats", icon: MessageCircle },
-  { id: "characters", label: "Library", icon: BookOpen },
-  { id: "profile", label: "Profile", icon: UserRound },
+  { id: "chats", label: "Stories", icon: MessageCircle },
+  { id: "characters", label: "Discover", icon: BookOpen },
+  { id: "profile", label: "You", icon: UserRound },
 ];
 
 function Sidebar({ activePage, onNavigate }) {
