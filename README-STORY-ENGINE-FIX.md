@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.5)
+# Velvet Stories — motor narrativo consolidado (v0.9.6)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -49,6 +49,12 @@ en los archivos reales de la app.
 - Cada texto producido por el editor se valida nuevamente antes de aceptarse.
   Si Gemini falla, devuelve vacío o insiste en inventar, Velvet usa una respuesta
   breve y neutral al canon en vez de recuperar el borrador contaminado.
+- El editor factual también cambia automáticamente al modelo secundario si el
+  principal queda limitado o produce otra versión insegura; antes, ese cambio
+  existía solamente en la primera generación.
+- Las salidas de emergencia responden al sentido del último turno, usan sólo el
+  primer nombre del personaje y ofrecen variantes distintas al regenerar. Ya no
+  reducen una conversación a `"Okay"` ni repiten el nombre completo como robot.
 - Una última barrera factual se ejecuta después de las correcciones de progreso,
   mensajes y cámara, para impedir que una etapa posterior vuelva a introducir
   hechos falsos antes de mostrar la respuesta.

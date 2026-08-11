@@ -488,6 +488,7 @@ Deno.serve(async (request) => {
         loreEntries,
         conversationSummary: conversation.summary || "",
         groundingFacts: authoritativeGroundingFacts,
+        rejectedResponses: diversityReferences,
       });
       generatedReply = applyNaturalOutputGuard({
         text: generatedReply,
@@ -664,6 +665,7 @@ Deno.serve(async (request) => {
         loreEntries,
         conversationSummary: conversation.summary || "",
         groundingFacts: authoritativeGroundingFacts,
+        rejectedResponses: diversityReferences,
       });
       generatedReply = applyNaturalOutputGuard({
         text: generatedReply,
@@ -733,6 +735,7 @@ Deno.serve(async (request) => {
             loreEntries,
             conversationSummary: conversation.summary || "",
             groundingFacts: authoritativeGroundingFacts,
+            rejectedResponses: diversityReferences,
           });
           finalCandidate = applyNaturalOutputGuard({
             text: finalCandidate,
@@ -2721,35 +2724,114 @@ function likelyNeedsNaturalVoiceRepair(value = "") {
   return hits >= 2 || (hits >= 1 && paragraphs <= 2);
 }
 
+function normalizeEditorialFallback(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function editorialFallbackSimilarity(left = "", right = "") {
+  const a = normalizeEditorialFallback(left);
+  const b = normalizeEditorialFallback(right);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const aTokens = new Set(a.split(" ").filter((token) => token.length > 2));
+  const bTokens = new Set(b.split(" ").filter((token) => token.length > 2));
+  if (!aTokens.size || !bTokens.size) return 0;
+  let shared = 0;
+  for (const token of aTokens) if (bTokens.has(token)) shared += 1;
+  return shared / Math.min(aTokens.size, bTokens.size);
+}
+
+function stableEditorialFallbackIndex(value = "", size = 1) {
+  let hash = 2166136261;
+  for (const character of String(value || "")) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash) % Math.max(1, Number(size) || 1);
+}
+
+function chooseEditorialFallback(candidates = [], rejectedResponses = [], seedText = "") {
+  const safeCandidates = candidates.filter(Boolean);
+  if (!safeCandidates.length) return "";
+  const rejected = (Array.isArray(rejectedResponses) ? rejectedResponses : [])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const start = stableEditorialFallbackIndex(seedText, safeCandidates.length);
+  const ordered = safeCandidates.map((_, index) => safeCandidates[(start + index) % safeCandidates.length]);
+  return ordered.find((candidate) =>
+    !rejected.some((prior) => editorialFallbackSimilarity(candidate, prior) >= 0.72)
+  ) || ordered[0];
+}
+
 function buildCanonNeutralEditorialFallback({
   characterName,
   latestUserMessage = "",
   language = "English",
+  rejectedResponses = [],
+  seedText = "",
 }) {
-  const name = String(characterName || "The character").trim();
+  const fullName = String(characterName || "The character").trim();
+  const name = fullName.split(/\s+/).filter(Boolean)[0] || fullName;
   const latest = String(latestUserMessage || "").toLowerCase();
   const spanish = String(language || "").toLowerCase().includes("spanish");
-  const asksWhatAbout = /\b(?:what|how)\s+about\s+you\b|\bwhat(?:'ve| have)\s+you\s+been\s+up\s+to\b|\bhaven't\s+see(?:n)?\s+you\b/.test(latest);
-  const asksWhyMe = /\bwhy\s+me\b/.test(latest);
+  const asksWhatAbout = /\b(?:what|how)\s+about\s+you\b|\bwhat(?:'ve| have)\s+you\s+been\s+up\s+to\b|\bhaven't\s+see(?:n)?\s+you\b|\b(?:y\s+t[uú]|qu[eé]\s+hay\s+de\s+ti|qu[eé]\s+has\s+hecho|hace\s+tiempo\s+que\s+no\s+te\s+veo)\b/.test(latest);
+  const asksWhyMe = /\bwhy\s+me\b|\bpor\s+qu[eé]\s+yo\b/.test(latest);
 
   if (asksWhatAbout) {
-    return spanish
-      ? `${name} te miró.\n\n"Nada demasiado interesante", dijo ${name}. "Y sí. También sé que ha pasado un tiempo."`
-      : `${name} looked over at you.\n\n"Nothing too interesting," ${name} said. "And yeah. I know it's been a while too."`;
+    const candidates = spanish
+      ? [
+          `${name} se tomó un momento antes de responder.\n\n"Nada demasiado interesante", dijo. Luego añadió, más bajo: "Y sí. Lo sé. Debí haberme comunicado."`,
+          `"No mucho", dijo ${name}. La respuesta fácil casi terminó ahí, pero volvió a mirarte. "Aunque tienes razón. Ha pasado un tiempo."`,
+          `La expresión de ${name} cambió apenas.\n\n"Nada que merezca una gran historia", dijo. "Pero sí... sé que no he estado muy presente."`,
+        ]
+      : [
+          `${name} took a moment before answering.\n\n"Nothing exciting," ${name} said. Then, quieter, "And yeah. I know. I should've checked in."`,
+          `"Not much," ${name} said. The easy answer almost ended there, but ${name} looked over at you. "You're right, though. It's been a while."`,
+          `${name}'s expression shifted slightly.\n\n"Nothing worth a dramatic update," ${name} said. "But... yeah. I know I haven't been around much."`,
+        ];
+    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
   }
   if (asksWhyMe) {
-    return spanish
-      ? `${name} te miró.\n\n"Porque quería hacerlo", dijo ${name}. "Eso es todo."`
-      : `${name} looked at you.\n\n"Because I wanted to," ${name} said. "That's all."`;
+    const candidates = spanish
+      ? [
+          `"Porque quería estar contigo", dijo ${name}. "No hay una razón escondida."`,
+          `${name} te sostuvo la mirada.\n\n"Porque preferiría ir contigo", dijo, como si fuera obvio.`,
+          `"¿Necesito una razón mejor que querer tu compañía?", preguntó ${name}.`,
+        ]
+      : [
+          `"Because I wanted to be with you," ${name} said. "There's no hidden reason."`,
+          `${name} held your gaze.\n\n"Because I'd rather go with you," ${name} said, like it should have been obvious.`,
+          `"Do I need a better reason than wanting your company?" ${name} asked.`,
+        ];
+    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
   }
   if (looksLikeDirectQuestion(latestUserMessage)) {
-    return spanish
-      ? `${name} te miró antes de responder.\n\n"No lo sé", admitió ${name}.`
-      : `${name} looked at you before answering.\n\n"I don't know," ${name} admitted.`;
+    const candidates = spanish
+      ? [
+          `${name} se tomó la pregunta en serio.\n\n"No lo sé todavía", admitió. "Pero no voy a inventarte una respuesta."`,
+          `"Dame un segundo", dijo ${name}. "Quiero responderte bien."`,
+        ]
+      : [
+          `${name} took the question seriously.\n\n"I don't know yet," ${name} admitted. "But I'm not going to make up an answer for you."`,
+          `"Give me a second," ${name} said. "I want to answer you properly."`,
+        ];
+    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
   }
-  return spanish
-    ? `${name} te miró.\n\n"Está bien", dijo ${name}.`
-    : `${name} looked at you.\n\n"Okay," ${name} said.`;
+  const candidates = spanish
+    ? [
+        `"Está bien", dijo ${name}, sin intentar desviar el tema. "Te estoy escuchando."`,
+        `${name} dejó la respuesta fácil a un lado.\n\n"Entiendo", dijo. "Sigue."`,
+      ]
+    : [
+        `"Okay," ${name} said, without trying to deflect. "I'm listening."`,
+        `${name} let the easy answer go.\n\n"I understand," ${name} said. "Go on."`,
+      ];
+  return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
 }
 
 async function repairNaturalVoice({
@@ -2767,6 +2849,7 @@ async function repairNaturalVoice({
   loreEntries = [],
   conversationSummary = "",
   groundingFacts = "",
+  rejectedResponses = [],
 }) {
   const recentAvoidanceBrief = buildDiversityAvoidanceBrief(recentCharacterBeats);
   const recentExchange = (Array.isArray(recentMessages) ? recentMessages : [])
@@ -2794,12 +2877,19 @@ async function repairNaturalVoice({
   });
   let failedDraft = String(text || "").trim();
   let groundedFallback = "";
+  const editorialEndpoints = [
+    { url: GEMINI_ENDPOINT, role: "primary" },
+    ...(GEMINI_FALLBACK_ENDPOINT !== GEMINI_ENDPOINT
+      ? [{ url: GEMINI_FALLBACK_ENDPOINT, role: "fallback" }]
+      : []),
+  ];
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const endpoint = editorialEndpoints[Math.min(attempt - 1, editorialEndpoints.length - 1)];
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 15000 : 12000);
     try {
-      const response = await fetch(GEMINI_ENDPOINT, {
+      const response = await fetch(endpoint.url, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         signal: controller.signal,
@@ -2865,7 +2955,11 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
         }),
       });
       if (!response.ok) {
-        console.warn("Editorial repair request failed", { attempt, status: response.status });
+        console.warn("Editorial repair request failed", {
+          attempt,
+          modelRole: endpoint.role,
+          status: response.status,
+        });
         continue;
       }
       const data = await response.json();
@@ -2894,6 +2988,7 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
 
       console.warn("Editorial repair candidate rejected", {
         attempt,
+        modelRole: endpoint.role,
         groundingSignals: remainingSignals,
         styleRisk: remainingStyleRisk,
       });
@@ -2901,6 +2996,7 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
     } catch (error) {
       console.warn("Editorial repair attempt failed", {
         attempt,
+        modelRole: endpoint.role,
         error: getErrorName(error) || "unknown",
       });
     } finally {
@@ -2920,6 +3016,8 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
     characterName: character?.name,
     latestUserMessage,
     language,
+    rejectedResponses,
+    seedText: `${text}\n${failedDraft}\n${recentCharacterBeats.join("\n")}`,
   });
 }
 

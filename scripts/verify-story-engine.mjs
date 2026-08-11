@@ -191,6 +191,54 @@ check(
   edge.includes("// FINAL factual validation.") &&
     edge.indexOf("// FINAL factual validation.") < edge.indexOf("// FINAL regeneration validation."),
 );
+check(
+  "editorial repair fails over to the secondary model",
+  edge.includes("const editorialEndpoints = [") &&
+    edge.includes("{ url: GEMINI_FALLBACK_ENDPOINT, role: \"fallback\" }") &&
+    edge.includes("modelRole: endpoint.role"),
+);
+
+let editorialFallbackApi = null;
+try {
+  const fallbackStart = edge.indexOf("function normalizeEditorialFallback");
+  const fallbackEnd = edge.indexOf("async function repairNaturalVoice", fallbackStart);
+  if (fallbackStart >= 0 && fallbackEnd > fallbackStart) {
+    editorialFallbackApi = new Function(
+      `function looksLikeDirectQuestion() { return false; }\n${edge.slice(fallbackStart, fallbackEnd)}\nreturn { buildCanonNeutralEditorialFallback };`,
+    )();
+  }
+} catch {
+  editorialFallbackApi = null;
+}
+
+const rowanFallbackInput = "Nothing really, just studying, what about you i haven't seen you in a while";
+const rowanSafeFallback = editorialFallbackApi?.buildCanonNeutralEditorialFallback({
+  characterName: "Rowan Hayes",
+  latestUserMessage: rowanFallbackInput,
+  language: "English",
+  seedText: rowanInventedUpdate,
+}) || "";
+const rowanRegeneratedFallback = editorialFallbackApi?.buildCanonNeutralEditorialFallback({
+  characterName: "Rowan Hayes",
+  latestUserMessage: rowanFallbackInput,
+  language: "English",
+  seedText: rowanInventedUpdate,
+  rejectedResponses: [rowanSafeFallback],
+}) || "";
+check(
+  "Rowan emergency reply stays conversational",
+  rowanSafeFallback.includes("Rowan") &&
+    !rowanSafeFallback.includes("Rowan Hayes") &&
+    !/\n\n"Okay," Rowan said\.?$/i.test(rowanSafeFallback) &&
+    rowanSafeFallback.split('"').length >= 3,
+);
+check(
+  "Rowan regeneration receives a different safe fallback",
+  Boolean(rowanSafeFallback) &&
+    Boolean(rowanRegeneratedFallback) &&
+    rowanSafeFallback !== rowanRegeneratedFallback &&
+    !/^Rowan (?:Hayes )?looked at you\.\s+"Okay,"/i.test(rowanRegeneratedFallback),
+);
 
 let dialogueGuardApi = null;
 try {
