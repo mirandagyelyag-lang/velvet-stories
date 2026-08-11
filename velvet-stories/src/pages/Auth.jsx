@@ -2,7 +2,7 @@ import { Eye, EyeOff, KeyRound, Mail, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import velvetLogo from "../assets/velvet-logo.png";
+import velvetLogo from "../assets/velvet-logo.webp";
 import "../styles/auth.css";
 
 const SAVED_EMAIL_KEY = "velvet-private-email-v1";

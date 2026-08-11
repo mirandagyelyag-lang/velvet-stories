@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import velvetLogo from "../assets/velvet-logo.png";
+import velvetLogo from "../assets/velvet-logo.webp";
 import "../styles/sidebar.css";
 
 const navigation = [

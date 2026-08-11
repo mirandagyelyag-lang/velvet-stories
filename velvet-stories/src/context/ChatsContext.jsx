@@ -530,10 +530,35 @@ export function ChatsProvider({
       throw new Error("The conversation is not ready yet.");
     }
 
+    const regenerationMessage = options.regenerateMessageId
+      ? (conversation.messages || []).find((item) => item.id === options.regenerateMessageId) || null
+      : null;
+
     if (options.regenerateMessageId) {
+      // Hide the rejected take before any network await. The replacement now
+      // feels immediate: only Velvet's generation state remains on screen.
+      setChats((currentChats) => {
+        const currentChat = currentChats[characterId];
+        if (!currentChat) return currentChats;
+        return {
+          ...currentChats,
+          [characterId]: {
+            ...currentChat,
+            messages: (currentChat.messages || []).filter((item) =>
+              item.id !== options.regenerateMessageId
+            ),
+          },
+        };
+      });
+
       // A regeneration changes the canonical visible response. Bump the story
-      // revision first so older background tasks cannot resurrect the rejected take.
-      await bumpStoryRevision(characterId);
+      // revision so older background tasks cannot resurrect the rejected take.
+      try {
+        await bumpStoryRevision(characterId);
+      } catch (error) {
+        if (regenerationMessage) appendMessageToState(characterId, regenerationMessage);
+        throw error;
+      }
     }
 
     const requestController = new AbortController();
@@ -548,7 +573,8 @@ export function ChatsProvider({
     let reader = null;
 
     // A stale UI-only stream from an interrupted request must never block
-    // future sends. The database contains only completed messages.
+    // future sends. The rejected response was already removed above, before
+    // the first await, when this is a regeneration.
     setChats((currentChats) => {
       const currentChat = currentChats[characterId];
       if (!currentChat) return currentChats;
@@ -556,7 +582,9 @@ export function ChatsProvider({
         ...currentChats,
         [characterId]: {
           ...currentChat,
-          messages: (currentChat.messages || []).filter((item) => !item.isStreaming),
+          messages: (currentChat.messages || []).filter((item) =>
+            !item.isStreaming && item.id !== options.regenerateMessageId
+          ),
         },
       };
     });
@@ -673,10 +701,6 @@ export function ChatsProvider({
 
       if (!response.body) {
         throw new Error("The AI returned an empty response.");
-      }
-
-      if (options.regenerateMessageId) {
-        removeMessageFromState(characterId, options.regenerateMessageId);
       }
 
       reader = response.body.getReader();
@@ -857,6 +881,17 @@ export function ChatsProvider({
       };
     } catch (error) {
       cleanupStreamingBubble();
+
+      if (regenerationMessage) {
+        // The old response remains canonical in the database unless the Edge
+        // Function successfully replaces it. Reload first so failures and Stop
+        // restore the correct version instead of leaving a visual hole.
+        try {
+          await reloadConversationMessages(characterId);
+        } catch {
+          appendMessageToState(characterId, regenerationMessage);
+        }
+      }
 
       if (requestWasCancelled() || error?.name === "AbortError") {
         throw cancellationError();
@@ -1675,7 +1710,7 @@ export function ChatsProvider({
     const conversationId = chats[characterId]?.conversationId;
     const clean = String(query || "").trim();
     if (!conversationId || clean.length < 2) return [];
-    const escaped = clean.replace(/[%_]/g, "\$&");
+    const escaped = clean.replace(/[%_]/g, "\\$&");
     const { data, error } = await supabase.from("messages")
       .select("id, sender, content, created_at, edited_at, is_bookmarked, bookmark_label, chapter_number, reply_to_message_id, reply_preview, reply_sender")
       .eq("conversation_id", conversationId)

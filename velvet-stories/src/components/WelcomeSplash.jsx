@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import velvetLogo from "../assets/velvet-logo.png";
+import velvetLogo from "../assets/velvet-logo.webp";
 import "../styles/welcome-splash.css";
 
 export default function WelcomeSplash() {

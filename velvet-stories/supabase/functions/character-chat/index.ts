@@ -7,6 +7,8 @@ const corsHeaders = {
 };
 
 const encoder = new TextEncoder();
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -55,7 +57,7 @@ Deno.serve(async (request) => {
     if (action === "character_assist") {
       const draft = body?.draft && typeof body.draft === "object" ? body.draft : {};
       const assistResponse = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        GEMINI_ENDPOINT,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": geminiApiKey },
@@ -211,7 +213,6 @@ Deno.serve(async (request) => {
       character: configuredCharacter,
       userIdentity,
       responseLanguage,
-      timeSkip,
       regenerationInstruction,
       directorInstruction,
       turnResolution,
@@ -234,7 +235,6 @@ Deno.serve(async (request) => {
       activeChapter: conversation.active_chapter || {},
       unfinishedThreads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads : [],
       regenerationInstruction,
-      directorInstruction,
       turnResolution,
     });
     if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, user.id)) {
@@ -280,7 +280,7 @@ Deno.serve(async (request) => {
 
       try {
         const candidateResponse = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+          GEMINI_ENDPOINT,
           {
             method: "POST",
             headers: {
@@ -356,35 +356,13 @@ Deno.serve(async (request) => {
       .join("")
       .trim() || "";
 
-    // Prompt instructions alone are not reliable enough for silent continues.
-    // Enforce them with a dedicated, concise pass before the reply can reach
-    // the UI. A second dot always routes back to the main character; a first
-    // dot is repaired whenever Gemini returns narration without character voice.
-    if (
-      generatedReply &&
-      turnResolution.silentContinue &&
-      (turnResolution.returnToMainCharacter || !hasAudibleCharacterVoice(generatedReply))
-    ) {
-      generatedReply = await enforceSilentContinuation({
-        apiKey: geminiApiKey,
-        prompt,
-        rejectedDraft: generatedReply,
-        character: configuredCharacter,
-        userIdentity,
-        language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-        returnToMainCharacter: Boolean(turnResolution.returnToMainCharacter),
-      });
-    }
-
-        // Cheap local review catches the most damaging routing mistakes without
+    // Cheap local review catches the most damaging routing mistakes without
     // adding another model call to every turn. Severe user-POV violations are
     // still repaired by the dedicated repair pass below.
     generatedReply = applyNaturalOutputGuard({
       text: generatedReply,
       turnResolution,
       characterName: configuredCharacter.name,
-      userName: userIdentity.name,
     });
 
     if (generatedReply && likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
@@ -423,7 +401,6 @@ Deno.serve(async (request) => {
           text: diverseReply,
           turnResolution,
           characterName: configuredCharacter.name,
-          userName: userIdentity.name,
         });
         if (!guardedDiverseReply) continue;
 
@@ -449,7 +426,6 @@ Deno.serve(async (request) => {
         text: generatedReply,
         turnResolution,
         characterName: configuredCharacter.name,
-        userName: userIdentity.name,
       });
     }
 
@@ -462,6 +438,57 @@ Deno.serve(async (request) => {
         latestUserMessage,
         language: responseLanguage,
       });
+    }
+
+    // Route enforcement is deliberately LAST. Diversity and natural-language
+    // rewrites are useful, but neither is allowed to erase the requested
+    // camera, main-character focus, or audible voice on a silent continuation.
+    if (
+      generatedReply &&
+      (
+        turnResolution.followMainCharacterAfterExit ||
+        (turnResolution.silentContinue &&
+          (turnResolution.returnToMainCharacter || !hasAudibleCharacterVoice(generatedReply)))
+      )
+    ) {
+      const groundingFacts = [
+        latestUserMessage,
+        ...messages.slice(-6).map((message) => compactMessageForPrompt(message.content)),
+        configuredCharacter.scenario,
+        configuredCharacter.world,
+        configuredCharacter.relationship,
+        configuredCharacter.personality,
+        ...loreEntries.map((entry) => `${entry.name}: ${entry.content}`),
+      ].filter(Boolean).join("\n");
+
+      generatedReply = await enforceDirectedContinuation({
+        apiKey: geminiApiKey,
+        prompt,
+        rejectedDraft: generatedReply,
+        character: configuredCharacter,
+        userIdentity,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+        returnToMainCharacter: Boolean(turnResolution.returnToMainCharacter || turnResolution.followMainCharacterAfterExit),
+        emotionalFollow: Boolean(turnResolution.followMainCharacterAfterExit),
+        groundingFacts,
+      });
+
+      generatedReply = applyNaturalOutputGuard({
+        text: generatedReply,
+        turnResolution,
+        characterName: configuredCharacter.name,
+      });
+
+      if (likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
+        generatedReply = await repairUserPOVViolation({
+          apiKey: geminiApiKey,
+          text: generatedReply,
+          userName: userIdentity.name,
+          latestUserMessage,
+          language: responseLanguage,
+        });
+      }
     }
 
     if (!generatedReply) {
@@ -715,7 +742,7 @@ function selectRelevantLore(entries, messages) {
     .map(({ entry }) => entry);
 }
 
-function selectRelevantMemories(memories, messages, userIdentity = {}) {
+function selectRelevantMemories(memories, messages, userIdentity = {} as Record<string, any>) {
   const recentText = normalizeRelevanceText(messages.slice(-10).map((message) => message.content).join(" "));
   const recentTokens = new Set(recentText.split(" ").filter((token) => token.length >= 4));
   const userName = normalizeRelevanceText(userIdentity?.name || "");
@@ -869,7 +896,7 @@ async function generateDiverseRegeneration({
 
   try {
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+      GEMINI_ENDPOINT,
       {
         method: "POST",
         headers: {
@@ -921,11 +948,58 @@ function hasAudibleCharacterVoice(value = "") {
 
 function visiblyReturnsToMainCharacter(value = "", characterName = "") {
   const opening = String(value || "").slice(0, 700);
-  const escapedName = String(characterName || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return Boolean(escapedName) && new RegExp(`\\b${escapedName}\\b`, "i").test(opening) && hasAudibleCharacterVoice(opening);
+  const nameParts = String(characterName || "").trim().split(/\s+/).filter(Boolean);
+  const acceptableNames = [...new Set([
+    String(characterName || "").trim(),
+    nameParts[0] || "",
+  ].filter((name) => name.length >= 2))];
+  const nameVisible = acceptableNames.some((name) => {
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escapedName}\\b`, "i").test(opening);
+  });
+  return nameVisible && hasAudibleCharacterVoice(opening);
 }
 
-async function enforceSilentContinuation({
+function inventsUnsupportedLogistics(value = "", groundingFacts = "") {
+  const candidate = normalizeText(value);
+  const canon = normalizeText(groundingFacts);
+  const suspiciousClaims = [
+    "traffic", "stuck in traffic", "running late", "took you long enough", "late again",
+    "meeting", "appointment", "reservation", "work shift", "practice ran late",
+    "class ran late", "game ran late", "missed the bus", "parking", "deadline",
+    "promised to meet", "waiting for hours",
+  ];
+
+  return suspiciousClaims.some((claim) => {
+    const normalizedClaim = normalizeText(claim);
+    return candidate.includes(normalizedClaim) && !canon.includes(normalizedClaim);
+  });
+}
+
+function inventsUnsupportedThirdPartyIntimacy(value = "", groundingFacts = "") {
+  const rawCandidate = String(value || "");
+  const rawCanon = String(groundingFacts || "");
+  const candidate = normalizeText(rawCandidate);
+  const canon = normalizeText(rawCanon);
+  const unsupportedIntimacy = [
+    "hand on her waist", "hand against her waist", "hand on his waist",
+    "small of her back", "small of his back", "arm around her waist",
+    "arm around his waist", "looped her arm through", "looped his arm through",
+    "arm loops through", "slipped an arm around", "pulled her close", "pulled him close",
+    "kissed her", "kissed him", "pressed against her", "pressed against him",
+  ];
+
+  const phraseMatch = unsupportedIntimacy.some((claim) => {
+    const normalizedClaim = normalizeText(claim);
+    return candidate.includes(normalizedClaim) && !canon.includes(normalizedClaim);
+  });
+  if (phraseMatch) return true;
+
+  const touchPattern = /\b(?:his|her|their|a)\s+hand\s+(?:settled|rested|slid|pressed)[^.!?\n]{0,55}\b(?:waist|back|shoulder|hip|thigh)\b/i;
+  return touchPattern.test(rawCandidate) && !touchPattern.test(rawCanon);
+}
+
+async function enforceDirectedContinuation({
   apiKey,
   prompt,
   rejectedDraft,
@@ -934,8 +1008,14 @@ async function enforceSilentContinuation({
   language,
   medium,
   returnToMainCharacter,
+  emotionalFollow = false,
+  groundingFacts = "",
 }) {
   let rejected = String(rejectedDraft || "").trim();
+  let safeFallback = !inventsUnsupportedLogistics(rejected, groundingFacts) &&
+      !(emotionalFollow && inventsUnsupportedThirdPartyIntimacy(rejected, groundingFacts))
+    ? rejected
+    : "";
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const controller = new AbortController();
@@ -943,7 +1023,7 @@ async function enforceSilentContinuation({
 
     try {
       const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+        GEMINI_ENDPOINT,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -952,8 +1032,8 @@ async function enforceSilentContinuation({
             systemInstruction: {
               parts: [{
                 text: `You are repairing a failed continuation in a private interactive novel. Output only the replacement roleplay passage in ${language}. The user exclusively controls ${userIdentity.name}; never invent their dialogue, action, thought, feeling, reaction or decision. Communication medium: ${medium}. Main created character: ${character.name}.\n\n${returnToMainCharacter
-                  ? `NON-NEGOTIABLE CAMERA RETURN: The prior response wrongly remained centered on a secondary character. Cut away from that secondary beat and return the meaningful narrative focus to ${character.name} NOW. Name ${character.name} naturally in the opening paragraph so the return is unambiguous. Open with ${character.name}'s spoken dialogue, distinct direct thought, or consequential action. A secondary character may receive at most one brief bridge line and may not remain the focalizer.`
-                  : "NON-NEGOTIABLE VOICE RULE: The prior response was narration-only. Replace it with a concise continuation containing actual quoted spoken dialogue, a line spoken aloud to oneself, or a meaningful established digital exchange. Unquoted thoughts and italicized actions do not satisfy this rule."}\n\nDo not describe idle room details, rain, lighting, steam, kettles, doors, breathing, staring, phones without meaningful content, posture, or repetitive micro-actions. Do not merely rewrite the same inactivity. Advance through a character decision, voice, consequence, interaction, scene closure, or meaningful transition. Preserve established canon and personality.`,
+                  ? `NON-NEGOTIABLE MAIN-CHARACTER FOCUS: The prior response wrongly remained on a secondary character, empty setting, or external observation. Follow ${character.name} NOW. Name ${character.name} naturally in the opening paragraph so the focus is unambiguous. Include at least one actual quoted spoken line from ${character.name} or a companion, plus ${character.name}'s meaningful choice or private perspective. A secondary character may receive at most one brief bridge line and may not remain the focalizer.${emotionalFollow ? ` The user reacted after ${character.name} had already moved too far away to hear. Do not make ${character.name} hear that reaction. Instead, continue from ${character.name}'s side and show the canon-supported contradiction between the public mask and private feeling. If ${character.name} joins friends or another romantic interest, let someone speak and let ${character.name} perform normality while privately remaining affected by ${userIdentity.name}. Do not force an apology, confession or return; preserve guarded behavior and subtext.` : " Do not merely name the main character and continue the secondary character's activity."}`
+                  : "NON-NEGOTIABLE VOICE RULE: The prior response was narration-only. Replace it with a concise continuation containing actual quoted spoken dialogue, a line spoken aloud to oneself, or a meaningful established digital exchange. Unquoted thoughts and italicized actions do not satisfy this rule."}\n\nFACT BOUNDARY: Dialogue may react to the visible current situation or established canon only. Never invent traffic, lateness, driving, a meeting, practice, class, work, a reservation, schedule, promise, shared plan, prior conversation or off-screen incident to give characters something to say. If no canon topic exists, use a simple greeting, a comment about what is visibly happening, a companion noticing ${character.name}'s distraction, or brief socially natural banter without factual claims. Do not invent touching, romantic familiarity or sexual behavior with a third party merely to prove ${character.name} is performing normality.\n\nDo not describe idle room details, rain, lighting, steam, kettles, doors, breathing, staring, phones without meaningful content, posture, or repetitive micro-actions. Do not merely rewrite the same inactivity. Advance through a character decision, voice, consequence, interaction, scene closure, or meaningful transition. Preserve established canon and personality.`,
               }],
             },
             contents: [{
@@ -980,11 +1060,19 @@ async function enforceSilentContinuation({
         .join("")
         .trim() || "";
 
-      const valid = returnToMainCharacter
+      const structurallyValid = returnToMainCharacter
         ? visiblyReturnsToMainCharacter(candidate, character.name)
         : hasAudibleCharacterVoice(candidate);
+      // Grounding excludes old generated prose so a hallucination cannot grant
+      // itself permission to become recurring canon.
+      const unsupported = inventsUnsupportedLogistics(candidate, groundingFacts) ||
+        (emotionalFollow && inventsUnsupportedThirdPartyIntimacy(candidate, groundingFacts));
+      const valid = structurallyValid && !unsupported;
       if (valid) return candidate;
-      if (candidate) rejected = candidate;
+      if (candidate) {
+        rejected = candidate;
+        if (!unsupported) safeFallback = candidate;
+      }
     } catch {
       // Retry once with the last failed draft.
     } finally {
@@ -992,8 +1080,10 @@ async function enforceSilentContinuation({
     }
   }
 
+  if (safeFallback) return safeFallback;
+
   throw new Error(returnToMainCharacter
-    ? `Velvet could not return to ${character.name}'s point of view. Try the continuation again.`
+    ? `Velvet could not continue from ${character.name}'s point of view. Try the continuation again.`
     : "Velvet could not produce a dialogue-led continuation. Try again.");
 }
 
@@ -1052,24 +1142,24 @@ function resolveNaturalTurn({
   latestUserMessage,
   latestUserRecord,
   messages,
-  sceneState = {},
-  castState = {},
+  sceneState = {} as Record<string, any>,
+  castState = {} as Record<string, any>,
   character,
   userIdentity,
   timeSkip,
   regenerationInstruction = "",
-  relationshipState = {},
+  relationshipState = {} as Record<string, any>,
 }) {
   const raw = String(latestUserMessage || "").trim();
   const normalized = normalizeRelevanceText(raw);
   const socialNormalized = collapseSocialElongation(raw);
-  const silentContinue = raw.includes("Treat this as silence from the user");
+  const silentContinue = isSilentContinueText(raw);
   const silentContinueStreak = silentContinue
     ? messages
         .filter((message) => message.sender === "user")
         .slice()
         .reverse()
-        .findIndex((message) => !String(message.content || "").includes("Treat this as silence from the user"))
+        .findIndex((message) => !isSilentContinueText(message.content))
     : 0;
   // findIndex returns -1 when every user turn in the loaded window is silent.
   const normalizedSilentContinueStreak = silentContinue
@@ -1095,6 +1185,10 @@ function resolveNaturalTurn({
   const explicitCameraAway = /\b(meanwhile|cut\s+to|camera\s+(?:follows|moves)|elsewhere|mientras\s+tanto|en\s+otro\s+lugar)\b/i.test(directionText);
   const asksQuestion = /\?/.test(raw);
   const correction = /\b(?:no[, ]|actually|i\s+said|i\s+meant|that's\s+not|that\s+isn't|you're\s+wrong|se\s+supone|dije|quise\s+decir|no\s+es|eso\s+no)\b/i.test(raw);
+  const previousCharacterTurn = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
+  const departureContext = `${raw}\n${previousCharacterTurn}`;
+  const mainCharacterHasDeparted = /\b(?:you(?:'re|\s+are|\s+were)?\s+(?:already\s+)?(?:far|gone|too\s+far)|you\s+(?:left|walked\s+away|ran\s+off|drove\s+away)|already\s+(?:jogging|walking|running|driving)\s+away|out\s+of\s+(?:sight|earshot)|before\s+(?:i|you)\s+could\s+answer|te\s+(?:fuiste|alejaste)|ya\s+estabas\s+lejos|fuera\s+de\s+(?:vista|alcance))\b/i.test(departureContext);
+  const userReactedAfterDeparture = mainCharacterHasDeparted && Boolean(raw) && !silentContinue;
 
   const groupAddressed =
     /\b(?:group\s*chat|groupchat|group\s+text|group\s+message|gc|chat\s+grupal|grupo\s+de\s+(?:whats?app|mensajes)|chat\s+del\s+grupo)\b/i.test(directionText) &&
@@ -1204,9 +1298,11 @@ function resolveNaturalTurn({
   }
 
   const returnToMainCharacter = silentContinue && normalizedSilentContinueStreak >= 2;
+  const followMainCharacterAfterExit = userReactedAfterDeparture;
 
   let mode = "react";
   if (returnToMainCharacter) mode = "return_to_main_character";
+  else if (followMainCharacterAfterExit) mode = "follow_main_character_after_exit";
   else if (silentContinue) mode = "continue_one_beat";
   else if (povRequested && povTarget) mode = "pov_shift";
   else if (sceneShift) mode = "scene_shift";
@@ -1220,6 +1316,7 @@ function resolveNaturalTurn({
     silentContinue,
     silentContinueStreak: normalizedSilentContinueStreak,
     returnToMainCharacter,
+    followMainCharacterAfterExit,
     sceneShift,
     timeShift: timeSkip?.active ? (timeSkip?.scale || "explicit time shift") : "",
     explicitLeave,
@@ -1244,7 +1341,7 @@ function resolveNaturalTurn({
   };
 }
 
-function formatNaturalTurnResolution(turn = {}, userIdentity, character) {
+function formatNaturalTurnResolution(turn = {} as Record<string, any>, userIdentity, character) {
   const reactors = Array.isArray(turn.expectedReactors) && turn.expectedReactors.length
     ? turn.expectedReactors.join(" | ")
     : "infer naturally from latest address and active scene";
@@ -1255,7 +1352,7 @@ function formatNaturalTurnResolution(turn = {}, userIdentity, character) {
   return [
     `mode=${turn.mode || "react"}`,
     `medium=${turn.digitalMode || "in_person"}`,
-    `focus/reactor=${turn.returnToMainCharacter ? `${character.name} (mandatory return to main character)` : (turn.povTarget || reactors)}`,
+    `focus/reactor=${turn.returnToMainCharacter || turn.followMainCharacterAfterExit ? `${character.name} (mandatory main-character focus)` : (turn.povTarget || reactors)}`,
     `scene_shift=${turn.sceneShift ? "yes" : "no"}`,
     `time_shift=${turn.timeShift || "none"}`,
     `user_present=${turn.userPresent ? "yes" : "no / camera moved"}`,
@@ -1270,6 +1367,7 @@ function formatNaturalTurnResolution(turn = {}, userIdentity, character) {
     `emotion_trigger=${turn.emotionTrigger || "none"}`,
     `silent_continue=${turn.silentContinue ? `yes; streak=${turn.silentContinueStreak || 1}; voice-led story motion required; narration-only forbidden` : "no"}`,
     `return_to_main_character=${turn.returnToMainCharacter ? `yes; reopen on ${character.name}'s POV/presence now` : "no"}`,
+    `follow_main_character_after_exit=${turn.followMainCharacterAfterExit ? `yes; follow ${character.name}; show public mask versus canon-supported private feeling` : "no"}`,
     `directions=${directions}`,
     `latest_user=${String(turn.latestExcerpt || "").replace(/\n+/g, " ").slice(0, 520) || "none"}`,
     `rule=the latest USER turn outranks every derived field above`,
@@ -1280,10 +1378,9 @@ function buildSystemInstruction({
   character,
   userIdentity,
   responseLanguage,
-  timeSkip,
   regenerationInstruction,
   directorInstruction = "",
-  turnResolution = {},
+  turnResolution = {} as Record<string, any>,
   rejectedResponse = "",
   rejectedVariants = [],
 }) {
@@ -1339,54 +1436,17 @@ PRIORITY ORDER
 8. Style controls and variation suggestions.
 Nothing lower may contradict or erase something higher.
 
-CORE BEHAVIOR
-- Infer obvious intent automatically. The user should not need to direct ordinary reactions.
-- Respond to what just happened before adding anything else.
-- Use the simplest natural beat that fits the character and established story.
-- Unknown facts stay unknown. Plausible is not the same as established.
-- Every paragraph must advance dialogue, behavior, consequence, atmosphere that matters, or the active scene. No filler choreography.
-- Character independence means independent goals and choices, not forgetting ${userIdentity.name} or resetting the relationship.
-- Preserve ${userIdentity.name}'s presence until they leave or the camera explicitly moves elsewhere.
-
-GROUNDING
-Never invent a class, practice, injury, job shift, schedule conflict, location, nickname, shared joke, promise, prior conversation, relationship fact, jealousy target, family detail or off-screen event merely to enrich prose.
-Before adding a concrete claim, silently ask: "Where was this established?" If nowhere, omit it or keep it generic.
-
-STORY MOTION
-- Grounding protects established history; it does not freeze the story.
-- Characters may make new present-tense choices, start or end conversations, leave, refuse, interrupt, misunderstand, pursue their own plans, involve an established NPC, or create a plausible immediate complication.
-- Advance through consequences and character decisions, not random twists or invented backstory.
-- Do not keep a scene alive with questions. A response may close the interaction, move time forward, shift social focus, or leave tension unresolved when that is the most believable next beat.
-- Let relationship development emerge from accumulated behavior. Do not manufacture softness, cruelty, flirting, confessions or intimacy simply because the genre is romantic.
-
-SILENT CONTINUE / USER SENDS A DOT
-- This means "carry the story for me," not "describe the silence again." The user has added no action or reaction.
-- The response must contain character voice: spoken dialogue, a believable line spoken aloud to oneself, direct interior thought with a distinct voice, or an established NPC/digital exchange. Do not return narration alone.
-- Lead with voice or a consequential choice. Keep scene description only when required to understand that choice.
-- Never fill this turn with looking around a room, checking a phone without meaningful content, breathing, staring, weather, lighting, posture, footsteps, or repeated emotional atmosphere.
-- Do not force ${userIdentity.name} to answer and do not invent their reaction. Characters may speak without receiving a response.
-- On the first silent continue, advance the immediate exchange and allow a secondary character to finish the current beat.
-- On the SECOND consecutive silent continue, automatically return the narrative camera and meaningful focus to the main character ${character.name}, like Character.AI. This outranks secondary-character momentum. Do not require the user to request the POV return.
-- Return naturally: close or cut away from the secondary beat, then reopen with ${character.name}'s voice, direct thought, meaningful action or immediate situation. Do not teleport characters or invent the user's participation.
-- On further repeated silent continues, remain anchored to ${character.name} unless the user explicitly requests another POV. Escalate movement through a decision, interaction, scene closure or time transition. Never replay the same pause.
-
-RELATIONSHIP & EMOTION
-- Established affection/attraction/trust/tension are active psychology, not decorative metadata.
-- Emotional restraint is allowed; unexplained emotional amnesia is not.
-- Emotion must attach to the canonically relevant person/event, not the nearest noun.
-- Third parties mentioned for logistics remain context unless canon makes them emotionally relevant.
-- A guarded character can hide, resist, deflect or avoid feelings while still showing believable consequence.
-- Do not turn attraction into generic hostility, jaw-clenching, vague heaviness or melodrama.
-
-PURSUIT RESTRAINT & CONFLICT PERSISTENCE
-- Attraction does NOT create an obligation to pursue ${userIdentity.name}. A character may let them leave, stay with friends, keep a commitment, protect pride, need space, misunderstand them, or end the interaction first.
-- Do not interpret every exit, silence, sarcastic remark or tense beat as a cue to chase after ${userIdentity.name}. Pursuit must come from this character's personality, current motivation and the actual stakes of the moment.
-- Do not auto-repair tension. Conflict, awkwardness, hurt, jealousy, embarrassment and misunderstanding may persist across multiple turns or scenes.
-- Do not automatically offer coffee, rides, apologies, reassurance, private conversations, physical affection or a romantic gesture just to restore closeness.
-- A user apology does not require instant forgiveness, softness or a reward. Let the character decide naturally how much the apology changes the moment.
-- Established attraction may influence attention, hesitation, irritation, restraint or later choices without forcing immediate closeness.
-- Do not make the character emotionally available on demand. Preserve pride, boundaries, competing priorities and independent social life.
-- When the user walks away, first ask whether this specific character would realistically follow NOW. If not, let the separation stand and allow consequences to emerge later.
+NARRATIVE DECISION
+- React to the latest USER turn first, then choose one meaningful next beat. Unknown history stays unknown; new present-tense choices are allowed.
+- Advance through dialogue, decisions and consequences. Do not sustain a scene with questions, decorative movement or random complications.
+- Preserve established affection, tension and conflict as active psychology. A guarded character may hide feelings, but may not forget them.
+- Romance never forces pursuit, forgiveness, softness, touch, confession or instant repair. Let pride, misunderstanding and distance persist when believable.
+- ${character.name} remains the main emotional thread. Secondary characters may carry a beat without permanently replacing that thread.
+- When follow_main_character_after_exit=yes, follow ${character.name}; show one canon-supported contrast between public behavior and private feeling. Do not describe the empty place left behind.
+- When silent_continue=yes, the user added no action. Continue with character voice and a real choice, never narration-only atmosphere.
+- First silent continue: finish the active beat. Second: return to ${character.name}. Further silent continues stay with ${character.name} until the user explicitly changes POV.
+- Never invent ${userIdentity.name}'s response or require them to answer. Characters can speak, decide, leave or interact with established NPCs independently.
+- Before adding any past/off-screen fact, ask where it was established. If nowhere, omit it. Do not fabricate traffic, lateness, schedules, promises, history, intimacy or logistics just to create dialogue.
 
 POV & CAMERA
 ${buildNarrativeCameraInstructions(character, userIdentity)}
@@ -1400,72 +1460,16 @@ SCENE MEDIUM LOCK
 - A phone existing in the scene does not make the scene digital. Looking at a screen, holding a phone, or mentioning a previous text does not change the current medium.
 - Do not switch medium unless the latest USER turn explicitly does so or established scene state clearly requires it.
 
-DIALOGUE REALISM
-- Dialogue should sound like people in the established age, relationship, mood and setting, not like polished screenplay exposition.
-- Use contractions, fragments, interruptions, hesitation, dry answers, silence and unfinished thoughts when natural. Not every line needs a clever comeback, emotional thesis or perfectly phrased insight.
-- Characters do not explain feelings they would realistically hide, and they do not summarize facts everyone in the room already knows.
-- Avoid repeatedly using names as vocatives, rhetorical questions, therapy-language, grand declarations, or quippy banter as default texture.
-- Let NPCs have distinct voices. A side character should not sound like ${character.name} with a renamed dialogue tag, and neither should sound like a generic narrator.
-- A short line can carry a whole beat. Do not add dialogue merely to fill response length.
-
-PHYSICAL BEHAVIOR & TOUCH
-- Bodies obey space. Track who is standing, sitting, entering, leaving, near a door, across a room, driving, holding something, or already touching someone. No teleporting or impossible choreography.
-- Physical movement must do one of three jobs: change position, accomplish something, or reveal a specific character choice. If it does none, cut it.
-- Do not continuously fill silence with neck rubbing, jaw clenching, floor staring, thumb tracing, shoulder leaning, breath releasing, hand flexing, pocketing hands, swallowing, smirking, gaze dropping, or similar stock motions.
-- One meaningful physical cue is stronger than five decorative ones. Avoid chaining gesture + facial tic + breath + atmospheric sentence around every line of dialogue.
-- NPCs may initiate physically plausible touch when supported by personality, relationship and the moment, but never invent the user's reciprocation, consent, pleasure, discomfort, movement or emotional reaction.
-- Touch has continuity. If a hand is on someone's shoulder, do not silently move it to their waist or remove/reapply it every paragraph.
-- Do not use physical intimacy as an automatic shortcut for romance, apology, comfort or conflict resolution.
-
-PROSE & SCENE RHYTHM
-- Write like a well-edited contemporary novel, not an AI imitating cinematic prose.
-- Do not mechanically structure every paragraph as Name + gesture + dialogue + atmospheric explanation. Vary rhythm according to the scene.
-- Prefer concrete, relevant details over generic darkness, silence, amber light, heavy air, charged space, stillness, tension in the room, or other reusable atmosphere packets.
-- Do not narrate micro-actions simply because a character is temporarily silent. Silence can remain silence.
-- Do not explain the emotion immediately after dialogue or behavior already made it clear. Trust subtext.
-- Avoid ornamental camera work: unnecessary descriptions of doorframes, windows, desk legs, phones, keys, cups, floors, lamps, hallways or weather unless they matter to action or mood in this exact beat.
-- Let a scene breathe. A response may be just dialogue, just one action, or a compact exchange when that is what the moment needs.
-- Never manufacture intensity. Ordinary moments are allowed to be ordinary.
-
-SOCIAL & CHARACTER NATURALISM
-- Characters have independent attention, loyalties, embarrassment, humor, irritation, fatigue and priorities. They are not satellites waiting for the user to trigger them.
-- Side characters can talk to each other naturally without turning into exposition devices or instantly discussing the main romance.
-- A friend noticing something does not mean they diagnose it perfectly. People can misunderstand, tease badly, miss cues, change subjects or decide not to ask.
-- Do not force every scene back toward the main character or romantic tension. Follow the active social situation.
-
-DIGITAL INTERACTIONS
-- group_chat: stay in the group chat by default. Let established members answer/react naturally. No private physical cutaways unless requested.
-- direct_message: stay in the text exchange by default.
-- phone_call: prioritize spoken/audio interaction.
-- In direct_message/group_chat only, every actual written message line begins with '> '. Put any speaker label inside that quoted line. Never apply this syntax to in-person or phone-call speech.
-- @mentions are notification priority, not exclusivity. The tagged person notices; others remain socially free.
-- Group chats may be messy, brief, uneven and conversational. People can reply to each other, double-text, joke, disagree, stay silent or change their mind.
-- The user's question is the anchor, not a form everyone must fill out.
-- Do not rush planning from day → place → time → activity. Address the current question first, then let conversation move organically.
-- A changed opinion must arise from the actual exchange, not fabricated off-screen scheduling facts.
-
-CONTINUITY
-- Latest explicit USER facts/corrections replace older assumptions immediately.
-- Time/scene shifts close stale physical actions.
-- Do not resurrect an off-screen character just because they are the main character.
-- Side characters can carry scenes.
-- Do not repeat information or emotional beats the user already understands.
-- Preserve unresolved interpersonal tension instead of smoothing it away by default. A scene may end with distance still intact.
-
-NATURAL ENGLISH GUARD
-- Write contemporary, idiomatic English that a fluent native speaker would naturally use in modern fiction and conversation.
-- Literary does NOT mean ornate. Clarity beats poetic phrasing.
-- Avoid grammatical-but-awkward constructions, ambiguous possessives, malformed metaphors, over-written imagery, and phrases that sound translated or machine-generated.
-- Prefer a simple natural sentence over an unusual metaphor when both express the same beat.
-- Before returning the passage, silently reread every sentence for idiomatic flow, clear pronoun reference, and natural word choice.
-- If a sentence sounds technically grammatical but strange, rewrite it before output.
-- Example principle: prefer "your name caught in his throat" over an awkward construction such as "his name for you dying in his throat."
-- Do not repeatedly use stock literary tics such as jaw tightening, breath catching, silence pressing, something heavy beneath the surface, or eyes lingering unless the exact moment genuinely calls for them.
-
-REGENERATION DEFAULT
-- Every regeneration automatically applies this Natural English Guard, even when the user gives no regeneration instruction.
-- Regenerate should feel like a fresh, polished alternate take, not a paraphrase of the rejected response.
-- Preserve canon and the user's latest turn, but vary wording, rhythm, imagery and the specific beat enough to make the retry meaningfully different.
+CRAFT
+- Write natural contemporary fiction, not ornate AI prose. Use contractions, fragments, interruptions and subtext when they fit the character.
+- Dialogue must react to the visible moment or canon. No polished exposition, therapy speeches, compulsory cleverness or facts invented merely to keep talking.
+- Every action must change position, accomplish something or reveal a choice. Keep physical continuity; never invent the user's reaction or reciprocation.
+- Avoid gesture chains and reusable atmosphere: jaw tightening, held breath, lingering gaze, flexing hands, sleeve/pulse business, amber light, heavy silence, rain/window/door/phone description that does no work.
+- One concrete detail is enough. Do not explain an emotion after dialogue or behavior already showed it.
+- NPCs have distinct voices and imperfect perception. They may misunderstand, joke, disagree or stay silent without diagnosing the romance.
+- For direct_message/group_chat, written messages begin with '> '. For in_person/phone_call, spoken dialogue never uses '> '.
+- Latest USER corrections replace older assumptions. Time or scene shifts end stale physical actions. Preserve unresolved tension without repeating the same beat.
+- A regeneration is a new choice and structure, not a paraphrase. Its private direction is mandatory and remains invisible in the story.
 
 STYLE
 ${buildChatControlInstructions(character)}
@@ -1577,8 +1581,7 @@ function buildPrompt({
   activeChapter = {},
   unfinishedThreads = [],
   regenerationInstruction = "",
-  directorInstruction = "",
-  turnResolution = {},
+  turnResolution = {} as Record<string, any>,
 }) {
   const memoryText = memories.length
     ? memories.map((memory, index) => `${index + 1}. [${memory.category || "event"}${memory.is_pinned ? ", PINNED" : ""}] ${memory.content}`).join("\n")
@@ -1588,20 +1591,21 @@ function buildPrompt({
     ? loreEntries.map((entry, index) => `${index + 1}. [${entry.entry_type}] ${entry.name}: ${entry.content}`).join("\n")
     : "none";
 
-  const historyText = messages.length
-    ? messages.slice(-28).map((message, index) => {
+  const olderHistory = messages.length > 6 ? messages.slice(-18, -6) : [];
+  const historyText = olderHistory.length
+    ? olderHistory.map((message, index) => {
         const type = message.sender === "user" ? "USER" : "CHARACTER";
         const name = message.sender === "user" ? userIdentity.name : character.name;
         const replyMeta = message.reply_to_message_id && message.reply_preview
           ? ` reply_to="${escapePromptText(String(message.reply_preview).slice(0, 220))}"`
           : "";
-        return `<m n="${index + 1}" type="${type}" speaker="${escapePromptText(name)}"${replyMeta}>${escapePromptText(message.content)}</m>`;
+        return `<m n="${index + 1}" type="${type}" speaker="${escapePromptText(name)}"${replyMeta}>${escapePromptText(compactMessageForPrompt(message.content))}</m>`;
       }).join("\n")
     : "none";
 
   const immediateContinuity = messages.slice(-6).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : character.name;
-    return `${speaker}: ${escapePromptText(message.content)}`;
+    return `${speaker}: ${escapePromptText(compactMessageForPrompt(message.content))}`;
   }).join("\n") || "none";
 
   const mandatoryDirection = regenerationInstruction
@@ -1656,7 +1660,7 @@ OPEN THREADS
 ${formatUnfinishedThreads(unfinishedThreads)}
 
 ROLLING SUMMARY
-${conversationSummary?.trim() || "none"}
+${conversationSummary?.trim().slice(0, 6000) || "none"}
 
 RECENT MAJOR TIMELINE
 ${formatStoryTimeline(storyTimeline)}
@@ -1670,30 +1674,15 @@ ${memoryText}
 ACTIVE LORE
 ${loreText}
 
-RECENT HISTORY
+EARLIER RECENT HISTORY
 ${historyText}
 
 FINAL PRE-WRITE CHECK
-- What exactly did the USER just do/say/ask/correct?
-- Who naturally receives the first meaningful reaction?
-- What is the communication medium? Treat ${turnResolution.digitalMode || "in_person"} as authoritative for this turn.
-- If medium is in_person or phone_call, verify there is ZERO > message syntax anywhere in spoken dialogue.
-- If medium is digital, verify only actual written messages use >.
-- What facts are known vs unknown?
-- If emotion appears, who/what is it actually about according to canon?
-- Is ${userIdentity.name} still present?
-- Is any sentence repeating, padding, or inventing off-screen context?
-- If digital, are actual messages formatted with '> '?
-- If regenerating, does the retry genuinely follow the regeneration direction and feel meaningfully different from the rejected answer?
-- If a mandatory direction exists, can the user point to the exact requested change in the passage? If not, rewrite before output.
-- If this is a silent continue, is there actual character voice and meaningful movement rather than another narration-only pause? If not, rewrite before output.
-- If return_to_main_character=yes, does the final passage clearly return focus to ${character.name} instead of continuing to center a secondary character? If not, rewrite before output.
-- Does every English sentence sound idiomatic, clear and natural rather than technically grammatical but awkward?
-- Are any pronouns, possessives or metaphors ambiguous? If yes, simplify them before output.
-- Did you add a gesture just to fill silence? Remove it.
-- Are two or more stock body-language cues chained together? Keep only the one that matters.
-- Does dialogue sound character-specific and conversational rather than polished exposition? Fix it if not.
-- Does the response explain an emotion that the dialogue/action already showed? Cut the explanation.
+- Obey the latest USER turn and mandatory regeneration direction without controlling ${userIdentity.name}.
+- Keep the resolved medium and camera route. If a return/follow route is active, ${character.name} must be the meaningful focus.
+- Use only established past facts; new material must be a present action or choice, not invented history/logistics.
+- Include character voice when silent_continue=yes. Remove filler, repeated beats and stock AI gestures.
+- Make English idiomatic and dialogue character-specific. Stop when the beat lands.
 Then write ONLY the next roleplay passage. Do not explain these checks.
 `;
 }
@@ -1724,7 +1713,7 @@ function buildFinalStyleReminder(character) {
   return `${narrationReminder} ${lengthReminder} ${pacingReminder}`;
 }
 
-function applyNaturalOutputGuard({ text, turnResolution = {}, characterName, userName }) {
+function applyNaturalOutputGuard({ text, turnResolution = {} as Record<string, any>, characterName }) {
   let output = String(text || "").trim();
   if (!output) return output;
 
@@ -1832,7 +1821,7 @@ function likelyControlsUserPOV(text, userName, latestUserMessage = "") {
 
 async function repairUserPOVViolation({ apiKey, text, userName, latestUserMessage = "", language }) {
   try {
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
+    const response = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
@@ -1900,7 +1889,7 @@ async function repairNaturalVoice({ apiKey, text, language, medium, userName, la
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
+    const response = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       signal: controller.signal,
@@ -2046,7 +2035,7 @@ function formatRelationshipState(state) {
 function formatCastState(state) {
   if (!state || typeof state !== "object" || Array.isArray(state) || !Object.keys(state).length) return "No persistent side-character state saved yet.";
   return Object.entries(state).slice(0, 12).map(([name, item]) => {
-    const safe = item && typeof item === "object" ? item : {};
+    const safe: Record<string, any> = item && typeof item === "object" ? item : {};
     return `${name}: ${safe.role || "side character"}; ${safe.personality || ""}; relationship=${safe.relationship || "unknown"}; status=${safe.current_status || "unknown"}; knows=${Array.isArray(safe.knows) ? safe.knows.join(", ") : ""}`;
   }).join("\n");
 }
@@ -2063,7 +2052,7 @@ function formatStoryChapters(chapters, activeChapter) {
 async function updateStoryStateInBackground({ supabase, apiKey, conversationId, userId, expectedRevision, character, userIdentity, previousSceneState, previousTimeline, previousRelationshipState, previousCastState, previousChapters, previousActiveChapter, previousThreads = [], messages }) {
   try {
     const history = messages.slice(-20).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`).join("\n");
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
+    const response = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
@@ -2107,7 +2096,7 @@ async function updateStoryStateInBackground({ supabase, apiKey, conversationId, 
   }
 }
 
-function sanitizeSceneState(value, fallback = {}) {
+function sanitizeSceneState(value, fallback = {} as Record<string, any>) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return fallback || {};
   return {
     location: String(value.location || fallback?.location || "unknown").slice(0, 160),
@@ -2130,7 +2119,7 @@ function sanitizeTimeline(value, fallback = []) {
     : { label: String(item?.label || item?.event || "Story beat").slice(0, 120), detail: String(item?.detail || "").slice(0, 400) });
 }
 
-function sanitizeRelationshipState(value, fallback = {}, characterName = "Character") {
+function sanitizeRelationshipState(value, fallback = {} as Record<string, any>, characterName = "Character") {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : (fallback || {});
   const score = (key, d) => Math.max(0, Math.min(100, Math.round(Number(source[key] ?? fallback?.[key] ?? d))));
   return {
@@ -2146,12 +2135,12 @@ function sanitizeRelationshipState(value, fallback = {}, characterName = "Charac
   };
 }
 
-function sanitizeCastState(value, fallback = {}, characterName = "Character", userName = "User") {
+function sanitizeCastState(value, fallback = {} as Record<string, any>, characterName = "Character", userName = "User") {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : (fallback || {});
   const out = {};
   for (const [name, raw] of Object.entries(source).slice(0, 20)) {
     if (!name || [characterName, userName].includes(name)) continue;
-    const item = raw && typeof raw === "object" ? raw : {};
+    const item: Record<string, any> = raw && typeof raw === "object" ? raw : {};
     out[String(name).slice(0, 80)] = {
       role: String(item.role || "Side character").slice(0, 160),
       personality: String(item.personality || "").slice(0, 320),
@@ -2190,7 +2179,7 @@ async function updateConversationSummaryInBackground({ supabase, apiKey, convers
       `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`
     ).join("\n");
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
+    const response = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
@@ -2217,7 +2206,7 @@ async function extractMemoriesInBackground({ supabase, apiKey, conversationId, c
   try {
     const history = messages.slice(-16).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`).join("\n");
     const existing = existingMemories.map((memory) => memory.content).join("\n");
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent", {
+    const response = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
@@ -2347,6 +2336,21 @@ function cleanInstruction(value) {
 
 function escapePromptText(value) {
   return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function isSilentContinueText(value) {
+  const text = String(value || "").trim();
+  return (
+    text.startsWith("[SILENT_CONTINUE") ||
+    text.includes("Treat this as silence from the user") ||
+    /^[.…。]+$/u.test(text)
+  );
+}
+
+function compactMessageForPrompt(value) {
+  const text = String(value || "").trim();
+  if (isSilentContinueText(text)) return "[SILENT_CONTINUE]";
+  return text.slice(0, 6000);
 }
 
 function normalizeText(value) {

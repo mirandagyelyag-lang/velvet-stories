@@ -1,12 +1,13 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "verify:story": "node scripts/verify-story-engine.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
