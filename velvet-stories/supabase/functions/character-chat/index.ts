@@ -999,6 +999,49 @@ function inventsUnsupportedThirdPartyIntimacy(value = "", groundingFacts = "") {
   return touchPattern.test(rawCandidate) && !touchPattern.test(rawCanon);
 }
 
+function buildDirectedContinuationFallback({
+  draft,
+  characterName,
+  language,
+  returnToMainCharacter,
+  emotionalFollow,
+  groundingFacts,
+}) {
+  const paragraphs = String(draft || "")
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .filter((paragraph) => !inventsUnsupportedLogistics(paragraph, groundingFacts))
+    .filter((paragraph) => !(emotionalFollow && inventsUnsupportedThirdPartyIntimacy(paragraph, groundingFacts)));
+
+  let fallback = paragraphs.join("\n\n").trim();
+  const name = String(characterName || "The character").trim();
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const nameVisible = new RegExp(`\\b${escapedName}\\b`, "i").test(fallback.slice(0, 700));
+  const spanish = String(language || "").toLowerCase().includes("spanish");
+
+  // If removing a fabricated claim also removed the route or all useful text,
+  // return a tiny canon-neutral beat. A readable continuation is always better
+  // than exposing an internal validator error to the user.
+  if (!fallback || (returnToMainCharacter && !nameVisible)) {
+    if (emotionalFollow) {
+      fallback = spanish
+        ? `${name} siguió avanzando, manteniendo la misma expresión despreocupada aunque el momento no dejaba de repetirse.\n\n"Contrólate", murmuró ${name}, apenas audible.`
+        : `${name} kept moving, maintaining the same easy expression even while the moment refused to stop replaying.\n\n"Get it together," ${name} muttered, barely audible.`;
+    } else {
+      fallback = spanish
+        ? `${name} rompió el silencio antes de que el momento volviera a estancarse.\n\n"Está bien", dijo ${name} en voz baja.`
+        : `${name} broke the silence before the moment could stall again.\n\n"Okay," ${name} said quietly.`;
+    }
+  } else if (!hasAudibleCharacterVoice(fallback)) {
+    fallback += spanish
+      ? `\n\n"Contrólate", murmuró ${name}, apenas audible.`
+      : `\n\n"Get it together," ${name} muttered, barely audible.`;
+  }
+
+  return fallback.trim();
+}
+
 async function enforceDirectedContinuation({
   apiKey,
   prompt,
@@ -1082,9 +1125,15 @@ async function enforceDirectedContinuation({
 
   if (safeFallback) return safeFallback;
 
-  throw new Error(returnToMainCharacter
-    ? `Velvet could not continue from ${character.name}'s point of view. Try the continuation again.`
-    : "Velvet could not produce a dialogue-led continuation. Try again.");
+  console.warn("Directed continuation validation exhausted; using canon-neutral fallback.");
+  return buildDirectedContinuationFallback({
+    draft: rejected || rejectedDraft,
+    characterName: character.name,
+    language,
+    returnToMainCharacter,
+    emotionalFollow,
+    groundingFacts,
+  });
 }
 
 async function saveCharacterReply({ supabase, conversationId, userId, reply }) {

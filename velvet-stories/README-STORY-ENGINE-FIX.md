@@ -24,6 +24,8 @@ en los archivos reales de la app.
   microgestos sin contenido.
 - El motor rechaza logística inventada como tráfico, atrasos, reuniones o planes
   no establecidos, y no inventa intimidad con terceros para producir drama.
+- Si una reparación agota sus intentos, Velvet entrega una continuación breve y
+  segura en vez de mostrar un error interno de validación de POV.
 - La usuaria conserva control exclusivo sobre sus acciones, diálogo, emociones,
   pensamientos, reacciones, consentimiento y decisiones.
 

@@ -37,6 +37,7 @@ check("post-exit reaction follows main character", edge.includes("follow_main_ch
 check("unsupported logistics are rejected", edge.includes("inventsUnsupportedLogistics(candidate, groundingFacts)"));
 check("invented third-party intimacy is rejected", edge.includes("inventsUnsupportedThirdPartyIntimacy(candidate, groundingFacts)"));
 check("safe repair fallback avoids brittle false errors", edge.includes("if (safeFallback) return safeFallback"));
+check("directed continuation never exposes a validator error", edge.includes("buildDirectedContinuationFallback({") && !edge.includes("Velvet could not continue from"));
 check("Gemini model is configurable", edge.includes('Deno.env.get("GEMINI_MODEL")'));
 check(
   "cancellation rows are private to the Edge Function",
