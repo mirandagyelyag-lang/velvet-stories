@@ -436,18 +436,19 @@
 }
 
 .chat-message {
-  width: 100%;
-  max-width: 100%;
+  width: fit-content;
+  max-width: 88%;
   gap: 12px;
 }
 
 .chat-message--character {
-  max-width: 100%;
+  max-width: min(88%, 760px);
 }
 
 .chat-message__swipe-content,
 .chat-message--character .chat-message__swipe-content {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
 }
 
 .chat-message__avatar {
@@ -464,26 +465,22 @@
 
 .chat-message p {
   margin: 0;
-  padding: 0;
+  padding: 15px 18px;
   color: var(--text-primary);
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  background: color-mix(in srgb, var(--surface-strong) 94%, var(--background));
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 7px 20px 20px 20px;
+  box-shadow: 0 9px 28px color-mix(in srgb, #32101d 6%, transparent);
   font-family: "Manrope", sans-serif;
-  font-size: .91rem;
-  line-height: 1.78;
-  backdrop-filter: none;
+  font-size: .92rem;
+  line-height: 1.82;
+  backdrop-filter: blur(12px);
 }
 
 .chat-message--character p,
 .chat__content--wallpaper .chat-message--character p {
-  padding: 0 12px 0 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  backdrop-filter: none;
+  padding: 15px 18px;
+  border-radius: 7px 20px 20px 20px;
 }
 
 .chat-message--character .roleplay-text__narration {
@@ -516,7 +513,11 @@
 .chat__content--wallpaper .chat-message--character p,
 .chat__content--wallpaper .typing-indicator {
   color: #fff9fb;
+  background: rgba(41, 27, 34, .78);
+  border-color: rgba(255, 235, 242, .14);
+  box-shadow: 0 12px 34px rgba(14, 5, 9, .16);
   text-shadow: 0 1px 8px rgba(15, 5, 10, .28);
+  backdrop-filter: blur(calc(14px + var(--chat-wallpaper-blur, 0px)));
 }
 
 .chat__content--wallpaper .chat-message--character .roleplay-text__narration,
@@ -553,14 +554,14 @@
 }
 
 .typing-indicator {
-  min-height: 32px;
+  min-height: 42px;
   gap: 5px;
-  padding: 2px 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  backdrop-filter: none;
+  padding: 10px 15px;
+  background: color-mix(in srgb, var(--surface-strong) 94%, var(--background));
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 7px 18px 18px 18px;
+  box-shadow: 0 9px 28px color-mix(in srgb, #32101d 6%, transparent);
+  backdrop-filter: blur(12px);
 }
 
 .typing-indicator small {
@@ -827,7 +828,7 @@
 
   .chat-message,
   .chat-message--character {
-    max-width: 100%;
+    max-width: 94%;
     gap: 8px;
   }
 
@@ -842,14 +843,14 @@
   }
 
   .chat-message p {
-    padding: 0;
     font-size: .9rem;
-    line-height: 1.74;
+    line-height: 1.78;
   }
 
   .chat-message--character p,
   .chat__content--wallpaper .chat-message--character p {
-    padding-right: 3px;
+    padding: 13px 15px;
+    border-radius: 6px 18px 18px 18px;
   }
 
   .chat-message--user {
@@ -877,8 +878,8 @@
   }
 
   .typing-indicator {
-    min-height: 28px;
-    padding: 0;
+    min-height: 38px;
+    padding: 9px 13px;
   }
 
   .chat__composer {

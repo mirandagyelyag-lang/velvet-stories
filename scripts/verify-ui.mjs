@@ -26,11 +26,10 @@ const checks = [
       /--chat-hero-image/.test(chat),
   },
   {
-    name: "character replies use open editorial prose",
+    name: "character replies use a soft nighttime reading bubble",
     pass:
-      /\.chat-message--character p,[\s\S]*?background: transparent;[\s\S]*?border: 0;/.test(
-        ui,
-      ),
+      /\.chat-message--character p,[\s\S]*?padding: 15px 18px;[\s\S]*?border-radius: 7px 20px 20px 20px;/.test(ui) &&
+      /line-height: 1\.82;/.test(ui),
   },
   {
     name: "user messages remain visually distinct",

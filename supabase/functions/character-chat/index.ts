@@ -191,6 +191,21 @@ Deno.serve(async (request) => {
       ].filter(Boolean))].slice(-8);
     }
 
+    // Adjacent character turns are not rejected alternatives, but they still
+    // matter for stagnation. Comparing against the last two beats prevents a
+    // retry from recycling the same prop, warning or denial from one turn ago.
+    const recentCharacterBeats = regenerateMessageId
+      ? messages
+          .filter((message) => message.sender === "character")
+          .slice(-2)
+          .map((message) => String(message.content || "").trim())
+          .filter(Boolean)
+      : [];
+    const diversityReferences = [...new Set([
+      ...rejectedVariants,
+      ...recentCharacterBeats,
+    ])].slice(-10);
+
     const latestUserMessage = [...messages].reverse().find((message) => message.sender === "user")?.content || "";
     const previousCharacterMessage = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
     const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
@@ -234,6 +249,7 @@ Deno.serve(async (request) => {
       storyChapters: conversation.story_chapters || [],
       activeChapter: conversation.active_chapter || {},
       unfinishedThreads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads : [],
+      isRegeneration: Boolean(regenerateMessageId),
       regenerationInstruction,
       turnResolution,
     });
@@ -381,11 +397,11 @@ Deno.serve(async (request) => {
     // close to the rejected response, silently request one harder divergence.
     if (
       regenerateMessageId &&
-      rejectedVariants.length &&
+      diversityReferences.length &&
       generatedReply &&
-      rejectedVariants.some((variant) => isTooSimilarRegeneration(generatedReply, variant))
+      diversityReferences.some((variant) => isTooSimilarRegeneration(generatedReply, variant))
     ) {
-      const diversityRejects = [...rejectedVariants, generatedReply];
+      const diversityRejects = [...diversityReferences, generatedReply];
       for (let diversityAttempt = 1; diversityAttempt <= 2; diversityAttempt += 1) {
         const diverseReply = await generateDiverseRegeneration({
           apiKey: geminiApiKey,
@@ -404,7 +420,7 @@ Deno.serve(async (request) => {
         });
         if (!guardedDiverseReply) continue;
 
-        if (!rejectedVariants.some((variant) => isTooSimilarRegeneration(guardedDiverseReply, variant))) {
+        if (!diversityReferences.some((variant) => isTooSimilarRegeneration(guardedDiverseReply, variant))) {
           generatedReply = guardedDiverseReply;
           break;
         }
@@ -438,6 +454,41 @@ Deno.serve(async (request) => {
         latestUserMessage,
         language: responseLanguage,
       });
+    }
+
+    // A direct text from the user should not disappear beneath an extended NPC
+    // exchange. With ordinary/high initiative, the main character sends a
+    // concise in-character reply; guardedness may shape it, not erase the turn.
+    if (
+      generatedReply &&
+      turnResolution.dmAddressed &&
+      Number(configuredCharacter.initiative || 0) >= 45 &&
+      !hasWrittenDigitalReply(generatedReply)
+    ) {
+      generatedReply = await repairMissingDigitalReply({
+        apiKey: geminiApiKey,
+        text: generatedReply,
+        character: configuredCharacter,
+        userIdentity,
+        latestUserMessage,
+        language: responseLanguage,
+        messageCutaway: Boolean(turnResolution.messageCutaway),
+      });
+      generatedReply = applyNaturalOutputGuard({
+        text: generatedReply,
+        turnResolution,
+        characterName: configuredCharacter.name,
+      });
+
+      if (likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
+        generatedReply = await repairUserPOVViolation({
+          apiKey: geminiApiKey,
+          text: generatedReply,
+          userName: userIdentity.name,
+          latestUserMessage,
+          language: responseLanguage,
+        });
+      }
     }
 
     // Route enforcement is deliberately LAST. Diversity and natural-language
@@ -488,6 +539,148 @@ Deno.serve(async (request) => {
           latestUserMessage,
           language: responseLanguage,
         });
+      }
+    }
+
+    // FINAL regeneration validation. Every rewrite above can alter phrasing,
+    // so diversity must be checked after voice, POV, digital-reply and camera
+    // repairs. One copied signature line is enough to reject the take.
+    if (
+      regenerateMessageId &&
+      generatedReply &&
+      diversityReferences.some((variant) => isTooSimilarRegeneration(generatedReply, variant))
+    ) {
+      const finalRejects = [...diversityReferences, generatedReply];
+      let nonDialogueEchoFallback = "";
+      for (let diversityAttempt = 1; diversityAttempt <= 2; diversityAttempt += 1) {
+        let finalCandidate = await generateDiverseRegeneration({
+          apiKey: geminiApiKey,
+          systemInstruction,
+          prompt,
+          rejectedResponses: finalRejects,
+          maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
+          diversityAttempt,
+        });
+        if (!finalCandidate) continue;
+
+        finalCandidate = applyNaturalOutputGuard({
+          text: finalCandidate,
+          turnResolution,
+          characterName: configuredCharacter.name,
+        });
+        if (!finalCandidate) continue;
+
+        if (likelyNeedsNaturalVoiceRepair(finalCandidate)) {
+          finalCandidate = await repairNaturalVoice({
+            apiKey: geminiApiKey,
+            text: finalCandidate,
+            language: responseLanguage,
+            medium: turnResolution.digitalMode || "in_person",
+            userName: userIdentity.name,
+            latestUserMessage,
+          });
+          finalCandidate = applyNaturalOutputGuard({
+            text: finalCandidate,
+            turnResolution,
+            characterName: configuredCharacter.name,
+          });
+        }
+
+        if (likelyControlsUserPOV(finalCandidate, userIdentity.name, latestUserMessage)) {
+          finalCandidate = await repairUserPOVViolation({
+            apiKey: geminiApiKey,
+            text: finalCandidate,
+            userName: userIdentity.name,
+            latestUserMessage,
+            language: responseLanguage,
+          });
+        }
+
+        if (
+          turnResolution.dmAddressed &&
+          Number(configuredCharacter.initiative || 0) >= 45 &&
+          !hasWrittenDigitalReply(finalCandidate)
+        ) {
+          finalCandidate = await repairMissingDigitalReply({
+            apiKey: geminiApiKey,
+            text: finalCandidate,
+            character: configuredCharacter,
+            userIdentity,
+            latestUserMessage,
+            language: responseLanguage,
+            messageCutaway: Boolean(turnResolution.messageCutaway),
+          });
+          finalCandidate = applyNaturalOutputGuard({
+            text: finalCandidate,
+            turnResolution,
+            characterName: configuredCharacter.name,
+          });
+        }
+
+        if (
+          turnResolution.followMainCharacterAfterExit ||
+          (turnResolution.silentContinue &&
+            (turnResolution.returnToMainCharacter || !hasAudibleCharacterVoice(finalCandidate)))
+        ) {
+          const finalGroundingFacts = [
+            latestUserMessage,
+            ...messages.slice(-6).map((message) => compactMessageForPrompt(message.content)),
+            configuredCharacter.scenario,
+            configuredCharacter.world,
+            configuredCharacter.relationship,
+            configuredCharacter.personality,
+            ...loreEntries.map((entry) => `${entry.name}: ${entry.content}`),
+          ].filter(Boolean).join("\n");
+
+          finalCandidate = await enforceDirectedContinuation({
+            apiKey: geminiApiKey,
+            prompt,
+            rejectedDraft: finalCandidate,
+            character: configuredCharacter,
+            userIdentity,
+            language: responseLanguage,
+            medium: turnResolution.digitalMode || "in_person",
+            returnToMainCharacter: Boolean(turnResolution.returnToMainCharacter || turnResolution.followMainCharacterAfterExit),
+            emotionalFollow: Boolean(turnResolution.followMainCharacterAfterExit),
+            groundingFacts: finalGroundingFacts,
+          });
+          finalCandidate = applyNaturalOutputGuard({
+            text: finalCandidate,
+            turnResolution,
+            characterName: configuredCharacter.name,
+          });
+        }
+
+        if (likelyControlsUserPOV(finalCandidate, userIdentity.name, latestUserMessage)) {
+          finalCandidate = await repairUserPOVViolation({
+            apiKey: geminiApiKey,
+            text: finalCandidate,
+            userName: userIdentity.name,
+            latestUserMessage,
+            language: responseLanguage,
+          });
+        }
+
+        if (!diversityReferences.some((variant) => hasRepeatedSignatureDialogue(finalCandidate, variant))) {
+          nonDialogueEchoFallback = finalCandidate;
+        }
+
+        if (!diversityReferences.some((variant) => isTooSimilarRegeneration(finalCandidate, variant))) {
+          generatedReply = finalCandidate;
+          nonDialogueEchoFallback = "";
+          break;
+        }
+        finalRejects.push(finalCandidate);
+      }
+
+      // Never keep a take that repeats the rejected signature dialogue. If the
+      // model could not clear every broad similarity threshold after two tries,
+      // prefer the latest candidate that at least removed copied dialogue.
+      if (
+        nonDialogueEchoFallback &&
+        diversityReferences.some((variant) => hasRepeatedSignatureDialogue(generatedReply, variant))
+      ) {
+        generatedReply = nonDialogueEchoFallback;
       }
     }
 
@@ -841,6 +1034,31 @@ function extractComparableSentences(value = "") {
     .slice(0, 14);
 }
 
+function extractComparableDialogue(value = "") {
+  const source = String(value || "");
+  const quoted = [...source.matchAll(/["“]([^"”\n]{3,280})["”]/g)]
+    .map((match) => String(match[1] || ""));
+  const written = source
+    .split("\n")
+    .filter((line) => /^\s*>\s*\S/.test(line))
+    .map((line) => line.replace(/^\s*>\s*/, ""));
+
+  return [...quoted, ...written]
+    .map((line) => normalizeForRegenerationComparison(line))
+    .filter((line) => line.length >= 12 && line.split(" ").length >= 3)
+    .slice(0, 16);
+}
+
+function hasRepeatedSignatureDialogue(candidate = "", rejected = "") {
+  const candidateLines = extractComparableDialogue(candidate);
+  const rejectedLines = extractComparableDialogue(rejected);
+
+  return candidateLines.some((line) => rejectedLines.some((prior) => {
+    if (line === prior) return true;
+    return sentenceTokenSimilarity(line, prior) >= 0.88;
+  }));
+}
+
 function isTooSimilarRegeneration(candidate = "", rejected = "") {
   const a = normalizeForRegenerationComparison(candidate);
   const b = normalizeForRegenerationComparison(rejected);
@@ -866,16 +1084,22 @@ function isTooSimilarRegeneration(candidate = "", rejected = "") {
   const candidateSentences = extractComparableSentences(candidate);
   const rejectedSentences = extractComparableSentences(rejected);
   let nearCopiedSentences = 0;
+  let singleSentenceEcho = false;
   for (const sentence of candidateSentences) {
     const best = rejectedSentences.reduce(
       (score, prior) => Math.max(score, sentenceTokenSimilarity(sentence, prior)),
       0
     );
     if (best >= 0.82) nearCopiedSentences += 1;
+    if (best >= 0.92 && normalizeForRegenerationComparison(sentence).split(" ").length >= 7) {
+      singleSentenceEcho = true;
+    }
   }
   const copiedSentenceRatio = nearCopiedSentences / Math.max(1, candidateSentences.length);
 
   return (
+    hasRepeatedSignatureDialogue(candidate, rejected) ||
+    singleSentenceEcho ||
     openingSimilarity >= 0.86 ||
     copiedSentenceRatio >= 0.45 ||
     bigramJaccard >= 0.38 ||
@@ -887,7 +1111,7 @@ async function generateDiverseRegeneration({
   apiKey,
   systemInstruction,
   prompt,
-  rejectedResponses = [],
+  rejectedResponses = [] as string[],
   maxOutputTokens,
   diversityAttempt = 1,
 }) {
@@ -1273,6 +1497,14 @@ function resolveNaturalTurn({
   else if (explicitInPerson) digitalMode = "in_person";
   else if (sceneShift && !passiveContinue && /\b(?:room|quad|campus|university|house|party|class|car|club|restaurant|kitchen|bedroom|office|hallway)\b/i.test(directionText)) digitalMode = "in_person";
 
+  // The user can text into an already active physical scene. This is a hybrid
+  // cutaway, not a teleport into a text-only transcript: narration and nearby
+  // spoken dialogue remain valid, while the actual written reply uses `>`.
+  const messageCutaway = Boolean(
+    dmAddressed &&
+    (storedMedium === "in_person" || mainCharacterHasDeparted || explicitCameraAway),
+  );
+
 
   const taggedHandles = [...raw.matchAll(/@([\p{L}\p{N}_-]{2,40})/gu)]
     .map((match) => String(match[1] || "").trim())
@@ -1373,7 +1605,9 @@ function resolveNaturalTurn({
     correction,
     asksQuestion,
     groupAddressed,
+    dmAddressed,
     digitalMode,
+    messageCutaway,
     taggedHandles: taggedHandles.slice(0, 8),
     groupCandidates: groupCandidates.slice(0, 10),
     expectedReactors,
@@ -1401,6 +1635,7 @@ function formatNaturalTurnResolution(turn = {} as Record<string, any>, userIdent
   return [
     `mode=${turn.mode || "react"}`,
     `medium=${turn.digitalMode || "in_person"}`,
+    `physical_message_cutaway=${turn.messageCutaway ? "yes — narration/spoken NPC dialogue may coexist with > written texts" : "no"}`,
     `focus/reactor=${turn.returnToMainCharacter || turn.followMainCharacterAfterExit ? `${character.name} (mandatory main-character focus)` : (turn.povTarget || reactors)}`,
     `scene_shift=${turn.sceneShift ? "yes" : "no"}`,
     `time_shift=${turn.timeShift || "none"}`,
@@ -1431,7 +1666,7 @@ function buildSystemInstruction({
   directorInstruction = "",
   turnResolution = {} as Record<string, any>,
   rejectedResponse = "",
-  rejectedVariants = [],
+  rejectedVariants = [] as string[],
 }) {
   const regen = regenerationInstruction
     ? `\nMANDATORY REGENERATION CONTRACT — HIGHEST PRIORITY\nUSER'S PRIVATE DIRECTION: ${regenerationInstruction}\nINTERPRETATION: ${buildRegenerationMeaning(regenerationInstruction, character, userIdentity)}\nThis is a private direction, never dialogue or canon. Build the new response around its requested outcome. It may change the scene, cast, POV, tone, behavior, pacing or ending for this retry. Preserve only canon that does not conflict with the requested alternate take. Before writing, identify the concrete requested change; before returning, verify that change is plainly present. A polished response that misses this direction is incorrect.`
@@ -1446,11 +1681,16 @@ function buildSystemInstruction({
     "social-shift: let an established NPC or the immediate social context alter the beat naturally",
     "minimal-realism: use the smallest believable reaction and stop before over-explaining",
   ][Math.max(0, Number(rejectedVariants?.length || 1) - 1) % 5];
-  const priorVariantText = Array.isArray(rejectedVariants) && rejectedVariants.length
-    ? rejectedVariants.slice(-5).map((value, index) => `Variant ${index + 1}: ${String(value).slice(0, 900)}`).join("\n\n")
-    : (rejectedResponse ? `Variant 1: ${String(rejectedResponse).slice(0, 1200)}` : "");
-  const regenerationDiversity = priorVariantText
-    ? `\nREJECTED RESPONSE VARIANTS — NEGATIVE EXAMPLES\n${priorVariantText}\n\nVARIATION LANE FOR THIS RETRY\n${variationLane}\nDo NOT paraphrase, expand, shorten, or cosmetically rewrite any prior variant. Preserve canon and the user's latest turn, but choose a genuinely different next beat. Do not reuse the same opening, dialogue strategy, emotional explanation, or choreography. A new variant must differ in structure and choice, not merely vocabulary.`
+  const rejectedVariantCount = Math.max(
+    Array.isArray(rejectedVariants) ? rejectedVariants.length : 0,
+    rejectedResponse ? 1 : 0,
+  );
+  // Do not paste rejected prose into the first regeneration prompt. Negative
+  // examples prime the model to echo their most memorable line. The local
+  // similarity guard still has the full variants and only supplies them to a
+  // dedicated retry when the clean first attempt actually overlaps.
+  const regenerationDiversity = rejectedVariantCount > 0
+    ? `\nREGENERATION BRANCH\n${rejectedVariantCount} earlier take(s) were rejected and are intentionally omitted from this prompt. Do not reconstruct the immediately preceding response from hidden metadata.\n\nVARIATION LANE FOR THIS RETRY\n${variationLane}\nChoose a genuinely different next beat from the branch point. Do not recycle the previous opening, signature dialogue, prop interaction, emotional explanation, warning, denial or choreography. A new variant must differ in structure and choice, not merely vocabulary.`
     : "";
 
   return `
@@ -1488,6 +1728,8 @@ Nothing lower may contradict or erase something higher.
 NARRATIVE DECISION
 - React to the latest USER turn first, then choose one meaningful next beat. Unknown history stays unknown; new present-tense choices are allowed.
 - Advance through dialogue, decisions and consequences. Do not sustain a scene with questions, decorative movement or random complications.
+- If the latest USER turn sends ${character.name} a direct text, that text must materially change ${character.name}'s next choice. With ordinary or high initiative, include a concise written reply in this response. Guardedness may make the reply brief, evasive or delayed by one meaningful action; it may not let unrelated NPC banter replace the user's thread.
+- In a social cutaway, an NPC may prompt or tease once. Do not build a loop where the NPC probes again while ${character.name} repeats the same denial, warning or dismissal. Return to ${character.name}'s decision about the user's latest turn.
 - Preserve established affection, tension and conflict as active psychology. A guarded character may hide feelings, but may not forget them.
 - Romance never forces pursuit, forgiveness, softness, touch, confession or instant repair. Let pride, misunderstanding and distance persist when believable.
 - ${character.name} remains the main emotional thread. Secondary characters may carry a beat without permanently replacing that thread.
@@ -1503,9 +1745,11 @@ If the user says "get back to X's POV", treat it as a silent camera instruction.
 
 SCENE MEDIUM LOCK
 - The resolved communication medium for THIS turn is: ${turnResolution.digitalMode || "in_person"}. Treat this as authoritative.
+- Physical cutaway around a newly received text: ${turnResolution.messageCutaway ? "yes" : "no"}.
 - in_person: characters are physically together. Spoken dialogue uses normal quotation marks only. NEVER prefix spoken dialogue with > and NEVER render it as a text-message blockquote.
 - phone_call: characters speak aloud through the call. Spoken lines use normal quotation marks only. NEVER use > unless an actual written text message is separately sent during the call.
 - direct_message and group_chat: only actual written messages use the > prefix.
+- When physical cutaway=yes, narration and nearby spoken dialogue may coexist with the text exchange. Keep spoken dialogue in quotation marks and prefix only the actual written reply with >.
 - A phone existing in the scene does not make the scene digital. Looking at a screen, holding a phone, or mentioning a previous text does not change the current medium.
 - Do not switch medium unless the latest USER turn explicitly does so or established scene state clearly requires it.
 
@@ -1629,6 +1873,7 @@ function buildPrompt({
   storyChapters = [],
   activeChapter = {},
   unfinishedThreads = [],
+  isRegeneration = false,
   regenerationInstruction = "",
   turnResolution = {} as Record<string, any>,
 }) {
@@ -1661,8 +1906,15 @@ function buildPrompt({
     ? `MANDATORY DIRECTION FOR THIS ALTERNATE TAKE\n${regenerationInstruction}\nThe finished passage must visibly enact this direction. Do not merely adjust adjectives, tone, or wording. If it specifies what a character does, does not do, says, or where the scene goes, that outcome is required.\n\n`
     : "";
 
+  const regenerationBranchNotice = isRegeneration
+    ? `REGENERATION BRANCH-POINT NOTICE
+The LATEST CONTINUITY messages below end immediately before the rejected take and are authoritative. CURRENT SCENE, ROLLING SUMMARY, CAST and OPEN THREADS are derived aids that may still contain details learned from that rejected take. Treat any action, prop movement, spoken line, warning, denial or decision found only in derived aids as unconfirmed and do not replay it. Continue from the branch point with a new choice.
+
+`
+    : "";
+
   return `
-${mandatoryDirection}TURN RESOLUTION
+${mandatoryDirection}${regenerationBranchNotice}TURN RESOLUTION
 ${formatNaturalTurnResolution(turnResolution, userIdentity, character)}
 
 CHARACTER
@@ -1731,6 +1983,7 @@ FINAL PRE-WRITE CHECK
 - Keep the resolved medium and camera route. If a return/follow route is active, ${character.name} must be the meaningful focus.
 - Use only established past facts; new material must be a present action or choice, not invented history/logistics.
 - Include character voice when silent_continue=yes. Remove filler, repeated beats and stock AI gestures.
+- If the latest user turn is a direct text, make it alter ${character.name}'s behavior and normally include ${character.name}'s written reply. Do not let an NPC interrogation loop replace it.
 - Make English idiomatic and dialogue character-specific. Stop when the beat lands.
 Then write ONLY the next roleplay passage. Do not explain these checks.
 `;
@@ -1801,14 +2054,17 @@ function applyNaturalOutputGuard({ text, turnResolution = {} as Record<string, a
       ? new RegExp(`^\\s*(?:\\*\\*)?(?:${knownNames.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?:\\*\\*)?\\s*:\\s*`, "i")
       : /^\s*(?:\*\*)?[\p{L}\p{N}_ -]{2,40}(?:\*\*)?\s*:\s*/iu;
 
-    const normalized = lines.map((line) => {
-      if (/^\s*>/.test(line)) return line.trimStart();
-      if (speakerPattern.test(line)) return `> ${line.trim()}`;
-      // A standalone quoted line inside a resolved digital medium is a written
-      // message, not spoken dialogue. Normalize it to Velvet's message syntax.
-      if (/^\s*["“][^"”\n]+["”]\s*[.!?…]*\s*$/.test(line)) return `> ${line.trim()}`;
-      return line;
-    });
+    const normalized = turnResolution.messageCutaway
+      ? lines.map((line) => /^\s*>/.test(line) ? line.trimStart() : line)
+      : lines.map((line) => {
+          if (/^\s*>/.test(line)) return line.trimStart();
+          if (speakerPattern.test(line)) return `> ${line.trim()}`;
+          // A standalone quoted line inside a text-only exchange is a written
+          // message. A physical cutaway skips this conversion because nearby
+          // characters may still be speaking aloud.
+          if (/^\s*["“][^"”\n]+["”]\s*[.!?…]*\s*$/.test(line)) return `> ${line.trim()}`;
+          return line;
+        });
 
     output = normalized.join("\n").trim();
 
@@ -1816,7 +2072,7 @@ function applyNaturalOutputGuard({ text, turnResolution = {} as Record<string, a
     // inside the digital medium. This prevents cinematic phone/room cutaways in
     // both DMs and group chats.
     const quotedLines = output.split("\n").filter((line) => /^\s*>\s*\S/.test(line));
-    if (quotedLines.length) {
+    if (quotedLines.length && !turnResolution.messageCutaway) {
       output = quotedLines.join("\n\n");
     }
   }
@@ -1828,6 +2084,10 @@ function applyNaturalOutputGuard({ text, turnResolution = {} as Record<string, a
   }
 
   return output;
+}
+
+function hasWrittenDigitalReply(value = "") {
+  return /^\s*>\s*\S/m.test(String(value || ""));
 }
 
 function stripDialogueForAgencyCheck(value = "") {
@@ -1945,6 +2205,56 @@ async function repairNaturalVoice({ apiKey, text, language, medium, userName, la
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. Preserve the actual events, character intent, established facts and useful dialogue, but make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. Do not add new facts or new actions. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages. Output only the repaired passage in ${language}.\n\nLATEST USER TURN:\n${String(latestUserMessage || "").slice(0, 2500)}\n\nPASSAGE:\n${String(text || "").slice(0, 12000)}` }] }],
         generationConfig: { maxOutputTokens: 1700 },
+      }),
+    });
+    if (!response.ok) return text;
+    const data = await response.json();
+    return data?.candidates?.[0]?.content?.parts
+      ?.filter((part) => typeof part.text === "string" && !part.thought)
+      .map((part) => part.text)
+      .join("")
+      .trim() || text;
+  } catch {
+    return text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function repairMissingDigitalReply({
+  apiKey,
+  text,
+  character,
+  userIdentity,
+  latestUserMessage = "",
+  language,
+  messageCutaway = false,
+}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(GEMINI_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [{
+            text: `Repair this private roleplay continuation because it ignored the user's direct text. ${character.name} must send one concise, natural written reply that reacts to the LATEST USER TURN. Prefix each actual written message with >. Keep ${character.name}'s established personality: guardedness may make the reply brief, dry, evasive or imperfect; do not force tenderness, confession or apology. The user's message must still change ${character.name}'s choice.
+
+${messageCutaway ? `This is a physical cutaway around the received text. Preserve only useful narration and at most one nearby NPC spoken line before ${character.name}'s reply. Spoken dialogue stays in quotation marks; only written texts use >.` : "This is a text-only exchange. Return only the written reply line(s), each prefixed with >."}
+
+Do not repeat a denial, warning, prop interaction or signature line already used in the passage. Remove stock gestures and NPC interrogation loops. Never invent ${userIdentity.name}'s reply, reaction, thoughts, feelings or actions. Address the user as you/your in reader-facing narration. Output only the repaired passage in ${language}.
+
+LATEST USER TURN:
+${String(latestUserMessage || "").slice(0, 2500)}
+
+PASSAGE THAT FAILED TO REPLY:
+${String(text || "").slice(0, 10000)}`,
+          }],
+        }],
+        generationConfig: { maxOutputTokens: 1500 },
       }),
     });
     if (!response.ok) return text;

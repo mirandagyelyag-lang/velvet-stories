@@ -36,6 +36,36 @@ check("two silent turns return to main character", edge.includes("normalizedSile
 check("post-exit reaction follows main character", edge.includes("follow_main_character_after_exit"));
 check("unsupported logistics are rejected", edge.includes("inventsUnsupportedLogistics(candidate, groundingFacts)"));
 check("invented third-party intimacy is rejected", edge.includes("inventsUnsupportedThirdPartyIntimacy(candidate, groundingFacts)"));
+check(
+  "clean regeneration prompt omits rejected prose",
+  edge.includes("earlier take(s) were rejected and are intentionally omitted") &&
+    !edge.includes("REJECTED RESPONSE VARIANTS — NEGATIVE EXAMPLES"),
+);
+check(
+  "one repeated signature line rejects a regeneration",
+  edge.includes("function hasRepeatedSignatureDialogue") &&
+    edge.includes("hasRepeatedSignatureDialogue(candidate, rejected) ||"),
+);
+check(
+  "regeneration also compares recent character beats",
+  edge.includes("const recentCharacterBeats = regenerateMessageId") &&
+    edge.includes("...recentCharacterBeats"),
+);
+check(
+  "direct texts cannot be buried under NPC banter",
+  edge.includes("repairMissingDigitalReply({") &&
+    edge.includes("!hasWrittenDigitalReply(generatedReply)"),
+);
+check(
+  "physical text cutaways preserve narration and spoken dialogue",
+  edge.includes("const messageCutaway = Boolean(") &&
+    edge.includes("!turnResolution.messageCutaway"),
+);
+check(
+  "regeneration marks derived metadata as tentative",
+  edge.includes("REGENERATION BRANCH-POINT NOTICE") &&
+    edge.includes("details learned from that rejected take"),
+);
 check("safe repair fallback avoids brittle false errors", edge.includes("if (safeFallback) return safeFallback"));
 check("directed continuation never exposes a validator error", edge.includes("buildDirectedContinuationFallback({") && !edge.includes("Velvet could not continue from"));
 check("Gemini model is configurable", edge.includes('Deno.env.get("GEMINI_MODEL")'));
@@ -50,13 +80,15 @@ check("mobile navigation keeps three columns", mobileStyles.includes("grid-templ
 const diversityPosition = edge.indexOf("// Regeneration diversity guard");
 const voiceRepairPosition = edge.indexOf("// The natural-voice repair must never reintroduce user control.");
 const finalRoutePosition = edge.indexOf("// Route enforcement is deliberately LAST.");
+const finalDiversityPosition = edge.indexOf("// FINAL regeneration validation.");
 const emptyReplyPosition = edge.indexOf("if (!generatedReply)", finalRoutePosition);
 check(
-  "camera/voice enforcement is the final rewrite stage",
+  "camera/voice repair is followed by final output validation",
   diversityPosition >= 0 &&
     voiceRepairPosition > diversityPosition &&
     finalRoutePosition > voiceRepairPosition &&
-    emptyReplyPosition > finalRoutePosition,
+    finalDiversityPosition > finalRoutePosition &&
+    emptyReplyPosition > finalDiversityPosition,
 );
 
 const immediateHidePosition = chatsContext.indexOf("// Hide the rejected take before any network await.");
