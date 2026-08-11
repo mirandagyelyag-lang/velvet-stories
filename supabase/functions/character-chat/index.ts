@@ -7,8 +7,13 @@ const corsHeaders = {
 };
 
 const encoder = new TextEncoder();
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite";
+// Flash is substantially better at long conversational continuity than Lite
+// and is currently available on Gemini's free tier. Lite remains an automatic
+// fallback for transient/rate-limit failures and can still be forced by env.
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
+const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
+const GEMINI_FALLBACK_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_FALLBACK_MODEL)}:generateContent`;
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -97,6 +102,9 @@ Deno.serve(async (request) => {
     const conversationId = String(body?.conversationId || "");
     const regenerateMessageId = body?.regenerateMessageId
       ? String(body.regenerateMessageId)
+      : "";
+    const expectedUserMessageId = body?.expectedUserMessageId
+      ? String(body.expectedUserMessageId)
       : "";
     const regenerationInstruction = cleanInstruction(body?.regenerationInstruction);
     const directorInstruction = cleanInstruction(body?.directorInstruction);
@@ -200,6 +208,9 @@ Deno.serve(async (request) => {
       .slice(-5)
       .map((message) => String(message.content || "").trim())
       .filter(Boolean);
+    const recentUserBeats = messages
+      .filter((message) => message.sender === "user")
+      .slice(-13);
     const diversityReferences = regenerateMessageId
       ? [...new Set([
           ...rejectedVariants,
@@ -212,6 +223,15 @@ Deno.serve(async (request) => {
     const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
     const timeSkip = analyzeTimeSkip(latestUserMessage);
     const latestUserRecord = [...messages].reverse().find((message) => message.sender === "user") || null;
+    if (expectedUserMessageId && latestUserRecord?.id !== expectedUserMessageId) {
+      console.warn("Generation anchor mismatch", {
+        conversationId,
+        expectedUserMessageId,
+        resolvedUserMessageId: latestUserRecord?.id || null,
+        regenerateMessageId: regenerateMessageId || null,
+      });
+      return json({ error: "The conversation changed before Velvet could answer. Try again from the latest message." }, 409);
+    }
     const turnResolution = resolveNaturalTurn({
       latestUserMessage,
       latestUserRecord,
@@ -262,6 +282,7 @@ Deno.serve(async (request) => {
     // Explicit Stop is still the only user-driven cancellation source.
     let geminiResponse: Response | null = null;
     let lastGeminiError: unknown = null;
+    let useFallbackModel = false;
 
     for (let attempt = 0; attempt < 2 && !geminiResponse; attempt += 1) {
       const geminiController = new AbortController();
@@ -297,7 +318,7 @@ Deno.serve(async (request) => {
 
       try {
         const candidateResponse = await fetch(
-          GEMINI_ENDPOINT,
+          useFallbackModel ? GEMINI_FALLBACK_ENDPOINT : GEMINI_ENDPOINT,
           {
             method: "POST",
             headers: {
@@ -322,6 +343,7 @@ Deno.serve(async (request) => {
         // request errors because they need to surface immediately.
         if (attempt === 0 && [429, 500, 502, 503, 504].includes(candidateResponse.status)) {
           lastGeminiError = new Error(`Gemini transient status ${candidateResponse.status}`);
+          useFallbackModel = GEMINI_FALLBACK_MODEL !== GEMINI_MODEL;
           await delay(250);
           continue;
         }
@@ -459,15 +481,22 @@ Deno.serve(async (request) => {
     }
 
     // Lexical diversity is not enough in dialogue. If the draft repeats a
-    // failed denial/blame/dismissal tactic from recent turns, rewrite the
-    // conversational decision itself while keeping character psychology.
+    // failed tactic OR reopens an older user question instead of answering the
+    // authoritative latest turn, rewrite the conversational decision itself.
     if (
       generatedReply &&
-      needsConversationProgressionRepair({
-        candidate: generatedReply,
-        recentCharacterBeats,
-        latestUserMessage,
-      })
+      (
+        needsConversationProgressionRepair({
+          candidate: generatedReply,
+          recentCharacterBeats,
+          latestUserMessage,
+        }) ||
+        likelyReopensEarlierUserTurn({
+          candidate: generatedReply,
+          latestUserMessage,
+          earlierUserMessages: recentUserBeats,
+        })
+      )
     ) {
       generatedReply = await repairConversationProgression({
         apiKey: geminiApiKey,
@@ -638,11 +667,18 @@ Deno.serve(async (request) => {
           });
         }
 
-        if (needsConversationProgressionRepair({
-          candidate: finalCandidate,
-          recentCharacterBeats,
-          latestUserMessage,
-        })) {
+        if (
+          needsConversationProgressionRepair({
+            candidate: finalCandidate,
+            recentCharacterBeats,
+            latestUserMessage,
+          }) ||
+          likelyReopensEarlierUserTurn({
+            candidate: finalCandidate,
+            latestUserMessage,
+            earlierUserMessages: recentUserBeats,
+          })
+        ) {
           finalCandidate = await repairConversationProgression({
             apiKey: geminiApiKey,
             text: finalCandidate,
@@ -858,7 +894,7 @@ Deno.serve(async (request) => {
               messages: [...messages, savedMessage],
             }));
 
-            if (userMessageCount % 10 === 0) {
+            if (replacementMessage || userMessageCount % 5 === 0) {
               backgroundTasks.push(updateConversationSummaryInBackground({
                 supabase,
                 apiKey: geminiApiKey,
@@ -983,7 +1019,7 @@ async function getLoreEntries(supabase, lorebookId, userId) {
 }
 
 function selectRelevantLore(entries, messages) {
-  const recentText = normalizeRelevanceText(messages.slice(-12).map((message) => message.content).join(" "));
+  const recentText = normalizeRelevanceText(messages.slice(-20).map((message) => message.content).join(" "));
   return entries
     .map((entry) => {
       if (entry.always_include) return { entry, score: 1000 };
@@ -1001,7 +1037,7 @@ function selectRelevantLore(entries, messages) {
 }
 
 function selectRelevantMemories(memories, messages, userIdentity = {} as Record<string, any>) {
-  const recentText = normalizeRelevanceText(messages.slice(-10).map((message) => message.content).join(" "));
+  const recentText = normalizeRelevanceText(messages.slice(-20).map((message) => message.content).join(" "));
   const recentTokens = new Set(recentText.split(" ").filter((token) => token.length >= 4));
   const userName = normalizeRelevanceText(userIdentity?.name || "");
   const userNameTokens = userName.split(" ").filter((token) => token.length >= 3);
@@ -1043,7 +1079,7 @@ async function getRecentMessages(supabase, conversationId, userId) {
     .eq("conversation_id", conversationId)
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(80);
   if (error) throw new Error(error.message);
   return [...(data || [])].reverse();
 }
@@ -1188,6 +1224,27 @@ function needsConversationProgressionRepair({
     .some((tag) => candidateTags.has(tag));
 
   return repeatedFrame || (chargedTurn && stalledHistory && candidateStalls);
+}
+
+function likelyReopensEarlierUserTurn({
+  candidate = "",
+  latestUserMessage = "",
+  earlierUserMessages = [],
+}) {
+  const openingDialogue = extractComparableDialogue(candidate)[0] || "";
+  const openingWords = normalizeForRegenerationComparison(openingDialogue).split(" ").filter(Boolean);
+  if (openingWords.length < 3) return false;
+
+  const latestSimilarity = sentenceTokenSimilarity(openingDialogue, latestUserMessage);
+  if (latestSimilarity >= 0.58) return false;
+
+  return (Array.isArray(earlierUserMessages) ? earlierUserMessages : [])
+    .slice(-12)
+    .some((message) => {
+      const prior = String(message?.content ?? message ?? "");
+      if (!prior || normalizeForRegenerationComparison(prior) === normalizeForRegenerationComparison(latestUserMessage)) return false;
+      return sentenceTokenSimilarity(openingDialogue, prior) >= 0.78;
+    });
 }
 
 function buildDialogueProgressionSummary(values = []) {
@@ -1909,7 +1966,7 @@ PRIORITY ORDER
 2. Latest USER turn: words, actions, corrections, @mentions, time/scene/POV directions.
 3. User agency.
 4. TURN RESOLUTION for this exact turn.
-5. Last 6 messages and current scene continuity.
+5. Last 12 messages and current scene continuity.
 6. Established character personality + relationship.
 7. Canonical lore, relevant memories, persistent cast and open threads.
 8. Style controls and variation suggestions.
@@ -2082,7 +2139,11 @@ function buildPrompt({
     ? loreEntries.map((entry, index) => `${index + 1}. [${entry.entry_type}] ${entry.name}: ${entry.content}`).join("\n")
     : "none";
 
-  const olderHistory = messages.length > 6 ? messages.slice(-18, -6) : [];
+  const immediateWindowSize = 12;
+  const rawHistoryWindowSize = 52;
+  const olderHistory = messages.length > immediateWindowSize
+    ? messages.slice(-rawHistoryWindowSize, -immediateWindowSize)
+    : [];
   const historyText = olderHistory.length
     ? olderHistory.map((message, index) => {
         const type = message.sender === "user" ? "USER" : "CHARACTER";
@@ -2094,10 +2155,14 @@ function buildPrompt({
       }).join("\n")
     : "none";
 
-  const immediateContinuity = messages.slice(-6).map((message) => {
+  const immediateContinuity = messages.slice(-immediateWindowSize).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : character.name;
     return `${speaker}: ${escapePromptText(compactMessageForPrompt(message.content))}`;
   }).join("\n") || "none";
+  const latestUserAnchorRecord = [...messages].reverse().find((message) => message.sender === "user") || null;
+  const latestUserAnchor = latestUserAnchorRecord
+    ? escapePromptText(compactMessageForPrompt(latestUserAnchorRecord.content)).slice(0, 4000)
+    : "none";
 
   const mandatoryDirection = regenerationInstruction
     ? `MANDATORY DIRECTION FOR THIS ALTERNATE TAKE\n${regenerationInstruction}\nThe finished passage must visibly enact this direction. Do not merely adjust adjectives, tone, or wording. If it specifies what a character does, does not do, says, or where the scene goes, that outcome is required.\n\n`
@@ -2184,6 +2249,11 @@ FINAL PRE-WRITE CHECK
 - Include character voice when silent_continue=yes. Remove filler, repeated beats and stock AI gestures.
 - If the latest user turn is a direct text, make it alter ${character.name}'s behavior and normally include ${character.name}'s written reply. Do not let an NPC interrogation loop replace it.
 - Make English idiomatic and dialogue character-specific. Stop when the beat lands.
+
+AUTHORITATIVE LATEST-TURN ANCHOR — read this last
+message_id=${latestUserAnchorRecord?.id || "unknown"}
+${userIdentity.name}: ${latestUserAnchor}
+The passage must respond to this exact turn now. Do not answer or quote an older user question merely because it is emotionally salient in the history. If a planned opening belongs to an earlier turn, discard it and choose a response anchored here.
 Then write ONLY the next roleplay passage. Do not explain these checks.
 `;
 }
@@ -2485,6 +2555,7 @@ ${String(text || "").slice(0, 10000)}
 
 REPAIR CONTRACT
 - Read the exchange as a whole. Do not answer only the last sentence.
+- The LATEST USER TURN is the sole response target. Do not answer, quote or reopen an earlier user question unless the latest turn explicitly refers back to it.
 - Preserve the physical situation and established character psychology, but choose a genuinely different conversational move from the repeated tactics above.
 - The visible transcript is immutable. ${character.name} may clarify intent but cannot deny saying a clear equivalent already visible in the exchange or pretend ${userIdentity.name} invented the grievance.
 - Answer any direct question before reframing. Respond to the literal hurt; do not substitute an easier accusation or make ${userIdentity.name} defend it again.
@@ -2703,12 +2774,12 @@ function formatStoryChapters(chapters, activeChapter) {
 
 async function updateStoryStateInBackground({ supabase, apiKey, conversationId, userId, expectedRevision, character, userIdentity, previousSceneState, previousTimeline, previousRelationshipState, previousCastState, previousChapters, previousActiveChapter, previousThreads = [], messages }) {
   try {
-    const history = messages.slice(-20).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`).join("\n");
+    const history = messages.slice(-36).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`).join("\n");
     const response = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Maintain hidden structured state for a private interactive novel. Never invent facts. The LATEST USER turn is authoritative and must update stale scene metadata immediately. Latest explicit user corrections win. The user exclusively controls ${userIdentity.name}; never infer their feelings, thoughts or unspoken decisions. If ${userIdentity.name} was present and did not explicitly leave or move the camera elsewhere, keep them present. NPC dialogue does not erase the user from the scene. Track physical continuity, persistent NPC facts and relationship movement only when supported by events. Also track scene.medium as exactly one of in_person, direct_message, group_chat, phone_call. Change scene.medium only when recent history clearly changes the communication medium; a phone merely being present does not count. Relationship scores are soft 0-100 estimates and should move slowly, usually by 0-4 points per update. Do not reward generic proximity as romance. Create a new chapter only after a meaningful scene/time/location/story-phase transition, not every few turns. Keep chapter summaries factual and compact.\n\nUser: ${userIdentity.name}\nMain character: ${character.name}\nPrevious scene: ${JSON.stringify(previousSceneState || {})}\nPrevious timeline: ${JSON.stringify(previousTimeline || [])}\nPrevious relationship: ${JSON.stringify(previousRelationshipState || {})}\nPrevious cast: ${JSON.stringify(previousCastState || {})}\nPrevious chapters: ${JSON.stringify(previousChapters || [])}\nActive chapter: ${JSON.stringify(previousActiveChapter || {})}\nPrevious unfinished threads: ${JSON.stringify(previousThreads || [])}\nRecent history:\n${history}\n\nTrack unfinished threads too: concrete promises, invitations, plans, unresolved arguments, suspicions, secrets-in-play, future events, unanswered questions or obligations that could matter later. Keep at most 12. Preserve old open threads until the story clearly resolves or supersedes them. Do not create threads from tiny temporary actions. Return JSON only with keys scene, timeline, relationship, cast, chapters, activeChapter, threads.` }] }],
+        contents: [{ role: "user", parts: [{ text: `Maintain hidden structured state for a private interactive novel. Never invent facts. The LATEST USER turn is authoritative and must update stale scene metadata immediately. Latest explicit user corrections win. The user exclusively controls ${userIdentity.name}; never infer their feelings, thoughts or unspoken decisions. If ${userIdentity.name} was present and did not explicitly leave or move the camera elsewhere, keep them present. NPC dialogue does not erase the user from the scene. A claim or accusation spoken by a character is not narrator-confirmed fact unless the user, narration or established profile corroborates it. Never promote invented message counts, family calls, schedules, errands or insults into canon. Track physical continuity, persistent NPC facts and relationship movement only when supported by events. Also track scene.medium as exactly one of in_person, direct_message, group_chat, phone_call. Change scene.medium only when recent history clearly changes the communication medium; a phone merely being present does not count. Relationship scores are soft 0-100 estimates and should move slowly, usually by 0-4 points per update. Do not reward generic proximity as romance. Create a new chapter only after a meaningful scene/time/location/story-phase transition, not every few turns. Keep chapter summaries factual and compact.\n\nUser: ${userIdentity.name}\nMain character: ${character.name}\nPrevious scene: ${JSON.stringify(previousSceneState || {})}\nPrevious timeline: ${JSON.stringify(previousTimeline || [])}\nPrevious relationship: ${JSON.stringify(previousRelationshipState || {})}\nPrevious cast: ${JSON.stringify(previousCastState || {})}\nPrevious chapters: ${JSON.stringify(previousChapters || [])}\nActive chapter: ${JSON.stringify(previousActiveChapter || {})}\nPrevious unfinished threads: ${JSON.stringify(previousThreads || [])}\nRecent history:\n${history}\n\nTrack unfinished threads too: concrete promises, invitations, plans, unresolved arguments, suspicions, secrets-in-play, future events, unanswered questions or obligations that could matter later. Keep at most 12. Preserve old open threads until the story clearly resolves or supersedes them. Do not create threads from tiny temporary actions. The last history line is the current anchor; do not leave an older unanswered question marked as current when later turns supersede it. Return JSON only with keys scene, timeline, relationship, cast, chapters, activeChapter, threads.` }] }],
         generationConfig: {
           maxOutputTokens: 1500,
           responseMimeType: "application/json",
@@ -2827,7 +2898,7 @@ function sanitizeActiveChapter(value, fallback = {}, chapters = []) {
 
 async function updateConversationSummaryInBackground({ supabase, apiKey, conversationId, userId, expectedRevision, character, userIdentity, previousSummary, messages }) {
   try {
-    const history = messages.slice(-28).map((message) =>
+    const history = messages.slice(-60).map((message) =>
       `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`
     ).join("\n");
 
@@ -2835,7 +2906,7 @@ async function updateConversationSummaryInBackground({ supabase, apiKey, convers
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Maintain a compact factual continuity summary for a private roleplay. Preserve established relationships, locations, unresolved conflicts, important promises, boundaries, current scene state, and explicit user corrections. Never invent facts. Do not narrate prose. Prefer concrete names. The user controls ${userIdentity.name}; do not infer their feelings or thoughts.\n\nPrevious summary:\n${previousSummary || "none"}\n\nRecent history:\n${history}\n\nReturn only the updated summary, maximum 900 words.` }] }],
+        contents: [{ role: "user", parts: [{ text: `Maintain a compact factual continuity summary for a private roleplay. Preserve established relationships, locations, unresolved conflicts, important promises, boundaries, current scene state, and explicit user corrections. Never invent facts. Do not narrate prose. Prefer concrete names. The user controls ${userIdentity.name}; do not infer their feelings or thoughts. Character dialogue may contain lies, exaggerations, accusations or hallucinated backstory; do not summarize a claim as fact unless corroborated by the user, neutral narration or established profile. Preserve the exact current conversational issue and which latest user turn still requires a response; older questions superseded by later turns are context, not the active response target.\n\nPrevious summary:\n${previousSummary || "none"}\n\nRecent history:\n${history}\n\nReturn only the updated summary, maximum 900 words.` }] }],
         generationConfig: { maxOutputTokens: 1300 },
       }),
     });
@@ -2856,13 +2927,13 @@ async function updateConversationSummaryInBackground({ supabase, apiKey, convers
 
 async function extractMemoriesInBackground({ supabase, apiKey, conversationId, characterId, userId, expectedRevision, character, userIdentity, messages, existingMemories }) {
   try {
-    const history = messages.slice(-16).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`).join("\n");
+    const history = messages.slice(-30).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${message.content}`).join("\n");
     const existing = existingMemories.map((memory) => memory.content).join("\n");
     const response = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `Extract at most 3 durable roleplay memories as a JSON array. Each item: {"content":"explicit fact with names","importance":1-5,"category":"person|relationship|world|event|preference|boundary"}. Never save temporary actions, silent bracketed instructions, guesses, repeated facts or contradictions. Existing memories:\n${existing || "none"}\nConversation:\n${history}\nReturn only JSON.` }] }],
+        contents: [{ role: "user", parts: [{ text: `Extract at most 3 durable roleplay memories as a JSON array. Each item: {"content":"explicit fact with names","importance":1-5,"category":"person|relationship|world|event|preference|boundary"}. Never save temporary actions, silent bracketed instructions, guesses, repeated facts or contradictions. A character's accusation, excuse, invented family call, message count, schedule or off-screen anecdote is not a durable fact unless the user or neutral narration confirms it. Prefer explicit user corrections, stable relationship facts, boundaries and consequential events. Never store the currently active turn as a permanent personality judgment. Existing memories:\n${existing || "none"}\nConversation:\n${history}\nReturn only JSON.` }] }],
         generationConfig: { maxOutputTokens: 500, responseMimeType: "application/json" },
       }),
     });

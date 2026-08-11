@@ -451,7 +451,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
       stoppedRef.current = false;
       setSending(true);
       setSendError("");
-      await addMessage(character.id, "user", messageToSend, replyTo ? {
+      const savedUserMessage = await addMessage(character.id, "user", messageToSend, replyTo ? {
         replyToMessageId: replyTo.id,
         replyPreview: replyTo.content,
         replySender: replyTo.sender,
@@ -474,7 +474,10 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
       if (settings.haptics) navigator.vibrate?.(6);
       setSending(false);
       setIsTyping(true);
-      await generateCharacterReply(character.id, { directorInstruction: noteForThisGeneration });
+      await generateCharacterReply(character.id, {
+        directorInstruction: noteForThisGeneration,
+        expectedUserMessageId: savedUserMessage.id,
+      });
     } catch (error) {
       if (
         generationRunRef.current !== runId ||
@@ -785,10 +788,10 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
 
     try {
       setActionLoading(true);
-      await editMessageAndRemoveFollowing(character.id, selectedMessage.id, actionDraft);
+      const updatedUserMessage = await editMessageAndRemoveFollowing(character.id, selectedMessage.id, actionDraft);
       closeActionsAfterAction();
       setIsTyping(true);
-      await generateCharacterReply(character.id);
+      await generateCharacterReply(character.id, { expectedUserMessageId: updatedUserMessage.id });
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Message edit failed:", error);

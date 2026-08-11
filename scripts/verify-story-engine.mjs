@@ -31,7 +31,14 @@ check("one or more dots become silence", chat.includes('/^[.…。]+$/u.test(cle
 check("legacy silent messages stay hidden", chat.includes('content.includes("Treat this as silence from the user")'));
 check("backend recognizes compact silence", edge.includes("function isSilentContinueText(value)"));
 check("silent history is compacted", edge.includes('return "[SILENT_CONTINUE]"'));
-check("recent history is not duplicated", edge.includes("messages.slice(-18, -6)"));
+check(
+  "expanded raw history is non-overlapping",
+  edge.includes("const immediateWindowSize = 12") &&
+    edge.includes("const rawHistoryWindowSize = 52") &&
+    edge.includes("messages.slice(-rawHistoryWindowSize, -immediateWindowSize)") &&
+    edge.includes("messages.slice(-immediateWindowSize)"),
+);
+check("backend loads eighty recent messages", edge.includes(".limit(80)"));
 check("two silent turns return to main character", edge.includes("normalizedSilentContinueStreak >= 2"));
 check("post-exit reaction follows main character", edge.includes("follow_main_character_after_exit"));
 check("unsupported logistics are rejected", edge.includes("inventsUnsupportedLogistics(candidate, groundingFacts)"));
@@ -89,7 +96,7 @@ try {
   if (guardStart >= 0 && guardEnd > guardStart) {
     const guardSource = edge.slice(guardStart, guardEnd);
     dialogueGuardApi = new Function(
-      `${guardSource}\nreturn { needsConversationProgressionRepair, extractDialogueIntentTags };`,
+      `${guardSource}\nreturn { needsConversationProgressionRepair, extractDialogueIntentTags, likelyReopensEarlierUserTurn };`,
     )();
   }
 } catch {
@@ -121,6 +128,18 @@ check(
   }),
 );
 check(
+  "stale reply to Rowan's older question is rejected",
+  dialogueGuardApi?.likelyReopensEarlierUserTurn({
+    candidate: `"What do I want?" Rowan says. "I want you to stop treating every word like an attack."`,
+    latestUserMessage: "I'm getting fucking drained!",
+    earlierUserMessages: [
+      { content: "Then what you want? *i ask*" },
+      { content: "Where did I say that?" },
+      { content: "I'll leave anyway" },
+    ],
+  }),
+);
+check(
   "direct texts cannot be buried under NPC banter",
   edge.includes("repairMissingDigitalReply({") &&
     edge.includes("!hasWrittenDigitalReply(generatedReply)"),
@@ -137,7 +156,28 @@ check(
 );
 check("safe repair fallback avoids brittle false errors", edge.includes("if (safeFallback) return safeFallback"));
 check("directed continuation never exposes a validator error", edge.includes("buildDirectedContinuationFallback({") && !edge.includes("Velvet could not continue from"));
-check("Gemini model is configurable", edge.includes('Deno.env.get("GEMINI_MODEL")'));
+check(
+  "Gemini Flash is primary and Lite is fallback",
+  edge.includes('Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash"') &&
+    edge.includes('Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite"') &&
+    edge.includes("useFallbackModel ? GEMINI_FALLBACK_ENDPOINT : GEMINI_ENDPOINT"),
+);
+check(
+  "latest user turn is an authoritative end-of-prompt anchor",
+  edge.includes("AUTHORITATIVE LATEST-TURN ANCHOR — read this last") &&
+    edge.includes("The passage must respond to this exact turn now"),
+);
+check(
+  "client and backend agree on the user-message anchor",
+  chatsContext.includes("expectedUserMessageId") &&
+    edge.includes("Generation anchor mismatch") &&
+    edge.includes("latestUserRecord?.id !== expectedUserMessageId"),
+);
+check(
+  "summaries refresh every five user turns and on regeneration",
+  edge.includes("replacementMessage || userMessageCount % 5 === 0") &&
+    edge.includes("messages.slice(-60)"),
+);
 check(
   "cancellation rows are private to the Edge Function",
   privateCancellationMigration.includes("revoke all on table public.generation_requests from anon, authenticated") &&

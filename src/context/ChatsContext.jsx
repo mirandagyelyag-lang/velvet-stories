@@ -533,6 +533,16 @@ export function ChatsProvider({
     const regenerationMessage = options.regenerateMessageId
       ? (conversation.messages || []).find((item) => item.id === options.regenerateMessageId) || null
       : null;
+    const canonicalMessages = (conversation.messages || []).filter((item) => !item.isStreaming);
+    const regenerationIndex = options.regenerateMessageId
+      ? canonicalMessages.findIndex((item) => item.id === options.regenerateMessageId)
+      : -1;
+    const anchorSearchSpace = regenerationIndex >= 0
+      ? canonicalMessages.slice(0, regenerationIndex)
+      : canonicalMessages;
+    const expectedUserMessageId = options.expectedUserMessageId ||
+      [...anchorSearchSpace].reverse().find((item) => item.sender === "user")?.id ||
+      null;
 
     if (options.regenerateMessageId) {
       // Hide the rejected take before any network await. The replacement now
@@ -677,6 +687,7 @@ export function ChatsProvider({
           body: JSON.stringify({
             conversationId: conversation.conversationId,
             regenerateMessageId: options.regenerateMessageId || null,
+            expectedUserMessageId,
             regenerationInstruction: options.instruction?.trim() || "",
             directorInstruction: options.directorInstruction?.trim() || "",
             generationId,

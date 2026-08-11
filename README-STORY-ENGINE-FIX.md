@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.2)
+# Velvet Stories — motor narrativo consolidado (v0.9.3)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -24,6 +24,20 @@ en los archivos reales de la app.
 - Una reparación específica de progreso puede transformar un bucle defensivo en
   una admisión concreta, límite honesto, retirada, verdad relevante, intento de
   reparación o acción con consecuencias, sin obligar ternura ni disculpas.
+- La ventana de continuidad textual aumenta de 18 a 52 mensajes y el backend
+  conserva 80 mensajes recientes para selección de memoria/lore. Los últimos 12
+  turnos permanecen en el bloque de máxima prioridad sin duplicarse.
+- El último mensaje de la usuaria se repite como ancla autoritativa al final del
+  prompt y su ID viaja desde el frontend hasta Supabase. Si la rama cambió antes
+  de responder, la generación se detiene en vez de contestar un turno antiguo.
+- Un detector específico reconoce cuando la apertura de la IA vuelve a una
+  pregunta anterior —por ejemplo, responder «What do I want?» después de «I'm
+  getting drained»— y la envía a reparación.
+- Los resúmenes se actualizan cada cinco turnos y también después de regenerar;
+  no convierten acusaciones o anécdotas inventadas por un personaje en canon.
+- `gemini-3.5-flash` es el modelo principal recomendado y
+  `gemini-3.5-flash-lite` queda como fallback automático ante errores
+  transitorios o límites temporales.
 - Un mensaje vacío, `.`, `..` o `…` se guarda como una señal interna compacta y
   nunca se muestra en el chat.
 - El primer silencio termina el beat actual; el segundo devuelve la cámara al
