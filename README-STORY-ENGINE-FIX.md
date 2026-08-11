@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.8)
+# Velvet Stories — motor narrativo consolidado (v0.9.9)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -38,12 +38,24 @@ en los archivos reales de la app.
 - Las preguntas coloquiales sin signo final —por ejemplo, `what about you i
   haven't seen you`— se reconocen como preguntas y deben recibir una respuesta
   antes de que el personaje cambie de tema.
+- Una confesión afectiva directa —por ejemplo, `I missed you`— se convierte en
+  el centro emocional del turno cuando el perfil establece que el personaje
+  siente atracción o cariño romántico. Velvet debe mostrar primero qué le
+  provocaron esas palabras por dentro y sólo después puede protegerse con una
+  broma, reserva o desvío; una sonrisa o un movimiento del paraguas no bastan.
+- Esa reacción privada no obliga al personaje a confesarse, perseguir a la
+  protagonista ni volverse repentinamente tierno. Permite una línea interior
+  breve incluso con pensamientos configurados como raros, conservando su
+  contradicción entre lo que siente y lo que deja ver.
 - Una edición factual se activa ante hábitos, posesiones, deudas, planes o
   duraciones potencialmente inventadas. El diálogo previo del personaje no se
   acepta como prueba de una historia fuera de escena que la usuaria nunca
   confirmó.
-- El perfil, los mensajes de la usuaria, las memorias y el lore forman un
-  registro factual autoritativo. Detalles cotidianos nuevos —duraciones exactas,
+- El perfil, los mensajes de la usuaria, las memorias manuales o fijadas y el
+  lore forman un registro factual autoritativo. Las memorias aprendidas
+  automáticamente quedan como pistas tentativas hasta que la usuaria las fije o
+  otra fuente autoritativa las confirme; así una alucinación antigua no se
+  convierte sola en canon. Detalles cotidianos nuevos —duraciones exactas,
   familiares, entrenadores, prácticas, exámenes, visitas, puertas cerradas o
   planes de fin de semana— se eliminan si ese registro no los respalda.
 - Cada texto producido por el editor se valida nuevamente antes de aceptarse.
@@ -78,6 +90,9 @@ en los archivos reales de la app.
   finalización, incluso después de regeneraciones y ediciones posteriores.
 - Lecturas familiares, duraciones en horas, detalles de catering y afirmaciones
   sobre lo que la usuaria `would've` hecho ya requieren respaldo explícito.
+- Exámenes, cenas o reuniones familiares y reproches como `you could've just
+  texted` también requieren respaldo explícito; ya no pueden reemplazar la
+  reacción emocional del personaje con logística inventada.
 - Una última barrera factual se ejecuta después de las correcciones de progreso,
   mensajes y cámara, para impedir que una etapa posterior vuelva a introducir
   hechos falsos antes de mostrar la respuesta.

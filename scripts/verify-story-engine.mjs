@@ -237,6 +237,21 @@ check(
     latestUserMessage: `Nothing really, what about you?`,
   }),
 );
+const rowanMissedYouInput = "Not much lately just studying, what about you? I haven't see you in a while, i missed you";
+const rowanMissedYouBadReply = `"I've been dealing with midterms and getting dragged into planning some family dinner my parents are hosting," Rowan said, adjusting the angle of the umbrella to keep the rain off your shoulder. He glanced down at you, a quick smile breaking through his usual guarded expression. "And don't act like it's been years. But if you missed me that much, you could've just texted."`;
+const rowanMissedYouSignals = groundedReplyApi?.findUnsupportedEverydayClaimSignals({
+  candidate: rowanMissedYouBadReply,
+  groundingFacts: `CHARACTER PROFILE\nRowan secretly likes you but treats you like a bro.\nEXPLICIT USER TURNS\n${rowanMissedYouInput}`,
+}) || [];
+check(
+  "Rowan midterms/family dinner/prior-text invention is rejected",
+  [
+    "unsupported_exam_schedule",
+    "unsupported_family_hosting",
+    "unsupported_family_specific_detail",
+    "unsupported_unestablished_opportunity",
+  ].every((signal) => rowanMissedYouSignals.includes(signal)),
+);
 const rowanInventedMotherReply = `"My mom doesn't need to tell me anything," Rowan said. "She's too busy texting me to make sure you're actually eating."`;
 const rowanMotherSignals = groundedReplyApi?.findUnsupportedEverydayClaimSignals({
   candidate: rowanInventedMotherReply,
@@ -359,12 +374,72 @@ check(
     !/text(?:s|ed|ing)?|make sure (?:you(?:'re| are) )?eat/i.test(rowanMotherFallback),
 );
 
+let tenderEmotionApi = null;
+try {
+  const tenderStart = edge.indexOf("function isTenderEmotionalDisclosure");
+  const tenderEnd = edge.indexOf("function sharedStagnantDialogueFrame", tenderStart);
+  if (tenderStart >= 0 && tenderEnd > tenderStart) {
+    const tenderSource = edge
+      .slice(tenderStart, tenderEnd)
+      .replace(/ = \{\} as Record<string, any>/g, " = {}");
+    tenderEmotionApi = new Function(
+      `${tenderSource}\nreturn { isTenderEmotionalDisclosure, characterHasRomanticInvestment, hasMeaningfulTenderImpact, needsTenderEmotionalBeatRepair };`,
+    )();
+  }
+} catch {
+  tenderEmotionApi = null;
+}
+
+const rowanRomanticProfile = {
+  name: "Rowan Hayes",
+  relationship: "Rowan secretly likes you but treats you like a bro so you will not notice.",
+};
+const rowanMissedYouGoodReply = `The admission caught Rowan off guard. He had missed you too—more than he wanted to admit.\n\n"Yeah?" Rowan said, quieter than intended. "I missed having you around."`;
+check(
+  "I missed you is recognized as a tender disclosure",
+  tenderEmotionApi?.isTenderEmotionalDisclosure(rowanMissedYouInput),
+);
+check(
+  "secret romantic investment is read from the character profile",
+  tenderEmotionApi?.characterHasRomanticInvestment(rowanRomanticProfile, {}),
+);
+check(
+  "Rowan logistics-only reply is rejected for missing emotional impact",
+  tenderEmotionApi?.needsTenderEmotionalBeatRepair({
+    candidate: rowanMissedYouBadReply,
+    latestUserMessage: rowanMissedYouInput,
+    character: rowanRomanticProfile,
+  }),
+);
+check(
+  "Rowan private reciprocal reaction satisfies the emotional beat",
+  tenderEmotionApi && !tenderEmotionApi.needsTenderEmotionalBeatRepair({
+    candidate: rowanMissedYouGoodReply,
+    latestUserMessage: rowanMissedYouInput,
+    character: rowanRomanticProfile,
+  }),
+);
+check(
+  "tender emotional validation runs before the final save",
+  edge.includes("FINAL emotional validation") &&
+    edge.includes("residualTenderRisk") &&
+    edge.includes("buildTenderEmotionalFallback({"),
+);
+check(
+  "automatic memories cannot authorize invented story facts",
+  edge.includes("function isAuthoritativeMemory") &&
+    edge.includes(".filter((memory) => isAuthoritativeMemory(memory))") &&
+    edge.includes("TENTATIVE AUTOMATIC MEMORY — never use as sole factual authority"),
+);
+
 let dialogueGuardApi = null;
 try {
   const guardStart = edge.indexOf("function normalizeForRegenerationComparison");
   const guardEnd = edge.indexOf("function buildDialogueProgressionSummary", guardStart);
   if (guardStart >= 0 && guardEnd > guardStart) {
-    const guardSource = edge.slice(guardStart, guardEnd);
+    const guardSource = edge
+      .slice(guardStart, guardEnd)
+      .replace(/ = \{\} as Record<string, any>/g, " = {}");
     dialogueGuardApi = new Function(
       `${guardSource}\nreturn { needsConversationProgressionRepair, extractDialogueIntentTags, likelyReopensEarlierUserTurn };`,
     )();

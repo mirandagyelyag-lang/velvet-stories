@@ -530,6 +530,39 @@ Deno.serve(async (request) => {
       });
     }
 
+    // A direct tender disclosure is not ordinary small talk when the profile
+    // establishes romantic investment. The reader must see its private impact
+    // before the character hides behind a joke, update or guarded deflection.
+    if (
+      generatedReply &&
+      needsTenderEmotionalBeatRepair({
+        candidate: generatedReply,
+        latestUserMessage,
+        character: configuredCharacter,
+        relationshipState: conversation.relationship_state || {},
+      })
+    ) {
+      generatedReply = await repairTenderEmotionalBeat({
+        apiKey: geminiApiKey,
+        text: generatedReply,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+        latestUserMessage,
+        character: configuredCharacter,
+        userIdentity,
+        relationshipState: conversation.relationship_state || {},
+        groundingFacts: authoritativeGroundingFacts,
+        recentCharacterBeats,
+        rejectedResponses: diversityReferences,
+        maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
+      });
+      generatedReply = applyNaturalOutputGuard({
+        text: generatedReply,
+        turnResolution,
+        characterName: configuredCharacter.name,
+      });
+    }
+
     // Lexical diversity is not enough in dialogue. If the draft repeats a
     // failed tactic OR reopens an older user question instead of answering the
     // authoritative latest turn, rewrite the conversational decision itself.
@@ -938,6 +971,33 @@ Deno.serve(async (request) => {
       });
     }
 
+    // FINAL emotional validation. Later diversity, camera and factual rewrites
+    // cannot flatten an established romantic reaction into logistics or banter.
+    if (
+      generatedReply &&
+      needsTenderEmotionalBeatRepair({
+        candidate: generatedReply,
+        latestUserMessage,
+        character: configuredCharacter,
+        relationshipState: conversation.relationship_state || {},
+      })
+    ) {
+      generatedReply = await repairTenderEmotionalBeat({
+        apiKey: geminiApiKey,
+        text: generatedReply,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+        latestUserMessage,
+        character: configuredCharacter,
+        userIdentity,
+        relationshipState: conversation.relationship_state || {},
+        groundingFacts: authoritativeGroundingFacts,
+        recentCharacterBeats,
+        rejectedResponses: diversityReferences,
+        maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
+      });
+    }
+
     if (generatedReply && getIncompleteReplySignals(generatedReply).length) {
       generatedReply = await repairIncompleteReply({
         apiKey: geminiApiKey,
@@ -972,19 +1032,33 @@ Deno.serve(async (request) => {
       userIdentity.name,
       latestUserMessage,
     );
-    if (residualCompletionSignals.length || residualGroundedRisk || residualPovRisk) {
-      console.warn("Final save integrity used a canon-neutral fallback", {
+    const residualTenderRisk = needsTenderEmotionalBeatRepair({
+      candidate: generatedReply,
+      latestUserMessage,
+      character: configuredCharacter,
+      relationshipState: conversation.relationship_state || {},
+    });
+    if (residualCompletionSignals.length || residualGroundedRisk || residualPovRisk || residualTenderRisk) {
+      console.warn("Final save integrity used a safe fallback", {
         completionSignals: residualCompletionSignals,
         groundedRisk: residualGroundedRisk,
         povRisk: residualPovRisk,
+        tenderRisk: residualTenderRisk,
       });
-      generatedReply = buildCanonNeutralEditorialFallback({
-        characterName: configuredCharacter.name,
-        latestUserMessage,
-        language: responseLanguage,
-        rejectedResponses: [...diversityReferences, generatedReply],
-        seedText: `${generatedReply}\n${recentCharacterBeats.join("\n")}`,
-      });
+      generatedReply = residualTenderRisk
+        ? buildTenderEmotionalFallback({
+            characterName: configuredCharacter.name,
+            language: responseLanguage,
+            rejectedResponses: [...diversityReferences, generatedReply],
+            seedText: `${generatedReply}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
+          })
+        : buildCanonNeutralEditorialFallback({
+            characterName: configuredCharacter.name,
+            latestUserMessage,
+            language: responseLanguage,
+            rejectedResponses: [...diversityReferences, generatedReply],
+            seedText: `${generatedReply}\n${recentCharacterBeats.join("\n")}`,
+          });
     }
 
     if (!generatedReply) {
@@ -1387,6 +1461,52 @@ function isEmotionallyChargedUserTurn(value = "") {
   const text = String(value || "");
   return /\b(?:what the fuck|fuck|fucking|mean|mad|angry|annoyed|upset|hurt|seriously|don t care|leave me alone|stop|wrong with you|brat|cruel|rude|mierda|qué te pasa|enojad[oa]|molest[oa]|herid[oa]|pesad[oa]|malo|mala|en serio|déjame|para)\b/i.test(text) ||
     /\*(?:[^*]{0,80})(?:glare|angry|annoyed|mad|upset|roll my eyes|enojad|molest)(?:[^*]{0,80})\*/i.test(text);
+}
+
+function isTenderEmotionalDisclosure(value = "") {
+  const text = String(value || "");
+  return /\b(?:i\s+(?:really\s+)?miss(?:ed)?\s+you|i(?:'ve|\s+have)\s+missed\s+you|i\s+love\s+you|i\s+care\s+about\s+you|i\s+need\s+you|i(?:'m|\s+am)\s+glad\s+you(?:'re|\s+are)\s+here|i\s+was\s+worried\s+about\s+you|me\s+hiciste\s+falta|te\s+extrañ[éeo]|te\s+he\s+extrañado|te\s+quiero|te\s+amo|me\s+importas|te\s+necesito|me\s+alegra\s+que\s+est[eé]s\s+aqu[ií])\b/i.test(text);
+}
+
+function characterHasRomanticInvestment(character = {} as Record<string, any>, relationshipState = {} as Record<string, any>) {
+  const relationship = String(character?.relationship || "");
+  const profile = [
+    character?.relationship,
+    character?.description,
+    character?.personality,
+    character?.contradictions,
+    character?.scenario,
+  ].filter(Boolean).join("\n");
+  const relationshipSaysSo = /\b(?:likes?|loves?|wants?|has\s+(?:romantic\s+)?feelings\s+for|has\s+a\s+crush\s+on|is\s+attracted\s+to|has\s+fallen\s+for|cares?\s+deeply\s+about)\s+(?:you|the\s+user|her|him|them)\b/i.test(relationship) ||
+    /\b(?:le\s+gustas|te\s+quiere|te\s+ama|est[aá]\s+enamorad[oa]\s+de\s+ti|siente\s+algo\s+por\s+ti)\b/i.test(relationship);
+  const profileSaysSo = relationshipSaysSo || /\b(?:secretly\s+(?:likes?|loves?|wants?|has\s+feelings)|in\s+love\s+with|has\s+(?:romantic\s+)?feelings\s+for|crush\s+on|attracted\s+to|fallen\s+for|cares?\s+deeply\s+about|est[aá]\s+secretamente\s+enamorad[oa]|est[aá]\s+enamorad[oa]\s+de|siente\s+algo\s+por|le\s+gusta\s+en\s+secreto|se\s+siente\s+atra[ií]d[oa]\s+por)\b/i.test(profile);
+  const affection = Number(relationshipState?.affection || 0);
+  const attraction = Number(relationshipState?.attraction || 0);
+  return profileSaysSo || attraction >= 35 || affection >= 50;
+}
+
+function hasMeaningfulTenderImpact(value = "", characterName = "") {
+  const text = String(value || "");
+  if (!text.trim()) return false;
+  const name = String(characterName || "").trim().split(/\s+/)[0];
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const subject = escapedName ? `(?:${escapedName}|he|she|they)` : "(?:he|she|they)";
+  const impactFromWords = /\b(?:the\s+words|those\s+words|your\s+words|the\s+admission|your\s+admission|hearing\s+(?:that|you\s+say\s+it)|you\s+saying\s+it)\b[^.!?\n]{0,150}\b(?:hit|landed|caught|stopped|undid|mattered|hurt|warmed|relief|ache|harder|more\s+than|too\s+much|impossible\s+to\s+ignore)\b/i.test(text);
+  const privateReciprocity = new RegExp(`\\b${subject}[^.!?\\n]{0,120}\\b(?:had\\s+missed\\s+you|missed\\s+you\\s+too|wanted\\s+to\\s+hear|had\\s+wanted\\s+to\\s+hear|cared\\s+more|felt\\s+relief|wasn['’]t\\s+prepared)\\b`, "i").test(text) ||
+    /\bmissing\s+you\b[^.!?\n]{0,120}\b(?:ignore|dismiss|admit|harder|easier|hurt|ache)\b/i.test(text);
+  const spokenReciprocity = /["“][^"”\n]{0,180}\b(?:i\s+missed\s+you\s+too|i(?:'ve|\s+have)\s+missed\s+you|me\s+hiciste\s+falta|tambi[eé]n\s+te\s+extrañ[ée])\b[^"”\n]*["”]/i.test(text);
+  return impactFromWords || privateReciprocity || spokenReciprocity;
+}
+
+function needsTenderEmotionalBeatRepair({
+  candidate = "",
+  latestUserMessage = "",
+  character = {} as Record<string, any>,
+  relationshipState = {} as Record<string, any>,
+}) {
+  return isTenderEmotionalDisclosure(latestUserMessage) &&
+    characterHasRomanticInvestment(character, relationshipState) &&
+    !hasMeaningfulTenderImpact(candidate, character?.name || "");
 }
 
 function sharedStagnantDialogueFrame(candidate = "", prior = "") {
@@ -1925,6 +2045,7 @@ function resolveNaturalTurn({
   const stalledTacticCount = ["denial", "blame_shift", "dismissal", "counterattack"]
     .reduce((total, tag) => total + Number(recentDialogueIntentCounts[tag] || 0), 0);
   const emotionallyChargedTurn = isEmotionallyChargedUserTurn(raw);
+  const tenderDisclosure = isTenderEmotionalDisclosure(raw);
   const conflictLoop = emotionallyChargedTurn && stalledTacticCount >= 2;
   const departureContext = `${raw}\n${previousCharacterTurn}`;
   const mainCharacterHasDeparted = /\b(?:you(?:'re|\s+are|\s+were)?\s+(?:already\s+)?(?:far|gone|too\s+far)|you\s+(?:left|walked\s+away|ran\s+off|drove\s+away)|already\s+(?:jogging|walking|running|driving)\s+away|out\s+of\s+(?:sight|earshot)|before\s+(?:i|you)\s+could\s+answer|te\s+(?:fuiste|alejaste)|ya\s+estabas\s+lejos|fuera\s+de\s+(?:vista|alcance))\b/i.test(departureContext);
@@ -2033,6 +2154,8 @@ function resolveNaturalTurn({
   const relationshipNumbers = ["affection", "attraction", "trust", "familiarity"].map((key) => Number(relationshipState?.[key] || 0));
   const relationshipSalient = relationshipNumbers.some((value) => value >= 35) ||
     Boolean(relationshipState?.current_dynamic || relationshipState?.label);
+  const romanticInvestment = characterHasRomanticInvestment(character, relationshipState);
+  const requiresTenderBeat = tenderDisclosure && (romanticInvestment || relationshipSalient);
 
   const userPresent = !explicitCameraAway && !explicitLeave;
   const directWithMainCharacter = !groupAddressed &&
@@ -2040,9 +2163,11 @@ function resolveNaturalTurn({
 
   let emotionTarget = "none";
   let emotionTrigger = "none";
-  if (relationshipSalient && (povTarget === character?.name || directWithMainCharacter || digitalMode === "in_person")) {
+  if ((relationshipSalient || romanticInvestment) && (povTarget === character?.name || directWithMainCharacter || digitalMode === "in_person")) {
     emotionTarget = userIdentity.name;
-    emotionTrigger = "the current/recent interaction with the user-controlled protagonist";
+    emotionTrigger = requiresTenderBeat
+      ? "the user's direct tender disclosure; show its private impact before the outward mask"
+      : "the current/recent interaction with the user-controlled protagonist";
   }
 
   const returnToMainCharacter = silentContinue && normalizedSilentContinueStreak >= 2;
@@ -2088,6 +2213,9 @@ function resolveNaturalTurn({
     emotionTrigger,
     relationshipSalient,
     emotionallyChargedTurn,
+    tenderDisclosure,
+    romanticInvestment,
+    requiresTenderBeat,
     conflictLoop,
     recentDialogueTactics: buildDialogueProgressionSummary(recentCharacterDialogue),
     latestExcerpt: raw.slice(0, 520),
@@ -2120,6 +2248,9 @@ function formatNaturalTurnResolution(turn = {} as Record<string, any>, userIdent
     `emotion_target=${turn.emotionTarget || "none"}`,
     `emotion_trigger=${turn.emotionTrigger || "none"}`,
     `emotionally_charged_turn=${turn.emotionallyChargedTurn ? "yes — respond to the literal grievance before defending" : "no"}`,
+    `tender_disclosure=${turn.tenderDisclosure ? "yes" : "no"}`,
+    `romantic_investment=${turn.romanticInvestment ? "yes — established by profile/state" : "no/unknown"}`,
+    `required_tender_beat=${turn.requiresTenderBeat ? "yes — reveal private impact before any joke, deflection or subject change" : "no"}`,
     `conflict_loop=${turn.conflictLoop ? "yes — the prior tactic has failed; a different conversational move is mandatory" : "no"}`,
     `recent_character_tactics=${turn.recentDialogueTactics || "none detected"}`,
     `silent_continue=${turn.silentContinue ? `yes; streak=${turn.silentContinueStreak || 1}; voice-led story motion required; narration-only forbidden` : "no"}`,
@@ -2209,6 +2340,8 @@ NARRATIVE DECISION
 - If the latest USER turn sends ${character.name} a direct text, that text must materially change ${character.name}'s next choice. With ordinary or high initiative, include a concise written reply in this response. Guardedness may make the reply brief, evasive or delayed by one meaningful action; it may not let unrelated NPC banter replace the user's thread.
 - In a social cutaway, an NPC may prompt or tease once. Do not build a loop where the NPC probes again while ${character.name} repeats the same denial, warning or dismissal. Return to ${character.name}'s decision about the user's latest turn.
 - Preserve established affection, tension and conflict as active psychology. A guarded character may hide feelings, but may not forget them.
+- When required_tender_beat=yes, the user's tender disclosure is the emotional event of the turn. Before any joke, factual update or deflection, give the reader one unmistakable private impact linked to the user's exact words. The character may conceal it aloud, but the prose must let the reader understand what was felt. This meaningful moment may use one brief inner line even when inner thoughts are normally rare. Do not force a confession, instant softness or pursuit.
+- A smile, glance, umbrella adjustment or phrase such as "usual guarded expression" is not enough by itself. Show what the disclosure meant, what feeling it exposed, or why the character immediately needed to hide it.
 - Romance never forces pursuit, forgiveness, softness, touch, confession or instant repair. Let pride, misunderstanding and distance persist when believable.
 - ${character.name} remains the main emotional thread. Secondary characters may carry a beat without permanently replacing that thread.
 - When follow_main_character_after_exit=yes, follow ${character.name}; show one canon-supported contrast between public behavior and private feeling. Do not describe the empty place left behind.
@@ -2364,7 +2497,12 @@ function buildPrompt({
   turnResolution = {} as Record<string, any>,
 }) {
   const memoryText = memories.length
-    ? memories.map((memory, index) => `${index + 1}. [${memory.category || "event"}${memory.is_pinned ? ", PINNED" : ""}] ${memory.content}`).join("\n")
+    ? memories.map((memory, index) => {
+        const authority = isAuthoritativeMemory(memory)
+          ? (memory.is_pinned ? "PINNED, AUTHORITATIVE" : "USER-SAVED, AUTHORITATIVE")
+          : "AUTOMATIC, TENTATIVE";
+        return `${index + 1}. [${memory.category || "event"}, ${authority}] ${memory.content}`;
+      }).join("\n")
     : "none";
 
   const loreText = loreEntries.length
@@ -2465,6 +2603,7 @@ ${formatStoryChapters(storyChapters, activeChapter)}
 
 RELEVANT MEMORIES
 ${memoryText}
+Unpinned AUTOMATIC memories are derived recall aids, not factual authority. They may guide attention only when the profile, lore or explicit user transcript confirms them.
 
 ACTIVE LORE
 ${loreText}
@@ -2653,6 +2792,11 @@ ${text.slice(0, 12000)}` }] }],
   }
 }
 
+function isAuthoritativeMemory(memory = {} as Record<string, any>) {
+  if (memory?.is_pinned) return true;
+  return String(memory?.source || "manual").trim().toLowerCase() !== "automatic";
+}
+
 function buildAuthoritativeGroundingFacts({
   character = {} as Record<string, any>,
   userIdentity = {} as Record<string, any>,
@@ -2690,6 +2834,7 @@ function buildAuthoritativeGroundingFacts({
     .map((message) => compactMessageForPrompt(message.content))
     .join("\n");
   const durableMemories = (Array.isArray(memories) ? memories : [])
+    .filter((memory) => isAuthoritativeMemory(memory))
     .slice(0, 24)
     .map((memory) => String(memory?.content || "").trim())
     .filter(Boolean)
@@ -2703,7 +2848,7 @@ function buildAuthoritativeGroundingFacts({
     "CHARACTER PROFILE", characterProfile,
     "USER PROFILE", userProfile,
     "EXPLICIT USER TURNS", explicitUserHistory,
-    "DURABLE MEMORIES", durableMemories,
+    "AUTHORITATIVE MEMORIES", durableMemories,
     "LORE", lore,
   ].filter(Boolean).join("\n").slice(0, 30000);
 }
@@ -2791,7 +2936,7 @@ function collectFamilyClaimActions(value = "") {
   let familyContext = false;
 
   for (const chunk of chunks) {
-    const namesFamily = /\b(?:mum|mom|mother|dad|father)\b/i.test(chunk);
+    const namesFamily = /\b(?:mum|mom|mother|dad|father|parents?|family)\b/i.test(chunk);
     const continuesFamily = familyContext && /^["“']?(?:she|he|they|her|his|their)(?:'s|\s|\b)/i.test(chunk);
     const connected = namesFamily || continuesFamily;
     if (connected) {
@@ -2800,9 +2945,10 @@ function collectFamilyClaimActions(value = "") {
       if (/\b(?:tell(?:s|ing)?|told|say(?:s|ing)?|said|mention(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_tell");
       if (/\b(?:ask(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_ask");
       if (/\b(?:lecture(?:s|d|ing)?|scold(?:s|ed|ing)?|sermon(?:s)?|advice)\b/i.test(chunk)) actions.add("family_lecture");
+      if (/\b(?:host(?:s|ed|ing)?|plan(?:s|ned|ning)?|organi[sz](?:e|es|ed|ing)|arrang(?:e|es|ed|ing))\b/i.test(chunk)) actions.add("family_hosting");
       if (/\b(?:check(?:s|ed|ing)?|make sure|remind(?:s|ed|ing)?|worr(?:y|ies|ied|ying))\b/i.test(chunk)) actions.add("family_monitoring");
       if (/\b(?:eat(?:s|en|ing)?|food|meal(?:s)?|sleep(?:s|ing)?|medication|medicine|grade(?:s)?|class(?:es)?)\b/i.test(chunk)) actions.add("family_caretaking_detail");
-      if (/\b(?:flower arrangements?|catering|pastr(?:y|ies)|wedding|reception|party)\b/i.test(chunk)) actions.add("family_specific_detail");
+      if (/\b(?:flower arrangements?|catering|pastr(?:y|ies)|dinner|gathering|wedding|reception|party)\b/i.test(chunk)) actions.add("family_specific_detail");
     }
     familyContext = namesFamily;
   }
@@ -2871,6 +3017,7 @@ function findUnsupportedEverydayClaimSignals({
   addWhenUnsupported("unsupported_recurring_habit", /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i, /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i);
   addWhenUnsupported("unsupported_attributed_routine", /\b(?:your\s+(?:idea|version|way|routine)[^.!?\n]{0,100}\busually\b|usually\s+(?:involves?|means?|includes?)|staring\s+at\s+(?:a|the)\s+screen\s+until)\b/i, /\b(?:your\s+(?:idea|version|way|routine)[^.!?\n]{0,100}\busually\b|usually\s+(?:involves?|means?|includes?)|staring\s+at\s+(?:a|the)\s+screen\s+until)\b/i);
   addWhenUnsupported("unsupported_attributed_counterfactual", /\b(?:we\s+both\s+know\s+)?you(?:'d|\s+would|\s+would've|'d\s+have)\s+(?:have\s+)?(?:just\s+)?(?:stolen|taken|eaten|left|blamed|forgotten|ditched|ignored)\b/i, /\b(?:we\s+both\s+know\s+)?you(?:'d|\s+would|\s+would've|'d\s+have)\s+(?:have\s+)?(?:just\s+)?(?:stolen|taken|eaten|left|blamed|forgotten|ditched|ignored)\b/i);
+  addWhenUnsupported("unsupported_unestablished_opportunity", /\byou\s+could(?:'ve|\s+have)\s+(?:just\s+)?(?:texted|called|asked|told|messaged|come|came|shown up|said something)\b/i, /\byou\s+could(?:'ve|\s+have)\s+(?:just\s+)?(?:texted|called|asked|told|messaged|come|came|shown up|said something)\b/i);
   addWhenUnsupported("unsupported_lab_claim", /\byou(?:'re| are| have been|'ve been)\s+(?:the\s+one\s+who(?:'s| has)\s+been\s+)?hiding\s+in\s+(?:the\s+)?lab\b/i, /\byou(?:'re| are| have been|'ve been)\s+(?:the\s+one\s+who(?:'s| has)\s+been\s+)?hiding\s+in\s+(?:the\s+)?lab\b/i);
   addWhenUnsupported("unsupported_event_detail", /\b(?:catering trays?|flower arrangements?|reception tables?|wedding favors?)\b/i, /\b(?:catering trays?|flower arrangements?|reception tables?|wedding favors?)\b/i);
   addWhenUnsupported("unsupported_obligation", /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i, /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i);
@@ -3128,7 +3275,14 @@ async function repairNaturalVoice({
     .map((message) => compactMessageForPrompt(message.content))
     .join("\n");
   const memoryFacts = (Array.isArray(memories) ? memories : [])
+    .filter((memory) => isAuthoritativeMemory(memory))
     .slice(0, 18)
+    .map((memory) => String(memory?.content || "").trim())
+    .filter(Boolean)
+    .join("\n");
+  const tentativeMemoryContext = (Array.isArray(memories) ? memories : [])
+    .filter((memory) => !isAuthoritativeMemory(memory))
+    .slice(0, 10)
     .map((memory) => String(memory?.content || "").trim())
     .filter(Boolean)
     .join("\n");
@@ -3175,7 +3329,8 @@ Role/background: ${userIdentity?.role || "not specified"} / ${userIdentity?.back
 Personality: ${userIdentity?.personality || "not specified"}
 
 FACT AUTHORITY
-- Character/user profiles, explicit USER turns, saved memories and lore may establish past facts.
+- Character/user profiles, explicit USER turns, user-saved or pinned memories and lore may establish past facts.
+- Unpinned automatic memories are tentative derived notes. They may suggest what to re-check, but cannot authorize an off-screen fact unless explicit user history, profile or lore independently confirms it.
 - Visible actions and spoken lines in RECENT EXCHANGE remain part of conversational continuity.
 - Earlier CHARACTER banter is not proof of a new off-screen fact, habit, obligation, possession or exact duration unless the user/profile/memory/lore confirms it.
 - A person being mentioned establishes only that reference. "Your mom" does NOT establish that she texted, called, asked, reminded, monitored meals or discussed the user with the character. Every subject-action-detail link needs its own support.
@@ -3193,8 +3348,11 @@ ${String(groundingFacts || "none").slice(0, 30000)}
 EXPLICIT USER-AUTHORED RECENT FACTS
 ${userAuthoredFacts || "none"}
 
-SAVED MEMORIES
+AUTHORITATIVE SAVED MEMORIES
 ${memoryFacts || "none"}
+
+TENTATIVE AUTOMATIC MEMORY — never use as sole factual authority
+${tentativeMemoryContext || "none"}
 
 ACTIVE LORE
 ${loreFacts || "none"}
@@ -3288,6 +3446,162 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
     language,
     rejectedResponses,
     seedText: `${text}\n${failedDraft}\n${recentCharacterBeats.join("\n")}`,
+  });
+}
+
+function buildTenderEmotionalFallback({
+  characterName,
+  language = "English",
+  rejectedResponses = [],
+  seedText = "",
+}) {
+  const fullName = String(characterName || "The character").trim();
+  const name = fullName.split(/\s+/).filter(Boolean)[0] || fullName;
+  const spanish = String(language || "").toLowerCase().includes("spanish");
+  const candidates = spanish
+      ? [
+        `La confesión tomó a ${name} por sorpresa. Haberte extrañado había sido más fácil de ignorar antes de oírtelo decir primero.\n\n"Nada demasiado interesante", dijo al fin, más bajo de lo que pretendía. "Pero... es bueno saber que me extrañaste."`,
+        `${name} no estaba preparado para el alivio que le produjo escucharlo. También te había extrañado, y de pronto mantener ese sentimiento oculto exigía más esfuerzo.\n\n"He estado ocupado, nada dramático", dijo. Después apareció una pequeña sonrisa. "Cuidado. Voy a empezar a creer que te agrada tenerme cerca."`,
+      ]
+    : [
+        `The admission caught ${name} off guard. Missing you had been easier to ignore before you said it first.\n\n"Nothing too interesting," ${name} said at last, quieter than intended. "But... it's good to know you missed me."`,
+        `${name} wasn't prepared for the relief that came with hearing it. ${name} had missed you too, and suddenly keeping that feeling quiet took more effort.\n\n"I've been busy. Nothing dramatic." A small smile appeared. "Careful. I'll start thinking you like having me around."`,
+      ];
+  return chooseEditorialFallback(candidates, rejectedResponses, seedText);
+}
+
+async function repairTenderEmotionalBeat({
+  apiKey,
+  text,
+  language,
+  medium,
+  latestUserMessage = "",
+  character = {} as Record<string, any>,
+  userIdentity = {} as Record<string, any>,
+  relationshipState = {} as Record<string, any>,
+  groundingFacts = "",
+  recentCharacterBeats = [],
+  rejectedResponses = [],
+  maxOutputTokens = 1600,
+}) {
+  const endpoints = [
+    { url: GEMINI_ENDPOINT, role: "primary" },
+    ...(GEMINI_FALLBACK_ENDPOINT !== GEMINI_ENDPOINT
+      ? [{ url: GEMINI_FALLBACK_ENDPOINT, role: "fallback" }]
+      : []),
+  ];
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const endpoint = endpoints[Math.min(attempt - 1, endpoints.length - 1)];
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 15000 : 12000);
+    try {
+      const response = await fetch(endpoint.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [{
+              text: `Rewrite this roleplay passage in ${language} because it ignored the emotional center of the user's latest turn.
+
+CHARACTER
+Name: ${character?.name || "unknown"}
+Personality: ${character?.personality || "not specified"}
+Relationship to ${userIdentity?.name || "the user"}: ${character?.relationship || "not specified"}
+Contradictions: ${character?.contradictions || "not specified"}
+Speech style: ${character?.speech_style || "not specified"}
+Inner-thought setting: ${character?.inner_thoughts || "rare"}
+
+LATEST USER TURN — authoritative
+${String(latestUserMessage || "").slice(0, 2500)}
+
+DRAFT THAT MISSED THE MOMENT
+${String(text || "").slice(0, 12000)}
+
+EMOTIONAL CONTRACT
+- The user made a direct tender disclosure. Because the character's romantic investment is established, this is the emotional event of the turn.
+- Before any joke, update or deflection, give the reader one unmistakable private reaction tied to the user's exact words: what feeling surfaced, why it mattered, or why the character needed to hide it.
+- A smile, glance, softened expression or prop adjustment alone does not satisfy this. One concise interior line is allowed even when thoughts are rare.
+- Preserve guardedness. The character may mask the feeling, tease afterward or avoid confessing it. Do not force pursuit, touch, a polished declaration or instant relationship progress.
+- If the user also asked what the character has been doing, answer briefly without inventing schedules, exams, family events, prior texts or off-screen incidents.
+- The user exclusively controls their actions, reactions, thoughts and feelings. Do not narrate them.
+- Keep spoken dialogue in quotation marks for ${medium}; only actual written messages use >.
+- Finish every sentence and quotation mark. Output only the complete replacement passage.
+
+AUTHORITATIVE FACT LEDGER
+${String(groundingFacts || "none").slice(0, 30000)}`,
+            }],
+          }],
+          generationConfig: {
+            maxOutputTokens: Math.max(1000, Number(maxOutputTokens) || 1600),
+            temperature: attempt === 1 ? 0.5 : 0.34,
+            topP: 0.86,
+            thinkingConfig: { thinkingLevel: "LOW" },
+          },
+        }),
+      });
+      if (!response.ok) {
+        console.warn("Tender emotional repair request failed", {
+          attempt,
+          modelRole: endpoint.role,
+          status: response.status,
+        });
+        continue;
+      }
+
+      const data = await response.json();
+      const candidate = extractGeminiCandidate(data);
+      const completionSignals = getIncompleteReplySignals(candidate.text, candidate.finishReason);
+      const groundingSignals = findUnsupportedEverydayClaimSignals({
+        candidate: candidate.text,
+        groundingFacts,
+      });
+      const stillMissesEmotion = needsTenderEmotionalBeatRepair({
+        candidate: candidate.text,
+        latestUserMessage,
+        character,
+        relationshipState,
+      });
+      const groundedRisk = likelyNeedsGroundedReplyRepair({
+        candidate: candidate.text,
+        recentCharacterBeats,
+        groundingFacts,
+        latestUserMessage,
+      });
+      const povRisk = likelyControlsUserPOV(candidate.text, userIdentity?.name || "", latestUserMessage);
+
+      if (candidate.text && !completionSignals.length && !groundingSignals.length && !stillMissesEmotion && !groundedRisk && !povRisk) {
+        return candidate.text;
+      }
+
+      console.warn("Tender emotional repair candidate rejected", {
+        attempt,
+        modelRole: endpoint.role,
+        completionSignals,
+        groundingSignals,
+        stillMissesEmotion,
+        groundedRisk,
+        povRisk,
+      });
+    } catch (error) {
+      console.warn("Tender emotional repair attempt failed", {
+        attempt,
+        modelRole: endpoint.role,
+        error: getErrorName(error) || "unknown",
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  console.warn("Tender emotional repair used a canon-neutral emotional fallback");
+  return buildTenderEmotionalFallback({
+    characterName: character?.name,
+    language,
+    rejectedResponses: [...(Array.isArray(rejectedResponses) ? rejectedResponses : []), text],
+    seedText: `${text}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
   });
 }
 
