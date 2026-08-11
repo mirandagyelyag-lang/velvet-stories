@@ -302,7 +302,7 @@ check(
 );
 check(
   "editorial rewrites are revalidated before display",
-  edge.includes("for (let attempt = 1; attempt <= 2; attempt += 1)") &&
+  edge.includes("const maximumEditorialAttempts = 1") &&
     edge.includes("Editorial repair candidate rejected") &&
     edge.includes("Editorial repair exhausted factual retries; using canon-neutral fallback") &&
     edge.includes("findUnsupportedEverydayClaimSignals({") &&
@@ -314,10 +314,11 @@ check(
     edge.indexOf("// FINAL factual validation.") < edge.indexOf("// FINAL regeneration validation."),
 );
 check(
-  "editorial repair fails over to the secondary model",
-  edge.includes("const editorialEndpoints = [") &&
-    edge.includes("{ url: GEMINI_FALLBACK_ENDPOINT, role: \"fallback\" }") &&
-    edge.includes("modelRole: endpoint.role"),
+  "voice, canon and emotion share one editorial request budget",
+  edge.includes("let combinedEditorialRepairUsed = false") &&
+    edge.includes("combinedEditorialRepairUsed = true") &&
+    edge.includes("This is the single combined editorial attempt") &&
+    !edge.includes("await repairTenderEmotionalBeat({"),
 );
 
 let editorialFallbackApi = null;
@@ -395,9 +396,15 @@ const rowanRomanticProfile = {
   relationship: "Rowan secretly likes you but treats you like a bro so you will not notice.",
 };
 const rowanMissedYouGoodReply = `The admission caught Rowan off guard. He had missed you too—more than he wanted to admit.\n\n"Yeah?" Rowan said, quieter than intended. "I missed having you around."`;
+const rowanEmptyReactionReply = `Rowan's expression shifted slightly.\n\n"Nothing worth a dramatic update," Rowan said. "But... yeah. I know I haven't been around much."`;
 check(
   "I missed you is recognized as a tender disclosure",
   tenderEmotionApi?.isTenderEmotionalDisclosure(rowanMissedYouInput),
+);
+check(
+  "tender disclosure requires a beat without profile metadata",
+  edge.includes("const requiresTenderBeat = tenderDisclosure;") &&
+    edge.includes("relationshipSalient || romanticInvestment || tenderDisclosure"),
 );
 check(
   "secret romantic investment is read from the character profile",
@@ -412,6 +419,14 @@ check(
   }),
 );
 check(
+  "Rowan shifted-expression reply is rejected even without relationship metadata",
+  tenderEmotionApi?.needsTenderEmotionalBeatRepair({
+    candidate: rowanEmptyReactionReply,
+    latestUserMessage: rowanMissedYouInput,
+    character: { name: "Rowan Hayes" },
+  }),
+);
+check(
   "Rowan private reciprocal reaction satisfies the emotional beat",
   tenderEmotionApi && !tenderEmotionApi.needsTenderEmotionalBeatRepair({
     candidate: rowanMissedYouGoodReply,
@@ -423,7 +438,40 @@ check(
   "tender emotional validation runs before the final save",
   edge.includes("FINAL emotional validation") &&
     edge.includes("residualTenderRisk") &&
-    edge.includes("buildTenderEmotionalFallback({"),
+    edge.includes("buildTenderEmotionalFallback({") &&
+    edge.includes("protects quality without") &&
+    edge.includes("spending another Gemini request"),
+);
+
+let tenderFallbackApi = null;
+try {
+  const fallbackCoreStart = edge.indexOf("function normalizeEditorialFallback");
+  const fallbackCoreEnd = edge.indexOf("async function repairNaturalVoice", fallbackCoreStart);
+  const tenderFallbackStart = edge.indexOf("function buildTenderEmotionalFallback");
+  const tenderFallbackEnd = edge.indexOf("async function repairIncompleteReply", tenderFallbackStart);
+  if (
+    fallbackCoreStart >= 0 && fallbackCoreEnd > fallbackCoreStart &&
+    tenderFallbackStart >= 0 && tenderFallbackEnd > tenderFallbackStart
+  ) {
+    tenderFallbackApi = new Function(
+      `function looksLikeDirectQuestion() { return false; }\n${edge.slice(fallbackCoreStart, fallbackCoreEnd)}\n${edge.slice(tenderFallbackStart, tenderFallbackEnd)}\nreturn { buildTenderEmotionalFallback };`,
+    )();
+  }
+} catch {
+  tenderFallbackApi = null;
+}
+
+const rowanTenderFallback = tenderFallbackApi?.buildTenderEmotionalFallback({
+  characterName: "Rowan Hayes",
+  language: "English",
+  seedText: rowanEmptyReactionReply,
+}) || "";
+check(
+  "quota-safe Rowan fallback contains impact and a complete answer",
+  Boolean(rowanTenderFallback) &&
+    tenderEmotionApi?.hasMeaningfulTenderImpact(rowanTenderFallback, "Rowan Hayes") &&
+    !completionApi?.getIncompleteReplySignals(rowanTenderFallback).length &&
+    /nothing (?:too interesting|dramatic)|i(?:'ve| have) been busy/i.test(rowanTenderFallback),
 );
 check(
   "automatic memories cannot authorize invented story facts",
@@ -502,9 +550,9 @@ check(
 check("safe repair fallback avoids brittle false errors", edge.includes("if (safeFallback) return safeFallback"));
 check("directed continuation never exposes a validator error", edge.includes("buildDirectedContinuationFallback({") && !edge.includes("Velvet could not continue from"));
 check(
-  "Gemini 3.6 Flash is primary and 3.5 Flash is fallback",
+  "Gemini 3.6 Flash is primary and 3.5 Flash-Lite is fallback",
   edge.includes('Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash"') &&
-    edge.includes('Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash"') &&
+    edge.includes('Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite"') &&
     edge.includes("useFallbackModel ? GEMINI_FALLBACK_ENDPOINT : GEMINI_ENDPOINT"),
 );
 check(

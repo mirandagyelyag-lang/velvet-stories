@@ -11,7 +11,7 @@ const encoder = new TextEncoder();
 // and is currently available on Gemini's free tier. Lite remains an automatic
 // fallback for transient/rate-limit failures and can still be forced by env.
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
-const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash";
+const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
 const GEMINI_FALLBACK_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_FALLBACK_MODEL)}:generateContent`;
 
@@ -401,6 +401,9 @@ Deno.serve(async (request) => {
 
     const initialCandidate = extractGeminiCandidate(geminiData);
     let generatedReply = initialCandidate.text;
+    // Factual, voice and tender-emotion review share one model-call budget.
+    // Any later residual risk is handled by deterministic safe fallbacks.
+    let combinedEditorialRepairUsed = false;
 
     const initialCompletionSignals = getIncompleteReplySignals(
       generatedReply,
@@ -485,6 +488,7 @@ Deno.serve(async (request) => {
 
     if (
       generatedReply &&
+      !combinedEditorialRepairUsed &&
       (
         likelyNeedsNaturalVoiceRepair(generatedReply) ||
         likelyNeedsGroundedReplyRepair({
@@ -492,9 +496,15 @@ Deno.serve(async (request) => {
           recentCharacterBeats,
           groundingFacts: authoritativeGroundingFacts,
           latestUserMessage,
+        }) ||
+        needsTenderEmotionalBeatRepair({
+          candidate: generatedReply,
+          latestUserMessage,
+          character: configuredCharacter,
         })
       )
     ) {
+      combinedEditorialRepairUsed = true;
       generatedReply = await repairNaturalVoice({
         apiKey: geminiApiKey,
         text: generatedReply,
@@ -511,6 +521,7 @@ Deno.serve(async (request) => {
         conversationSummary: conversation.summary || "",
         groundingFacts: authoritativeGroundingFacts,
         rejectedResponses: diversityReferences,
+        relationshipState: conversation.relationship_state || {},
       });
       generatedReply = applyNaturalOutputGuard({
         text: generatedReply,
@@ -527,39 +538,6 @@ Deno.serve(async (request) => {
         userName: userIdentity.name,
         latestUserMessage,
         language: responseLanguage,
-      });
-    }
-
-    // A direct tender disclosure is not ordinary small talk when the profile
-    // establishes romantic investment. The reader must see its private impact
-    // before the character hides behind a joke, update or guarded deflection.
-    if (
-      generatedReply &&
-      needsTenderEmotionalBeatRepair({
-        candidate: generatedReply,
-        latestUserMessage,
-        character: configuredCharacter,
-        relationshipState: conversation.relationship_state || {},
-      })
-    ) {
-      generatedReply = await repairTenderEmotionalBeat({
-        apiKey: geminiApiKey,
-        text: generatedReply,
-        language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-        latestUserMessage,
-        character: configuredCharacter,
-        userIdentity,
-        relationshipState: conversation.relationship_state || {},
-        groundingFacts: authoritativeGroundingFacts,
-        recentCharacterBeats,
-        rejectedResponses: diversityReferences,
-        maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
-      });
-      generatedReply = applyNaturalOutputGuard({
-        text: generatedReply,
-        turnResolution,
-        characterName: configuredCharacter.name,
       });
     }
 
@@ -700,6 +678,7 @@ Deno.serve(async (request) => {
     // reintroduce unsupported everyday facts at the end of the pipeline.
     if (
       generatedReply &&
+      !combinedEditorialRepairUsed &&
       likelyNeedsGroundedReplyRepair({
         candidate: generatedReply,
         recentCharacterBeats,
@@ -707,6 +686,7 @@ Deno.serve(async (request) => {
         latestUserMessage,
       })
     ) {
+      combinedEditorialRepairUsed = true;
       generatedReply = await repairNaturalVoice({
         apiKey: geminiApiKey,
         text: generatedReply,
@@ -723,6 +703,7 @@ Deno.serve(async (request) => {
         conversationSummary: conversation.summary || "",
         groundingFacts: authoritativeGroundingFacts,
         rejectedResponses: diversityReferences,
+        relationshipState: conversation.relationship_state || {},
       });
       generatedReply = applyNaturalOutputGuard({
         text: generatedReply,
@@ -770,14 +751,23 @@ Deno.serve(async (request) => {
         if (!finalCandidate) continue;
 
         if (
-          likelyNeedsNaturalVoiceRepair(finalCandidate) ||
-          likelyNeedsGroundedReplyRepair({
-            candidate: finalCandidate,
-            recentCharacterBeats,
-            groundingFacts: authoritativeGroundingFacts,
-            latestUserMessage,
-          })
+          !combinedEditorialRepairUsed &&
+          (
+            likelyNeedsNaturalVoiceRepair(finalCandidate) ||
+            likelyNeedsGroundedReplyRepair({
+              candidate: finalCandidate,
+              recentCharacterBeats,
+              groundingFacts: authoritativeGroundingFacts,
+              latestUserMessage,
+            }) ||
+            needsTenderEmotionalBeatRepair({
+              candidate: finalCandidate,
+              latestUserMessage,
+              character: configuredCharacter,
+            })
+          )
         ) {
+          combinedEditorialRepairUsed = true;
           finalCandidate = await repairNaturalVoice({
             apiKey: geminiApiKey,
             text: finalCandidate,
@@ -794,6 +784,7 @@ Deno.serve(async (request) => {
             conversationSummary: conversation.summary || "",
             groundingFacts: authoritativeGroundingFacts,
             rejectedResponses: diversityReferences,
+            relationshipState: conversation.relationship_state || {},
           });
           finalCandidate = applyNaturalOutputGuard({
             text: finalCandidate,
@@ -935,6 +926,7 @@ Deno.serve(async (request) => {
     // or a newly unsupported claim.
     if (
       generatedReply &&
+      !combinedEditorialRepairUsed &&
       likelyNeedsGroundedReplyRepair({
         candidate: generatedReply,
         recentCharacterBeats,
@@ -942,6 +934,7 @@ Deno.serve(async (request) => {
         latestUserMessage,
       })
     ) {
+      combinedEditorialRepairUsed = true;
       generatedReply = await repairNaturalVoice({
         apiKey: geminiApiKey,
         text: generatedReply,
@@ -958,6 +951,7 @@ Deno.serve(async (request) => {
         conversationSummary: conversation.summary || "",
         groundingFacts: authoritativeGroundingFacts,
         rejectedResponses: diversityReferences,
+        relationshipState: conversation.relationship_state || {},
       });
     }
 
@@ -972,29 +966,22 @@ Deno.serve(async (request) => {
     }
 
     // FINAL emotional validation. Later diversity, camera and factual rewrites
-    // cannot flatten an established romantic reaction into logistics or banter.
+    // cannot flatten a tender disclosure into logistics or empty body language.
+    // This last gate is deliberately local: it protects quality without
+    // spending another Gemini request after the combined editorial pass.
     if (
       generatedReply &&
       needsTenderEmotionalBeatRepair({
         candidate: generatedReply,
         latestUserMessage,
         character: configuredCharacter,
-        relationshipState: conversation.relationship_state || {},
       })
     ) {
-      generatedReply = await repairTenderEmotionalBeat({
-        apiKey: geminiApiKey,
-        text: generatedReply,
+      generatedReply = buildTenderEmotionalFallback({
+        characterName: configuredCharacter.name,
         language: responseLanguage,
-        medium: turnResolution.digitalMode || "in_person",
-        latestUserMessage,
-        character: configuredCharacter,
-        userIdentity,
-        relationshipState: conversation.relationship_state || {},
-        groundingFacts: authoritativeGroundingFacts,
-        recentCharacterBeats,
-        rejectedResponses: diversityReferences,
-        maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
+        rejectedResponses: [...diversityReferences, generatedReply],
+        seedText: `${generatedReply}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
       });
     }
 
@@ -1502,10 +1489,8 @@ function needsTenderEmotionalBeatRepair({
   candidate = "",
   latestUserMessage = "",
   character = {} as Record<string, any>,
-  relationshipState = {} as Record<string, any>,
 }) {
   return isTenderEmotionalDisclosure(latestUserMessage) &&
-    characterHasRomanticInvestment(character, relationshipState) &&
     !hasMeaningfulTenderImpact(candidate, character?.name || "");
 }
 
@@ -2155,7 +2140,11 @@ function resolveNaturalTurn({
   const relationshipSalient = relationshipNumbers.some((value) => value >= 35) ||
     Boolean(relationshipState?.current_dynamic || relationshipState?.label);
   const romanticInvestment = characterHasRomanticInvestment(character, relationshipState);
-  const requiresTenderBeat = tenderDisclosure && (romanticInvestment || relationshipSalient);
+  // A direct disclosure such as "I missed you" is an emotional event even if
+  // the relationship profile uses unexpected wording or is still sparse. The
+  // profile decides the nature of the impact; it must not decide whether the
+  // words register at all.
+  const requiresTenderBeat = tenderDisclosure;
 
   const userPresent = !explicitCameraAway && !explicitLeave;
   const directWithMainCharacter = !groupAddressed &&
@@ -2163,7 +2152,7 @@ function resolveNaturalTurn({
 
   let emotionTarget = "none";
   let emotionTrigger = "none";
-  if ((relationshipSalient || romanticInvestment) && (povTarget === character?.name || directWithMainCharacter || digitalMode === "in_person")) {
+  if ((relationshipSalient || romanticInvestment || tenderDisclosure) && (povTarget === character?.name || directWithMainCharacter || digitalMode === "in_person")) {
     emotionTarget = userIdentity.name;
     emotionTrigger = requiresTenderBeat
       ? "the user's direct tender disclosure; show its private impact before the outward mask"
@@ -3263,6 +3252,7 @@ async function repairNaturalVoice({
   conversationSummary = "",
   groundingFacts = "",
   rejectedResponses = [],
+  relationshipState = {} as Record<string, any>,
 }) {
   const recentAvoidanceBrief = buildDiversityAvoidanceBrief(recentCharacterBeats);
   const recentExchange = (Array.isArray(recentMessages) ? recentMessages : [])
@@ -3291,9 +3281,24 @@ async function repairNaturalVoice({
     .map((entry) => `${entry?.name || "Lore"}: ${entry?.content || ""}`)
     .join("\n");
   const initialSignals = findUnsupportedEverydayClaimSignals({ candidate: text, groundingFacts });
+  const initialTenderRisk = needsTenderEmotionalBeatRepair({
+    candidate: text,
+    latestUserMessage,
+    character,
+  });
+  const romanticInvestment = characterHasRomanticInvestment(character, relationshipState);
+  const emotionalContract = initialTenderRisk
+    ? `EMOTIONAL CENTER — mandatory in this same rewrite
+- The user's tender disclosure is the central event of this turn. Before logistics, teasing or deflection, show one unmistakable private impact tied to the exact words.
+- A shifted expression, glance, smile, softened voice, pause or prop movement alone is NOT an emotional reaction.
+- ${romanticInvestment ? "The profile establishes romantic investment: let the reader understand the reciprocal feeling or why hiding it suddenly becomes harder." : "The relationship wording is sparse or non-romantic: show a proportionate human impact such as surprise, relief, guilt, affection or the realization that the user noticed the absence. Do not invent romance."}
+- One concise interior sentence is allowed even when inner thoughts are rare. Preserve guardedness and do not force a confession, pursuit, touch or instant relationship progress.
+- If the turn also asks what the character has been doing, answer briefly without invented schedules, exams, family events or earlier messages.`
+    : "EMOTIONAL CENTER\nNo special tender disclosure repair is required; preserve only the emotion established by the visible exchange.";
   console.warn("Editorial repair triggered", {
     groundingSignals: initialSignals,
     voiceRisk: likelyNeedsNaturalVoiceRepair(text),
+    tenderRisk: initialTenderRisk,
   });
   let failedDraft = String(text || "").trim();
   let groundedFallback = "";
@@ -3304,7 +3309,11 @@ async function repairNaturalVoice({
       : []),
   ];
 
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  // One combined editorial request is the normal ceiling. Retrying factual,
+  // voice and emotion as separate model calls exhausted the free quota too
+  // quickly. A rejected or limited edit falls back locally instead.
+  const maximumEditorialAttempts = 1;
+  for (let attempt = 1; attempt <= maximumEditorialAttempts; attempt += 1) {
     const endpoint = editorialEndpoints[Math.min(attempt - 1, editorialEndpoints.length - 1)];
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 15000 : 12000);
@@ -3314,7 +3323,7 @@ async function repairNaturalVoice({
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         signal: controller.signal,
         body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. This is strict editorial attempt ${attempt} of 2. Preserve visible events and established character intent, but audit every factual claim before preserving it. Make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages.
+          contents: [{ role: "user", parts: [{ text: `Rewrite this roleplay passage so it reads like natural contemporary fiction, not AI-generated prose. This is the single combined editorial attempt. Preserve visible events and established character intent, but audit every factual claim before preserving it. Make dialogue conversational and character-specific. Remove stock gestures, decorative body-language chains, melodramatic silence/lighting prose, redundant emotional explanations and awkward metaphors. The user-controlled protagonist is ${userName}; never invent their actions, reactions, thoughts, feelings, dialogue or decisions beyond what the latest user turn explicitly established. Address the user as you/your in reader-facing narration. Communication medium is ${medium}. For in_person or phone_call, NEVER use Markdown > for spoken dialogue. For direct_message or group_chat, > is reserved only for actual written messages.
 
 CHARACTER PROFILE — authoritative
 Name: ${character?.name || "unknown"}
@@ -3322,6 +3331,8 @@ Personality: ${character?.personality || "not specified"}
 Relationship: ${character?.relationship || "not specified"}
 Speech style: ${character?.speech_style || "not specified"}
 Scenario/world: ${character?.scenario || character?.world || "not specified"}
+
+${emotionalContract}
 
 USER PROFILE — authoritative
 Name: ${userIdentity?.name || userName}
@@ -3410,15 +3421,21 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
         groundingFacts,
         latestUserMessage,
       }) || likelyNeedsNaturalVoiceRepair(candidate);
+      const remainingTenderRisk = needsTenderEmotionalBeatRepair({
+        candidate,
+        latestUserMessage,
+        character,
+      });
 
-      if (!remainingSignals.length) groundedFallback = candidate;
-      if (!remainingSignals.length && !remainingStyleRisk) return candidate;
+      if (!remainingSignals.length && !remainingTenderRisk) groundedFallback = candidate;
+      if (!remainingSignals.length && !remainingStyleRisk && !remainingTenderRisk) return candidate;
 
       console.warn("Editorial repair candidate rejected", {
         attempt,
         modelRole: endpoint.role,
         groundingSignals: remainingSignals,
         styleRisk: remainingStyleRisk,
+        tenderRisk: remainingTenderRisk,
       });
       failedDraft = candidate;
     } catch (error) {
@@ -3440,6 +3457,14 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
   console.warn("Editorial repair exhausted factual retries; using canon-neutral fallback", {
     groundingSignals: initialSignals,
   });
+  if (initialTenderRisk) {
+    return buildTenderEmotionalFallback({
+      characterName: character?.name,
+      language,
+      rejectedResponses: [...(Array.isArray(rejectedResponses) ? rejectedResponses : []), text, failedDraft],
+      seedText: `${text}\n${failedDraft}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
+    });
+  }
   return buildCanonNeutralEditorialFallback({
     characterName: character?.name,
     latestUserMessage,
@@ -3468,141 +3493,6 @@ function buildTenderEmotionalFallback({
         `${name} wasn't prepared for the relief that came with hearing it. ${name} had missed you too, and suddenly keeping that feeling quiet took more effort.\n\n"I've been busy. Nothing dramatic." A small smile appeared. "Careful. I'll start thinking you like having me around."`,
       ];
   return chooseEditorialFallback(candidates, rejectedResponses, seedText);
-}
-
-async function repairTenderEmotionalBeat({
-  apiKey,
-  text,
-  language,
-  medium,
-  latestUserMessage = "",
-  character = {} as Record<string, any>,
-  userIdentity = {} as Record<string, any>,
-  relationshipState = {} as Record<string, any>,
-  groundingFacts = "",
-  recentCharacterBeats = [],
-  rejectedResponses = [],
-  maxOutputTokens = 1600,
-}) {
-  const endpoints = [
-    { url: GEMINI_ENDPOINT, role: "primary" },
-    ...(GEMINI_FALLBACK_ENDPOINT !== GEMINI_ENDPOINT
-      ? [{ url: GEMINI_FALLBACK_ENDPOINT, role: "fallback" }]
-      : []),
-  ];
-
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    const endpoint = endpoints[Math.min(attempt - 1, endpoints.length - 1)];
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 15000 : 12000);
-    try {
-      const response = await fetch(endpoint.url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [{
-              text: `Rewrite this roleplay passage in ${language} because it ignored the emotional center of the user's latest turn.
-
-CHARACTER
-Name: ${character?.name || "unknown"}
-Personality: ${character?.personality || "not specified"}
-Relationship to ${userIdentity?.name || "the user"}: ${character?.relationship || "not specified"}
-Contradictions: ${character?.contradictions || "not specified"}
-Speech style: ${character?.speech_style || "not specified"}
-Inner-thought setting: ${character?.inner_thoughts || "rare"}
-
-LATEST USER TURN — authoritative
-${String(latestUserMessage || "").slice(0, 2500)}
-
-DRAFT THAT MISSED THE MOMENT
-${String(text || "").slice(0, 12000)}
-
-EMOTIONAL CONTRACT
-- The user made a direct tender disclosure. Because the character's romantic investment is established, this is the emotional event of the turn.
-- Before any joke, update or deflection, give the reader one unmistakable private reaction tied to the user's exact words: what feeling surfaced, why it mattered, or why the character needed to hide it.
-- A smile, glance, softened expression or prop adjustment alone does not satisfy this. One concise interior line is allowed even when thoughts are rare.
-- Preserve guardedness. The character may mask the feeling, tease afterward or avoid confessing it. Do not force pursuit, touch, a polished declaration or instant relationship progress.
-- If the user also asked what the character has been doing, answer briefly without inventing schedules, exams, family events, prior texts or off-screen incidents.
-- The user exclusively controls their actions, reactions, thoughts and feelings. Do not narrate them.
-- Keep spoken dialogue in quotation marks for ${medium}; only actual written messages use >.
-- Finish every sentence and quotation mark. Output only the complete replacement passage.
-
-AUTHORITATIVE FACT LEDGER
-${String(groundingFacts || "none").slice(0, 30000)}`,
-            }],
-          }],
-          generationConfig: {
-            maxOutputTokens: Math.max(1000, Number(maxOutputTokens) || 1600),
-            temperature: attempt === 1 ? 0.5 : 0.34,
-            topP: 0.86,
-            thinkingConfig: { thinkingLevel: "LOW" },
-          },
-        }),
-      });
-      if (!response.ok) {
-        console.warn("Tender emotional repair request failed", {
-          attempt,
-          modelRole: endpoint.role,
-          status: response.status,
-        });
-        continue;
-      }
-
-      const data = await response.json();
-      const candidate = extractGeminiCandidate(data);
-      const completionSignals = getIncompleteReplySignals(candidate.text, candidate.finishReason);
-      const groundingSignals = findUnsupportedEverydayClaimSignals({
-        candidate: candidate.text,
-        groundingFacts,
-      });
-      const stillMissesEmotion = needsTenderEmotionalBeatRepair({
-        candidate: candidate.text,
-        latestUserMessage,
-        character,
-        relationshipState,
-      });
-      const groundedRisk = likelyNeedsGroundedReplyRepair({
-        candidate: candidate.text,
-        recentCharacterBeats,
-        groundingFacts,
-        latestUserMessage,
-      });
-      const povRisk = likelyControlsUserPOV(candidate.text, userIdentity?.name || "", latestUserMessage);
-
-      if (candidate.text && !completionSignals.length && !groundingSignals.length && !stillMissesEmotion && !groundedRisk && !povRisk) {
-        return candidate.text;
-      }
-
-      console.warn("Tender emotional repair candidate rejected", {
-        attempt,
-        modelRole: endpoint.role,
-        completionSignals,
-        groundingSignals,
-        stillMissesEmotion,
-        groundedRisk,
-        povRisk,
-      });
-    } catch (error) {
-      console.warn("Tender emotional repair attempt failed", {
-        attempt,
-        modelRole: endpoint.role,
-        error: getErrorName(error) || "unknown",
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  console.warn("Tender emotional repair used a canon-neutral emotional fallback");
-  return buildTenderEmotionalFallback({
-    characterName: character?.name,
-    language,
-    rejectedResponses: [...(Array.isArray(rejectedResponses) ? rejectedResponses : []), text],
-    seedText: `${text}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
-  });
 }
 
 async function repairIncompleteReply({

@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.9)
+# Velvet Stories — motor narrativo consolidado (v0.9.10)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -38,11 +38,13 @@ en los archivos reales de la app.
 - Las preguntas coloquiales sin signo final —por ejemplo, `what about you i
   haven't seen you`— se reconocen como preguntas y deben recibir una respuesta
   antes de que el personaje cambie de tema.
-- Una confesión afectiva directa —por ejemplo, `I missed you`— se convierte en
-  el centro emocional del turno cuando el perfil establece que el personaje
-  siente atracción o cariño romántico. Velvet debe mostrar primero qué le
-  provocaron esas palabras por dentro y sólo después puede protegerse con una
-  broma, reserva o desvío; una sonrisa o un movimiento del paraguas no bastan.
+- Una confesión afectiva directa —por ejemplo, `I missed you`— siempre se
+  convierte en el centro emocional del turno, aunque el campo de relación esté
+  vacío o use palabras inesperadas. El perfil define si la reacción es
+  romántica, amistosa, culpable o reservada, pero ya no puede hacer que Velvet
+  ignore la confesión. Debe mostrar primero qué provocaron esas palabras por
+  dentro; una expresión que «cambia ligeramente», una sonrisa o un movimiento
+  del paraguas no bastan.
 - Esa reacción privada no obliga al personaje a confesarse, perseguir a la
   protagonista ni volverse repentinamente tierno. Permite una línea interior
   breve incluso con pensamientos configurados como raros, conservando su
@@ -61,9 +63,11 @@ en los archivos reales de la app.
 - Cada texto producido por el editor se valida nuevamente antes de aceptarse.
   Si Gemini falla, devuelve vacío o insiste en inventar, Velvet usa una respuesta
   breve y neutral al canon en vez de recuperar el borrador contaminado.
-- El editor factual también cambia automáticamente al modelo secundario si el
-  principal queda limitado o produce otra versión insegura; antes, ese cambio
-  existía solamente en la primera generación.
+- Canon, voz natural y reacción afectiva se corrigen en una sola revisión con un
+  presupuesto máximo de una solicitud adicional. Si esa revisión falla, queda
+  limitada o todavía ignora el centro emocional, Velvet utiliza un fallback
+  local completo; ya no gasta dos llamadas factuales y otras dos emocionales
+  para responder un solo mensaje.
 - Las salidas de emergencia responden al sentido del último turno, usan sólo el
   primer nombre del personaje y ofrecen variantes distintas al regenerar. Ya no
   reducen una conversación a `"Okay"` ni repiten el nombre completo como robot.
@@ -98,9 +102,10 @@ en los archivos reales de la app.
   hechos falsos antes de mostrar la respuesta.
 - El editor también interviene antes cuando detecta varias muletillas de IA o
   reutilización excesiva de lluvia, paraguas, miradas y movimientos de relleno.
-- `gemini-3.6-flash` es el modelo principal y `gemini-3.5-flash` queda como
-  fallback automático ante errores transitorios o límites temporales. El nivel
-  de razonamiento sube de mínimo a bajo para priorizar coherencia y canon.
+- `gemini-3.6-flash` es el modelo principal y `gemini-3.5-flash-lite` queda como
+  fallback automático ante errores transitorios o límites temporales. El modelo
+  Lite distribuye mejor la cuota gratuita, mientras el nivel de razonamiento
+  principal se mantiene bajo para priorizar coherencia y canon.
 - Un mensaje vacío, `.`, `..` o `…` se guarda como una señal interna compacta y
   nunca se muestra en el chat.
 - El primer silencio termina el beat actual; el segundo devuelve la cámara al
