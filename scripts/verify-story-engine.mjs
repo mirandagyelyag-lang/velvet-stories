@@ -111,6 +111,50 @@ check(
   naturalTurnApi && !naturalTurnApi.looksLikeDirectQuestion("Nothing really, I've just been studying lately"),
 );
 
+let completionApi = null;
+try {
+  const completionStart = edge.indexOf("function extractGeminiCandidate");
+  const completionEnd = edge.indexOf("function collectFamilyClaimActions", completionStart);
+  if (completionStart >= 0 && completionEnd > completionStart) {
+    completionApi = new Function(
+      `${edge.slice(completionStart, completionEnd)}\nreturn { extractGeminiCandidate, getIncompleteReplySignals, trimIncompleteReplyTail };`,
+    )();
+  }
+} catch {
+  completionApi = null;
+}
+
+const rowanTruncatedReply = `Rowan scoffed, shifting the umbrella to keep the wind from blowing the rain onto your side.\n\n"And subject you to my mother's three-hour lecture on flower arrangements? I'm a survivor, Toni, but I wouldn't wish that on you. Besides, we both know you would've just stolen the pastries off the catering trays and left me to take the blame."\n\nHe kept his eyes on the wet pavement ahead, matching his stride to yours.\n\n"But thanks. Next time I'm being held`;
+const rowanCompletionSignals = completionApi?.getIncompleteReplySignals(rowanTruncatedReply) || [];
+check(
+  "unfinished Rowan dialogue is rejected",
+  rowanCompletionSignals.includes("unbalanced_straight_quotes"),
+);
+check(
+  "MAX_TOKENS is rejected even after terminal punctuation",
+  completionApi?.getIncompleteReplySignals(`"But thanks."`, "MAX_TOKENS").includes("finish_max_tokens"),
+);
+check(
+  "complete dialogue is accepted",
+  completionApi && !completionApi.getIncompleteReplySignals(`Rowan looked over.\n\n"But thanks. I mean it."`, "STOP").length,
+);
+check(
+  "safe tail trimming closes the last complete spoken sentence",
+  completionApi?.trimIncompleteReplyTail(rowanTruncatedReply).endsWith('"But thanks."'),
+);
+check(
+  "initial and final generation paths enforce completion",
+  edge.includes("Initial generation was incomplete") &&
+    edge.includes("// FINAL save integrity gate.") &&
+    edge.indexOf("// FINAL save integrity gate.") < edge.indexOf("if (!generatedReply)"),
+);
+check(
+  "thinking budget leaves room for a complete visible reply",
+  edge.includes('if (length === "short") return 900;') &&
+    edge.includes('if (length === "long") return 2400;') &&
+    edge.includes("return 1600;"),
+);
+
 let groundedReplyApi = null;
 try {
   const groundedStart = edge.indexOf("function collectFamilyClaimActions");
@@ -211,6 +255,20 @@ check(
       groundingFacts: `USER: Yeah, sure. Who told you that? Your mom`,
       latestUserMessage: `Yeah, sure. Who told you that? Your mom`,
     }),
+);
+const rowanTruncatedFactSignals = groundedReplyApi?.findUnsupportedEverydayClaimSignals({
+  candidate: rowanTruncatedReply,
+  groundingFacts: `USER: Thanks. I would've gone with you if you asked.`,
+}) || [];
+check(
+  "truncated Rowan reply also rejects invented lecture and catering history",
+  [
+    "unsupported_exact_duration",
+    "unsupported_family_lecture",
+    "unsupported_family_specific_detail",
+    "unsupported_attributed_counterfactual",
+    "unsupported_event_detail",
+  ].every((signal) => rowanTruncatedFactSignals.includes(signal)),
 );
 check(
   "supported profile facts remain available to the editor",

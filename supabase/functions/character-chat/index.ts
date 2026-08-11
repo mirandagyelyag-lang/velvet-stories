@@ -399,11 +399,32 @@ Deno.serve(async (request) => {
       );
     }
 
-    let generatedReply = geminiData?.candidates?.[0]?.content?.parts
-      ?.filter((part) => typeof part.text === "string" && !part.thought)
-      .map((part) => part.text)
-      .join("")
-      .trim() || "";
+    const initialCandidate = extractGeminiCandidate(geminiData);
+    let generatedReply = initialCandidate.text;
+
+    const initialCompletionSignals = getIncompleteReplySignals(
+      generatedReply,
+      initialCandidate.finishReason,
+    );
+    if (initialCompletionSignals.length) {
+      console.warn("Initial generation was incomplete", {
+        finishReason: initialCandidate.finishReason || "missing",
+        completionSignals: initialCompletionSignals,
+      });
+      generatedReply = await repairIncompleteReply({
+        apiKey: geminiApiKey,
+        text: generatedReply,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+        latestUserMessage,
+        character: configuredCharacter,
+        userIdentity,
+        groundingFacts: authoritativeGroundingFacts,
+        recentCharacterBeats,
+        rejectedResponses: diversityReferences,
+        maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
+      });
+    }
 
     // Cheap local review catches the most damaging routing mistakes without
     // adding another model call to every turn. Severe user-POV violations are
@@ -874,6 +895,96 @@ Deno.serve(async (request) => {
       ) {
         generatedReply = nonDialogueEchoFallback;
       }
+    }
+
+    // FINAL save integrity gate. No rewrite, regeneration or POV repair is
+    // allowed to reach the database with an unfinished sentence, an open quote
+    // or a newly unsupported claim.
+    if (
+      generatedReply &&
+      likelyNeedsGroundedReplyRepair({
+        candidate: generatedReply,
+        recentCharacterBeats,
+        groundingFacts: authoritativeGroundingFacts,
+        latestUserMessage,
+      })
+    ) {
+      generatedReply = await repairNaturalVoice({
+        apiKey: geminiApiKey,
+        text: generatedReply,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+        userName: userIdentity.name,
+        latestUserMessage,
+        recentCharacterBeats,
+        recentMessages: messages,
+        character: configuredCharacter,
+        userIdentity,
+        memories,
+        loreEntries,
+        conversationSummary: conversation.summary || "",
+        groundingFacts: authoritativeGroundingFacts,
+        rejectedResponses: diversityReferences,
+      });
+    }
+
+    if (generatedReply && likelyControlsUserPOV(generatedReply, userIdentity.name, latestUserMessage)) {
+      generatedReply = await repairUserPOVViolation({
+        apiKey: geminiApiKey,
+        text: generatedReply,
+        userName: userIdentity.name,
+        latestUserMessage,
+        language: responseLanguage,
+      });
+    }
+
+    if (generatedReply && getIncompleteReplySignals(generatedReply).length) {
+      generatedReply = await repairIncompleteReply({
+        apiKey: geminiApiKey,
+        text: generatedReply,
+        language: responseLanguage,
+        medium: turnResolution.digitalMode || "in_person",
+        latestUserMessage,
+        character: configuredCharacter,
+        userIdentity,
+        groundingFacts: authoritativeGroundingFacts,
+        recentCharacterBeats,
+        rejectedResponses: diversityReferences,
+        maxOutputTokens: getMaximumOutputTokens(configuredCharacter.response_length),
+      });
+    }
+
+    generatedReply = applyNaturalOutputGuard({
+      text: generatedReply,
+      turnResolution,
+      characterName: configuredCharacter.name,
+    });
+
+    const residualCompletionSignals = getIncompleteReplySignals(generatedReply);
+    const residualGroundedRisk = likelyNeedsGroundedReplyRepair({
+      candidate: generatedReply,
+      recentCharacterBeats,
+      groundingFacts: authoritativeGroundingFacts,
+      latestUserMessage,
+    });
+    const residualPovRisk = likelyControlsUserPOV(
+      generatedReply,
+      userIdentity.name,
+      latestUserMessage,
+    );
+    if (residualCompletionSignals.length || residualGroundedRisk || residualPovRisk) {
+      console.warn("Final save integrity used a canon-neutral fallback", {
+        completionSignals: residualCompletionSignals,
+        groundedRisk: residualGroundedRisk,
+        povRisk: residualPovRisk,
+      });
+      generatedReply = buildCanonNeutralEditorialFallback({
+        characterName: configuredCharacter.name,
+        latestUserMessage,
+        language: responseLanguage,
+        rejectedResponses: [...diversityReferences, generatedReply],
+        seedText: `${generatedReply}\n${recentCharacterBeats.join("\n")}`,
+      });
     }
 
     if (!generatedReply) {
@@ -2597,6 +2708,80 @@ function buildAuthoritativeGroundingFacts({
   ].filter(Boolean).join("\n").slice(0, 30000);
 }
 
+function extractGeminiCandidate(data) {
+  const candidate = data?.candidates?.[0];
+  return {
+    text: candidate?.content?.parts
+      ?.filter((part) => typeof part.text === "string" && !part.thought)
+      .map((part) => part.text)
+      .join("")
+      .trim() || "",
+    finishReason: String(candidate?.finishReason || "").trim().toUpperCase(),
+  };
+}
+
+function getIncompleteReplySignals(value = "", finishReason = "") {
+  const text = String(value || "").trim();
+  const signals = [];
+  const normalizedFinishReason = String(finishReason || "").trim().toUpperCase();
+  if (normalizedFinishReason && normalizedFinishReason !== "STOP") {
+    signals.push(`finish_${normalizedFinishReason.toLowerCase()}`);
+  }
+  if (!text) {
+    signals.push("empty_reply");
+    return signals;
+  }
+
+  const straightQuotes = (text.match(/(?<!\\)"/g) || []).length;
+  const openCurlyQuotes = (text.match(/“/g) || []).length;
+  const closeCurlyQuotes = (text.match(/”/g) || []).length;
+  if (straightQuotes % 2 !== 0) signals.push("unbalanced_straight_quotes");
+  if (openCurlyQuotes !== closeCurlyQuotes) signals.push("unbalanced_curly_quotes");
+
+  const pairs = [["(", ")"], ["[", "]"]];
+  for (const [open, close] of pairs) {
+    const opens = text.split(open).length - 1;
+    const closes = text.split(close).length - 1;
+    if (opens > closes) signals.push(open === "(" ? "unclosed_parenthesis" : "unclosed_bracket");
+  }
+
+  if (/[,:;—–-]\s*$/.test(text)) signals.push("dangling_punctuation");
+  if (/\b(?:and|but|or|because|so|if|when|while|although|though|that|the|a|an|to|of|for|with|without|being|been|was|were|is|are|am|would|could|should|will|can|my|your|his|her|their)\s*$/i.test(text)) {
+    signals.push("dangling_terminal_word");
+  }
+
+  return [...new Set(signals)];
+}
+
+function trimIncompleteReplyTail(value = "") {
+  let text = String(value || "").trim();
+  if (!text) return "";
+
+  const closeUnbalancedDialogue = (openQuote, closeQuote = openQuote) => {
+    const openCount = text.split(openQuote).length - 1;
+    const closeCount = closeQuote === openQuote ? openCount : text.split(closeQuote).length - 1;
+    const unbalanced = closeQuote === openQuote ? openCount % 2 !== 0 : openCount > closeCount;
+    if (!unbalanced) return;
+    const lastOpen = text.lastIndexOf(openQuote);
+    if (lastOpen < 0) return;
+    const fragment = text.slice(lastOpen + openQuote.length);
+    const lastBoundary = Math.max(fragment.lastIndexOf("."), fragment.lastIndexOf("?"), fragment.lastIndexOf("!"));
+    text = lastBoundary >= 0
+      ? `${text.slice(0, lastOpen + openQuote.length)}${fragment.slice(0, lastBoundary + 1)}${closeQuote}`
+      : text.slice(0, lastOpen).trim();
+  };
+
+  closeUnbalancedDialogue('"');
+  closeUnbalancedDialogue("“", "”");
+
+  if (/[,:;—–-]\s*$/.test(text) || /\b(?:and|but|or|because|so|if|when|while|that|the|a|an|to|of|for|with|being|been|would|could|should|will|can|my|your|his|her|their)\s*$/i.test(text)) {
+    const lastBoundary = Math.max(text.lastIndexOf("."), text.lastIndexOf("?"), text.lastIndexOf("!"));
+    if (lastBoundary >= 0) text = text.slice(0, lastBoundary + 1).trim();
+  }
+
+  return text.trim();
+}
+
 function collectFamilyClaimActions(value = "") {
   const chunks = String(value || "")
     .split(/(?:[.!?]\s+|\n+)/)
@@ -2614,8 +2799,10 @@ function collectFamilyClaimActions(value = "") {
       if (/\b(?:call(?:s|ed|ing)?|phone(?:s|d|ing)?|rang|ringing)\b/i.test(chunk)) actions.add("family_call");
       if (/\b(?:tell(?:s|ing)?|told|say(?:s|ing)?|said|mention(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_tell");
       if (/\b(?:ask(?:s|ed|ing)?)\b/i.test(chunk)) actions.add("family_ask");
+      if (/\b(?:lecture(?:s|d|ing)?|scold(?:s|ed|ing)?|sermon(?:s)?|advice)\b/i.test(chunk)) actions.add("family_lecture");
       if (/\b(?:check(?:s|ed|ing)?|make sure|remind(?:s|ed|ing)?|worr(?:y|ies|ied|ying))\b/i.test(chunk)) actions.add("family_monitoring");
       if (/\b(?:eat(?:s|en|ing)?|food|meal(?:s)?|sleep(?:s|ing)?|medication|medicine|grade(?:s)?|class(?:es)?)\b/i.test(chunk)) actions.add("family_caretaking_detail");
+      if (/\b(?:flower arrangements?|catering|pastr(?:y|ies)|wedding|reception|party)\b/i.test(chunk)) actions.add("family_specific_detail");
     }
     familyContext = namesFamily;
   }
@@ -2639,7 +2826,8 @@ function findUnsupportedEverydayClaimSignals({
   // Exact quantities and durations need exact support. "In a while" cannot be
   // silently upgraded to four days, a week or ten years.
   const durationPatterns = [
-    /\b(?:it(?:'s| has)\s+been|been|for|of|since|in)\s+(?:(?:nearly|almost|over|about|the last)\s+)?(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:days?|weeks?|months?|years?)\b/gi,
+    /\b(?:it(?:'s| has)\s+been|been|for|of|since|in)\s+(?:(?:nearly|almost|over|about|the last)\s+)?(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b/gi,
+    /\b(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[ -](?:minute|hour|day|week|month|year)(?:-long)?\b/gi,
   ];
   for (const pattern of durationPatterns) {
     const matches = [...text.matchAll(pattern)];
@@ -2682,7 +2870,9 @@ function findUnsupportedEverydayClaimSignals({
   addWhenUnsupported("unsupported_domestic_detail", /\b(?:your\s+(?:apartment|room|place)|coffee cups?|notification badge|layers? of notes?)\b/i, /\b(?:your\s+(?:apartment|room|place)|coffee cups?|notification badge|layers? of notes?)\b/i);
   addWhenUnsupported("unsupported_recurring_habit", /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i, /\b(?:you(?:'ve| have)?\s+(?:always|never|usually|constantly)|every\s+(?:day|night|week|time|semester|morning|weekend))\b/i);
   addWhenUnsupported("unsupported_attributed_routine", /\b(?:your\s+(?:idea|version|way|routine)[^.!?\n]{0,100}\busually\b|usually\s+(?:involves?|means?|includes?)|staring\s+at\s+(?:a|the)\s+screen\s+until)\b/i, /\b(?:your\s+(?:idea|version|way|routine)[^.!?\n]{0,100}\busually\b|usually\s+(?:involves?|means?|includes?)|staring\s+at\s+(?:a|the)\s+screen\s+until)\b/i);
+  addWhenUnsupported("unsupported_attributed_counterfactual", /\b(?:we\s+both\s+know\s+)?you(?:'d|\s+would|\s+would've|'d\s+have)\s+(?:have\s+)?(?:just\s+)?(?:stolen|taken|eaten|left|blamed|forgotten|ditched|ignored)\b/i, /\b(?:we\s+both\s+know\s+)?you(?:'d|\s+would|\s+would've|'d\s+have)\s+(?:have\s+)?(?:just\s+)?(?:stolen|taken|eaten|left|blamed|forgotten|ditched|ignored)\b/i);
   addWhenUnsupported("unsupported_lab_claim", /\byou(?:'re| are| have been|'ve been)\s+(?:the\s+one\s+who(?:'s| has)\s+been\s+)?hiding\s+in\s+(?:the\s+)?lab\b/i, /\byou(?:'re| are| have been|'ve been)\s+(?:the\s+one\s+who(?:'s| has)\s+been\s+)?hiding\s+in\s+(?:the\s+)?lab\b/i);
+  addWhenUnsupported("unsupported_event_detail", /\b(?:catering trays?|flower arrangements?|reception tables?|wedding favors?)\b/i, /\b(?:catering trays?|flower arrangements?|reception tables?|wedding favors?)\b/i);
   addWhenUnsupported("unsupported_obligation", /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i, /\b(?:you\s+owe\s+(?:me|him|her|them)|(?:we|you)\s+(?:agreed|promised|were supposed to|had plans to)|(?:our|the)\s+usual)\b/i);
   addWhenUnsupported("unsupported_user_condition", /\byou\s+look\s+like\s+you\s+haven't\b/i, /\byou\s+look\s+like\s+you\s+haven't\b/i);
 
@@ -3098,6 +3288,147 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
     language,
     rejectedResponses,
     seedText: `${text}\n${failedDraft}\n${recentCharacterBeats.join("\n")}`,
+  });
+}
+
+async function repairIncompleteReply({
+  apiKey,
+  text,
+  language,
+  medium,
+  latestUserMessage = "",
+  character = {} as Record<string, any>,
+  userIdentity = {} as Record<string, any>,
+  groundingFacts = "",
+  recentCharacterBeats = [],
+  rejectedResponses = [],
+  maxOutputTokens = 1600,
+}) {
+  const endpoints = [
+    { url: GEMINI_ENDPOINT, role: "primary" },
+    ...(GEMINI_FALLBACK_ENDPOINT !== GEMINI_ENDPOINT
+      ? [{ url: GEMINI_FALLBACK_ENDPOINT, role: "fallback" }]
+      : []),
+  ];
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const endpoint = endpoints[Math.min(attempt - 1, endpoints.length - 1)];
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), attempt === 1 ? 15000 : 12000);
+    try {
+      const response = await fetch(endpoint.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [{
+              text: `Rewrite this interrupted roleplay response FROM THE BEGINNING as one complete next turn in ${language}. Do not merely append words to the broken ending. Preserve only useful, canon-supported intent. Complete every sentence and close every quotation mark. End after a finished spoken line, action or decision; never end on a connector, half-sentence or artificial cliffhanger.
+
+The user exclusively controls ${userIdentity?.name || "the user"}. Never invent the user's dialogue, actions, reactions, thoughts, feelings or decisions. Address the user as you/your in reader-facing narration. Communication medium: ${medium}. Main character: ${character?.name || "unknown"}.
+
+FACT CONTRACT
+- Only the character/user profiles, explicit user turns, saved memories and lore in the ledger can establish off-screen or past facts.
+- A mentioned person does not authorize a new action. Do not invent calls, texts, lectures, advice, monitoring, catering, family conversations, recurring habits or exact durations.
+- Do not claim what the user "would have" done based on an invented habit.
+- If the latest user turn asks a question, answer its literal meaning before teasing or changing the subject.
+
+AUTHORITATIVE FACT LEDGER
+${String(groundingFacts || "none").slice(0, 30000)}
+
+LATEST USER TURN
+${String(latestUserMessage || "").slice(0, 2500)}
+
+INTERRUPTED DRAFT
+${String(text || "").slice(0, 12000)}
+
+Output only the complete replacement passage.`,
+            }],
+          }],
+          generationConfig: {
+            maxOutputTokens: Math.max(900, Number(maxOutputTokens) || 1600),
+            temperature: attempt === 1 ? 0.42 : 0.28,
+            topP: 0.82,
+            thinkingConfig: { thinkingLevel: "LOW" },
+          },
+        }),
+      });
+      if (!response.ok) {
+        console.warn("Incomplete reply repair request failed", {
+          attempt,
+          modelRole: endpoint.role,
+          status: response.status,
+        });
+        continue;
+      }
+
+      const data = await response.json();
+      const candidate = extractGeminiCandidate(data);
+      const completionSignals = getIncompleteReplySignals(candidate.text, candidate.finishReason);
+      const groundingSignals = findUnsupportedEverydayClaimSignals({
+        candidate: candidate.text,
+        groundingFacts,
+      });
+      const groundedRisk = likelyNeedsGroundedReplyRepair({
+        candidate: candidate.text,
+        recentCharacterBeats,
+        groundingFacts,
+        latestUserMessage,
+      });
+      const povRisk = likelyControlsUserPOV(
+        candidate.text,
+        userIdentity?.name || "",
+        latestUserMessage,
+      );
+
+      if (candidate.text && !completionSignals.length && !groundingSignals.length && !groundedRisk && !povRisk) {
+        return candidate.text;
+      }
+
+      console.warn("Incomplete reply repair candidate rejected", {
+        attempt,
+        modelRole: endpoint.role,
+        completionSignals,
+        groundingSignals,
+        groundedRisk,
+        povRisk,
+      });
+    } catch (error) {
+      console.warn("Incomplete reply repair attempt failed", {
+        attempt,
+        modelRole: endpoint.role,
+        error: getErrorName(error) || "unknown",
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  const trimmed = trimIncompleteReplyTail(text);
+  if (
+    trimmed &&
+    !getIncompleteReplySignals(trimmed).length &&
+    !findUnsupportedEverydayClaimSignals({ candidate: trimmed, groundingFacts }).length &&
+    !likelyNeedsGroundedReplyRepair({
+      candidate: trimmed,
+      recentCharacterBeats,
+      groundingFacts,
+      latestUserMessage,
+    }) &&
+    !likelyControlsUserPOV(trimmed, userIdentity?.name || "", latestUserMessage)
+  ) {
+    console.warn("Incomplete reply repair used a safely trimmed ending");
+    return trimmed;
+  }
+
+  console.warn("Incomplete reply repair used a canon-neutral complete fallback");
+  return buildCanonNeutralEditorialFallback({
+    characterName: character?.name,
+    latestUserMessage,
+    language,
+    rejectedResponses: [...(Array.isArray(rejectedResponses) ? rejectedResponses : []), text],
+    seedText: `${text}\n${recentCharacterBeats.join("\n")}`,
   });
 }
 
@@ -3622,10 +3953,12 @@ function cleanPersonaField(value, maximum) {
 function getMaximumOutputTokens(length) {
   // VELVET_NARRATIVE_ECONOMY_V1
   // These are safety ceilings, not targets. Prompt rules explicitly allow
-  // much shorter replies whenever the current beat does not need more.
-  if (length === "short") return 500;
-  if (length === "long") return 1500;
-  return 900;
+  // much shorter replies whenever the current beat does not need more. Gemini
+  // thinking tokens share this budget, so the old 500/900 ceilings could cut a
+  // modest visible reply in half even though the prose itself was short.
+  if (length === "short") return 900;
+  if (length === "long") return 2400;
+  return 1600;
 }
 
 function getGenerationTemperature(creativity, isRegeneration = false) {

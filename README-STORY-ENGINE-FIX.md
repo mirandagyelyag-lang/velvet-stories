@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.7)
+# Velvet Stories — motor narrativo consolidado (v0.9.8)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -65,6 +65,19 @@ en los archivos reales de la app.
 - Cuando la usuaria pregunta `what about you?`, el personaje debe hablar de sí
   mismo antes de comentar sobre ella; `I've been around; you're the one...` se
   trata como evasión y vuelve al editor.
+- Velvet conserva y revisa el `finishReason` de Gemini. `MAX_TOKENS`, bloqueos,
+  comillas abiertas, paréntesis sin cerrar, conectores finales y puntuación
+  colgante activan una reparación antes de que el mensaje pueda guardarse.
+- Los techos de salida suben a 900/1600/2400 tokens para corto/equilibrado/largo.
+  Son máximos, no objetivos de longitud; dejan espacio porque el razonamiento
+  interno de Gemini comparte el presupuesto con el texto visible.
+- La reparación de integridad vuelve a escribir el turno completo; no pega una
+  continuación improvisada al fragmento. Si ambos modelos fallan, recorta sólo
+  hasta una frase cerrada y respaldada o utiliza un fallback completo y seguro.
+- La última puerta antes de la base de datos vuelve a comprobar canon, POV y
+  finalización, incluso después de regeneraciones y ediciones posteriores.
+- Lecturas familiares, duraciones en horas, detalles de catering y afirmaciones
+  sobre lo que la usuaria `would've` hecho ya requieren respaldo explícito.
 - Una última barrera factual se ejecuta después de las correcciones de progreso,
   mensajes y cámara, para impedir que una etapa posterior vuelva a introducir
   hechos falsos antes de mostrar la respuesta.
