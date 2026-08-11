@@ -252,6 +252,13 @@ check(
     "unsupported_unestablished_opportunity",
   ].every((signal) => rowanMissedYouSignals.includes(signal)),
 );
+check(
+  "user-authored 10 years also supports the words ten years",
+  groundedReplyApi && !groundedReplyApi.findUnsupportedEverydayClaimSignals({
+    candidate: `"You've been here for ten years," Rowan said.`,
+    groundingFacts: `USER: I've been by your side for 10 years.`,
+  }).includes("unsupported_exact_duration"),
+);
 const rowanInventedMotherReply = `"My mom doesn't need to tell me anything," Rowan said. "She's too busy texting me to make sure you're actually eating."`;
 const rowanMotherSignals = groundedReplyApi?.findUnsupportedEverydayClaimSignals({
   candidate: rowanInventedMotherReply,
@@ -327,7 +334,7 @@ try {
   const fallbackEnd = edge.indexOf("async function repairNaturalVoice", fallbackStart);
   if (fallbackStart >= 0 && fallbackEnd > fallbackStart) {
     editorialFallbackApi = new Function(
-      `function looksLikeDirectQuestion() { return false; }\n${edge.slice(fallbackStart, fallbackEnd)}\nreturn { buildCanonNeutralEditorialFallback };`,
+      `function looksLikeDirectQuestion() { return false; }\nfunction isIndirectTenderLoyaltyDisclosure() { return false; }\nfunction buildTenderEmotionalFallback() { return ""; }\n${edge.slice(fallbackStart, fallbackEnd)}\nreturn { buildCanonNeutralEditorialFallback };`,
     )();
   }
 } catch {
@@ -377,14 +384,14 @@ check(
 
 let tenderEmotionApi = null;
 try {
-  const tenderStart = edge.indexOf("function isTenderEmotionalDisclosure");
+  const tenderStart = edge.indexOf("function isIndirectTenderLoyaltyDisclosure");
   const tenderEnd = edge.indexOf("function sharedStagnantDialogueFrame", tenderStart);
   if (tenderStart >= 0 && tenderEnd > tenderStart) {
     const tenderSource = edge
       .slice(tenderStart, tenderEnd)
       .replace(/ = \{\} as Record<string, any>/g, " = {}");
     tenderEmotionApi = new Function(
-      `${tenderSource}\nreturn { isTenderEmotionalDisclosure, characterHasRomanticInvestment, hasMeaningfulTenderImpact, needsTenderEmotionalBeatRepair };`,
+      `${tenderSource}\nreturn { isIndirectTenderLoyaltyDisclosure, isTenderEmotionalDisclosure, characterHasRomanticInvestment, hasMeaningfulTenderImpact, needsTenderEmotionalBeatRepair };`,
     )();
   }
 } catch {
@@ -397,6 +404,8 @@ const rowanRomanticProfile = {
 };
 const rowanMissedYouGoodReply = `The admission caught Rowan off guard. He had missed you too—more than he wanted to admit.\n\n"Yeah?" Rowan said, quieter than intended. "I missed having you around."`;
 const rowanEmptyReactionReply = `Rowan's expression shifted slightly.\n\n"Nothing worth a dramatic update," Rowan said. "But... yeah. I know I haven't been around much."`;
+const rowanLoyaltyInput = `If i hated you, i wouldn't by your side fricking 10 years, dumbass`;
+const rowanGenericListeningReply = `"Okay," Rowan said, without trying to deflect. "I'm listening."`;
 check(
   "I missed you is recognized as a tender disclosure",
   tenderEmotionApi?.isTenderEmotionalDisclosure(rowanMissedYouInput),
@@ -405,6 +414,11 @@ check(
   "tender disclosure requires a beat without profile metadata",
   edge.includes("const requiresTenderBeat = tenderDisclosure;") &&
     edge.includes("relationshipSalient || romanticInvestment || tenderDisclosure"),
+);
+check(
+  "ten-year loyalty statement is recognized as indirect affection",
+  tenderEmotionApi?.isIndirectTenderLoyaltyDisclosure(rowanLoyaltyInput) &&
+    tenderEmotionApi?.isTenderEmotionalDisclosure(rowanLoyaltyInput),
 );
 check(
   "secret romantic investment is read from the character profile",
@@ -425,6 +439,15 @@ check(
     latestUserMessage: rowanMissedYouInput,
     character: { name: "Rowan Hayes" },
   }),
+);
+check(
+  "Okay I'm listening is rejected after the loyalty disclosure",
+  tenderEmotionApi?.needsTenderEmotionalBeatRepair({
+    candidate: rowanGenericListeningReply,
+    latestUserMessage: rowanLoyaltyInput,
+    character: rowanRomanticProfile,
+  }) &&
+    !edge.includes(`"Okay," ${"${name}"} said, without trying to deflect. "I'm listening."`),
 );
 check(
   "Rowan private reciprocal reaction satisfies the emotional beat",
@@ -449,12 +472,15 @@ try {
   const fallbackCoreEnd = edge.indexOf("async function repairNaturalVoice", fallbackCoreStart);
   const tenderFallbackStart = edge.indexOf("function buildTenderEmotionalFallback");
   const tenderFallbackEnd = edge.indexOf("async function repairIncompleteReply", tenderFallbackStart);
+  const indirectTenderStart = edge.indexOf("function isIndirectTenderLoyaltyDisclosure");
+  const indirectTenderEnd = edge.indexOf("function isTenderEmotionalDisclosure", indirectTenderStart);
   if (
     fallbackCoreStart >= 0 && fallbackCoreEnd > fallbackCoreStart &&
-    tenderFallbackStart >= 0 && tenderFallbackEnd > tenderFallbackStart
+    tenderFallbackStart >= 0 && tenderFallbackEnd > tenderFallbackStart &&
+    indirectTenderStart >= 0 && indirectTenderEnd > indirectTenderStart
   ) {
     tenderFallbackApi = new Function(
-      `function looksLikeDirectQuestion() { return false; }\n${edge.slice(fallbackCoreStart, fallbackCoreEnd)}\n${edge.slice(tenderFallbackStart, tenderFallbackEnd)}\nreturn { buildTenderEmotionalFallback };`,
+      `function looksLikeDirectQuestion() { return false; }\n${edge.slice(indirectTenderStart, indirectTenderEnd)}\n${edge.slice(fallbackCoreStart, fallbackCoreEnd)}\n${edge.slice(tenderFallbackStart, tenderFallbackEnd)}\nreturn { buildTenderEmotionalFallback };`,
     )();
   }
 } catch {
@@ -472,6 +498,21 @@ check(
     tenderEmotionApi?.hasMeaningfulTenderImpact(rowanTenderFallback, "Rowan Hayes") &&
     !completionApi?.getIncompleteReplySignals(rowanTenderFallback).length &&
     /nothing (?:too interesting|dramatic)|i(?:'ve| have) been busy/i.test(rowanTenderFallback),
+);
+const rowanLoyaltyFallback = tenderFallbackApi?.buildTenderEmotionalFallback({
+  characterName: "Rowan Hayes",
+  latestUserMessage: rowanLoyaltyInput,
+  language: "English",
+  romanticInvestment: true,
+  seedText: rowanGenericListeningReply,
+}) || "";
+check(
+  "quota-safe loyalty fallback answers the implication instead of stalling",
+  Boolean(rowanLoyaltyFallback) &&
+    tenderEmotionApi?.hasMeaningfulTenderImpact(rowanLoyaltyFallback, "Rowan Hayes") &&
+    !completionApi?.getIncompleteReplySignals(rowanLoyaltyFallback).length &&
+    /10 years|still nice|like being reminded/i.test(rowanLoyaltyFallback) &&
+    !/i(?:'m| am) listening|go on/i.test(rowanLoyaltyFallback),
 );
 check(
   "automatic memories cannot authorize invented story facts",

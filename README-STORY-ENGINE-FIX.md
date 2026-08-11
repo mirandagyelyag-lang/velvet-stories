@@ -1,4 +1,4 @@
-# Velvet Stories — motor narrativo consolidado (v0.9.10)
+# Velvet Stories — motor narrativo consolidado (v0.9.11)
 
 Esta versión deja una sola fuente de verdad para el roleplay. La carpeta de
 proyecto duplicada, la Edge Function antigua `swift-task` y los parches sueltos
@@ -49,6 +49,14 @@ en los archivos reales de la app.
   protagonista ni volverse repentinamente tierno. Permite una línea interior
   breve incluso con pensamientos configurados como raros, conservando su
   contradicción entre lo que siente y lo que deja ver.
+- El afecto indirecto también cuenta. Frases como `If I hated you, I wouldn't be
+  by your side for 10 years` se leen como una declaración de lealtad, no como
+  información neutra ni como una invitación a seguir hablando. Rowan debe
+  reaccionar a lo que implican esos diez años y puede devolver el insulto con
+  cariño o cubrir su emoción, pero no responder `Okay, I'm listening`.
+- Las cantidades escritas con cifras y palabras se normalizan al validar canon:
+  si la usuaria establece `10 years`, el personaje puede decir `ten years` sin
+  que una equivalencia de formato active por error el fallback genérico.
 - Una edición factual se activa ante hábitos, posesiones, deudas, planes o
   duraciones potencialmente inventadas. El diálogo previo del personaje no se
   acepta como prueba de una historia fuera de escena que la usuaria nunca

@@ -979,9 +979,14 @@ Deno.serve(async (request) => {
     ) {
       generatedReply = buildTenderEmotionalFallback({
         characterName: configuredCharacter.name,
+        latestUserMessage,
         language: responseLanguage,
         rejectedResponses: [...diversityReferences, generatedReply],
         seedText: `${generatedReply}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
+        romanticInvestment: characterHasRomanticInvestment(
+          configuredCharacter,
+          conversation.relationship_state || {},
+        ),
       });
     }
 
@@ -1035,9 +1040,14 @@ Deno.serve(async (request) => {
       generatedReply = residualTenderRisk
         ? buildTenderEmotionalFallback({
             characterName: configuredCharacter.name,
+            latestUserMessage,
             language: responseLanguage,
             rejectedResponses: [...diversityReferences, generatedReply],
             seedText: `${generatedReply}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
+            romanticInvestment: characterHasRomanticInvestment(
+              configuredCharacter,
+              conversation.relationship_state || {},
+            ),
           })
         : buildCanonNeutralEditorialFallback({
             characterName: configuredCharacter.name,
@@ -1450,9 +1460,18 @@ function isEmotionallyChargedUserTurn(value = "") {
     /\*(?:[^*]{0,80})(?:glare|angry|annoyed|mad|upset|roll my eyes|enojad|molest)(?:[^*]{0,80})\*/i.test(text);
 }
 
+function isIndirectTenderLoyaltyDisclosure(value = "") {
+  const text = String(value || "");
+  return /\bif\s+i\s+(?:hated|didn['’]?t\s+(?:like|care\s+about))\s+you\b[^.!?\n]{0,180}\bi\s+wouldn['’]?t\b[^.!?\n]{0,140}\b(?:(?:still\s+)?be\s+)?(?:by\s+your\s+side|with\s+you|here|have\s+stayed|stay)\b/i.test(text) ||
+    /\bi\s+wouldn['’]?t\b[^.!?\n]{0,180}\b(?:(?:still\s+)?be\s+)?(?:by\s+your\s+side|with\s+you|here|have\s+stayed|stay)\b[^.!?\n]{0,140}\bif\s+i\s+(?:hated|didn['’]?t\s+(?:like|care\s+about))\s+you\b/i.test(text) ||
+    /\b(?:i(?:'ve|\s+have)\s+)?(?:been|stayed)\s+(?:right\s+)?(?:by\s+your\s+side|with\s+you)\s+for\s+(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:years?|months?)\b/i.test(text) ||
+    /\bsi\s+te\s+(?:odiara|cayeras?\s+mal|no\s+quisiera)\b[^.!?\n]{0,200}\bno\s+(?:llevar[ií]a|estar[ií]a|seguir[ií]a|habr[ií]a\s+estado)\b[^.!?\n]{0,140}\b(?:a\s+tu\s+lado|contigo|aqu[ií])\b/i.test(text);
+}
+
 function isTenderEmotionalDisclosure(value = "") {
   const text = String(value || "");
-  return /\b(?:i\s+(?:really\s+)?miss(?:ed)?\s+you|i(?:'ve|\s+have)\s+missed\s+you|i\s+love\s+you|i\s+care\s+about\s+you|i\s+need\s+you|i(?:'m|\s+am)\s+glad\s+you(?:'re|\s+are)\s+here|i\s+was\s+worried\s+about\s+you|me\s+hiciste\s+falta|te\s+extrañ[éeo]|te\s+he\s+extrañado|te\s+quiero|te\s+amo|me\s+importas|te\s+necesito|me\s+alegra\s+que\s+est[eé]s\s+aqu[ií])\b/i.test(text);
+  return /\b(?:i\s+(?:really\s+)?miss(?:ed)?\s+you|i(?:'ve|\s+have)\s+missed\s+you|i\s+love\s+you|i\s+care\s+about\s+you|i\s+need\s+you|i(?:'m|\s+am)\s+glad\s+you(?:'re|\s+are)\s+here|i\s+was\s+worried\s+about\s+you|me\s+hiciste\s+falta|te\s+extrañ[éeo]|te\s+he\s+extrañado|te\s+quiero|te\s+amo|me\s+importas|te\s+necesito|me\s+alegra\s+que\s+est[eé]s\s+aqu[ií])\b/i.test(text) ||
+    isIndirectTenderLoyaltyDisclosure(text);
 }
 
 function characterHasRomanticInvestment(character = {} as Record<string, any>, relationshipState = {} as Record<string, any>) {
@@ -1478,11 +1497,14 @@ function hasMeaningfulTenderImpact(value = "", characterName = "") {
   const name = String(characterName || "").trim().split(/\s+/)[0];
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const subject = escapedName ? `(?:${escapedName}|he|she|they)` : "(?:he|she|they)";
-  const impactFromWords = /\b(?:the\s+words|those\s+words|your\s+words|the\s+admission|your\s+admission|hearing\s+(?:that|you\s+say\s+it)|you\s+saying\s+it)\b[^.!?\n]{0,150}\b(?:hit|landed|caught|stopped|undid|mattered|hurt|warmed|relief|ache|harder|more\s+than|too\s+much|impossible\s+to\s+ignore)\b/i.test(text);
+  const impactFromWords = /\b(?:the\s+words|those\s+words|your\s+words|the\s+admission|your\s+admission|the\s+reminder|hearing\s+(?:that|you\s+say\s+it)|you\s+saying\s+it)\b[^.!?\n]{0,150}\b(?:hit|landed|caught|stopped|undid|mattered|hurt|warmed|relief|ache|harder|more\s+than|too\s+much|impossible\s+to\s+ignore)\b/i.test(text);
   const privateReciprocity = new RegExp(`\\b${subject}[^.!?\\n]{0,120}\\b(?:had\\s+missed\\s+you|missed\\s+you\\s+too|wanted\\s+to\\s+hear|had\\s+wanted\\s+to\\s+hear|cared\\s+more|felt\\s+relief|wasn['’]t\\s+prepared)\\b`, "i").test(text) ||
     /\bmissing\s+you\b[^.!?\n]{0,120}\b(?:ignore|dismiss|admit|harder|easier|hurt|ache)\b/i.test(text);
   const spokenReciprocity = /["“][^"”\n]{0,180}\b(?:i\s+missed\s+you\s+too|i(?:'ve|\s+have)\s+missed\s+you|me\s+hiciste\s+falta|tambi[eé]n\s+te\s+extrañ[ée])\b[^"”\n]*["”]/i.test(text);
-  return impactFromWords || privateReciprocity || spokenReciprocity;
+  const loyaltyImpact = /\b(?:10|ten)\s+years\b[^.!?\n]{0,170}\b(?:meant|mattered|landed|hit|relief|warmth|obvious|unsettled|hidden|more\s+than)\b/i.test(text) ||
+    /\b(?:the\s+reminder|years\s+of\s+friendship)\b[^.!?\n]{0,170}\b(?:meant|mattered|landed|hit|relief|warmth|obvious|unsettled|hidden|more\s+than)\b/i.test(text);
+  const spokenLoyalty = /["“][^"”\n]{0,220}\b(?:i\s+know|you(?:'re|\s+are)\s+right)\b[^"”\n]{0,160}\b(?:nice|good|glad|mean|means|meant|like|hear(?:ing)?)\b[^"”\n]*["”]/i.test(text);
+  return impactFromWords || privateReciprocity || spokenReciprocity || loyaltyImpact || spokenLoyalty;
 }
 
 function needsTenderEmotionalBeatRepair({
@@ -2945,6 +2967,21 @@ function collectFamilyClaimActions(value = "") {
   return actions;
 }
 
+function normalizeExactQuantityText(value = "") {
+  const numberWords = {
+    one: "1", two: "2", three: "3", four: "4", five: "5",
+    six: "6", seven: "7", eight: "8", nine: "9", ten: "10",
+    uno: "1", dos: "2", tres: "3", cuatro: "4", cinco: "5",
+    seis: "6", siete: "7", ocho: "8", nueve: "9", diez: "10",
+    once: "11", twelve: "12", doce: "12",
+  };
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/g, (word) => numberWords[word] || word)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function findUnsupportedEverydayClaimSignals({
   candidate = "",
   groundingFacts = "",
@@ -2952,6 +2989,7 @@ function findUnsupportedEverydayClaimSignals({
   const text = String(candidate || "");
   if (!text.trim()) return [];
   const facts = String(groundingFacts || "");
+  const normalizedFacts = normalizeExactQuantityText(facts);
   const signals = [];
 
   const addWhenUnsupported = (label, candidatePattern, canonPattern = candidatePattern) => {
@@ -2967,8 +3005,8 @@ function findUnsupportedEverydayClaimSignals({
   for (const pattern of durationPatterns) {
     const matches = [...text.matchAll(pattern)];
     for (const match of matches) {
-      const exact = String(match[0] || "").toLowerCase().replace(/\s+/g, " ").trim();
-      if (exact && !facts.toLowerCase().replace(/\s+/g, " ").includes(exact)) {
+      const exact = normalizeExactQuantityText(match[0]);
+      if (exact && !normalizedFacts.includes(exact)) {
         signals.push("unsupported_exact_duration");
         break;
       }
@@ -2987,8 +3025,8 @@ function findUnsupportedEverydayClaimSignals({
   // Exact consumption quantities need exact evidence, just like durations.
   const consumptionPattern = /\b(?:a|an|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:energy drinks?|coffees?|sodas?|meals?|snacks?)\b/gi;
   for (const match of text.matchAll(consumptionPattern)) {
-    const exact = String(match[0] || "").toLowerCase().replace(/\s+/g, " ").trim();
-    if (exact && !facts.toLowerCase().replace(/\s+/g, " ").includes(exact)) {
+    const exact = normalizeExactQuantityText(match[0]);
+    if (exact && !normalizedFacts.includes(exact)) {
       signals.push("unsupported_consumption_quantity");
       break;
     }
@@ -3184,6 +3222,16 @@ function buildCanonNeutralEditorialFallback({
     return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
   }
 
+  if (isIndirectTenderLoyaltyDisclosure(latestUserMessage)) {
+    return buildTenderEmotionalFallback({
+      characterName,
+      latestUserMessage,
+      language,
+      rejectedResponses,
+      seedText: `${seedText}\n${latest}`,
+    });
+  }
+
   if (asksWhatAbout) {
     const candidates = spanish
       ? [
@@ -3226,12 +3274,12 @@ function buildCanonNeutralEditorialFallback({
   }
   const candidates = spanish
     ? [
-        `"Está bien", dijo ${name}, sin intentar desviar el tema. "Te estoy escuchando."`,
-        `${name} dejó la respuesta fácil a un lado.\n\n"Entiendo", dijo. "Sigue."`,
+        `${name} dejó de buscar una salida fácil.\n\n"Es justo", dijo. "Te entendí."`,
+        `"Sí", dijo ${name}, tomándose tus palabras en serio. "Lo entiendo."`,
       ]
     : [
-        `"Okay," ${name} said, without trying to deflect. "I'm listening."`,
-        `${name} let the easy answer go.\n\n"I understand," ${name} said. "Go on."`,
+        `${name} stopped reaching for an easy deflection.\n\n"Fair," ${name} said. "I heard you."`,
+        `"Yeah," ${name} said, taking the words seriously. "I understand."`,
       ];
   return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latest}`);
 }
@@ -3287,9 +3335,11 @@ async function repairNaturalVoice({
     character,
   });
   const romanticInvestment = characterHasRomanticInvestment(character, relationshipState);
+  const indirectLoyaltyDisclosure = isIndirectTenderLoyaltyDisclosure(latestUserMessage);
   const emotionalContract = initialTenderRisk
     ? `EMOTIONAL CENTER — mandatory in this same rewrite
 - The user's tender disclosure is the central event of this turn. Before logistics, teasing or deflection, show one unmistakable private impact tied to the exact words.
+- ${indirectLoyaltyDisclosure ? "This is indirect affection expressed through loyalty/history. Answer its implication now; do not reduce it to information, an insult or a request to keep talking." : "Respond to the direct affection itself rather than merely acknowledging the surrounding logistics."}
 - A shifted expression, glance, smile, softened voice, pause or prop movement alone is NOT an emotional reaction.
 - ${romanticInvestment ? "The profile establishes romantic investment: let the reader understand the reciprocal feeling or why hiding it suddenly becomes harder." : "The relationship wording is sparse or non-romantic: show a proportionate human impact such as surprise, relief, guilt, affection or the realization that the user noticed the absence. Do not invent romance."}
 - One concise interior sentence is allowed even when inner thoughts are rare. Preserve guardedness and do not force a confession, pursuit, touch or instant relationship progress.
@@ -3460,9 +3510,11 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
   if (initialTenderRisk) {
     return buildTenderEmotionalFallback({
       characterName: character?.name,
+      latestUserMessage,
       language,
       rejectedResponses: [...(Array.isArray(rejectedResponses) ? rejectedResponses : []), text, failedDraft],
       seedText: `${text}\n${failedDraft}\n${latestUserMessage}\n${recentCharacterBeats.join("\n")}`,
+      romanticInvestment,
     });
   }
   return buildCanonNeutralEditorialFallback({
@@ -3476,13 +3528,38 @@ ${String(failedDraft || "").slice(0, 12000)}` }] }],
 
 function buildTenderEmotionalFallback({
   characterName,
+  latestUserMessage = "",
   language = "English",
   rejectedResponses = [],
   seedText = "",
+  romanticInvestment = false,
 }) {
   const fullName = String(characterName || "The character").trim();
   const name = fullName.split(/\s+/).filter(Boolean)[0] || fullName;
   const spanish = String(language || "").toLowerCase().includes("spanish");
+  const loyaltyDisclosure = isIndirectTenderLoyaltyDisclosure(latestUserMessage);
+  if (loyaltyDisclosure) {
+    const candidates = spanish
+      ? romanticInvestment
+        ? [
+            `El recordatorio le llegó a ${name} con más fuerza que el insulto. Diez años de amistad deberían haber vuelto obvia la respuesta; lo que mantenía oculto era cuánto deseaba que esos años significaran algo más.\n\n"Lo sé, tonta", dijo, con una calidez que no alcanzó a esconder. "Igual es agradable oírtelo decir."`,
+            `Diez años. ${name} sabía que tenías razón, pero escucharlo rozó demasiado cerca todo lo que intentaba mantener bajo control.\n\n"Sí, lo sé", dijo. "Eso no significa que no me guste recordarlo."`,
+          ]
+        : [
+            `El recordatorio importó más que el insulto. Diez años de amistad hacían evidente la respuesta, y ${name} no pudo fingir que oírlo no le afectaba.\n\n"Sí, lo sé", dijo. "Igual es bueno oírtelo decir."`,
+            `${name} sabía que tenías razón. Diez años no eran poca cosa, y el recordatorio le quitó espacio a cualquier respuesta ligera.\n\n"Es justo", admitió. "Entendí lo que quisiste decir."`,
+          ]
+      : romanticInvestment
+        ? [
+            `The reminder landed harder than the insult. 10 years of friendship should have made the answer obvious; what ${name} kept hidden was how badly he wanted those years to mean more.\n\n"I know, dumbass," ${name} said, warmth slipping through. "Still nice to hear you say it."`,
+            `Those 10 years meant ${name} knew you were right, but hearing it still came too close to everything ${name} kept under control.\n\n"Yeah, I know," ${name} said. "Doesn't mean I don't like being reminded."`,
+          ]
+        : [
+            `The reminder mattered more than the insult. 10 years of friendship made the answer obvious, and ${name} couldn't pretend hearing it meant nothing.\n\n"Yeah, I know," ${name} said. "Still good to hear you say it."`,
+            `${name} knew you were right. 10 years wasn't nothing, and the reminder left no room for an easy dismissal.\n\n"Fair," ${name} admitted. "I know what you meant."`,
+          ];
+    return chooseEditorialFallback(candidates, rejectedResponses, `${seedText}\n${latestUserMessage}`);
+  }
   const candidates = spanish
       ? [
         `La confesión tomó a ${name} por sorpresa. Haberte extrañado había sido más fácil de ignorar antes de oírtelo decir primero.\n\n"Nada demasiado interesante", dijo al fin, más bajo de lo que pretendía. "Pero... es bueno saber que me extrañaste."`,
