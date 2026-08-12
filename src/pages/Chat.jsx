@@ -47,9 +47,19 @@ import { supabase } from "../services/supabase";
 import "../styles/chat.css";
 
 const SILENT_CONTINUE_MESSAGE = "[SILENT_CONTINUE]";
+const REGENERATION_FEEDBACK = [
+  ["ignored_idea", "Ignored my idea"],
+  ["too_short", "Too short"],
+  ["out_of_character", "Out of character"],
+  ["too_much_narration", "Too much narration"],
+  ["not_enough_dialogue", "Not enough dialogue"],
+  ["repetitive", "Repetitive"],
+  ["pov_violation", "Controlled my POV"],
+  ["missing_emotional_impact", "Missing emotional impact"],
+];
 
 function Chat({ character, conversationId, onBack, onDeleted }) {
-  const { settings } = useSettings();
+  const { settings, recordStoryFeedback } = useSettings();
   const { theme, setTheme } = useTheme();
   const { confirmAction, scheduleDeletion } = useFeedback();
   const { personas } = usePersonas();
@@ -96,6 +106,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [actionMode, setActionMode] = useState("menu");
   const [actionDraft, setActionDraft] = useState("");
+  const [regenerationFeedback, setRegenerationFeedback] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [alternatives, setAlternatives] = useState([]);
   const [responseVersions, setResponseVersions] = useState({});
@@ -670,6 +681,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     setSelectedMessage(chatMessage);
     setActionMode("menu");
     setActionDraft("");
+    setRegenerationFeedback([]);
     setAlternatives([]);
   }
 
@@ -678,6 +690,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     setSelectedMessage(null);
     setActionMode("menu");
     setActionDraft("");
+    setRegenerationFeedback([]);
     setAlternatives([]);
   }
 
@@ -761,6 +774,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     setSelectedMessage(null);
     setActionMode("menu");
     setActionDraft("");
+    setRegenerationFeedback([]);
     setAlternatives([]);
   }
 
@@ -828,10 +842,12 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     try {
       const targetId = selectedMessage.id;
       const instruction = actionDraft.trim();
+      const feedbackCodes = [...regenerationFeedback];
+      recordStoryFeedback(feedbackCodes);
       setActionLoading(true);
       closeActionsAfterAction();
       setIsTyping(true);
-      await regenerateCharacterReply(character.id, targetId, instruction);
+      await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Regeneration failed:", error);
@@ -930,7 +946,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     await navigateResponseVersion(chatMessage, direction);
   }
 
-  async function quickRefineSelected(instruction) {
+  async function quickRefineSelected(feedbackCode, instruction = "") {
     if (!selectedMessage || selectedMessage.sender !== "character" || actionLoading) return;
     const latestMessage = [...(conversation?.messages || [])].filter((item) => !item.isStreaming).at(-1);
     if (latestMessage?.id !== selectedMessage.id) {
@@ -941,11 +957,13 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
 
     const targetId = selectedMessage.id;
     try {
+      const feedbackCodes = feedbackCode ? [feedbackCode] : [];
+      recordStoryFeedback(feedbackCodes);
       setActionLoading(true);
       setSendError("");
       closeActionsAfterAction();
       setIsTyping(true);
-      await regenerateCharacterReply(character.id, targetId, instruction);
+      await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Quick refinement failed:", error);
@@ -1427,25 +1445,25 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
                 {selectedMessage.sender === "character" ? (
                   <>
                     <p className="message-sheet__refine-note">
-                      Use the arrows under a reply to move between versions. Swipe left for next/new and right for previous. Use these options only when you want to steer the rewrite.
+                      What went wrong? Velvet will use the reason now and learn it globally after you choose it twice.
                     </p>
 
                     <div className="message-sheet__refine-grid">
-                      <button onClick={() => quickRefineSelected("Rewrite this response in contemporary, natural, idiomatic English. Keep the same scene intent, but remove awkward, over-literary, ambiguous, or unnatural phrasing.")}>
-                        <MessageSquareQuote size={18} />
-                        <span>More natural</span>
-                      </button>
-                      <button onClick={() => quickRefineSelected("Make this response more emotionally resonant using the emotions already established in the relationship and scene. Keep the character in character; do not manufacture melodrama.")}>
+                      <button onClick={() => quickRefineSelected("ignored_idea")}>
                         <Sparkles size={18} />
-                        <span>More emotional</span>
+                        <span>Ignored my idea</span>
                       </button>
-                      <button onClick={() => quickRefineSelected("Rewrite this response with more meaningful dialogue and less explanatory narration. Keep it natural and scene-relevant.")}>
+                      <button onClick={() => quickRefineSelected("out_of_character")}>
+                        <UserRound size={18} />
+                        <span>Out of character</span>
+                      </button>
+                      <button onClick={() => quickRefineSelected("too_short")}>
                         <MessageSquareQuote size={18} />
-                        <span>More dialogue</span>
+                        <span>Too short</span>
                       </button>
-                      <button onClick={() => quickRefineSelected("Rewrite this response with less narration and less decorative description. Keep only details that advance the scene or reveal character.")}>
-                        <BookOpen size={18} />
-                        <span>Less narration</span>
+                      <button onClick={() => quickRefineSelected("repetitive")}>
+                        <RefreshCw size={18} />
+                        <span>Repetitive</span>
                       </button>
                     </div>
 
@@ -1458,7 +1476,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
                     </button>
 
                     <div className="message-sheet__refine-secondary">
-                      <button onClick={() => { setActionDraft(""); setActionMode("regenerate"); }}>
+                      <button onClick={() => { setActionDraft(""); setRegenerationFeedback([]); setActionMode("regenerate"); }}>
                         <Pencil size={16} />
                         <span>Different direction…</span>
                       </button>
@@ -1535,16 +1553,19 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
 
             {actionMode === "regenerate" && (
               <div className="message-sheet__editor">
-                <p>Tell Velvet what should happen instead. You can change the scene, time, characters, focus, tone, or style. It will be applied silently.</p>
-                <div className="message-sheet__quick-directions">
-                  {["More dialogue", "Less narration", "More subtle", "More emotional", "Shorter", "Different direction"].map((direction) => (
-                    <button type="button" key={direction} onClick={() => setActionDraft(direction)}>{direction}</button>
-                  ))}
+                <p>Select everything that felt wrong, then add what should happen instead. The rejected response will not become canon.</p>
+                <div className="message-sheet__feedback-reasons" aria-label="Regeneration reasons">
+                  {REGENERATION_FEEDBACK.map(([code, label]) => {
+                    const selected = regenerationFeedback.includes(code);
+                    return <button type="button" key={code} className={selected ? "selected" : ""} aria-pressed={selected} onClick={() => setRegenerationFeedback((current) => selected ? current.filter((item) => item !== code) : [...current, code])}>
+                      {selected && <Check size={13}/>} {label}
+                    </button>;
+                  })}
                 </div>
                 <textarea
                   value={actionDraft}
                   onChange={(event) => setActionDraft(event.target.value)}
-                  placeholder="e.g. Julian and Damian after lacrosse practice..."
+                  placeholder="Optional direction, e.g. He feels the confession strongly but hides it behind a joke. Don't make him leave."
                   rows="4"
                   autoFocus
                 />

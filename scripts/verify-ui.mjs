@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 const main = readFileSync("src/main.jsx", "utf8");
 const sidebar = readFileSync("src/components/Sidebar.jsx", "utf8");
 const chat = readFileSync("src/pages/Chat.jsx", "utf8");
+const settings = readFileSync("src/pages/Settings.jsx", "utf8");
+const settingsContext = readFileSync("src/context/SettingsContext.jsx", "utf8");
 const ui = readFileSync("src/styles/velvet-ui.css", "utf8");
 
 const checks = [
@@ -47,6 +49,26 @@ const checks = [
     pass:
       /data-theme="dark"/.test(readFileSync("src/index.css", "utf8")) &&
       /data-theme="comfort"/.test(readFileSync("src/index.css", "utf8")),
+  },
+  {
+    name: "story DNA stays global and simple",
+    pass:
+      settings.includes("How I like stories") &&
+      settingsContext.includes('storyDialogue: "dialogue_forward"') &&
+      settingsContext.includes('storyEmotion: "interior_visible"'),
+  },
+  {
+    name: "regeneration can explain every common failure",
+    pass: [
+      "ignored_idea", "too_short", "out_of_character", "too_much_narration",
+      "not_enough_dialogue", "repetitive", "pov_violation", "missing_emotional_impact",
+    ].every((reason) => chat.includes(`"${reason}"`)),
+  },
+  {
+    name: "rejected response remains hidden while feedback rewrite begins",
+    pass:
+      chat.includes("The rejected response will not become canon") &&
+      chat.includes("recordStoryFeedback(feedbackCodes)"),
   },
 ];
 

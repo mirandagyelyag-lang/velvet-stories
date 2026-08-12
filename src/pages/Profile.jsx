@@ -66,7 +66,7 @@ function Profile({ onManagePersonas, onManageLorebooks, onOpenSettings }) {
 
         <div className="profile-setting">
           <span className="profile-setting__icon"><Settings2 size={20} /></span>
-          <div><strong>General settings</strong><small>Reading size, motion, exports and safety preferences.</small></div>
+          <div><strong>General settings</strong><small>Reading comfort, your storytelling style and learned preferences.</small></div>
           <button onClick={onOpenSettings}>Open settings</button>
         </div>
 

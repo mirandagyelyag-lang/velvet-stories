@@ -6,6 +6,7 @@ import {
 } from "react";
 
 import { useAuth } from "./AuthContext";
+import { useSettings } from "./SettingsContext";
 import { supabase } from "../services/supabase";
 
 const ChatsContext = createContext();
@@ -15,6 +16,7 @@ export function ChatsProvider({
   children,
 }) {
   const { user } = useAuth();
+  const { settings } = useSettings();
 
   const [chats, setChats] =
     useState({});
@@ -234,7 +236,7 @@ export function ChatsProvider({
         activeChapter: conversation.active_chapter || {},
         unfinishedThreads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads : [],
         characterDevelopment: conversation.character_development || {},
-        storyEngineVersion: Number(conversation.story_engine_version || 8),
+        storyEngineVersion: Number(conversation.story_engine_version || 9),
         storyRevision: conversation.story_revision || "",
         branchParentId: conversation.branch_parent_id || "",
         branchFromMessageId: conversation.branch_from_message_id || "",
@@ -354,7 +356,7 @@ export function ChatsProvider({
           defaultPersona?.id || null,
 
         character_development: {},
-        story_engine_version: 8,
+        story_engine_version: 9,
       })
       .select()
       .single();
@@ -693,7 +695,9 @@ export function ChatsProvider({
             regenerateMessageId: options.regenerateMessageId || null,
             expectedUserMessageId,
             regenerationInstruction: options.instruction?.trim() || "",
+            regenerationFeedback: Array.isArray(options.feedbackCodes) ? options.feedbackCodes : [],
             directorInstruction: options.directorInstruction?.trim() || "",
+            storyPreferences: buildStoryPreferencesPayload(settings),
             generationId,
           }),
           signal: requestController.signal,
@@ -1323,7 +1327,7 @@ export function ChatsProvider({
         story_chapters: [],
         active_chapter: {},
         unresolved_threads: [],
-        story_engine_version: 8,
+        story_engine_version: 9,
         branch_parent_id: conversation.conversationId,
         branch_from_message_id: sourceMessage.id,
         branch_label: branchTitle.slice(0, 80),
@@ -1385,10 +1389,11 @@ export function ChatsProvider({
     return branchConversation;
   }
 
-  async function regenerateCharacterReply(characterId, messageId, instruction = "") {
+  async function regenerateCharacterReply(characterId, messageId, instruction = "", feedbackCodes = []) {
     return generateCharacterReply(characterId, {
       regenerateMessageId: messageId,
       instruction,
+      feedbackCodes,
     });
   }
 
@@ -1697,7 +1702,7 @@ export function ChatsProvider({
         activeChapter: data.active_chapter || current[characterId]?.activeChapter || {},
         unfinishedThreads: Array.isArray(data.unresolved_threads) ? data.unresolved_threads : (current[characterId]?.unfinishedThreads || []),
         characterDevelopment: data.character_development || current[characterId]?.characterDevelopment || {},
-        storyEngineVersion: Number(data.story_engine_version || 8),
+        storyEngineVersion: Number(data.story_engine_version || 9),
       },
     }));
     return data;
@@ -1800,7 +1805,7 @@ export function ChatsProvider({
       unfinishedThreads: Array.isArray(currentResult.data?.unresolved_threads) ? currentResult.data.unresolved_threads : [],
       characterDevelopment: currentResult.data?.character_development || {},
       pacingMode: currentResult.data?.pacing_mode || "natural",
-      storyEngineVersion: Number(currentResult.data?.story_engine_version || 8),
+      storyEngineVersion: Number(currentResult.data?.story_engine_version || 9),
       storyRevision: currentResult.data?.story_revision || "",
     };
   }
@@ -1969,6 +1974,21 @@ function getBrowserPublishableKey() {
 
     ""
   );
+}
+
+function buildStoryPreferencesPayload(settings = {}) {
+  const learnedFeedback = Object.entries(settings.storyFeedbackCounts || {})
+    .filter(([, count]) => Number(count) >= 2)
+    .map(([code]) => code)
+    .slice(0, 8);
+  return {
+    prose: settings.storyProse || "contemporary",
+    dialogue: settings.storyDialogue || "dialogue_forward",
+    emotionalInterior: settings.storyEmotion || "interior_visible",
+    romancePacing: settings.storyPacing || "medium_fast",
+    customInstructions: String(settings.storyInstructions || "").trim().slice(0, 900),
+    learnedFeedback,
+  };
 }
 
 async function readStreamingError(

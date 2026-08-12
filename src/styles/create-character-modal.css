@@ -599,3 +599,12 @@
   .studio-choice-group label strong { grid-column: 1; }
   .studio-choice-group label small { grid-column: 2; margin: 0; align-self: center; }
 }
+.studio-voice-fingerprint{margin-top:14px;border:1px solid var(--border);border-radius:16px;background:color-mix(in srgb,var(--surface-soft) 76%,transparent);overflow:hidden}
+.studio-voice-fingerprint summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;cursor:pointer;list-style:none;color:var(--text-primary)}
+.studio-voice-fingerprint summary::-webkit-details-marker{display:none}
+.studio-voice-fingerprint summary>span{display:flex;align-items:center;gap:7px;font-size:.72rem;font-weight:700}
+.studio-voice-fingerprint summary svg{color:var(--gold)}
+.studio-voice-fingerprint summary small{color:var(--text-secondary);font-size:.57rem;font-weight:400;text-align:right}
+.studio-voice-fingerprint[open] summary{border-bottom:1px solid var(--border)}
+.studio-voice-fingerprint>.studio-grid{padding:16px}
+@media(max-width:650px){.studio-voice-fingerprint summary{align-items:flex-start;flex-direction:column;gap:4px}.studio-voice-fingerprint summary small{text-align:left}}

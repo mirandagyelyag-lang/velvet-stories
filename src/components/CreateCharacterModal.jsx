@@ -33,6 +33,12 @@ const initialForm = {
   softeningTriggers: "",
   growthDirection: "",
   speechStyle: "",
+  voiceVocabulary: "",
+  humorStyle: "",
+  conflictStyle: "",
+  affectionStyle: "",
+  verbalTells: "",
+  voiceAvoidances: "",
   boundaries: "",
   scenario: "",
   exampleDialogue: "",
@@ -67,6 +73,12 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
     softeningTriggers: character.softeningTriggers || "",
     growthDirection: character.growthDirection || "",
     speechStyle: character.speechStyle || "",
+    voiceVocabulary: character.voiceVocabulary || "",
+    humorStyle: character.humorStyle || "",
+    conflictStyle: character.conflictStyle || "",
+    affectionStyle: character.affectionStyle || "",
+    verbalTells: character.verbalTells || "",
+    voiceAvoidances: character.voiceAvoidances || "",
     boundaries: character.boundaries || "",
     scenario: character.scenario || "",
     exampleDialogue: character.exampleDialogue || "",
@@ -144,6 +156,12 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
         softeningTriggers: suggestions.softeningTriggers || current.softeningTriggers,
         growthDirection: suggestions.growthDirection || current.growthDirection,
         speechStyle: suggestions.speechStyle || current.speechStyle,
+        voiceVocabulary: suggestions.voiceVocabulary || current.voiceVocabulary,
+        humorStyle: suggestions.humorStyle || current.humorStyle,
+        conflictStyle: suggestions.conflictStyle || current.conflictStyle,
+        affectionStyle: suggestions.affectionStyle || current.affectionStyle,
+        verbalTells: suggestions.verbalTells || current.verbalTells,
+        voiceAvoidances: suggestions.voiceAvoidances || current.voiceAvoidances,
         boundaries: suggestions.boundaries || current.boundaries,
         scenario: suggestions.scenario || current.scenario,
         exampleDialogue: suggestions.exampleDialogue || current.exampleDialogue,
@@ -299,6 +317,17 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               <StudioField label="Example dialogue" hint="A few lines are enough. This is a voice sample, not a script.">
                 <textarea name="exampleDialogue" value={form.exampleDialogue} onChange={updateField} placeholder={'"You called me. I came. Don\'t make it weird."'} rows="4" disabled={saving} />
               </StudioField>
+              <details className="studio-voice-fingerprint">
+                <summary><span><Sparkles size={15}/>Advanced voice fingerprint</span><small>Optional · makes similar archetypes sound unmistakably different</small></summary>
+                <div className="studio-grid studio-grid--two">
+                  <StudioField label="Word choice & rhythm"><textarea name="voiceVocabulary" value={form.voiceVocabulary} onChange={updateField} placeholder="Short clauses, modern vocabulary, never ornate; swears only when genuinely rattled…" rows="3" disabled={saving}/></StudioField>
+                  <StudioField label="Humor style"><textarea name="humorStyle" value={form.humorStyle} onChange={updateField} placeholder="Deadpan observations; never flirty one-liners or theatrical sarcasm…" rows="3" disabled={saving}/></StudioField>
+                  <StudioField label="How they handle conflict"><textarea name="conflictStyle" value={form.conflictStyle} onChange={updateField} placeholder="Gets precise and quiet; answers the real accusation; apologizes through action first…" rows="3" disabled={saving}/></StudioField>
+                  <StudioField label="How they show affection"><textarea name="affectionStyle" value={form.affectionStyle} onChange={updateField} placeholder="Remembers practical details, stays nearby, rarely names tenderness directly…" rows="3" disabled={saving}/></StudioField>
+                  <StudioField label="Verbal tells"><textarea name="verbalTells" value={form.verbalTells} onChange={updateField} placeholder="Drops contractions when angry; says 'right' while buying time; never uses pet names…" rows="3" disabled={saving}/></StudioField>
+                  <StudioField label="Never let them sound like…"><textarea name="voiceAvoidances" value={form.voiceAvoidances} onChange={updateField} placeholder="A therapist, a romance-novel billionaire, a generic teasing heartbreaker, customer service…" rows="3" disabled={saving}/></StudioField>
+                </div>
+              </details>
             </StudioSection>
 
             <StudioSection icon={<BookOpen size={18} />} kicker="STORY FEEL" title="How should stories with them read?" description="Keep this light. V6 handles most pacing automatically.">

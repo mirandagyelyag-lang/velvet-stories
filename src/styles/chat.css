@@ -2070,6 +2070,11 @@
   font-size: .68rem;
 }
 
+.message-sheet__feedback-reasons{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 4px}
+.message-sheet__feedback-reasons button{display:inline-flex;align-items:center;gap:4px;min-height:34px;padding:7px 10px;color:var(--text-secondary);background:var(--surface-soft);border:1px solid var(--border);border-radius:999px;font-size:.64rem;cursor:pointer}
+.message-sheet__feedback-reasons button.selected{color:var(--text-primary);background:color-mix(in srgb,var(--accent) 13%,var(--surface));border-color:color-mix(in srgb,var(--accent) 48%,var(--border))}
+.message-sheet__feedback-reasons button.selected svg{color:var(--gold)}
+
 .message-sheet__user-menu {
   display: grid;
   gap: 12px;

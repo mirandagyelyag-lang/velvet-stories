@@ -8,8 +8,11 @@ const chat = read("src/pages/Chat.jsx");
 const chatsContext = read("src/context/ChatsContext.jsx");
 const charactersContext = read("src/context/CharactersContext.jsx");
 const characterModal = read("src/components/CreateCharacterModal.jsx");
+const settingsContext = read("src/context/SettingsContext.jsx");
+const settingsPage = read("src/pages/Settings.jsx");
 const privateCancellationMigration = read("supabase/migrations/202608100002_generation_requests_private.sql");
 const developmentMigration = read("supabase/migrations/202608110001_character_development_v1.sql");
+const storyDnaMigration = read("supabase/migrations/202608120001_story_dna_v12.sql");
 
 const checks = [];
 function check(label, condition) {
@@ -23,7 +26,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -52,7 +55,7 @@ check("invalid repair becomes an error rather than fake prose",
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
 check("model returns reply and continuity in one request",
-  edge.includes('required: ["turn_reading", "canon_claims", "reply", "continuity_note", "development_update"]') &&
+  edge.includes('required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "development_update"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
   edge.includes("continuityNote: result.continuity_note"));
 check("the same request plans latest-turn meaning and audits canon",
@@ -80,14 +83,24 @@ check("persistent development migration covers existing and future characters",
   developmentMigration.includes("add column if not exists growth_direction text") &&
   /character_development jsonb not null default '\{\}'::jsonb/.test(developmentMigration) &&
   developmentMigration.includes("story_engine_version set default 8"));
+check("v1.2 voice migration covers every existing and future character",
+  ["voice_vocabulary", "humor_style", "conflict_style", "affection_style", "verbal_tells", "voice_avoidances"]
+    .every((field) => storyDnaMigration.includes(`add column if not exists ${field} text`)) &&
+  storyDnaMigration.includes("story_engine_version set default 9"));
 check("every newly created conversation starts an independent development state",
   chatsContext.includes("character_development: {}") &&
-  chatsContext.includes("story_engine_version: 8"));
+  chatsContext.includes("story_engine_version: 9"));
 check("character creator exposes all optional development anchors",
   ["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"].every((field) => characterModal.includes(`name="${field}"`)));
 check("character development anchors persist and reload",
   ["core_motivation", "emotional_defense", "softening_triggers", "growth_direction"].every((field) => charactersContext.includes(`${field}:`)) &&
   ["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"].every((field) => charactersContext.includes(`${field}: character.`)));
+check("advanced voice fingerprint is optional, folded and persistent",
+  characterModal.includes('<details className="studio-voice-fingerprint">') &&
+  ["voiceVocabulary", "humorStyle", "conflictStyle", "affectionStyle", "verbalTells", "voiceAvoidances"]
+    .every((field) => characterModal.includes(`name="${field}"`)) &&
+  ["voice_vocabulary", "humor_style", "conflict_style", "affection_style", "verbal_tells", "voice_avoidances"]
+    .every((field) => charactersContext.includes(`${field}:`)));
 check("production engine contains no Rowan-specific development rule", !/\bRowan\b/.test(edge));
 check("development state is returned and saved in the same generation path",
   edge.includes("developmentUpdate: result.development_update") &&
@@ -98,6 +111,27 @@ check("development profile and state are present in the roleplay prompt",
   edge.includes("PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND") &&
   edge.includes("characterDevelopmentPromptView(developmentState)") &&
   edge.includes("Relationship phases move gradually"));
+check("character voice is planned separately from reader-facing prose",
+  edge.includes("VOICE FINGERPRINT — PASS THE BLIND-VOICE TEST") &&
+  edge.includes("voice_plan: a private planning object") &&
+  edge.includes('required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"]'));
+check("global story DNA has Antonia's preferred defaults",
+  settingsContext.includes('storyProse: "contemporary"') &&
+  settingsContext.includes('storyDialogue: "dialogue_forward"') &&
+  settingsContext.includes('storyEmotion: "interior_visible"') &&
+  settingsContext.includes('storyPacing: "medium_fast"'));
+check("global story DNA reaches every generation request",
+  chatsContext.includes("storyPreferences: buildStoryPreferencesPayload(settings)") &&
+  edge.includes("CREATOR STORY DNA — GLOBAL PRESENTATION PREFERENCES"));
+check("settings expose global prose dialogue emotion pacing and standing notes",
+  settingsPage.includes("How I like stories") &&
+  ["storyProse", "storyDialogue", "storyEmotion", "storyPacing", "storyInstructions"]
+    .every((field) => settingsPage.includes(`settings.${field}`)));
+check("regeneration feedback is sent explicitly and learned after repetition",
+  chatsContext.includes("regenerationFeedback: Array.isArray(options.feedbackCodes)") &&
+  settingsContext.includes("recordStoryFeedback") &&
+  chatsContext.includes("Number(count) >= 2") &&
+  settingsPage.includes("Learned from regenerations"));
 check("rewind and clean branches clear derived character development",
   (chatsContext.match(/character_development: \{\}/g) || []).length >= 3 &&
   chatsContext.includes("characterDevelopment: {}"));
@@ -144,6 +178,47 @@ check("Spanish input selects Spanish",
   helpers?.detectResponseLanguage("Nada, sólo estaba estudiando, ¿y tú qué hiciste?", "") === "Spanish");
 check("silence inherits the character language",
   helpers?.detectResponseLanguage(".", "No te preocupes, estoy aquí.") === "Spanish");
+
+const normalizedFeedback = helpers?.normalizeRegenerationFeedback([
+  "too_short", "TOO SHORT", "pov_violation", "invented_code", "too_short",
+]);
+check("regeneration feedback accepts only known deduplicated reasons",
+  normalizedFeedback?.length === 2 &&
+  normalizedFeedback.includes("too_short") &&
+  normalizedFeedback.includes("pov_violation"));
+check("every regeneration reason becomes an actionable narrative instruction",
+  helpers?.feedbackDirectives([
+    "ignored_idea", "too_short", "out_of_character", "too_much_narration",
+    "not_enough_dialogue", "repetitive", "pov_violation", "missing_emotional_impact",
+  ]).length === 8);
+
+const safeStoryPreferences = helpers?.normalizeStoryPreferences({
+  prose: "invalid",
+  dialogue: "dialogue_forward",
+  emotionalInterior: "interior_visible",
+  romancePacing: "medium_fast",
+  customInstructions: `<script>${"x".repeat(1000)}</script>`,
+  learnedFeedback: ["repetitive", "fake_reason"],
+});
+check("global story preferences are whitelisted sanitized and bounded",
+  safeStoryPreferences?.prose === "contemporary" &&
+  safeStoryPreferences?.dialogue === "dialogue_forward" &&
+  !safeStoryPreferences?.custom_instructions.includes("<") &&
+  safeStoryPreferences?.custom_instructions.length <= 900 &&
+  safeStoryPreferences?.learned_feedback.length === 1);
+
+const repeatedDialogueReply = `Theo stopped beside the door. "I won't make that mistake again," he said, letting the promise stand without dressing it up.`;
+const oldDialogueReply = `Theo looked across the table. "I won't make that mistake again," he said before gathering his books.`;
+check("a repeated signature dialogue line is detected across recent turns",
+  helpers?.hasRepeatedRecentSignature(repeatedDialogueReply, [oldDialogueReply]));
+check("fresh character dialogue is not rejected as repetition",
+  !helpers?.hasRepeatedRecentSignature(`Theo set the keys down. "Coffee at seven? I'll actually show up this time."`, [oldDialogueReply]));
+check("final validation rejects a repeated recent signature",
+  helpers?.validateNarrativeReply(repeatedDialogueReply, {
+    latestUserMessage: "Promise?",
+    turnIntent: { kind: "ordinary" },
+    recentCharacterReplies: [oldDialogueReply],
+  }).includes("repeated_recent_signature"));
 
 const futureCharacterState = helpers?.normalizeCharacterDevelopment({}, "Childhood friends who trust each other but avoid naming the tension.");
 const blankCharacterState = helpers?.normalizeCharacterDevelopment({}, "");
@@ -274,11 +349,13 @@ const regeneratedDevelopment = helpers?.applyCharacterDevelopment({
   messageId: "future-5",
   isRegeneration: true,
   regenerationInstruction: "Show his private relief, then let him suggest coffee.",
+  regenerationFeedback: ["not_enough_dialogue", "missing_emotional_impact"],
   rejectedResponses: [`"Okay," Theo said. "I'm listening."`],
 });
 check("regeneration teaches abstract preferences without preserving rejected prose",
   regeneratedDevelopment?.learned_preferences.avoid.some((item) => /service-like|underdeveloped/i.test(item)) &&
   regeneratedDevelopment?.learned_preferences.encourage.some((item) => item.includes("private relief")) &&
+  regeneratedDevelopment?.learned_preferences.encourage.some((item) => item.includes("audible dialogue")) &&
   !JSON.stringify(regeneratedDevelopment).includes("I'm listening"));
 check("development history remains bounded for long-running and future chats",
   helpers?.normalizeCharacterDevelopment({

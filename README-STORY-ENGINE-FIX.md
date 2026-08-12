@@ -1,4 +1,40 @@
-# Velvet Stories — personajes vivos (v1.1.0)
+# Velvet Stories — Story DNA y voces propias (v1.2.0)
+
+La v1.2 conserva completo el desarrollo persistente de la v1.1 y añade tres
+capas globales: preferencias narrativas, feedback inteligente al regenerar y
+una huella de voz distinta para cada personaje.
+
+## Story DNA global
+
+- `Settings → How I like stories` define prosa, proporción de diálogo,
+  visibilidad del mundo interior, ritmo romántico y una instrucción permanente.
+- Los valores predeterminados usan prosa contemporánea, conversación adelantada,
+  impacto emocional visible y romance medio/rápido.
+- Se aplican a todos los personajes actuales y futuros, pero nunca sustituyen la
+  personalidad, los límites, el canon ni una fase relacional no ganada.
+
+## Regeneración con aprendizaje
+
+- La usuaria puede marcar: idea ignorada, demasiado corto, fuera de personaje,
+  demasiada narración, poco diálogo, repetición, violación de POV o falta de
+  impacto emocional.
+- Varios motivos pueden seleccionarse juntos y combinarse con una dirección
+  escrita libremente.
+- El motivo se aplica a la regeneración actual. Después de elegir el mismo dos
+  veces, se convierte en preferencia global visible y borrable desde Settings.
+- La respuesta rechazada sigue fuera del canon y su desarrollo emocional se
+  deshace antes de escribir la versión nueva.
+
+## Huella de voz
+
+- El creador de personajes incluye un panel avanzado plegado para vocabulario y
+  ritmo, humor, conflicto, afecto, señales verbales y tonos prohibidos.
+- Todos los campos son opcionales. Los personajes existentes continúan
+  funcionando y el motor infiere lo ausente desde su personalidad y ejemplos.
+- El modelo prepara en privado el objetivo conversacional, la táctica exterior y
+  la presión emocional antes de escribir; ese análisis nunca aparece en el chat.
+- La validación compara las últimas respuestas y rechaza líneas distintivas u
+  openings demasiado parecidos antes de mostrarlos.
 
 La v1.1 extiende el motor consolidado con desarrollo persistente para **todos los
 personajes existentes y futuros**. No contiene reglas especiales para Rowan ni
@@ -93,7 +129,8 @@ npm run lint
 npm run build
 ```
 
-`verify:story` ejecuta 73 casos concretos, incluidos personajes futuros,
+`verify:story` ejecuta 86 casos concretos, incluidos personajes futuros,
 independencia por conversación, evidencia inventada, cambio gradual de fase,
-residuo emocional, aprendizaje al regenerar, conversación casual, `It's okay`,
-afecto, silencio, POV, completitud y diversidad.
+residuo emocional, Story DNA, los ocho motivos de regeneración, voces propias,
+frases recicladas, conversación casual, `It's okay`, afecto, silencio, POV,
+completitud y diversidad.

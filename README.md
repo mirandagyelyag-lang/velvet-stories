@@ -1,7 +1,7 @@
 # Velvet Stories
 
 Private AI roleplay/story PWA built with React, Vite, Supabase and Gemini.
-Current consolidated release: **v1.1.0**.
+Current consolidated release: **v1.2.0**.
 
 ## Local setup
 
@@ -11,8 +11,8 @@ Current consolidated release: **v1.1.0**.
 
 ## Production update
 
-Apply database migrations before deploying the Edge Function. Version 1.1 adds
-the per-conversation character-development state and optional profile anchors.
+Apply database migrations before deploying the Edge Function. Version 1.2 adds
+the optional voice fingerprint used by existing and future characters.
 
 ```bash
 npx supabase db push
@@ -32,6 +32,9 @@ Then commit and push to `main` for the Vercel deployment.
 - Character response variants are navigable and regeneration rejects near-paraphrases of earlier variants.
 - Every existing and future character can develop gradually from visible events. Development is independent per conversation, bounded in size and cannot rewrite the base personality after one ordinary exchange.
 - Regeneration stores abstract reading preferences (for example, avoiding empty acknowledgements) without retaining rejected prose as story canon.
+- Regeneration accepts eight explicit failure reasons, applies them immediately and learns a global preference after the same reason is chosen twice.
+- Global Story DNA controls prose, dialogue balance, visible emotional interior and romance momentum for every character without overriding identity or earned relationship state.
+- Optional voice fingerprints distinguish vocabulary, humor, conflict, affection and verbal tells; recent signature lines are rejected before display.
 - Regeneration hides the rejected take immediately and restores it if the request fails or is stopped.
 - Empty messages and dot-only messages are silent continuations; two consecutive silent turns return focus to the main character.
 - Post-exit reactions follow the main character's side without granting impossible hearing or inventing logistics.
@@ -45,6 +48,7 @@ Then commit and push to `main` for the Vercel deployment.
 - `supabase/migrations/202608100001_story_revision_guard.sql`: timeline revision guard.
 - `supabase/migrations/202608100002_generation_requests_private.sql`: keeps cancellation lifecycle rows server-only.
 - `supabase/migrations/202608110001_character_development_v1.sql`: adds optional character-development anchors and an independent state for every conversation.
+- `supabase/migrations/202608120001_story_dna_v12.sql`: adds the optional voice fingerprint and moves conversations to story engine v9.
 - `QA-STORY-ENGINE.md`: short manual test for silence, POV return, post-exit emotion and regeneration.
 - `APPLY-AUDIT-CLEANUP.sh`: recoverably moves obsolete nested projects, old engines and loose patch files out of an existing checkout.
 

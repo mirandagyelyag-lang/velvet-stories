@@ -71,7 +71,7 @@ adjetivos. Si detienes o falla la generación, la versión guardada debe volver.
 
 ## 7. Personaje nuevo y desarrollo gradual
 
-1. Crea un personaje nuevo después de instalar la v1.1. Los cuatro campos de
+1. Crea un personaje nuevo después de instalar la v1.2. Los cuatro campos de
    `Development` son opcionales; completa al menos motivación y defensa.
 2. Inicia dos chats distintos con ese mismo personaje.
 3. En el primero, construye confianza mediante varios intercambios visibles. En
@@ -87,3 +87,30 @@ Regenera una respuesta vacía como `Okay, I'm listening` y dirige la siguiente
 hacia impacto privado y diálogo natural. En turnos posteriores Velvet debe
 evitar el patrón vacío, sin repetir la respuesta rechazada ni tratarla como
 canon.
+
+## 9. Story DNA global
+
+1. En `Settings → How I like stories`, deja `Dialogue-forward`, `Visible` y
+   `Medium / fast`.
+2. Abre dos personajes distintos y envía un turno casual importante en cada
+   chat.
+
+Ambos deben respetar el mismo estilo de lectura, pero usar vocabulario, humor y
+formas de reaccionar distintas. El ritmo medio/rápido no debe provocar una
+confesión ni cambiar la relación sin evidencia.
+
+## 10. Feedback múltiple
+
+En la última respuesta, abre acciones → `Different direction…`, selecciona
+`Repetitive`, `Not enough dialogue` y `Missing emotional impact`; agrega una
+dirección libre y regenera.
+
+La respuesta anterior debe desaparecer inmediatamente. La nueva debe cambiar
+opening, gesto, táctica y diálogo, mostrar el impacto y cumplir la dirección. Al
+usar un mismo motivo por segunda vez debe aparecer en Settings como aprendido.
+
+## 11. Blind voice test
+
+Completa huellas avanzadas opuestas para dos personajes: uno preciso y seco que
+no coquetea; otro expansivo, cálido y juguetón. Hazles la misma pregunta en dos
+chats nuevos. Las respuestas deberían poder distinguirse sin leer sus nombres.

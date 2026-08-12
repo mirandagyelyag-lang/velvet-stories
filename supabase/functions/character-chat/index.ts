@@ -15,6 +15,7 @@ type ModelEnvelope = {
   reply: string;
   continuity_note: string;
   development_update: Record<string, any>;
+  voice_plan: Record<string, any>;
 };
 
 type ModelResult = ModelEnvelope & {
@@ -82,6 +83,8 @@ Deno.serve(async (request) => {
     const expectedUserMessageId = cleanId(body?.expectedUserMessageId);
     const regenerationInstruction = cleanInstruction(body?.regenerationInstruction);
     const directorInstruction = cleanInstruction(body?.directorInstruction);
+    const regenerationFeedback = normalizeRegenerationFeedback(body?.regenerationFeedback);
+    const storyPreferences = normalizeStoryPreferences(body?.storyPreferences);
     if (!conversationId) return json({ error: "conversationId is required" }, 400);
 
     if (generationId) {
@@ -146,6 +149,8 @@ Deno.serve(async (request) => {
       regenerationInstruction,
       directorInstruction,
       developmentState,
+      regenerationFeedback,
+      storyPreferences,
     });
 
     const isCancelled = () => generationId
@@ -176,6 +181,7 @@ Deno.serve(async (request) => {
       turnIntent,
       finishReason: result.finishReason,
       rejectedResponses: branch.rejectedResponses,
+      recentCharacterReplies: messages.filter((message) => message.sender === "character").slice(-6).map((message) => message.content),
     });
 
     if (validationIssues.length) {
@@ -201,6 +207,7 @@ Deno.serve(async (request) => {
         turnIntent,
         finishReason: result.finishReason,
         rejectedResponses: branch.rejectedResponses,
+        recentCharacterReplies: messages.filter((message) => message.sender === "character").slice(-6).map((message) => message.content),
       });
     }
 
@@ -233,6 +240,7 @@ Deno.serve(async (request) => {
       character: configuredCharacter,
       latestUserMessage,
       regenerationInstruction,
+      regenerationFeedback,
       rejectedResponses: branch.rejectedResponses,
       isRegeneration: Boolean(regenerateMessageId),
     });
@@ -268,6 +276,12 @@ async function handleCharacterAssist({ apiKey, draft }) {
             softeningTriggers: { type: "string" },
             growthDirection: { type: "string" },
             speechStyle: { type: "string" },
+            voiceVocabulary: { type: "string" },
+            humorStyle: { type: "string" },
+            conflictStyle: { type: "string" },
+            affectionStyle: { type: "string" },
+            verbalTells: { type: "string" },
+            voiceAvoidances: { type: "string" },
             boundaries: { type: "string" },
             scenario: { type: "string" },
             exampleDialogue: { type: "string" },
@@ -293,7 +307,7 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
 
   const [characterResult, personaResult, messagesResult, memoriesResult, loreResult] = await Promise.all([
     supabase.from("characters")
-      .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
+      .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, voice_vocabulary, humor_style, conflict_style, affection_style, verbal_tells, voice_avoidances, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
       .eq("id", conversation.character_id).eq("user_id", userId).single(),
     conversation.persona_id
       ? supabase.from("personas")
@@ -397,6 +411,8 @@ function buildNarrativePrompt({
   regenerationInstruction,
   directorInstruction,
   developmentState,
+  regenerationFeedback,
+  storyPreferences,
 }) {
   const profile = [
     `Name: ${character.name}`,
@@ -413,6 +429,12 @@ function buildNarrativePrompt({
     `What reaches them: ${character.softening_triggers || "not specified"}`,
     `Possible growth direction: ${character.growth_direction || "not specified"}`,
     `Speech style: ${character.speech_style || "not specified"}`,
+    `Word choice and rhythm: ${character.voice_vocabulary || "infer from the profile"}`,
+    `Humor style: ${character.humor_style || "infer from the profile"}`,
+    `Conflict style: ${character.conflict_style || "infer from the profile"}`,
+    `Affection style: ${character.affection_style || "infer from the profile"}`,
+    `Verbal tells: ${character.verbal_tells || "infer sparingly from the profile"}`,
+    `Voice avoidances: ${character.voice_avoidances || "generic archetype dialogue and therapeutic language"}`,
     `Boundaries: ${character.boundaries || "not specified"}`,
     `Scenario/world: ${character.scenario || character.world || "not specified"}`,
     `Example dialogue (voice reference, never copy): ${character.example_dialogue || "none"}`,
@@ -461,8 +483,10 @@ function buildNarrativePrompt({
   }).slice(0, 9000);
 
   const latest = compactMessageForPrompt(latestUserRecord.content, 5000);
+  const learnedFeedback = feedbackDirectives(storyPreferences.learned_feedback);
+  const currentFeedback = feedbackDirectives(regenerationFeedback);
   const regeneration = isRegeneration
-    ? `This is a regeneration from the branch point. The rejected take is intentionally absent. Make a materially different choice, reaction, opening and dialogue—not a paraphrase. ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
+    ? `This is a regeneration from the branch point. The rejected take is intentionally absent. Make a materially different choice, reaction, opening and dialogue—not a paraphrase. ${currentFeedback.length ? `Creator feedback that this rewrite MUST fix: ${currentFeedback.join(" ")}` : ""} ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
     : "This is a new canonical turn.";
 
   return `You are Velvet's narrative engine. Write the next turn of an immersive private roleplay as polished contemporary fiction.
@@ -493,6 +517,23 @@ TURN CONTRACT
 
 CHARACTER
 ${profile}
+
+VOICE FINGERPRINT — PASS THE BLIND-VOICE TEST
+- Internally decide ${character.name}'s conversational goal, outward tactic and private pressure before writing.
+- Sentence rhythm, vocabulary, humor, conflict and affection must come from this profile—not from a generic romantic lead archetype.
+- Use verbal tells sparingly. A tell is texture, not something to repeat every turn.
+- The example dialogue calibrates syntax and attitude only. Never copy its wording.
+- Do not reuse a recent signature line, conversational tactic or decorative gesture. If the last reply teased, deflected or withdrew, choose it again only when the immediate psychology truly requires it.
+
+CREATOR STORY DNA — GLOBAL PRESENTATION PREFERENCES
+- Prose: ${storyPreferences.prose}.
+- Conversation balance: ${storyPreferences.dialogue}.
+- Emotional interior: ${storyPreferences.emotional_interior}.
+- Romance pacing preference: ${storyPreferences.romance_pacing}; this controls momentum, never consent, canon or an unearned relationship jump.
+- Fixed standards: natural young-adult dialogue, complete social beats, strict user POV, no therapeutic acknowledgments and no decorative repetition.
+${storyPreferences.custom_instructions ? `- Creator's standing note: ${storyPreferences.custom_instructions}` : ""}
+${learnedFeedback.length ? `- Learned from repeated regenerations: ${learnedFeedback.join(" ")}` : ""}
+- These preferences shape how the story is told. They never erase ${character.name}'s identity, boundaries or current development phase.
 
 PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND
 ${JSON.stringify(characterDevelopmentPromptView(developmentState)).slice(0, 7000)}
@@ -535,6 +576,7 @@ OUTPUT
 Return JSON with:
 - turn_reading: one sentence stating the literal social meaning of the latest user turn and what ${character.name} must respond to now.
 - canon_claims: a list of every off-screen or historical factual claim used in the reply; keep it empty unless that exact fact appears in the profile, lore, a confirmed memory or the visible transcript.
+- voice_plan: a private planning object with conversational_goal, outward_tactic, private_pressure, verbal_signature and avoided_pattern. Each value is one short string. Never place this analysis inside reply.
 - reply: only the finished roleplay prose.
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
 - development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
@@ -609,10 +651,21 @@ async function callGeminiWithFailover({
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
-              required: ["turn_reading", "canon_claims", "reply", "continuity_note", "development_update"],
+              required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "development_update"],
               properties: {
                 turn_reading: { type: "string" },
                 canon_claims: { type: "array", items: { type: "string" } },
+                voice_plan: {
+                  type: "object",
+                  required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"],
+                  properties: {
+                    conversational_goal: { type: "string" },
+                    outward_tactic: { type: "string" },
+                    private_pressure: { type: "string" },
+                    verbal_signature: { type: "string" },
+                    avoided_pattern: { type: "string" },
+                  },
+                },
                 reply: { type: "string" },
                 continuity_note: { type: "string" },
                 development_update: {
@@ -676,9 +729,10 @@ function parseModelEnvelope(raw): ModelEnvelope {
       development_update: parsed?.development_update && typeof parsed.development_update === "object"
         ? parsed.development_update
         : {},
+      voice_plan: parsed?.voice_plan && typeof parsed.voice_plan === "object" ? parsed.voice_plan : {},
     };
   } catch {
-    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {} };
+    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {} };
   }
 }
 
@@ -787,6 +841,71 @@ function replySimilarity(left = "", right = "") {
   let overlap = 0;
   for (const token of a) if (b.has(token)) overlap += 1;
   return overlap / Math.min(a.size, b.size);
+}
+
+const regenerationFeedbackRules = new Map([
+  ["ignored_idea", "Honor the creator's stated idea before adding any new direction."],
+  ["too_short", "Finish the complete emotional and conversational beat; do not stop at acknowledgment."],
+  ["out_of_character", "Rebuild the response from the character profile and voice fingerprint instead of a generic archetype."],
+  ["too_much_narration", "Reduce explanatory and decorative narration; keep only details that change the beat."],
+  ["not_enough_dialogue", "Give the character meaningful audible dialogue instead of replacing their voice with description."],
+  ["repetitive", "Choose a new opening, gesture, conversational tactic and line structure."],
+  ["pov_violation", "Do not write any action, thought, emotion, decision or dialogue for the user."],
+  ["missing_emotional_impact", "Let the latest user's words affect the character privately before the outward answer."],
+]);
+
+function normalizeRegenerationFeedback(value = []) {
+  const items = Array.isArray(value) ? value : [];
+  return [...new Set(items.map((item) => normalizeText(item).replace(/\s+/g, "_")))]
+    .filter((item) => regenerationFeedbackRules.has(item))
+    .slice(0, 8);
+}
+
+function feedbackDirectives(value = []) {
+  return normalizeRegenerationFeedback(value).map((code) => regenerationFeedbackRules.get(code));
+}
+
+function normalizeStoryPreferences(value = {}) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const choose = (candidate, allowed, fallback) => allowed.includes(String(candidate || "")) ? String(candidate) : fallback;
+  return {
+    prose: choose(source.prose, ["contemporary", "literary", "minimal"], "contemporary"),
+    dialogue: choose(source.dialogue, ["dialogue_forward", "balanced", "narration_forward"], "dialogue_forward"),
+    emotional_interior: choose(source.emotionalInterior, ["interior_visible", "subtle", "restrained"], "interior_visible"),
+    romance_pacing: choose(source.romancePacing, ["medium_fast", "medium", "slow"], "medium_fast"),
+    custom_instructions: developmentText(source.customInstructions, 900),
+    learned_feedback: normalizeRegenerationFeedback(source.learnedFeedback),
+  };
+}
+
+function extractDialogueLines(value = "") {
+  const lines = [];
+  const pattern = /“([^”]+)”|"([^"]+)"/g;
+  let match;
+  while ((match = pattern.exec(String(value || ""))) !== null) {
+    const line = developmentText(match[1] || match[2], 500);
+    if (normalizeText(line).split(/\s+/).filter(Boolean).length >= 5) lines.push(line);
+  }
+  return lines.slice(0, 8);
+}
+
+function openingNarrativeBeat(value = "") {
+  const narration = stripDialogue(value).split(/[.!?\n]/).map((item) => item.trim()).find(Boolean) || "";
+  return developmentText(narration, 260);
+}
+
+function hasRepeatedRecentSignature(reply = "", recentReplies = []) {
+  const currentDialogue = extractDialogueLines(reply);
+  const currentOpening = openingNarrativeBeat(reply);
+  const currentOpeningWords = normalizeText(currentOpening).split(/\s+/).filter((token) => token.length > 3);
+  for (const recent of (Array.isArray(recentReplies) ? recentReplies : []).slice(-6)) {
+    const recentDialogue = extractDialogueLines(recent);
+    if (currentDialogue.some((line) => recentDialogue.some((other) => normalizeText(line) === normalizeText(other) || replySimilarity(line, other) >= 0.86))) return true;
+    const recentOpening = openingNarrativeBeat(recent);
+    const recentOpeningWords = normalizeText(recentOpening).split(/\s+/).filter((token) => token.length > 3);
+    if (currentOpeningWords.length >= 6 && recentOpeningWords.length >= 6 && replySimilarity(currentOpening, recentOpening) >= 0.78) return true;
+  }
+  return false;
 }
 
 function developmentText(value = "", maximum = 600) {
@@ -910,6 +1029,7 @@ function applyCharacterDevelopment({
   messageId = "",
   isRegeneration = false,
   regenerationInstruction = "",
+  regenerationFeedback = [],
   rejectedResponses = [],
 } = {}) {
   const state = normalizeCharacterDevelopment(previous, relationshipPremise);
@@ -1009,6 +1129,13 @@ function applyCharacterDevelopment({
         `Creator direction: ${direction}`,
       ], 8, 300);
     }
+    const feedback = feedbackDirectives(regenerationFeedback);
+    if (feedback.length) {
+      next.learned_preferences.encourage = developmentList([
+        ...next.learned_preferences.encourage,
+        ...feedback.map((item) => `Creator feedback: ${item}`),
+      ], 8, 300);
+    }
   }
 
   return normalizeCharacterDevelopment(next, relationshipPremise);
@@ -1026,6 +1153,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (isLowInformationGenericReply(text)) issues.push("generic_acknowledgment");
   if (controlsUserPOV(text, options.userName || "", options.latestUserMessage || "")) issues.push("controls_user_pov");
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
+  if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
 
   const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "digital_message"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 24) issues.push("underdeveloped_social_beat");
@@ -1073,6 +1201,7 @@ async function streamAndPersist({
   character,
   latestUserMessage,
   regenerationInstruction,
+  regenerationFeedback,
   rejectedResponses,
   isRegeneration,
 }) {
@@ -1119,6 +1248,7 @@ async function streamAndPersist({
           messageId: savedMessage.id,
           isRegeneration,
           regenerationInstruction,
+          regenerationFeedback,
           rejectedResponses,
         });
         const note = cleanPromptValue(continuityNote, 600);
