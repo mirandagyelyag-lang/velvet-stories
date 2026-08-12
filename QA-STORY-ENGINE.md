@@ -133,3 +133,15 @@ chats nuevos. Las respuestas deberían poder distinguirse sin leer sus nombres.
 4. Confirma que nada aparece en la biblioteca hasta pulsar `Create character`.
 5. En un personaje antiguo con Personality muy largo, usa `Organize profile` y
    comprueba que los hechos se distribuyen sin cambiar nombre, relación o mundo.
+
+## 14. Creación rápida, cancelación y errores
+
+1. Inicia `Create with AI` y comprueba que aparece `Stop generation` mientras
+   espera. Al detener, la idea escrita y el borrador anterior deben conservarse.
+2. Genera un personaje y pulsa `Discard draft`: todos los campos propuestos
+   deben vaciarse sin crear nada en `My characters`.
+3. Si Gemini agota cuota, demora demasiado o entrega JSON incompleto, la pantalla
+   debe mostrar ese motivo concreto; nunca el texto genérico `Edge Function
+   returned a non-2xx status code`.
+4. Ningún intento debe esperar indefinidamente: principal y fallback comparten
+   un máximo de 28 segundos en la Edge Function.

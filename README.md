@@ -1,7 +1,7 @@
 # Velvet Stories
 
 Private AI roleplay/story PWA built with React, Vite, Supabase and Gemini.
-Current consolidated release: **v1.3.0**.
+Current consolidated release: **v1.3.1**.
 
 ## Local setup
 
@@ -14,6 +14,10 @@ Current consolidated release: **v1.3.0**.
 Apply database migrations before deploying the Edge Function. Version 1.3 adds
 private account sync for story preferences, reply feedback and complete AI
 character drafting.
+
+Patch 1.3.1 bounds complete-character generation to a short failover window,
+uses minimal model thinking, surfaces the real Edge error, and adds explicit
+Stop and Discard draft actions. AI drafts are never saved automatically.
 
 ```bash
 npx supabase db push

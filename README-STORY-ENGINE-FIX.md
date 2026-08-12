@@ -1,4 +1,8 @@
-# Velvet Stories — Feedback y creación completa (v1.3.0)
+# Velvet Stories — Feedback y creación completa (v1.3.1)
+
+La v1.3.1 corrige `Create with AI`: generación acotada a 28 segundos entre
+modelo principal y fallback, pensamiento mínimo, respuestas más concisas,
+errores reales en pantalla, `Stop generation` y `Discard draft`.
 
 La v1.3 conserva el motor narrativo y la huella de voz de v1.2, y añade una
 capa de aprendizaje explícita y un creador completo de personajes.

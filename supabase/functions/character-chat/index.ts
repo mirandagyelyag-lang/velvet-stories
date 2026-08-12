@@ -271,30 +271,80 @@ const characterDraftProperties = {
   firstMessage: { type: "string" },
 };
 
-async function requestCharacterJson({ apiKey, prompt, maxOutputTokens = 2600, requireComplete = false }) {
-  const response = await fetch(modelEndpoint(GEMINI_MODEL), {
-    method: "POST",
-    headers: geminiHeaders(apiKey),
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens,
-        responseMimeType: "application/json",
-        responseJsonSchema: {
-          type: "object",
-          properties: characterDraftProperties,
-          ...(requireComplete ? { required: Object.keys(characterDraftProperties) } : {}),
-        },
-      },
-    }),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    if (response.status === 429) throw new Error("The free AI limit was reached. Try again later.");
-    throw new Error(data?.error?.message || "Character creation failed");
+async function requestCharacterJson({
+  apiKey,
+  prompt,
+  maxOutputTokens = 2200,
+  requireComplete = false,
+  temperature = 0.72,
+  purpose = "character-assist",
+}) {
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter(Boolean))];
+  const deadline = Date.now() + 28000;
+  let lastError = "Velvet couldn't complete the character draft. Try again.";
+  let quotaReached = false;
+
+  for (const model of models) {
+    const remaining = deadline - Date.now();
+    if (remaining < 2500) break;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), Math.min(17000, remaining));
+    const startedAt = Date.now();
+    console.log("[character-chat] character tool started", { purpose, model, maxOutputTokens });
+
+    try {
+      const response = await fetch(modelEndpoint(model), {
+        method: "POST",
+        headers: geminiHeaders(apiKey),
+        signal: controller.signal,
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: "Design private fictional roleplay characters. Return concise valid JSON only." }] },
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens,
+            temperature,
+            topP: 0.9,
+            thinkingConfig: { thinkingLevel: "MINIMAL" },
+            responseMimeType: "application/json",
+            responseJsonSchema: {
+              type: "object",
+              properties: characterDraftProperties,
+              ...(requireComplete ? { required: Object.keys(characterDraftProperties) } : {}),
+            },
+          },
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      const finishReason = String(data?.candidates?.[0]?.finishReason || "");
+      if (!response.ok) {
+        lastError = data?.error?.message || `Gemini returned ${response.status}`;
+        quotaReached ||= response.status === 429;
+        console.warn("[character-chat] character tool model failed", { purpose, model, status: response.status, durationMs: Date.now() - startedAt });
+        if ([429, 500, 502, 503, 504].includes(response.status)) continue;
+        throw new Error(lastError);
+      }
+
+      const raw = extractCandidateText(data);
+      if (!raw.trim()) throw new Error("Gemini returned an empty character draft.");
+      const parsed = JSON.parse(stripJsonFence(raw));
+      console.log("[character-chat] character tool completed", { purpose, model, finishReason, durationMs: Date.now() - startedAt });
+      return parsed;
+    } catch (error) {
+      if (getErrorName(error) === "AbortError") {
+        lastError = "Character creation took too long and was stopped. Try again.";
+      } else if (error instanceof SyntaxError) {
+        lastError = "Velvet received an incomplete character draft. Try again.";
+      } else {
+        lastError = getErrorMessage(error);
+      }
+      console.warn("[character-chat] character tool attempt ended", { purpose, model, error: lastError, durationMs: Date.now() - startedAt });
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
-  const raw = extractCandidateText(data);
-  return JSON.parse(stripJsonFence(raw));
+
+  if (quotaReached) throw new Error("The free AI limit was reached. Try again later.");
+  throw new Error(lastError);
 }
 
 async function handleCharacterAssist({ apiKey, draft, mode }) {
@@ -305,7 +355,9 @@ async function handleCharacterAssist({ apiKey, draft, mode }) {
     : "Polish this private fictional roleplay character. Keep every supplied name, relationship, boundary and world fact. Fill useful gaps, including the advanced voice fingerprint, while keeping the character specific, human and internally consistent without turning guardedness into cruelty.";
   const suggestions = await requestCharacterJson({
     apiKey,
-    maxOutputTokens: organize ? 3200 : 2600,
+    maxOutputTokens: organize ? 2500 : 2100,
+    temperature: organize ? 0.42 : 0.68,
+    purpose: organize ? "character-organize" : "character-polish",
     prompt: `${instruction}\nSeparate stable identity from possible growth: motivation and defenses are present-day anchors, softening triggers are earned influences, and growth direction is only a possibility—not an instant transformation. Return field suggestions only.\n\nDRAFT\n${JSON.stringify(safeDraft).slice(0, 16000)}`,
   });
   return json({ suggestions });
@@ -316,9 +368,11 @@ async function handleCharacterGenerate({ apiKey, concept }) {
   const request = cleanConcept || "Surprise me with an original adult character and a compelling relationship premise unlike a generic billionaire, bully, mafia boss or copy of a famous fictional character.";
   const character = await requestCharacterJson({
     apiKey,
-    maxOutputTokens: 4200,
+    maxOutputTokens: 2800,
     requireComplete: true,
-    prompt: `Create one complete, original adult fictional roleplay character from the creator's request below. Honor any requested name exactly; if no name is supplied, invent a memorable full name. Build an independent person with a life, responsibilities, relationships, conflicts and ambitions beyond romance. Make the bond with the user specific and playable, the character voice unmistakable, and the opening scene immediately interactive. Avoid generic archetype dialogue, constant hostility, instant confessions and controlling the user's dialogue, thoughts, feelings or actions. The possible growth direction must be gradual rather than guaranteed. Example dialogue calibrates voice but is not a future script. Write all fields and the opening scene in the language used by the creator; if the request has no language, use natural English. Return every field in the schema.\n\nCREATOR REQUEST\n${request}`,
+    temperature: 0.82,
+    purpose: "character-generate",
+    prompt: `Create one complete, original adult fictional roleplay character from the creator's request below. Honor any requested name exactly; if no name is supplied, invent a memorable full name. Build an independent person with a life, responsibilities, relationships, conflicts and ambitions beyond romance. Make the bond with the user specific and playable, the character voice unmistakable, and the opening scene immediately interactive. Avoid generic archetype dialogue, constant hostility, instant confessions and controlling the user's dialogue, thoughts, feelings or actions. The possible growth direction must be gradual rather than guaranteed. Example dialogue calibrates voice but is not a future script. Keep each supporting field to one or two precise sentences, Personality and Relationship below 130 words each, and the opening scene between 120 and 190 words so the complete draft arrives quickly. Write every field and the opening scene in the language used by the creator; if the request has no language, use natural English. Return every field in the schema.\n\nCREATOR REQUEST\n${request}`,
   });
   return json({ character });
 }

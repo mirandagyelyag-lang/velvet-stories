@@ -91,7 +91,9 @@
 .character-studio__creator-seeds button{flex:0 0 auto;padding:6px 9px;color:var(--text-secondary);background:var(--surface);border:1px solid var(--border);border-radius:999px;font-size:.55rem;cursor:pointer}
 .character-studio__creator footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .character-studio__creator footer small{flex:1}
+.character-studio__creator footer>div{display:flex;align-items:center;gap:7px}
 .character-studio__creator footer button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:39px;padding:0 14px;color:#fff7ed;background:var(--accent);border:0;border-radius:12px;font-size:.66rem;font-weight:700;cursor:pointer}
+.character-studio__creator footer .character-studio__discard-draft{color:var(--text-secondary);background:transparent;border:1px solid var(--border)}
 .character-studio__creator button:disabled{opacity:.58;cursor:default}
 
 .character-studio__close {
@@ -626,4 +628,4 @@
 .studio-voice-fingerprint[open] .studio-voice-fingerprint__chevron{transform:rotate(180deg)}
 .studio-voice-fingerprint[open] summary{border-bottom:1px solid var(--border)}
 .studio-voice-fingerprint>.studio-grid{padding:16px}
-@media(max-width:650px){.studio-voice-fingerprint summary{align-items:flex-start;flex-direction:column;gap:4px}.studio-voice-fingerprint summary small{text-align:left}.character-studio__creator{padding:14px}.character-studio__creator footer{align-items:stretch;flex-direction:column}.character-studio__creator footer button{width:100%}.character-studio__top-actions{gap:5px}.character-studio__ai{width:37px;height:37px}.character-studio__close{width:37px;height:37px}}
+@media(max-width:650px){.studio-voice-fingerprint summary{align-items:flex-start;flex-direction:column;gap:4px}.studio-voice-fingerprint summary small{text-align:left}.character-studio__creator{padding:14px}.character-studio__creator footer{align-items:stretch;flex-direction:column}.character-studio__creator footer>div{width:100%;align-items:stretch;flex-direction:column}.character-studio__creator footer button{width:100%}.character-studio__top-actions{gap:5px}.character-studio__ai{width:37px;height:37px}.character-studio__close{width:37px;height:37px}}

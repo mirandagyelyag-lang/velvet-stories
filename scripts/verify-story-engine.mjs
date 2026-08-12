@@ -158,6 +158,22 @@ check("AI can create an entire reviewable character draft",
   charactersContext.includes("generateCharacterDraft") &&
   characterModal.includes("Create with AI") && characterModal.includes("Surprise me") &&
   characterModal.includes("Nothing is saved automatically"));
+check("complete character creation is fast bounded and has model failover",
+  edge.includes("const deadline = Date.now() + 28000") &&
+  edge.includes('thinkingConfig: { thinkingLevel: "MINIMAL" }') &&
+  edge.includes("[GEMINI_MODEL, GEMINI_FALLBACK_MODEL]") &&
+  edge.includes('maxOutputTokens: 2800') &&
+  charactersContext.includes("timeout: 32000"));
+check("character creation exposes actionable upstream errors",
+  charactersContext.includes("readCharacterFunctionError") &&
+  charactersContext.includes("response.clone().text()") &&
+  edge.includes('[character-chat] character tool model failed') &&
+  edge.includes('[character-chat] character tool attempt ended'));
+check("AI character drafts can be stopped or discarded before save",
+  characterModal.includes("Stop generation") &&
+  characterModal.includes("Discard draft") &&
+  characterModal.includes("generationAbortRef.current?.abort()") &&
+  characterModal.includes("discardGeneratedDraft"));
 check("existing profiles can be organized without changing facts",
   charactersContext.includes("organizeCharacterDraft") &&
   edge.includes("Do not invent, delete or change facts") &&

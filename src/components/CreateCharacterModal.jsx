@@ -14,7 +14,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCharacters } from "../context/CharactersContext";
 import "../styles/create-character-modal.css";
 
@@ -106,6 +106,9 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [characterConcept, setCharacterConcept] = useState("");
   const [creatorStatus, setCreatorStatus] = useState("");
+  const generationAbortRef = useRef(null);
+
+  useEffect(() => () => generationAbortRef.current?.abort(), []);
 
   const completion = useMemo(() => {
     const required = [form.name, form.role, form.personality, form.firstMessage];
@@ -189,18 +192,37 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   async function handleGenerateCharacter() {
     if (aiBusy || saving) return;
     try {
+      const controller = new AbortController();
+      generationAbortRef.current = controller;
       setGenerating(true);
       setCreatorStatus("");
       setError("");
-      const generated = await generateCharacterDraft(characterConcept);
+      const generated = await generateCharacterDraft(characterConcept, { signal: controller.signal });
       setForm((current) => mergeCharacterSuggestions(current, generated, true));
       setCreatorStatus("Complete draft created. Review anything you want before saving.");
     } catch (requestError) {
+      if (generationAbortRef.current?.signal.aborted) {
+        setCreatorStatus("Generation stopped. Your previous draft was left untouched.");
+        return;
+      }
       console.error("Complete character generation failed:", requestError);
-      setError(requestError.message || "Velvet couldn't create this character.");
+      setError(translateCharacterAIError(requestError.message));
     } finally {
+      generationAbortRef.current = null;
       setGenerating(false);
     }
+  }
+
+  function stopCharacterGeneration() {
+    generationAbortRef.current?.abort();
+  }
+
+  function discardGeneratedDraft() {
+    setForm({ ...initialForm });
+    setAvatarPreview("");
+    setCoverPreview("");
+    setError("");
+    setCreatorStatus("Draft discarded. You can change the idea or ask Velvet to surprise you again.");
   }
 
   function validateCharacter() {
@@ -255,7 +277,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
           </div>
         </header>
 
-        {!character && creatorOpen && <section className="character-studio__creator" aria-label="Create a complete character with AI">
+        {!character && creatorOpen && <section className="character-studio__creator" aria-label="Create a complete character with AI" aria-busy={generating}>
           <div>
             <span><Sparkles size={17}/></span>
             <div><strong>Tell Velvet as much—or as little—as you have</strong><small>A name is optional. Leave it blank and Velvet will surprise you with a complete, original character.</small></div>
@@ -266,10 +288,13 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
           </div>
           <footer>
             <small>{creatorStatus || "Nothing is saved automatically. You review the whole draft first."}</small>
-            <button type="button" onClick={handleGenerateCharacter} disabled={generating}>
-              {generating ? <LoaderCircle className="character-modal__spinner" size={17}/> : <Sparkles size={17}/>}
-              {generating ? "Creating their whole world…" : characterConcept.trim() ? "Create complete draft" : "Surprise me"}
-            </button>
+            <div>
+              {creatorStatus.startsWith("Complete draft") && <button type="button" className="character-studio__discard-draft" onClick={discardGeneratedDraft}>Discard draft</button>}
+              <button type="button" onClick={generating ? stopCharacterGeneration : handleGenerateCharacter}>
+                {generating ? <X size={17}/> : <Sparkles size={17}/>}
+                {generating ? "Stop generation" : characterConcept.trim() ? "Create complete draft" : "Surprise me"}
+              </button>
+            </div>
           </footer>
         </section>}
 
@@ -506,6 +531,16 @@ function translateCharacterError(message = "") {
   if (error.includes("maximum") || error.includes("size")) return "The image is too large. Choose one smaller than 5 MB.";
   if (error.includes("network") || error.includes("fetch")) return "We couldn't connect. Check your internet connection.";
   return message || "We couldn't save the character. Try again.";
+}
+
+function translateCharacterAIError(message = "") {
+  const error = String(message || "").toLowerCase();
+  if (error.includes("free ai limit") || error.includes("quota") || error.includes("429")) return "Gemini's free limit was reached. Wait a little and try again.";
+  if (error.includes("too long") || error.includes("timeout") || error.includes("timed out") || error.includes("aborted")) return "Character creation took too long and was stopped. Try again—Velvet kept your idea.";
+  if (error.includes("incomplete character draft") || error.includes("empty character draft")) return "Gemini sent an incomplete draft. Try once more; your idea is still here.";
+  if (error.includes("model") && (error.includes("not found") || error.includes("not supported"))) return "The configured Gemini model is unavailable. Velvet will need a valid fallback model.";
+  if (/edge function returned a non-2xx/i.test(message)) return "The character generator failed before returning its reason. Redeploy the v1.3.1 Edge Function and try again.";
+  return message || "Velvet couldn't create this character. Try again.";
 }
 
 export default CreateCharacterModal;

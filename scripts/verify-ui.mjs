@@ -84,6 +84,18 @@ const checks = [
       readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Create with AI") &&
       readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Nothing is saved automatically"),
   },
+  {
+    name: "slow AI creation can be stopped and an unwanted draft discarded",
+    pass:
+      readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Stop generation") &&
+      readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Discard draft"),
+  },
+  {
+    name: "character creator replaces generic Edge errors with their real reason",
+    pass:
+      readFileSync("src/context/CharactersContext.jsx", "utf8").includes("readCharacterFunctionError") &&
+      readFileSync("src/context/CharactersContext.jsx", "utf8").includes("response.clone().text()"),
+  },
 ];
 
 let failed = 0;

@@ -235,8 +235,9 @@ export function CharactersProvider({ children }) {
         mode,
         draft: characterDraftPayload(characterData),
       },
+      timeout: 32000,
     });
-    if (error) throw error;
+    if (error) throw new Error(await readCharacterFunctionError(error, "Velvet couldn't refine this character."));
     return data?.suggestions || {};
   }
 
@@ -248,11 +249,13 @@ export function CharactersProvider({ children }) {
     return requestCharacterAssist(characterData, "organize");
   }
 
-  async function generateCharacterDraft(concept = "") {
+  async function generateCharacterDraft(concept = "", { signal } = {}) {
     const { data, error } = await supabase.functions.invoke("character-chat", {
       body: { action: "character_generate", concept: String(concept || "").slice(0, 1200) },
+      signal,
+      timeout: 32000,
     });
-    if (error) throw error;
+    if (error) throw new Error(await readCharacterFunctionError(error, "Velvet couldn't create this character."));
     return data?.character || {};
   }
 
@@ -356,6 +359,29 @@ function characterDraftPayload(characterData = {}) {
     narrationStyle: characterData.narrationStyle || "balanced",
     firstMessage: characterData.firstMessage || "",
   };
+}
+
+async function readCharacterFunctionError(error, fallback) {
+  try {
+    const response = error?.context;
+    if (response && typeof response.clone === "function") {
+      const text = await response.clone().text();
+      if (text) {
+        try {
+          const parsed = JSON.parse(text);
+          const message = parsed?.error || parsed?.message;
+          if (message) return String(message);
+        } catch {
+          if (!/^edge function returned/i.test(text.trim())) return text.trim().slice(0, 500);
+        }
+      }
+    }
+  } catch {
+    // Use the normalized client error below when the response body is unavailable.
+  }
+  const message = String(error?.message || "").trim();
+  if (message && !/^edge function returned a non-2xx/i.test(message)) return message;
+  return fallback;
 }
 
 function convertDatabaseCharacter(character) {
