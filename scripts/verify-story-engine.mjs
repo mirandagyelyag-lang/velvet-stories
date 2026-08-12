@@ -6,7 +6,10 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const edge = read("supabase/functions/character-chat/index.ts");
 const chat = read("src/pages/Chat.jsx");
 const chatsContext = read("src/context/ChatsContext.jsx");
+const charactersContext = read("src/context/CharactersContext.jsx");
+const characterModal = read("src/components/CreateCharacterModal.jsx");
 const privateCancellationMigration = read("supabase/migrations/202608100002_generation_requests_private.sql");
+const developmentMigration = read("supabase/migrations/202608110001_character_development_v1.sql");
 
 const checks = [];
 function check(label, condition) {
@@ -20,7 +23,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -49,7 +52,7 @@ check("invalid repair becomes an error rather than fake prose",
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
 check("model returns reply and continuity in one request",
-  edge.includes('required: ["turn_reading", "canon_claims", "reply", "continuity_note"]') &&
+  edge.includes('required: ["turn_reading", "canon_claims", "reply", "continuity_note", "development_update"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
   edge.includes("continuityNote: result.continuity_note"));
 check("the same request plans latest-turn meaning and audits canon",
@@ -69,6 +72,35 @@ check("structured runtime logging covers generation rejection and save",
   edge.includes('console.log("[character-chat] generation started"') &&
   edge.includes('console.warn("[character-chat] candidate rejected"') &&
   edge.includes('console.log("[character-chat] response saved"'));
+
+check("persistent development migration covers existing and future characters",
+  developmentMigration.includes("add column if not exists core_motivation text") &&
+  developmentMigration.includes("add column if not exists emotional_defense text") &&
+  developmentMigration.includes("add column if not exists softening_triggers text") &&
+  developmentMigration.includes("add column if not exists growth_direction text") &&
+  /character_development jsonb not null default '\{\}'::jsonb/.test(developmentMigration) &&
+  developmentMigration.includes("story_engine_version set default 8"));
+check("every newly created conversation starts an independent development state",
+  chatsContext.includes("character_development: {}") &&
+  chatsContext.includes("story_engine_version: 8"));
+check("character creator exposes all optional development anchors",
+  ["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"].every((field) => characterModal.includes(`name="${field}"`)));
+check("character development anchors persist and reload",
+  ["core_motivation", "emotional_defense", "softening_triggers", "growth_direction"].every((field) => charactersContext.includes(`${field}:`)) &&
+  ["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"].every((field) => charactersContext.includes(`${field}: character.`)));
+check("production engine contains no Rowan-specific development rule", !/\bRowan\b/.test(edge));
+check("development state is returned and saved in the same generation path",
+  edge.includes("developmentUpdate: result.development_update") &&
+  edge.includes("update.character_development = applyCharacterDevelopment({") &&
+  !edge.includes("generateCharacterDevelopment"));
+check("development profile and state are present in the roleplay prompt",
+  edge.includes("Core motivation: ${character.core_motivation") &&
+  edge.includes("PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND") &&
+  edge.includes("characterDevelopmentPromptView(developmentState)") &&
+  edge.includes("Relationship phases move gradually"));
+check("rewind and clean branches clear derived character development",
+  (chatsContext.match(/character_development: \{\}/g) || []).length >= 3 &&
+  chatsContext.includes("characterDevelopment: {}"));
 
 check("pure narrative helper API loads", helpers);
 check("compact silence is recognized", helpers?.isSilentContinueText("...") && helpers?.isSilentContinueText("[SILENT_CONTINUE]"));
@@ -112,6 +144,153 @@ check("Spanish input selects Spanish",
   helpers?.detectResponseLanguage("Nada, sólo estaba estudiando, ¿y tú qué hiciste?", "") === "Spanish");
 check("silence inherits the character language",
   helpers?.detectResponseLanguage(".", "No te preocupes, estoy aquí.") === "Spanish");
+
+const futureCharacterState = helpers?.normalizeCharacterDevelopment({}, "Childhood friends who trust each other but avoid naming the tension.");
+const blankCharacterState = helpers?.normalizeCharacterDevelopment({}, "");
+check("any future character initializes from its own relationship premise",
+  futureCharacterState?.relationship_phase === "established" &&
+  futureCharacterState?.current_dynamic.includes("Childhood friends"));
+check("a character without prior relationship begins at baseline",
+  blankCharacterState?.relationship_phase === "baseline" && blankCharacterState?.current_dynamic === "");
+
+const inventedDevelopment = helpers?.applyCharacterDevelopment({
+  previous: futureCharacterState,
+  update: {
+    significance: "high",
+    evidence: "secret hospital visit",
+    relationship_phase: "committed",
+    relationship_dynamic: "They are suddenly partners.",
+    emotional_residue: "devotion",
+    behavioral_effect: "confesses everything",
+    turning_point: "A secret visit changed everything.",
+  },
+  relationshipPremise: "Childhood friends who trust each other but avoid naming the tension.",
+  latestUserMessage: "Nice weather today.",
+  reply: `Theo smiled. "It is."`,
+  messageId: "future-1",
+});
+check("invented development evidence cannot alter phase or dynamic",
+  inventedDevelopment?.relationship_phase === "established" &&
+  inventedDevelopment?.current_dynamic === futureCharacterState?.current_dynamic &&
+  inventedDevelopment?.turning_points.length === 0 &&
+  inventedDevelopment?.emotional_residue.length === 0);
+
+const impossiblePhaseJump = helpers?.applyCharacterDevelopment({
+  previous: futureCharacterState,
+  update: {
+    significance: "high",
+    evidence: "trust you",
+    relationship_phase: "committed",
+    relationship_dynamic: "Trust matters, but their bond remains undefined.",
+  },
+  relationshipPremise: "Childhood friends who trust each other but avoid naming the tension.",
+  latestUserMessage: "I trust you.",
+  reply: `Theo goes quiet. "I trust you too."`,
+  messageId: "future-impossible",
+});
+check("even grounded evidence cannot skip directly across relationship phases",
+  impossiblePhaseJump?.relationship_phase === "established" &&
+  impossiblePhaseJump?.phase_candidate === "" &&
+  impossiblePhaseJump?.phase_evidence_count === 0 &&
+  impossiblePhaseJump?.current_dynamic === futureCharacterState?.current_dynamic);
+
+const firstEarnedBeat = helpers?.applyCharacterDevelopment({
+  previous: futureCharacterState,
+  update: {
+    significance: "high",
+    evidence: "trust you",
+    relationship_phase: "warming",
+    relationship_dynamic: "Their old trust is becoming more openly tender.",
+    emotional_residue: "relief",
+    active_contradiction: "Theo wants closeness but still hides behind humor.",
+    behavioral_effect: "He remains nearby instead of deflecting and leaving.",
+    turning_point: "The user openly says they trust Theo.",
+  },
+  relationshipPremise: "Childhood friends who trust each other but avoid naming the tension.",
+  latestUserMessage: "I trust you.",
+  reply: `The words catch Theo off guard. "I know. I don't take that lightly."`,
+  messageId: "future-2",
+});
+check("one strong beat records impact but cannot instantly change phase",
+  firstEarnedBeat?.relationship_phase === "established" &&
+  firstEarnedBeat?.phase_candidate === "warming" &&
+  firstEarnedBeat?.phase_evidence_count === 2 &&
+  firstEarnedBeat?.emotional_residue[0]?.remaining_turns === 6 &&
+  firstEarnedBeat?.turning_points.length === 1);
+const restoredBeforeRegeneration = helpers?.resolveCharacterDevelopmentBranch(
+  firstEarnedBeat,
+  "Childhood friends who trust each other but avoid naming the tension.",
+  "future-2",
+);
+check("regeneration restores development from before the rejected response",
+  restoredBeforeRegeneration?.relationship_phase === futureCharacterState?.relationship_phase &&
+  restoredBeforeRegeneration?.phase_candidate === "" &&
+  restoredBeforeRegeneration?.emotional_residue.length === 0 &&
+  restoredBeforeRegeneration?.turning_points.length === 0 &&
+  restoredBeforeRegeneration?.last_message_id === "");
+const promptDevelopmentView = helpers?.characterDevelopmentPromptView(firstEarnedBeat) || {};
+check("private undo data is never exposed to the writing model",
+  !("undo_snapshot" in promptDevelopmentView));
+
+const repeatedEarnedBeat = helpers?.applyCharacterDevelopment({
+  previous: firstEarnedBeat,
+  update: {
+    significance: "medium",
+    evidence: "trust you",
+    relationship_phase: "warming",
+    relationship_dynamic: "Their care is becoming easier to acknowledge.",
+    emotional_residue: "quiet hope",
+    active_contradiction: "Theo is hopeful but afraid to misread their closeness.",
+    behavioral_effect: "He answers honestly before reaching for a joke.",
+    turning_point: "Trust is reaffirmed after Theo remains honest.",
+  },
+  relationshipPremise: "Childhood friends who trust each other but avoid naming the tension.",
+  latestUserMessage: "I still trust you.",
+  reply: `Theo lets the reassurance settle. "Then I'll try to deserve it."`,
+  messageId: "future-3",
+});
+check("repeated grounded evidence can earn a gradual phase change",
+  repeatedEarnedBeat?.relationship_phase === "warming" &&
+  repeatedEarnedBeat?.phase_candidate === "" &&
+  repeatedEarnedBeat?.phase_evidence_count === 0);
+
+const decayedDevelopment = helpers?.applyCharacterDevelopment({
+  previous: repeatedEarnedBeat,
+  update: { significance: "none" },
+  relationshipPremise: "Childhood friends who trust each other but avoid naming the tension.",
+  latestUserMessage: "Want some coffee?",
+  reply: `"Always," Theo said.`,
+  messageId: "future-4",
+});
+check("emotional residue colors later turns and decays instead of becoming permanent",
+  decayedDevelopment?.emotional_residue.length === repeatedEarnedBeat?.emotional_residue.length &&
+  decayedDevelopment?.emotional_residue.every((item, index) => item.remaining_turns === repeatedEarnedBeat.emotional_residue[index].remaining_turns - 1));
+
+const regeneratedDevelopment = helpers?.applyCharacterDevelopment({
+  previous: blankCharacterState,
+  update: { significance: "none" },
+  latestUserMessage: "It's okay.",
+  reply: `Theo's expression softens. "Still. Let me make it right."`,
+  messageId: "future-5",
+  isRegeneration: true,
+  regenerationInstruction: "Show his private relief, then let him suggest coffee.",
+  rejectedResponses: [`"Okay," Theo said. "I'm listening."`],
+});
+check("regeneration teaches abstract preferences without preserving rejected prose",
+  regeneratedDevelopment?.learned_preferences.avoid.some((item) => /service-like|underdeveloped/i.test(item)) &&
+  regeneratedDevelopment?.learned_preferences.encourage.some((item) => item.includes("private relief")) &&
+  !JSON.stringify(regeneratedDevelopment).includes("I'm listening"));
+check("development history remains bounded for long-running and future chats",
+  helpers?.normalizeCharacterDevelopment({
+    turning_points: Array.from({ length: 30 }, (_, index) => ({ event: `event ${index}` })),
+    learned_preferences: {
+      encourage: Array.from({ length: 20 }, (_, index) => `encourage ${index}`),
+      avoid: Array.from({ length: 20 }, (_, index) => `avoid ${index}`),
+    },
+  }, "").turning_points.length === 12 &&
+  helpers?.normalizeCharacterDevelopment({
+    learned_preferences: { encourage: Array.from({ length: 20 }, (_, index) => `encourage ${index}`) },
+  }, "").learned_preferences.encourage.length === 8);
 
 const weakOkayReply = `"Yeah," Rowan said, taking the words seriously. "I understand."`;
 const weakOkayIssues = helpers?.validateNarrativeReply(weakOkayReply, {

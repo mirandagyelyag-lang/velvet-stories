@@ -28,6 +28,10 @@ const initialForm = {
   fears: "",
   habits: "",
   contradictions: "",
+  coreMotivation: "",
+  emotionalDefense: "",
+  softeningTriggers: "",
+  growthDirection: "",
   speechStyle: "",
   boundaries: "",
   scenario: "",
@@ -58,6 +62,10 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
     fears: character.fears || "",
     habits: character.habits || "",
     contradictions: character.contradictions || "",
+    coreMotivation: character.coreMotivation || "",
+    emotionalDefense: character.emotionalDefense || "",
+    softeningTriggers: character.softeningTriggers || "",
+    growthDirection: character.growthDirection || "",
     speechStyle: character.speechStyle || "",
     boundaries: character.boundaries || "",
     scenario: character.scenario || "",
@@ -131,6 +139,10 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
         fears: suggestions.fears || current.fears,
         habits: suggestions.habits || current.habits,
         contradictions: suggestions.contradictions || current.contradictions,
+        coreMotivation: suggestions.coreMotivation || current.coreMotivation,
+        emotionalDefense: suggestions.emotionalDefense || current.emotionalDefense,
+        softeningTriggers: suggestions.softeningTriggers || current.softeningTriggers,
+        growthDirection: suggestions.growthDirection || current.growthDirection,
         speechStyle: suggestions.speechStyle || current.speechStyle,
         boundaries: suggestions.boundaries || current.boundaries,
         scenario: suggestions.scenario || current.scenario,
@@ -267,6 +279,15 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
                 <StudioField label="Fears"><textarea name="fears" value={form.fears} onChange={updateField} placeholder="What can actually get under their skin?" rows="3" disabled={saving} /></StudioField>
                 <StudioField label="Habits"><textarea name="habits" value={form.habits} onChange={updateField} placeholder="Small behaviors that recur naturally." rows="3" disabled={saving} /></StudioField>
                 <StudioField label="Contradictions"><textarea name="contradictions" value={form.contradictions} onChange={updateField} placeholder="Popular but private. Flirtatious but emotionally avoidant…" rows="3" disabled={saving} /></StudioField>
+              </div>
+            </StudioSection>
+
+            <StudioSection icon={<Sparkles size={18} />} kicker="DEVELOPMENT" title="How can they change without losing themselves?" description="Optional anchors for gradual growth. Velvet will never treat these as an instant transformation.">
+              <div className="studio-grid studio-grid--two">
+                <StudioField label="Core motivation" hint="What do they want beneath the surface?"><textarea name="coreMotivation" value={form.coreMotivation} onChange={updateField} placeholder="To be chosen without having to ask; to protect the life he built…" rows="4" disabled={saving} /></StudioField>
+                <StudioField label="Emotional defense" hint="How do they protect themselves when something matters?"><textarea name="emotionalDefense" value={form.emotionalDefense} onChange={updateField} placeholder="Turns tenderness into teasing, leaves when feelings become too visible…" rows="4" disabled={saving} /></StudioField>
+                <StudioField label="What reaches them" hint="Actions or truths that can genuinely soften or unsettle them."><textarea name="softeningTriggers" value={form.softeningTriggers} onChange={updateField} placeholder="Quiet loyalty, being remembered, honest affection without pressure…" rows="4" disabled={saving} /></StudioField>
+                <StudioField label="Possible growth direction" hint="A direction, not a guaranteed ending."><textarea name="growthDirection" value={form.growthDirection} onChange={updateField} placeholder="May learn to stay and speak honestly instead of disappearing—but only after earned turning points." rows="4" disabled={saving} /></StudioField>
               </div>
             </StudioSection>
 

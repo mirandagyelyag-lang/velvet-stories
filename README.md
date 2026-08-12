@@ -1,7 +1,7 @@
 # Velvet Stories
 
 Private AI roleplay/story PWA built with React, Vite, Supabase and Gemini.
-Current consolidated release: **v1.0.0**.
+Current consolidated release: **v1.1.0**.
 
 ## Local setup
 
@@ -11,7 +11,8 @@ Current consolidated release: **v1.0.0**.
 
 ## Production update
 
-Apply database migrations before deploying the Edge Function because the story engine uses `conversations.story_revision` to invalidate abandoned timelines.
+Apply database migrations before deploying the Edge Function. Version 1.1 adds
+the per-conversation character-development state and optional profile anchors.
 
 ```bash
 npx supabase db push
@@ -29,6 +30,8 @@ Then commit and push to `main` for the Vercel deployment.
 - Markdown `>` is reserved for written digital messages only.
 - Rewind/delete/edit invalidate derived story state and automatic memories so deleted timelines cannot leak back into future generations.
 - Character response variants are navigable and regeneration rejects near-paraphrases of earlier variants.
+- Every existing and future character can develop gradually from visible events. Development is independent per conversation, bounded in size and cannot rewrite the base personality after one ordinary exchange.
+- Regeneration stores abstract reading preferences (for example, avoiding empty acknowledgements) without retaining rejected prose as story canon.
 - Regeneration hides the rejected take immediately and restores it if the request fails or is stopped.
 - Empty messages and dot-only messages are silent continuations; two consecutive silent turns return focus to the main character.
 - Post-exit reactions follow the main character's side without granting impossible hearing or inventing logistics.
@@ -41,6 +44,7 @@ Then commit and push to `main` for the Vercel deployment.
 - `supabase/functions/character-chat/index.ts`: single-path story engine, turn intent, grounded prompt, one validation pass and optional repair.
 - `supabase/migrations/202608100001_story_revision_guard.sql`: timeline revision guard.
 - `supabase/migrations/202608100002_generation_requests_private.sql`: keeps cancellation lifecycle rows server-only.
+- `supabase/migrations/202608110001_character_development_v1.sql`: adds optional character-development anchors and an independent state for every conversation.
 - `QA-STORY-ENGINE.md`: short manual test for silence, POV return, post-exit emotion and regeneration.
 - `APPLY-AUDIT-CLEANUP.sh`: recoverably moves obsolete nested projects, old engines and loose patch files out of an existing checkout.
 

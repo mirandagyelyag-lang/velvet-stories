@@ -233,7 +233,8 @@ export function ChatsProvider({
         storyChapters: Array.isArray(conversation.story_chapters) ? conversation.story_chapters : [],
         activeChapter: conversation.active_chapter || {},
         unfinishedThreads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads : [],
-        storyEngineVersion: Number(conversation.story_engine_version || 7),
+        characterDevelopment: conversation.character_development || {},
+        storyEngineVersion: Number(conversation.story_engine_version || 8),
         storyRevision: conversation.story_revision || "",
         branchParentId: conversation.branch_parent_id || "",
         branchFromMessageId: conversation.branch_from_message_id || "",
@@ -351,6 +352,9 @@ export function ChatsProvider({
 
         persona_id:
           defaultPersona?.id || null,
+
+        character_development: {},
+        story_engine_version: 8,
       })
       .select()
       .single();
@@ -1163,6 +1167,7 @@ export function ChatsProvider({
       scene_state: {},
       story_timeline: [],
       relationship_state: {},
+      character_development: {},
       cast_state: {},
       story_chapters: [],
       active_chapter: {},
@@ -1193,6 +1198,7 @@ export function ChatsProvider({
         sceneState: {},
         storyTimeline: [],
         relationshipState: {},
+        characterDevelopment: {},
         castState: {},
         storyChapters: [],
         activeChapter: {},
@@ -1312,11 +1318,12 @@ export function ChatsProvider({
         scene_state: {},
         story_timeline: [],
         relationship_state: {},
+        character_development: {},
         cast_state: {},
         story_chapters: [],
         active_chapter: {},
         unresolved_threads: [],
-        story_engine_version: 7,
+        story_engine_version: 8,
         branch_parent_id: conversation.conversationId,
         branch_from_message_id: sourceMessage.id,
         branch_label: branchTitle.slice(0, 80),
@@ -1671,7 +1678,7 @@ export function ChatsProvider({
     if (!conversation?.conversationId) return null;
     const { data, error } = await supabase
       .from("conversations")
-      .select("scene_state, story_timeline, summary, story_preset, pacing_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, story_engine_version, story_revision, updated_at")
+      .select("scene_state, story_timeline, summary, story_preset, pacing_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, character_development, story_engine_version, story_revision, updated_at")
       .eq("id", conversation.conversationId)
       .single();
     if (error) throw error;
@@ -1689,7 +1696,8 @@ export function ChatsProvider({
         storyChapters: Array.isArray(data.story_chapters) ? data.story_chapters : (current[characterId]?.storyChapters || []),
         activeChapter: data.active_chapter || current[characterId]?.activeChapter || {},
         unfinishedThreads: Array.isArray(data.unresolved_threads) ? data.unresolved_threads : (current[characterId]?.unfinishedThreads || []),
-        storyEngineVersion: Number(data.story_engine_version || 7),
+        characterDevelopment: data.character_development || current[characterId]?.characterDevelopment || {},
+        storyEngineVersion: Number(data.story_engine_version || 8),
       },
     }));
     return data;
@@ -1775,7 +1783,7 @@ export function ChatsProvider({
         .or(`id.eq.${conversation.conversationId},branch_parent_id.eq.${conversation.conversationId},id.eq.${conversation.branchParentId || conversation.conversationId}`)
         .order("updated_at", { ascending: false }),
       supabase.from("conversations")
-        .select("relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, pacing_mode, story_engine_version, story_revision")
+        .select("relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, character_development, pacing_mode, story_engine_version, story_revision")
         .eq("id", conversation.conversationId)
         .single(),
     ]);
@@ -1790,8 +1798,9 @@ export function ChatsProvider({
       cast: currentResult.data?.cast_state || {},
       relationship: currentResult.data?.relationship_state || {},
       unfinishedThreads: Array.isArray(currentResult.data?.unresolved_threads) ? currentResult.data.unresolved_threads : [],
+      characterDevelopment: currentResult.data?.character_development || {},
       pacingMode: currentResult.data?.pacing_mode || "natural",
-      storyEngineVersion: Number(currentResult.data?.story_engine_version || 7),
+      storyEngineVersion: Number(currentResult.data?.story_engine_version || 8),
       storyRevision: currentResult.data?.story_revision || "",
     };
   }

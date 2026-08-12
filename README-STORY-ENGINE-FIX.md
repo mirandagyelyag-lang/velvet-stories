@@ -1,4 +1,9 @@
-# Velvet Stories — motor narrativo nuevo (v1.0.0)
+# Velvet Stories — personajes vivos (v1.1.0)
+
+La v1.1 extiende el motor consolidado con desarrollo persistente para **todos los
+personajes existentes y futuros**. No contiene reglas especiales para Rowan ni
+para ningún nombre. Cada conversación mantiene su propio arco, de modo que dos
+chats con el mismo personaje pueden evolucionar de forma distinta.
 
 La v1.0 reemplaza por completo la cadena histórica de parches de
 `character-chat`. No borra personajes, chats, memorias, lorebooks, UI ni tablas.
@@ -11,10 +16,33 @@ Cada turno sigue una sola ruta:
 
 1. Cargar perfil, controles, últimos 80 mensajes, memoria y lore.
 2. Resolver la intención real del último mensaje.
-3. Pedir a Gemini una respuesta y una nota breve de continuidad en la misma llamada.
+3. Pedir a Gemini una respuesta, una nota breve de continuidad y una propuesta
+   de desarrollo basada en evidencia, todo en la misma llamada.
 4. Aplicar una única validación local de integridad.
 5. Si hace falta, permitir una sola reescritura contextual.
 6. Guardar y transmitir la respuesta completa.
+
+## Desarrollo persistente
+
+- Los campos opcionales `Core motivation`, `Emotional defense`, `What reaches
+  them` y `Possible growth direction` están disponibles al crear o editar
+  cualquier personaje. Los perfiles antiguos funcionan aunque se dejen vacíos.
+- Una conversación nueva recibe automáticamente un estado independiente. Esto
+  también se aplica a personajes que todavía no existen al instalar la versión.
+- El estado conserva la dinámica actual, contradicciones activas, residuo
+  emocional temporal, hitos ganados y preferencias narrativas aprendidas al
+  regenerar.
+- Un evento solo se acepta si su evidencia aparece en el último intercambio
+  visible. El modelo no puede convertir una visita, confesión o relación
+  inventada en desarrollo persistente.
+- Las fases relacionales necesitan evidencia acumulada. Un momento fuerte puede
+  dejar impacto, pero no cambia por sí solo diez años de carácter o relación.
+- El residuo emocional desaparece gradualmente y las listas tienen límites para
+  que los chats largos no crezcan sin control.
+- Rebobinar o abrir una rama limpia elimina el desarrollo derivado de la línea
+  abandonada.
+- Regenerar restaura un punto compacto anterior a la respuesta descartada: no
+  quedan emociones, hitos ni cambios de relación provenientes de esa toma.
 
 No existen respuestas narrativas locales prefabricadas. Si la generación y su
 única reparación siguen siendo vacías, genéricas, cortadas, repetidas o controlan
@@ -65,6 +93,7 @@ npm run lint
 npm run build
 ```
 
-`verify:story` ejecuta casos concretos para conversación casual, `It's okay`,
-afecto directo e indirecto, preguntas sin puntuación, silencio, salida de escena,
-mensajes digitales, POV, completitud y diversidad al regenerar.
+`verify:story` ejecuta 73 casos concretos, incluidos personajes futuros,
+independencia por conversación, evidencia inventada, cambio gradual de fase,
+residuo emocional, aprendizaje al regenerar, conversación casual, `It's okay`,
+afecto, silencio, POV, completitud y diversidad.

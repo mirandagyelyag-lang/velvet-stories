@@ -14,6 +14,7 @@ const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models
 type ModelEnvelope = {
   reply: string;
   continuity_note: string;
+  development_update: Record<string, any>;
 };
 
 type ModelResult = ModelEnvelope & {
@@ -125,6 +126,11 @@ Deno.serve(async (request) => {
     const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
     const selectedMemories = selectRelevantMemories(loaded.memories, messages);
     const selectedLore = selectRelevantLore(loaded.loreEntries, messages);
+    const developmentState = resolveCharacterDevelopmentBranch(
+      loaded.conversation.character_development,
+      configuredCharacter.relationship,
+      branch.replacementMessage?.id,
+    );
 
     const prompt = buildNarrativePrompt({
       conversation: loaded.conversation,
@@ -139,6 +145,7 @@ Deno.serve(async (request) => {
       isRegeneration: Boolean(regenerateMessageId),
       regenerationInstruction,
       directorInstruction,
+      developmentState,
     });
 
     const isCancelled = () => generationId
@@ -221,6 +228,13 @@ Deno.serve(async (request) => {
       memories: selectedMemories,
       loreEntries: selectedLore,
       existingTimeline: loaded.conversation.story_timeline || [],
+      previousDevelopment: developmentState,
+      developmentUpdate: result.development_update,
+      character: configuredCharacter,
+      latestUserMessage,
+      regenerationInstruction,
+      rejectedResponses: branch.rejectedResponses,
+      isRegeneration: Boolean(regenerateMessageId),
     });
   } catch (error) {
     console.error("[character-chat] request failed", {
@@ -237,7 +251,7 @@ async function handleCharacterAssist({ apiKey, draft }) {
     method: "POST",
     headers: geminiHeaders(apiKey),
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: `Help refine a private fictional roleplay character. Keep every supplied name, relationship, boundary and world fact. Make the character specific, human and internally consistent without turning guardedness into cruelty. Return concise field suggestions only.\n\nDRAFT\n${JSON.stringify(safeDraft).slice(0, 12000)}` }] }],
+      contents: [{ role: "user", parts: [{ text: `Help refine a private fictional roleplay character. Keep every supplied name, relationship, boundary and world fact. Make the character specific, human and internally consistent without turning guardedness into cruelty. Separate stable identity from possible growth: motivation and defenses are present-day anchors, softening triggers are earned influences, and growth direction is only a possibility—not an instant personality change. Return concise field suggestions only.\n\nDRAFT\n${JSON.stringify(safeDraft).slice(0, 14000)}` }] }],
       generationConfig: {
         maxOutputTokens: 1800,
         responseMimeType: "application/json",
@@ -249,6 +263,10 @@ async function handleCharacterAssist({ apiKey, draft }) {
             fears: { type: "string" },
             habits: { type: "string" },
             contradictions: { type: "string" },
+            coreMotivation: { type: "string" },
+            emotionalDefense: { type: "string" },
+            softeningTriggers: { type: "string" },
+            growthDirection: { type: "string" },
             speechStyle: { type: "string" },
             boundaries: { type: "string" },
             scenario: { type: "string" },
@@ -267,7 +285,7 @@ async function handleCharacterAssist({ apiKey, draft }) {
 async function loadContext({ supabase, conversationId, userId }): Promise<LoadedContext> {
   const { data: conversation, error: conversationError } = await supabase
     .from("conversations")
-    .select("id, character_id, persona_id, lorebook_id, title, summary, response_length_override, narration_style_override, creativity, romance_intensity, initiative, drama, flirting, humor, description_level, character_independence, dialogue_frequency, narrative_camera, inner_thoughts, story_preset, scene_state, story_timeline, pacing_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, story_engine_version, story_revision")
+    .select("id, character_id, persona_id, lorebook_id, title, summary, response_length_override, narration_style_override, creativity, romance_intensity, initiative, drama, flirting, humor, description_level, character_independence, dialogue_frequency, narrative_camera, inner_thoughts, story_preset, scene_state, story_timeline, pacing_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, character_development, story_engine_version, story_revision")
     .eq("id", conversationId)
     .eq("user_id", userId)
     .single();
@@ -275,7 +293,7 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
 
   const [characterResult, personaResult, messagesResult, memoriesResult, loreResult] = await Promise.all([
     supabase.from("characters")
-      .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, speech_style, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
+      .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
       .eq("id", conversation.character_id).eq("user_id", userId).single(),
     conversation.persona_id
       ? supabase.from("personas")
@@ -378,6 +396,7 @@ function buildNarrativePrompt({
   isRegeneration,
   regenerationInstruction,
   directorInstruction,
+  developmentState,
 }) {
   const profile = [
     `Name: ${character.name}`,
@@ -389,6 +408,10 @@ function buildNarrativePrompt({
     `Fears: ${character.fears || "not specified"}`,
     `Habits: ${character.habits || "not specified"}`,
     `Contradictions: ${character.contradictions || "not specified"}`,
+    `Core motivation: ${character.core_motivation || "not specified"}`,
+    `Emotional defense: ${character.emotional_defense || "not specified"}`,
+    `What reaches them: ${character.softening_triggers || "not specified"}`,
+    `Possible growth direction: ${character.growth_direction || "not specified"}`,
     `Speech style: ${character.speech_style || "not specified"}`,
     `Boundaries: ${character.boundaries || "not specified"}`,
     `Scenario/world: ${character.scenario || character.world || "not specified"}`,
@@ -471,6 +494,15 @@ TURN CONTRACT
 CHARACTER
 ${profile}
 
+PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND
+${JSON.stringify(characterDevelopmentPromptView(developmentState)).slice(0, 7000)}
+- Identity, values, boundaries, core motivation and emotional defense remain anchored to the CHARACTER profile.
+- Emotional residue should color behavior subtly; do not restate it as exposition.
+- Learned preferences describe how this user wants roleplay to read. Obey them without copying old dialogue.
+- Relationship phases move gradually. Never jump phase because of one ordinary line, one touch, one argument or one flattering remark.
+- A possible growth direction is not a destination. The character may resist, relapse or choose differently until visible turning points earn change.
+- Development changes future behavior; it does not erase contradictions or make every scene about romance.
+
 USER-CONTROLLED PROTAGONIST
 ${persona}
 
@@ -505,6 +537,7 @@ Return JSON with:
 - canon_claims: a list of every off-screen or historical factual claim used in the reply; keep it empty unless that exact fact appears in the profile, lore, a confirmed memory or the visible transcript.
 - reply: only the finished roleplay prose.
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
+- development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
 
 AUTHORITATIVE LATEST USER TURN (message_id=${latestUserRecord.id})
 ${userIdentity.name}: ${latest}
@@ -576,12 +609,26 @@ async function callGeminiWithFailover({
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
-              required: ["turn_reading", "canon_claims", "reply", "continuity_note"],
+              required: ["turn_reading", "canon_claims", "reply", "continuity_note", "development_update"],
               properties: {
                 turn_reading: { type: "string" },
                 canon_claims: { type: "array", items: { type: "string" } },
                 reply: { type: "string" },
                 continuity_note: { type: "string" },
+                development_update: {
+                  type: "object",
+                  required: ["significance", "evidence", "relationship_phase", "relationship_dynamic", "emotional_residue", "active_contradiction", "behavioral_effect", "turning_point"],
+                  properties: {
+                    significance: { type: "string" },
+                    evidence: { type: "string" },
+                    relationship_phase: { type: "string" },
+                    relationship_dynamic: { type: "string" },
+                    emotional_residue: { type: "string" },
+                    active_contradiction: { type: "string" },
+                    behavioral_effect: { type: "string" },
+                    turning_point: { type: "string" },
+                  },
+                },
               },
             },
           },
@@ -626,9 +673,12 @@ function parseModelEnvelope(raw): ModelEnvelope {
     return {
       reply: String(parsed?.reply || "").trim(),
       continuity_note: String(parsed?.continuity_note || "").trim().slice(0, 600),
+      development_update: parsed?.development_update && typeof parsed.development_update === "object"
+        ? parsed.development_update
+        : {},
     };
   } catch {
-    return { reply: String(raw || "").trim(), continuity_note: "" };
+    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {} };
   }
 }
 
@@ -725,7 +775,7 @@ function isLowInformationGenericReply(value = "") {
   const normalized = normalizeText(stripDialogue(text) + " " + text);
   const words = normalized.split(/\s+/).filter(Boolean);
   const servicePhrase = /\b(?:i understand|i m listening|im listening|go on|tell me more|i hear you|entiendo|te escucho|continua|continúa|cuentame|cuéntame)\b/i.test(normalized);
-  const bareAcknowledgment = /^(?:(?:rowan|[a-z]+)\s+(?:said|murmured|muttered)\s+)?(?:yeah|okay|ok|fine|alright|sure|vale|bueno|esta bien|está bien)[.!\s]*$/i.test(normalized);
+  const bareAcknowledgment = /^(?:(?:[a-z]+)\s+(?:said|murmured|muttered)\s+)?(?:yeah|okay|ok|fine|alright|sure|vale|bueno|esta bien)[.!\s]*$/i.test(normalized);
   return (servicePhrase && words.length < 34) || bareAcknowledgment || words.length < 7;
 }
 
@@ -737,6 +787,231 @@ function replySimilarity(left = "", right = "") {
   let overlap = 0;
   for (const token of a) if (b.has(token)) overlap += 1;
   return overlap / Math.min(a.size, b.size);
+}
+
+function developmentText(value = "", maximum = 600) {
+  return String(value || "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, maximum);
+}
+
+function developmentList(value, maximumItems = 8, maximumLength = 280) {
+  const items = Array.isArray(value) ? value : [];
+  return [...new Set(items.map((item) => developmentText(item, maximumLength)).filter(Boolean))].slice(-maximumItems);
+}
+
+function normalizeCharacterDevelopment(value = {}, relationshipPremise = "", includeUndoSnapshot = true) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const allowedPhases = new Set(["baseline", "established", "warming", "strained", "repairing", "deepening", "romantic_shift", "committed"]);
+  const requestedPhase = developmentText(source.relationship_phase, 40).toLowerCase();
+  const defaultPhase = developmentText(relationshipPremise, 20) ? "established" : "baseline";
+  const phase = allowedPhases.has(requestedPhase) ? requestedPhase : defaultPhase;
+
+  const residue = (Array.isArray(source.emotional_residue) ? source.emotional_residue : [])
+    .map((item) => ({
+      emotion: developmentText(item?.emotion, 120),
+      cause: developmentText(item?.cause, 240),
+      behavioral_effect: developmentText(item?.behavioral_effect, 240),
+      remaining_turns: Math.max(1, Math.min(6, Number(item?.remaining_turns) || 1)),
+    }))
+    .filter((item) => item.emotion && item.cause)
+    .slice(-4);
+
+  const turningPoints = (Array.isArray(source.turning_points) ? source.turning_points : [])
+    .map((item) => ({
+      message_id: developmentText(item?.message_id, 100),
+      event: developmentText(item?.event, 320),
+      impact: developmentText(item?.impact, 320),
+    }))
+    .filter((item) => item.event)
+    .slice(-12);
+
+  const normalized = {
+    version: 1,
+    turns_observed: Math.max(0, Number(source.turns_observed) || 0),
+    relationship_phase: phase,
+    phase_candidate: developmentText(source.phase_candidate, 40).toLowerCase(),
+    phase_evidence_count: Math.max(0, Math.min(3, Number(source.phase_evidence_count) || 0)),
+    current_dynamic: developmentText(source.current_dynamic || relationshipPremise, 700),
+    emotional_residue: residue,
+    active_contradictions: developmentList(source.active_contradictions, 4, 260),
+    turning_points: turningPoints,
+    learned_preferences: {
+      encourage: developmentList(source.learned_preferences?.encourage, 8, 300),
+      avoid: developmentList(source.learned_preferences?.avoid, 8, 300),
+    },
+    last_message_id: developmentText(source.last_message_id, 100),
+  };
+
+  return {
+    ...normalized,
+    undo_snapshot: includeUndoSnapshot && source.undo_snapshot && typeof source.undo_snapshot === "object"
+      ? normalizeCharacterDevelopment(source.undo_snapshot, relationshipPremise, false)
+      : null,
+  };
+}
+
+function characterDevelopmentPromptView(value = {}, relationshipPremise = "") {
+  const { undo_snapshot: _undoSnapshot, ...visible } = normalizeCharacterDevelopment(value, relationshipPremise);
+  return visible;
+}
+
+function resolveCharacterDevelopmentBranch(value = {}, relationshipPremise = "", replacementMessageId = "") {
+  const state = normalizeCharacterDevelopment(value, relationshipPremise);
+  const replacementId = developmentText(replacementMessageId, 100);
+  if (!replacementId) return state;
+  if (state.last_message_id === replacementId && state.undo_snapshot) {
+    return normalizeCharacterDevelopment(state.undo_snapshot, relationshipPremise);
+  }
+  return normalizeCharacterDevelopment({}, relationshipPremise);
+}
+
+function canTransitionCharacterPhase(currentPhase = "baseline", proposedPhase = "") {
+  const transitions = new Map([
+    ["baseline", ["established", "warming", "strained"]],
+    ["established", ["baseline", "warming", "strained"]],
+    ["warming", ["established", "strained", "deepening", "romantic_shift"]],
+    ["strained", ["baseline", "established", "warming", "repairing"]],
+    ["repairing", ["established", "warming", "strained", "deepening"]],
+    ["deepening", ["warming", "strained", "repairing", "romantic_shift", "committed"]],
+    ["romantic_shift", ["warming", "strained", "deepening", "committed"]],
+    ["committed", ["strained", "repairing", "deepening", "romantic_shift"]],
+  ]);
+  return (transitions.get(currentPhase) || []).includes(proposedPhase);
+}
+
+function isGroundedDevelopmentEvidence(evidence = "", latestUserMessage = "", reply = "") {
+  const evidenceTokens = normalizeText(evidence).split(/\s+/).filter((token) => token.length > 2);
+  if (!evidenceTokens.length) return false;
+  const visibleTokens = new Set(normalizeText(`${latestUserMessage} ${reply}`).split(/\s+/).filter(Boolean));
+  const matches = evidenceTokens.filter((token) => visibleTokens.has(token)).length;
+  const required = Math.min(3, Math.max(1, Math.ceil(evidenceTokens.length * 0.35)));
+  return matches >= required;
+}
+
+function summarizeRejectedStyle(rejectedResponses = []) {
+  const text = rejectedResponses.map((item) => String(item || "").trim()).filter(Boolean).join("\n");
+  if (!text) return [];
+  const feedback = [];
+  const words = normalizeText(text).split(/\s+/).filter(Boolean);
+  if (isLowInformationGenericReply(text)) feedback.push("Avoid service-like acknowledgments and empty agreement.");
+  if (words.length < 28) feedback.push("Avoid underdeveloped replies that stop before the social beat lands.");
+  if (!/["“”]/.test(text)) feedback.push("Do not let narration replace the character's audible voice.");
+  const decorativeHits = (normalizeText(text).match(/\b(?:rain|umbrella|jaw|breath|pavement|eyes|silence|shoulder)\b/g) || []).length;
+  if (decorativeHits >= 4) feedback.push("Avoid decorative repetition of weather, glances, jaws, breathing and other filler gestures.");
+  if (!feedback.length) feedback.push("A regeneration must change the character's choice, conversational tactic and dialogue—not merely paraphrase the rejected take.");
+  return feedback;
+}
+
+function applyCharacterDevelopment({
+  previous = {},
+  update = {},
+  relationshipPremise = "",
+  latestUserMessage = "",
+  reply = "",
+  messageId = "",
+  isRegeneration = false,
+  regenerationInstruction = "",
+  rejectedResponses = [],
+} = {}) {
+  const state = normalizeCharacterDevelopment(previous, relationshipPremise);
+  const proposal = update && typeof update === "object" && !Array.isArray(update) ? update : {};
+  const significance = ["none", "low", "medium", "high"].includes(String(proposal.significance || "").toLowerCase())
+    ? String(proposal.significance).toLowerCase()
+    : "none";
+  const evidence = developmentText(proposal.evidence, 320);
+  const grounded = significance !== "none" && isGroundedDevelopmentEvidence(evidence, latestUserMessage, reply);
+  const allowedPhases = new Set(["baseline", "established", "warming", "strained", "repairing", "deepening", "romantic_shift", "committed"]);
+  const proposedPhase = developmentText(proposal.relationship_phase, 40).toLowerCase();
+  const phaseProposalIsCompatible = !proposedPhase ||
+    proposedPhase === state.relationship_phase ||
+    (allowedPhases.has(proposedPhase) && canTransitionCharacterPhase(state.relationship_phase, proposedPhase));
+
+  const next = {
+    ...state,
+    undo_snapshot: characterDevelopmentPromptView(state, relationshipPremise),
+    turns_observed: state.turns_observed + 1,
+    emotional_residue: state.emotional_residue
+      .map((item) => ({ ...item, remaining_turns: item.remaining_turns - 1 }))
+      .filter((item) => item.remaining_turns > 0),
+    learned_preferences: {
+      encourage: [...state.learned_preferences.encourage],
+      avoid: [...state.learned_preferences.avoid],
+    },
+    last_message_id: developmentText(messageId, 100),
+  };
+
+  if (grounded) {
+    const dynamic = developmentText(proposal.relationship_dynamic, 700);
+    if (dynamic && phaseProposalIsCompatible && ["medium", "high"].includes(significance)) {
+      next.current_dynamic = dynamic;
+    }
+
+    const emotion = developmentText(proposal.emotional_residue, 140);
+    if (emotion) {
+      const newResidue = {
+        emotion,
+        cause: evidence,
+        behavioral_effect: developmentText(proposal.behavioral_effect, 260),
+        remaining_turns: significance === "high" ? 6 : significance === "medium" ? 4 : 2,
+      };
+      const duplicateKey = normalizeText(`${emotion} ${evidence}`);
+      next.emotional_residue = [
+        ...next.emotional_residue.filter((item) => normalizeText(`${item.emotion} ${item.cause}`) !== duplicateKey),
+        newResidue,
+      ].slice(-4);
+    }
+
+    const contradiction = developmentText(proposal.active_contradiction, 260);
+    if (contradiction) next.active_contradictions = developmentList([...state.active_contradictions, contradiction], 4, 260);
+
+    if (["medium", "high"].includes(significance)) {
+      const turningPoint = developmentText(proposal.turning_point, 320);
+      if (turningPoint) {
+        next.turning_points = [
+          ...state.turning_points,
+          {
+            message_id: developmentText(messageId, 100),
+            event: turningPoint,
+            impact: developmentText(proposal.behavioral_effect || proposal.relationship_dynamic, 320),
+          },
+        ].slice(-12);
+      }
+    }
+
+    if (allowedPhases.has(proposedPhase) &&
+      proposedPhase !== state.relationship_phase &&
+      canTransitionCharacterPhase(state.relationship_phase, proposedPhase) &&
+      ["medium", "high"].includes(significance)) {
+      const increment = significance === "high" ? 2 : 1;
+      const sameCandidate = state.phase_candidate === proposedPhase;
+      const evidenceCount = Math.min(3, (sameCandidate ? state.phase_evidence_count : 0) + increment);
+      next.phase_candidate = proposedPhase;
+      next.phase_evidence_count = evidenceCount;
+      if (evidenceCount >= 3) {
+        next.relationship_phase = proposedPhase;
+        next.phase_candidate = "";
+        next.phase_evidence_count = 0;
+      }
+    } else if (proposedPhase === state.relationship_phase) {
+      next.phase_candidate = "";
+      next.phase_evidence_count = 0;
+    }
+  }
+
+  if (isRegeneration) {
+    next.learned_preferences.avoid = developmentList([
+      ...next.learned_preferences.avoid,
+      ...summarizeRejectedStyle(rejectedResponses),
+    ], 8, 300);
+    const direction = developmentText(regenerationInstruction, 280);
+    if (direction) {
+      next.learned_preferences.encourage = developmentList([
+        ...next.learned_preferences.encourage,
+        `Creator direction: ${direction}`,
+      ], 8, 300);
+    }
+  }
+
+  return normalizeCharacterDevelopment(next, relationshipPremise);
 }
 
 function validateNarrativeReply(reply = "", options = {}) {
@@ -793,6 +1068,13 @@ async function streamAndPersist({
   memories,
   loreEntries,
   existingTimeline,
+  previousDevelopment,
+  developmentUpdate,
+  character,
+  latestUserMessage,
+  regenerationInstruction,
+  rejectedResponses,
+  isRegeneration,
 }) {
   const stream = new ReadableStream({
     async start(controller) {
@@ -828,6 +1110,17 @@ async function streamAndPersist({
           : await saveCharacterReply({ supabase, conversationId, userId, reply });
 
         const update = { updated_at: new Date().toISOString() } as Record<string, any>;
+        update.character_development = applyCharacterDevelopment({
+          previous: previousDevelopment,
+          update: developmentUpdate,
+          relationshipPremise: character.relationship || "",
+          latestUserMessage,
+          reply,
+          messageId: savedMessage.id,
+          isRegeneration,
+          regenerationInstruction,
+          rejectedResponses,
+        });
         const note = cleanPromptValue(continuityNote, 600);
         if (note) {
           const timeline = Array.isArray(existingTimeline) ? existingTimeline : [];

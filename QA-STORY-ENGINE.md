@@ -68,3 +68,22 @@ Regenera una respuesta con una instrucción concreta, por ejemplo:
 La versión rechazada debe desaparecer inmediatamente. La nueva versión debe
 cambiar la decisión/estructura y cumplir la instrucción; no basta con reemplazar
 adjetivos. Si detienes o falla la generación, la versión guardada debe volver.
+
+## 7. Personaje nuevo y desarrollo gradual
+
+1. Crea un personaje nuevo después de instalar la v1.1. Los cuatro campos de
+   `Development` son opcionales; completa al menos motivación y defensa.
+2. Inicia dos chats distintos con ese mismo personaje.
+3. En el primero, construye confianza mediante varios intercambios visibles. En
+   el segundo, mantén una relación distante.
+
+El personaje debe conservar su identidad en ambos chats, pero la cercanía,
+contradicciones y efectos emocionales deben evolucionar por separado. Una sola
+frase cariñosa no debe convertirlo en pareja ni borrar su defensa.
+
+## 8. Aprendizaje al regenerar
+
+Regenera una respuesta vacía como `Okay, I'm listening` y dirige la siguiente
+hacia impacto privado y diálogo natural. En turnos posteriores Velvet debe
+evitar el patrón vacío, sin repetir la respuesta rechazada ni tratarla como
+canon.
