@@ -62,7 +62,7 @@ const generatedDraftFields = [
 ];
 
 function CreateCharacterModal({ onClose, onCreated, character = null }) {
-  const { createCharacter, updateCharacter, enhanceCharacterDraft, organizeCharacterDraft, generateCharacterDraft } = useCharacters();
+  const { createCharacter, updateCharacter, enhanceCharacterDraft, organizeCharacterDraft, generateCharacterDraft, testCharacterVoice } = useCharacters();
   const [form, setForm] = useState(() => character ? {
     ...initialForm,
     name: character.name || "",
@@ -106,9 +106,28 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [characterConcept, setCharacterConcept] = useState("");
   const [creatorStatus, setCreatorStatus] = useState("");
+  const [voiceTesting, setVoiceTesting] = useState(false);
+  const [voiceSample, setVoiceSample] = useState("");
+  const draftStorageKey = "velvet_character_draft_v14";
   const generationAbortRef = useRef(null);
 
   useEffect(() => () => generationAbortRef.current?.abort(), []);
+  useEffect(() => {
+    if (character) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(draftStorageKey) || "null");
+      if (saved?.form && Object.values(saved.form).some((value) => typeof value === "string" && value.trim())) {
+        setForm((current) => ({ ...current, ...saved.form, imageFile: null, coverFile: null }));
+        setCharacterConcept(saved.characterConcept || "");
+        setCreatorStatus("Recovered your unfinished character draft.");
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    if (character) return;
+    const safe = { ...form, imageFile: null, coverFile: null };
+    localStorage.setItem(draftStorageKey, JSON.stringify({ form: safe, characterConcept, savedAt: Date.now() }));
+  }, [form, characterConcept, character]);
 
   const completion = useMemo(() => {
     const required = [form.name, form.role, form.personality, form.firstMessage];
@@ -223,6 +242,15 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
     setCoverPreview("");
     setError("");
     setCreatorStatus("Draft discarded. You can change the idea or ask Velvet to surprise you again.");
+  }
+
+  async function handleVoiceTest() {
+    if (aiBusy || saving || !form.name.trim() || !form.personality.trim()) return;
+    try {
+      setVoiceTesting(true); setError(""); setVoiceSample("");
+      setVoiceSample(await testCharacterVoice(form));
+    } catch (requestError) { setError(requestError.message || "Velvet couldn't test this voice."); }
+    finally { setVoiceTesting(false); }
   }
 
   function validateCharacter() {

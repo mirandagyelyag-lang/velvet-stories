@@ -16,6 +16,7 @@ type ModelEnvelope = {
   continuity_note: string;
   development_update: Record<string, any>;
   voice_plan: Record<string, any>;
+  memory_updates: Record<string, any>[];
 };
 
 type ModelResult = ModelEnvelope & {
@@ -76,6 +77,14 @@ Deno.serve(async (request) => {
 
     if (action === "character_assist") {
       return await handleCharacterAssist({ apiKey, draft: body?.draft, mode: body?.mode });
+    }
+
+    if (action === "character_voice_test") {
+      return await handleCharacterVoiceTest({ apiKey, draft: body?.draft, situation: body?.situation });
+    }
+
+    if (action === "instant_story") {
+      return await handleInstantStory({ apiKey, draft: body?.draft, idea: body?.idea });
     }
 
     if (action === "character_generate") {
@@ -241,6 +250,7 @@ Deno.serve(async (request) => {
       existingTimeline: loaded.conversation.story_timeline || [],
       previousDevelopment: developmentState,
       developmentUpdate: result.development_update,
+      memoryUpdates: result.memory_updates,
       character: configuredCharacter,
       latestUserMessage,
       regenerationInstruction,
@@ -361,6 +371,40 @@ async function handleCharacterAssist({ apiKey, draft, mode }) {
     prompt: `${instruction}\nSeparate stable identity from possible growth: motivation and defenses are present-day anchors, softening triggers are earned influences, and growth direction is only a possibility—not an instant transformation. Return field suggestions only.\n\nDRAFT\n${JSON.stringify(safeDraft).slice(0, 16000)}`,
   });
   return json({ suggestions });
+}
+
+async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
+  const safeDraft = draft && typeof draft === "object" ? draft : {};
+  const prompt = `Write a short voice test for this private fictional roleplay character. Do not explain the character. Put them in the requested tiny situation and give 3 to 5 lines of dialogue/action that make their vocabulary, rhythm, humor, emotional defenses and social habits recognizable. Never write the user's dialogue or thoughts. Keep it under 140 words.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nSITUATION\n${String(situation || "A friend asks if they're okay after a difficult day.").slice(0, 600)}`;
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter(Boolean))];
+  let lastError = "Velvet couldn't test this voice.";
+  for (const model of models) {
+    try {
+      const response = await fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 450, temperature: 0.8, thinkingConfig: { thinkingLevel: "MINIMAL" } } }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { lastError = data?.error?.message || lastError; continue; }
+      const sample = extractCandidateText(data).trim();
+      if (sample) return json({ sample });
+    } catch (error) { lastError = getErrorMessage(error); }
+  }
+  throw new Error(lastError);
+}
+
+async function handleInstantStory({ apiKey, draft, idea }) {
+  const safeDraft = draft && typeof draft === "object" ? draft : {};
+  const prompt = `Open a fresh private roleplay timeline for this character. Write only the opening scene, 130-190 words, immediately playable and specific. Preserve the character's established voice and relationship but choose a NEW concrete situation rather than repeating their stored first message. Do not control the user's dialogue, actions, thoughts or feelings. Favor actual interaction and dialogue over decorative setup. Use the language of the idea/profile.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nOPTIONAL IDEA\n${String(idea || "Surprise me with a plausible scene that fits their life.").slice(0, 700)}`;
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter(Boolean))];
+  let lastError = "Velvet couldn't open an instant story.";
+  for (const model of models) {
+    try {
+      const response = await fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 750, temperature: 0.88, thinkingConfig: { thinkingLevel: "MINIMAL" } } }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { lastError = data?.error?.message || lastError; continue; }
+      const opening = extractCandidateText(data).trim();
+      if (opening) return json({ opening });
+    } catch (error) { lastError = getErrorMessage(error); }
+  }
+  throw new Error(lastError);
 }
 
 async function handleCharacterGenerate({ apiKey, concept }) {
@@ -663,6 +707,7 @@ Return JSON with:
 - reply: only the finished roleplay prose.
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
 - development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
+- memory_updates: zero to two durable facts learned directly from the visible user turn or reply. Each item has content, category (person/relationship/world/event/preference/boundary), importance (1-5), and scope (conversation/character). Never infer identity, diagnosis, secrets or off-screen facts. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
 
 AUTHORITATIVE LATEST USER TURN (message_id=${latestUserRecord.id})
 ${userIdentity.name}: ${latest}
@@ -734,7 +779,7 @@ async function callGeminiWithFailover({
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
-              required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "development_update"],
+              required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "development_update", "memory_updates"],
               properties: {
                 turn_reading: { type: "string" },
                 canon_claims: { type: "array", items: { type: "string" } },
@@ -751,6 +796,7 @@ async function callGeminiWithFailover({
                 },
                 reply: { type: "string" },
                 continuity_note: { type: "string" },
+                memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content", "category", "importance", "scope"], properties: { content: { type: "string" }, category: { type: "string" }, importance: { type: "integer" }, scope: { type: "string" } } } },
                 development_update: {
                   type: "object",
                   required: ["significance", "evidence", "relationship_phase", "relationship_dynamic", "emotional_residue", "active_contradiction", "behavioral_effect", "turning_point"],
@@ -813,9 +859,10 @@ function parseModelEnvelope(raw): ModelEnvelope {
         ? parsed.development_update
         : {},
       voice_plan: parsed?.voice_plan && typeof parsed.voice_plan === "object" ? parsed.voice_plan : {},
+      memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 2) : [],
     };
   } catch {
-    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {} };
+    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, memory_updates: [] };
   }
 }
 
@@ -1299,6 +1346,7 @@ async function streamAndPersist({
   existingTimeline,
   previousDevelopment,
   developmentUpdate,
+  memoryUpdates = [],
   character,
   latestUserMessage,
   regenerationInstruction,
@@ -1361,7 +1409,21 @@ async function streamAndPersist({
           ].slice(-80);
         }
         await supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
-        sendEvent(controller, { type: "done", message: savedMessage });
+        if (!replacementMessage && Array.isArray(memoryUpdates) && memoryUpdates.length) {
+          const allowedCategories = new Set(["person", "relationship", "world", "event", "preference", "boundary"]);
+          const rows = memoryUpdates.map((item) => ({
+            user_id: userId, conversation_id: conversationId, character_id: character.id,
+            content: cleanPromptValue(item?.content, 500),
+            category: allowedCategories.has(String(item?.category)) ? String(item.category) : "event",
+            importance: Math.max(1, Math.min(5, Number(item?.importance) || 2)),
+            scope: String(item?.scope) === "character" ? "character" : "conversation", source: "automatic", is_pinned: false,
+          })).filter((item) => item.content);
+          for (const row of rows) {
+            const { data: duplicate } = await supabase.from("memories").select("id").eq("user_id", userId).eq("character_id", character.id).ilike("content", row.content).limit(1).maybeSingle();
+            if (!duplicate) await supabase.from("memories").insert(row);
+          }
+        }
+        sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: Array.isArray(memoryUpdates) ? memoryUpdates.length : 0 });
         console.log("[character-chat] response saved", { conversationId, messageId: savedMessage.id });
       } catch (error) {
         if (getErrorName(error) !== "AbortError") {

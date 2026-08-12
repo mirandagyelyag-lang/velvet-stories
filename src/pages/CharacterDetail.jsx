@@ -9,9 +9,12 @@ import {
   Quote,
   Sparkles,
   Volume2,
+  WandSparkles,
+  LoaderCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../services/supabase";
+import { useCharacters } from "../context/CharactersContext";
 import "../styles/character-detail.css";
 
 export default function CharacterDetail({
@@ -21,8 +24,11 @@ export default function CharacterDetail({
   onNewStory,
   onOpenStory,
   onEdit,
+  onInstantStory,
 }) {
   const [stories, setStories] = useState([]);
+  const { generateInstantStory } = useCharacters();
+  const [instantLoading, setInstantLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,6 +40,7 @@ export default function CharacterDetail({
         .from("conversations")
         .select("id, title, updated_at, branch_parent_id")
         .eq("character_id", character.id)
+        .is("trashed_at", null)
         .order("updated_at", { ascending: false })
         .limit(8);
 
@@ -47,6 +54,15 @@ export default function CharacterDetail({
       alive = false;
     };
   }, [character.id]);
+
+  async function handleInstantStory() {
+    if (instantLoading) return;
+    try {
+      setInstantLoading(true);
+      const opening = await generateInstantStory(character);
+      if (opening) await onInstantStory?.({ ...character, firstMessage: opening });
+    } finally { setInstantLoading(false); }
+  }
 
   const tags = character.tags || [];
   const depth = useMemo(
@@ -112,10 +128,7 @@ export default function CharacterDetail({
               <MessageCircle size={18} />
               <span>Continue story</span>
             </button>
-            <button className="character-profile__new" onClick={() => onNewStory(character)}>
-              <Plus size={18} />
-              <span>New story</span>
-            </button>
+            <button className="character-profile__new" onClick={() => onNewStory(character)}><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
           </div>
         </div>
       </section>

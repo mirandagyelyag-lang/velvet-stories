@@ -131,7 +131,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
       onUndo: () => setPendingDeletionIds((current) => current.filter((id) => id !== conversationId)),
       onCommit: async () => {
         setDeletingId(conversationId);
-        const { error: requestError } = await supabase.from("conversations").delete().eq("id", conversationId);
+        const { error: requestError } = await supabase.from("conversations").update({ trashed_at: new Date().toISOString() }).eq("id", conversationId);
         if (requestError) throw requestError;
         setConversations((current) => current.filter((item) => item.id !== conversationId));
         setPendingDeletionIds((current) => current.filter((id) => id !== conversationId));
@@ -139,6 +139,24 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
       },
       onError: (requestError) => { console.error(requestError); setPendingDeletionIds((current) => current.filter((id) => id !== conversationId)); setError("We couldn't delete that conversation."); setDeletingId(null); },
     });
+  }
+
+  async function restoreConversation(event, conversationId) {
+    event.stopPropagation();
+    setUpdatingId(conversationId);
+    const { error: requestError } = await supabase.from("conversations").update({ trashed_at: null, updated_at: new Date().toISOString() }).eq("id", conversationId);
+    if (requestError) setError("We couldn't restore that story."); else await loadConversations();
+    setUpdatingId(null);
+  }
+
+  async function permanentlyDeleteConversation(event, conversationId) {
+    event.stopPropagation();
+    const approved = await confirmAction({ title: "Delete forever?", message: "This story cannot be recovered after this.", confirmLabel: "Delete forever" });
+    if (!approved) return;
+    setDeletingId(conversationId);
+    const { error: requestError } = await supabase.from("conversations").delete().eq("id", conversationId);
+    if (requestError) setError("We couldn't permanently delete that story."); else setConversations((current) => current.filter((item) => item.id !== conversationId));
+    setDeletingId(null);
   }
 
   async function duplicateConversation(event, conversation) {
@@ -229,6 +247,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
     const value = search.trim().toLowerCase();
     return conversations.filter((conversation) => {
       if (pendingDeletionIds.includes(conversation.id)) return false;
+      if (view === "trash" && !conversation.trashed_at) return false;
+      if (view !== "trash" && conversation.trashed_at) return false;
       if (view === "active" && conversation.archived_at) return false;
       if (view === "archived" && !conversation.archived_at) return false;
       if (!value) return true;
@@ -252,7 +272,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
       <article
         key={conversation.id}
         className={`story-shelf-card${conversation.is_pinned ? " story-shelf-card--pinned" : ""}`}
-        onClick={() => editingId !== conversation.id && onOpenCharacter(character, conversation.id)}
+        onClick={() => !conversation.trashed_at && editingId !== conversation.id && onOpenCharacter(character, conversation.id)}
         style={{ "--character-color": character.color }}
       >
         <div className="story-shelf-card__cover">
@@ -281,7 +301,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
                   <button onClick={(event) => { setMenuId(null); exportConversation(event, conversation); }} disabled={updatingId === conversation.id}><Download size={15}/><span>Export</span></button>
                   <button onClick={(event) => { setMenuId(null); toggleArchived(event, conversation); }} disabled={updatingId === conversation.id}>{conversation.archived_at ? <ArchiveRestore size={15}/> : <Archive size={15}/>}<span>{conversation.archived_at ? "Restore" : "Archive"}</span></button>
                   <span className="story-shelf-card__menu-separator" />
-                  <button className="danger" onClick={(event) => { setMenuId(null); deleteConversation(event, conversation.id); }} disabled={deletingId === conversation.id}>{deletingId === conversation.id ? <LoaderCircle className="spin" size={15}/> : <Trash2 size={15}/>}<span>Delete</span></button>
+                  <button className={conversation.trashed_at ? "" : "danger"} onClick={(event) => { setMenuId(null); conversation.trashed_at ? restoreConversation(event, conversation.id) : deleteConversation(event, conversation.id); }} disabled={deletingId === conversation.id || updatingId === conversation.id}>{conversation.trashed_at ? <ArchiveRestore size={15}/> : <Trash2 size={15}/>}<span>{conversation.trashed_at ? "Restore" : "Move to Trash"}</span></button>{conversation.trashed_at && <button className="danger" onClick={(event) => { setMenuId(null); permanentlyDeleteConversation(event, conversation.id); }}><Trash2 size={15}/><span>Delete forever</span></button>}
                 </div>
               )}
             </div>
@@ -342,7 +362,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
           </label>
           <div className="story-library-toggle" aria-label="Story library view">
             <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}>Stories</button>
-            <button className={view === "archived" ? "active" : ""} onClick={() => setView("archived")}><Archive size={13}/> Archived</button>
+            <button className={view === "archived" ? "active" : ""} onClick={() => setView("archived")}><Archive size={13}/> Archived</button><button className={view === "trash" ? "active" : ""} onClick={() => setView("trash")}><Trash2 size={13}/> Trash</button>
           </div>
         </div>
       )}

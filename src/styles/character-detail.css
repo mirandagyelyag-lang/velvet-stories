@@ -509,3 +509,4 @@
   .character-profile__back,
   .character-profile__edit { transition: none; }
 }
+.character-profile__instant{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:14px;padding:11px 15px;border:1px solid color-mix(in srgb,var(--character-color) 30%,var(--border));background:color-mix(in srgb,var(--character-color) 10%,var(--surface));color:var(--text-primary);font-weight:750}.character-profile__instant:disabled{opacity:.6}

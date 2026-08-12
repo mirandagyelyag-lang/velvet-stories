@@ -43,6 +43,7 @@ export function CharactersProvider({ children }) {
       const { data, error } = await supabase
         .from("characters")
         .select("*")
+        .is("trashed_at", null)
         .order("created_at", {
           ascending: false,
         });
@@ -259,10 +260,19 @@ export function CharactersProvider({ children }) {
     return data?.character || {};
   }
 
+  async function generateInstantStory(characterData, idea = "") {
+    const { data, error } = await supabase.functions.invoke("character-chat", {
+      body: { action: "instant_story", draft: characterDraftPayload(characterData), idea },
+      timeout: 24000,
+    });
+    if (error) throw new Error(await readCharacterFunctionError(error, "Velvet couldn't open an instant story."));
+    return data?.opening || "";
+  }
+
   async function deleteCharacter(characterId) {
     const { error } = await supabase
       .from("characters")
-      .delete()
+      .update({ trashed_at: new Date().toISOString() })
       .eq("id", characterId);
 
     if (error) {
@@ -275,6 +285,35 @@ export function CharactersProvider({ children }) {
           character.id !== characterId
       )
     );
+  }
+
+  async function listTrashedCharacters() {
+    if (!user) return [];
+    const { data, error } = await supabase.from("characters").select("*").not("trashed_at", "is", null).order("trashed_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map(convertDatabaseCharacter);
+  }
+
+  async function restoreCharacter(characterId) {
+    const { data, error } = await supabase.from("characters").update({ trashed_at: null, updated_at: new Date().toISOString() }).eq("id", characterId).select().single();
+    if (error) throw error;
+    const restored = convertDatabaseCharacter(data);
+    setCharacters((current) => [restored, ...current.filter((item) => item.id !== restored.id)]);
+    return restored;
+  }
+
+  async function permanentlyDeleteCharacter(characterId) {
+    const { error } = await supabase.from("characters").delete().eq("id", characterId);
+    if (error) throw error;
+  }
+
+  async function testCharacterVoice(characterData, situation = "") {
+    const { data, error } = await supabase.functions.invoke("character-chat", {
+      body: { action: "character_voice_test", draft: characterDraftPayload(characterData), situation },
+      timeout: 24000,
+    });
+    if (error) throw new Error(await readCharacterFunctionError(error, "Velvet couldn't test this voice."));
+    return data?.sample || "";
   }
 
   async function toggleFavorite(characterId) {
@@ -319,7 +358,12 @@ export function CharactersProvider({ children }) {
         enhanceCharacterDraft,
         organizeCharacterDraft,
         generateCharacterDraft,
+        testCharacterVoice,
+        generateInstantStory,
         deleteCharacter,
+        listTrashedCharacters,
+        restoreCharacter,
+        permanentlyDeleteCharacter,
         toggleFavorite,
         updateTags,
       }}

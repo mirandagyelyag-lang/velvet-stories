@@ -310,6 +310,7 @@ export function ChatsProvider({
         "character_id",
         characterId
       )
+      .is("trashed_at", null)
       .order(
         "updated_at",
         {

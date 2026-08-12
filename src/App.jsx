@@ -150,6 +150,7 @@ function App() {
           onBack={() => { setPreviewCharacter(null); window.history.back(); }}
           onContinue={(character) => openCharacter(character)}
           onNewStory={startNewStoryFromProfile}
+          onInstantStory={startNewStoryFromProfile}
           onOpenStory={openCharacter}
           onEdit={(character) => {
             setEditingCharacter(character);
