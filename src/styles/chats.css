@@ -500,3 +500,462 @@
     border-radius: 26px 26px 0 0;
   }
 }
+
+
+/* =========================================================
+   v1.4.4 · Velvet Archive
+   Warmer, layered Stories screen. Intentionally avoids the
+   "white boxes on a white page" look.
+   ========================================================= */
+
+.chats-page--shelf {
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+}
+
+.chats-page--shelf::before,
+.chats-page--shelf::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(2px);
+}
+
+.chats-page--shelf::before {
+  width: 420px;
+  height: 420px;
+  top: 70px;
+  right: -170px;
+  border-radius: 42% 58% 65% 35% / 48% 35% 65% 52%;
+  background:
+    radial-gradient(circle at 35% 34%,
+      color-mix(in srgb, var(--accent) 19%, transparent),
+      color-mix(in srgb, var(--accent) 6%, transparent) 46%,
+      transparent 72%);
+  opacity: .9;
+}
+
+.chats-page--shelf::after {
+  width: 360px;
+  height: 360px;
+  left: -170px;
+  bottom: 3vh;
+  border-radius: 58% 42% 37% 63% / 38% 56% 44% 62%;
+  background:
+    radial-gradient(circle at 58% 44%,
+      color-mix(in srgb, var(--gold) 12%, transparent),
+      color-mix(in srgb, var(--accent) 5%, transparent) 50%,
+      transparent 72%);
+  opacity: .72;
+}
+
+/* Hero: one atmospheric surface rather than an empty header. */
+.story-library-intro {
+  overflow: hidden;
+  min-height: 190px;
+  align-items: flex-end;
+  margin-bottom: 14px;
+  padding: 32px 32px 30px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: 30px 30px 12px 30px;
+  background:
+    linear-gradient(115deg,
+      color-mix(in srgb, var(--accent) 18%, var(--surface)),
+      color-mix(in srgb, var(--surface) 86%, var(--background)) 47%,
+      color-mix(in srgb, var(--gold) 8%, var(--surface)));
+  box-shadow:
+    0 24px 70px color-mix(in srgb, #2a101b 10%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 54%, transparent);
+}
+
+.story-library-intro::before {
+  content: "VS";
+  position: absolute;
+  right: 24px;
+  top: -26px;
+  font-family: "Cormorant Garamond", serif;
+  font-size: 9rem;
+  line-height: 1;
+  font-weight: 650;
+  letter-spacing: -.08em;
+  color: color-mix(in srgb, var(--accent) 8%, transparent);
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+
+.story-library-intro::after {
+  left: 32px;
+  bottom: 20px;
+  width: 92px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 88%, transparent),
+    color-mix(in srgb, var(--gold) 72%, transparent),
+    transparent
+  );
+}
+
+.story-library-intro__copy {
+  position: relative;
+  z-index: 1;
+  align-items: flex-start;
+  gap: 17px;
+}
+
+.story-library-intro__mark {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+  color: color-mix(in srgb, var(--gold) 72%, var(--accent));
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 16%, var(--surface)),
+      color-mix(in srgb, var(--surface) 82%, transparent));
+  border-color: color-mix(in srgb, var(--gold) 34%, var(--border));
+  border-radius: 50% 50% 50% 18px;
+  box-shadow:
+    0 10px 28px color-mix(in srgb, var(--accent) 14%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 65%, transparent);
+}
+
+.story-library-intro__eyebrow {
+  margin-top: 2px;
+  margin-bottom: 8px;
+  color: color-mix(in srgb, var(--accent) 74%, var(--text-secondary));
+  font-size: .57rem;
+  letter-spacing: .24em;
+}
+
+.story-library-intro h1 {
+  font-size: clamp(3.1rem, 7vw, 5.7rem);
+  line-height: .77;
+  font-weight: 570;
+  color: color-mix(in srgb, var(--text-primary) 92%, var(--accent));
+  text-shadow: 0 12px 42px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.story-library-intro p {
+  max-width: 430px;
+  margin-top: 15px;
+  color: color-mix(in srgb, var(--text-secondary) 92%, var(--accent));
+  font-size: .79rem;
+}
+
+.story-library-header__new {
+  position: relative;
+  z-index: 2;
+  min-height: 47px;
+  padding: 0 19px;
+  margin-bottom: 2px;
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-dark) 84%, var(--accent)),
+      color-mix(in srgb, var(--accent) 92%, #7b3347));
+  border-color: color-mix(in srgb, var(--gold) 42%, var(--accent));
+  border-radius: 999px;
+  box-shadow:
+    0 14px 30px color-mix(in srgb, var(--accent-dark) 23%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.16);
+}
+
+/* Search + filters become one ribbon instead of two white boxes. */
+.story-library-commandbar {
+  position: relative;
+  z-index: 3;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 8px;
+  margin: -1px 12px 38px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
+  border-top-color: color-mix(in srgb, var(--gold) 16%, var(--border));
+  border-radius: 10px 10px 22px 22px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 7%, var(--surface)),
+      color-mix(in srgb, var(--surface) 88%, var(--background)));
+  box-shadow:
+    0 18px 44px color-mix(in srgb, #2a101b 7%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 48%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.story-library-search {
+  height: 46px;
+  background:
+    color-mix(in srgb, var(--background) 55%, transparent);
+  border-color: transparent;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.story-library-search:focus-within {
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.story-library-toggle {
+  height: 46px;
+  padding: 3px;
+  background: color-mix(in srgb, var(--background) 48%, transparent);
+  border-color: transparent;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.story-library-toggle button {
+  height: 40px;
+  border-radius: 11px;
+}
+
+.story-library-toggle button.active {
+  color: color-mix(in srgb, var(--accent-dark) 82%, var(--text-primary));
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--accent) 12%, var(--surface)),
+      color-mix(in srgb, var(--gold) 7%, var(--surface)));
+  box-shadow:
+    0 6px 18px color-mix(in srgb, var(--accent) 8%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* Shelf headings now anchor the page visually. */
+.story-shelf {
+  gap: 44px;
+}
+
+.story-shelf-section {
+  position: relative;
+}
+
+.story-shelf-section__heading {
+  position: relative;
+  margin-bottom: 18px;
+  padding: 0 4px 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 11%, var(--border));
+}
+
+.story-shelf-section__heading::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  bottom: -1px;
+  width: min(170px, 40vw);
+  height: 1px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 70%, transparent),
+    color-mix(in srgb, var(--gold) 48%, transparent),
+    transparent);
+}
+
+.story-shelf-section__heading span {
+  color: color-mix(in srgb, var(--accent) 68%, var(--gold));
+  letter-spacing: .22em;
+}
+
+.story-shelf-section__heading h2 {
+  font-size: clamp(1.8rem, 3vw, 2.35rem);
+  color: color-mix(in srgb, var(--text-primary) 94%, var(--accent));
+}
+
+.story-shelf-section__heading > small {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 17%, var(--border));
+}
+
+/* Cards: warmer paper + atmospheric cover, no "hospital cards". */
+.story-shelf-grid {
+  gap: 20px;
+}
+
+.story-shelf-card {
+  overflow: hidden;
+  border-radius: 26px 26px 14px 26px;
+  background:
+    linear-gradient(155deg,
+      color-mix(in srgb, var(--accent) 5%, var(--surface)),
+      color-mix(in srgb, var(--gold) 4%, var(--surface)) 48%,
+      color-mix(in srgb, var(--background) 34%, var(--surface)));
+  border-color: color-mix(in srgb, var(--accent) 13%, var(--border));
+  box-shadow:
+    0 18px 55px color-mix(in srgb, #241016 9%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent);
+}
+
+.story-shelf-card:hover {
+  transform: translateY(-5px) rotate(-.15deg);
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--accent));
+  box-shadow:
+    0 26px 70px color-mix(in srgb, #241016 15%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.story-shelf-card__cover {
+  height: 205px;
+  border-radius: 25px 25px 0 0;
+}
+
+.story-shelf-card__veil {
+  background:
+    radial-gradient(circle at 78% 16%, rgba(255,238,219,.16), transparent 26%),
+    linear-gradient(180deg, rgba(14,7,11,.01), rgba(14,7,11,.12) 38%, rgba(14,7,11,.86));
+}
+
+.story-shelf-card__body {
+  position: relative;
+  padding: 19px 20px 18px;
+}
+
+.story-shelf-card__body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  width: 54px;
+  height: 2px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--gold) 78%, var(--accent)),
+    transparent);
+}
+
+.story-shelf-card__body h3 {
+  font-size: 1.67rem;
+  letter-spacing: -.015em;
+}
+
+.story-shelf-card__role {
+  color: color-mix(in srgb, var(--accent) 65%, var(--gold));
+  font-weight: 700;
+  letter-spacing: .07em;
+}
+
+.story-shelf-card__preview {
+  color: color-mix(in srgb, var(--text-secondary) 92%, var(--accent));
+}
+
+.story-shelf-card__bottom {
+  border-top-color: color-mix(in srgb, var(--accent) 10%, var(--border));
+}
+
+.story-shelf-card__continue {
+  color: color-mix(in srgb, var(--accent) 78%, var(--text-primary));
+  font-weight: 720;
+}
+
+/* Empty/loading states should still feel like Velvet. */
+.page-state,
+.chats-empty {
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 46%),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 5%, var(--surface)),
+      color-mix(in srgb, var(--gold) 4%, var(--surface)));
+  border-color: color-mix(in srgb, var(--accent) 15%, var(--border));
+}
+
+/* Mobile */
+@media (max-width: 760px) {
+  .chats-page {
+    padding: 18px 13px 72px;
+  }
+
+  .story-library-intro {
+    min-height: 210px;
+    align-items: flex-end;
+    padding: 25px 20px 24px;
+    border-radius: 26px 26px 10px 26px;
+  }
+
+  .story-library-intro::before {
+    right: -10px;
+    top: -16px;
+    font-size: 7.2rem;
+  }
+
+  .story-library-intro::after {
+    left: 20px;
+    bottom: 16px;
+  }
+
+  .story-library-intro__copy {
+    gap: 13px;
+  }
+
+  .story-library-intro__mark {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .story-library-intro h1 {
+    font-size: clamp(3rem, 17vw, 4.6rem);
+  }
+
+  .story-library-intro p {
+    max-width: 245px;
+    padding-right: 8px;
+    font-size: .72rem;
+  }
+
+  .story-library-header__new {
+    position: absolute;
+    right: 16px;
+    bottom: 20px;
+    width: 46px;
+    height: 46px;
+    min-height: 46px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .story-library-header__new span {
+    display: none;
+  }
+
+  .story-library-commandbar {
+    grid-template-columns: 1fr;
+    margin: -1px 8px 31px;
+    padding: 8px;
+    border-radius: 8px 8px 20px 20px;
+  }
+
+  .story-library-search,
+  .story-library-toggle {
+    width: 100%;
+  }
+
+  .story-library-toggle {
+    justify-content: stretch;
+  }
+
+  .story-library-toggle button {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0 7px;
+    font-size: .57rem;
+  }
+
+  .story-shelf {
+    gap: 36px;
+  }
+
+  .story-shelf-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .story-shelf-card__cover {
+    height: 220px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-shelf-card:hover,
+  .story-library-header__new:hover {
+    transform: none;
+  }
+}

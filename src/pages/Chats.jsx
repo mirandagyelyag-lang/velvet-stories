@@ -349,9 +349,9 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
         <div className="story-library-intro__copy">
           <span className="story-library-intro__mark"><BookOpen size={16}/></span>
           <div>
-            <span className="story-library-intro__eyebrow">YOUR STORYSPACE</span>
+            <span className="story-library-intro__eyebrow">VELVET ARCHIVE</span>
             <h1>Stories</h1>
-            <p>Return to a world, find a moment, or begin somewhere new.</p>
+            <p>Your unfinished worlds are waiting for you.</p>
           </div>
         </div>
         <button className="story-library-header__new" onClick={() => setPickerOpen(true)}>
