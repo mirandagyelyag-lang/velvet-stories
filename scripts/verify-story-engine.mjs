@@ -13,6 +13,7 @@ const settingsPage = read("src/pages/Settings.jsx");
 const privateCancellationMigration = read("supabase/migrations/202608100002_generation_requests_private.sql");
 const developmentMigration = read("supabase/migrations/202608110001_character_development_v1.sql");
 const storyDnaMigration = read("supabase/migrations/202608120001_story_dna_v12.sql");
+const storyFeedbackMigration = read("supabase/migrations/202608120002_story_feedback_v13.sql");
 
 const checks = [];
 function check(label, condition) {
@@ -35,7 +36,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("new engine stays under sixteen hundred lines", edgeLines < 1600);
+check("consolidated engine stays under seventeen hundred lines", edgeLines < 1700);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -89,7 +90,7 @@ check("v1.2 voice migration covers every existing and future character",
   storyDnaMigration.includes("story_engine_version set default 9"));
 check("every newly created conversation starts an independent development state",
   chatsContext.includes("character_development: {}") &&
-  chatsContext.includes("story_engine_version: 9"));
+  chatsContext.includes("story_engine_version: 10"));
 check("character creator exposes all optional development anchors",
   ["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"].every((field) => characterModal.includes(`name="${field}"`)));
 check("character development anchors persist and reload",
@@ -101,6 +102,10 @@ check("advanced voice fingerprint is optional, folded and persistent",
     .every((field) => characterModal.includes(`name="${field}"`)) &&
   ["voice_vocabulary", "humor_style", "conflict_style", "affection_style", "verbal_tells", "voice_avoidances"]
     .every((field) => charactersContext.includes(`${field}:`)));
+check("advanced voice fingerprint is visibly discoverable",
+  characterModal.includes("Tap to expand") &&
+  characterModal.includes("voiceFingerprintCount") &&
+  characterModal.includes("studio-voice-fingerprint__chevron"));
 check("production engine contains no Rowan-specific development rule", !/\bRowan\b/.test(edge));
 check("development state is returned and saved in the same generation path",
   edge.includes("developmentUpdate: result.development_update") &&
@@ -131,7 +136,32 @@ check("regeneration feedback is sent explicitly and learned after repetition",
   chatsContext.includes("regenerationFeedback: Array.isArray(options.feedbackCodes)") &&
   settingsContext.includes("recordStoryFeedback") &&
   chatsContext.includes("Number(count) >= 2") &&
-  settingsPage.includes("Learned from regenerations"));
+  settingsPage.includes("What Velvet has learned"));
+check("thumb feedback separates preserve from avoid",
+  chat.includes("ThumbsUp") && chat.includes("ThumbsDown") &&
+  chat.includes('recordStoryFeedback(kind, codes)') &&
+  ["voice", "emotion", "dialogue", "pacing"].every((code) => chat.includes(`["${code}"`)) &&
+  chatsContext.includes("learnedPositiveFeedback") && chatsContext.includes("learnedNegativeFeedback"));
+check("feedback can be undone and individual preferences forgotten",
+  chat.includes("undoStoryFeedback") && chat.includes("undoLatestFeedback") &&
+  settingsContext.includes("removeStoryFeedback") && settingsPage.includes("onRemove(kind, code)"));
+check("story preferences sync privately across signed-in devices",
+  storyFeedbackMigration.includes("create table if not exists public.user_story_preferences") &&
+  storyFeedbackMigration.includes("enable row level security") &&
+  storyFeedbackMigration.includes("auth.uid() = user_id") &&
+  settingsContext.includes('.from("user_story_preferences")') &&
+  settingsContext.includes("storySyncReady"));
+check("AI can create an entire reviewable character draft",
+  edge.includes('action === "character_generate"') &&
+  edge.includes("Honor any requested name exactly") &&
+  edge.includes("required: Object.keys(characterDraftProperties)") &&
+  charactersContext.includes("generateCharacterDraft") &&
+  characterModal.includes("Create with AI") && characterModal.includes("Surprise me") &&
+  characterModal.includes("Nothing is saved automatically"));
+check("existing profiles can be organized without changing facts",
+  charactersContext.includes("organizeCharacterDraft") &&
+  edge.includes("Do not invent, delete or change facts") &&
+  characterModal.includes("Organize profile"));
 check("rewind and clean branches clear derived character development",
   (chatsContext.match(/character_development: \{\}/g) || []).length >= 3 &&
   chatsContext.includes("characterDevelopment: {}"));
@@ -198,14 +228,16 @@ const safeStoryPreferences = helpers?.normalizeStoryPreferences({
   emotionalInterior: "interior_visible",
   romancePacing: "medium_fast",
   customInstructions: `<script>${"x".repeat(1000)}</script>`,
-  learnedFeedback: ["repetitive", "fake_reason"],
+  learnedPositiveFeedback: ["voice", "fake_reason"],
+  learnedNegativeFeedback: ["repetitive", "fake_reason"],
 });
 check("global story preferences are whitelisted sanitized and bounded",
   safeStoryPreferences?.prose === "contemporary" &&
   safeStoryPreferences?.dialogue === "dialogue_forward" &&
   !safeStoryPreferences?.custom_instructions.includes("<") &&
   safeStoryPreferences?.custom_instructions.length <= 900 &&
-  safeStoryPreferences?.learned_feedback.length === 1);
+  safeStoryPreferences?.learned_positive_feedback.length === 1 &&
+  safeStoryPreferences?.learned_negative_feedback.length === 1);
 
 const repeatedDialogueReply = `Theo stopped beside the door. "I won't make that mistake again," he said, letting the promise stand without dressing it up.`;
 const oldDialogueReply = `Theo looked across the table. "I won't make that mistake again," he said before gathering his books.`;

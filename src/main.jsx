@@ -34,9 +34,9 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <PWAProvider>
       <ThemeProvider>
-        <SettingsProvider>
-          <FeedbackProvider>
-            <AuthProvider>
+        <FeedbackProvider>
+          <AuthProvider>
+            <SettingsProvider>
               <CharactersProvider>
                 <PersonasProvider>
                   <LorebooksProvider>
@@ -46,9 +46,9 @@ createRoot(document.getElementById("root")).render(
                   </LorebooksProvider>
                 </PersonasProvider>
               </CharactersProvider>
-            </AuthProvider>
-          </FeedbackProvider>
-        </SettingsProvider>
+            </SettingsProvider>
+          </AuthProvider>
+        </FeedbackProvider>
       </ThemeProvider>
     </PWAProvider>
   </StrictMode>

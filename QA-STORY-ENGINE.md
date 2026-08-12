@@ -71,7 +71,7 @@ adjetivos. Si detienes o falla la generación, la versión guardada debe volver.
 
 ## 7. Personaje nuevo y desarrollo gradual
 
-1. Crea un personaje nuevo después de instalar la v1.2. Los cuatro campos de
+1. Crea un personaje nuevo después de instalar la v1.3. Los cuatro campos de
    `Development` son opcionales; completa al menos motivación y defensa.
 2. Inicia dos chats distintos con ese mismo personaje.
 3. En el primero, construye confianza mediante varios intercambios visibles. En
@@ -114,3 +114,22 @@ usar un mismo motivo por segunda vez debe aparecer en Settings como aprendido.
 Completa huellas avanzadas opuestas para dos personajes: uno preciso y seco que
 no coquetea; otro expansivo, cálido y juguetón. Hazles la misma pregunta en dos
 chats nuevos. Las respuestas deberían poder distinguirse sin leer sus nombres.
+
+## 12. Pulgares y sincronización
+
+1. Pulsa 👍 bajo una respuesta y marca `Character voice`; repítelo en otra.
+2. Confirma en Settings que aparece bajo `Preserve` como aprendido.
+3. Pulsa 👎, elige un motivo, y comprueba que abre la regeneración en la última
+   respuesta. Usa `Undo` una vez y revisa que el contador retroceda.
+4. Inicia la misma cuenta en otro dispositivo y confirma que Story DNA y los
+   contadores coinciden después de recargar.
+
+## 13. Personaje completo con AI
+
+1. Abre el creador y pulsa `Create with AI`.
+2. Prueba una idea con nombre incluido; el nombre debe conservarse. Revisa que
+   se llenen relación, mundo, desarrollo, voz avanzada y opening.
+3. Abre otro borrador, deja la idea vacía y pulsa `Surprise me`.
+4. Confirma que nada aparece en la biblioteca hasta pulsar `Create character`.
+5. En un personaje antiguo con Personality muy largo, usa `Organize profile` y
+   comprueba que los hechos se distribuyen sin cambiar nombre, relación o mundo.

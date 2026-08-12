@@ -1,4 +1,34 @@
-# Velvet Stories — Story DNA y voces propias (v1.2.0)
+# Velvet Stories — Feedback y creación completa (v1.3.0)
+
+La v1.3 conserva el motor narrativo y la huella de voz de v1.2, y añade una
+capa de aprendizaje explícita y un creador completo de personajes.
+
+## Me gusta, no me gusta y sincronización
+
+- Cada respuesta del personaje muestra 👍 y 👎. El pulgar positivo permite
+  conservar voz, impacto emocional, equilibrio de diálogo o ritmo; `Everything`
+  elige las cuatro cualidades sin memorizar el texto literal.
+- El pulgar negativo abre los ocho motivos de regeneración. En una respuesta
+  antigua guarda el aprendizaje sin alterar ese punto del canon; en la última
+  también genera la nueva versión.
+- Una elección repetida dos veces se aplica globalmente. `Settings` muestra lo
+  que Velvet está aprendiendo y lo ya aprendido, con contador y borrado
+  individual. La acción más reciente puede deshacerse desde el chat.
+- Story DNA y los contadores se guardan en una tabla privada protegida por RLS,
+  por lo que acompañan a la misma cuenta en computador, celular y PWA.
+
+## Create with AI
+
+- Una idea corta puede producir nombre, rol, introducción, personalidad,
+  relación, mundo, DNA, desarrollo, voz avanzada, límites, estilo y opening.
+- También funciona con el campo vacío: `Surprise me` crea un personaje adulto,
+  original e independiente, no una copia de los perfiles existentes.
+- El resultado es solo un borrador editable. No crea ni guarda el personaje
+  hasta presionar `Create character`.
+- `Organize profile` reparte un perfil antiguo entre los campos sin pedir
+  hechos nuevos. `AI Polish` sigue disponible para pulir y completar huecos.
+- La huella avanzada ahora muestra flecha, `Tap to expand` y un contador de los
+  seis campos completados.
 
 La v1.2 conserva completo el desarrollo persistente de la v1.1 y añade tres
 capas globales: preferencias narrativas, feedback inteligente al regenerar y
@@ -129,7 +159,7 @@ npm run lint
 npm run build
 ```
 
-`verify:story` ejecuta 86 casos concretos, incluidos personajes futuros,
+`verify:story` ejecuta 92 casos concretos, incluidos personajes futuros,
 independencia por conversación, evidencia inventada, cambio gradual de fase,
 residuo emocional, Story DNA, los ocho motivos de regeneración, voces propias,
 frases recicladas, conversación casual, `It's okay`, afecto, silencio, POV,

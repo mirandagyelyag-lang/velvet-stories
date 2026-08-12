@@ -68,7 +68,21 @@ const checks = [
     name: "rejected response remains hidden while feedback rewrite begins",
     pass:
       chat.includes("The rejected response will not become canon") &&
-      chat.includes("recordStoryFeedback(feedbackCodes)"),
+      chat.includes('rememberFeedback("negative", feedbackCodes'),
+  },
+  {
+    name: "every character reply exposes like and dislike learning",
+    pass:
+      chat.includes('aria-label="Like this response"') &&
+      chat.includes('aria-label="Dislike this response"') &&
+      chat.includes("Save what worked") &&
+      chat.includes("Undo"),
+  },
+  {
+    name: "complete AI character creation remains review first",
+    pass:
+      readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Create with AI") &&
+      readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Nothing is saved automatically"),
   },
 ];
 

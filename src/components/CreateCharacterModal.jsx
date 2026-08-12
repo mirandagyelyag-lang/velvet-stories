@@ -2,6 +2,7 @@ import {
   BookOpen,
   Brain,
   Check,
+  ChevronDown,
   Heart,
   ImagePlus,
   LoaderCircle,
@@ -53,9 +54,15 @@ const initialForm = {
 };
 
 const palette = ["#7a2942", "#243b6b", "#36594d", "#6d3e78", "#81552f", "#34343f", "#8a334f", "#405b78"];
+const voiceFingerprintFields = ["voiceVocabulary", "humorStyle", "conflictStyle", "affectionStyle", "verbalTells", "voiceAvoidances"];
+const generatedDraftFields = [
+  "name", "role", "description", "personality", "relationship", "world", "values", "fears", "habits", "contradictions",
+  "coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection", "speechStyle", "voiceVocabulary", "humorStyle",
+  "conflictStyle", "affectionStyle", "verbalTells", "voiceAvoidances", "boundaries", "scenario", "exampleDialogue", "firstMessage",
+];
 
 function CreateCharacterModal({ onClose, onCreated, character = null }) {
-  const { createCharacter, updateCharacter, enhanceCharacterDraft } = useCharacters();
+  const { createCharacter, updateCharacter, enhanceCharacterDraft, organizeCharacterDraft, generateCharacterDraft } = useCharacters();
   const [form, setForm] = useState(() => character ? {
     ...initialForm,
     name: character.name || "",
@@ -94,12 +101,19 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
+  const [organizing, setOrganizing] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [creatorOpen, setCreatorOpen] = useState(false);
+  const [characterConcept, setCharacterConcept] = useState("");
+  const [creatorStatus, setCreatorStatus] = useState("");
 
   const completion = useMemo(() => {
     const required = [form.name, form.role, form.personality, form.firstMessage];
     const filled = required.filter((value) => value?.trim()).length;
     return Math.round((filled / required.length) * 100);
   }, [form.name, form.role, form.personality, form.firstMessage]);
+  const voiceFingerprintCount = voiceFingerprintFields.filter((field) => form[field]?.trim()).length;
+  const aiBusy = enhancing || organizing || generating;
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -134,7 +148,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   }
 
   async function handleEnhanceCharacter() {
-    if (enhancing || saving) return;
+    if (aiBusy || saving) return;
     if (!form.name.trim() || !form.role.trim()) {
       setError("Add a name and role before using AI Polish.");
       return;
@@ -144,33 +158,48 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
       setEnhancing(true);
       setError("");
       const suggestions = await enhanceCharacterDraft(form);
-      setForm((current) => ({
-        ...current,
-        personality: suggestions.personality || current.personality,
-        values: suggestions.values || current.values,
-        fears: suggestions.fears || current.fears,
-        habits: suggestions.habits || current.habits,
-        contradictions: suggestions.contradictions || current.contradictions,
-        coreMotivation: suggestions.coreMotivation || current.coreMotivation,
-        emotionalDefense: suggestions.emotionalDefense || current.emotionalDefense,
-        softeningTriggers: suggestions.softeningTriggers || current.softeningTriggers,
-        growthDirection: suggestions.growthDirection || current.growthDirection,
-        speechStyle: suggestions.speechStyle || current.speechStyle,
-        voiceVocabulary: suggestions.voiceVocabulary || current.voiceVocabulary,
-        humorStyle: suggestions.humorStyle || current.humorStyle,
-        conflictStyle: suggestions.conflictStyle || current.conflictStyle,
-        affectionStyle: suggestions.affectionStyle || current.affectionStyle,
-        verbalTells: suggestions.verbalTells || current.verbalTells,
-        voiceAvoidances: suggestions.voiceAvoidances || current.voiceAvoidances,
-        boundaries: suggestions.boundaries || current.boundaries,
-        scenario: suggestions.scenario || current.scenario,
-        exampleDialogue: suggestions.exampleDialogue || current.exampleDialogue,
-      }));
+      setForm((current) => mergeCharacterSuggestions(current, suggestions));
     } catch (requestError) {
       console.error("Character AI Polish failed:", requestError);
       setError(requestError.message || "AI Polish couldn't refine this character.");
     } finally {
       setEnhancing(false);
+    }
+  }
+
+  async function handleOrganizeCharacter() {
+    if (aiBusy || saving) return;
+    if (!form.name.trim() || !form.personality.trim()) {
+      setError("Add a name and some personality text before organizing the profile.");
+      return;
+    }
+    try {
+      setOrganizing(true);
+      setError("");
+      const suggestions = await organizeCharacterDraft(form);
+      setForm((current) => mergeCharacterSuggestions(current, suggestions));
+    } catch (requestError) {
+      console.error("Character profile organization failed:", requestError);
+      setError(requestError.message || "Velvet couldn't organize this profile.");
+    } finally {
+      setOrganizing(false);
+    }
+  }
+
+  async function handleGenerateCharacter() {
+    if (aiBusy || saving) return;
+    try {
+      setGenerating(true);
+      setCreatorStatus("");
+      setError("");
+      const generated = await generateCharacterDraft(characterConcept);
+      setForm((current) => mergeCharacterSuggestions(current, generated, true));
+      setCreatorStatus("Complete draft created. Review anything you want before saving.");
+    } catch (requestError) {
+      console.error("Complete character generation failed:", requestError);
+      setError(requestError.message || "Velvet couldn't create this character.");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -210,7 +239,13 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
             <h2 id="character-studio-title">{character ? `Shape ${form.name || "your character"}` : "Create a new character"}</h2>
           </div>
           <div className="character-studio__top-actions">
-            <button type="button" className="character-studio__ai" onClick={handleEnhanceCharacter} disabled={saving || enhancing}>
+            {!character && <button type="button" className="character-studio__ai character-studio__ai--primary" onClick={()=>setCreatorOpen((open)=>!open)} disabled={saving || aiBusy} aria-expanded={creatorOpen}>
+              <Sparkles size={16}/><span>Create with AI</span>
+            </button>}
+            <button type="button" className="character-studio__ai" onClick={handleOrganizeCharacter} disabled={saving || aiBusy} title="Distribute existing profile text into the right fields without changing its facts">
+              {organizing ? <LoaderCircle className="character-modal__spinner" size={16}/> : <Brain size={16}/>}<span>{organizing ? "Organizing…" : "Organize profile"}</span>
+            </button>
+            <button type="button" className="character-studio__ai" onClick={handleEnhanceCharacter} disabled={saving || aiBusy}>
               {enhancing ? <LoaderCircle className="character-modal__spinner" size={16} /> : <Sparkles size={16} />}
               <span>{enhancing ? "Polishing…" : "AI Polish"}</span>
             </button>
@@ -219,6 +254,24 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
             </button>
           </div>
         </header>
+
+        {!character && creatorOpen && <section className="character-studio__creator" aria-label="Create a complete character with AI">
+          <div>
+            <span><Sparkles size={17}/></span>
+            <div><strong>Tell Velvet as much—or as little—as you have</strong><small>A name is optional. Leave it blank and Velvet will surprise you with a complete, original character.</small></div>
+          </div>
+          <textarea value={characterConcept} onChange={(event)=>{ setCharacterConcept(event.target.value); setCreatorStatus(""); }} maxLength={1200} rows="4" placeholder="Example: A warm but secretive paramedic named Elian. Friends to lovers, modern Chicago—or leave this empty and surprise me." disabled={generating}/>
+          <div className="character-studio__creator-seeds">
+            {["Best friends to lovers", "Unexpected campus romance", "Fantasy rivals with mutual respect", "Surprise me completely"].map((seed)=><button type="button" key={seed} onClick={()=>setCharacterConcept(seed)} disabled={generating}>{seed}</button>)}
+          </div>
+          <footer>
+            <small>{creatorStatus || "Nothing is saved automatically. You review the whole draft first."}</small>
+            <button type="button" onClick={handleGenerateCharacter} disabled={generating}>
+              {generating ? <LoaderCircle className="character-modal__spinner" size={17}/> : <Sparkles size={17}/>}
+              {generating ? "Creating their whole world…" : characterConcept.trim() ? "Create complete draft" : "Surprise me"}
+            </button>
+          </footer>
+        </section>}
 
         <form className="character-studio__layout" onSubmit={handleSubmit}>
           <aside className="character-studio__preview" style={{ "--preview-color": form.color }}>
@@ -318,7 +371,10 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
                 <textarea name="exampleDialogue" value={form.exampleDialogue} onChange={updateField} placeholder={'"You called me. I came. Don\'t make it weird."'} rows="4" disabled={saving} />
               </StudioField>
               <details className="studio-voice-fingerprint">
-                <summary><span><Sparkles size={15}/>Advanced voice fingerprint</span><small>Optional · makes similar archetypes sound unmistakably different</small></summary>
+                <summary>
+                  <span><ChevronDown className="studio-voice-fingerprint__chevron" size={16}/><Sparkles size={15}/>Advanced voice fingerprint</span>
+                  <small><strong>{voiceFingerprintCount ? `${voiceFingerprintCount}/6 filled` : "Optional"}</strong> · Tap to expand · makes similar archetypes unmistakably different</small>
+                </summary>
                 <div className="studio-grid studio-grid--two">
                   <StudioField label="Word choice & rhythm"><textarea name="voiceVocabulary" value={form.voiceVocabulary} onChange={updateField} placeholder="Short clauses, modern vocabulary, never ornate; swears only when genuinely rattled…" rows="3" disabled={saving}/></StudioField>
                   <StudioField label="Humor style"><textarea name="humorStyle" value={form.humorStyle} onChange={updateField} placeholder="Deadpan observations; never flirty one-liners or theatrical sarcasm…" rows="3" disabled={saving}/></StudioField>
@@ -429,6 +485,18 @@ function MiniImageControl({ title, preview, onChange, onRemove, disabled }) {
 
 function createInitials(name = "") {
   return name.trim().split(/\s+/).slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "VS";
+}
+
+function mergeCharacterSuggestions(current, suggestions = {}, replace = false) {
+  const next = { ...current };
+  for (const field of generatedDraftFields) {
+    const value = suggestions[field];
+    if (typeof value === "string" && value.trim()) next[field] = value.trim();
+    else if (replace) next[field] = "";
+  }
+  if (["short", "balanced", "long"].includes(suggestions.responseLength)) next.responseLength = suggestions.responseLength;
+  if (["dialogue", "balanced", "immersive"].includes(suggestions.narrationStyle)) next.narrationStyle = suggestions.narrationStyle;
+  return next;
 }
 
 function translateCharacterError(message = "") {

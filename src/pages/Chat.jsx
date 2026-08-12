@@ -28,6 +28,8 @@ import {
   Sparkles,
   Square,
   SquarePen,
+  ThumbsDown,
+  ThumbsUp,
   Trash2,
   UserRound,
   X,
@@ -57,9 +59,15 @@ const REGENERATION_FEEDBACK = [
   ["pov_violation", "Controlled my POV"],
   ["missing_emotional_impact", "Missing emotional impact"],
 ];
+const POSITIVE_FEEDBACK = [
+  ["voice", "Character voice"],
+  ["emotion", "Emotional depth"],
+  ["dialogue", "Dialogue balance"],
+  ["pacing", "Pacing"],
+];
 
 function Chat({ character, conversationId, onBack, onDeleted }) {
-  const { settings, recordStoryFeedback } = useSettings();
+  const { settings, recordStoryFeedback, undoStoryFeedback } = useSettings();
   const { theme, setTheme } = useTheme();
   const { confirmAction, scheduleDeletion } = useFeedback();
   const { personas } = usePersonas();
@@ -107,6 +115,10 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
   const [actionMode, setActionMode] = useState("menu");
   const [actionDraft, setActionDraft] = useState("");
   const [regenerationFeedback, setRegenerationFeedback] = useState([]);
+  const [positiveFeedback, setPositiveFeedback] = useState([]);
+  const [feedbackOnly, setFeedbackOnly] = useState(false);
+  const [messageFeedback, setMessageFeedback] = useState({});
+  const [feedbackNotice, setFeedbackNotice] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [alternatives, setAlternatives] = useState([]);
   const [responseVersions, setResponseVersions] = useState({});
@@ -682,6 +694,20 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     setActionMode("menu");
     setActionDraft("");
     setRegenerationFeedback([]);
+    setPositiveFeedback([]);
+    setFeedbackOnly(false);
+    setAlternatives([]);
+  }
+
+  function openMessageFeedback(chatMessage, kind) {
+    if (chatMessage.isStreaming || busy || chatMessage.sender !== "character") return;
+    const latestMessage = [...(conversation?.messages || [])].filter((item) => !item.isStreaming).at(-1);
+    setSelectedMessage(chatMessage);
+    setActionMode(kind === "positive" ? "positive-feedback" : "regenerate");
+    setActionDraft("");
+    setRegenerationFeedback([]);
+    setPositiveFeedback([]);
+    setFeedbackOnly(kind === "negative" && latestMessage?.id !== chatMessage.id);
     setAlternatives([]);
   }
 
@@ -691,6 +717,8 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     setActionMode("menu");
     setActionDraft("");
     setRegenerationFeedback([]);
+    setPositiveFeedback([]);
+    setFeedbackOnly(false);
     setAlternatives([]);
   }
 
@@ -775,7 +803,33 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     setActionMode("menu");
     setActionDraft("");
     setRegenerationFeedback([]);
+    setPositiveFeedback([]);
+    setFeedbackOnly(false);
     setAlternatives([]);
+  }
+
+  function rememberFeedback(kind, codes, messageId) {
+    const accepted = recordStoryFeedback(kind, codes);
+    if (!accepted.length) return;
+    setMessageFeedback((current) => ({ ...current, [messageId]: kind }));
+    setFeedbackNotice({ kind, codes: accepted, messageId });
+  }
+
+  function undoLatestFeedback() {
+    if (!feedbackNotice) return;
+    undoStoryFeedback(feedbackNotice.kind, feedbackNotice.codes);
+    setMessageFeedback((current) => {
+      const next = { ...current };
+      delete next[feedbackNotice.messageId];
+      return next;
+    });
+    setFeedbackNotice(null);
+  }
+
+  function savePositiveFeedback() {
+    if (!selectedMessage || !positiveFeedback.length) return;
+    rememberFeedback("positive", positiveFeedback, selectedMessage.id);
+    closeActionsAfterAction();
   }
 
   async function createBranchFromSelected() {
@@ -834,7 +888,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     if (!selectedMessage || selectedMessage.sender !== "character") return;
     const latestMessage = [...(conversation?.messages || [])].filter((item) => !item.isStreaming).at(-1);
     if (latestMessage?.id !== selectedMessage.id) {
-      setSendError("Rewind to this response first before generating a new version from it.");
+      rememberFeedback("negative", regenerationFeedback, selectedMessage.id);
       closeActionsAfterAction();
       return;
     }
@@ -843,7 +897,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
       const targetId = selectedMessage.id;
       const instruction = actionDraft.trim();
       const feedbackCodes = [...regenerationFeedback];
-      recordStoryFeedback(feedbackCodes);
+      rememberFeedback("negative", feedbackCodes, targetId);
       setActionLoading(true);
       closeActionsAfterAction();
       setIsTyping(true);
@@ -958,7 +1012,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     const targetId = selectedMessage.id;
     try {
       const feedbackCodes = feedbackCode ? [feedbackCode] : [];
-      recordStoryFeedback(feedbackCodes);
+      rememberFeedback("negative", feedbackCodes, targetId);
       setActionLoading(true);
       setSendError("");
       closeActionsAfterAction();
@@ -1162,12 +1216,14 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
                   message={chatMessage}
                   character={character}
                   onOpenActions={openActions}
+                  onOpenFeedback={openMessageFeedback}
                   onSwipeRegenerate={regenerateFromSwipe}
                   onVersionNavigate={navigateResponseVersion}
                   versionState={responseVersions[chatMessage.id]}
                   versionNavigationEnabled={index === visibleMessages.length - 1 && chatMessage.sender === "character"}
                   swipeDisabled={busy}
                   showTimestamp={settings.showMessageTimestamps}
+                  feedbackValue={messageFeedback[chatMessage.id] || ""}
                 />
               </Fragment>
             ))}
@@ -1183,6 +1239,14 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
 
             {sendError && (
               <div className="chat__send-error"><AlertCircle size={16} /><span>{sendError}</span><button onClick={retryGeneration} disabled={busy}><RefreshCw size={14} />Retry</button></div>
+            )}
+            {feedbackNotice && (
+              <div className="chat__feedback-notice" role="status">
+                <Check size={15}/>
+                <span>{feedbackNotice.kind === "positive" ? "Saved what worked. Velvet learns it after the second matching choice." : "Saved what to avoid. Velvet learns it after the second matching choice."}</span>
+                <button type="button" onClick={undoLatestFeedback}>Undo</button>
+                <button type="button" onClick={()=>setFeedbackNotice(null)} aria-label="Dismiss feedback notice"><X size={13}/></button>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>
@@ -1476,7 +1540,13 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
                     </button>
 
                     <div className="message-sheet__refine-secondary">
-                      <button onClick={() => { setActionDraft(""); setRegenerationFeedback([]); setActionMode("regenerate"); }}>
+                      <button onClick={() => {
+                        const latest = [...(conversation?.messages || [])].filter((item) => !item.isStreaming).at(-1);
+                        setActionDraft("");
+                        setRegenerationFeedback([]);
+                        setFeedbackOnly(latest?.id !== selectedMessage.id);
+                        setActionMode("regenerate");
+                      }}>
                         <Pencil size={16} />
                         <span>Different direction…</span>
                       </button>
@@ -1553,7 +1623,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
 
             {actionMode === "regenerate" && (
               <div className="message-sheet__editor">
-                <p>Select everything that felt wrong, then add what should happen instead. The rejected response will not become canon.</p>
+                <p>{feedbackOnly ? "Tell Velvet what felt wrong. This older reply will stay in the story, but the preference can still be learned globally." : "Select everything that felt wrong, then add what should happen instead. The rejected response will not become canon."}</p>
                 <div className="message-sheet__feedback-reasons" aria-label="Regeneration reasons">
                   {REGENERATION_FEEDBACK.map(([code, label]) => {
                     const selected = regenerationFeedback.includes(code);
@@ -1562,16 +1632,36 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
                     </button>;
                   })}
                 </div>
-                <textarea
-                  value={actionDraft}
-                  onChange={(event) => setActionDraft(event.target.value)}
-                  placeholder="Optional direction, e.g. He feels the confession strongly but hides it behind a joke. Don't make him leave."
-                  rows="4"
-                  autoFocus
-                />
-                <button onClick={regenerate} disabled={actionLoading}>
-                  {actionLoading ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}
-                  Generate another response
+                {!feedbackOnly && <textarea
+                    value={actionDraft}
+                    onChange={(event) => setActionDraft(event.target.value)}
+                    placeholder="Optional direction, e.g. He feels the confession strongly but hides it behind a joke. Don't make him leave."
+                    rows="4"
+                    autoFocus
+                  />}
+                <button onClick={regenerate} disabled={actionLoading || (feedbackOnly && !regenerationFeedback.length)}>
+                  {actionLoading ? <LoaderCircle className="spin" size={17} /> : feedbackOnly ? <Check size={17}/> : <RefreshCw size={17} />}
+                  {feedbackOnly ? "Save feedback" : "Generate another response"}
+                </button>
+              </div>
+            )}
+
+            {actionMode === "positive-feedback" && (
+              <div className="message-sheet__editor message-sheet__positive-feedback">
+                <p>What should Velvet preserve in future replies? It learns the abstract quality—not this exact wording or scene.</p>
+                <div className="message-sheet__feedback-reasons" aria-label="Positive feedback qualities">
+                  {POSITIVE_FEEDBACK.map(([code, label]) => {
+                    const selected = positiveFeedback.includes(code);
+                    return <button type="button" key={code} className={selected ? "selected" : ""} aria-pressed={selected} onClick={() => setPositiveFeedback((current) => selected ? current.filter((item) => item !== code) : [...current, code])}>
+                      {selected && <Check size={13}/>} {label}
+                    </button>;
+                  })}
+                  <button type="button" className={positiveFeedback.length === POSITIVE_FEEDBACK.length ? "selected" : ""} aria-pressed={positiveFeedback.length === POSITIVE_FEEDBACK.length} onClick={()=>setPositiveFeedback(positiveFeedback.length === POSITIVE_FEEDBACK.length ? [] : POSITIVE_FEEDBACK.map(([code])=>code))}>
+                    {positiveFeedback.length === POSITIVE_FEEDBACK.length && <Check size={13}/>} Everything
+                  </button>
+                </div>
+                <button onClick={savePositiveFeedback} disabled={!positiveFeedback.length}>
+                  <ThumbsUp size={17}/>Save what worked
                 </button>
               </div>
             )}
@@ -1599,12 +1689,14 @@ function MessageBubble({
   message,
   character,
   onOpenActions,
+  onOpenFeedback,
   onSwipeRegenerate,
   onVersionNavigate,
   versionState,
   versionNavigationEnabled = false,
   swipeDisabled,
   showTimestamp,
+  feedbackValue,
 }) {
   const holdTimer = useRef(null);
   const gestureRef = useRef({ x: 0, y: 0, active: false, horizontal: false });
@@ -1723,6 +1815,12 @@ function MessageBubble({
             <RoleplayText content={message.content} />
             {message.isStreaming && <span className="chat-message__cursor">▍</span>}
           </p>
+          {!message.isStreaming && message.sender === "character" && (
+            <div className="chat-message__feedback" onPointerDown={(event)=>event.stopPropagation()}>
+              <button type="button" className={feedbackValue === "positive" ? "selected" : ""} aria-label="Like this response" aria-pressed={feedbackValue === "positive"} onClick={(event)=>{ event.stopPropagation(); onOpenFeedback(message, "positive"); }}><ThumbsUp size={14}/></button>
+              <button type="button" className={feedbackValue === "negative" ? "selected" : ""} aria-label="Dislike this response" aria-pressed={feedbackValue === "negative"} onClick={(event)=>{ event.stopPropagation(); onOpenFeedback(message, "negative"); }}><ThumbsDown size={14}/></button>
+            </div>
+          )}
           {!message.isStreaming && message.sender === "character" && versionNavigationEnabled && (
             <div className="chat-message__version-nav" onPointerDown={(event) => event.stopPropagation()}>
               <button
@@ -1834,6 +1932,7 @@ function actionTitle(mode) {
   if (mode === "edit") return "Edit message";
   if (mode === "edit-ai") return "Edit response";
   if (mode === "regenerate") return "Regenerate response";
+  if (mode === "positive-feedback") return "What worked?";
   if (mode === "alternatives") return "Response alternatives";
   if (mode === "more") return "More actions";
   return "Message actions";

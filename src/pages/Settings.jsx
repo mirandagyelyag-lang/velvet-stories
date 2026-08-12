@@ -6,7 +6,7 @@ import { useTheme } from "../context/ThemeContext";
 import "../styles/settings.css";
 
 function Settings({ onBack }) {
-  const { settings, updateSetting, resetSettings } = useSettings();
+  const { settings, storySyncReady, updateSetting, removeStoryFeedback, resetSettings } = useSettings();
   const { confirmAction } = useFeedback();
   const pwa = usePWA();
   const { theme, setTheme } = useTheme();
@@ -37,7 +37,11 @@ function Settings({ onBack }) {
         <textarea value={settings.storyInstructions || ""} maxLength={900} rows="4" onChange={(event)=>updateSetting("storyInstructions",event.target.value)} placeholder="For example: Keep the dialogue natural and let important admissions affect the character before they answer." />
         <small>{String(settings.storyInstructions || "").length}/900 · Applied silently to every character.</small>
       </label>
-      <LearnedStoryPreferences counts={settings.storyFeedbackCounts} onClear={()=>updateSetting("storyFeedbackCounts",{})}/>
+      <LearnedStoryPreferences
+        positiveCounts={settings.storyPositiveFeedbackCounts}
+        negativeCounts={settings.storyNegativeFeedbackCounts}
+        onRemove={removeStoryFeedback}
+      />
     </div>
     <div className="settings-group"><header><FileDown size={19}/><div><h2>Stories & exports</h2><p>Choose how your private stories leave Velvet.</p></div></header>
       <SettingChoice label="Default export format" value={settings.exportFormat} options={[['markdown','Markdown'],['text','Plain text'],['json','JSON backup']]} onChange={(value)=>updateSetting('exportFormat',value)}/>
@@ -58,7 +62,7 @@ function Settings({ onBack }) {
       </div>
     </div>
     <button className="settings-page__reset" onClick={confirmReset}><RotateCcw size={16}/>Reset preferences</button>
-    <div className="settings-page__saved"><Check size={15}/>Preferences save automatically on this device.</div>
+    <div className="settings-page__saved"><Check size={15}/>{storySyncReady ? "Story preferences sync to your Velvet account." : "Saving preferences…"}</div>
   </section>;
 }
 
@@ -66,6 +70,10 @@ function SettingChoice({ label, value, options, onChange }) { return <div classN
 function Toggle({ label, description, checked, onChange }) { return <label className="setting-toggle"><span><strong>{label}</strong><small>{description}</small></span><input type="checkbox" checked={checked} onChange={(event)=>onChange(event.target.checked)}/><i/></label>; }
 
 const feedbackLabels = {
+  voice: "Keep this character voice",
+  emotion: "Keep the emotional depth",
+  dialogue: "Keep this dialogue balance",
+  pacing: "Keep this pacing",
   ignored_idea: "Follow my direction",
   too_short: "Finish the full beat",
   out_of_character: "Protect character voice",
@@ -76,12 +84,25 @@ const feedbackLabels = {
   missing_emotional_impact: "Show emotional impact",
 };
 
-function LearnedStoryPreferences({ counts = {}, onClear }) {
-  const learned = Object.entries(counts || {}).filter(([, count]) => Number(count) >= 2);
-  if (!learned.length) return <div className="settings-story-dna__learning"><Sparkles size={15}/><span>Velvet will learn a preference after you choose the same regeneration reason twice.</span></div>;
+function LearnedStoryPreferences({ positiveCounts = {}, negativeCounts = {}, onRemove }) {
+  const positive = Object.entries(positiveCounts || {}).filter(([, count]) => Number(count) > 0);
+  const negative = Object.entries(negativeCounts || {}).filter(([, count]) => Number(count) > 0);
+  if (!positive.length && !negative.length) return <div className="settings-story-dna__learning"><Sparkles size={15}/><span>Use 👍 or 👎 under replies. After the same choice twice, Velvet applies that preference to every character.</span></div>;
   return <div className="settings-story-dna__learned">
-    <div><span><Sparkles size={15}/><strong>Learned from regenerations</strong></span><button onClick={onClear}><X size={13}/>Clear</button></div>
-    <p>{learned.map(([code])=><em key={code}>{feedbackLabels[code] || code}</em>)}</p>
+    <div><span><Sparkles size={15}/><strong>What Velvet has learned</strong></span></div>
+    <LearningPreferenceGroup title="Preserve" kind="positive" entries={positive} onRemove={onRemove}/>
+    <LearningPreferenceGroup title="Avoid" kind="negative" entries={negative} onRemove={onRemove}/>
   </div>;
+}
+
+function LearningPreferenceGroup({ title, kind, entries, onRemove }) {
+  if (!entries.length) return null;
+  return <section className="settings-story-dna__preference-group">
+    <h3>{title}</h3>
+    <p>{entries.map(([code, count])=><em key={code} className={Number(count) >= 2 ? "learned" : "learning"}>
+      <span>{feedbackLabels[code] || code}<small>{Number(count) >= 2 ? `Learned · ${count}` : `${count}/2`}</small></span>
+      <button onClick={()=>onRemove(kind, code)} aria-label={`Forget ${feedbackLabels[code] || code}`}><X size={12}/></button>
+    </em>)}</p>
+  </section>;
 }
 export default Settings;

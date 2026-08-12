@@ -356,7 +356,7 @@ export function ChatsProvider({
           defaultPersona?.id || null,
 
         character_development: {},
-        story_engine_version: 9,
+        story_engine_version: 10,
       })
       .select()
       .single();
@@ -1327,7 +1327,7 @@ export function ChatsProvider({
         story_chapters: [],
         active_chapter: {},
         unresolved_threads: [],
-        story_engine_version: 9,
+        story_engine_version: 10,
         branch_parent_id: conversation.conversationId,
         branch_from_message_id: sourceMessage.id,
         branch_label: branchTitle.slice(0, 80),
@@ -1977,7 +1977,11 @@ function getBrowserPublishableKey() {
 }
 
 function buildStoryPreferencesPayload(settings = {}) {
-  const learnedFeedback = Object.entries(settings.storyFeedbackCounts || {})
+  const learnedPositiveFeedback = Object.entries(settings.storyPositiveFeedbackCounts || {})
+    .filter(([, count]) => Number(count) >= 2)
+    .map(([code]) => code)
+    .slice(0, 4);
+  const learnedNegativeFeedback = Object.entries(settings.storyNegativeFeedbackCounts || {})
     .filter(([, count]) => Number(count) >= 2)
     .map(([code]) => code)
     .slice(0, 8);
@@ -1987,7 +1991,8 @@ function buildStoryPreferencesPayload(settings = {}) {
     emotionalInterior: settings.storyEmotion || "interior_visible",
     romancePacing: settings.storyPacing || "medium_fast",
     customInstructions: String(settings.storyInstructions || "").trim().slice(0, 900),
-    learnedFeedback,
+    learnedPositiveFeedback,
+    learnedNegativeFeedback,
   };
 }
 

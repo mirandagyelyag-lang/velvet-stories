@@ -228,40 +228,32 @@ export function CharactersProvider({ children }) {
     return data.publicUrl;
   }
 
-  async function enhanceCharacterDraft(characterData) {
+  async function requestCharacterAssist(characterData, mode = "polish") {
     const { data, error } = await supabase.functions.invoke("character-chat", {
       body: {
         action: "character_assist",
-        draft: {
-          name: characterData.name || "",
-          role: characterData.role || "",
-          description: characterData.description || "",
-          personality: characterData.personality || "",
-          relationship: characterData.relationship || "",
-          world: characterData.world || "",
-          values: characterData.values || "",
-          fears: characterData.fears || "",
-          habits: characterData.habits || "",
-          contradictions: characterData.contradictions || "",
-          coreMotivation: characterData.coreMotivation || "",
-          emotionalDefense: characterData.emotionalDefense || "",
-          softeningTriggers: characterData.softeningTriggers || "",
-          growthDirection: characterData.growthDirection || "",
-          speechStyle: characterData.speechStyle || "",
-          voiceVocabulary: characterData.voiceVocabulary || "",
-          humorStyle: characterData.humorStyle || "",
-          conflictStyle: characterData.conflictStyle || "",
-          affectionStyle: characterData.affectionStyle || "",
-          verbalTells: characterData.verbalTells || "",
-          voiceAvoidances: characterData.voiceAvoidances || "",
-          boundaries: characterData.boundaries || "",
-          scenario: characterData.scenario || "",
-          exampleDialogue: characterData.exampleDialogue || "",
-        },
+        mode,
+        draft: characterDraftPayload(characterData),
       },
     });
     if (error) throw error;
     return data?.suggestions || {};
+  }
+
+  async function enhanceCharacterDraft(characterData) {
+    return requestCharacterAssist(characterData, "polish");
+  }
+
+  async function organizeCharacterDraft(characterData) {
+    return requestCharacterAssist(characterData, "organize");
+  }
+
+  async function generateCharacterDraft(concept = "") {
+    const { data, error } = await supabase.functions.invoke("character-chat", {
+      body: { action: "character_generate", concept: String(concept || "").slice(0, 1200) },
+    });
+    if (error) throw error;
+    return data?.character || {};
   }
 
   async function deleteCharacter(characterId) {
@@ -322,6 +314,8 @@ export function CharactersProvider({ children }) {
         createCharacter,
         updateCharacter,
         enhanceCharacterDraft,
+        organizeCharacterDraft,
+        generateCharacterDraft,
         deleteCharacter,
         toggleFavorite,
         updateTags,
@@ -330,6 +324,38 @@ export function CharactersProvider({ children }) {
       {children}
     </CharactersContext.Provider>
   );
+}
+
+function characterDraftPayload(characterData = {}) {
+  return {
+    name: characterData.name || "",
+    role: characterData.role || "",
+    description: characterData.description || "",
+    personality: characterData.personality || "",
+    relationship: characterData.relationship || "",
+    world: characterData.world || "",
+    values: characterData.values || "",
+    fears: characterData.fears || "",
+    habits: characterData.habits || "",
+    contradictions: characterData.contradictions || "",
+    coreMotivation: characterData.coreMotivation || "",
+    emotionalDefense: characterData.emotionalDefense || "",
+    softeningTriggers: characterData.softeningTriggers || "",
+    growthDirection: characterData.growthDirection || "",
+    speechStyle: characterData.speechStyle || "",
+    voiceVocabulary: characterData.voiceVocabulary || "",
+    humorStyle: characterData.humorStyle || "",
+    conflictStyle: characterData.conflictStyle || "",
+    affectionStyle: characterData.affectionStyle || "",
+    verbalTells: characterData.verbalTells || "",
+    voiceAvoidances: characterData.voiceAvoidances || "",
+    boundaries: characterData.boundaries || "",
+    scenario: characterData.scenario || "",
+    exampleDialogue: characterData.exampleDialogue || "",
+    responseLength: characterData.responseLength || "balanced",
+    narrationStyle: characterData.narrationStyle || "balanced",
+    firstMessage: characterData.firstMessage || "",
+  };
 }
 
 function convertDatabaseCharacter(character) {

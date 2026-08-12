@@ -75,7 +75,11 @@ Deno.serve(async (request) => {
     }
 
     if (action === "character_assist") {
-      return await handleCharacterAssist({ apiKey, draft: body?.draft });
+      return await handleCharacterAssist({ apiKey, draft: body?.draft, mode: body?.mode });
+    }
+
+    if (action === "character_generate") {
+      return await handleCharacterGenerate({ apiKey, concept: body?.concept });
     }
 
     const conversationId = cleanId(body?.conversationId);
@@ -253,47 +257,70 @@ Deno.serve(async (request) => {
   }
 });
 
-async function handleCharacterAssist({ apiKey, draft }) {
-  const safeDraft = draft && typeof draft === "object" ? draft : {};
+const characterDraftProperties = {
+  name: { type: "string" }, role: { type: "string" }, description: { type: "string" },
+  personality: { type: "string" }, relationship: { type: "string" }, world: { type: "string" },
+  values: { type: "string" }, fears: { type: "string" }, habits: { type: "string" },
+  contradictions: { type: "string" }, coreMotivation: { type: "string" }, emotionalDefense: { type: "string" },
+  softeningTriggers: { type: "string" }, growthDirection: { type: "string" }, speechStyle: { type: "string" },
+  voiceVocabulary: { type: "string" }, humorStyle: { type: "string" }, conflictStyle: { type: "string" },
+  affectionStyle: { type: "string" }, verbalTells: { type: "string" }, voiceAvoidances: { type: "string" },
+  boundaries: { type: "string" }, scenario: { type: "string" }, exampleDialogue: { type: "string" },
+  responseLength: { type: "string", enum: ["short", "balanced", "long"] },
+  narrationStyle: { type: "string", enum: ["dialogue", "balanced", "immersive"] },
+  firstMessage: { type: "string" },
+};
+
+async function requestCharacterJson({ apiKey, prompt, maxOutputTokens = 2600, requireComplete = false }) {
   const response = await fetch(modelEndpoint(GEMINI_MODEL), {
     method: "POST",
     headers: geminiHeaders(apiKey),
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: `Help refine a private fictional roleplay character. Keep every supplied name, relationship, boundary and world fact. Make the character specific, human and internally consistent without turning guardedness into cruelty. Separate stable identity from possible growth: motivation and defenses are present-day anchors, softening triggers are earned influences, and growth direction is only a possibility—not an instant personality change. Return concise field suggestions only.\n\nDRAFT\n${JSON.stringify(safeDraft).slice(0, 14000)}` }] }],
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        maxOutputTokens: 1800,
+        maxOutputTokens,
         responseMimeType: "application/json",
         responseJsonSchema: {
           type: "object",
-          properties: {
-            personality: { type: "string" },
-            values: { type: "string" },
-            fears: { type: "string" },
-            habits: { type: "string" },
-            contradictions: { type: "string" },
-            coreMotivation: { type: "string" },
-            emotionalDefense: { type: "string" },
-            softeningTriggers: { type: "string" },
-            growthDirection: { type: "string" },
-            speechStyle: { type: "string" },
-            voiceVocabulary: { type: "string" },
-            humorStyle: { type: "string" },
-            conflictStyle: { type: "string" },
-            affectionStyle: { type: "string" },
-            verbalTells: { type: "string" },
-            voiceAvoidances: { type: "string" },
-            boundaries: { type: "string" },
-            scenario: { type: "string" },
-            exampleDialogue: { type: "string" },
-          },
+          properties: characterDraftProperties,
+          ...(requireComplete ? { required: Object.keys(characterDraftProperties) } : {}),
         },
       },
     }),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data?.error?.message || "Character assist failed");
+  if (!response.ok) {
+    if (response.status === 429) throw new Error("The free AI limit was reached. Try again later.");
+    throw new Error(data?.error?.message || "Character creation failed");
+  }
   const raw = extractCandidateText(data);
-  return json({ suggestions: JSON.parse(stripJsonFence(raw)) });
+  return JSON.parse(stripJsonFence(raw));
+}
+
+async function handleCharacterAssist({ apiKey, draft, mode }) {
+  const safeDraft = draft && typeof draft === "object" ? draft : {};
+  const organize = mode === "organize";
+  const instruction = organize
+    ? "Organize this existing profile into the supplied structured fields. Preserve every supplied name, relationship, boundary, world fact and meaningful character detail. Do not invent, delete or change facts. Move misplaced material out of Personality into the most relevant fields, remove duplication, and keep the result natural rather than spreadsheet-like."
+    : "Polish this private fictional roleplay character. Keep every supplied name, relationship, boundary and world fact. Fill useful gaps, including the advanced voice fingerprint, while keeping the character specific, human and internally consistent without turning guardedness into cruelty.";
+  const suggestions = await requestCharacterJson({
+    apiKey,
+    maxOutputTokens: organize ? 3200 : 2600,
+    prompt: `${instruction}\nSeparate stable identity from possible growth: motivation and defenses are present-day anchors, softening triggers are earned influences, and growth direction is only a possibility—not an instant transformation. Return field suggestions only.\n\nDRAFT\n${JSON.stringify(safeDraft).slice(0, 16000)}`,
+  });
+  return json({ suggestions });
+}
+
+async function handleCharacterGenerate({ apiKey, concept }) {
+  const cleanConcept = String(concept || "").replace(/[<>]/g, "").trim().slice(0, 1200);
+  const request = cleanConcept || "Surprise me with an original adult character and a compelling relationship premise unlike a generic billionaire, bully, mafia boss or copy of a famous fictional character.";
+  const character = await requestCharacterJson({
+    apiKey,
+    maxOutputTokens: 4200,
+    requireComplete: true,
+    prompt: `Create one complete, original adult fictional roleplay character from the creator's request below. Honor any requested name exactly; if no name is supplied, invent a memorable full name. Build an independent person with a life, responsibilities, relationships, conflicts and ambitions beyond romance. Make the bond with the user specific and playable, the character voice unmistakable, and the opening scene immediately interactive. Avoid generic archetype dialogue, constant hostility, instant confessions and controlling the user's dialogue, thoughts, feelings or actions. The possible growth direction must be gradual rather than guaranteed. Example dialogue calibrates voice but is not a future script. Write all fields and the opening scene in the language used by the creator; if the request has no language, use natural English. Return every field in the schema.\n\nCREATOR REQUEST\n${request}`,
+  });
+  return json({ character });
 }
 
 async function loadContext({ supabase, conversationId, userId }): Promise<LoadedContext> {
@@ -483,7 +510,8 @@ function buildNarrativePrompt({
   }).slice(0, 9000);
 
   const latest = compactMessageForPrompt(latestUserRecord.content, 5000);
-  const learnedFeedback = feedbackDirectives(storyPreferences.learned_feedback);
+  const learnedPositiveFeedback = positiveFeedbackDirectives(storyPreferences.learned_positive_feedback);
+  const learnedNegativeFeedback = feedbackDirectives(storyPreferences.learned_negative_feedback);
   const currentFeedback = feedbackDirectives(regenerationFeedback);
   const regeneration = isRegeneration
     ? `This is a regeneration from the branch point. The rejected take is intentionally absent. Make a materially different choice, reaction, opening and dialogue—not a paraphrase. ${currentFeedback.length ? `Creator feedback that this rewrite MUST fix: ${currentFeedback.join(" ")}` : ""} ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
@@ -532,7 +560,8 @@ CREATOR STORY DNA — GLOBAL PRESENTATION PREFERENCES
 - Romance pacing preference: ${storyPreferences.romance_pacing}; this controls momentum, never consent, canon or an unearned relationship jump.
 - Fixed standards: natural young-adult dialogue, complete social beats, strict user POV, no therapeutic acknowledgments and no decorative repetition.
 ${storyPreferences.custom_instructions ? `- Creator's standing note: ${storyPreferences.custom_instructions}` : ""}
-${learnedFeedback.length ? `- Learned from repeated regenerations: ${learnedFeedback.join(" ")}` : ""}
+${learnedPositiveFeedback.length ? `- Preserve these qualities learned from repeated likes: ${learnedPositiveFeedback.join(" ")}` : ""}
+${learnedNegativeFeedback.length ? `- Avoid these patterns learned from repeated dislikes: ${learnedNegativeFeedback.join(" ")}` : ""}
 - These preferences shape how the story is told. They never erase ${character.name}'s identity, boundaries or current development phase.
 
 PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND
@@ -865,6 +894,21 @@ function feedbackDirectives(value = []) {
   return normalizeRegenerationFeedback(value).map((code) => regenerationFeedbackRules.get(code));
 }
 
+const positiveFeedbackRules = new Map([
+  ["voice", "Keep the character's distinctive vocabulary, rhythm, humor and social tactics strong."],
+  ["emotion", "Preserve clear private emotional impact before the outward response when the moment matters."],
+  ["dialogue", "Preserve meaningful audible dialogue that carries the social beat instead of burying it in narration."],
+  ["pacing", "Preserve forward movement: let each turn change or deepen the immediate scene by one earned step."],
+]);
+
+function positiveFeedbackDirectives(value = []) {
+  const items = Array.isArray(value) ? value : [];
+  return [...new Set(items.map((item) => normalizeText(item).replace(/\s+/g, "_")))]
+    .filter((item) => positiveFeedbackRules.has(item))
+    .slice(0, 4)
+    .map((code) => positiveFeedbackRules.get(code));
+}
+
 function normalizeStoryPreferences(value = {}) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const choose = (candidate, allowed, fallback) => allowed.includes(String(candidate || "")) ? String(candidate) : fallback;
@@ -874,7 +918,10 @@ function normalizeStoryPreferences(value = {}) {
     emotional_interior: choose(source.emotionalInterior, ["interior_visible", "subtle", "restrained"], "interior_visible"),
     romance_pacing: choose(source.romancePacing, ["medium_fast", "medium", "slow"], "medium_fast"),
     custom_instructions: developmentText(source.customInstructions, 900),
-    learned_feedback: normalizeRegenerationFeedback(source.learnedFeedback),
+    learned_positive_feedback: [...positiveFeedbackRules.keys()].filter((code) =>
+      (Array.isArray(source.learnedPositiveFeedback) ? source.learnedPositiveFeedback : []).includes(code)
+    ),
+    learned_negative_feedback: normalizeRegenerationFeedback(source.learnedNegativeFeedback || source.learnedFeedback),
   };
 }
 
