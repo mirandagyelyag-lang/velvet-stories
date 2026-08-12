@@ -959,3 +959,104 @@
     transform: none;
   }
 }
+
+
+/* =========================================================
+   v1.4.5 · More VS background marks
+   ========================================================= */
+
+.story-library-intro__copy {
+  position: relative;
+  overflow: visible;
+}
+
+.story-library-intro__copy::after {
+  content: "VS  VS";
+  position: absolute;
+  right: -160px;
+  top: -26px;
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(6rem, 14vw, 10rem);
+  font-weight: 650;
+  line-height: .8;
+  letter-spacing: -.08em;
+  color: color-mix(in srgb, var(--accent) 6%, transparent);
+  text-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 4%, transparent);
+  white-space: nowrap;
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+
+.story-library-commandbar {
+  overflow: hidden;
+}
+
+.story-library-commandbar::before {
+  content: "VS";
+  position: absolute;
+  left: 22px;
+  bottom: -18px;
+  font-family: "Cormorant Garamond", serif;
+  font-size: 4.7rem;
+  line-height: 1;
+  font-weight: 650;
+  letter-spacing: -.06em;
+  color: color-mix(in srgb, var(--accent) 5%, transparent);
+  pointer-events: none;
+}
+
+.story-shelf-section:first-of-type::before {
+  content: "VS";
+  position: absolute;
+  right: 6px;
+  top: -22px;
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(4.5rem, 10vw, 7rem);
+  line-height: 1;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--gold) 6%, transparent);
+  transform: rotate(-7deg);
+  pointer-events: none;
+}
+
+.story-shelf-section:first-of-type::after {
+  content: "VS";
+  position: absolute;
+  left: -10px;
+  bottom: 28px;
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(4rem, 8vw, 5.8rem);
+  line-height: 1;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--accent) 4%, transparent);
+  transform: rotate(8deg);
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .story-library-intro__copy::after {
+    right: -56px;
+    top: -10px;
+    font-size: 5.5rem;
+    content: "VS";
+    color: color-mix(in srgb, var(--accent) 7%, transparent);
+  }
+
+  .story-library-commandbar::before {
+    left: 14px;
+    bottom: -12px;
+    font-size: 3.2rem;
+  }
+
+  .story-shelf-section:first-of-type::before {
+    right: 0;
+    top: -12px;
+    font-size: 3.8rem;
+  }
+
+  .story-shelf-section:first-of-type::after {
+    left: -4px;
+    bottom: 20px;
+    font-size: 3.4rem;
+  }
+}
