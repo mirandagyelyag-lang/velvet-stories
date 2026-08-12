@@ -51,7 +51,21 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
   if (view === "active" && characters.length === 0) return <section className="my-characters-empty"><span className="my-characters-empty__symbol"><Sparkles size={30}/></span><p>YOUR PRIVATE COLLECTION</p><h1>My characters</h1><span className="my-characters-empty__line"/><p>The personalities and worlds you create will live here.</p><button className="primary-button" onClick={onCreateCharacter}><PenLine size={18}/><span>Create your first character</span></button></section>;
 
   return <section className="my-characters">
-    <header className="my-characters__header"><div><p>YOUR PRIVATE COLLECTION</p><h1>My characters</h1><span>{characters.length} {characters.length===1?"character":"characters"}</span></div><button className="primary-button" onClick={onCreateCharacter}><PenLine size={18}/><span>Create a character</span></button></header>
+    <header className="my-characters__header">
+      <div className="my-characters__heading">
+        <p>YOUR PRIVATE COLLECTION</p>
+        <h1>My Characters</h1>
+        <span className="my-characters__subtitle">Create and shape your cast</span>
+        <span className="my-characters__count">{characters.length} {characters.length===1?"character":"characters"}</span>
+      </div>
+
+      <button className="my-characters__create" onClick={onCreateCharacter}>
+        <span className="my-characters__create-icon"><PenLine size={20}/></span>
+        <span>Create a character</span>
+      </button>
+
+      <div className="my-characters__ornament" aria-hidden="true"><span>✦</span></div>
+    </header>
     <div className="collection-tools"><label><Search size={18}/><input value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Search characters, worlds or tags..."/>{search&&<button onClick={()=>setSearch("")}><X size={15}/></button>}</label><div><button className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>All</button><button className={filter==="favorites"?"active":""} onClick={()=>{setFilter("favorites");setView("active")}}><Heart size={14}/>Favorites</button><button className={view==="trash"?"active":""} onClick={()=>{setView(view==="trash"?"active":"trash");setFilter("all")}}><Trash2 size={14}/>Trash</button><select value={tagFilter} onChange={(event)=>setTagFilter(event.target.value)}><option value="">Every tag</option>{tags.map((tag)=><option key={tag}>{tag}</option>)}</select></div></div>
     {filtered.length ? <div className="character-grid">{filtered.map((character)=> view === "trash" ? <article key={character.id} className="trash-character-card"><div><strong>{character.name}</strong><small>{character.role}</small></div><div><button onClick={()=>handleRestore(character)}><RotateCcw size={15}/>Restore</button><button className="danger" onClick={()=>handleDeleteForever(character)}><Trash2 size={15}/>Delete forever</button></div></article> : <CharacterCard key={character.id} character={character} onOpen={onOpenCharacter} onEdit={onEditCharacter} onDelete={handleDelete} onFavorite={toggleFavorite} onTags={openTags}/>)}</div> : <div className="collection-empty"><Trash2 size={26}/><h2>{view === "trash" ? "Trash is empty" : "No characters found"}</h2><p>{view === "trash" ? "Deleted characters will wait here until you restore or remove them forever." : "Try another search or remove a filter."}</p></div>}
     {tagEditor&&<div className="tag-modal-backdrop" onMouseDown={(event)=>event.target===event.currentTarget&&setTagEditor(null)}><form className="tag-modal" onSubmit={saveTags}><header><span><Tag size={18}/></span><div><small>ORGANIZE CHARACTER</small><h2>{tagEditor.name}'s tags</h2></div><button type="button" onClick={()=>setTagEditor(null)}><X size={19}/></button></header><label>Tags separated by commas<input autoFocus value={tagValue} onChange={(event)=>setTagValue(event.target.value)} placeholder="university, romance, favorite"/><small>Use up to 12 short tags.</small></label><footer><button type="button" onClick={()=>setTagEditor(null)}>Cancel</button><button type="submit">Save tags</button></footer></form></div>}
