@@ -962,101 +962,173 @@
 
 
 /* =========================================================
-   v1.4.5 · More VS background marks
+   v1.4.6 · Velvet Monogram
+   Repeating VS texture across Stories, subtle like a luxury
+   monogram fabric instead of oversized floating letters.
    ========================================================= */
 
-.story-library-intro__copy {
+.chats-page--shelf {
   position: relative;
-  overflow: visible;
+  isolation: isolate;
 }
 
-.story-library-intro__copy::after {
-  content: "VS  VS";
-  position: absolute;
-  right: -160px;
-  top: -26px;
-  font-family: "Cormorant Garamond", serif;
-  font-size: clamp(6rem, 14vw, 10rem);
-  font-weight: 650;
-  line-height: .8;
-  letter-spacing: -.08em;
-  color: color-mix(in srgb, var(--accent) 6%, transparent);
-  text-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 4%, transparent);
-  white-space: nowrap;
-  transform: rotate(-6deg);
+/* Full-page monogram layer */
+.chats-page--shelf::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
   pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%22210%22%20viewBox%3D%220%200%20260%20210%22%3E%0A%20%20%3Cg%20fill%3D%22none%22%20font-family%3D%22Georgia,%20'Times%20New%20Roman',%20serif%22%20font-weight%3D%22600%22%3E%0A%20%20%20%20%3Ctext%20x%3D%2218%22%20y%3D%2264%22%20font-size%3D%2242%22%20fill%3D%22%237f5360%22%20fill-opacity%3D%22.15%22%3EVS%3C%2Ftext%3E%0A%20%20%20%20%3Ctext%20x%3D%22166%22%20y%3D%22142%22%20font-size%3D%2234%22%20fill%3D%22%23b08a74%22%20fill-opacity%3D%22.11%22%20transform%3D%22rotate(-7%20166%20142)%22%3EVS%3C%2Ftext%3E%0A%20%20%20%20%3Ctext%20x%3D%2274%22%20y%3D%22194%22%20font-size%3D%2224%22%20fill%3D%22%237f5360%22%20fill-opacity%3D%22.08%22%20transform%3D%22rotate(6%2074%20194)%22%3EVS%3C%2Ftext%3E%0A%20%20%3C%2Fg%3E%0A%3C%2Fsvg%3E");
+  background-repeat: repeat;
+  background-size: 260px 210px;
+  background-position: 26px 18px;
+  opacity: .34;
+  -webkit-mask-image:
+    linear-gradient(to bottom,
+      rgba(0,0,0,.92) 0%,
+      rgba(0,0,0,.75) 34%,
+      rgba(0,0,0,.62) 68%,
+      rgba(0,0,0,.76) 100%);
+  mask-image:
+    linear-gradient(to bottom,
+      rgba(0,0,0,.92) 0%,
+      rgba(0,0,0,.75) 34%,
+      rgba(0,0,0,.62) 68%,
+      rgba(0,0,0,.76) 100%);
 }
 
+/* Ambient wash above the monogram so it blends into Velvet's palette. */
+.chats-page--shelf::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 14% 8%,
+      color-mix(in srgb, var(--accent) 8%, transparent),
+      transparent 31%),
+    radial-gradient(circle at 88% 18%,
+      color-mix(in srgb, var(--gold) 7%, transparent),
+      transparent 29%),
+    radial-gradient(circle at 50% 92%,
+      color-mix(in srgb, var(--accent-dark) 5%, transparent),
+      transparent 34%);
+}
+
+/* Remove the single billboard-sized VS from the hero. */
+.story-library-intro::before {
+  content: "";
+  right: -50px;
+  top: -100px;
+  width: 310px;
+  height: 310px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle,
+      color-mix(in srgb, var(--accent) 6%, transparent),
+      transparent 68%);
+  transform: none;
+}
+
+/* Let some monogram texture show through the hero without becoming busy. */
+.story-library-intro {
+  background:
+    linear-gradient(112deg,
+      color-mix(in srgb, var(--accent) 15%, var(--surface)),
+      color-mix(in srgb, var(--surface) 89%, transparent) 46%,
+      color-mix(in srgb, var(--gold) 7%, var(--surface)));
+  backdrop-filter: blur(7px);
+}
+
+/* Search ribbon becomes translucent enough to reveal the pattern faintly. */
 .story-library-commandbar {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 6%, var(--surface)),
+      color-mix(in srgb, var(--surface) 84%, transparent));
+  backdrop-filter: blur(14px);
+}
+
+/* Tiny monogram watermark inside story cards. */
+.story-shelf-card__body {
   overflow: hidden;
 }
 
-.story-library-commandbar::before {
+.story-shelf-card__body::after {
   content: "VS";
   position: absolute;
-  left: 22px;
-  bottom: -18px;
-  font-family: "Cormorant Garamond", serif;
-  font-size: 4.7rem;
+  right: -3px;
+  bottom: -20px;
+  z-index: 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 5rem;
   line-height: 1;
   font-weight: 650;
-  letter-spacing: -.06em;
-  color: color-mix(in srgb, var(--accent) 5%, transparent);
-  pointer-events: none;
-}
-
-.story-shelf-section:first-of-type::before {
-  content: "VS";
-  position: absolute;
-  right: 6px;
-  top: -22px;
-  font-family: "Cormorant Garamond", serif;
-  font-size: clamp(4.5rem, 10vw, 7rem);
-  line-height: 1;
-  font-weight: 650;
-  color: color-mix(in srgb, var(--gold) 6%, transparent);
+  letter-spacing: -.08em;
+  color: color-mix(in srgb, var(--accent) 4.5%, transparent);
   transform: rotate(-7deg);
   pointer-events: none;
 }
 
-.story-shelf-section:first-of-type::after {
+.story-shelf-card__body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* A smaller watermark appears in the empty/loading surfaces too. */
+.page-state,
+.chats-empty {
+  position: relative;
+  overflow: hidden;
+}
+
+.page-state::after,
+.chats-empty::after {
   content: "VS";
   position: absolute;
-  left: -10px;
-  bottom: 28px;
-  font-family: "Cormorant Garamond", serif;
-  font-size: clamp(4rem, 8vw, 5.8rem);
-  line-height: 1;
+  right: 18px;
+  bottom: -24px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 6rem;
   font-weight: 650;
-  color: color-mix(in srgb, var(--accent) 4%, transparent);
-  transform: rotate(8deg);
+  letter-spacing: -.08em;
+  color: color-mix(in srgb, var(--accent) 5%, transparent);
+  transform: rotate(-6deg);
   pointer-events: none;
 }
 
+/* Dark mode gets a quieter monogram, so it stays soft at night. */
+[data-theme="dark"] .chats-page--shelf::before {
+  opacity: .20;
+  filter: brightness(.88) saturate(.8);
+}
+
 @media (max-width: 760px) {
-  .story-library-intro__copy::after {
-    right: -56px;
-    top: -10px;
-    font-size: 5.5rem;
-    content: "VS";
-    color: color-mix(in srgb, var(--accent) 7%, transparent);
+  .chats-page--shelf::before {
+    background-size: 190px 154px;
+    background-position: 12px 8px;
+    opacity: .30;
   }
 
-  .story-library-commandbar::before {
-    left: 14px;
-    bottom: -12px;
-    font-size: 3.2rem;
+  .story-library-intro::before {
+    width: 210px;
+    height: 210px;
+    right: -48px;
+    top: -64px;
   }
 
-  .story-shelf-section:first-of-type::before {
-    right: 0;
-    top: -12px;
-    font-size: 3.8rem;
+  .story-shelf-card__body::after {
+    right: -5px;
+    bottom: -15px;
+    font-size: 4.2rem;
   }
+}
 
-  .story-shelf-section:first-of-type::after {
-    left: -4px;
-    bottom: 20px;
-    font-size: 3.4rem;
+@media (prefers-reduced-transparency: reduce) {
+  .story-library-intro,
+  .story-library-commandbar {
+    backdrop-filter: none;
   }
 }
