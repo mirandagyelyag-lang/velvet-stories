@@ -345,24 +345,32 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
 
   return (
     <section className="chats-page chats-page--shelf">
-      <header className="story-library-header">
-        <div>
-          <span className="story-library-header__eyebrow"><Sparkles size={13}/> PRIVATE LIBRARY</span>
-          <h1>Stories</h1>
-          <p>Your worlds, characters and unfinished chapters.</p>
+      <div className="story-library-intro">
+        <div className="story-library-intro__copy">
+          <span className="story-library-intro__mark"><BookOpen size={16}/></span>
+          <div>
+            <span className="story-library-intro__eyebrow">YOUR STORYSPACE</span>
+            <h1>Stories</h1>
+            <p>Return to a world, find a moment, or begin somewhere new.</p>
+          </div>
         </div>
-        <button className="story-library-header__new" onClick={() => setPickerOpen(true)}><Plus size={17}/> New story</button>
-      </header>
+        <button className="story-library-header__new" onClick={() => setPickerOpen(true)}>
+          <Plus size={17}/>
+          <span>New story</span>
+        </button>
+      </div>
 
       {!loading && conversations.length > 0 && (
-        <div className="story-library-tools">
+        <div className="story-library-commandbar">
           <label className="story-library-search">
-            <Search size={17}/>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search stories, characters, moments..." />
+            <Search size={18}/>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your stories" />
+            {search && <button type="button" className="story-library-search__clear" onClick={() => setSearch("")} aria-label="Clear search"><X size={15}/></button>}
           </label>
           <div className="story-library-toggle" aria-label="Story library view">
-            <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}>Stories</button>
-            <button className={view === "archived" ? "active" : ""} onClick={() => setView("archived")}><Archive size={13}/> Archived</button><button className={view === "trash" ? "active" : ""} onClick={() => setView("trash")}><Trash2 size={13}/> Trash</button>
+            <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}><BookOpen size={13}/>Stories</button>
+            <button className={view === "archived" ? "active" : ""} onClick={() => setView("archived")}><Archive size={13}/>Archived</button>
+            <button className={view === "trash" ? "active" : ""} onClick={() => setView("trash")}><Trash2 size={13}/>Trash</button>
           </div>
         </div>
       )}
