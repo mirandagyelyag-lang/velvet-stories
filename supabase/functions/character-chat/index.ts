@@ -196,15 +196,22 @@ Deno.serve(async (request) => {
       rejectedResponses: branch.rejectedResponses,
       recentCharacterReplies: messages.filter((message) => message.sender === "character").slice(-6).map((message) => message.content),
     });
+    const originalResult = result;
+    const originalIssues = validationIssues;
+    const originalBlockingIssues = blockingNarrativeIssues(originalIssues);
 
+    // Quality issues still get one repair attempt, but they are advisory after
+    // that attempt. Velvet should not make the user regenerate repeatedly just
+    // because a reply is shorter, quieter, or stylistically imperfect.
     if (validationIssues.length) {
-      console.warn("[character-chat] candidate rejected", {
+      console.warn("[character-chat] candidate needs one repair", {
         conversationId,
         issues: validationIssues,
+        blockingIssues: originalBlockingIssues,
         model: result.model,
       });
 
-      result = await repairRoleplayOnce({
+      const repairedResult = await repairRoleplayOnce({
         apiKey,
         originalPrompt: prompt,
         rejectedReply: result.reply,
@@ -213,23 +220,53 @@ Deno.serve(async (request) => {
         isCancelled,
       });
 
-      validationIssues = validateNarrativeReply(result.reply, {
+      const repairedIssues = validateNarrativeReply(repairedResult.reply, {
         characterName: configuredCharacter.name,
         userName: userIdentity.name,
         latestUserMessage,
         turnIntent,
-        finishReason: result.finishReason,
+        finishReason: repairedResult.finishReason,
         rejectedResponses: branch.rejectedResponses,
         recentCharacterReplies: messages.filter((message) => message.sender === "character").slice(-6).map((message) => message.content),
       });
+      const repairedBlockingIssues = blockingNarrativeIssues(repairedIssues);
+
+      if (!repairedBlockingIssues.length) {
+        // The repaired turn is structurally safe. Any remaining issues are
+        // advisory quality hints, so show the reply instead of throwing.
+        result = repairedResult;
+        validationIssues = repairedIssues;
+      } else if (!originalBlockingIssues.length) {
+        // Never replace a usable original with a repair that became structurally
+        // worse. Keep the original and let the user decide whether to regenerate.
+        console.warn("[character-chat] repair became blocking; keeping usable original", {
+          conversationId,
+          originalIssues,
+          repairedIssues,
+        });
+        result = originalResult;
+        validationIssues = originalIssues;
+      } else {
+        result = repairedResult;
+        validationIssues = repairedIssues;
+      }
+    }
+
+    const blockingIssues = blockingNarrativeIssues(validationIssues);
+    if (blockingIssues.length) {
+      console.error("[character-chat] both generated candidates are structurally unsafe", {
+        conversationId,
+        issues: validationIssues,
+        blockingIssues,
+      });
+      throw new Error("Gemini returned an incomplete or structurally invalid reply twice. Regenerate once.");
     }
 
     if (validationIssues.length) {
-      console.error("[character-chat] repaired candidate still invalid", {
+      console.warn("[character-chat] serving reply with advisory quality notes", {
         conversationId,
         issues: validationIssues,
       });
-      throw new Error("Velvet rejected a weak or incomplete response before showing it. Regenerate once more.");
     }
 
     if (await isCancelled()) return cancelledResponse();
@@ -926,21 +963,49 @@ function stripDialogue(value = "") {
 
 function controlsUserPOV(reply = "", userName = "", latestUserMessage = "") {
   const narration = stripDialogue(reply);
-  const actionPattern = /\b(?:you|your body)\s+(?:felt|thought|realized|decided|wanted|needed|knew|wondered|hoped|feared|smiled|laughed|nodded|sighed|walked|followed|looked|reached|stepped|turned|froze|blushed|said|asked|answered)\b/gi;
-  const matches = narration.match(actionPattern) || [];
-  if (!matches.length) return false;
-
   const latest = normalizeText(latestUserMessage);
-  const unsupported = matches.some((match) => {
-    const verb = normalizeText(match).split(" ").at(-1) || "";
-    return verb && !latest.includes(verb.replace(/ed$/, ""));
-  });
-  if (unsupported) return true;
+  const actionMap = {
+    felt: ["feel", "felt"],
+    thought: ["think", "thought"],
+    realized: ["realize", "realized"],
+    decided: ["decide", "decided"],
+    wanted: ["want", "wanted"],
+    needed: ["need", "needed"],
+    knew: ["know", "knew"],
+    wondered: ["wonder", "wondered"],
+    hoped: ["hope", "hoped"],
+    feared: ["fear", "feared"],
+    smiled: ["smile", "smiled"],
+    laughed: ["laugh", "laughed"],
+    nodded: ["nod", "nodded"],
+    sighed: ["sigh", "sighed"],
+    walked: ["walk", "walked"],
+    followed: ["follow", "followed"],
+    looked: ["look", "looked"],
+    reached: ["reach", "reached"],
+    stepped: ["step", "stepped"],
+    turned: ["turn", "turned"],
+    froze: ["freeze", "froze"],
+    blushed: ["blush", "blushed"],
+    said: ["say", "said"],
+    asked: ["ask", "asked"],
+    answered: ["answer", "answered"],
+  };
+  const isSupportedByLatestTurn = (verb) => (actionMap[verb] || [verb]).some((variant) => latest.includes(variant));
+
+  const secondPersonPattern = /\b(?:you|your body)\s+(felt|thought|realized|decided|wanted|needed|knew|wondered|hoped|feared|smiled|laughed|nodded|sighed|walked|followed|looked|reached|stepped|turned|froze|blushed|said|asked|answered)\b/gi;
+  for (const match of narration.matchAll(secondPersonPattern)) {
+    const verb = normalizeText(match[1]);
+    if (!isSupportedByLatestTurn(verb)) return true;
+  }
 
   if (userName) {
     const escaped = String(userName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const namedAction = new RegExp(`\\b${escaped}\\s+(?:felt|thought|realized|decided|smiled|laughed|nodded|walked|said|asked)\\b`, "i");
-    if (namedAction.test(narration) && !normalizeText(latestUserMessage).includes(normalizeText(userName))) return true;
+    const namedPattern = new RegExp(`\\b${escaped}\\s+(felt|thought|realized|decided|smiled|laughed|nodded|walked|said|asked|answered)\\b`, "gi");
+    for (const match of narration.matchAll(namedPattern)) {
+      const verb = normalizeText(match[1]);
+      if (!isSupportedByLatestTurn(verb)) return true;
+    }
   }
   return false;
 }
@@ -1287,6 +1352,18 @@ function applyCharacterDevelopment({
   }
 
   return normalizeCharacterDevelopment(next, relationshipPremise);
+}
+
+const BLOCKING_NARRATIVE_ISSUES = new Set([
+  "empty_reply",
+  "truncated_by_model",
+  "unfinished_reply",
+  "controls_user_pov",
+  "exposes_system_language",
+]);
+
+function blockingNarrativeIssues(issues = []) {
+  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => BLOCKING_NARRATIVE_ISSUES.has(issue));
 }
 
 function validateNarrativeReply(reply = "", options = {}) {
