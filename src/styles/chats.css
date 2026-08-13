@@ -961,174 +961,184 @@
 }
 
 
-/* =========================================================
-   v1.4.6 · Velvet Monogram
-   Repeating VS texture across Stories, subtle like a luxury
-   monogram fabric instead of oversized floating letters.
-   ========================================================= */
-
+/* v1.4.7 VS EVERYWHERE */
 .chats-page--shelf {
-  position: relative;
-  isolation: isolate;
+  --vs-pattern: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22220%22%20height%3D%22170%22%3E%0A%3Cg%20font-family%3D%22Georgia,serif%22%20font-weight%3D%22600%22%3E%0A%3Ctext%20x%3D%2212%22%20y%3D%2254%22%20font-size%3D%2238%22%20fill%3D%22%2376545d%22%20fill-opacity%3D%22.19%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%22126%22%20y%3D%22100%22%20font-size%3D%2231%22%20fill%3D%22%23a77e68%22%20fill-opacity%3D%22.15%22%20transform%3D%22rotate(-8%20126%20100)%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%2258%22%20y%3D%22154%22%20font-size%3D%2225%22%20fill%3D%22%2376545d%22%20fill-opacity%3D%22.12%22%20transform%3D%22rotate(7%2058%20154)%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%22170%22%20y%3D%2231%22%20font-size%3D%2221%22%20fill%3D%22%239b6f78%22%20fill-opacity%3D%22.10%22%3EVS%3C%2Ftext%3E%0A%3C%2Fg%3E%3C%2Fsvg%3E");
+  --vs-pattern-small: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22150%22%20height%3D%22118%22%3E%0A%3Cg%20font-family%3D%22Georgia,serif%22%20font-weight%3D%22600%22%3E%0A%3Ctext%20x%3D%228%22%20y%3D%2238%22%20font-size%3D%2227%22%20fill%3D%22%2376545d%22%20fill-opacity%3D%22.16%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%2288%22%20y%3D%2277%22%20font-size%3D%2222%22%20fill%3D%22%23a77e68%22%20fill-opacity%3D%22.13%22%20transform%3D%22rotate(-7%2088%2077)%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%2238%22%20y%3D%22111%22%20font-size%3D%2218%22%20fill%3D%22%2376545d%22%20fill-opacity%3D%22.10%22%20transform%3D%22rotate(6%2038%20111)%22%3EVS%3C%2Ftext%3E%0A%3C%2Fg%3E%3C%2Fsvg%3E");
 }
 
-/* Full-page monogram layer */
-.chats-page--shelf::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22260%22%20height%3D%22210%22%20viewBox%3D%220%200%20260%20210%22%3E%0A%20%20%3Cg%20fill%3D%22none%22%20font-family%3D%22Georgia,%20'Times%20New%20Roman',%20serif%22%20font-weight%3D%22600%22%3E%0A%20%20%20%20%3Ctext%20x%3D%2218%22%20y%3D%2264%22%20font-size%3D%2242%22%20fill%3D%22%237f5360%22%20fill-opacity%3D%22.15%22%3EVS%3C%2Ftext%3E%0A%20%20%20%20%3Ctext%20x%3D%22166%22%20y%3D%22142%22%20font-size%3D%2234%22%20fill%3D%22%23b08a74%22%20fill-opacity%3D%22.11%22%20transform%3D%22rotate(-7%20166%20142)%22%3EVS%3C%2Ftext%3E%0A%20%20%20%20%3Ctext%20x%3D%2274%22%20y%3D%22194%22%20font-size%3D%2224%22%20fill%3D%22%237f5360%22%20fill-opacity%3D%22.08%22%20transform%3D%22rotate(6%2074%20194)%22%3EVS%3C%2Ftext%3E%0A%20%20%3C%2Fg%3E%0A%3C%2Fsvg%3E");
-  background-repeat: repeat;
-  background-size: 260px 210px;
-  background-position: 26px 18px;
-  opacity: .34;
-  -webkit-mask-image:
-    linear-gradient(to bottom,
-      rgba(0,0,0,.92) 0%,
-      rgba(0,0,0,.75) 34%,
-      rgba(0,0,0,.62) 68%,
-      rgba(0,0,0,.76) 100%);
-  mask-image:
-    linear-gradient(to bottom,
-      rgba(0,0,0,.92) 0%,
-      rgba(0,0,0,.75) 34%,
-      rgba(0,0,0,.62) 68%,
-      rgba(0,0,0,.76) 100%);
+.chats-page {
+  background-image:
+    var(--vs-pattern),
+    radial-gradient(circle at 12% -5%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 32%),
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--gold) 6%, transparent), transparent 24%);
+  background-repeat: repeat, no-repeat, no-repeat;
+  background-size: 220px 170px, auto, auto;
+  background-color: var(--background);
 }
 
-/* Ambient wash above the monogram so it blends into Velvet's palette. */
-.chats-page--shelf::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 14% 8%,
-      color-mix(in srgb, var(--accent) 8%, transparent),
-      transparent 31%),
-    radial-gradient(circle at 88% 18%,
-      color-mix(in srgb, var(--gold) 7%, transparent),
-      transparent 29%),
-    radial-gradient(circle at 50% 92%,
-      color-mix(in srgb, var(--accent-dark) 5%, transparent),
-      transparent 34%);
+.story-library-intro {
+  background-image:
+    var(--vs-pattern),
+    linear-gradient(115deg,
+      color-mix(in srgb, var(--accent) 17%, var(--surface)),
+      color-mix(in srgb, var(--surface) 88%, var(--background)) 48%,
+      color-mix(in srgb, var(--gold) 9%, var(--surface)));
+  background-repeat: repeat, no-repeat;
+  background-size: 190px 147px, cover;
+  background-position: 18px 4px, center;
+  background-blend-mode: multiply, normal;
 }
 
-/* Remove the single billboard-sized VS from the hero. */
 .story-library-intro::before {
   content: "";
-  right: -50px;
-  top: -100px;
-  width: 310px;
-  height: 310px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle,
-      color-mix(in srgb, var(--accent) 6%, transparent),
-      transparent 68%);
-  transform: none;
-}
-
-/* Let some monogram texture show through the hero without becoming busy. */
-.story-library-intro {
-  background:
-    linear-gradient(112deg,
-      color-mix(in srgb, var(--accent) 15%, var(--surface)),
-      color-mix(in srgb, var(--surface) 89%, transparent) 46%,
-      color-mix(in srgb, var(--gold) 7%, var(--surface)));
-  backdrop-filter: blur(7px);
-}
-
-/* Search ribbon becomes translucent enough to reveal the pattern faintly. */
-.story-library-commandbar {
-  background:
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--accent) 6%, var(--surface)),
-      color-mix(in srgb, var(--surface) 84%, transparent));
-  backdrop-filter: blur(14px);
-}
-
-/* Tiny monogram watermark inside story cards. */
-.story-shelf-card__body {
-  overflow: hidden;
-}
-
-.story-shelf-card__body::after {
-  content: "VS";
   position: absolute;
-  right: -3px;
-  bottom: -20px;
-  z-index: 0;
-  font-family: "Cormorant Garamond", Georgia, serif;
-  font-size: 5rem;
-  line-height: 1;
-  font-weight: 650;
-  letter-spacing: -.08em;
-  color: color-mix(in srgb, var(--accent) 4.5%, transparent);
-  transform: rotate(-7deg);
+  width: 330px;
+  height: 330px;
+  right: -92px;
+  top: -122px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 7%, transparent), transparent 67%);
   pointer-events: none;
 }
 
-.story-shelf-card__body > * {
-  position: relative;
-  z-index: 1;
+.story-library-commandbar {
+  background-image:
+    var(--vs-pattern-small),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 8%, var(--surface)),
+      color-mix(in srgb, var(--surface) 88%, var(--background)));
+  background-repeat: repeat, no-repeat;
+  background-size: 150px 118px, cover;
+  background-blend-mode: multiply, normal;
 }
 
-/* A smaller watermark appears in the empty/loading surfaces too. */
+.story-library-search {
+  background-image:
+    var(--vs-pattern-small),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--surface) 86%, transparent),
+      color-mix(in srgb, var(--accent) 4%, var(--surface)));
+  background-repeat: repeat, no-repeat;
+  background-size: 185px 145px, cover;
+  background-position: -12px -20px, center;
+  background-blend-mode: multiply, normal;
+}
+
+.story-library-toggle {
+  background-image:
+    var(--vs-pattern-small),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--surface) 84%, transparent),
+      color-mix(in srgb, var(--gold) 4%, var(--surface)));
+  background-repeat: repeat, no-repeat;
+  background-size: 175px 138px, cover;
+  background-position: 22px -18px, center;
+  background-blend-mode: multiply, normal;
+}
+
+.story-library-toggle button.active {
+  background-image:
+    var(--vs-pattern-small),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--accent) 13%, var(--surface)),
+      color-mix(in srgb, var(--gold) 8%, var(--surface)));
+  background-size: 130px 102px, cover;
+  background-blend-mode: multiply, normal;
+}
+
+.story-shelf-section {
+  position: relative;
+  padding: 16px;
+  margin-inline: -16px;
+  border-radius: 28px;
+  background-image:
+    var(--vs-pattern),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 3.5%, transparent),
+      transparent 46%,
+      color-mix(in srgb, var(--gold) 3.5%, transparent));
+  background-repeat: repeat, no-repeat;
+  background-size: 220px 170px, cover;
+  background-blend-mode: multiply, normal;
+}
+
+.story-shelf-card {
+  background-image:
+    var(--vs-pattern-small),
+    linear-gradient(155deg,
+      color-mix(in srgb, var(--accent) 7%, var(--surface)),
+      color-mix(in srgb, var(--gold) 5%, var(--surface)) 48%,
+      color-mix(in srgb, var(--background) 30%, var(--surface)));
+  background-repeat: repeat, no-repeat;
+  background-size: 150px 118px, cover;
+  background-blend-mode: multiply, normal;
+}
+
+.story-shelf-card__body {
+  background-image:
+    var(--vs-pattern-small),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--surface) 80%, transparent),
+      color-mix(in srgb, var(--accent) 4%, var(--surface)));
+  background-repeat: repeat, no-repeat;
+  background-size: 138px 109px, cover;
+  background-position: 14px 4px, center;
+  background-blend-mode: multiply, normal;
+}
+
+.story-shelf-card__menu,
+.conversation-picker,
 .page-state,
 .chats-empty {
-  position: relative;
-  overflow: hidden;
+  background-image:
+    var(--vs-pattern-small),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--surface) 91%, transparent),
+      color-mix(in srgb, var(--accent) 5%, var(--surface)));
+  background-repeat: repeat, no-repeat;
+  background-size: 165px 130px, cover;
+  background-blend-mode: multiply, normal;
 }
 
-.page-state::after,
-.chats-empty::after {
-  content: "VS";
-  position: absolute;
-  right: 18px;
-  bottom: -24px;
-  font-family: "Cormorant Garamond", Georgia, serif;
-  font-size: 6rem;
-  font-weight: 650;
-  letter-spacing: -.08em;
-  color: color-mix(in srgb, var(--accent) 5%, transparent);
-  transform: rotate(-6deg);
-  pointer-events: none;
+.conversation-picker__list--editorial > button {
+  background-image:
+    var(--vs-pattern-small),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--surface) 88%, transparent),
+      color-mix(in srgb, var(--gold) 4%, var(--surface)));
+  background-repeat: repeat, no-repeat;
+  background-size: 145px 114px, cover;
+  background-blend-mode: multiply, normal;
 }
 
-/* Dark mode gets a quieter monogram, so it stays soft at night. */
-[data-theme="dark"] .chats-page--shelf::before {
-  opacity: .20;
-  filter: brightness(.88) saturate(.8);
+[data-theme="dark"] .chats-page,
+[data-theme="dark"] .story-library-intro,
+[data-theme="dark"] .story-library-commandbar,
+[data-theme="dark"] .story-library-search,
+[data-theme="dark"] .story-library-toggle,
+[data-theme="dark"] .story-library-toggle button.active,
+[data-theme="dark"] .story-shelf-section,
+[data-theme="dark"] .story-shelf-card,
+[data-theme="dark"] .story-shelf-card__body,
+[data-theme="dark"] .story-shelf-card__menu,
+[data-theme="dark"] .conversation-picker,
+[data-theme="dark"] .page-state,
+[data-theme="dark"] .chats-empty {
+  background-blend-mode: screen, normal;
 }
 
 @media (max-width: 760px) {
-  .chats-page--shelf::before {
-    background-size: 190px 154px;
-    background-position: 12px 8px;
-    opacity: .30;
+  .chats-page { background-size: 165px 128px, auto, auto; }
+  .story-library-intro { background-size: 150px 116px, cover; }
+  .story-library-commandbar,
+  .story-library-search,
+  .story-library-toggle { background-size: 120px 94px, cover; }
+  .story-shelf-section {
+    margin-inline: -7px;
+    padding: 10px 7px 14px;
+    background-size: 170px 132px, cover;
   }
-
-  .story-library-intro::before {
-    width: 210px;
-    height: 210px;
-    right: -48px;
-    top: -64px;
-  }
-
-  .story-shelf-card__body::after {
-    right: -5px;
-    bottom: -15px;
-    font-size: 4.2rem;
-  }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .story-library-intro,
-  .story-library-commandbar {
-    backdrop-filter: none;
-  }
+  .story-shelf-card,
+  .story-shelf-card__body { background-size: 125px 98px, cover; }
 }
