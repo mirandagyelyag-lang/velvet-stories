@@ -258,86 +258,112 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
     });
   }, [conversations, search, view, pendingDeletionIds]);
 
-  const pinnedStories = filtered.filter((conversation) => conversation.is_pinned);
-  const recentStories = filtered.filter((conversation) => !conversation.is_pinned);
+  const featuredStory = filtered[0] || null;
+  const shelfStories = filtered.slice(1);
+
+  function renderStoryMenu(conversation, title, variant = "card") {
+    const menuOpen = menuId === conversation.id;
+    return (
+      <div className={`story-action-menu story-action-menu--${variant}`} onClick={(event) => event.stopPropagation()}>
+        <button
+          className="story-action-menu__trigger"
+          onClick={() => setMenuId((current) => current === conversation.id ? null : conversation.id)}
+          aria-label={`Story actions for ${title}`}
+          aria-expanded={menuOpen}
+        >
+          <MoreHorizontal size={18}/>
+        </button>
+        {menuOpen && (
+          <div className="story-action-menu__panel">
+            <button onClick={(event) => { setMenuId(null); togglePinned(event, conversation); }}>{conversation.is_pinned ? <PinOff size={15}/> : <Pin size={15}/>}<span>{conversation.is_pinned ? "Unpin" : "Pin"}</span></button>
+            <button onClick={(event) => { setMenuId(null); beginRename(event, conversation); }}><Pencil size={15}/><span>Rename</span></button>
+            <button onClick={(event) => { setMenuId(null); duplicateConversation(event, conversation); }} disabled={updatingId === conversation.id}><Copy size={15}/><span>Duplicate</span></button>
+            <button onClick={(event) => { setMenuId(null); exportConversation(event, conversation); }} disabled={updatingId === conversation.id}><Download size={15}/><span>Export</span></button>
+            <button onClick={(event) => { setMenuId(null); toggleArchived(event, conversation); }} disabled={updatingId === conversation.id}>{conversation.archived_at ? <ArchiveRestore size={15}/> : <Archive size={15}/>}<span>{conversation.archived_at ? "Restore" : "Archive"}</span></button>
+            <span className="story-action-menu__separator" />
+            <button className={conversation.trashed_at ? "" : "danger"} onClick={(event) => { setMenuId(null); conversation.trashed_at ? restoreConversation(event, conversation.id) : deleteConversation(event, conversation.id); }} disabled={deletingId === conversation.id || updatingId === conversation.id}>{conversation.trashed_at ? <ArchiveRestore size={15}/> : <Trash2 size={15}/>}<span>{conversation.trashed_at ? "Restore" : "Move to Trash"}</span></button>
+            {conversation.trashed_at && <button className="danger" onClick={(event) => { setMenuId(null); permanentlyDeleteConversation(event, conversation.id); }}><Trash2 size={15}/><span>Delete forever</span></button>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderFeaturedStory(conversation) {
+    const character = conversation?.character;
+    if (!character) return null;
+    const title = conversation.title || character.name;
+    const preview = cleanPreview(conversation.latestMessage?.content || character.firstMessage) || "Open the story and return to the moment you left behind.";
+    const kicker = view === "trash" ? "IN THE TRASH" : view === "archived" ? "FROM THE ARCHIVE" : conversation.is_pinned ? "PINNED STORY" : "PICK UP THE THREAD";
+
+    return (
+      <article
+        className="story-feature"
+        style={{ "--character-color": character.color }}
+        onClick={() => !conversation.trashed_at && onOpenCharacter(character, conversation.id)}
+      >
+        <div className="story-feature__art">
+          {character.coverUrl ? <img src={character.coverUrl} alt="" /> : <div className="story-feature__fallback" />}
+          <div className="story-feature__scrim" />
+        </div>
+        <div className="story-feature__content">
+          <div className="story-feature__topline">
+            <span className="story-feature__kicker">{kicker}</span>
+            {renderStoryMenu(conversation, title, "feature")}
+          </div>
+          <div className="story-feature__character">
+            <span className="story-feature__avatar">{character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}</span>
+            <div><small>STORY WITH</small><strong>{character.name}</strong></div>
+          </div>
+          <h2>{title}</h2>
+          <p>{preview}</p>
+          <div className="story-feature__footer">
+            {!conversation.trashed_at && <button type="button" onClick={(event) => { event.stopPropagation(); onOpenCharacter(character, conversation.id); }}><BookOpen size={16}/>Continue story</button>}
+            {conversation.trashed_at && <button type="button" onClick={(event) => restoreConversation(event, conversation.id)}><ArchiveRestore size={16}/>Restore story</button>}
+            <time>{formatDate(conversation.updated_at)}</time>
+          </div>
+        </div>
+      </article>
+    );
+  }
 
   function renderStoryCard(conversation) {
     const character = conversation.character;
     if (!character) return null;
     const title = conversation.title || character.name;
     const preview = cleanPreview(conversation.latestMessage?.content || character.firstMessage);
-    const menuOpen = menuId === conversation.id;
 
     return (
       <article
         key={conversation.id}
-        className={`story-shelf-card${conversation.is_pinned ? " story-shelf-card--pinned" : ""}`}
+        className={`story-poster${conversation.is_pinned ? " story-poster--pinned" : ""}`}
         onClick={() => !conversation.trashed_at && editingId !== conversation.id && onOpenCharacter(character, conversation.id)}
         style={{ "--character-color": character.color }}
       >
-        <div className="story-shelf-card__cover">
-          {character.coverUrl ? <img src={character.coverUrl} alt="" /> : <div className="story-shelf-card__cover-fallback" />}
-          <div className="story-shelf-card__veil" />
-
-          <div className="story-shelf-card__topline">
-            <div className="story-shelf-card__badges">
-              {conversation.is_pinned && <span><Pin size={11}/>Pinned</span>}
-              {conversation.branch_parent_id && <span><GitBranch size={11}/>Branch</span>}
-            </div>
-            <div className="story-shelf-card__menu-wrap" onClick={(event) => event.stopPropagation()}>
-              <button
-                className="story-shelf-card__menu-button"
-                onClick={() => setMenuId((current) => current === conversation.id ? null : conversation.id)}
-                aria-label={`Story actions for ${title}`}
-                aria-expanded={menuOpen}
-              >
-                <MoreHorizontal size={18}/>
-              </button>
-              {menuOpen && (
-                <div className="story-shelf-card__menu">
-                  <button onClick={(event) => { setMenuId(null); togglePinned(event, conversation); }}>{conversation.is_pinned ? <PinOff size={15}/> : <Pin size={15}/>}<span>{conversation.is_pinned ? "Unpin" : "Pin"}</span></button>
-                  <button onClick={(event) => { setMenuId(null); beginRename(event, conversation); }}><Pencil size={15}/><span>Rename</span></button>
-                  <button onClick={(event) => { setMenuId(null); duplicateConversation(event, conversation); }} disabled={updatingId === conversation.id}><Copy size={15}/><span>Duplicate</span></button>
-                  <button onClick={(event) => { setMenuId(null); exportConversation(event, conversation); }} disabled={updatingId === conversation.id}><Download size={15}/><span>Export</span></button>
-                  <button onClick={(event) => { setMenuId(null); toggleArchived(event, conversation); }} disabled={updatingId === conversation.id}>{conversation.archived_at ? <ArchiveRestore size={15}/> : <Archive size={15}/>}<span>{conversation.archived_at ? "Restore" : "Archive"}</span></button>
-                  <span className="story-shelf-card__menu-separator" />
-                  <button className={conversation.trashed_at ? "" : "danger"} onClick={(event) => { setMenuId(null); conversation.trashed_at ? restoreConversation(event, conversation.id) : deleteConversation(event, conversation.id); }} disabled={deletingId === conversation.id || updatingId === conversation.id}>{conversation.trashed_at ? <ArchiveRestore size={15}/> : <Trash2 size={15}/>}<span>{conversation.trashed_at ? "Restore" : "Move to Trash"}</span></button>{conversation.trashed_at && <button className="danger" onClick={(event) => { setMenuId(null); permanentlyDeleteConversation(event, conversation.id); }}><Trash2 size={15}/><span>Delete forever</span></button>}
-                </div>
-              )}
-            </div>
+        <div className="story-poster__visual">
+          {character.coverUrl ? <img src={character.coverUrl} alt="" /> : <div className="story-poster__fallback" />}
+          <div className="story-poster__shade" />
+          <div className="story-poster__badges">
+            {conversation.is_pinned && <span><Pin size={11}/>Pinned</span>}
+            {conversation.branch_parent_id && <span><GitBranch size={11}/>Branch</span>}
           </div>
-
-          <div className="story-shelf-card__identity">
-            <span className="story-shelf-card__avatar">
-              {character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}
-            </span>
-            <div>
-              <small>STORY WITH</small>
-              <strong>{character.name}</strong>
-            </div>
+          {renderStoryMenu(conversation, title)}
+          <div className="story-poster__person">
+            <span>{character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}</span>
+            <strong>{character.name}</strong>
           </div>
         </div>
 
-        <div className="story-shelf-card__body">
+        <div className="story-poster__copy">
           {editingId === conversation.id ? (
-            <form className="story-shelf-card__rename" onSubmit={(event) => saveTitle(event, conversation)} onClick={(event) => event.stopPropagation()}>
+            <form className="story-poster__rename" onSubmit={(event) => saveTitle(event, conversation)} onClick={(event) => event.stopPropagation()}>
               <input autoFocus value={editTitle} maxLength={80} onChange={(event) => setEditTitle(event.target.value)} />
               <button type="submit" disabled={!editTitle.trim() || updatingId === conversation.id} aria-label="Save title"><Check size={16}/></button>
               <button type="button" onClick={() => setEditingId(null)} aria-label="Cancel rename"><X size={16}/></button>
             </form>
-          ) : (
-            <>
-              <h3>{title}</h3>
-              <p className="story-shelf-card__role">{character.role || "Character"}</p>
-            </>
-          )}
-
-          <p className="story-shelf-card__preview">{preview || "Open the story to continue."}</p>
-
-          <div className="story-shelf-card__bottom">
-            <time>{formatDate(conversation.updated_at)}</time>
-            <span className="story-shelf-card__continue"><BookOpen size={14}/> Continue</span>
-          </div>
+          ) : <h3>{title}</h3>}
+          <div className="story-poster__meta"><span>{character.role || "Character"}</span><time>{formatDate(conversation.updated_at)}</time></div>
+          <p>{preview || "Open the story to continue."}</p>
         </div>
       </article>
     );
@@ -345,33 +371,27 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
 
   return (
     <section className="chats-page chats-page--shelf">
-      <div className="story-library-intro">
-        <div className="story-library-intro__copy">
-          <span className="story-library-intro__mark"><BookOpen size={16}/></span>
-          <div>
-            <span className="story-library-intro__eyebrow">PRIVATE STORIES</span>
-            <h1>Stories</h1>
-            <p>Every story you started still has somewhere to go.</p>
-          </div>
+      <header className="stories-header">
+        <div className="stories-header__copy">
+          <span className="stories-header__eyebrow"><Sparkles size={13}/> PRIVATE LIBRARY</span>
+          <h1>Stories</h1>
+          <p>Return to what still feels unfinished.</p>
         </div>
-        <button className="story-library-header__new" onClick={() => setPickerOpen(true)}>
-          <Plus size={17}/>
-          <span>New story</span>
-        </button>
-      </div>
+        <button className="stories-header__new" onClick={() => setPickerOpen(true)}><Plus size={18}/><span>New story</span></button>
+      </header>
 
       {!loading && conversations.length > 0 && (
-        <div className="story-library-commandbar">
-          <label className="story-library-search">
+        <div className="stories-tools">
+          <label className="stories-search">
             <Search size={18}/>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your stories" />
-            {search && <button type="button" className="story-library-search__clear" onClick={() => setSearch("")} aria-label="Clear search"><X size={15}/></button>}
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a story, character or moment" />
+            {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={15}/></button>}
           </label>
-          <div className="story-library-toggle" aria-label="Story library view">
-            <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}><BookOpen size={13}/>Stories</button>
-            <button className={view === "archived" ? "active" : ""} onClick={() => setView("archived")}><Archive size={13}/>Archived</button>
-            <button className={view === "trash" ? "active" : ""} onClick={() => setView("trash")}><Trash2 size={13}/>Trash</button>
-          </div>
+          <nav className="stories-tabs" aria-label="Story library view">
+            <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}>Stories</button>
+            <button className={view === "archived" ? "active" : ""} onClick={() => setView("archived")}>Archived</button>
+            <button className={view === "trash" ? "active" : ""} onClick={() => setView("trash")}>Trash</button>
+          </nav>
         </div>
       )}
 
@@ -387,24 +407,26 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
 
       {!loading && conversations.length > 0 && filtered.length === 0 && <PageState icon={<Search size={27}/>} text="No stories match that search." />}
 
-      {!loading && filtered.length > 0 && (
-        <div className="story-shelf">
-          {pinnedStories.length > 0 && (
-            <section className="story-shelf-section">
-              <div className="story-shelf-section__heading"><div><span>PINNED</span><h2>Keep close</h2></div><small>{pinnedStories.length}</small></div>
-              <div className="story-shelf-grid">{pinnedStories.map(renderStoryCard)}</div>
-            </section>
-          )}
+      {!loading && featuredStory && (
+        <main className="stories-content">
+          <section className="stories-feature-section">
+            <div className="stories-section-heading">
+              <div><span>{view === "active" ? "CONTINUE" : view === "archived" ? "ARCHIVE" : "TRASH"}</span><h2>{view === "active" ? "Right where you left it" : view === "archived" ? "Saved away" : "Recently removed"}</h2></div>
+              <small>{filtered.length} {filtered.length === 1 ? "story" : "stories"}</small>
+            </div>
+            {renderFeaturedStory(featuredStory)}
+          </section>
 
-          {recentStories.length > 0 && (
-            <section className="story-shelf-section">
-              <div className="story-shelf-section__heading"><div><span>{view === "archived" ? "ARCHIVE" : "RECENT"}</span><h2>{view === "archived" ? "Archived stories" : "Continue reading"}</h2></div><small>{recentStories.length}</small></div>
-              <div className="story-shelf-grid">{recentStories.map(renderStoryCard)}</div>
+          {shelfStories.length > 0 && (
+            <section className="stories-library-section">
+              <div className="stories-section-heading stories-section-heading--library">
+                <div><span>YOUR LIBRARY</span><h2>{view === "active" ? "More worlds" : view === "archived" ? "More from the archive" : "More in trash"}</h2></div>
+              </div>
+              <div className="stories-poster-grid">{shelfStories.map(renderStoryCard)}</div>
             </section>
           )}
-        </div>
+        </main>
       )}
-
       {pickerOpen && (
         <div className="conversation-picker-backdrop" onMouseDown={() => !creatingId && setPickerOpen(false)}>
           <section className="conversation-picker conversation-picker--editorial" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="conversation-picker-title">
