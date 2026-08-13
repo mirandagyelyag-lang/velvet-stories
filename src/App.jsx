@@ -17,6 +17,7 @@ import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import WelcomeSplash from "./components/WelcomeSplash";
 import "./App.css";
+import "./styles/velvet-unified.css";
 
 function App() {
   const { user, authLoading } = useAuth();
