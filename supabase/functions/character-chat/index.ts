@@ -76,7 +76,7 @@ Deno.serve(async (request) => {
     }
 
     if (action === "character_assist") {
-      return await handleCharacterAssist({ apiKey, draft: body?.draft, mode: body?.mode });
+      return await handleCharacterAssist({ apiKey, draft: body?.draft, mode: body?.mode, focusFields: body?.focusFields });
     }
 
     if (action === "character_voice_test") {
@@ -325,9 +325,10 @@ async function requestCharacterJson({
   requireComplete = false,
   temperature = 0.72,
   purpose = "character-assist",
+  deadlineMs = 28000,
 }) {
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter(Boolean))];
-  const deadline = Date.now() + 28000;
+  const deadline = Date.now() + Math.max(12000, Number(deadlineMs) || 28000);
   let lastError = "Velvet couldn't complete the character draft. Try again.";
   let quotaReached = false;
 
@@ -394,12 +395,16 @@ async function requestCharacterJson({
   throw new Error(lastError);
 }
 
-async function handleCharacterAssist({ apiKey, draft, mode }) {
+async function handleCharacterAssist({ apiKey, draft, mode, focusFields = [] }) {
   const safeDraft = draft && typeof draft === "object" ? draft : {};
   const organize = mode === "organize";
+  const allowedFocus = new Set(Object.keys(characterDraftProperties));
+  const focused = Array.isArray(focusFields) ? focusFields.map((item) => String(item || "")).filter((item) => allowedFocus.has(item)).slice(0, 8) : [];
   const instruction = organize
     ? "Organize this existing profile into the supplied structured fields. Preserve every supplied name, relationship, boundary, world fact and meaningful character detail. Do not invent, delete or change facts. Move misplaced material out of Personality into the most relevant fields, remove duplication, and keep the result natural rather than spreadsheet-like."
-    : "Polish this private fictional roleplay character. Keep every supplied name, relationship, boundary and world fact. Fill useful gaps, including the advanced voice fingerprint, while keeping the character specific, human and internally consistent without turning guardedness into cruelty.";
+    : focused.length
+      ? `Polish ONLY these fields: ${focused.join(", ")}. Preserve all other profile fields exactly as supplied and do not return unrelated rewrites. Keep every supplied name, relationship, boundary and world fact.`
+      : "Polish this private fictional roleplay character. Keep every supplied name, relationship, boundary and world fact. Fill useful gaps, including the advanced voice fingerprint, while keeping the character specific, human and internally consistent without turning guardedness into cruelty.";
   const suggestions = await requestCharacterJson({
     apiKey,
     maxOutputTokens: organize ? 2500 : 2100,
@@ -449,10 +454,11 @@ async function handleCharacterGenerate({ apiKey, concept }) {
   const request = cleanConcept || "Surprise me with an original adult character and a compelling relationship premise unlike a generic billionaire, bully, mafia boss or copy of a famous fictional character.";
   const character = await requestCharacterJson({
     apiKey,
-    maxOutputTokens: 2800,
+    maxOutputTokens: 2300,
     requireComplete: true,
-    temperature: 0.82,
+    temperature: 0.78,
     purpose: "character-generate",
+    deadlineMs: 22000,
     prompt: `Create one complete, original adult fictional roleplay character from the creator's request below. Honor any requested name exactly; if no name is supplied, invent a memorable full name. Build an independent person with a life, responsibilities, relationships, conflicts and ambitions beyond romance. Make the bond with the user specific and playable, the character voice unmistakable, and the opening scene immediately interactive. Avoid generic archetype dialogue, constant hostility, instant confessions and controlling the user's dialogue, thoughts, feelings or actions. The possible growth direction must be gradual rather than guaranteed. Example dialogue calibrates voice but is not a future script. Keep each supporting field to one or two precise sentences, Personality and Relationship below 130 words each, and the opening scene between 120 and 190 words so the complete draft arrives quickly. Write every field and the opening scene in the language used by the creator; if the request has no language, use natural English. Return every field in the schema.\n\nCREATOR REQUEST\n${request}`,
   });
   return json({ character });
@@ -481,9 +487,11 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
       .eq("conversation_id", conversationId).eq("user_id", userId)
       .order("created_at", { ascending: false }).limit(80),
     supabase.from("memories")
-      .select("id, conversation_id, content, importance, category, is_pinned, source, scope, created_at")
+      .select("id, conversation_id, content, importance, category, is_pinned, is_canon, why_remembered, source, scope, superseded_at, created_at, updated_at")
       .eq("character_id", conversation.character_id).eq("user_id", userId)
       .or(`conversation_id.eq.${conversationId},scope.eq.character`)
+      .is("superseded_at", null)
+      .order("is_canon", { ascending: false })
       .order("is_pinned", { ascending: false }).order("importance", { ascending: false })
       .order("created_at", { ascending: false }).limit(50),
     conversation.lorebook_id
@@ -627,8 +635,9 @@ function buildNarrativePrompt({
 
   const memoryText = memories.length
     ? memories.map((memory) => {
-      const authority = memory.is_pinned || memory.source === "user" ? "confirmed" : "tentative";
-      return `- [${authority}] ${cleanPromptValue(memory.content, 900)}`;
+      const authority = memory.is_canon || memory.is_pinned || memory.source === "manual" ? "confirmed" : "tentative";
+      const label = memory.is_canon ? "CANON" : authority;
+      return `- [${label}] ${cleanPromptValue(memory.content, 900)}`;
     }).join("\n")
     : "none";
 
@@ -660,6 +669,7 @@ NON-NEGOTIABLE PRIORITY
 3. The user exclusively controls ${userIdentity.name}. Never invent ${userIdentity.name}'s dialogue, thoughts, feelings, reactions, choices or movements.
 4. Write ${character.name} as a specific person. Guarded, proud, teasing or emotionally avoidant does not mean cruel, contemptuous, robotic or therapeutic.
 5. Dialogue must sound like something this character would actually say. Never use customer-service phrases such as “I'm listening,” “I understand,” “go on,” “tell me more,” or a bare “okay” as the substance of the turn.
+6. Distinct voice outranks archetype. Never make this character borrow the same teasing cadence, pet names, emotional speeches, body-language habits or flirt tactics used by another generic romantic lead.
 
 TURN CONTRACT
 - Response language: ${responseLanguage}. Match the language of the latest ordinary user message.
@@ -671,7 +681,9 @@ TURN CONTRACT
 - Use narration and spoken dialogue in a natural balance. A casual line still deserves a complete social beat, not filler.
 - If the user says “it's okay,” “fine,” or otherwise releases tension, show what that does to ${character.name}; let ${character.name} answer in character and move the shared moment one small step. Do not respond as a counselor acknowledging information.
 - If the user expresses affection indirectly through loyalty/history, or directly says they missed/care/love ${character.name}, show the private impact appropriate to the profile before ${character.name}'s outward answer. Subtext must matter without forcing a confession.
-- If the user sends only dots/silence, continue through ${character.name}'s action, thought and audible dialogue. After two consecutive silent turns, return the meaningful focus to ${character.name} even if an NPC spoke last.
+- If the user sends one dot/silence, continue the scene without inventing any action, dialogue, feeling or decision for ${userIdentity.name}. Let established characters carry the beat naturally.
+- If Intent is return_main_pov, return the narrative focus to ${character.name} immediately. A secondary character may bridge at most one brief line, then ${character.name}'s presence, perspective, meaningful action or spoken dialogue must become the center of the turn.
+- After two consecutive silent turns, return the meaningful focus to ${character.name} even if an NPC spoke last.
 - If ${userIdentity.name} leaves, showers, walks away or otherwise exits, do not narrate inside ${userIdentity.name}'s private space. Follow ${character.name}'s immediate reaction and give ${character.name} something meaningful to say, think or do.
 - If the latest turn is a direct text message, show its effect and normally include ${character.name}'s written reply before NPC banter.
 - Do not repeat the same gesture, denial, accusation, rhetorical tactic or signature line from recent turns.
@@ -744,7 +756,7 @@ Return JSON with:
 - reply: only the finished roleplay prose.
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
 - development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
-- memory_updates: zero to two durable facts learned directly from the visible user turn or reply. Each item has content, category (person/relationship/world/event/preference/boundary), importance (1-5), and scope (conversation/character). Never infer identity, diagnosis, secrets or off-screen facts. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
+- memory_updates: zero to two durable facts learned directly from the visible user turn only. Each item has content, category (fact/person/relationship/world/event/preference/boundary/promise/conflict), importance (1-5), scope (conversation/character), reason (one short explanation of why this is useful later), and replaces (the exact older tentative memory this user turn corrects, otherwise an empty string). Prefer updating an existing durable idea over creating a near-duplicate. Never store facts invented by the character reply. Never infer identity, diagnosis, secrets or off-screen facts. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
 
 AUTHORITATIVE LATEST USER TURN (message_id=${latestUserRecord.id})
 ${userIdentity.name}: ${latest}
@@ -833,7 +845,7 @@ async function callGeminiWithFailover({
                 },
                 reply: { type: "string" },
                 continuity_note: { type: "string" },
-                memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content", "category", "importance", "scope"], properties: { content: { type: "string" }, category: { type: "string" }, importance: { type: "integer" }, scope: { type: "string" } } } },
+                memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content: { type: "string" }, category: { type: "string", enum: ["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"] }, importance: { type: "integer" }, scope: { type: "string", enum: ["conversation", "character"] }, reason: { type: "string" }, replaces: { type: "string" } } } },
                 development_update: {
                   type: "object",
                   required: ["significance", "evidence", "relationship_phase", "relationship_dynamic", "emotional_residue", "active_contradiction", "behavioral_effect", "turning_point"],
@@ -916,6 +928,7 @@ function normalizeText(value = "") {
 function isSilentContinueText(value = "") {
   const text = String(value || "").trim();
   return text.startsWith("[SILENT_CONTINUE") ||
+    text.startsWith("[RETURN_MAIN_POV") ||
     text.includes("Treat this as silence from the user") ||
     /^[.…。]+$/u.test(text);
 }
@@ -944,7 +957,8 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
   const isQuestion = looksLikeQuestion(raw);
 
   let kind = "ordinary";
-  if (isSilentContinueText(raw)) kind = "silent_continue";
+  if (raw.startsWith("[RETURN_MAIN_POV")) kind = "return_main_pov";
+  else if (isSilentContinueText(raw)) kind = "silent_continue";
   else if (/\[(?:time\s*skip|timeskip)|\b(?:later that|hours later|days later|next day|al dia siguiente|más tarde|mas tarde)\b/i.test(raw)) kind = "time_skip";
   else if (/\b(?:i\s+(?:walk|leave|left|go|went|head|headed|run|ran)|me\s+(?:voy|fui|alejo)|salgo|me fui)\b[^.!?]{0,90}\b(?:away|bathroom|home|outside|opposite|dorm|room|ban[oa]|casa|afuera|lejos)?\b/i.test(raw)) kind = "user_exit";
   else if (/\b(?:i\s+(?:miss(?:ed)?|love|adore|care about)\s+you|te\s+(?:extrano|extraño|quiero|amo)|if\s+i\s+(?:hated|didn'?t\s+like|didn'?t\s+care\s+about)\s+you|si\s+te\s+odiara|wouldn'?t\s+(?:be\s+)?(?:by\s+your\s+side|with\s+you)|no\s+estaria\s+(?:a\s+tu\s+lado|contigo))\b/i.test(raw)) kind = "affection";
@@ -1380,9 +1394,9 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
 
-  const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "digital_message"].includes(turnIntent.kind);
+  const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 24) issues.push("underdeveloped_social_beat");
-  if (["reassurance", "affection", "silent_continue"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
+  if (["reassurance", "affection", "silent_continue", "return_main_pov"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
   if (turnIntent.kind === "affection" && words.length < 34) issues.push("missing_emotional_impact");
 
   for (const rejected of options.rejectedResponses || []) {
@@ -1449,12 +1463,10 @@ async function streamAndPersist({
           loreItems: loreEntries.map((entry) => ({ id: entry.id, name: entry.name, type: entry.entry_type })),
         });
 
-        let chunkIndex = 0;
         for (const chunk of splitForStreaming(reply)) {
-          if (generationId && chunkIndex % 4 === 0 && await isGenerationCancelled(cancellationAdmin, generationId, userId)) return;
+          if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, userId)) return;
           sendEvent(controller, { type: "chunk", content: chunk });
-          chunkIndex += 1;
-          await delay(7);
+          await delay(6);
         }
 
         if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, userId)) return;
@@ -1487,18 +1499,9 @@ async function streamAndPersist({
         }
         await supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
         if (!replacementMessage && Array.isArray(memoryUpdates) && memoryUpdates.length) {
-          const allowedCategories = new Set(["person", "relationship", "world", "event", "preference", "boundary"]);
-          const rows = memoryUpdates.map((item) => ({
-            user_id: userId, conversation_id: conversationId, character_id: character.id,
-            content: cleanPromptValue(item?.content, 500),
-            category: allowedCategories.has(String(item?.category)) ? String(item.category) : "event",
-            importance: Math.max(1, Math.min(5, Number(item?.importance) || 2)),
-            scope: String(item?.scope) === "character" ? "character" : "conversation", source: "automatic", is_pinned: false,
-          })).filter((item) => item.content);
-          for (const row of rows) {
-            const { data: duplicate } = await supabase.from("memories").select("id").eq("user_id", userId).eq("character_id", character.id).ilike("content", row.content).limit(1).maybeSingle();
-            if (!duplicate) await supabase.from("memories").insert(row);
-          }
+          await mergeAutomaticMemories({
+            supabase, userId, conversationId, characterId: character.id, memoryUpdates,
+          });
         }
         sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: Array.isArray(memoryUpdates) ? memoryUpdates.length : 0 });
         console.log("[character-chat] response saved", { conversationId, messageId: savedMessage.id });
@@ -1521,6 +1524,76 @@ async function streamAndPersist({
       Connection: "keep-alive",
     },
   });
+}
+
+function memoryTokenSet(value = "") {
+  return new Set(normalizeText(value).split(/\s+/).filter((token) => token.length > 3));
+}
+
+function memorySimilarity(left = "", right = "") {
+  const a = memoryTokenSet(left);
+  const b = memoryTokenSet(right);
+  if (!a.size || !b.size) return 0;
+  let overlap = 0;
+  for (const token of a) if (b.has(token)) overlap += 1;
+  return overlap / Math.max(1, Math.min(a.size, b.size));
+}
+
+async function mergeAutomaticMemories({ supabase, userId, conversationId, characterId, memoryUpdates = [] }) {
+  const allowedCategories = new Set(["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"]);
+  const { data: existingRows, error: existingError } = await supabase.from("memories")
+    .select("id, conversation_id, content, category, importance, scope, is_canon, is_pinned, superseded_at")
+    .eq("user_id", userId).eq("character_id", characterId).is("superseded_at", null)
+    .order("is_canon", { ascending: false }).order("importance", { ascending: false }).limit(80);
+  if (existingError) console.warn("[character-chat] memory merge lookup failed", { message: existingError.message });
+  const existing = existingRows || [];
+
+  for (const item of memoryUpdates.slice(0, 2)) {
+    const content = cleanPromptValue(item?.content, 500);
+    if (!content) continue;
+    const category = allowedCategories.has(String(item?.category)) ? String(item.category) : "fact";
+    const scope = String(item?.scope) === "character" ? "character" : "conversation";
+    const importance = Math.max(1, Math.min(5, Number(item?.importance) || 2));
+    const whyRemembered = cleanPromptValue(item?.reason, 320) || "Useful continuity for later turns.";
+    const replaces = cleanPromptValue(item?.replaces, 500);
+
+    if (replaces) {
+      const correctionTarget = existing
+        .filter((memory) => !memory.is_canon && !memory.is_pinned)
+        .map((memory) => ({ memory, score: memorySimilarity(memory.content, replaces) }))
+        .sort((a, b) => b.score - a.score)[0];
+      if (correctionTarget?.score >= 0.58) {
+        const { error: supersedeError } = await supabase.from("memories").update({
+          superseded_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", correctionTarget.memory.id).eq("user_id", userId);
+        if (supersedeError) console.warn("[character-chat] memory correction could not supersede old memory", { message: supersedeError.message });
+        else correctionTarget.memory.superseded_at = new Date().toISOString();
+      }
+    }
+
+    const candidates = existing
+      .filter((memory) => !memory.superseded_at && memory.scope === scope && (scope === "character" || String(memory.conversation_id || "") === String(conversationId)))
+      .map((memory) => ({ memory, score: memorySimilarity(memory.content, content) }))
+      .sort((a, b) => b.score - a.score);
+    const closest = candidates[0];
+
+    if (closest?.score >= 0.78) {
+      // Canon/user-pinned memories may gain importance/reason, but automatic learning never rewrites their wording.
+      const patch = closest.memory.is_canon || closest.memory.is_pinned
+        ? { importance: Math.max(Number(closest.memory.importance || 1), importance), why_remembered: whyRemembered, updated_at: new Date().toISOString() }
+        : { content, category, importance: Math.max(Number(closest.memory.importance || 1), importance), why_remembered: whyRemembered, updated_at: new Date().toISOString() };
+      const { error } = await supabase.from("memories").update(patch).eq("id", closest.memory.id).eq("user_id", userId);
+      if (error) console.warn("[character-chat] automatic memory update failed", { message: error.message });
+      continue;
+    }
+
+    const { error } = await supabase.from("memories").insert({
+      user_id: userId, conversation_id: conversationId, character_id: characterId, content, category,
+      importance, scope, source: "automatic", is_pinned: false, is_canon: false, why_remembered: whyRemembered,
+    });
+    if (error) console.warn("[character-chat] automatic memory insert failed", { message: error.message });
+  }
 }
 
 async function saveCharacterReply({ supabase, conversationId, userId, reply }) {
@@ -1577,8 +1650,11 @@ async function isStoryRevisionCurrent(supabase, conversationId, userId, expected
 function selectRelevantMemories(memories, messages) {
   const recent = normalizeText(messages.slice(-20).map((message) => message.content).join(" "));
   return [...memories].sort((left, right) => {
-    const leftPinned = left.is_pinned || left.source === "user" ? 1 : 0;
-    const rightPinned = right.is_pinned || right.source === "user" ? 1 : 0;
+    const leftCanon = left.is_canon ? 1 : 0;
+    const rightCanon = right.is_canon ? 1 : 0;
+    if (leftCanon !== rightCanon) return rightCanon - leftCanon;
+    const leftPinned = left.is_pinned || left.source === "manual" ? 1 : 0;
+    const rightPinned = right.is_pinned || right.source === "manual" ? 1 : 0;
     if (leftPinned !== rightPinned) return rightPinned - leftPinned;
     const leftRelevant = normalizeText(left.content).split(" ").some((word) => word.length > 4 && recent.includes(word)) ? 1 : 0;
     const rightRelevant = normalizeText(right.content).split(" ").some((word) => word.length > 4 && recent.includes(word)) ? 1 : 0;
@@ -1621,7 +1697,8 @@ function getUserIdentity(user, persona = null) {
 function getLengthGuidance(length, kind) {
   if (kind === "reassurance") return "45–110 words; one complete reaction and one natural line of dialogue.";
   if (kind === "affection") return "70–160 words; include private impact, outward restraint and character-specific dialogue.";
-  if (kind === "silent_continue") return "70–170 words; advance the scene through the main character and include audible dialogue.";
+  if (kind === "silent_continue") return "55–150 words; let the scene breathe, with dialogue when natural and no invented user actions.";
+  if (kind === "return_main_pov") return "65–165 words; re-center the created character quickly and include a meaningful spoken or internal beat.";
   if (length === "short") return "45–100 words, complete rather than abrupt.";
   if (length === "long") return "150–320 words, only when the moment supports it.";
   return "75–180 words. Prefer substance over decorative description.";
@@ -1660,6 +1737,7 @@ function stripJsonFence(value) {
 
 function compactMessageForPrompt(value, maximum = 3200) {
   const text = String(value || "").trim();
+  if (text.startsWith("[RETURN_MAIN_POV")) return "[RETURN_MAIN_POV]";
   if (isSilentContinueText(text)) return "[SILENT_CONTINUE]";
   return cleanPromptValue(text, maximum);
 }

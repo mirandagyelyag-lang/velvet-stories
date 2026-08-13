@@ -49,6 +49,7 @@ import { supabase } from "../services/supabase";
 import "../styles/chat.css";
 
 const SILENT_CONTINUE_MESSAGE = "[SILENT_CONTINUE]";
+const RETURN_MAIN_POV_MESSAGE = "[RETURN_MAIN_POV]";
 const REGENERATION_FEEDBACK = [
   ["ignored_idea", "Ignored my idea"],
   ["too_short", "Too short"],
@@ -136,6 +137,8 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
   const [simpleResponseStyle, setSimpleResponseStyle] = useState("balanced");
   const [memoryBookOpen, setMemoryBookOpen] = useState(false);
   const [memoryBookCount, setMemoryBookCount] = useState(0);
+  const [readingMode, setReadingMode] = useState(() => localStorage.getItem("velvet_reading_mode") === "1");
+  const [silentCue, setSilentCue] = useState("");
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [storyHubOpen, setStoryHubOpen] = useState(false);
   const [refreshingTimeline, setRefreshingTimeline] = useState(false);
@@ -169,6 +172,10 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
   // The context generation manager is the authoritative busy state.
   const busy = sending || characterGenerating;
   const activeSceneImage = sceneImages[activeSceneImageIndex] || "";
+
+  useEffect(() => {
+    localStorage.setItem("velvet_reading_mode", readingMode ? "1" : "0");
+  }, [readingMode]);
 
   useEffect(() => {
     startConversation(character, { conversationId: activeConversationId || conversationId }).catch((error) => {
@@ -461,9 +468,20 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     const cleanMessage = message.trim();
     if (busy || !conversationReady) return;
 
-    const messageToSend = cleanMessage === "" || /^[.…。]+$/u.test(cleanMessage)
-      ? SILENT_CONTINUE_MESSAGE
+    const dotsOnly = /^[.…。]+$/u.test(cleanMessage);
+    const compactDots = cleanMessage.replace(/[…。]/gu, ".");
+    const returnToMainPov = dotsOnly && compactDots === "..";
+    const messageToSend = cleanMessage === "" || dotsOnly
+      ? (returnToMainPov ? RETURN_MAIN_POV_MESSAGE : SILENT_CONTINUE_MESSAGE)
       : cleanMessage;
+
+    if (messageToSend === RETURN_MAIN_POV_MESSAGE) {
+      setSilentCue(`Returning to ${character.name}…`);
+    } else if (messageToSend === SILENT_CONTINUE_MESSAGE) {
+      setSilentCue("Continuing the scene…");
+    } else {
+      setSilentCue("");
+    }
 
     // Every generation owns a run id. A stopped/older generation is never
     // allowed to change the UI state of a newer generation when its async
@@ -516,6 +534,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
       if (generationRunRef.current === runId) {
         setSending(false);
         setIsTyping(false);
+        setSilentCue("");
       }
     }
   }
@@ -546,7 +565,11 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
 
     setSending(false);
     setIsTyping(false);
+    setSilentCue("");
     setSendError("");
+    window.requestAnimationFrame(() => {
+      try { textareaRef.current?.focus({ preventScroll: true }); } catch { textareaRef.current?.focus(); }
+    });
   }
 
   async function retryGeneration() {
@@ -555,6 +578,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     try {
       stoppedRef.current = false;
       setSendError("");
+      setSilentCue("");
       setIsTyping(true);
       await generateCharacterReply(character.id);
     } catch (error) {
@@ -951,6 +975,14 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     return next;
   }
 
+  useEffect(() => {
+    const latestCharacterMessage = [...visibleMessages].reverse().find((item) => item.sender === "character" && !item.isStreaming);
+    if (!latestCharacterMessage || busy || !conversationReady) return;
+    loadResponseVersions(latestCharacterMessage).catch((error) => {
+      console.debug("Could not preload response versions:", error);
+    });
+  }, [conversation?.conversationId, latestMessageContent, busy, conversationReady]);
+
   async function navigateResponseVersion(chatMessage, direction) {
     if (!chatMessage || chatMessage.sender !== "character" || chatMessage.isStreaming || busy) return;
 
@@ -1095,7 +1127,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
   const chatHeroImage = character.coverUrl || character.imageUrl;
 
   return (
-    <section className="chat">
+    <section className={`chat${readingMode ? " chat--reading" : ""}`}>
       <header
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
@@ -1119,6 +1151,14 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
           </button>
           {conversation?.branchParentId && <span className="chat__branch-badge"><GitBranch size={12}/>Branch</span>}
         </div>
+        <button
+          className={`chat__icon-button chat__reading-button${readingMode ? " is-active" : ""}`}
+          onClick={() => setReadingMode((current) => !current)}
+          aria-label={readingMode ? "Exit reading mode" : "Enter reading mode"}
+          title={readingMode ? "Exit reading mode" : "Reading mode"}
+        >
+          <Eye size={18} />
+        </button>
         <button
           className="chat__icon-button chat__memory-book-button"
           onClick={() => setMemoryBookOpen(true)}
@@ -1145,6 +1185,9 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
             </button>
             <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setControlsOpen(true); }} disabled={!conversationReady}>
               <SlidersHorizontal size={17} /> Story settings
+            </button>
+            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setReadingMode((current) => !current); }}>
+              <Eye size={17} /> {readingMode ? "Exit reading mode" : "Reading mode"}
             </button>
             <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setDirectorNoteOpen(true); }} disabled={!conversationReady || busy}>
               <Sparkles size={17} /> Guide next reply <small style={{ opacity: 0.62 }}>(optional)</small>
@@ -1258,6 +1301,8 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
           <ChevronDown size={20}/>
         </button>
       )}
+
+      {silentCue && <div className="chat__silent-cue" role="status"><Sparkles size={13}/><span>{silentCue}</span></div>}
 
       <form className={`chat__composer${replyTo ? " chat__composer--replying" : ""}`} onSubmit={handleSubmit}>
         {replyTo && (
@@ -1880,7 +1925,9 @@ function isSilentContinuation(message) {
   const content = String(message?.content || "").trim();
   return message?.sender === "user" && (
     content === SILENT_CONTINUE_MESSAGE ||
+    content === RETURN_MAIN_POV_MESSAGE ||
     content.startsWith("[SILENT_CONTINUE") ||
+    content.startsWith("[RETURN_MAIN_POV") ||
     content.includes("Treat this as silence from the user")
   );
 }

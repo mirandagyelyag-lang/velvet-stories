@@ -62,7 +62,7 @@ const generatedDraftFields = [
 ];
 
 function CreateCharacterModal({ onClose, onCreated, character = null }) {
-  const { createCharacter, updateCharacter, enhanceCharacterDraft, organizeCharacterDraft, generateCharacterDraft, testCharacterVoice } = useCharacters();
+  const { createCharacter, updateCharacter, enhanceCharacterDraft, enhanceCharacterFields, organizeCharacterDraft, generateCharacterDraft, testCharacterVoice } = useCharacters();
   const [form, setForm] = useState(() => character ? {
     ...initialForm,
     name: character.name || "",
@@ -101,6 +101,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
+  const [fieldPolishing, setFieldPolishing] = useState("");
   const [organizing, setOrganizing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [creatorOpen, setCreatorOpen] = useState(false);
@@ -135,7 +136,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
     return Math.round((filled / required.length) * 100);
   }, [form.name, form.role, form.personality, form.firstMessage]);
   const voiceFingerprintCount = voiceFingerprintFields.filter((field) => form[field]?.trim()).length;
-  const aiBusy = enhancing || organizing || generating;
+  const aiBusy = enhancing || Boolean(fieldPolishing) || organizing || generating;
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -186,6 +187,20 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
       setError(requestError.message || "AI Polish couldn't refine this character.");
     } finally {
       setEnhancing(false);
+    }
+  }
+
+  async function handlePolishFields(fields, label) {
+    if (!fields?.length || saving || aiBusy) return;
+    try {
+      setFieldPolishing(label);
+      setError("");
+      const suggestions = await enhanceCharacterFields(form, fields);
+      setForm((current) => mergeCharacterSuggestions(current, suggestions));
+    } catch (requestError) {
+      setError(translateCharacterAIError(requestError.message));
+    } finally {
+      setFieldPolishing("");
     }
   }
 
@@ -374,7 +389,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
           </aside>
 
           <main className="character-studio__editor">
-            <StudioSection icon={<UserRound size={18} />} kicker="ESSENCE" title="Who are they?" description="The few things Velvet should understand before anything else.">
+            <StudioSection icon={<UserRound size={18} />} kicker="ESSENCE" title="Who are they?" description="The few things Velvet should understand before anything else." onPolish={() => handlePolishFields(["description", "personality"], "essence")} polishing={fieldPolishing === "essence"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Name" required><input name="name" value={form.name} onChange={updateField} placeholder="Theo Calloway" disabled={saving} /></StudioField>
                 <StudioField label="Role / archetype" required><input name="role" value={form.role} onChange={updateField} placeholder="Campus prince, heartbreaker, best friend…" disabled={saving} /></StudioField>
@@ -387,7 +402,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </StudioField>
             </StudioSection>
 
-            <StudioSection icon={<Heart size={18} />} kicker="THE BOND" title="Who are they to you?" description="This relationship should shape how they notice, remember and react to you.">
+            <StudioSection icon={<Heart size={18} />} kicker="THE BOND" title="Who are they to you?" description="This relationship should shape how they notice, remember and react to you." onPolish={() => handlePolishFields(["relationship", "world", "scenario"], "bond")} polishing={fieldPolishing === "bond"}>
               <StudioField label="Relationship to you" hint="Make this specific. History, current dynamic, what is known and what is not.">
                 <textarea name="relationship" value={form.relationship} onChange={updateField} placeholder="Friends since high school. He already likes me, but I read his distance as indifference…" rows="5" disabled={saving} />
               </StudioField>
@@ -397,7 +412,14 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </div>
             </StudioSection>
 
-            <StudioSection icon={<Brain size={18} />} kicker="CHARACTER DNA" title="What makes them human?" description="Useful contradictions and recurring patterns, not a personality spreadsheet.">
+            <details className="character-studio__depth">
+              <summary>
+                <span><Sparkles size={16}/><strong>More depth</strong></span>
+                <small>Values, fears, growth, boundaries and advanced voice · only when you want them</small>
+                <ChevronDown size={17}/>
+              </summary>
+              <div className="character-studio__depth-body">
+            <StudioSection icon={<Brain size={18} />} kicker="CHARACTER DNA" title="What makes them human?" description="Useful contradictions and recurring patterns, not a personality spreadsheet." onPolish={() => handlePolishFields(["values", "fears", "habits", "contradictions"], "dna")} polishing={fieldPolishing === "dna"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Values"><textarea name="values" value={form.values} onChange={updateField} placeholder="Loyalty, independence, family, reputation…" rows="3" disabled={saving} /></StudioField>
                 <StudioField label="Fears"><textarea name="fears" value={form.fears} onChange={updateField} placeholder="What can actually get under their skin?" rows="3" disabled={saving} /></StudioField>
@@ -406,7 +428,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </div>
             </StudioSection>
 
-            <StudioSection icon={<Sparkles size={18} />} kicker="DEVELOPMENT" title="How can they change without losing themselves?" description="Optional anchors for gradual growth. Velvet will never treat these as an instant transformation.">
+            <StudioSection icon={<Sparkles size={18} />} kicker="DEVELOPMENT" title="How can they change without losing themselves?" description="Optional anchors for gradual growth. Velvet will never treat these as an instant transformation." onPolish={() => handlePolishFields(["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"], "development")} polishing={fieldPolishing === "development"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Core motivation" hint="What do they want beneath the surface?"><textarea name="coreMotivation" value={form.coreMotivation} onChange={updateField} placeholder="To be chosen without having to ask; to protect the life he built…" rows="4" disabled={saving} /></StudioField>
                 <StudioField label="Emotional defense" hint="How do they protect themselves when something matters?"><textarea name="emotionalDefense" value={form.emotionalDefense} onChange={updateField} placeholder="Turns tenderness into teasing, leaves when feelings become too visible…" rows="4" disabled={saving} /></StudioField>
@@ -415,7 +437,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </div>
             </StudioSection>
 
-            <StudioSection icon={<MessageCircle size={18} />} kicker="VOICE & BEHAVIOR" title="How do they feel on the page?" description="The difference between knowing a character and actually hearing them.">
+            <StudioSection icon={<MessageCircle size={18} />} kicker="VOICE & BEHAVIOR" title="How do they feel on the page?" description="The difference between knowing a character and actually hearing them." onPolish={() => handlePolishFields(["speechStyle", "boundaries", "exampleDialogue", "voiceVocabulary", "humorStyle", "conflictStyle", "affectionStyle", "voiceAvoidances"], "voice")} polishing={fieldPolishing === "voice"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Speech style"><textarea name="speechStyle" value={form.speechStyle} onChange={updateField} placeholder="Dry, concise, teasing without performing, rarely over-explains…" rows="4" disabled={saving} /></StudioField>
                 <StudioField label="Boundaries"><textarea name="boundaries" value={form.boundaries} onChange={updateField} placeholder="Things they should never do unless the story genuinely earns it." rows="4" disabled={saving} /></StudioField>
@@ -439,7 +461,10 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </details>
             </StudioSection>
 
-            <StudioSection icon={<BookOpen size={18} />} kicker="STORY FEEL" title="How should stories with them read?" description="Keep this light. V6 handles most pacing automatically.">
+              </div>
+            </details>
+
+            <StudioSection icon={<BookOpen size={18} />} kicker="STORY FEEL" title="How should stories with them read?" description="Velvet handles most pacing automatically. You only choose the broad feel." onPolish={() => handlePolishFields(["firstMessage"], "opening")} polishing={fieldPolishing === "opening"}>
               <div className="studio-choice-row">
                 <ChoiceGroup label="Response length" name="responseLength" value={form.responseLength} onChange={updateField} options={[
                   ["short", "Short", "Quick beats"],
@@ -478,7 +503,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   );
 }
 
-function StudioSection({ icon, kicker, title, description, children }) {
+function StudioSection({ icon, kicker, title, description, children, onPolish = null, polishing = false }) {
   return (
     <section className="studio-section">
       <header className="studio-section__header">
@@ -488,6 +513,10 @@ function StudioSection({ icon, kicker, title, description, children }) {
           <h3>{title}</h3>
           <span>{description}</span>
         </div>
+        {onPolish && <button type="button" className="studio-section__polish" onClick={onPolish} disabled={polishing}>
+          {polishing ? <LoaderCircle className="character-modal__spinner" size={14}/> : <Sparkles size={14}/>}
+          <span>{polishing ? "Polishing…" : "Polish section"}</span>
+        </button>}
       </header>
       <div className="studio-section__body">{children}</div>
     </section>

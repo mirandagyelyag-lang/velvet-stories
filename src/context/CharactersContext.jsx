@@ -229,11 +229,12 @@ export function CharactersProvider({ children }) {
     return data.publicUrl;
   }
 
-  async function requestCharacterAssist(characterData, mode = "polish") {
+  async function requestCharacterAssist(characterData, mode = "polish", focusFields = []) {
     const { data, error } = await supabase.functions.invoke("character-chat", {
       body: {
         action: "character_assist",
         mode,
+        focusFields: Array.isArray(focusFields) ? focusFields.slice(0, 8) : [],
         draft: characterDraftPayload(characterData),
       },
       timeout: 32000,
@@ -244,6 +245,10 @@ export function CharactersProvider({ children }) {
 
   async function enhanceCharacterDraft(characterData) {
     return requestCharacterAssist(characterData, "polish");
+  }
+
+  async function enhanceCharacterFields(characterData, focusFields = []) {
+    return requestCharacterAssist(characterData, "polish", focusFields);
   }
 
   async function organizeCharacterDraft(characterData) {
@@ -356,6 +361,7 @@ export function CharactersProvider({ children }) {
         createCharacter,
         updateCharacter,
         enhanceCharacterDraft,
+        enhanceCharacterFields,
         organizeCharacterDraft,
         generateCharacterDraft,
         testCharacterVoice,

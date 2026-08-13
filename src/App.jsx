@@ -18,6 +18,7 @@ import { useChats } from "./context/ChatsContext";
 import WelcomeSplash from "./components/WelcomeSplash";
 import "./App.css";
 import "./styles/velvet-unified.css";
+import "./styles/velvet-v17.css";
 
 function App() {
   const { user, authLoading } = useAuth();

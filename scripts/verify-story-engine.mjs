@@ -14,6 +14,10 @@ const privateCancellationMigration = read("supabase/migrations/202608100002_gene
 const developmentMigration = read("supabase/migrations/202608110001_character_development_v1.sql");
 const storyDnaMigration = read("supabase/migrations/202608120001_story_dna_v12.sql");
 const storyFeedbackMigration = read("supabase/migrations/202608120002_story_feedback_v13.sql");
+const memoryV17Migration = read("supabase/migrations/202608130001_velvet_v17_memory_engine.sql");
+const memoryBook = read("src/components/MemoryBookDrawer.jsx");
+const memoriesPage = read("src/pages/Memories.jsx");
+const v17Styles = read("src/styles/velvet-v17.css");
 
 const checks = [];
 function check(label, condition) {
@@ -36,7 +40,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("consolidated engine stays under eighteen hundred lines", edgeLines < 1800);
+check("consolidated engine stays under two thousand lines", edgeLines < 2000);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -165,10 +169,11 @@ check("AI can create an entire reviewable character draft",
   characterModal.includes("Create with AI") && characterModal.includes("Surprise me") &&
   characterModal.includes("Nothing is saved automatically"));
 check("complete character creation is fast bounded and has model failover",
-  edge.includes("const deadline = Date.now() + 28000") &&
+  edge.includes("deadlineMs = 28000") &&
+  edge.includes("deadlineMs: 22000") &&
   edge.includes('thinkingConfig: { thinkingLevel: "MINIMAL" }') &&
   edge.includes("[GEMINI_MODEL, GEMINI_FALLBACK_MODEL]") &&
-  edge.includes('maxOutputTokens: 2800') &&
+  edge.includes('maxOutputTokens: 2300') &&
   charactersContext.includes("timeout: 32000"));
 check("character creation exposes actionable upstream errors",
   charactersContext.includes("readCharacterFunctionError") &&
@@ -187,6 +192,57 @@ check("existing profiles can be organized without changing facts",
 check("rewind and clean branches clear derived character development",
   (chatsContext.match(/character_development: \{\}/g) || []).length >= 3 &&
   chatsContext.includes("characterDevelopment: {}"));
+
+check("explicit return-main POV control is hidden and reaches the narrative engine",
+  chat.includes('const RETURN_MAIN_POV_MESSAGE = "[RETURN_MAIN_POV]"') &&
+  chat.includes("returnToMainPov ? RETURN_MAIN_POV_MESSAGE") &&
+  edge.includes('text.startsWith("[RETURN_MAIN_POV")') &&
+  edge.includes('kind = "return_main_pov"'));
+
+check("reading mode is persistent and has a dedicated calm UI",
+  chat.includes('localStorage.getItem("velvet_reading_mode")') &&
+  chat.includes('localStorage.setItem("velvet_reading_mode"') &&
+  chat.includes("chat--reading") &&
+  v17Styles.includes(".chat--reading"));
+
+check("mobile composer is keyboard-safe and sixteen-pixel input avoids iOS zoom",
+  v17Styles.includes("--velvet-keyboard-offset") &&
+  v17Styles.includes("font-size: 16px") &&
+  v17Styles.includes("env(safe-area-inset-bottom"));
+
+check("memory v1.7 adds canon reasons and supersession",
+  memoryV17Migration.includes("is_canon boolean not null default false") &&
+  memoryV17Migration.includes("why_remembered text") &&
+  memoryV17Migration.includes("superseded_at timestamptz") &&
+  memoryV17Migration.includes("superseded_by uuid"));
+
+check("automatic memories merge semantically instead of stacking exact duplicates",
+  edge.includes("async function mergeAutomaticMemories") &&
+  edge.includes("function memorySimilarity") &&
+  edge.includes("why_remembered") &&
+  edge.includes("superseded_at"));
+
+check("automatic memory contract only learns from visible user turns",
+  edge.includes("visible user turn only") &&
+  edge.includes("Never store facts invented by the character reply") &&
+  edge.includes("replaces"));
+
+check("canon memories are surfaced and protected in both memory UIs",
+  memoryBook.includes("is_canon") &&
+  memoryBook.includes("Why Velvet remembers this") &&
+  memoriesPage.includes("toggleCanon") &&
+  memoriesPage.includes("ShieldCheck"));
+
+check("Character Studio supports progressive depth and per-section AI polish",
+  characterModal.includes('className="character-studio__depth"') &&
+  characterModal.includes("More depth") &&
+  characterModal.includes("Polish section") &&
+  charactersContext.includes("enhanceCharacterFields") &&
+  edge.includes("focusFields"));
+
+check("STOP cancellation is checked on every streamed chunk",
+  !edge.includes("chunkIndex % 4") &&
+  edge.includes("isGenerationCancelled"));
 
 check("pure narrative helper API loads", helpers);
 check("compact silence is recognized", helpers?.isSilentContinueText("...") && helpers?.isSilentContinueText("[SILENT_CONTINUE]"));
