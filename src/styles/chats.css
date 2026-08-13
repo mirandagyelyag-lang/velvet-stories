@@ -961,184 +961,563 @@
 }
 
 
-/* v1.4.7 VS EVERYWHERE */
-.chats-page--shelf {
-  --vs-pattern: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22220%22%20height%3D%22170%22%3E%0A%3Cg%20font-family%3D%22Georgia,serif%22%20font-weight%3D%22600%22%3E%0A%3Ctext%20x%3D%2212%22%20y%3D%2254%22%20font-size%3D%2238%22%20fill%3D%22%2376545d%22%20fill-opacity%3D%22.19%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%22126%22%20y%3D%22100%22%20font-size%3D%2231%22%20fill%3D%22%23a77e68%22%20fill-opacity%3D%22.15%22%20transform%3D%22rotate(-8%20126%20100)%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%2258%22%20y%3D%22154%22%20font-size%3D%2225%22%20fill%3D%22%2376545d%22%20fill-opacity%3D%22.12%22%20transform%3D%22rotate(7%2058%20154)%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%22170%22%20y%3D%2231%22%20font-size%3D%2221%22%20fill%3D%22%239b6f78%22%20fill-opacity%3D%22.10%22%3EVS%3C%2Ftext%3E%0A%3C%2Fg%3E%3C%2Fsvg%3E");
-  --vs-pattern-small: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22150%22%20height%3D%22118%22%3E%0A%3Cg%20font-family%3D%22Georgia,serif%22%20font-weight%3D%22600%22%3E%0A%3Ctext%20x%3D%228%22%20y%3D%2238%22%20font-size%3D%2227%22%20fill%3D%22%2376545d%22%20fill-opacity%3D%22.16%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%2288%22%20y%3D%2277%22%20font-size%3D%2222%22%20fill%3D%22%23a77e68%22%20fill-opacity%3D%22.13%22%20transform%3D%22rotate(-7%2088%2077)%22%3EVS%3C%2Ftext%3E%0A%3Ctext%20x%3D%2238%22%20y%3D%22111%22%20font-size%3D%2218%22%20fill%3D%22%2376545d%22%20fill-opacity%3D%22.10%22%20transform%3D%22rotate(6%2038%20111)%22%3EVS%3C%2Ftext%3E%0A%3C%2Fg%3E%3C%2Fsvg%3E");
-}
+
+/* =========================================================
+   v1.4.8 · VELVET GALLERY
+   No VS monograms. No repeating letters. No white-hospital UI.
+   A warmer cinematic private-library direction.
+   ========================================================= */
 
 .chats-page {
-  background-image:
-    var(--vs-pattern),
-    radial-gradient(circle at 12% -5%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 32%),
-    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--gold) 6%, transparent), transparent 24%);
-  background-repeat: repeat, no-repeat, no-repeat;
-  background-size: 220px 170px, auto, auto;
-  background-color: var(--background);
+  background:
+    radial-gradient(ellipse at 8% 0%,
+      color-mix(in srgb, var(--accent) 17%, transparent),
+      transparent 34%),
+    radial-gradient(ellipse at 92% 14%,
+      color-mix(in srgb, var(--gold) 10%, transparent),
+      transparent 31%),
+    radial-gradient(ellipse at 45% 110%,
+      color-mix(in srgb, var(--accent-dark) 8%, transparent),
+      transparent 42%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--background) 88%, #caa9a2),
+      var(--background) 46%,
+      color-mix(in srgb, var(--background) 94%, #ad817b));
 }
 
+.chats-page--shelf {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Soft atmospheric light, no letters or patterns. */
+.chats-page--shelf::before {
+  content: "";
+  position: fixed;
+  width: 520px;
+  height: 520px;
+  left: -230px;
+  top: 15vh;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--accent) 11%, transparent),
+    transparent 69%);
+  filter: blur(8px);
+}
+
+.chats-page--shelf::after {
+  content: "";
+  position: fixed;
+  width: 470px;
+  height: 470px;
+  right: -210px;
+  bottom: 4vh;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--gold) 9%, transparent),
+    transparent 69%);
+  filter: blur(10px);
+}
+
+/* ---------------------------------------------------------
+   HERO · cinematic editorial panel
+   --------------------------------------------------------- */
+
 .story-library-intro {
-  background-image:
-    var(--vs-pattern),
-    linear-gradient(115deg,
-      color-mix(in srgb, var(--accent) 17%, var(--surface)),
-      color-mix(in srgb, var(--surface) 88%, var(--background)) 48%,
-      color-mix(in srgb, var(--gold) 9%, var(--surface)));
-  background-repeat: repeat, no-repeat;
-  background-size: 190px 147px, cover;
-  background-position: 18px 4px, center;
-  background-blend-mode: multiply, normal;
+  min-height: 220px;
+  align-items: stretch;
+  margin-bottom: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 17%, var(--border));
+  border-radius: 34px 34px 16px 34px;
+  background:
+    linear-gradient(120deg,
+      color-mix(in srgb, var(--accent-dark) 24%, var(--surface)),
+      color-mix(in srgb, var(--accent) 11%, var(--surface)) 43%,
+      color-mix(in srgb, var(--gold) 8%, var(--surface)) 100%);
+  box-shadow:
+    0 26px 80px color-mix(in srgb, #2a101b 15%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 45%, transparent);
 }
 
 .story-library-intro::before {
   content: "";
   position: absolute;
-  width: 330px;
-  height: 330px;
-  right: -92px;
-  top: -122px;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 7%, transparent), transparent 67%);
+  inset: 0;
   pointer-events: none;
+  background:
+    radial-gradient(circle at 79% 23%,
+      color-mix(in srgb, var(--gold) 16%, transparent),
+      transparent 17%),
+    radial-gradient(circle at 88% 42%,
+      color-mix(in srgb, var(--accent) 13%, transparent),
+      transparent 25%),
+    linear-gradient(90deg,
+      transparent 0 63%,
+      color-mix(in srgb, var(--surface) 12%, transparent) 63% 64%,
+      transparent 64%);
 }
 
+.story-library-intro::after {
+  content: "";
+  position: absolute;
+  right: 8%;
+  top: 50%;
+  width: 210px;
+  height: 210px;
+  transform: translateY(-50%) rotate(21deg);
+  border: 1px solid color-mix(in srgb, var(--gold) 21%, transparent);
+  border-radius: 42% 58% 50% 50% / 58% 42% 58% 42%;
+  pointer-events: none;
+  opacity: .75;
+}
+
+.story-library-intro__copy {
+  position: relative;
+  z-index: 2;
+  width: min(72%, 880px);
+  padding: 40px 38px 36px;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.story-library-intro__mark {
+  width: 52px;
+  height: 52px;
+  flex-basis: 52px;
+  color: color-mix(in srgb, var(--gold) 74%, var(--accent));
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--surface) 70%, transparent),
+      color-mix(in srgb, var(--accent) 11%, transparent));
+  border-color: color-mix(in srgb, var(--gold) 28%, var(--border));
+  border-radius: 18px 18px 18px 7px;
+  box-shadow:
+    0 14px 34px color-mix(in srgb, var(--accent-dark) 15%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 58%, transparent);
+}
+
+.story-library-intro__eyebrow {
+  margin: 4px 0 7px;
+  color: color-mix(in srgb, var(--accent) 74%, var(--text-secondary));
+  font-size: .57rem;
+  letter-spacing: .25em;
+}
+
+.story-library-intro h1 {
+  font-size: clamp(3.8rem, 8vw, 6.8rem);
+  line-height: .72;
+  letter-spacing: -.055em;
+  color: color-mix(in srgb, var(--text-primary) 91%, var(--accent-dark));
+}
+
+.story-library-intro p {
+  max-width: 460px;
+  margin-top: 20px;
+  color: color-mix(in srgb, var(--text-secondary) 88%, var(--accent));
+  font-size: .83rem;
+  line-height: 1.55;
+}
+
+.story-library-header__new {
+  position: absolute;
+  z-index: 3;
+  right: 34px;
+  bottom: 33px;
+  min-height: 50px;
+  padding: 0 22px;
+  color: #fff9f4;
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-dark) 90%, #40252d),
+      color-mix(in srgb, var(--accent) 84%, #8c5662));
+  border-color: color-mix(in srgb, var(--gold) 43%, var(--accent));
+  border-radius: 999px;
+  box-shadow:
+    0 16px 34px color-mix(in srgb, var(--accent-dark) 25%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.16);
+}
+
+.story-library-header__new:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 21px 42px color-mix(in srgb, var(--accent-dark) 30%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.18);
+}
+
+/* ---------------------------------------------------------
+   CONTROL DECK · one floating strip, tabs without boxes
+   --------------------------------------------------------- */
+
 .story-library-commandbar {
-  background-image:
-    var(--vs-pattern-small),
+  position: relative;
+  z-index: 4;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 18px;
+  margin: -14px 24px 42px;
+  padding: 13px 16px 11px;
+  border: 1px solid color-mix(in srgb, var(--accent) 15%, var(--border));
+  border-radius: 18px;
+  background:
     linear-gradient(180deg,
-      color-mix(in srgb, var(--accent) 8%, var(--surface)),
-      color-mix(in srgb, var(--surface) 88%, var(--background)));
-  background-repeat: repeat, no-repeat;
-  background-size: 150px 118px, cover;
-  background-blend-mode: multiply, normal;
+      color-mix(in srgb, var(--surface) 88%, transparent),
+      color-mix(in srgb, var(--accent) 5%, var(--surface)));
+  box-shadow:
+    0 20px 50px color-mix(in srgb, #2a101b 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 52%, transparent);
+  backdrop-filter: blur(18px);
 }
 
 .story-library-search {
-  background-image:
-    var(--vs-pattern-small),
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--surface) 86%, transparent),
-      color-mix(in srgb, var(--accent) 4%, var(--surface)));
-  background-repeat: repeat, no-repeat;
-  background-size: 185px 145px, cover;
-  background-position: -12px -20px, center;
-  background-blend-mode: multiply, normal;
+  height: 46px;
+  padding-inline: 3px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 17%, var(--border));
+  box-shadow: none;
+}
+
+.story-library-search:focus-within {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  box-shadow: none;
+}
+
+.story-library-search input {
+  font-size: .78rem;
 }
 
 .story-library-toggle {
-  background-image:
-    var(--vs-pattern-small),
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--surface) 84%, transparent),
-      color-mix(in srgb, var(--gold) 4%, var(--surface)));
-  background-repeat: repeat, no-repeat;
-  background-size: 175px 138px, cover;
-  background-position: 22px -18px, center;
-  background-blend-mode: multiply, normal;
+  height: 46px;
+  gap: 15px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.story-library-toggle button {
+  position: relative;
+  height: 46px;
+  padding: 0 3px;
+  border-radius: 0;
+  color: color-mix(in srgb, var(--text-secondary) 91%, var(--accent));
+  font-size: .64rem;
+  letter-spacing: .02em;
+}
+
+.story-library-toggle button::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+  transform: translateX(-50%);
+  transition: width 180ms ease;
 }
 
 .story-library-toggle button.active {
-  background-image:
-    var(--vs-pattern-small),
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--accent) 13%, var(--surface)),
-      color-mix(in srgb, var(--gold) 8%, var(--surface)));
-  background-size: 130px 102px, cover;
-  background-blend-mode: multiply, normal;
+  color: color-mix(in srgb, var(--accent-dark) 80%, var(--text-primary));
+  background: transparent;
+  box-shadow: none;
+}
+
+.story-library-toggle button.active::after {
+  width: 100%;
+}
+
+/* ---------------------------------------------------------
+   SECTION HEADINGS
+   --------------------------------------------------------- */
+
+.story-shelf {
+  gap: 50px;
 }
 
 .story-shelf-section {
   position: relative;
-  padding: 16px;
-  margin-inline: -16px;
-  border-radius: 28px;
-  background-image:
-    var(--vs-pattern),
-    linear-gradient(145deg,
-      color-mix(in srgb, var(--accent) 3.5%, transparent),
-      transparent 46%,
-      color-mix(in srgb, var(--gold) 3.5%, transparent));
-  background-repeat: repeat, no-repeat;
-  background-size: 220px 170px, cover;
-  background-blend-mode: multiply, normal;
+}
+
+.story-shelf-section__heading {
+  margin-bottom: 20px;
+  padding: 0 4px 15px 18px;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 52%, var(--gold));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, var(--border));
+}
+
+.story-shelf-section__heading span {
+  color: color-mix(in srgb, var(--accent) 68%, var(--gold));
+  font-size: .53rem;
+  letter-spacing: .24em;
+}
+
+.story-shelf-section__heading h2 {
+  font-size: clamp(2rem, 3vw, 2.65rem);
+  letter-spacing: -.025em;
+}
+
+.story-shelf-section__heading > small {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 18%, var(--border));
+}
+
+/* ---------------------------------------------------------
+   STORY CARDS · cinematic poster cards
+   --------------------------------------------------------- */
+
+.story-shelf-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
 }
 
 .story-shelf-card {
-  background-image:
-    var(--vs-pattern-small),
+  overflow: hidden;
+  border-radius: 28px 28px 13px 28px;
+  background:
     linear-gradient(155deg,
-      color-mix(in srgb, var(--accent) 7%, var(--surface)),
-      color-mix(in srgb, var(--gold) 5%, var(--surface)) 48%,
-      color-mix(in srgb, var(--background) 30%, var(--surface)));
-  background-repeat: repeat, no-repeat;
-  background-size: 150px 118px, cover;
-  background-blend-mode: multiply, normal;
+      color-mix(in srgb, var(--accent) 6%, var(--surface)),
+      color-mix(in srgb, var(--gold) 5%, var(--surface)));
+  border-color: color-mix(in srgb, var(--accent) 15%, var(--border));
+  box-shadow:
+    0 22px 58px color-mix(in srgb, #241016 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 48%, transparent);
+}
+
+.story-shelf-card:hover {
+  transform: translateY(-6px);
+  border-color: color-mix(in srgb, var(--gold) 48%, var(--accent));
+  box-shadow:
+    0 31px 78px color-mix(in srgb, #241016 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.story-shelf-card__cover {
+  height: 245px;
+  border-radius: 27px 27px 0 0;
+}
+
+.story-shelf-card__cover > img {
+  filter: saturate(.88) contrast(.96);
+}
+
+.story-shelf-card:hover .story-shelf-card__cover > img {
+  transform: scale(1.055);
+}
+
+.story-shelf-card__cover-fallback {
+  background:
+    radial-gradient(circle at 75% 24%,
+      color-mix(in srgb, var(--gold) 23%, transparent),
+      transparent 27%),
+    radial-gradient(circle at 28% 66%,
+      color-mix(in srgb, var(--accent) 19%, transparent),
+      transparent 36%),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--character-color) 76%, #28171d),
+      color-mix(in srgb, var(--accent-dark) 94%, #0b0709));
+}
+
+.story-shelf-card__veil {
+  background:
+    linear-gradient(180deg,
+      rgba(9,5,7,.02),
+      rgba(9,5,7,.08) 31%,
+      rgba(9,5,7,.87) 100%);
+}
+
+.story-shelf-card__identity {
+  bottom: 18px;
+}
+
+.story-shelf-card__avatar {
+  width: 46px;
+  height: 46px;
+  border-color: rgba(255,255,255,.82);
+  box-shadow: 0 8px 20px rgba(0,0,0,.18);
+}
+
+.story-shelf-card__identity small {
+  color: rgba(255,255,255,.67);
+}
+
+.story-shelf-card__identity strong {
+  font-size: 1.18rem;
 }
 
 .story-shelf-card__body {
-  background-image:
-    var(--vs-pattern-small),
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--surface) 80%, transparent),
-      color-mix(in srgb, var(--accent) 4%, var(--surface)));
-  background-repeat: repeat, no-repeat;
-  background-size: 138px 109px, cover;
-  background-position: 14px 4px, center;
-  background-blend-mode: multiply, normal;
+  position: relative;
+  padding: 21px 21px 18px;
 }
 
-.story-shelf-card__menu,
-.conversation-picker,
-.page-state,
-.chats-empty {
-  background-image:
-    var(--vs-pattern-small),
+.story-shelf-card__body::before {
+  content: "";
+  position: absolute;
+  left: 21px;
+  top: 0;
+  width: 74px;
+  height: 2px;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--gold) 75%, var(--accent)),
+    transparent);
+}
+
+.story-shelf-card__body h3 {
+  font-size: 1.75rem;
+  letter-spacing: -.02em;
+}
+
+.story-shelf-card__role {
+  margin-top: 7px;
+  color: color-mix(in srgb, var(--accent) 69%, var(--gold));
+  font-weight: 720;
+  letter-spacing: .06em;
+}
+
+.story-shelf-card__preview {
+  min-height: 48px;
+  margin-block: 16px 18px;
+  font-size: .71rem;
+}
+
+.story-shelf-card__bottom {
+  border-top-color: color-mix(in srgb, var(--accent) 11%, var(--border));
+}
+
+.story-shelf-card__continue {
+  color: color-mix(in srgb, var(--accent) 78%, var(--text-primary));
+  font-weight: 740;
+}
+
+/* Menus feel like floating glass, not boxes. */
+.story-shelf-card__menu {
+  background:
     linear-gradient(145deg,
       color-mix(in srgb, var(--surface) 91%, transparent),
-      color-mix(in srgb, var(--accent) 5%, var(--surface)));
-  background-repeat: repeat, no-repeat;
-  background-size: 165px 130px, cover;
-  background-blend-mode: multiply, normal;
+      color-mix(in srgb, var(--accent) 6%, var(--surface)));
+  border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+  box-shadow: 0 22px 60px rgba(31,16,21,.24);
+  backdrop-filter: blur(20px);
 }
 
-.conversation-picker__list--editorial > button {
-  background-image:
-    var(--vs-pattern-small),
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--surface) 88%, transparent),
-      color-mix(in srgb, var(--gold) 4%, var(--surface)));
-  background-repeat: repeat, no-repeat;
-  background-size: 145px 114px, cover;
-  background-blend-mode: multiply, normal;
+/* Empty/loading states */
+.page-state,
+.chats-empty {
+  border-radius: 28px 28px 14px 28px;
+  background:
+    radial-gradient(circle at 82% 18%,
+      color-mix(in srgb, var(--gold) 9%, transparent),
+      transparent 27%),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 7%, var(--surface)),
+      color-mix(in srgb, var(--surface) 91%, var(--background)));
+  border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+  box-shadow: 0 20px 60px color-mix(in srgb, #251218 9%, transparent);
 }
 
-[data-theme="dark"] .chats-page,
-[data-theme="dark"] .story-library-intro,
-[data-theme="dark"] .story-library-commandbar,
-[data-theme="dark"] .story-library-search,
-[data-theme="dark"] .story-library-toggle,
-[data-theme="dark"] .story-library-toggle button.active,
-[data-theme="dark"] .story-shelf-section,
-[data-theme="dark"] .story-shelf-card,
-[data-theme="dark"] .story-shelf-card__body,
-[data-theme="dark"] .story-shelf-card__menu,
-[data-theme="dark"] .conversation-picker,
-[data-theme="dark"] .page-state,
-[data-theme="dark"] .chats-empty {
-  background-blend-mode: screen, normal;
-}
+/* ---------------------------------------------------------
+   MOBILE
+   --------------------------------------------------------- */
 
 @media (max-width: 760px) {
-  .chats-page { background-size: 165px 128px, auto, auto; }
-  .story-library-intro { background-size: 150px 116px, cover; }
-  .story-library-commandbar,
-  .story-library-search,
-  .story-library-toggle { background-size: 120px 94px, cover; }
-  .story-shelf-section {
-    margin-inline: -7px;
-    padding: 10px 7px 14px;
-    background-size: 170px 132px, cover;
+  .chats-page {
+    padding: 14px 12px 72px;
   }
-  .story-shelf-card,
-  .story-shelf-card__body { background-size: 125px 98px, cover; }
+
+  .story-library-intro {
+    min-height: 245px;
+    border-radius: 28px 28px 12px 28px;
+  }
+
+  .story-library-intro::after {
+    width: 145px;
+    height: 145px;
+    right: -30px;
+    top: 38%;
+  }
+
+  .story-library-intro__copy {
+    width: 100%;
+    padding: 28px 20px 72px;
+    gap: 13px;
+  }
+
+  .story-library-intro__mark {
+    width: 43px;
+    height: 43px;
+    flex-basis: 43px;
+  }
+
+  .story-library-intro h1 {
+    font-size: clamp(3.4rem, 18vw, 5rem);
+  }
+
+  .story-library-intro p {
+    max-width: 260px;
+    margin-top: 16px;
+    padding-right: 15px;
+    font-size: .72rem;
+  }
+
+  .story-library-header__new {
+    right: 18px;
+    bottom: 18px;
+    width: auto;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 16px;
+  }
+
+  .story-library-header__new span {
+    display: inline;
+  }
+
+  .story-library-commandbar {
+    grid-template-columns: 1fr;
+    margin: -9px 8px 32px;
+    padding: 10px 13px 8px;
+    gap: 7px;
+  }
+
+  .story-library-search {
+    height: 43px;
+  }
+
+  .story-library-toggle {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .story-library-toggle button {
+    flex: 1 1 0;
+    justify-content: center;
+    font-size: .58rem;
+  }
+
+  .story-shelf {
+    gap: 38px;
+  }
+
+  .story-shelf-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .story-shelf-card__cover {
+    height: 250px;
+  }
+
+  .story-shelf-section__heading {
+    padding-left: 13px;
+  }
 }
