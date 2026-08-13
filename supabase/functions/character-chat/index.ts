@@ -9,6 +9,7 @@ const corsHeaders = {
 const encoder = new TextEncoder();
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
 const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
+const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini-3.1-flash-lite";
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
 
 type ModelEnvelope = {
@@ -200,10 +201,10 @@ Deno.serve(async (request) => {
     const originalIssues = validationIssues;
     const originalBlockingIssues = blockingNarrativeIssues(originalIssues);
 
-    // Quality issues still get one repair attempt, but they are advisory after
-    // that attempt. Velvet should not make the user regenerate repeatedly just
-    // because a reply is shorter, quieter, or stylistically imperfect.
-    if (validationIssues.length) {
+    // v1.7.1 QUOTA GUARD: only structurally unsafe replies spend a second AI call.
+    // Short, quiet, repetitive or stylistically imperfect replies are advisory
+    // and are shown immediately instead of silently doubling Gemini usage.
+    if (originalBlockingIssues.length) {
       console.warn("[character-chat] candidate needs one repair", {
         conversationId,
         issues: validationIssues,
@@ -327,7 +328,7 @@ async function requestCharacterJson({
   purpose = "character-assist",
   deadlineMs = 28000,
 }) {
-  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter(Boolean))];
+  const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
   const deadline = Date.now() + Math.max(12000, Number(deadlineMs) || 28000);
   let lastError = "Velvet couldn't complete the character draft. Try again.";
   let quotaReached = false;
@@ -391,7 +392,7 @@ async function requestCharacterJson({
     }
   }
 
-  if (quotaReached) throw new Error("The free AI limit was reached. Try again later.");
+  if (quotaReached) throw new Error("Gemini is rate-limited right now. This can be a per-minute, token, or daily project limit. Wait a little and try again.");
   throw new Error(lastError);
 }
 
@@ -418,7 +419,7 @@ async function handleCharacterAssist({ apiKey, draft, mode, focusFields = [] }) 
 async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
   const safeDraft = draft && typeof draft === "object" ? draft : {};
   const prompt = `Write a short voice test for this private fictional roleplay character. Do not explain the character. Put them in the requested tiny situation and give 3 to 5 lines of dialogue/action that make their vocabulary, rhythm, humor, emotional defenses and social habits recognizable. Never write the user's dialogue or thoughts. Keep it under 140 words.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nSITUATION\n${String(situation || "A friend asks if they're okay after a difficult day.").slice(0, 600)}`;
-  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter(Boolean))];
+  const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
   let lastError = "Velvet couldn't test this voice.";
   for (const model of models) {
     try {
@@ -435,7 +436,7 @@ async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
 async function handleInstantStory({ apiKey, draft, idea }) {
   const safeDraft = draft && typeof draft === "object" ? draft : {};
   const prompt = `Open a fresh private roleplay timeline for this character. Write only the opening scene, 130-190 words, immediately playable and specific. Preserve the character's established voice and relationship but choose a NEW concrete situation rather than repeating their stored first message. Do not control the user's dialogue, actions, thoughts or feelings. Favor actual interaction and dialogue over decorative setup. Use the language of the idea/profile.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nOPTIONAL IDEA\n${String(idea || "Surprise me with a plausible scene that fits their life.").slice(0, 700)}`;
-  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter(Boolean))];
+  const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
   let lastError = "Velvet couldn't open an instant story.";
   for (const model of models) {
     try {
@@ -795,7 +796,7 @@ async function callGeminiWithFailover({
   temperature,
   isCancelled,
 }): Promise<ModelResult> {
-  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL].filter(Boolean))];
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
   let lastError = "Gemini could not generate a response";
   let quotaReached = false;
 
@@ -824,7 +825,7 @@ async function callGeminiWithFailover({
             maxOutputTokens,
             temperature,
             topP: 0.92,
-            thinkingConfig: { thinkingLevel: "LOW" },
+            thinkingConfig: { thinkingLevel: "MINIMAL" },
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
@@ -893,7 +894,7 @@ async function callGeminiWithFailover({
     }
   }
 
-  if (quotaReached) throw new Error("The free AI limit was reached. Try again later.");
+  if (quotaReached) throw new Error("Gemini is rate-limited right now. This can be a per-minute, token, or daily project limit. Wait a little and try again.");
   throw new Error(lastError);
 }
 

@@ -77,11 +77,17 @@ check("no background story-model calls consume extra quota",
   !edge.includes("updateStoryStateInBackground") &&
   !edge.includes("updateConversationSummaryInBackground") &&
   !edge.includes("extractMemoriesInBackground"));
-check("Gemini primary and fallback are configurable",
+check("advisory style issues never spend a repair call",
+  edge.includes("if (originalBlockingIssues.length)") &&
+  edge.includes("QUOTA GUARD") &&
+  !edge.includes("if (validationIssues.length) {\n      console.warn(\"[character-chat] candidate needs one repair"));
+check("Gemini primary and two fallbacks are configurable",
   edge.includes('Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash"') &&
-  edge.includes('Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite"'));
-check("free quota exhaustion is explicit",
-  edge.includes('throw new Error("The free AI limit was reached. Try again later.")'));
+  edge.includes('Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite"') &&
+  edge.includes('Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini-3.1-flash-lite"'));
+check("rate-limit errors do not falsely claim the daily free tier is exhausted",
+  edge.includes("Gemini is rate-limited right now") &&
+  !edge.includes("The free AI limit was reached. Try again later."));
 check("structured runtime logging covers generation rejection and save",
   edge.includes('console.log("[character-chat] generation started"') &&
   edge.includes('console.warn("[character-chat] candidate needs one repair"') &&
@@ -172,7 +178,7 @@ check("complete character creation is fast bounded and has model failover",
   edge.includes("deadlineMs = 28000") &&
   edge.includes("deadlineMs: 22000") &&
   edge.includes('thinkingConfig: { thinkingLevel: "MINIMAL" }') &&
-  edge.includes("[GEMINI_MODEL, GEMINI_FALLBACK_MODEL]") &&
+  edge.includes("GEMINI_EMERGENCY_MODEL") &&
   edge.includes('maxOutputTokens: 2300') &&
   charactersContext.includes("timeout: 32000"));
 check("character creation exposes actionable upstream errors",

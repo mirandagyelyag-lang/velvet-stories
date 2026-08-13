@@ -1744,7 +1744,7 @@ function MessageBubble({
   feedbackValue,
 }) {
   const holdTimer = useRef(null);
-  const gestureRef = useRef({ x: 0, y: 0, active: false, horizontal: false });
+  const gestureRef = useRef({ x: 0, y: 0, active: false, horizontal: false, vertical: false });
   const [swipeOffset, setSwipeOffset] = useState(0);
   const canSwipe = message.sender === "character" && !message.isStreaming && versionNavigationEnabled && !swipeDisabled;
 
@@ -1757,15 +1757,30 @@ function MessageBubble({
   }
 
   function handlePointerDown(event) {
+    // Mobile v1.7.1: never hijack a finger drag for swipe-regeneration.
+    // Version arrows remain available; touch scrolling must win every time.
+    if (event.pointerType === "touch") {
+      clearHold();
+      gestureRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+        active: false,
+        horizontal: false,
+        vertical: true,
+      };
+      return;
+    }
+
     gestureRef.current = {
       x: event.clientX,
       y: event.clientY,
       active: true,
       horizontal: false,
+      vertical: false,
     };
 
     holdTimer.current = window.setTimeout(() => {
-      if (!gestureRef.current.horizontal) onOpenActions(message);
+      if (!gestureRef.current.horizontal && !gestureRef.current.vertical) onOpenActions(message);
     }, 550);
   }
 
@@ -1775,11 +1790,18 @@ function MessageBubble({
     const dx = event.clientX - gestureRef.current.x;
     const dy = event.clientY - gestureRef.current.y;
 
-    if (!gestureRef.current.horizontal && Math.abs(dx) > 10) {
-      gestureRef.current.horizontal = Math.abs(dx) > Math.abs(dy) * 1.15;
+    if (!gestureRef.current.horizontal && !gestureRef.current.vertical) {
+      if (Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx) * 0.85) {
+        gestureRef.current.vertical = true;
+        clearHold();
+        return;
+      }
+      if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.35) {
+        gestureRef.current.horizontal = true;
+      }
     }
 
-    if (!gestureRef.current.horizontal) return;
+    if (gestureRef.current.vertical || !gestureRef.current.horizontal) return;
 
     clearHold();
 
@@ -1887,13 +1909,13 @@ function MessageBubble({
               >
                 {versionState?.loading ? <LoaderCircle className="spin" size={14} /> : <ChevronRight size={16} />}
               </button>
-              <button className="chat-message__actions chat-message__actions--inline" onClick={(event) => { event.stopPropagation(); onOpenActions(message); }} aria-label="Message options">
+              <button className="chat-message__actions chat-message__actions--inline" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onOpenActions(message); }} aria-label="Message options">
                 <MoreHorizontal size={16} />
               </button>
             </div>
           )}
           {!message.isStreaming && (message.sender !== "character" || !versionNavigationEnabled) && (
-            <button className="chat-message__actions" onClick={(event) => { event.stopPropagation(); onOpenActions(message); }} aria-label="Message options">
+            <button className="chat-message__actions" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onOpenActions(message); }} aria-label="Message options">
               <MoreHorizontal size={16} />
             </button>
           )}

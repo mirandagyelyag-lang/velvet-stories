@@ -6,6 +6,7 @@ const chat = readFileSync("src/pages/Chat.jsx", "utf8");
 const settings = readFileSync("src/pages/Settings.jsx", "utf8");
 const settingsContext = readFileSync("src/context/SettingsContext.jsx", "utf8");
 const ui = readFileSync("src/styles/velvet-ui.css", "utf8");
+const hotfix = readFileSync("src/styles/velvet-v171-hotfix.css", "utf8");
 
 const checks = [
   {
@@ -96,6 +97,20 @@ const checks = [
       readFileSync("src/context/CharactersContext.jsx", "utf8").includes("readCharacterFunctionError") &&
       readFileSync("src/context/CharactersContext.jsx", "utf8").includes("response.clone().text()"),
   },
+  {
+    name: "v1.7.1 mobile chat owns a real vertical scroll container",
+    pass:
+      hotfix.includes("overflow-y: auto !important") &&
+      hotfix.includes("touch-action: pan-y !important") &&
+      hotfix.includes("height: auto !important"),
+  },
+  {
+    name: "mobile message and header menus stay tappable",
+    pass:
+      hotfix.includes(".chat-message__actions") &&
+      hotfix.includes(".chat--reading .chat__more") &&
+      hotfix.includes("pointer-events: auto !important"),
+  },
 ];
 
 let failed = 0;
@@ -112,5 +127,5 @@ for (const check of checks) {
 if (failed > 0) {
   process.exitCode = 1;
 } else {
-  console.log(`\n${checks.length} UI checks passed.`);
+console.log(`\n${checks.length} UI checks passed.`);
 }
