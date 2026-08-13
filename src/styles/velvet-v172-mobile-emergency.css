@@ -1,0 +1,154 @@
+/* Velvet Stories v1.7.2 · Android emergency interaction reset
+   Native document scrolling wins. No nested scroll trap, no touch gesture hijack. */
+
+@media (max-width: 760px), (pointer: coarse) {
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  body {
+    position: static !important;
+  }
+
+  .app--chat,
+  .app--chat .app__content,
+  .app--chat .chat {
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+    overscroll-behavior: auto !important;
+    touch-action: auto !important;
+  }
+
+  .app--chat .chat {
+    display: block !important;
+  }
+
+  /* The page itself scrolls. This intentionally removes the nested mobile scroller. */
+  .app--chat .chat__content,
+  .app--chat .chat__content--wallpaper {
+    width: 100% !important;
+    height: auto !important;
+    min-height: calc(100dvh - 60px) !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    overflow-x: clip !important;
+    overscroll-behavior: auto !important;
+    touch-action: auto !important;
+    -webkit-overflow-scrolling: auto !important;
+    padding-top: calc(74px + env(safe-area-inset-top)) !important;
+    padding-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .chat__header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 300 !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+  }
+
+  .chat__composer {
+    position: fixed !important;
+    z-index: 310 !important;
+    pointer-events: auto !important;
+    touch-action: auto !important;
+  }
+
+  .chat__messages,
+  .chat-message,
+  .chat-message__swipe-content,
+  .chat-message__body,
+  .chat-message p,
+  .roleplay-text {
+    touch-action: auto !important;
+  }
+
+  /* No hidden full-message action layer may eat touches. */
+  .chat-message__swipe-action {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  .chat-message--swipeable {
+    overflow: visible !important;
+  }
+
+  .chat-message__swipe-content {
+    transform: none !important;
+  }
+
+  /* Message and header menus are explicitly tappable and above the fixed composer. */
+  .chat-message__actions,
+  .chat-message__actions--inline,
+  .chat__more,
+  .chat__menu,
+  .chat__menu button,
+  .message-sheet-backdrop,
+  .message-sheet,
+  .message-sheet button {
+    pointer-events: auto !important;
+  }
+
+  .chat-message__actions,
+  .chat-message__actions--inline,
+  .chat__more {
+    touch-action: manipulation !important;
+  }
+
+  .chat-message__actions,
+  .chat-message__actions--inline {
+    display: grid !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .chat__more {
+    display: grid !important;
+    z-index: 330 !important;
+  }
+
+  .chat__menu {
+    position: fixed !important;
+    z-index: 340 !important;
+    max-height: calc(100dvh - 82px - env(safe-area-inset-top)) !important;
+    overflow-y: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .message-sheet-backdrop {
+    z-index: 500 !important;
+    touch-action: auto !important;
+  }
+
+  .message-sheet {
+    z-index: 501 !important;
+    max-height: 88dvh !important;
+    overflow-y: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Prevent decorative fixed wallpaper layers from becoming gesture surfaces. */
+  .chat__content--wallpaper::before,
+  .chat__content--wallpaper::after,
+  .app__content::before {
+    pointer-events: none !important;
+    touch-action: none !important;
+  }
+}

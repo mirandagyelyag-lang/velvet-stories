@@ -1746,7 +1746,9 @@ function MessageBubble({
   const holdTimer = useRef(null);
   const gestureRef = useRef({ x: 0, y: 0, active: false, horizontal: false, vertical: false });
   const [swipeOffset, setSwipeOffset] = useState(0);
-  const canSwipe = message.sender === "character" && !message.isStreaming && versionNavigationEnabled && !swipeDisabled;
+  // v1.7.2: touch swipe regeneration is disabled entirely.
+  // Version arrows remain available, while native one-finger scrolling always wins.
+  const canSwipe = false;
 
   if (isSilentContinuation(message)) {
     return null;
@@ -1850,10 +1852,6 @@ function MessageBubble({
     <article
       data-message-id={message.id}
       className={`chat-message chat-message--${message.sender}${message.isStreaming ? " chat-message--streaming" : ""}${message.isBookmarked ? " chat-message--bookmarked" : ""}${canSwipe ? " chat-message--swipeable" : ""}`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
       onContextMenu={(event) => { event.preventDefault(); onOpenActions(message); }}
       style={canSwipe ? { "--swipe-progress": swipeProgress } : undefined}
     >

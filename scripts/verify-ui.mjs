@@ -7,6 +7,7 @@ const settings = readFileSync("src/pages/Settings.jsx", "utf8");
 const settingsContext = readFileSync("src/context/SettingsContext.jsx", "utf8");
 const ui = readFileSync("src/styles/velvet-ui.css", "utf8");
 const hotfix = readFileSync("src/styles/velvet-v171-hotfix.css", "utf8");
+const emergency = readFileSync("src/styles/velvet-v172-mobile-emergency.css", "utf8");
 
 const checks = [
   {
@@ -98,18 +99,28 @@ const checks = [
       readFileSync("src/context/CharactersContext.jsx", "utf8").includes("response.clone().text()"),
   },
   {
-    name: "v1.7.1 mobile chat owns a real vertical scroll container",
+    name: "v1.7.2 mobile chat uses native document scrolling",
     pass:
-      hotfix.includes("overflow-y: auto !important") &&
-      hotfix.includes("touch-action: pan-y !important") &&
-      hotfix.includes("height: auto !important"),
+      main.indexOf('import "./styles/velvet-v172-mobile-emergency.css"') >
+        main.indexOf('import "./styles/velvet-v171-hotfix.css"') &&
+      emergency.includes("overflow-y: auto !important") &&
+      emergency.includes("overflow: visible !important") &&
+      emergency.includes("The page itself scrolls"),
+  },
+  {
+    name: "touch swipe handlers no longer own message surfaces",
+    pass:
+      chat.includes("const canSwipe = false") &&
+      !/onPointerMove=\{handlePointerMove\}/.test(chat) &&
+      !/onPointerUp=\{handlePointerUp\}/.test(chat),
   },
   {
     name: "mobile message and header menus stay tappable",
     pass:
-      hotfix.includes(".chat-message__actions") &&
-      hotfix.includes(".chat--reading .chat__more") &&
-      hotfix.includes("pointer-events: auto !important"),
+      emergency.includes(".chat-message__actions") &&
+      emergency.includes(".chat__more") &&
+      emergency.includes("pointer-events: auto !important") &&
+      emergency.includes("z-index: 500 !important"),
   },
 ];
 
