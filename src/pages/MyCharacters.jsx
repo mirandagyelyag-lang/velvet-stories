@@ -4,14 +4,14 @@ import {
   Search,
   Sparkles,
   Tag,
-  X,
   Trash2,
   RotateCcw,
-  ArrowUpRight,
-  SlidersHorizontal,
+  X,
+  MoreHorizontal,
+  Pencil,
+  ArrowRight,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import CharacterCard from "../components/CharacterCard";
 import { useCharacters } from "../context/CharactersContext";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
@@ -27,6 +27,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
     restoreCharacter,
     permanentlyDeleteCharacter,
   } = useCharacters();
+
   const { settings } = useSettings();
   const { confirmAction, scheduleDeletion } = useFeedback();
 
@@ -37,12 +38,13 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
   const [tagValue, setTagValue] = useState("");
   const [view, setView] = useState("active");
   const [trashed, setTrashed] = useState([]);
+  const [menuId, setMenuId] = useState(null);
 
   useEffect(() => {
     if (view === "trash") {
       listTrashedCharacters().then(setTrashed).catch(console.error);
     }
-  }, [view]);
+  }, [view, listTrashedCharacters]);
 
   const sourceCharacters = view === "trash" ? trashed : characters;
 
@@ -59,7 +61,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
 
     return sourceCharacters
       .filter((character) => {
-        const haystack = `${character.name} ${character.role} ${character.description} ${character.world} ${(character.tags || []).join(" ")}`.toLowerCase();
+        const haystack = `${character.name || ""} ${character.role || ""} ${character.description || ""} ${character.world || ""} ${(character.tags || []).join(" ")}`.toLowerCase();
         const matchesQuery = !query || haystack.includes(query);
         const matchesFavorite = filter !== "favorites" || character.isFavorite;
         const matchesTag = !tagFilter || character.tags?.includes(tagFilter);
@@ -68,17 +70,15 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
       .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
   }, [sourceCharacters, search, filter, tagFilter]);
 
-  const spotlight = view === "active" ? filtered[0] : null;
-  const quickPicks = view === "active" ? filtered.slice(1, 3) : [];
-  const galleryCharacters = view === "active" ? filtered.slice(3) : filtered;
+  const featured = view === "active" ? filtered[0] : null;
+  const remaining = view === "active" ? filtered.slice(1) : filtered;
 
   async function handleDelete(character) {
     const approved =
       !settings.confirmBeforeDelete ||
       (await confirmAction({
         title: `Delete ${character.name}?`,
-        message:
-          "Every conversation and memory connected to this character will also be deleted.",
+        message: "Every conversation and memory connected to this character will also be deleted.",
         confirmLabel: "Delete character",
       }));
 
@@ -113,6 +113,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
   }
 
   function openTags(character) {
+    setMenuId(null);
     setTagEditor(character);
     setTagValue((character.tags || []).join(", "));
   }
@@ -123,46 +124,40 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
     setTagEditor(null);
   }
 
-  function chooseTag(tag) {
-    setTagFilter((current) => (current === tag ? "" : tag));
-    setView("active");
-  }
-
   if (view === "active" && characters.length === 0) {
     return (
-      <section className="discover-empty">
-        <div className="discover-empty__halo"><Sparkles size={30} /></div>
-        <p>YOUR CAST STARTS HERE</p>
-        <h1>Create someone<br />you want to meet.</h1>
-        <span>Characters, chemistry, worlds and all the bad decisions in between.</span>
-        <button onClick={onCreateCharacter}>
-          <PenLine size={17} />
-          Create your first character
-        </button>
+      <section className="discover-index-empty">
+        <span><Sparkles size={28} /></span>
+        <small>DISCOVER</small>
+        <h1>Your cast begins here.</h1>
+        <p>Create someone, give them a world, then see where the story takes you.</p>
+        <button onClick={onCreateCharacter}><PenLine size={17} /> Create a character</button>
       </section>
     );
   }
 
   return (
-    <section className="discover-page">
-      <header className="discover-top">
-        <div className="discover-top__copy">
-          <span className="discover-top__eyebrow">DISCOVER</span>
-          <h1>Find your next<br />favorite person.</h1>
-          <p>Your characters, arranged less like a database and more like a cast worth browsing.</p>
+    <section className="discover-index">
+      <header className="discover-index__header">
+        <div>
+          <small>DISCOVER</small>
+          <h1>Your cast.</h1>
+          <p>Characters worth coming back to.</p>
         </div>
 
-        <div className="discover-top__actions">
-          <button className="discover-create" onClick={onCreateCharacter}>
+        <div className="discover-index__header-actions">
+          <button className="discover-index__create" onClick={onCreateCharacter}>
             <PenLine size={17} />
             <span>Create</span>
           </button>
+
           <button
-            className={`discover-trash-toggle ${view === "trash" ? "active" : ""}`}
+            className={view === "trash" ? "discover-index__trash active" : "discover-index__trash"}
             onClick={() => {
               setView(view === "trash" ? "active" : "trash");
               setFilter("all");
               setTagFilter("");
+              setMenuId(null);
             }}
           >
             <Trash2 size={16} />
@@ -171,173 +166,160 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
         </div>
       </header>
 
-      <div className="discover-toolbar">
-        <label className="discover-search">
-          <Search size={18} />
+      <div className="discover-index__controls">
+        <label className="discover-index__search">
+          <Search size={17} />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder={view === "trash" ? "Search deleted characters" : "Search a name, world, vibe..."}
+            placeholder={view === "trash" ? "Search trash" : "Search characters, worlds or tags"}
           />
           {search && (
             <button type="button" onClick={() => setSearch("")} aria-label="Clear search">
-              <X size={15} />
+              <X size={14} />
             </button>
           )}
         </label>
 
         {view === "active" && (
-          <div className="discover-mode">
-            <button
-              className={filter === "all" ? "active" : ""}
-              onClick={() => setFilter("all")}
-            >
+          <div className="discover-index__filters">
+            <button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>
               All
             </button>
-            <button
-              className={filter === "favorites" ? "active" : ""}
-              onClick={() => setFilter("favorites")}
-            >
-              <Heart size={14} />
+            <button className={filter === "favorites" ? "active" : ""} onClick={() => setFilter("favorites")}>
+              <Heart size={13} />
               Favorites
             </button>
+
+            {tags.length > 0 && (
+              <select value={tagFilter} onChange={(event) => setTagFilter(event.target.value)}>
+                <option value="">Every tag</option>
+                {tags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
+              </select>
+            )}
           </div>
         )}
       </div>
 
-      {view === "active" && tags.length > 0 && (
-        <div className="discover-tags" aria-label="Character tags">
-          <span><SlidersHorizontal size={13} /> Browse by mood</span>
-          <div>
-            {tags.slice(0, 12).map((tag) => (
-              <button
-                key={tag}
-                className={tagFilter === tag ? "active" : ""}
-                onClick={() => chooseTag(tag)}
-              >
-                {tag}
-              </button>
+      {view === "trash" ? (
+        remaining.length > 0 ? (
+          <div className="discover-index__trash-list">
+            {remaining.map((character) => (
+              <article key={character.id} className="discover-index__trash-row">
+                <CharacterImage character={character} />
+                <div className="discover-index__trash-copy">
+                  <small>{character.role || "Character"}</small>
+                  <h2>{character.name}</h2>
+                  <p>{character.description || "This character can still be restored."}</p>
+                </div>
+                <div className="discover-index__trash-actions">
+                  <button onClick={() => handleRestore(character)}><RotateCcw size={14} /> Restore</button>
+                  <button className="danger" onClick={() => handleDeleteForever(character)}><Trash2 size={14} /> Forever</button>
+                </div>
+              </article>
             ))}
           </div>
-        </div>
-      )}
-
-      {view === "trash" ? (
-        filtered.length > 0 ? (
-          <section className="discover-trash">
-            <div className="discover-section-title">
-              <div>
-                <span>RECOVERABLE</span>
-                <h2>Trash</h2>
-              </div>
-              <small>{filtered.length}</small>
-            </div>
-
-            <div className="discover-trash__grid">
-              {filtered.map((character) => (
-                <article key={character.id} className="discover-trash-card">
-                  <CharacterImage character={character} />
-                  <div>
-                    <span>{character.role || "Character"}</span>
-                    <h3>{character.name}</h3>
-                    <p>{character.description || "This character can still be restored."}</p>
-                  </div>
-                  <footer>
-                    <button onClick={() => handleRestore(character)}>
-                      <RotateCcw size={15} /> Restore
-                    </button>
-                    <button className="danger" onClick={() => handleDeleteForever(character)}>
-                      <Trash2 size={15} /> Forever
-                    </button>
-                  </footer>
-                </article>
-              ))}
-            </div>
-          </section>
         ) : (
-          <div className="discover-none">
-            <Trash2 size={26} />
-            <h2>Trash is empty</h2>
-            <p>Deleted characters will wait here until you restore or remove them forever.</p>
-          </div>
+          <EmptyState title="Trash is empty" text="Deleted characters will wait here until you restore them or remove them forever." />
         )
       ) : filtered.length === 0 ? (
-        <div className="discover-none">
-          <Search size={26} />
-          <h2>No one matches that</h2>
-          <p>Try another search, mood or filter.</p>
-        </div>
+        <EmptyState title="No characters found" text="Try another search or remove a filter." />
       ) : (
         <>
-          <section className="discover-feature">
-            {spotlight && (
-              <button className="discover-spotlight" onClick={() => onOpenCharacter(spotlight)}>
-                <CharacterImage character={spotlight} />
-                <span className="discover-spotlight__shade" />
-                <div className="discover-spotlight__label">SPOTLIGHT</div>
-                <div className="discover-spotlight__content">
-                  <span>{spotlight.role || "Character"}</span>
-                  <h2>{spotlight.name}</h2>
-                  <p>{spotlight.description || "A new story is waiting to begin."}</p>
-                  <div className="discover-spotlight__tags">
-                    {(spotlight.tags || []).slice(0, 3).map((tag) => <i key={tag}>{tag}</i>)}
-                  </div>
-                  <b>Meet them <ArrowUpRight size={17} /></b>
-                </div>
-              </button>
-            )}
-
-            {quickPicks.length > 0 && (
-              <aside className="discover-picks">
-                <header>
-                  <span>QUICK PICKS</span>
-                  <small>{quickPicks.length}</small>
-                </header>
-                {quickPicks.map((character, index) => (
-                  <button key={character.id} onClick={() => onOpenCharacter(character)}>
-                    <div className="discover-picks__image">
-                      <CharacterImage character={character} />
-                    </div>
-                    <div>
-                      <small>0{index + 1}</small>
-                      <strong>{character.name}</strong>
-                      <span>{character.role || "Character"}</span>
-                    </div>
-                    <ArrowUpRight size={16} />
-                  </button>
-                ))}
-                <button className="discover-picks__new" onClick={onCreateCharacter}>
-                  <span>+</span>
-                  <div>
-                    <strong>Someone new?</strong>
-                    <small>Create another character</small>
-                  </div>
-                </button>
-              </aside>
-            )}
-          </section>
-
-          {galleryCharacters.length > 0 && (
-            <section className="discover-gallery">
-              <div className="discover-section-title">
-                <div>
-                  <span>YOUR CAST</span>
-                  <h2>Keep exploring</h2>
-                </div>
-                <small>{galleryCharacters.length}</small>
+          {featured && (
+            <section className="discover-index__featured">
+              <div className="discover-index__featured-media">
+                <CharacterImage character={featured} />
               </div>
 
-              <div className="discover-mosaic">
-                {galleryCharacters.map((character) => (
-                  <CharacterCard
-                    key={character.id}
-                    character={character}
-                    onOpen={onOpenCharacter}
-                    onEdit={onEditCharacter}
-                    onDelete={handleDelete}
-                    onFavorite={toggleFavorite}
-                    onTags={openTags}
-                  />
+              <div className="discover-index__featured-copy">
+                <div className="discover-index__featured-topline">
+                  <span>FEATURED CHARACTER</span>
+                  <button
+                    className={featured.isFavorite ? "active" : ""}
+                    onClick={() => toggleFavorite(featured.id)}
+                    aria-label="Toggle favorite"
+                  >
+                    <Heart size={16} fill={featured.isFavorite ? "currentColor" : "none"} />
+                  </button>
+                </div>
+
+                <small>{featured.role || "Character"}</small>
+                <h2>{featured.name}</h2>
+                <p>{featured.description || "Open the character to see their story, world and personality."}</p>
+
+                {(featured.tags || []).length > 0 && (
+                  <div className="discover-index__featured-tags">
+                    {(featured.tags || []).slice(0, 4).map((tag) => <span key={tag}>{tag}</span>)}
+                  </div>
+                )}
+
+                <div className="discover-index__featured-actions">
+                  <button className="primary" onClick={() => onOpenCharacter(featured)}>
+                    Open character <ArrowRight size={15} />
+                  </button>
+                  <button onClick={() => onEditCharacter(featured)}><Pencil size={14} /> Edit</button>
+                  <button onClick={() => openTags(featured)}><Tag size={14} /> Tags</button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {remaining.length > 0 && (
+            <section className="discover-index__directory">
+              <header>
+                <div>
+                  <small>CHARACTER INDEX</small>
+                  <h2>Everyone else</h2>
+                </div>
+                <span>{remaining.length}</span>
+              </header>
+
+              <div className="discover-index__rows">
+                {remaining.map((character, index) => (
+                  <article key={character.id} className="discover-index__row">
+                    <span className="discover-index__number">{String(index + 2).padStart(2, "0")}</span>
+
+                    <button className="discover-index__row-media" onClick={() => onOpenCharacter(character)}>
+                      <CharacterImage character={character} />
+                    </button>
+
+                    <button className="discover-index__row-copy" onClick={() => onOpenCharacter(character)}>
+                      <small>{character.role || "Character"}</small>
+                      <h3>{character.name}</h3>
+                      <p>{character.description || "Open this character to continue."}</p>
+                    </button>
+
+                    <div className="discover-index__row-tags">
+                      {(character.tags || []).slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}
+                    </div>
+
+                    <button
+                      className={character.isFavorite ? "discover-index__heart active" : "discover-index__heart"}
+                      onClick={() => toggleFavorite(character.id)}
+                      aria-label="Toggle favorite"
+                    >
+                      <Heart size={15} fill={character.isFavorite ? "currentColor" : "none"} />
+                    </button>
+
+                    <div className="discover-index__menu-wrap">
+                      <button
+                        className="discover-index__more"
+                        onClick={() => setMenuId(menuId === character.id ? null : character.id)}
+                        aria-label="Character actions"
+                      >
+                        <MoreHorizontal size={18} />
+                      </button>
+
+                      {menuId === character.id && (
+                        <div className="discover-index__menu">
+                          <button onClick={() => { setMenuId(null); onEditCharacter(character); }}><Pencil size={14} /> Edit</button>
+                          <button onClick={() => openTags(character)}><Tag size={14} /> Tags</button>
+                          <button className="danger" onClick={() => { setMenuId(null); handleDelete(character); }}><Trash2 size={14} /> Delete</button>
+                        </div>
+                      )}
+                    </div>
+                  </article>
                 ))}
               </div>
             </section>
@@ -346,10 +328,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
       )}
 
       {tagEditor && (
-        <div
-          className="tag-modal-backdrop"
-          onMouseDown={(event) => event.target === event.currentTarget && setTagEditor(null)}
-        >
+        <div className="tag-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setTagEditor(null)}>
           <form className="tag-modal" onSubmit={saveTags}>
             <header>
               <span><Tag size={18} /></span>
@@ -357,10 +336,9 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
                 <small>ORGANIZE CHARACTER</small>
                 <h2>{tagEditor.name}'s tags</h2>
               </div>
-              <button type="button" onClick={() => setTagEditor(null)}>
-                <X size={19} />
-              </button>
+              <button type="button" onClick={() => setTagEditor(null)}><X size={19} /></button>
             </header>
+
             <label>
               Tags separated by commas
               <input
@@ -371,6 +349,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
               />
               <small>Use up to 12 short tags.</small>
             </label>
+
             <footer>
               <button type="button" onClick={() => setTagEditor(null)}>Cancel</button>
               <button type="submit">Save tags</button>
@@ -384,10 +363,26 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
 
 function CharacterImage({ character }) {
   const source = character.coverUrl || character.imageUrl;
-  if (source) return <img src={source} alt="" />;
-  return <span className="discover-image-fallback" style={{ "--character-color": character.color }}>
-    {character.initials || character.name?.slice(0, 2)}
-  </span>;
+
+  if (source) {
+    return <img src={source} alt="" loading="lazy" />;
+  }
+
+  return (
+    <span className="discover-index__image-fallback" style={{ "--character-color": character.color }}>
+      {character.initials || character.name?.slice(0, 2)}
+    </span>
+  );
+}
+
+function EmptyState({ title, text }) {
+  return (
+    <div className="discover-index__empty">
+      <Sparkles size={24} />
+      <h2>{title}</h2>
+      <p>{text}</p>
+    </div>
+  );
 }
 
 export default MyCharacters;
