@@ -5,13 +5,17 @@ const THEMES = ["light", "dark", "comfort"];
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
-    const saved = localStorage.getItem("velvet-theme");
-    return THEMES.includes(saved) ? saved : "light";
+    try {
+      const saved = localStorage.getItem("velvet-theme");
+      return THEMES.includes(saved) ? saved : "light";
+    } catch {
+      return "light";
+    }
   });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("velvet-theme", theme);
+    try { localStorage.setItem("velvet-theme", theme); } catch {}
   }, [theme]);
 
   function setTheme(nextTheme) {

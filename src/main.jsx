@@ -12,6 +12,8 @@ import { SettingsProvider } from "./context/SettingsContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
 import App from "./App";
+import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
+import { markVelvetHealthy, recordVelvetRuntimeError } from "./utils/runtimeRecovery";
 import "./index.css";
 import "./styles/velvet-ui.css";
 import "./styles/velvet-v18.css";
@@ -31,9 +33,17 @@ if (import.meta.env.DEV && "serviceWorker" in navigator) {
   }
 }
 
+window.addEventListener("error", (event) => {
+  recordVelvetRuntimeError(event.error || event.message, "window-error");
+});
+window.addEventListener("unhandledrejection", (event) => {
+  recordVelvetRuntimeError(event.reason, "unhandled-rejection");
+});
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <PWAProvider>
+    <VelvetErrorBoundary>
+      <PWAProvider>
       <ThemeProvider>
         <FeedbackProvider>
           <AuthProvider>
@@ -51,6 +61,14 @@ createRoot(document.getElementById("root")).render(
           </AuthProvider>
         </FeedbackProvider>
       </ThemeProvider>
-    </PWAProvider>
+      </PWAProvider>
+    </VelvetErrorBoundary>
   </StrictMode>
 );
+
+window.requestAnimationFrame(() => {
+  window.requestAnimationFrame(() => {
+    markVelvetHealthy();
+    window.__VELVET_BOOT_OK__ = true;
+  });
+});

@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="velvet-version" content="2.0.2" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
@@ -24,6 +25,68 @@
       fetchpriority="high"
     />
     <title>Velvet Stories</title>
+
+    <script>
+      (() => {
+        window.__VELVET_BOOT_OK__ = false;
+        const safeSessionGet = (key) => { try { return sessionStorage.getItem(key); } catch { return null; } };
+        const safeSessionSet = (key, value) => { try { sessionStorage.setItem(key, value); } catch {} };
+
+        async function repair() {
+          if (window.__VELVET_REPAIRING__) return;
+          window.__VELVET_REPAIRING__ = true;
+          try {
+            if ("serviceWorker" in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              await Promise.allSettled(regs.map((reg) => reg.unregister()));
+            }
+            if ("caches" in window) {
+              const keys = await caches.keys();
+              await Promise.allSettled(keys.map((key) => caches.delete(key)));
+            }
+          } catch {}
+          safeSessionSet("velvet_boot_repaired_v202", "1");
+          const url = new URL(location.href);
+          url.searchParams.set("velvet_recovered", String(Date.now()));
+          location.replace(url.toString());
+        }
+
+        window.__VELVET_REPAIR_APP__ = repair;
+
+        window.setTimeout(() => {
+          if (window.__VELVET_BOOT_OK__) return;
+          const root = document.getElementById("root");
+          if (root && root.childElementCount > 0) return;
+
+          if (safeSessionGet("velvet_boot_repaired_v202") !== "1" && navigator.onLine) {
+            repair();
+            return;
+          }
+
+          const rescue = document.createElement("div");
+          rescue.id = "velvet-boot-rescue";
+          rescue.innerHTML = '<div><b>Velvet could not finish opening.</b><p>Your stories are safe. Repair the app cache and reopen the newest version.</p><button type="button">Repair & reopen Velvet</button></div>';
+          Object.assign(rescue.style, {
+            position: "fixed", inset: "0", zIndex: "2147483647", display: "grid",
+            placeItems: "center", padding: "24px", background: "#f6ede4", color: "#4f363e",
+            fontFamily: "system-ui, sans-serif"
+          });
+          const card = rescue.firstElementChild;
+          Object.assign(card.style, {
+            width: "min(420px,100%)", padding: "26px 20px", textAlign: "center",
+            background: "#fffaf5", border: "1px solid #e3d0d2", borderRadius: "24px"
+          });
+          const button = rescue.querySelector("button");
+          Object.assign(button.style, {
+            width: "100%", minHeight: "48px", marginTop: "12px", color: "#fff",
+            background: "#722640", border: "0", borderRadius: "14px", fontWeight: "700"
+          });
+          button.addEventListener("click", repair);
+          document.body.appendChild(rescue);
+        }, 5500);
+      })();
+    </script>
+
   </head>
   <body>
     <div id="root"></div>

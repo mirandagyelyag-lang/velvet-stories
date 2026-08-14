@@ -7,9 +7,10 @@ const INSTALL_DISMISSED_KEY = "velvet_install_prompt_dismissed";
 
 export function PWAProvider({ children }) {
   const [installPrompt, setInstallPrompt] = useState(null);
-  const [installDismissed, setInstallDismissed] = useState(
-    () => localStorage.getItem(INSTALL_DISMISSED_KEY) === "true"
-  );
+  const [installDismissed, setInstallDismissed] = useState(() => {
+    try { return localStorage.getItem(INSTALL_DISMISSED_KEY) === "true"; }
+    catch { return false; }
+  });
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [installed, setInstalled] = useState(isStandalone);
@@ -17,7 +18,12 @@ export function PWAProvider({ children }) {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
-  } = useRegisterSW({ immediate: true });
+  } = useRegisterSW({
+    immediate: true,
+    onRegisterError(error) {
+      console.error("Velvet service worker registration failed:", error);
+    },
+  });
 
   useEffect(() => {
     void lockVelvetPortrait();
@@ -38,7 +44,7 @@ export function PWAProvider({ children }) {
     function markInstalled() {
       setInstalled(true);
       setInstallPrompt(null);
-      localStorage.removeItem(INSTALL_DISMISSED_KEY);
+      try { localStorage.removeItem(INSTALL_DISMISSED_KEY); } catch {}
     }
     function goOnline() { setOnline(true); }
     function goOffline() { setOnline(false); }
@@ -76,7 +82,7 @@ export function PWAProvider({ children }) {
   }
 
   function dismissInstall() {
-    localStorage.setItem(INSTALL_DISMISSED_KEY, "true");
+    try { localStorage.setItem(INSTALL_DISMISSED_KEY, "true"); } catch {}
     setInstallDismissed(true);
   }
 
