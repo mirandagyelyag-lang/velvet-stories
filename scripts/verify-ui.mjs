@@ -10,6 +10,7 @@ const hotfix = readFileSync("src/styles/velvet-v171-hotfix.css", "utf8");
 const emergency = readFileSync("src/styles/velvet-v172-mobile-emergency.css", "utf8");
 const v18 = readFileSync("src/styles/velvet-v18.css", "utf8");
 const v19 = readFileSync("src/styles/velvet-v19-phone-first.css", "utf8");
+const v192 = readFileSync("src/styles/velvet-v192-message-sheet-portal.css", "utf8");
 const profile = readFileSync("src/pages/Profile.jsx", "utf8");
 const chatsContext = readFileSync("src/context/ChatsContext.jsx", "utf8");
 const edge = readFileSync("supabase/functions/character-chat/index.ts", "utf8");
@@ -242,6 +243,17 @@ const checks = [
   {
     name: "AI diagnostics records first visible text latency separately",
     pass: chatsContext.includes("firstTokenMs") && diagnostics.includes("First reply text") && diagnostics.includes("Full response"),
+  },
+  {
+    name: "mobile message sheet escapes chat stacking contexts",
+    pass:
+      chat.includes('import { createPortal } from "react-dom"') &&
+      chat.includes('createPortal((') &&
+      chat.includes('), document.body)') &&
+      v192.includes('body > .message-sheet-backdrop') &&
+      v192.includes('z-index: 9998 !important') &&
+      v192.includes('transform: none !important') &&
+      v192.includes('animation: none !important'),
   },
 ];
 

@@ -38,6 +38,7 @@ import {
   X,
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import RoleplayText from "../components/RoleplayText";
 import MemoryBookDrawer from "../components/MemoryBookDrawer";
 import StoryTimelineDrawer from "../components/StoryTimelineDrawer";
@@ -1650,7 +1651,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         </div>
       )}
 
-      {selectedMessage && (
+      {selectedMessage && typeof document !== "undefined" && createPortal((
         <div className="message-sheet-backdrop" onMouseDown={(event) => event.target === event.currentTarget && closeActions()}>
           <section className="message-sheet" role="dialog" aria-modal="true">
             <header>
@@ -1837,7 +1838,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
             )}
           </section>
         </div>
-      )}
+      ), document.body)}
     </section>
   );
 }

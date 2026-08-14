@@ -1,0 +1,77 @@
+/* Velvet v1.9.2 · MESSAGE SHEET PORTAL HOTFIX
+   The message action sheet is portaled to <body> so fixed positioning cannot be
+   trapped by chat/layout stacking contexts on Android PWAs. */
+
+@media (max-width: 760px), (pointer: coarse) {
+  body > .message-sheet-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9998 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    background: rgba(25, 14, 18, .42) !important;
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+    pointer-events: auto !important;
+    touch-action: none !important;
+  }
+
+  body > .message-sheet-backdrop > .message-sheet {
+    position: relative !important;
+    inset: auto !important;
+    z-index: 9999 !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 190px !important;
+    max-height: min(82dvh, 720px) !important;
+    margin: 0 !important;
+    padding: 12px 12px calc(18px + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    animation: none !important;
+    background: var(--background) !important;
+    border: 1px solid var(--border) !important;
+    border-bottom: 0 !important;
+    border-radius: 24px 24px 0 0 !important;
+    box-shadow: 0 -18px 56px rgba(25, 8, 14, .22) !important;
+    pointer-events: auto !important;
+  }
+
+  body > .message-sheet-backdrop > .message-sheet::before {
+    content: "" !important;
+    display: block !important;
+    width: 38px !important;
+    height: 4px !important;
+    margin: 0 auto 10px !important;
+    background: color-mix(in srgb, var(--text-secondary) 34%, transparent) !important;
+    border-radius: 999px !important;
+  }
+
+  body > .message-sheet-backdrop .message-sheet > header {
+    position: sticky !important;
+    top: -12px !important;
+    z-index: 2 !important;
+    margin: 0 -2px 12px !important;
+    padding: 8px 2px 8px !important;
+    background: color-mix(in srgb, var(--background) 96%, transparent) !important;
+    backdrop-filter: blur(12px) !important;
+  }
+
+  body > .message-sheet-backdrop .message-sheet button {
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+  }
+}
