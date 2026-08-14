@@ -18,9 +18,9 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("v2 mobile foundation is the final stylesheet", main.trim().includes('import "./styles/velvet-mobile-foundation.css";') && main.lastIndexOf("velvet-mobile-foundation.css") > main.lastIndexOf("velvet-v18.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2 startup recovery", pkg.version === "2.0.2" && read("src/config/version.js").includes('VELVET_RELEASE = "Startup Recovery"'));
+check("release is v2.0.4 stories mobile restore", pkg.version === "2.0.4" && read("src/config/version.js").includes('VELVET_RELEASE = "Stories Mobile Restore"'));
 check("startup recovery boundary wraps the provider tree", read("src/main.jsx").includes("<VelvetErrorBoundary>") && read("src/components/VelvetErrorBoundary.jsx").includes("Repair & reopen Velvet"));
-check("boot watchdog can recover before React mounts", read("index.html").includes("__VELVET_REPAIR_APP__") && read("index.html").includes("velvet_boot_repaired_v202"));
+check("boot watchdog can recover before React mounts", read("index.html").includes("__VELVET_REPAIR_APP__") && read("index.html").includes("velvet_boot_repaired_v203"));
 check("recovery clears service worker caches without deleting local storage", read("src/utils/runtimeRecovery.js").includes("getRegistrations") && read("src/utils/runtimeRecovery.js").includes("caches.keys") && !read("src/utils/runtimeRecovery.js").includes("localStorage.clear"));
 check("Vercel revalidates app shell and service worker", read("vercel.json").includes("/index.html") && read("vercel.json").includes("/sw.js") && read("vercel.json").includes("no-cache, no-store"));
 
@@ -51,7 +51,7 @@ check("real AI stream telemetry remains enabled", edge.includes('liveStreaming: 
 check("UI does not call every 429 free quota exhaustion", !chat.includes("The free AI limit was reached") && !characterModal.includes("free limit was reached"));
 check("Character Studio autosave remains present", characterModal.includes("velvet_character_draft_v18_") && characterModal.includes("Saved locally"));
 check("Character Studio becomes full-screen on phone", mobile.includes(".character-studio{width:100%!important;height:100dvh!important"));
-check("Stories mobile grid is bounded", mobile.includes(".stories-poster-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important"));
+check("Stories mobile grid is single-column and bounded", mobile.includes(".stories-poster-grid{grid-template-columns:1fr!important") && !mobile.includes(".stories-poster-grid{grid-template-columns:1fr 1fr!important") && !mobile.includes(".stories-poster-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important"));
 check("Discover mobile feature stacks", mobile.includes(".discover-index__featured{grid-template-columns:1fr!important"));
 check("Profile action buttons become full-width", mobile.includes(".profile-setting>button{grid-column:1/-1!important;width:100%!important"));
 check("Settings controls do not squeeze", mobile.includes(".setting-row{align-items:stretch!important;flex-direction:column!important"));
