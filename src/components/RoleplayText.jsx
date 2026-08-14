@@ -41,7 +41,7 @@ function splitParagraphs(value) {
 
 function startsLikeDialogue(value = "") {
   const text = String(value).trim();
-  return /^(?:[—–-]\s*)?(?:[«“\"])/u.test(text);
+  return /^(?:[—–-]\s*)?[«“"]/u.test(text);
 }
 
 function renderInline(text, lineIndex) {
