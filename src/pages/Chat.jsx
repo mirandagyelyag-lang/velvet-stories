@@ -1,4 +1,5 @@
 import {
+  Activity,
   AlertCircle,
   ArrowLeft,
   BookOpen,
@@ -70,7 +71,7 @@ const POSITIVE_FEEDBACK = [
   ["pacing", "Pacing"],
 ];
 
-function Chat({ character, conversationId, onBack, onDeleted }) {
+function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, onOpenDiagnostics }) {
   const { settings, recordStoryFeedback, undoStoryFeedback } = useSettings();
   const { theme, setTheme } = useTheme();
   const { confirmAction, scheduleDeletion } = useFeedback();
@@ -1199,7 +1200,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
       >
-        <button className="chat__icon-button" onClick={onBack} aria-label="Go back">
+        <button className="chat__icon-button chat__back-button" onClick={onBack} aria-label="Go back">
           <ArrowLeft size={20} />
         </button>
         <button className="chat__avatar chat__character-avatar-button" style={{ "--character-color": character.color }} onClick={() => setCharacterProfileOpen(true)} aria-label={`View ${character.name}'s profile`}>
@@ -1236,6 +1237,14 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
           {memoryBookCount > 0 && <span>{memoryBookCount > 99 ? "99+" : memoryBookCount}</span>}
         </button>
         <button
+          className="chat__icon-button chat__relationship-header"
+          onClick={() => { setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }}
+          aria-label="Open relationship engine"
+          title="Relationship"
+        >
+          <HeartHandshake size={18} />
+        </button>
+        <button
           className="chat__icon-button chat__more"
           onClick={() => setMenuOpen((current) => !current)}
           aria-label="Conversation options"
@@ -1245,10 +1254,19 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
         </button>
 
         {menuOpen && (
-          <div className="chat__menu">
+          <div className="chat__menu-backdrop" onClick={(event) => event.target === event.currentTarget && setMenuOpen(false)}>
+          <div className="chat__menu" onClick={(event) => event.stopPropagation()}>
             <button className="chat__menu-new" onClick={handleNewConversation} disabled={busy || creatingConversation}>
               {creatingConversation ? <LoaderCircle className="spin" size={17} /> : <SquarePen size={17} />}
               New conversation
+            </button>
+            <div className="chat__menu-quick">
+              <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Current story</small></span></button>
+              <button type="button" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
+              <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Activity size={17}/><span>AI Status<small>Velvet Doctor</small></span></button>
+            </div>
+            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); onOpenMemories?.(); }}>
+              <Brain size={17} /> Memories 2.5
             </button>
             <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setControlsOpen(true); }} disabled={!conversationReady}>
               <SlidersHorizontal size={17} /> Story settings
@@ -1275,8 +1293,11 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
               <Trash2 size={17} /> {deleting ? "Deleting..." : "Delete conversation"}
             </button>
           </div>
+          </div>
         )}
       </header>
+
+      <button type="button" className="chat__mobile-exit" onClick={onBack} aria-label="Leave chat"><ArrowLeft size={18}/></button>
 
       <div onClick={handleReadingSurfaceClick} className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
 
@@ -1388,29 +1409,9 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
             <button type="button" onClick={() => setReplyTo(null)} aria-label="Cancel reply"><X size={16} /></button>
           </div>
         )}
-        {directorNoteOpen && (
-          <div className="chat__director-note">
-            <Sparkles size={15} />
-            <input
-              value={directorNote}
-              onChange={(event) => setDirectorNote(event.target.value)}
-              placeholder="Tell Velvet what you want next…"
-              maxLength={500}
-              autoFocus
-            />
-            <button type="button" onClick={() => { setDirectorNote(""); setDirectorNoteOpen(false); }} aria-label="Clear director note"><X size={15} /></button>
-            <div className="chat__director-presets" aria-label="Quick scene directions">
-              <button type="button" onClick={()=>applyDirectorPreset("Use more natural audible dialogue and less descriptive filler in the next beat.")}>More dialogue</button>
-              <button type="button" onClick={()=>applyDirectorPreset("Increase believable tension through choices and subtext, without forcing a confession or melodrama.")}>More tension</button>
-              <button type="button" onClick={()=>applyDirectorPreset("Move the scene forward naturally to the next meaningful beat or location. Preserve continuity.")}>Move the scene</button>
-              <button type="button" onClick={()=>applyDirectorPreset("Bring in one plausible established side character if it fits the current situation. Do not derail the main scene.")}>Bring someone in</button>
-              <button type="button" onClick={()=>applyDirectorPreset(`Follow ${character.name}'s point of view/presence for the next beat without controlling my character.`)}>Follow {character.name}</button>
-              <button type="button" onClick={()=>applyDirectorPreset("Surprise me with a plausible next beat that fits canon and this character's independent life.")}>Surprise me</button>
-            </div>
-          </div>
-        )}
+        {directorNote && <span className="chat__director-active" title={directorNote}>Directed</span>}
         <input ref={sceneImageInputRef} className="chat__scene-file-input" type="file" accept="image/*" multiple onChange={handleSceneImages} />
-        <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>setDirectorNoteOpen((current)=>!current)} aria-label="Guide next reply" title="Guide next reply"><Sparkles size={16}/></button>
+        <button type="button" className={`chat__director-trigger${directorNoteOpen || directorNote ? " is-active" : ""}`} onClick={()=>setDirectorNoteOpen((current)=>!current)} aria-label="Guide next reply" title="Guide next reply"><Sparkles size={16}/></button>
         <textarea
           ref={textareaRef}
           value={message}
@@ -1449,6 +1450,25 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
           </button>
         )}
       </form>
+
+      {directorNoteOpen && (
+        <div className="director-sheet-backdrop" onClick={(event) => event.target === event.currentTarget && setDirectorNoteOpen(false)}>
+          <section className="director-sheet" role="dialog" aria-modal="true" aria-label="Scene Director">
+            <div className="director-sheet__grab" />
+            <header><div><span><Sparkles size={15}/> SCENE DIRECTOR</span><h2>Guide the next beat</h2><p>One direction, one reply. Characters never see this note.</p></div><button type="button" onClick={()=>setDirectorNoteOpen(false)} aria-label="Close Scene Director"><X size={19}/></button></header>
+            <div className="director-sheet__presets">
+              <button type="button" onClick={()=>applyDirectorPreset("Use more natural audible dialogue and less descriptive filler in the next beat.")}><MessageSquareQuote size={17}/><span>More dialogue<small>Less filler</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset("Increase believable tension through choices and subtext, without forcing a confession or melodrama.")}><Sparkles size={17}/><span>More tension<small>Keep it believable</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset("Move the scene forward naturally to the next meaningful beat or location. Preserve continuity.")}><ChevronRight size={17}/><span>Move scene<small>Advance naturally</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset("Bring in one plausible established side character if it fits the current situation. Do not derail the main scene.")}><UserRound size={17}/><span>Bring someone in<small>Established NPC</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset(`Follow ${character.name}'s point of view/presence for the next beat without controlling my character.`)}><Eye size={17}/><span>Follow {character.name}<small>Shift the camera</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset("Surprise me with a plausible next beat that fits canon and this character's independent life.")}><GitBranch size={17}/><span>Surprise me<small>Canon-safe twist</small></span></button>
+            </div>
+            <label className="director-sheet__custom"><span>Custom direction</span><textarea value={directorNote} onChange={(event)=>setDirectorNote(event.target.value)} maxLength={500} rows={3} placeholder="Tell Velvet what you want next…"/><small>{directorNote.length}/500</small></label>
+            <footer><button type="button" className="secondary" onClick={()=>{setDirectorNote("");setDirectorNoteOpen(false);}}>Clear</button><button type="button" className="primary" onClick={()=>setDirectorNoteOpen(false)} disabled={!directorNote.trim()}><Check size={16}/>Use this direction</button></footer>
+          </section>
+        </div>
+      )}
 
       <MemoryBookDrawer
         open={memoryBookOpen}
@@ -1841,6 +1861,7 @@ function MessageBubble({
   const SWIPE_DIRECTION_RATIO = 1.8;
   const SWIPE_MAX_VERTICAL_PX = 48;
   const swipeGestureRef = useRef(null);
+  const suppressTapRef = useRef(false);
   const canSwipe =
     message.sender === "character" &&
     !message.isStreaming &&
@@ -1933,8 +1954,17 @@ function MessageBubble({
 
     if (!deliberateHorizontalSwipe) return;
 
+    suppressTapRef.current = true;
+    window.setTimeout(() => { suppressTapRef.current = false; }, 240);
+
     // Left = next/new response. Right = previous response.
     onVersionNavigate(message, dx < 0 ? 1 : -1);
+  }
+
+  function handleMessageTap(event) {
+    if (suppressTapRef.current || message.isStreaming || swipeDisabled || shouldIgnoreSwipeTarget(event.target)) return;
+    event.stopPropagation();
+    onOpenActions(message);
   }
 
   if (isSilentContinuation(message)) {
@@ -1954,6 +1984,7 @@ function MessageBubble({
       onTouchMove={canSwipe ? handleTouchMove : undefined}
       onTouchEnd={canSwipe ? handleTouchEnd : undefined}
       onTouchCancel={resetSwipeGesture}
+      onClick={handleMessageTap}
       onContextMenu={(event) => { event.preventDefault(); onOpenActions(message); }}
     >
       <div className="chat-message__swipe-content">

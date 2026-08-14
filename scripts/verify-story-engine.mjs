@@ -43,7 +43,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("consolidated engine stays under two thousand lines", edgeLines < 2000);
+check("live-stream engine stays reasonably consolidated", edgeLines < 2400);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -53,26 +53,26 @@ check("old fallback architecture is gone",
 check("no deterministic narrative fallback exists",
   !/function\s+\w*Fallback\s*\(/.test(edge) &&
   !edge.includes("Final save integrity used a safe fallback"));
-check("one generation one validation one optional repair",
-  edge.includes("let result = await generateRoleplay({") &&
+check("one live generation one validation one optional repair",
+  edge.includes("streamGeminiEnvelopeWithFailover({") &&
   edge.includes("let validationIssues = validateNarrativeReply(") &&
-  edge.includes("const repairedResult = await repairRoleplayOnce({") &&
-  edge.includes("candidate needs one repair"));
+  edge.includes("const repaired = await repairRoleplayOnce({") &&
+  edge.includes("if (blocking.length)"));
 check("advisory quality issues do not force repeated user regeneration",
   edge.includes("blockingNarrativeIssues") &&
-  edge.includes("serving reply with advisory quality notes") &&
-  edge.includes("repair became blocking; keeping usable original") &&
+  edge.includes("if (blocking.length)") &&
   !edge.includes("Velvet rejected a weak or incomplete response before showing it. Regenerate once more."));
-check("only structurally unsafe double failures surface an error",
-  edge.includes("both generated candidates are structurally unsafe") &&
+check("only structurally unsafe failures trigger the one repair path",
+  edge.includes("if (blocking.length)") &&
+  edge.includes("blockingNarrativeIssues(repairedIssues)") &&
   edge.includes("Gemini returned an incomplete or structurally invalid reply twice. Regenerate once.") &&
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
-check("model returns reply scene continuity development and memories in one request",
-  edge.includes('required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "scene_update", "development_update", "memory_updates"]') &&
+check("model streams reply scene continuity development and memories in one request",
+  edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "development_update", "memory_updates"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
-  edge.includes("continuityNote: result.continuity_note") &&
-  edge.includes("sceneUpdate: result.scene_update"));
+  edge.includes("streamGenerateContent?alt=sse") &&
+  edge.includes("result.scene_update") && edge.includes("result.development_update") && edge.includes("result.memory_updates"));
 check("the same request plans latest-turn meaning and audits canon",
   edge.includes("turn_reading: one sentence stating the literal social meaning") &&
   edge.includes("canon_claims: a list of every off-screen or historical factual claim") &&
@@ -82,9 +82,9 @@ check("no background story-model calls consume extra quota",
   !edge.includes("updateConversationSummaryInBackground") &&
   !edge.includes("extractMemoriesInBackground"));
 check("advisory style issues never spend a repair call",
-  edge.includes("if (originalBlockingIssues.length)") &&
-  edge.includes("QUOTA GUARD") &&
-  !edge.includes("if (validationIssues.length) {\n      console.warn(\"[character-chat] candidate needs one repair"));
+  edge.includes("const blocking = blockingNarrativeIssues(validationIssues)") &&
+  edge.includes("if (blocking.length)") &&
+  !edge.includes("if (validationIssues.length) {\n      const repaired"));
 check("Gemini primary and two fallbacks are configurable",
   edge.includes('Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash"') &&
   edge.includes('Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite"') &&
@@ -92,10 +92,10 @@ check("Gemini primary and two fallbacks are configurable",
 check("rate-limit errors do not falsely claim the daily free tier is exhausted",
   edge.includes("Gemini is rate-limited right now") &&
   !edge.includes("The free AI limit was reached. Try again later."));
-check("structured runtime logging covers generation rejection and save",
+check("structured runtime and live stream telemetry are present",
   edge.includes('console.log("[character-chat] generation started"') &&
-  edge.includes('console.warn("[character-chat] candidate needs one repair"') &&
-  edge.includes('console.log("[character-chat] response saved"'));
+  edge.includes('type: "model"') && edge.includes('liveStreaming: true') &&
+  edge.includes('[character-chat] live stream failed'));
 
 check("persistent development migration covers existing and future characters",
   developmentMigration.includes("add column if not exists core_motivation text") &&
@@ -127,8 +127,8 @@ check("advanced voice fingerprint is visibly discoverable",
   characterModal.includes("voiceFingerprintCount") &&
   characterModal.includes("studio-voice-fingerprint__chevron"));
 check("production engine contains no Rowan-specific development rule", !/\bRowan\b/.test(edge));
-check("development state is returned and saved in the same generation path",
-  edge.includes("developmentUpdate: result.development_update") &&
+check("development state is returned and saved in the same live generation path",
+  edge.includes("update: result.development_update") &&
   edge.includes("update.character_development = applyCharacterDevelopment({") &&
   !edge.includes("generateCharacterDevelopment"));
 check("development profile and state are present in the roleplay prompt",

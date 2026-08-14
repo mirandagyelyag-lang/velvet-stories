@@ -170,6 +170,8 @@ function App() {
           conversationId={selectedConversationId}
           onBack={leaveCurrentChat}
           onDeleted={() => navigate("chats", { replace: true })}
+          onOpenMemories={() => navigate("memories")}
+          onOpenDiagnostics={() => navigate("diagnostics")}
         />
       );
     }
@@ -216,7 +218,7 @@ function App() {
 
     if (activePage === "diagnostics") return <Diagnostics onBack={() => navigate("settings")} />;
 
-    if (activePage === "profile") return <Profile onManagePersonas={() => navigate("personas")} onManageLorebooks={() => navigate("lorebooks")} onOpenSettings={() => navigate("settings")} />;
+    if (activePage === "profile") return <Profile onManagePersonas={() => navigate("personas")} onManageLorebooks={() => navigate("lorebooks")} onOpenMemories={() => navigate("memories")} onOpenDiagnostics={() => navigate("diagnostics")} onOpenSettings={() => navigate("settings")} />;
 
     return (
       <Chats

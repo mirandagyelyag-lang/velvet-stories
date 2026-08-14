@@ -185,101 +185,18 @@ Deno.serve(async (request) => {
       messageCount: messages.length,
     });
 
-    let repairUsed = false;
-    let result = await generateRoleplay({
+    // v1.9 PHONE FIRST: open the SSE response immediately and stream Gemini's
+    // structured output while it is still being generated. The visible reply
+    // reaches the phone before continuity metadata has finished generating.
+    return streamRoleplayV19({
       apiKey,
       prompt,
       character: configuredCharacter,
-      isRegeneration: Boolean(regenerateMessageId),
-      isCancelled,
-    });
-
-    let validationIssues = validateNarrativeReply(result.reply, {
-      characterName: configuredCharacter.name,
-      userName: userIdentity.name,
       latestUserMessage,
       turnIntent,
-      finishReason: result.finishReason,
-      rejectedResponses: branch.rejectedResponses,
+      userIdentity,
       recentCharacterReplies: messages.filter((message) => message.sender === "character").slice(-6).map((message) => message.content),
-    });
-    const originalResult = result;
-    const originalIssues = validationIssues;
-    const originalBlockingIssues = blockingNarrativeIssues(originalIssues);
-
-    // v1.7.1 QUOTA GUARD: only structurally unsafe replies spend a second AI call.
-    // Short, quiet, repetitive or stylistically imperfect replies are advisory
-    // and are shown immediately instead of silently doubling Gemini usage.
-    if (originalBlockingIssues.length) {
-      console.warn("[character-chat] candidate needs one repair", {
-        conversationId,
-        issues: validationIssues,
-        blockingIssues: originalBlockingIssues,
-        model: result.model,
-      });
-
-      repairUsed = true;
-      const repairedResult = await repairRoleplayOnce({
-        apiKey,
-        originalPrompt: prompt,
-        rejectedReply: result.reply,
-        issues: validationIssues,
-        character: configuredCharacter,
-        isCancelled,
-      });
-
-      const repairedIssues = validateNarrativeReply(repairedResult.reply, {
-        characterName: configuredCharacter.name,
-        userName: userIdentity.name,
-        latestUserMessage,
-        turnIntent,
-        finishReason: repairedResult.finishReason,
-        rejectedResponses: branch.rejectedResponses,
-        recentCharacterReplies: messages.filter((message) => message.sender === "character").slice(-6).map((message) => message.content),
-      });
-      const repairedBlockingIssues = blockingNarrativeIssues(repairedIssues);
-
-      if (!repairedBlockingIssues.length) {
-        // The repaired turn is structurally safe. Any remaining issues are
-        // advisory quality hints, so show the reply instead of throwing.
-        result = repairedResult;
-        validationIssues = repairedIssues;
-      } else if (!originalBlockingIssues.length) {
-        // Never replace a usable original with a repair that became structurally
-        // worse. Keep the original and let the user decide whether to regenerate.
-        console.warn("[character-chat] repair became blocking; keeping usable original", {
-          conversationId,
-          originalIssues,
-          repairedIssues,
-        });
-        result = originalResult;
-        validationIssues = originalIssues;
-      } else {
-        result = repairedResult;
-        validationIssues = repairedIssues;
-      }
-    }
-
-    const blockingIssues = blockingNarrativeIssues(validationIssues);
-    if (blockingIssues.length) {
-      console.error("[character-chat] both generated candidates are structurally unsafe", {
-        conversationId,
-        issues: validationIssues,
-        blockingIssues,
-      });
-      throw new Error("Gemini returned an incomplete or structurally invalid reply twice. Regenerate once.");
-    }
-
-    if (validationIssues.length) {
-      console.warn("[character-chat] serving reply with advisory quality notes", {
-        conversationId,
-        issues: validationIssues,
-      });
-    }
-
-    if (await isCancelled()) return cancelledResponse();
-
-    return streamAndPersist({
+      rejectedResponses: branch.rejectedResponses,
       supabase,
       cancellationAdmin,
       generationId,
@@ -287,28 +204,19 @@ Deno.serve(async (request) => {
       userId: userData.user.id,
       storyRevision: loaded.conversation.story_revision || null,
       replacementMessage: branch.replacementMessage,
-      reply: result.reply,
-      continuityNote: result.continuity_note,
-      sceneUpdate: result.scene_update,
       responseLanguage,
       memories: selectedMemories,
       loreEntries: selectedLore,
       existingTimeline: loaded.conversation.story_timeline || [],
       previousDevelopment: developmentState,
-      developmentUpdate: result.development_update,
-      memoryUpdates: result.memory_updates,
-      character: configuredCharacter,
-      latestUserMessage,
       latestUserMessageId: latestUserRecord.id,
       existingSceneState: loaded.conversation.scene_state || {},
       existingCastState: loaded.conversation.cast_state || {},
       existingRelationshipState: loaded.conversation.relationship_state || {},
-      model: result.model,
-      repairUsed,
       regenerationInstruction,
       regenerationFeedback,
-      rejectedResponses: branch.rejectedResponses,
       isRegeneration: Boolean(regenerateMessageId),
+      isCancelled,
     });
   } catch (error) {
     console.error("[character-chat] request failed", {
@@ -321,7 +229,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "1.8.0",
+    version: "1.9.0",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -813,11 +721,11 @@ ${regeneration}
 ${directorInstruction ? `Director instruction: ${directorInstruction}` : ""}
 
 OUTPUT
-Return JSON with:
+Return JSON with fields in this exact order so reply can stream first:
+- reply: only the finished roleplay prose.
 - turn_reading: one sentence stating the literal social meaning of the latest user turn and what ${character.name} must respond to now.
 - canon_claims: a list of every off-screen or historical factual claim used in the reply; keep it empty unless that exact fact appears in the profile, lore, a confirmed memory or the visible transcript.
 - voice_plan: a private planning object with conversational_goal, outward_tactic, private_pressure, verbal_signature and avoided_pattern. Each value is one short string. Never place this analysis inside reply.
-- reply: only the finished roleplay prose.
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
 - scene_update: a strict physical-continuity object with scene_changed (boolean), separator_label (short string such as "Later that night" only when the visible turn truly changes scene/time, otherwise empty), location (current established location or empty), time_label (established time/daypart or empty), present (names visibly present now), exited (names who visibly left in this turn), and heard_user_turn (names who were physically/digitally able to receive the latest user turn). Do not infer attendance, proximity, overhearing or off-screen movement. Keep existing scene facts when the transcript does not change them.
 - development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
@@ -893,8 +801,9 @@ async function callGeminiWithFailover({
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
-              required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "scene_update", "development_update", "memory_updates"],
+              required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "development_update", "memory_updates"],
               properties: {
+                reply: { type: "string" },
                 turn_reading: { type: "string" },
                 canon_claims: { type: "array", items: { type: "string" } },
                 voice_plan: {
@@ -908,7 +817,6 @@ async function callGeminiWithFailover({
                     avoided_pattern: { type: "string" },
                   },
                 },
-                reply: { type: "string" },
                 continuity_note: { type: "string" },
                 scene_update: {
                   type: "object",
@@ -1548,6 +1456,379 @@ function relationshipStateFromDevelopment(development = {}, previous = {}) {
   };
 }
 
+
+async function streamRoleplayV19({
+  apiKey,
+  prompt,
+  character,
+  latestUserMessage,
+  turnIntent,
+  userIdentity,
+  recentCharacterReplies,
+  rejectedResponses,
+  supabase,
+  cancellationAdmin,
+  generationId,
+  conversationId,
+  userId,
+  storyRevision,
+  replacementMessage,
+  responseLanguage,
+  memories,
+  loreEntries,
+  existingTimeline,
+  previousDevelopment,
+  latestUserMessageId,
+  existingSceneState,
+  existingCastState,
+  existingRelationshipState,
+  regenerationInstruction,
+  regenerationFeedback,
+  isRegeneration,
+  isCancelled,
+}) {
+  const stream = new ReadableStream({
+    async start(controller) {
+      let repairUsed = false;
+      let streamedReply = "";
+      try {
+        // Flush headers/UI state before the model has finished its first token.
+        sendEvent(controller, {
+          type: "start",
+          language: responseLanguage,
+          model: GEMINI_MODEL,
+          repairUsed: false,
+          liveStreaming: true,
+          memoryCount: memories.length,
+          pinnedMemoryCount: memories.filter((memory) => memory.is_pinned).length,
+          memoryItems: memories.map((memory) => ({ id: memory.id, content: memory.content, category: memory.category, pinned: Boolean(memory.is_pinned) })),
+          loreCount: loreEntries.length,
+          loreItems: loreEntries.map((entry) => ({ id: entry.id, name: entry.name, type: entry.entry_type })),
+        });
+
+        let result = await streamGeminiEnvelopeWithFailover({
+          apiKey,
+          systemInstruction: "Produce one grounded, emotionally intelligent roleplay continuation. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
+          prompt,
+          maxOutputTokens: getMaximumOutputTokens(character.response_length),
+          temperature: getTemperature(character.creativity, isRegeneration),
+          isCancelled,
+          onModel(model) {
+            sendEvent(controller, { type: "model", model });
+          },
+          onReset() {
+            streamedReply = "";
+            sendEvent(controller, { type: "reset" });
+          },
+          onReply(reply) {
+            if (!reply || reply.length <= streamedReply.length) return;
+            const delta = reply.slice(streamedReply.length);
+            streamedReply = reply;
+            if (delta) sendEvent(controller, { type: "chunk", content: delta });
+          },
+        });
+
+        let validationIssues = validateNarrativeReply(result.reply, {
+          characterName: character.name,
+          userName: userIdentity.name,
+          latestUserMessage,
+          turnIntent,
+          finishReason: result.finishReason,
+          rejectedResponses,
+          recentCharacterReplies,
+        });
+        const originalResult = result;
+        const originalIssues = validationIssues;
+        const blocking = blockingNarrativeIssues(validationIssues);
+
+        // Rare safety repair. The live draft is replaced in-place instead of
+        // forcing the user to manually regenerate again.
+        if (blocking.length) {
+          repairUsed = true;
+          sendEvent(controller, { type: "reset", reason: "repair" });
+          streamedReply = "";
+          const repaired = await repairRoleplayOnce({
+            apiKey,
+            originalPrompt: prompt,
+            rejectedReply: result.reply,
+            issues: validationIssues,
+            character,
+            isCancelled,
+          });
+          const repairedIssues = validateNarrativeReply(repaired.reply, {
+            characterName: character.name,
+            userName: userIdentity.name,
+            latestUserMessage,
+            turnIntent,
+            finishReason: repaired.finishReason,
+            rejectedResponses,
+            recentCharacterReplies,
+          });
+          if (!blockingNarrativeIssues(repairedIssues).length) {
+            result = repaired;
+            validationIssues = repairedIssues;
+          } else {
+            result = originalResult;
+            validationIssues = originalIssues;
+          }
+          for (const chunk of splitForStreaming(result.reply)) {
+            if (await isCancelled()) return;
+            sendEvent(controller, { type: "chunk", content: chunk });
+          }
+          streamedReply = result.reply;
+        }
+
+        if (blockingNarrativeIssues(validationIssues).length) {
+          throw new Error("Gemini returned an incomplete or structurally invalid reply twice. Regenerate once.");
+        }
+        if (await isCancelled()) return;
+        if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
+
+        const savedMessage = replacementMessage
+          ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: result.reply })
+          : await saveCharacterReply({ supabase, conversationId, userId, reply: result.reply });
+
+        const update = { updated_at: new Date().toISOString() } as Record<string, any>;
+        update.character_development = applyCharacterDevelopment({
+          previous: previousDevelopment,
+          update: result.development_update,
+          relationshipPremise: character.relationship || "",
+          latestUserMessage,
+          reply: result.reply,
+          messageId: savedMessage.id,
+          isRegeneration,
+          regenerationInstruction,
+          regenerationFeedback,
+          rejectedResponses,
+        });
+        update.relationship_state = relationshipStateFromDevelopment(update.character_development, existingRelationshipState);
+        const nextPhysicalState = applySceneContinuity({
+          previousScene: existingSceneState,
+          previousCast: existingCastState,
+          sceneUpdate: result.scene_update,
+          mainCharacterName: character.name,
+        });
+        update.scene_state = nextPhysicalState.scene;
+        update.cast_state = nextPhysicalState.cast;
+
+        const note = cleanPromptValue(result.continuity_note, 600);
+        const sceneChanged = Boolean(result.scene_update?.scene_changed);
+        const separatorLabel = cleanPromptValue(result.scene_update?.separator_label, 100);
+        if (note || sceneChanged || separatorLabel) {
+          const timeline = Array.isArray(existingTimeline) ? existingTimeline : [];
+          update.story_timeline = [
+            ...timeline.filter((item) => String(item?.message_id || "") !== String(savedMessage.id)),
+            {
+              message_id: savedMessage.id,
+              note,
+              scene_changed: sceneChanged,
+              separator_label: separatorLabel,
+              location: nextPhysicalState.scene.location || "",
+              time_label: nextPhysicalState.scene.time_label || "",
+              present: nextPhysicalState.scene.present || [],
+              created_at: savedMessage.created_at || new Date().toISOString(),
+            },
+          ].slice(-80);
+        }
+        await supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
+        if (!replacementMessage && Array.isArray(result.memory_updates) && result.memory_updates.length) {
+          await mergeAutomaticMemories({
+            supabase,
+            userId,
+            conversationId,
+            characterId: character.id,
+            memoryUpdates: result.memory_updates,
+            sourceMessageId: latestUserMessageId,
+            sourceExcerpt: cleanPromptValue(latestUserMessage, 220),
+          });
+        }
+
+        sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: result.memory_updates?.length || 0, model: result.model, repairUsed, liveStreaming: true });
+      } catch (error) {
+        if (getErrorName(error) !== "AbortError") {
+          console.error("[character-chat] live stream failed", { message: getErrorMessage(error) });
+          sendEvent(controller, { type: "error", error: getErrorMessage(error) });
+        }
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
+async function streamGeminiEnvelopeWithFailover({
+  apiKey,
+  systemInstruction,
+  prompt,
+  maxOutputTokens,
+  temperature,
+  isCancelled,
+  onModel,
+  onReply,
+  onReset,
+}): Promise<ModelResult> {
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
+  let lastError = "Gemini could not generate a response";
+  let quotaReached = false;
+  let emittedAnyReply = false;
+
+  for (const model of models) {
+    if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
+    const controller = new AbortController();
+    let watching = true;
+    const timeoutId = setTimeout(() => controller.abort(), 26000);
+    const cancellationWatcher = (async () => {
+      while (watching && !controller.signal.aborted) {
+        await delay(160);
+        if (watching && await isCancelled()) controller.abort();
+      }
+    })();
+
+    try {
+      onModel?.(model);
+      const response = await fetch(modelStreamEndpoint(model), {
+        method: "POST",
+        headers: geminiHeaders(apiKey),
+        signal: controller.signal,
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens,
+            temperature,
+            topP: 0.92,
+            thinkingConfig: { thinkingLevel: "MINIMAL" },
+            responseMimeType: "application/json",
+            responseJsonSchema: roleplayResponseSchema(),
+          },
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        const errorText = await response.text().catch(() => "");
+        lastError = extractGeminiHttpError(errorText) || `Gemini returned ${response.status}`;
+        quotaReached ||= response.status === 429;
+        if ([429, 500, 502, 503, 504].includes(response.status)) continue;
+        throw new Error(lastError);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
+      let structured = "";
+      let latestReply = "";
+      let finishReason = "";
+
+      const consumeEvent = (rawEvent) => {
+        const lines = rawEvent.split("\n").filter((line) => line.startsWith("data:"));
+        for (const line of lines) {
+          const payload = line.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          let data;
+          try { data = JSON.parse(payload); } catch { continue; }
+          const piece = extractCandidateTextRaw(data);
+          if (piece) structured += piece;
+          finishReason = String(data?.candidates?.[0]?.finishReason || finishReason || "");
+          const partialReply = extractPartialJsonStringField(structured, "reply");
+          if (partialReply.length > latestReply.length) {
+            latestReply = partialReply;
+            emittedAnyReply = true;
+            onReply?.(latestReply);
+          }
+        }
+      };
+
+      while (true) {
+        if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
+        const { value, done } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const events = sseBuffer.split("\n\n");
+        sseBuffer = events.pop() || "";
+        for (const rawEvent of events) consumeEvent(rawEvent);
+      }
+      sseBuffer += decoder.decode();
+      if (sseBuffer.trim()) consumeEvent(sseBuffer);
+
+      const envelope = parseModelEnvelope(structured);
+      if (!envelope.reply && latestReply) envelope.reply = latestReply;
+      if (!envelope.reply) throw new Error("Gemini returned an empty reply");
+      return { ...envelope, finishReason, model };
+    } catch (error) {
+      if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
+      if (emittedAnyReply) {
+        emittedAnyReply = false;
+        onReset?.();
+      }
+      if (getErrorName(error) === "AbortError") lastError = "The AI took too long to answer. Please try again.";
+      else lastError = getErrorMessage(error);
+    } finally {
+      clearTimeout(timeoutId);
+      watching = false;
+      void cancellationWatcher;
+    }
+  }
+
+  if (quotaReached) throw new Error("Gemini is rate-limited right now. This can be a per-minute, token, or daily project limit. Wait a little and try again.");
+  throw new Error(lastError);
+}
+
+function roleplayResponseSchema() {
+  return {
+    type: "object",
+    required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "development_update", "memory_updates"],
+    propertyOrdering: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "development_update", "memory_updates"],
+    properties: {
+      reply: { type: "string" },
+      turn_reading: { type: "string" },
+      canon_claims: { type: "array", items: { type: "string" } },
+      voice_plan: { type: "object", required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"], properties: { conversational_goal:{type:"string"}, outward_tactic:{type:"string"}, private_pressure:{type:"string"}, verbal_signature:{type:"string"}, avoided_pattern:{type:"string"} } },
+      continuity_note: { type: "string" },
+      scene_update: { type: "object", required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"], properties: { scene_changed:{type:"boolean"}, separator_label:{type:"string"}, location:{type:"string"}, time_label:{type:"string"}, present:{type:"array",items:{type:"string"}}, exited:{type:"array",items:{type:"string"}}, heard_user_turn:{type:"array",items:{type:"string"}} } },
+      memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content","category","importance","scope","reason","replaces"], properties: { content:{type:"string"}, category:{type:"string",enum:["fact","person","relationship","world","event","preference","boundary","promise","conflict"]}, importance:{type:"integer"}, scope:{type:"string",enum:["conversation","character"]}, reason:{type:"string"}, replaces:{type:"string"} } } },
+      development_update: { type: "object", required: ["significance","evidence","relationship_phase","relationship_dynamic","emotional_residue","active_contradiction","behavioral_effect","turning_point"], properties: { significance:{type:"string"}, evidence:{type:"string"}, relationship_phase:{type:"string"}, relationship_dynamic:{type:"string"}, emotional_residue:{type:"string"}, active_contradiction:{type:"string"}, behavioral_effect:{type:"string"}, turning_point:{type:"string"} } },
+    },
+  };
+}
+
+function extractCandidateTextRaw(data) {
+  return String(data?.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text || "").join("") || "");
+}
+
+function extractPartialJsonStringField(source = "", field = "reply") {
+  const pattern = new RegExp(`"${field.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"\\s*:\\s*"`);
+  const match = pattern.exec(source);
+  if (!match) return "";
+  const start = match.index + match[0].length;
+  let raw = "";
+  let escaped = false;
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index];
+    if (!escaped && char === '"') break;
+    raw += char;
+    if (escaped) escaped = false;
+    else if (char === "\\") escaped = true;
+  }
+  let safe = raw;
+  if (/\\$/.test(safe)) safe = safe.slice(0, -1);
+  safe = safe.replace(/\\u[0-9a-fA-F]{0,3}$/u, "");
+  try { return JSON.parse(`"${safe}"`); } catch { return ""; }
+}
+
+function extractGeminiHttpError(text = "") {
+  try { return String(JSON.parse(text)?.error?.message || ""); } catch { return String(text || "").slice(0, 260); }
+}
+
 async function streamAndPersist({
   supabase,
   cancellationAdmin,
@@ -1885,6 +2166,10 @@ function extractCandidateText(data) {
 
 function modelEndpoint(model) {
   return `${GEMINI_API_ROOT}/${encodeURIComponent(model)}:generateContent`;
+}
+
+function modelStreamEndpoint(model) {
+  return `${GEMINI_API_ROOT}/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`;
 }
 
 function geminiHeaders(apiKey) {

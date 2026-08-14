@@ -9,6 +9,10 @@ const ui = readFileSync("src/styles/velvet-ui.css", "utf8");
 const hotfix = readFileSync("src/styles/velvet-v171-hotfix.css", "utf8");
 const emergency = readFileSync("src/styles/velvet-v172-mobile-emergency.css", "utf8");
 const v18 = readFileSync("src/styles/velvet-v18.css", "utf8");
+const v19 = readFileSync("src/styles/velvet-v19-phone-first.css", "utf8");
+const profile = readFileSync("src/pages/Profile.jsx", "utf8");
+const chatsContext = readFileSync("src/context/ChatsContext.jsx", "utf8");
+const edge = readFileSync("supabase/functions/character-chat/index.ts", "utf8");
 const app = readFileSync("src/App.jsx", "utf8");
 const diagnostics = readFileSync("src/pages/Diagnostics.jsx", "utf8");
 const characterModal = readFileSync("src/components/CreateCharacterModal.jsx", "utf8");
@@ -17,12 +21,10 @@ const relationshipDrawer = readFileSync("src/components/RelationshipDrawer.jsx",
 
 const checks = [
   {
-    name: "v1.8 UI layer is imported last",
+    name: "v1.9 phone-first UI layer is imported last",
     pass:
-      main.indexOf('import "./styles/velvet-v18.css"') >
-      main.indexOf('import "./styles/velvet-v172-mobile-emergency.css"') &&
-      main.indexOf('import "./styles/velvet-v172-mobile-emergency.css"') >
-      main.indexOf('import "./styles/velvet-v171-hotfix.css"'),
+      main.indexOf('import "./styles/velvet-v19-phone-first.css"') > main.indexOf('import "./styles/velvet-v181-guarded-swipe.css"') &&
+      main.indexOf('import "./styles/velvet-v181-guarded-swipe.css"') > main.indexOf('import "./styles/velvet-v18.css"'),
   },
   {
     name: "mobile navigation has exactly three destinations",
@@ -207,6 +209,39 @@ const checks = [
       emergency.includes(".chat__more") &&
       emergency.includes("pointer-events: auto !important") &&
       emergency.includes("z-index: 500 !important"),
+  },
+
+  {
+    name: "phone chat always exposes a leave control",
+    pass: chat.includes("chat__mobile-exit") && chat.includes("chat__back-button") && v19.includes("chat--reading-chrome-hidden .chat__mobile-exit"),
+  },
+  {
+    name: "tapping any finished message opens its action sheet",
+    pass: chat.includes("onClick={handleMessageTap}") && chat.includes("onOpenActions(message)") && chat.includes("onContextMenu"),
+  },
+  {
+    name: "header three-dot menu becomes a real phone bottom sheet",
+    pass: chat.includes("chat__menu-backdrop") && v19.includes(".chat__menu-backdrop") && v19.includes("align-items:flex-end"),
+  },
+  {
+    name: "Memories 2.5 and AI Status are discoverable from Profile and chat",
+    pass: profile.includes("Memories 2.5") && profile.includes("AI Status") && chat.includes("Memories 2.5") && chat.includes("AI Status"),
+  },
+  {
+    name: "relationship engine has a direct phone header action",
+    pass: chat.includes("chat__relationship-header") && chat.includes('aria-label="Open relationship engine"') && v19.includes(".chat__relationship-header"),
+  },
+  {
+    name: "Scene Director uses a dedicated mobile sheet with explicit apply",
+    pass: chat.includes("director-sheet-backdrop") && chat.includes("Use this direction") && v19.includes(".director-sheet__presets") && v19.includes("grid-template-columns:repeat(2"),
+  },
+  {
+    name: "Gemini reply uses true upstream SSE streaming",
+    pass: edge.includes("streamGenerateContent?alt=sse") && edge.includes("extractPartialJsonStringField") && chatsContext.includes('eventData.type === "reset"') && chatsContext.includes('eventData.type === "model"'),
+  },
+  {
+    name: "AI diagnostics records first visible text latency separately",
+    pass: chatsContext.includes("firstTokenMs") && diagnostics.includes("First reply text") && diagnostics.includes("Full response"),
   },
 ];
 

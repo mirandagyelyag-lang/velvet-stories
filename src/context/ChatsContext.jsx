@@ -768,6 +768,18 @@ export function ChatsProvider({
             continue;
           }
 
+          if (eventData.type === "model") {
+            diagnosticModel = String(eventData.model || diagnosticModel || "");
+            if (diagnosticModel) recordAiSession({ lastModel: diagnosticModel });
+            continue;
+          }
+
+          if (eventData.type === "reset") {
+            completeContent = "";
+            if (streamStarted) updateStreamingMessage(characterId, streamMessageId, "");
+            continue;
+          }
+
           if (eventData.type === "chunk") {
             if (requestWasCancelled()) continue;
 
@@ -777,6 +789,7 @@ export function ChatsProvider({
             completeContent += chunk;
 
             if (!streamStarted) {
+              recordAiSession({ firstTokenMs: Date.now() - requestStartedAt });
               streamStarted = true;
               appendMessageToState(characterId, {
                 id: streamMessageId,
@@ -1901,8 +1914,8 @@ export function ChatsProvider({
 
 function recordAiSession(patch = {}) {
   try {
-    const key = "velvet_ai_session_v18";
-    const current = { started: 0, success: 0, failed: 0, repairs: 0, lastModel: "", lastError: "", lastDurationMs: 0, ...JSON.parse(sessionStorage.getItem(key) || "{}") };
+    const key = "velvet_ai_session_v19";
+    const current = { started: 0, success: 0, failed: 0, repairs: 0, lastModel: "", lastError: "", lastDurationMs: 0, firstTokenMs: 0, ...JSON.parse(sessionStorage.getItem(key) || sessionStorage.getItem("velvet_ai_session_v18") || "{}") };
     const next = {
       ...current,
       started: Number(current.started || 0) + Number(patch.started || 0),
@@ -1912,6 +1925,7 @@ function recordAiSession(patch = {}) {
       lastModel: patch.lastModel !== undefined && patch.lastModel !== "" ? patch.lastModel : current.lastModel,
       lastError: patch.lastError !== undefined ? patch.lastError : current.lastError,
       lastDurationMs: patch.lastDurationMs !== undefined ? patch.lastDurationMs : current.lastDurationMs,
+      firstTokenMs: patch.firstTokenMs !== undefined ? patch.firstTokenMs : current.firstTokenMs,
       updatedAt: new Date().toISOString(),
     };
     sessionStorage.setItem(key, JSON.stringify(next));

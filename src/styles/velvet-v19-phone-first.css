@@ -1,0 +1,91 @@
+/* Velvet v1.9 · PHONE FIRST
+   Mobile discoverability, reliable touch targets, real sheets, no hidden exits. */
+
+.chat__mobile-exit{display:none}
+.chat__relationship-header{display:none}
+.chat__menu-backdrop{position:absolute;inset:0;pointer-events:none}
+.chat__menu-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:4px 4px 8px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.chat__menu-quick button{min-width:0;display:grid!important;justify-items:start;gap:5px!important;padding:10px!important;color:var(--text-primary)!important;background:color-mix(in srgb,var(--accent) 5%,var(--surface-soft))!important;border:1px solid var(--border)!important;border-radius:12px!important}
+.chat__menu-quick button svg{color:var(--accent)}
+.chat__menu-quick button span{display:grid;gap:2px;min-width:0;font-size:.66rem;font-weight:700}
+.chat__menu-quick button small{color:var(--text-secondary);font-size:.52rem;font-weight:500}
+
+.chat__director-active{align-self:center;flex:0 0 auto;padding:4px 7px;color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,transparent);border:1px solid color-mix(in srgb,var(--accent) 18%,var(--border));border-radius:999px;font-size:.52rem;font-weight:700}
+
+.director-sheet-backdrop{position:fixed;inset:0;z-index:760;display:flex;align-items:flex-end;justify-content:center;padding:14px;background:rgba(16,8,12,.44);backdrop-filter:blur(7px)}
+.director-sheet{width:min(620px,100%);max-height:min(88dvh,760px);overflow:auto;padding:18px;color:var(--text-primary);background:var(--background);border:1px solid var(--border);border-radius:24px;box-shadow:0 26px 80px rgba(20,5,12,.28)}
+.director-sheet__grab{display:none}
+.director-sheet>header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.director-sheet>header span{display:flex;align-items:center;gap:6px;color:var(--accent);font-size:.58rem;font-weight:800;letter-spacing:.12em}
+.director-sheet>header h2{margin:4px 0 3px;font:600 1.8rem/1 "Cormorant Garamond",serif}
+.director-sheet>header p{margin:0;color:var(--text-secondary);font-size:.68rem}
+.director-sheet>header>button{width:40px;height:40px;display:grid;place-items:center;flex:0 0 auto;color:var(--text-secondary);background:var(--surface);border:1px solid var(--border);border-radius:50%}
+.director-sheet__presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:18px}
+.director-sheet__presets>button{min-height:78px;display:flex;align-items:flex-start;gap:9px;padding:12px;text-align:left;color:var(--text-primary);background:var(--surface);border:1px solid var(--border);border-radius:15px}
+.director-sheet__presets>button svg{flex:0 0 auto;margin-top:1px;color:var(--accent)}
+.director-sheet__presets>button span{display:grid;gap:3px;font-size:.68rem;font-weight:750}
+.director-sheet__presets>button small{color:var(--text-secondary);font-size:.56rem;font-weight:500;line-height:1.25}
+.director-sheet__custom{position:relative;display:grid;gap:7px;margin-top:14px}
+.director-sheet__custom>span{font-size:.64rem;font-weight:750}
+.director-sheet__custom textarea{width:100%;min-height:92px;padding:12px 13px;color:var(--text-primary);background:var(--surface);border:1px solid var(--border);border-radius:14px;outline:0;resize:vertical;font:inherit;font-size:.76rem;line-height:1.5}
+.director-sheet__custom textarea:focus{border-color:color-mix(in srgb,var(--accent) 55%,var(--border));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 8%,transparent)}
+.director-sheet__custom>small{position:absolute;right:10px;bottom:9px;color:var(--text-secondary);font-size:.5rem}
+.director-sheet>footer{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:14px}
+.director-sheet>footer button{min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:13px;font-weight:750}
+.director-sheet>footer .secondary{color:var(--text-secondary);background:var(--surface);border:1px solid var(--border)}
+.director-sheet>footer .primary{color:#fff8f3;background:var(--accent);border:1px solid var(--accent)}
+.director-sheet>footer .primary:disabled{opacity:.45}
+
+/* Message surface is itself an action target. Keep buttons obvious and large enough. */
+.chat-message{cursor:pointer}
+.chat-message__actions,.chat-message__actions--inline{min-width:32px!important;min-height:32px!important}
+
+@media (min-width:761px){
+  .chat__header{grid-template-columns:42px 48px minmax(0,1fr) 42px 42px 42px!important}
+  .chat__menu-backdrop{position:static;pointer-events:auto}
+}
+
+@media (max-width:760px),(pointer:coarse){
+  /* Header has exactly five visible mobile columns: back/avatar/title/relationship/menu. */
+  .chat__header{grid-template-columns:40px 42px minmax(0,1fr) 40px 40px!important;gap:7px!important;min-height:66px!important;padding:max(7px,env(safe-area-inset-top)) 8px 7px!important;overflow:visible!important}
+  .chat__header .chat__reading-button,.chat__header .chat__memory-book-button{display:none!important}
+  .chat__relationship-header{display:grid!important;width:40px!important;height:40px!important;z-index:332!important;pointer-events:auto!important;touch-action:manipulation!important}
+  .chat__more{width:40px!important;height:40px!important;z-index:333!important}
+  .chat__back-button{display:grid!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;z-index:334!important}
+
+  /* Belt-and-suspenders exit: stays available even if Reading Mode hides header chrome. */
+  .chat__mobile-exit{position:fixed;top:max(8px,env(safe-area-inset-top));left:8px;z-index:820;width:38px;height:38px;display:none;place-items:center;color:var(--text-primary);background:color-mix(in srgb,var(--surface) 92%,transparent);border:1px solid var(--border);border-radius:50%;backdrop-filter:blur(14px);box-shadow:0 8px 22px rgba(20,5,12,.12);touch-action:manipulation}
+  .chat--reading.chat--reading-chrome-hidden .chat__mobile-exit{display:grid!important}
+  .chat--reading.chat--reading-chrome-hidden .chat__header{transform:translateY(calc(-100% - env(safe-area-inset-top)))!important;pointer-events:none!important}
+
+  /* The three-dot menu is a real mobile bottom sheet, not an absolute popover inside the header. */
+  .chat__menu-backdrop{position:fixed!important;inset:0!important;z-index:700!important;display:flex!important;align-items:flex-end!important;justify-content:center!important;padding:0!important;background:rgba(17,8,12,.42)!important;backdrop-filter:blur(6px)!important;pointer-events:auto!important}
+  .chat__menu{position:relative!important;inset:auto!important;right:auto!important;top:auto!important;width:100%!important;max-width:none!important;max-height:82dvh!important;overflow-y:auto!important;margin:0!important;padding:12px 10px calc(14px + env(safe-area-inset-bottom))!important;background:var(--background)!important;border:1px solid var(--border)!important;border-bottom:0!important;border-radius:24px 24px 0 0!important;box-shadow:0 -24px 70px rgba(20,5,12,.2)!important;touch-action:pan-y!important;-webkit-overflow-scrolling:touch!important}
+  .chat__menu::before{content:"";display:block;width:38px;height:4px;margin:0 auto 10px;background:color-mix(in srgb,var(--text-secondary) 35%,transparent);border-radius:999px}
+  .chat__menu>button{width:100%!important;min-height:46px!important;padding:11px 12px!important;font-size:.72rem!important;border-radius:12px!important}
+  .chat__menu-quick{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:2px 0 10px}
+  .chat__menu-quick button{min-height:82px!important;align-content:start!important;padding:10px!important}
+  .chat__menu-quick button span{font-size:.62rem}
+
+  /* The director owns a full bottom sheet on phone. No squeezed composer row. */
+  .director-sheet-backdrop{padding:0!important;align-items:flex-end!important}
+  .director-sheet{width:100%!important;max-height:90dvh!important;padding:12px 12px calc(16px + env(safe-area-inset-bottom))!important;border-radius:24px 24px 0 0!important;border-bottom:0!important}
+  .director-sheet__grab{display:block;width:38px;height:4px;margin:0 auto 10px;background:color-mix(in srgb,var(--text-secondary) 30%,transparent);border-radius:999px}
+  .director-sheet>header h2{font-size:1.55rem}
+  .director-sheet__presets{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:14px}
+  .director-sheet__presets>button{min-height:72px;padding:10px}
+  .director-sheet__custom textarea{font-size:16px!important;min-height:88px}
+  .director-sheet>footer{position:sticky;bottom:0;padding-top:10px;background:linear-gradient(transparent,var(--background) 24%)}
+
+  .chat__composer{grid-template-columns:34px minmax(0,1fr) 38px!important;gap:4px!important}
+  .chat__director-active{position:absolute;left:8px;bottom:calc(100% + 5px);box-shadow:0 5px 14px rgba(20,5,12,.08)}
+  .chat__director-trigger{width:34px!important;height:34px!important}
+
+  /* Make taps on message options / feedback reliable. */
+  .chat-message__actions,.chat-message__actions--inline,.chat-message__feedback button,.chat-message__version-arrow{min-width:36px!important;min-height:36px!important;display:grid!important;place-items:center!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;touch-action:manipulation!important}
+  .message-sheet-backdrop{z-index:790!important;padding:0!important;align-items:flex-end!important}
+  .message-sheet{width:100%!important;max-height:88dvh!important;border-radius:24px 24px 0 0!important;padding:14px 12px calc(16px + env(safe-area-inset-bottom))!important}
+
+  /* Profile is the mobile hub for Memories and AI Status, so rows need true tap targets. */
+  .profile-setting>button,.settings-install__body>button{min-height:42px!important}
+}

@@ -1,10 +1,10 @@
-import { Globe2, LockKeyhole, LogOut, Moon, Settings2, ShieldCheck, Sparkles, Sun, UserRound } from "lucide-react";
+import { Activity, Brain, Globe2, LockKeyhole, LogOut, Moon, Settings2, ShieldCheck, Sparkles, Sun, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import "../styles/profile.css";
 
-function Profile({ onManagePersonas, onManageLorebooks, onOpenSettings }) {
+function Profile({ onManagePersonas, onManageLorebooks, onOpenMemories, onOpenDiagnostics, onOpenSettings }) {
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [signingOut, setSigningOut] = useState(false);
@@ -62,6 +62,18 @@ function Profile({ onManagePersonas, onManageLorebooks, onOpenSettings }) {
           <span className="profile-setting__icon"><Globe2 size={20} /></span>
           <div><strong>World & lorebooks</strong><small>Keep locations, side characters and timelines consistent.</small></div>
           <button onClick={onManageLorebooks}>Manage worlds</button>
+        </div>
+
+        <div className="profile-setting">
+          <span className="profile-setting__icon"><Brain size={20} /></span>
+          <div><strong>Memories 2.5</strong><small>Canon, relationship, events, preferences and what Velvet learned from you.</small></div>
+          <button onClick={onOpenMemories}>Open memories</button>
+        </div>
+
+        <div className="profile-setting">
+          <span className="profile-setting__icon"><Activity size={20} /></span>
+          <div><strong>AI Status</strong><small>Check Gemini, Supabase, the Edge Function, app version and mobile health.</small></div>
+          <button onClick={onOpenDiagnostics}>Open AI status</button>
         </div>
 
         <div className="profile-setting">

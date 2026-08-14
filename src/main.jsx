@@ -19,6 +19,7 @@ import "./styles/velvet-v171-hotfix.css";
 import "./styles/velvet-v172-mobile-emergency.css";
 import "./styles/velvet-v18.css";
 import "./styles/velvet-v181-guarded-swipe.css";
+import "./styles/velvet-v19-phone-first.css";
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
