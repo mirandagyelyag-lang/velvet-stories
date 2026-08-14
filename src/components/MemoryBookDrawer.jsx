@@ -86,7 +86,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
       if (filter === "pinned" && !memory.is_pinned) return false;
       if (filter === "canon" && !memory.is_canon) return false;
       if (filter === "about-you" && !["person", "preference", "boundary", "relationship", "fact"].includes(memory.category)) return false;
-      return !q || `${memory.content} ${memory.category} ${memory.why_remembered || ""}`.toLowerCase().includes(q);
+      return !q || `${memory.content} ${memory.category} ${memory.why_remembered || ""} ${memory.source_excerpt || ""}`.toLowerCase().includes(q);
     });
   }, [memories, search, filter]);
 
@@ -320,6 +320,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
             </div>
             <p>{memory.content}</p>
             {memory.why_remembered && <small className="memory-book__why"><SparkleDot />Why Velvet remembers this: {memory.why_remembered}</small>}
+            {memory.source_excerpt && <small className="memory-card__source-excerpt">Learned from your message: “{memory.source_excerpt}”</small>}
             <footer>
               <span>{memory.category || "fact"} · {formatAge(memory.updated_at || memory.created_at)}</span>
               <div>

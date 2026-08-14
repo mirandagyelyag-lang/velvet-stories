@@ -18,6 +18,9 @@ const memoryV17Migration = read("supabase/migrations/202608130001_velvet_v17_mem
 const memoryBook = read("src/components/MemoryBookDrawer.jsx");
 const memoriesPage = read("src/pages/Memories.jsx");
 const v17Styles = read("src/styles/velvet-v17.css");
+const memoryV18Migration = read("supabase/migrations/202608140001_velvet_v18_memory_sources.sql");
+const diagnosticsPage = read("src/pages/Diagnostics.jsx");
+const relationshipDrawer = read("src/components/RelationshipDrawer.jsx");
 
 const checks = [];
 function check(label, condition) {
@@ -65,10 +68,11 @@ check("only structurally unsafe double failures surface an error",
   edge.includes("Gemini returned an incomplete or structurally invalid reply twice. Regenerate once.") &&
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
-check("model returns reply and continuity in one request",
-  edge.includes('required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "development_update", "memory_updates"]') &&
+check("model returns reply scene continuity development and memories in one request",
+  edge.includes('required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "scene_update", "development_update", "memory_updates"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
-  edge.includes("continuityNote: result.continuity_note"));
+  edge.includes("continuityNote: result.continuity_note") &&
+  edge.includes("sceneUpdate: result.scene_update"));
 check("the same request plans latest-turn meaning and audits canon",
   edge.includes("turn_reading: one sentence stating the literal social meaning") &&
   edge.includes("canon_claims: a list of every off-screen or historical factual claim") &&
@@ -173,7 +177,8 @@ check("AI can create an entire reviewable character draft",
   edge.includes("required: Object.keys(characterDraftProperties)") &&
   charactersContext.includes("generateCharacterDraft") &&
   characterModal.includes("Create with AI") && characterModal.includes("Surprise me") &&
-  characterModal.includes("Nothing is saved automatically"));
+  characterModal.includes("Complete draft created. Review anything you want before saving.") &&
+  characterModal.includes("Nothing becomes a character until you press Save."));
 check("complete character creation is fast bounded and has model failover",
   edge.includes("deadlineMs = 28000") &&
   edge.includes("deadlineMs: 22000") &&
@@ -250,6 +255,46 @@ check("STOP cancellation is checked on every streamed chunk",
   !edge.includes("chunkIndex % 4") &&
   edge.includes("isGenerationCancelled"));
 
+check("v1.8 scene intelligence is returned and persisted without a second AI pass",
+  edge.includes("scene_update: a strict physical-continuity object") &&
+  edge.includes("function applySceneContinuity") &&
+  edge.includes("update.scene_state = nextPhysicalState.scene") &&
+  edge.includes("update.cast_state = nextPhysicalState.cast") &&
+  edge.includes("const sceneChanged = Boolean(sceneUpdate?.scene_changed)") &&
+  !edge.includes("generateSceneState"));
+check("scene intelligence enforces hearing and physical presence",
+  edge.includes("Physical continuity is binding. Bodies obey space") &&
+  edge.includes("can only hear, see or answer something they were physically or digitally able to receive") &&
+  edge.includes("Never teleport a character"));
+check("voice engine preserves character-specific rhythm and avoids generic romantic voice",
+  edge.includes("PASS THE BLIND-VOICE TEST") &&
+  edge.includes("Sentence length, rhythm, vocabulary, humor, conflict and affection") &&
+  edge.includes("Do not equalize everyone into polished banter") &&
+  edge.includes("Scan the immediate history for repeated openings"));
+check("memory v1.8 records the visible source user message",
+  memoryV18Migration.includes("source_message_id uuid") &&
+  memoryV18Migration.includes("source_excerpt text") &&
+  edge.includes("source_message_id: cleanId(sourceMessageId)") &&
+  edge.includes("source_excerpt: cleanPromptValue(sourceExcerpt"));
+check("relationship pulse is derived from evidence-bound development state",
+  edge.includes("function relationshipStateFromDevelopment") &&
+  edge.includes("update.relationship_state = relationshipStateFromDevelopment") &&
+  relationshipDrawer.includes("CURRENT DYNAMIC"));
+check("diagnostics separates Edge health from optional Gemini probe",
+  edge.includes('action === "diagnostics"') &&
+  edge.includes("async function handleDiagnostics") &&
+  edge.includes("probeAi") &&
+  diagnosticsPage.includes("The normal check does not spend a Gemini generation"));
+check("generation telemetry exposes model and repair status in the same stream",
+  edge.includes("model,") &&
+  edge.includes("repairUsed,") &&
+  edge.includes("learnedMemoryCount") &&
+  chatsContext.includes("velvet_ai_session_v18") &&
+  chatsContext.includes("lastModel"));
+check("Character Studio draft autosave never server-saves before explicit Save",
+  characterModal.includes("velvet_character_draft_v18_") &&
+  characterModal.includes("localStorage.setItem(draftStorageKey") &&
+  characterModal.includes("Nothing becomes a character until you press Save."));
 check("pure narrative helper API loads", helpers);
 check("compact silence is recognized", helpers?.isSilentContinueText("...") && helpers?.isSilentContinueText("[SILENT_CONTINUE]"));
 check("ordinary text is not silence", helpers && !helpers.isSilentContinueText("Okay."));

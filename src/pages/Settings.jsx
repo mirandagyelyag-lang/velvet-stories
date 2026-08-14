@@ -1,11 +1,11 @@
-import { ArrowLeft, Check, Download, Eye, FileDown, Heart, MessageCircle, MonitorSmartphone, Moon, RotateCcw, ShieldCheck, Sparkles, Sun, Type, WifiOff, X } from "lucide-react";
+import { Activity, ArrowLeft, Check, Download, Eye, FileDown, Heart, MessageCircle, MonitorSmartphone, Moon, RotateCcw, ShieldCheck, Sparkles, Sun, Type, WifiOff, X } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { usePWA } from "../context/PWAContext";
 import { useTheme } from "../context/ThemeContext";
 import "../styles/settings.css";
 
-function Settings({ onBack }) {
+function Settings({ onBack, onOpenDiagnostics }) {
   const { settings, storySyncReady, updateSetting, removeStoryFeedback, resetSettings } = useSettings();
   const { confirmAction } = useFeedback();
   const pwa = usePWA();
@@ -26,6 +26,8 @@ function Settings({ onBack }) {
       <Toggle label="Reduce motion" description="Minimize transitions and animated effects." checked={settings.reduceMotion} onChange={(value)=>updateSetting('reduceMotion',value)}/>
       <Toggle label="Message timestamps" description="Show the exact time below every message." checked={settings.showMessageTimestamps} onChange={(value)=>updateSetting('showMessageTimestamps',value)}/>
       <Toggle label="Haptic feedback" description="Use a tiny vibration when sending or stopping on supported phones." checked={settings.haptics} onChange={(value)=>updateSetting('haptics',value)}/>
+      <SettingChoice label="Reading width" value={settings.readingWidth || "comfortable"} options={[["narrow","Narrow"],["comfortable","Comfortable"],["wide","Wide"]]} onChange={(value)=>updateSetting("readingWidth",value)}/>
+      <SettingChoice label="Reading font" value={settings.readingFont || "clean"} options={[["clean","Clean"],["serif","Book serif"]]} onChange={(value)=>updateSetting("readingFont",value)}/>
     </div>
     <div className="settings-group settings-story-dna"><header><Heart size={19}/><div><h2>How I like stories</h2><p>Your global storytelling style. Character identity still comes first.</p></div></header>
       <SettingChoice label="Prose" value={settings.storyProse} options={[["contemporary","Natural"],["literary","Literary"],["minimal","Clean"]]} onChange={(value)=>updateSetting("storyProse",value)}/>
@@ -49,6 +51,7 @@ function Settings({ onBack }) {
     <div className="settings-group"><header><ShieldCheck size={19}/><div><h2>Safety</h2><p>Protection against accidental destructive actions.</p></div></header>
       <Toggle label="Confirm before deleting" description="Ask before deleting characters, conversations and lore." checked={settings.confirmBeforeDelete} onChange={(value)=>updateSetting('confirmBeforeDelete',value)}/>
     </div>
+    <div className="settings-group settings-diagnostics"><header><Activity size={19}/><div><h2>Velvet Doctor</h2><p>Check the app version, mobile touch, Supabase, the Edge Function and Gemini separately.</p></div></header><div className="settings-install__body"><span className="settings-install__icon">✦</span><div><strong>Something acting weird?</strong><small>Open diagnostics before changing code or reinstalling the app.</small></div><button onClick={onOpenDiagnostics}><Activity size={17}/>Open diagnostics</button></div></div>
     <div className="settings-group settings-install"><header><MonitorSmartphone size={19}/><div><h2>Velvet on your phone</h2><p>Install it with its own icon and full-screen experience.</p></div></header>
       <div className="settings-install__body">
         <span className="settings-install__icon">✦</span>

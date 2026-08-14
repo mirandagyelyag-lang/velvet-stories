@@ -109,26 +109,62 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   const [creatorStatus, setCreatorStatus] = useState("");
   const [voiceTesting, setVoiceTesting] = useState(false);
   const [voiceSample, setVoiceSample] = useState("");
-  const draftStorageKey = "velvet_character_draft_v14";
+  const draftStorageKey = useMemo(() => `velvet_character_draft_v18_${character?.id || "new"}`, [character?.id]);
   const generationAbortRef = useRef(null);
+  const autosaveTimerRef = useRef(null);
+  const [autosaveStatus, setAutosaveStatus] = useState("Ready");
+  const [recoveredDraft, setRecoveredDraft] = useState(false);
 
-  useEffect(() => () => generationAbortRef.current?.abort(), []);
+  useEffect(() => () => {
+    generationAbortRef.current?.abort();
+    window.clearTimeout(autosaveTimerRef.current);
+  }, []);
+
   useEffect(() => {
-    if (character) return;
     try {
       const saved = JSON.parse(localStorage.getItem(draftStorageKey) || "null");
-      if (saved?.form && Object.values(saved.form).some((value) => typeof value === "string" && value.trim())) {
+      const characterUpdatedAt = character?.updatedAt ? new Date(character.updatedAt).getTime() : 0;
+      const worthRecovering = saved?.form && Number(saved.savedAt || 0) > characterUpdatedAt && Object.values(saved.form).some((value) => typeof value === "string" && value.trim());
+      if (worthRecovering) {
         setForm((current) => ({ ...current, ...saved.form, imageFile: null, coverFile: null }));
+        setAvatarPreview(saved.form.imageUrl || character?.imageUrl || "");
+        setCoverPreview(saved.form.coverUrl || character?.coverUrl || "");
         setCharacterConcept(saved.characterConcept || "");
-        setCreatorStatus("Recovered your unfinished character draft.");
+        setCreatorStatus("Recovered your unfinished autosaved draft.");
+        setRecoveredDraft(true);
+        setAutosaveStatus("Recovered");
       }
     } catch {}
-  }, []);
+  }, [draftStorageKey, character?.id]);
+
   useEffect(() => {
-    if (character) return;
-    const safe = { ...form, imageFile: null, coverFile: null };
-    localStorage.setItem(draftStorageKey, JSON.stringify({ form: safe, characterConcept, savedAt: Date.now() }));
-  }, [form, characterConcept, character]);
+    window.clearTimeout(autosaveTimerRef.current);
+    setAutosaveStatus("Saving…");
+    autosaveTimerRef.current = window.setTimeout(() => {
+      try {
+        const safe = { ...form, imageFile: null, coverFile: null };
+        localStorage.setItem(draftStorageKey, JSON.stringify({ form: safe, characterConcept, savedAt: Date.now(), characterId: character?.id || null }));
+        setAutosaveStatus("Saved locally");
+      } catch {
+        setAutosaveStatus("Autosave unavailable");
+      }
+    }, 180);
+    return () => window.clearTimeout(autosaveTimerRef.current);
+  }, [form, characterConcept, character?.id, draftStorageKey]);
+
+  function discardAutosavedDraft() {
+    localStorage.removeItem(draftStorageKey);
+    setRecoveredDraft(false);
+    setAutosaveStatus("Cleared");
+    if (character) {
+      setForm({ ...initialForm,
+        name: character.name || "", role: character.role || "", description: character.description || "", personality: character.personality || "", relationship: character.relationship || "", world: character.world || "", values: character.values || "", fears: character.fears || "", habits: character.habits || "", contradictions: character.contradictions || "", coreMotivation: character.coreMotivation || "", emotionalDefense: character.emotionalDefense || "", softeningTriggers: character.softeningTriggers || "", growthDirection: character.growthDirection || "", speechStyle: character.speechStyle || "", voiceVocabulary: character.voiceVocabulary || "", humorStyle: character.humorStyle || "", conflictStyle: character.conflictStyle || "", affectionStyle: character.affectionStyle || "", verbalTells: character.verbalTells || "", voiceAvoidances: character.voiceAvoidances || "", boundaries: character.boundaries || "", scenario: character.scenario || "", exampleDialogue: character.exampleDialogue || "", responseLength: character.responseLength || "balanced", narrationStyle: character.narrationStyle || "balanced", firstMessage: character.firstMessage || "", imageUrl: character.imageUrl || "", coverUrl: character.coverUrl || "", color: character.color || "#7a2942" });
+      setAvatarPreview(character.imageUrl || "");
+      setCoverPreview(character.coverUrl || "");
+    } else {
+      setForm({ ...initialForm }); setCharacterConcept(""); setAvatarPreview(""); setCoverPreview("");
+    }
+  }
 
   const completion = useMemo(() => {
     const required = [form.name, form.role, form.personality, form.firstMessage];
@@ -286,6 +322,8 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
       const saved = character
         ? await updateCharacter(character.id, form)
         : await createCharacter(form);
+      localStorage.removeItem(draftStorageKey);
+      setAutosaveStatus("Saved to Velvet");
       onCreated(saved);
     } catch (requestError) {
       console.error("Error saving character:", requestError);
@@ -303,6 +341,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
             <p className="character-studio__eyebrow">PRIVATE CHARACTER STUDIO</p>
             <h2 id="character-studio-title">{character ? `Shape ${form.name || "your character"}` : "Create a new character"}</h2>
           </div>
+          <div className={`character-studio__autosave${autosaveStatus.includes("Saved") ? " is-saved" : ""}`}><Check size={13}/><span>{autosaveStatus}</span>{recoveredDraft && <button type="button" onClick={discardAutosavedDraft}>Discard recovery</button>}</div>
           <div className="character-studio__top-actions">
             {!character && <button type="button" className="character-studio__ai character-studio__ai--primary" onClick={()=>setCreatorOpen((open)=>!open)} disabled={saving || aiBusy} aria-expanded={creatorOpen}>
               <Sparkles size={16}/><span>Create with AI</span>
@@ -330,7 +369,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
             {["Best friends to lovers", "Unexpected campus romance", "Fantasy rivals with mutual respect", "Surprise me completely"].map((seed)=><button type="button" key={seed} onClick={()=>setCharacterConcept(seed)} disabled={generating}>{seed}</button>)}
           </div>
           <footer>
-            <small>{creatorStatus || "Nothing is saved automatically. You review the whole draft first."}</small>
+            <small>{creatorStatus || "Autosaved locally while you work. Nothing becomes a character until you press Save."}</small>
             <div>
               {creatorStatus.startsWith("Complete draft") && <button type="button" className="character-studio__discard-draft" onClick={discardGeneratedDraft}>Discard draft</button>}
               <button type="button" onClick={generating ? stopCharacterGeneration : handleGenerateCharacter}>
@@ -592,7 +631,7 @@ function translateCharacterError(message = "") {
 
 function translateCharacterAIError(message = "") {
   const error = String(message || "").toLowerCase();
-  if (error.includes("free ai limit") || error.includes("quota") || error.includes("429")) return "Gemini's free limit was reached. Wait a little and try again.";
+  if (error.includes("free ai limit") || error.includes("quota") || error.includes("429") || error.includes("rate limit")) return "Gemini is rate-limited right now. This may be a per-minute, token, or daily project limit. Wait a little and try again.";
   if (error.includes("too long") || error.includes("timeout") || error.includes("timed out") || error.includes("aborted")) return "Character creation took too long and was stopped. Try again—Velvet kept your idea.";
   if (error.includes("incomplete character draft") || error.includes("empty character draft")) return "Gemini sent an incomplete draft. Try once more; your idea is still here.";
   if (error.includes("model") && (error.includes("not found") || error.includes("not supported"))) return "The configured Gemini model is unavailable. Velvet will need a valid fallback model.";

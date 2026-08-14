@@ -8,13 +8,21 @@ const settingsContext = readFileSync("src/context/SettingsContext.jsx", "utf8");
 const ui = readFileSync("src/styles/velvet-ui.css", "utf8");
 const hotfix = readFileSync("src/styles/velvet-v171-hotfix.css", "utf8");
 const emergency = readFileSync("src/styles/velvet-v172-mobile-emergency.css", "utf8");
+const v18 = readFileSync("src/styles/velvet-v18.css", "utf8");
+const app = readFileSync("src/App.jsx", "utf8");
+const diagnostics = readFileSync("src/pages/Diagnostics.jsx", "utf8");
+const characterModal = readFileSync("src/components/CreateCharacterModal.jsx", "utf8");
+const memories = readFileSync("src/pages/Memories.jsx", "utf8");
+const relationshipDrawer = readFileSync("src/components/RelationshipDrawer.jsx", "utf8");
 
 const checks = [
   {
-    name: "canonical UI layer is imported last",
+    name: "v1.8 UI layer is imported last",
     pass:
-      main.indexOf('import "./styles/velvet-ui.css"') >
-      main.indexOf('import "./styles/mobile-v71.css"'),
+      main.indexOf('import "./styles/velvet-v18.css"') >
+      main.indexOf('import "./styles/velvet-v172-mobile-emergency.css"') &&
+      main.indexOf('import "./styles/velvet-v172-mobile-emergency.css"') >
+      main.indexOf('import "./styles/velvet-v171-hotfix.css"'),
   },
   {
     name: "mobile navigation has exactly three destinations",
@@ -83,8 +91,9 @@ const checks = [
   {
     name: "complete AI character creation remains review first",
     pass:
-      readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Create with AI") &&
-      readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Nothing is saved automatically"),
+      characterModal.includes("Create with AI") &&
+      characterModal.includes("Complete draft created. Review anything you want before saving.") &&
+      characterModal.includes("Nothing becomes a character until you press Save."),
   },
   {
     name: "slow AI creation can be stopped and an unwanted draft discarded",
@@ -97,6 +106,76 @@ const checks = [
     pass:
       readFileSync("src/context/CharactersContext.jsx", "utf8").includes("readCharacterFunctionError") &&
       readFileSync("src/context/CharactersContext.jsx", "utf8").includes("response.clone().text()"),
+  },
+  {
+    name: "v1.8 keeps one-finger native scrolling sacred",
+    pass:
+      v18.includes("touch-action:pan-y pinch-zoom!important") &&
+      chat.includes("message surfaces never install drag/pointer gesture handlers") &&
+      !/onPointerMove=\{handlePointerMove\}/.test(chat) &&
+      !/onPointerUp=\{handlePointerUp\}/.test(chat),
+  },
+  {
+    name: "Character Studio autosaves and recovers drafts",
+    pass:
+      characterModal.includes("velvet_character_draft_v18_") &&
+      characterModal.includes("Saved locally") &&
+      characterModal.includes("Recovered your unfinished autosaved draft.") &&
+      characterModal.includes("localStorage.setItem(draftStorageKey"),
+  },
+  {
+    name: "scene director exposes fast one-shot guidance",
+    pass:
+      ["More dialogue", "More tension", "Move the scene", "Bring someone in", "Surprise me"]
+        .every((label) => chat.includes(label)) &&
+      chat.includes("Guide next reply"),
+  },
+  {
+    name: "relationship pulse is optional and percentage-free",
+    pass:
+      chat.includes("Relationship pulse") &&
+      relationshipDrawer.includes("CURRENT DYNAMIC") &&
+      relationshipDrawer.includes("never uses a love percentage") &&
+      app.includes("RelationshipDrawer") === false,
+  },
+  {
+    name: "stories can be exported from chat",
+    pass:
+      chat.includes("Export this story") &&
+      chat.includes("exportCurrentStory") &&
+      ["markdown", "text", "json"].every((format) => settings.includes(format)),
+  },
+  {
+    name: "Memories 2.5 exposes focused views and replaced history",
+    pass:
+      ["Canon", "Relationship", "Events", "Preferences", "Conflicts", "Replaced history"]
+        .every((label) => memories.includes(label)) &&
+      memories.includes("Learned from your message") &&
+      memories.includes("superseded_at"),
+  },
+  {
+    name: "reading mode has width font and tap-to-reveal chrome",
+    pass:
+      settings.includes("Reading width") &&
+      settings.includes("Reading font") &&
+      chat.includes("handleReadingSurfaceClick") &&
+      v18.includes("chat--reading-chrome-hidden"),
+  },
+  {
+    name: "UI never labels every Gemini 429 as exhausted free quota",
+    pass:
+      chat.includes("Gemini is rate-limited right now") &&
+      !chat.includes("The free AI limit was reached") &&
+      !characterModal.includes("Gemini's free limit was reached"),
+  },
+  {
+    name: "Velvet Doctor is reachable and can clear stale PWA cache",
+    pass:
+      app.includes('activePage === "diagnostics"') &&
+      settings.includes("Open diagnostics") &&
+      diagnostics.includes("Clear app cache & reload") &&
+      diagnostics.includes('action: "diagnostics"') &&
+      diagnostics.includes("Copy diagnostics"),
   },
   {
     name: "v1.7.2 mobile chat uses native document scrolling",

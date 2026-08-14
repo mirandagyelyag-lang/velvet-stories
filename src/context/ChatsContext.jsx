@@ -583,6 +583,9 @@ export function ChatsProvider({
     const generationId = crypto.randomUUID();
     const streamMessageId = `stream-${crypto.randomUUID()}`;
     const requestStartedAt = Date.now();
+    let diagnosticModel = "";
+    let diagnosticRepair = false;
+    recordAiSession({ started: 1, lastError: "" });
     let streamStarted = false;
     let completeContent = "";
     let finalMessage = null;
@@ -744,6 +747,9 @@ export function ChatsProvider({
           }
 
           if (eventData.type === "start") {
+            diagnosticModel = String(eventData.model || diagnosticModel || "");
+            diagnosticRepair = Boolean(eventData.repairUsed);
+            if (diagnosticModel || diagnosticRepair) recordAiSession({ lastModel: diagnosticModel, repairs: diagnosticRepair ? 1 : 0 });
             setChats((currentChats) => ({
               ...currentChats,
               [characterId]: {
@@ -895,6 +901,7 @@ export function ChatsProvider({
         }
       }
 
+      recordAiSession({ success: 1, lastModel: diagnosticModel, lastDurationMs: Date.now() - requestStartedAt, lastError: "" });
       return {
         message: finalMessage,
         memories: [],
@@ -917,6 +924,7 @@ export function ChatsProvider({
         throw cancellationError();
       }
 
+      recordAiSession({ failed: 1, lastModel: diagnosticModel, lastDurationMs: Date.now() - requestStartedAt, lastError: String(error?.message || "Generation failed").slice(0, 220) });
       throw error;
     } finally {
       if (reader && requestWasCancelled()) {
@@ -1889,6 +1897,27 @@ export function ChatsProvider({
       {children}
     </ChatsContext.Provider>
   );
+}
+
+function recordAiSession(patch = {}) {
+  try {
+    const key = "velvet_ai_session_v18";
+    const current = { started: 0, success: 0, failed: 0, repairs: 0, lastModel: "", lastError: "", lastDurationMs: 0, ...JSON.parse(sessionStorage.getItem(key) || "{}") };
+    const next = {
+      ...current,
+      started: Number(current.started || 0) + Number(patch.started || 0),
+      success: Number(current.success || 0) + Number(patch.success || 0),
+      failed: Number(current.failed || 0) + Number(patch.failed || 0),
+      repairs: Number(current.repairs || 0) + Number(patch.repairs || 0),
+      lastModel: patch.lastModel !== undefined && patch.lastModel !== "" ? patch.lastModel : current.lastModel,
+      lastError: patch.lastError !== undefined ? patch.lastError : current.lastError,
+      lastDurationMs: patch.lastDurationMs !== undefined ? patch.lastDurationMs : current.lastDurationMs,
+      updatedAt: new Date().toISOString(),
+    };
+    sessionStorage.setItem(key, JSON.stringify(next));
+  } catch {
+    // Diagnostics must never interfere with chat generation.
+  }
 }
 
 function createConversationTitle() {

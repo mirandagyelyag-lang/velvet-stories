@@ -10,8 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Download,
   GitBranch,
   Globe2,
+  HeartHandshake,
   ImagePlus,
   Eye,
   Moon,
@@ -34,11 +36,12 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import RoleplayText from "../components/RoleplayText";
 import MemoryBookDrawer from "../components/MemoryBookDrawer";
 import StoryTimelineDrawer from "../components/StoryTimelineDrawer";
 import StoryHubDrawer from "../components/StoryHubDrawer";
+import RelationshipDrawer from "../components/RelationshipDrawer";
 import { useChats } from "../context/ChatsContext";
 import { usePersonas } from "../context/PersonasContext";
 import { useLorebooks } from "../context/LorebooksContext";
@@ -138,6 +141,8 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
   const [memoryBookOpen, setMemoryBookOpen] = useState(false);
   const [memoryBookCount, setMemoryBookCount] = useState(0);
   const [readingMode, setReadingMode] = useState(() => localStorage.getItem("velvet_reading_mode") === "1");
+  const [readingChromeVisible, setReadingChromeVisible] = useState(false);
+  const [relationshipOpen, setRelationshipOpen] = useState(false);
   const [silentCue, setSilentCue] = useState("");
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [storyHubOpen, setStoryHubOpen] = useState(false);
@@ -172,9 +177,18 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
   // The context generation manager is the authoritative busy state.
   const busy = sending || characterGenerating;
   const activeSceneImage = sceneImages[activeSceneImageIndex] || "";
+  const sceneMarkers = useMemo(() => {
+    const map = new Map();
+    for (const item of conversation?.storyTimeline || []) {
+      if (!item?.message_id || (!item.scene_changed && !item.separator_label)) continue;
+      map.set(String(item.message_id), item);
+    }
+    return map;
+  }, [conversation?.storyTimeline]);
 
   useEffect(() => {
     localStorage.setItem("velvet_reading_mode", readingMode ? "1" : "0");
+    setReadingChromeVisible(false);
   }, [readingMode]);
 
   useEffect(() => {
@@ -1124,10 +1138,63 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
     }
   }
 
+  function applyDirectorPreset(value) {
+    setDirectorNote(value);
+    setDirectorNoteOpen(true);
+  }
+
+  function handleReadingSurfaceClick(event) {
+    if (!readingMode) return;
+    if (event.target.closest("button, input, textarea, select, a, [role=button], .chat-message__version-nav, .chat-message__feedback")) return;
+    setReadingChromeVisible((current) => !current);
+  }
+
+  function exportCurrentStory() {
+    const format = settings.exportFormat || "markdown";
+    const title = conversation?.title || `${character.name} story`;
+    const cleanMessages = visibleMessages.filter((item) => !item.isStreaming);
+    let content = "";
+    let mime = "text/plain;charset=utf-8";
+    let extension = "txt";
+    if (format === "json") {
+      content = JSON.stringify({
+        velvetVersion: "1.8.0",
+        title,
+        character: { name: character.name, role: character.role },
+        exportedAt: new Date().toISOString(),
+        branch: { parentId: conversation?.branchParentId || null, fromMessageId: conversation?.branchFromMessageId || null },
+        messages: cleanMessages.map((item) => ({ sender: item.sender, content: item.content, createdAt: item.createdAt, editedAt: item.editedAt || null })),
+      }, null, 2);
+      mime = "application/json;charset=utf-8";
+      extension = "json";
+    } else if (format === "markdown") {
+      content = [`# ${title}`, "", `**Character:** ${character.name}${character.role ? ` · ${character.role}` : ""}`, `**Exported:** ${new Date().toLocaleString()}`, "", "---", ""]
+        .concat(cleanMessages.flatMap((item) => [`### ${item.sender === "user" ? "You" : character.name}`, "", item.content, ""])).join("\n");
+      mime = "text/markdown;charset=utf-8";
+      extension = "md";
+    } else {
+      content = cleanMessages.map((item) => `${item.sender === "user" ? "You" : character.name}:\n${item.content}`).join("\n\n");
+    }
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${sanitizeFileName(title)}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setMenuOpen(false);
+  }
+
   const chatHeroImage = character.coverUrl || character.imageUrl;
 
   return (
-    <section className={`chat${readingMode ? " chat--reading" : ""}`}>
+    <section
+      className={`chat${readingMode ? " chat--reading" : ""}${readingMode && !readingChromeVisible ? " chat--reading-chrome-hidden" : ""}`}
+      data-reading-width={settings.readingWidth || "comfortable"}
+      data-reading-font={settings.readingFont || "clean"}
+    >
       <header
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
@@ -1195,6 +1262,12 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
             <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}>
               <BookOpen size={17} /> Story Hub
             </button>
+            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}>
+              <HeartHandshake size={17} /> Relationship pulse
+            </button>
+            <button className="chat__menu-controls" onClick={exportCurrentStory} disabled={!conversationReady || !visibleMessages.length}>
+              <Download size={17} /> Export this story
+            </button>
             <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }} disabled={!conversationReady}>
               <Clock3 size={17} /> Story timeline
             </button>
@@ -1205,7 +1278,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
         )}
       </header>
 
-      <div className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
+      <div onClick={handleReadingSurfaceClick} className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
 
         {visibleMessages.length === 0 && <div className={`chat__introduction${character.coverUrl ? " chat__introduction--covered" : ""}`} style={{ "--character-color": character.color }}>
           {character.coverUrl && <div className="chat__profile-cover"><img src={character.coverUrl} alt="" /></div>}
@@ -1252,6 +1325,9 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
 
             {visibleMessages.map((chatMessage, index) => (
               <Fragment key={chatMessage.id}>
+                {sceneMarkers.get(String(chatMessage.id)) && (
+                  <div className="chat__scene-divider"><span>{sceneMarkers.get(String(chatMessage.id)).separator_label || sceneMarkers.get(String(chatMessage.id)).time_label || sceneMarkers.get(String(chatMessage.id)).location || "Scene change"}</span></div>
+                )}
                 {shouldShowDateDivider(visibleMessages, index) && (
                   <div className="chat__date-divider"><span>{formatMessageDate(chatMessage.createdAt)}</span></div>
                 )}
@@ -1260,7 +1336,6 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
                   character={character}
                   onOpenActions={openActions}
                   onOpenFeedback={openMessageFeedback}
-                  onSwipeRegenerate={regenerateFromSwipe}
                   onVersionNavigate={navigateResponseVersion}
                   versionState={responseVersions[chatMessage.id]}
                   versionNavigationEnabled={index === visibleMessages.length - 1 && chatMessage.sender === "character"}
@@ -1304,6 +1379,7 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
 
       {silentCue && <div className="chat__silent-cue" role="status"><Sparkles size={13}/><span>{silentCue}</span></div>}
 
+      {readingMode && !readingChromeVisible && <div className="chat__reading-hint">Tap the story to show controls</div>}
       <form className={`chat__composer${replyTo ? " chat__composer--replying" : ""}`} onSubmit={handleSubmit}>
         {replyTo && (
           <div className="chat__reply-draft">
@@ -1318,14 +1394,23 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
             <input
               value={directorNote}
               onChange={(event) => setDirectorNote(event.target.value)}
-              placeholder="Optional guidance for this reply only..."
+              placeholder="Tell Velvet what you want next…"
               maxLength={500}
               autoFocus
             />
             <button type="button" onClick={() => { setDirectorNote(""); setDirectorNoteOpen(false); }} aria-label="Clear director note"><X size={15} /></button>
+            <div className="chat__director-presets" aria-label="Quick scene directions">
+              <button type="button" onClick={()=>applyDirectorPreset("Use more natural audible dialogue and less descriptive filler in the next beat.")}>More dialogue</button>
+              <button type="button" onClick={()=>applyDirectorPreset("Increase believable tension through choices and subtext, without forcing a confession or melodrama.")}>More tension</button>
+              <button type="button" onClick={()=>applyDirectorPreset("Move the scene forward naturally to the next meaningful beat or location. Preserve continuity.")}>Move the scene</button>
+              <button type="button" onClick={()=>applyDirectorPreset("Bring in one plausible established side character if it fits the current situation. Do not derail the main scene.")}>Bring someone in</button>
+              <button type="button" onClick={()=>applyDirectorPreset(`Follow ${character.name}'s point of view/presence for the next beat without controlling my character.`)}>Follow {character.name}</button>
+              <button type="button" onClick={()=>applyDirectorPreset("Surprise me with a plausible next beat that fits canon and this character's independent life.")}>Surprise me</button>
+            </div>
           </div>
         )}
         <input ref={sceneImageInputRef} className="chat__scene-file-input" type="file" accept="image/*" multiple onChange={handleSceneImages} />
+        <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>setDirectorNoteOpen((current)=>!current)} aria-label="Guide next reply" title="Guide next reply"><Sparkles size={16}/></button>
         <textarea
           ref={textareaRef}
           value={message}
@@ -1387,6 +1472,13 @@ function Chat({ character, conversationId, onBack, onDeleted }) {
         character={character}
         onJumpToMessage={jumpToStoryMessage}
         onOpenConversation={openStoryConversation}
+      />
+
+      <RelationshipDrawer
+        open={relationshipOpen}
+        onClose={() => setRelationshipOpen(false)}
+        character={character}
+        conversation={conversation}
       />
 
       {controlsOpen && (
@@ -1735,7 +1827,6 @@ function MessageBubble({
   character,
   onOpenActions,
   onOpenFeedback,
-  onSwipeRegenerate,
   onVersionNavigate,
   versionState,
   versionNavigationEnabled = false,
@@ -1743,106 +1834,15 @@ function MessageBubble({
   showTimestamp,
   feedbackValue,
 }) {
-  const holdTimer = useRef(null);
-  const gestureRef = useRef({ x: 0, y: 0, active: false, horizontal: false, vertical: false });
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  // v1.7.2: touch swipe regeneration is disabled entirely.
-  // Version arrows remain available, while native one-finger scrolling always wins.
+  // v1.8: message surfaces never install drag/pointer gesture handlers.
+  // Native one-finger scrolling owns the entire touch surface. Long-press/right-click
+  // uses the browser contextmenu event, which does not compete with vertical pan.
   const canSwipe = false;
 
   if (isSilentContinuation(message)) {
     return null;
   }
 
-  function clearHold() {
-    window.clearTimeout(holdTimer.current);
-  }
-
-  function handlePointerDown(event) {
-    // Mobile v1.7.1: never hijack a finger drag for swipe-regeneration.
-    // Version arrows remain available; touch scrolling must win every time.
-    if (event.pointerType === "touch") {
-      clearHold();
-      gestureRef.current = {
-        x: event.clientX,
-        y: event.clientY,
-        active: false,
-        horizontal: false,
-        vertical: true,
-      };
-      return;
-    }
-
-    gestureRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-      active: true,
-      horizontal: false,
-      vertical: false,
-    };
-
-    holdTimer.current = window.setTimeout(() => {
-      if (!gestureRef.current.horizontal && !gestureRef.current.vertical) onOpenActions(message);
-    }, 550);
-  }
-
-  function handlePointerMove(event) {
-    if (!gestureRef.current.active) return;
-
-    const dx = event.clientX - gestureRef.current.x;
-    const dy = event.clientY - gestureRef.current.y;
-
-    if (!gestureRef.current.horizontal && !gestureRef.current.vertical) {
-      if (Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx) * 0.85) {
-        gestureRef.current.vertical = true;
-        clearHold();
-        return;
-      }
-      if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.35) {
-        gestureRef.current.horizontal = true;
-      }
-    }
-
-    if (gestureRef.current.vertical || !gestureRef.current.horizontal) return;
-
-    clearHold();
-
-    if (!canSwipe) {
-      setSwipeOffset(0);
-      return;
-    }
-
-    event.preventDefault();
-    setSwipeOffset(Math.max(-104, Math.min(104, dx)));
-  }
-
-  async function handlePointerUp(event) {
-    clearHold();
-
-    const { active, horizontal, x } = gestureRef.current;
-    gestureRef.current.active = false;
-
-    if (!active || !horizontal) {
-      setSwipeOffset(0);
-      return;
-    }
-
-    const dx = event.clientX - x;
-    const shouldNavigate = canSwipe && Math.abs(dx) >= 72;
-    setSwipeOffset(0);
-
-    if (shouldNavigate) {
-      await onSwipeRegenerate(message, dx < 0 ? 1 : -1);
-    }
-  }
-
-  function handlePointerCancel() {
-    clearHold();
-    gestureRef.current.active = false;
-    setSwipeOffset(0);
-  }
-
-  const swipeProgress = Math.min(1, Math.abs(swipeOffset) / 72);
   const versionItems = versionState?.items || [];
   const versionIndex = Number.isInteger(versionState?.index) ? versionState.index : 0;
   const versionCount = Math.max(1, versionItems.length || 1);
@@ -1853,19 +1853,8 @@ function MessageBubble({
       data-message-id={message.id}
       className={`chat-message chat-message--${message.sender}${message.isStreaming ? " chat-message--streaming" : ""}${message.isBookmarked ? " chat-message--bookmarked" : ""}${canSwipe ? " chat-message--swipeable" : ""}`}
       onContextMenu={(event) => { event.preventDefault(); onOpenActions(message); }}
-      style={canSwipe ? { "--swipe-progress": swipeProgress } : undefined}
     >
-      {canSwipe && (
-        <div className={`chat-message__swipe-action ${swipeOffset > 0 ? "chat-message__swipe-action--previous" : ""}`} aria-hidden="true">
-          {swipeOffset > 0 ? <ChevronLeft size={17} /> : <RefreshCw size={17} />}
-          <span>{swipeOffset > 0 ? "Previous response" : "New response"}</span>
-        </div>
-      )}
-
-      <div
-        className="chat-message__swipe-content"
-        style={canSwipe && swipeOffset ? { transform: `translateX(${swipeOffset}px)` } : undefined}
-      >
+      <div className="chat-message__swipe-content">
         {message.sender === "character" && <span className="chat-message__avatar" style={{ "--character-color": character.color }}>
           {character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}
         </span>}
@@ -2009,9 +1998,13 @@ function translateMessageError(message = "") {
   const error = message.toLowerCase();
   if (error.includes("row-level security") || error.includes("permission")) return "Your account doesn't have permission for this action.";
   if (error.includes("authentication") || error.includes("invalid session") || error.includes("jwt")) return "Your session expired. Sign in again.";
-  if (error.includes("quota") || error.includes("rate limit") || error.includes("resource_exhausted")) return "The free AI limit was reached. Try again later.";
+  if (error.includes("quota") || error.includes("rate limit") || error.includes("rate-limited") || error.includes("resource_exhausted")) return "Gemini is rate-limited right now. It may be a per-minute, token, or daily project limit. Wait a little and try again.";
   if (error.includes("network") || error.includes("failed to fetch")) return "We couldn't connect to the AI service.";
   return message || "The character couldn't respond.";
+}
+
+function sanitizeFileName(value = "story") {
+  return String(value || "story").trim().replace(/[\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").slice(0, 80) || "velvet-story";
 }
 
 function creativityLabel(value) {

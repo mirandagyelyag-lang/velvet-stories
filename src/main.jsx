@@ -17,6 +17,7 @@ import "./styles/mobile-v71.css";
 import "./styles/velvet-ui.css";
 import "./styles/velvet-v171-hotfix.css";
 import "./styles/velvet-v172-mobile-emergency.css";
+import "./styles/velvet-v18.css";
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {

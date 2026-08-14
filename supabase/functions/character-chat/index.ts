@@ -17,6 +17,7 @@ type ModelEnvelope = {
   continuity_note: string;
   development_update: Record<string, any>;
   voice_plan: Record<string, any>;
+  scene_update: Record<string, any>;
   memory_updates: Record<string, any>[];
 };
 
@@ -74,6 +75,10 @@ Deno.serve(async (request) => {
       }, { onConflict: "id" });
       if (error) throw new Error(error.message);
       return json({ cancelled: true });
+    }
+
+    if (action === "diagnostics") {
+      return await handleDiagnostics({ apiKey, probeAi: Boolean(body?.probeAi) });
     }
 
     if (action === "character_assist") {
@@ -180,6 +185,7 @@ Deno.serve(async (request) => {
       messageCount: messages.length,
     });
 
+    let repairUsed = false;
     let result = await generateRoleplay({
       apiKey,
       prompt,
@@ -212,6 +218,7 @@ Deno.serve(async (request) => {
         model: result.model,
       });
 
+      repairUsed = true;
       const repairedResult = await repairRoleplayOnce({
         apiKey,
         originalPrompt: prompt,
@@ -282,6 +289,7 @@ Deno.serve(async (request) => {
       replacementMessage: branch.replacementMessage,
       reply: result.reply,
       continuityNote: result.continuity_note,
+      sceneUpdate: result.scene_update,
       responseLanguage,
       memories: selectedMemories,
       loreEntries: selectedLore,
@@ -291,6 +299,12 @@ Deno.serve(async (request) => {
       memoryUpdates: result.memory_updates,
       character: configuredCharacter,
       latestUserMessage,
+      latestUserMessageId: latestUserRecord.id,
+      existingSceneState: loaded.conversation.scene_state || {},
+      existingCastState: loaded.conversation.cast_state || {},
+      existingRelationshipState: loaded.conversation.relationship_state || {},
+      model: result.model,
+      repairUsed,
       regenerationInstruction,
       regenerationFeedback,
       rejectedResponses: branch.rejectedResponses,
@@ -304,6 +318,48 @@ Deno.serve(async (request) => {
     return json({ error: getErrorMessage(error) }, 500);
   }
 });
+
+async function handleDiagnostics({ apiKey, probeAi = false }) {
+  const payload: Record<string, any> = {
+    version: "1.8.0",
+    edge: { ok: true, detail: "character-chat Edge Function reachable" },
+    models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
+    ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
+    timestamp: new Date().toISOString(),
+  };
+  if (!probeAi) return json(payload);
+
+  const model = GEMINI_EMERGENCY_MODEL || GEMINI_FALLBACK_MODEL || GEMINI_MODEL;
+  const startedAt = Date.now();
+  try {
+    const response = await fetch(modelEndpoint(model), {
+      method: "POST",
+      headers: geminiHeaders(apiKey),
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: "Reply with exactly OK" }] }],
+        generationConfig: { maxOutputTokens: 12, temperature: 0, thinkingConfig: { thinkingLevel: "MINIMAL" } },
+      }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      payload.ai = {
+        ok: false,
+        status: response.status,
+        kind: response.status === 429 ? "rate_limit" : "upstream_error",
+        detail: response.status === 429
+          ? "Gemini returned 429. This can be a per-minute, token or daily project limit."
+          : (data?.error?.message || `Gemini returned ${response.status}`),
+        model,
+        durationMs: Date.now() - startedAt,
+      };
+    } else {
+      payload.ai = { ok: true, detail: "Gemini accepted a tiny diagnostic request", model, durationMs: Date.now() - startedAt };
+    }
+  } catch (error) {
+    payload.ai = { ok: false, detail: getErrorMessage(error), model, durationMs: Date.now() - startedAt };
+  }
+  return json(payload);
+}
 
 const characterDraftProperties = {
   name: { type: "string" }, role: { type: "string" }, description: { type: "string" },
@@ -671,6 +727,10 @@ NON-NEGOTIABLE PRIORITY
 4. Write ${character.name} as a specific person. Guarded, proud, teasing or emotionally avoidant does not mean cruel, contemptuous, robotic or therapeutic.
 5. Dialogue must sound like something this character would actually say. Never use customer-service phrases such as “I'm listening,” “I understand,” “go on,” “tell me more,” or a bare “okay” as the substance of the turn.
 6. Distinct voice outranks archetype. Never make this character borrow the same teasing cadence, pet names, emotional speeches, body-language habits or flirt tactics used by another generic romantic lead.
+7. Physical continuity is binding. Bodies obey space: track who is present, who has exited, where the active scene is, and which communication channel is being used.
+8. A character can only hear, see or answer something they were physically or digitally able to receive. Leaving the room, hanging up, muting a chat or being elsewhere matters until the visible transcript changes it.
+9. Never teleport a character, silently change location/time, or make an absent NPC reappear merely to create drama. If a location, time or presence detail is unknown, keep it unknown.
+10. Established side characters remain real participants until the scene visibly moves them. Do not erase them just because the romantic lead speaks, and do not force every social beat back into romance.
 
 TURN CONTRACT
 - Response language: ${responseLanguage}. Match the language of the latest ordinary user message.
@@ -696,9 +756,12 @@ ${profile}
 
 VOICE FINGERPRINT — PASS THE BLIND-VOICE TEST
 - Internally decide ${character.name}'s conversational goal, outward tactic and private pressure before writing.
-- Sentence rhythm, vocabulary, humor, conflict and affection must come from this profile—not from a generic romantic lead archetype.
-- Use verbal tells sparingly. A tell is texture, not something to repeat every turn.
+- Sentence length, rhythm, vocabulary, humor, conflict and affection must come from this profile—not from a generic romantic-lead template.
+- Preserve the character's own level of bluntness, slang, formality, warmth, avoidance and humor. A guarded person may answer in five words; a talkative person may ramble. Do not equalize everyone into polished banter.
+- Use verbal tells sparingly. A tell is texture, not a catchphrase to repeat every turn.
 - The example dialogue calibrates syntax and attitude only. Never copy its wording.
+- Scan the immediate history for repeated openings, pet names, jokes, denials, rhetorical questions and signature phrases. Avoid the recent pattern unless the moment specifically earns its return.
+- Do not use eloquent emotional speeches merely because the scene is romantic. Let this character hide, deflect, stumble, interrupt, joke, go quiet or say less when that is more faithful.
 - Do not reuse a recent signature line, conversational tactic or decorative gesture. If the last reply teased, deflected or withdrew, choose it again only when the immediate psychology truly requires it.
 
 CREATOR STORY DNA — GLOBAL PRESENTATION PREFERENCES
@@ -756,6 +819,7 @@ Return JSON with:
 - voice_plan: a private planning object with conversational_goal, outward_tactic, private_pressure, verbal_signature and avoided_pattern. Each value is one short string. Never place this analysis inside reply.
 - reply: only the finished roleplay prose.
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
+- scene_update: a strict physical-continuity object with scene_changed (boolean), separator_label (short string such as "Later that night" only when the visible turn truly changes scene/time, otherwise empty), location (current established location or empty), time_label (established time/daypart or empty), present (names visibly present now), exited (names who visibly left in this turn), and heard_user_turn (names who were physically/digitally able to receive the latest user turn). Do not infer attendance, proximity, overhearing or off-screen movement. Keep existing scene facts when the transcript does not change them.
 - development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
 - memory_updates: zero to two durable facts learned directly from the visible user turn only. Each item has content, category (fact/person/relationship/world/event/preference/boundary/promise/conflict), importance (1-5), scope (conversation/character), reason (one short explanation of why this is useful later), and replaces (the exact older tentative memory this user turn corrects, otherwise an empty string). Prefer updating an existing durable idea over creating a near-duplicate. Never store facts invented by the character reply. Never infer identity, diagnosis, secrets or off-screen facts. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
 
@@ -829,7 +893,7 @@ async function callGeminiWithFailover({
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
-              required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "development_update", "memory_updates"],
+              required: ["turn_reading", "canon_claims", "voice_plan", "reply", "continuity_note", "scene_update", "development_update", "memory_updates"],
               properties: {
                 turn_reading: { type: "string" },
                 canon_claims: { type: "array", items: { type: "string" } },
@@ -846,6 +910,19 @@ async function callGeminiWithFailover({
                 },
                 reply: { type: "string" },
                 continuity_note: { type: "string" },
+                scene_update: {
+                  type: "object",
+                  required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"],
+                  properties: {
+                    scene_changed: { type: "boolean" },
+                    separator_label: { type: "string" },
+                    location: { type: "string" },
+                    time_label: { type: "string" },
+                    present: { type: "array", items: { type: "string" } },
+                    exited: { type: "array", items: { type: "string" } },
+                    heard_user_turn: { type: "array", items: { type: "string" } },
+                  },
+                },
                 memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content: { type: "string" }, category: { type: "string", enum: ["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"] }, importance: { type: "integer" }, scope: { type: "string", enum: ["conversation", "character"] }, reason: { type: "string" }, replaces: { type: "string" } } } },
                 development_update: {
                   type: "object",
@@ -909,10 +986,11 @@ function parseModelEnvelope(raw): ModelEnvelope {
         ? parsed.development_update
         : {},
       voice_plan: parsed?.voice_plan && typeof parsed.voice_plan === "object" ? parsed.voice_plan : {},
+      scene_update: parsed?.scene_update && typeof parsed.scene_update === "object" ? parsed.scene_update : {},
       memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 2) : [],
     };
   } catch {
-    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, memory_updates: [] };
+    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, memory_updates: [] };
   }
 }
 
@@ -1422,6 +1500,54 @@ function detectResponseLanguage(latestUserMessage = "", previousCharacterMessage
 }
 // PURE_NARRATIVE_HELPERS_END
 
+function compactSceneNames(value: any, limit = 14) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map((item) => cleanPromptValue(item, 80)).filter(Boolean))].slice(0, limit);
+}
+
+function applySceneContinuity({ previousScene = {}, previousCast = {}, sceneUpdate = {}, mainCharacterName = "" }) {
+  const priorPresent = compactSceneNames(previousScene?.present || []);
+  const proposedPresent = compactSceneNames(sceneUpdate?.present || []);
+  const exited = new Set(compactSceneNames(sceneUpdate?.exited || []));
+  const present = (proposedPresent.length ? proposedPresent : priorPresent).filter((name) => !exited.has(name));
+  const scene = {
+    ...(previousScene && typeof previousScene === "object" ? previousScene : {}),
+    location: cleanPromptValue(sceneUpdate?.location, 180) || cleanPromptValue(previousScene?.location, 180),
+    time_label: cleanPromptValue(sceneUpdate?.time_label, 120) || cleanPromptValue(previousScene?.time_label, 120),
+    present,
+    heard_user_turn: compactSceneNames(sceneUpdate?.heard_user_turn || []),
+    last_scene_change: Boolean(sceneUpdate?.scene_changed) ? new Date().toISOString() : previousScene?.last_scene_change || null,
+  };
+  const cast = { ...(previousCast && typeof previousCast === "object" ? previousCast : {}) };
+  for (const name of present) {
+    cast[name] = { ...(cast[name] || {}), current_status: "present", last_seen: scene.location || "current scene" };
+  }
+  for (const name of exited) {
+    cast[name] = { ...(cast[name] || {}), current_status: "left the current scene", last_seen: scene.location || cast[name]?.last_seen || "previous scene" };
+  }
+  if (mainCharacterName && cast[mainCharacterName] && present.includes(mainCharacterName)) {
+    cast[mainCharacterName] = { ...cast[mainCharacterName], current_status: "present" };
+  }
+  return { scene, cast };
+}
+
+function relationshipStateFromDevelopment(development = {}, previous = {}) {
+  const turningPoints = Array.isArray(development?.turning_points) ? development.turning_points.slice(-12) : [];
+  const contradictions = Array.isArray(development?.active_contradictions) ? development.active_contradictions.slice(-4) : [];
+  const residue = Array.isArray(development?.emotional_residue) ? development.emotional_residue.slice(-4) : [];
+  const latestTurning = turningPoints.at(-1) || {};
+  return {
+    ...(previous && typeof previous === "object" ? previous : {}),
+    current_dynamic: cleanPromptValue(development?.current_dynamic, 700) || cleanPromptValue(previous?.current_dynamic, 700),
+    relationship_phase: cleanPromptValue(development?.relationship_phase, 60) || cleanPromptValue(previous?.relationship_phase, 60) || "baseline",
+    active_contradictions: contradictions,
+    emotional_residue: residue,
+    turning_points: turningPoints,
+    recent_shift: cleanPromptValue(latestTurning?.impact || latestTurning?.event, 320) || cleanPromptValue(previous?.recent_shift, 320),
+    updated_at: new Date().toISOString(),
+  };
+}
+
 async function streamAndPersist({
   supabase,
   cancellationAdmin,
@@ -1432,6 +1558,7 @@ async function streamAndPersist({
   replacementMessage,
   reply,
   continuityNote,
+  sceneUpdate = {},
   responseLanguage,
   memories,
   loreEntries,
@@ -1441,6 +1568,12 @@ async function streamAndPersist({
   memoryUpdates = [],
   character,
   latestUserMessage,
+  latestUserMessageId,
+  existingSceneState = {},
+  existingCastState = {},
+  existingRelationshipState = {},
+  model = "",
+  repairUsed = false,
   regenerationInstruction,
   regenerationFeedback,
   rejectedResponses,
@@ -1452,6 +1585,8 @@ async function streamAndPersist({
         sendEvent(controller, {
           type: "start",
           language: responseLanguage,
+          model,
+          repairUsed,
           memoryCount: memories.length,
           pinnedMemoryCount: memories.filter((memory) => memory.is_pinned).length,
           memoryItems: memories.map((memory) => ({
@@ -1490,21 +1625,44 @@ async function streamAndPersist({
           regenerationFeedback,
           rejectedResponses,
         });
+        update.relationship_state = relationshipStateFromDevelopment(update.character_development, existingRelationshipState);
+        const nextPhysicalState = applySceneContinuity({
+          previousScene: existingSceneState,
+          previousCast: existingCastState,
+          sceneUpdate,
+          mainCharacterName: character.name,
+        });
+        update.scene_state = nextPhysicalState.scene;
+        update.cast_state = nextPhysicalState.cast;
+
         const note = cleanPromptValue(continuityNote, 600);
-        if (note) {
+        const sceneChanged = Boolean(sceneUpdate?.scene_changed);
+        const separatorLabel = cleanPromptValue(sceneUpdate?.separator_label, 100);
+        if (note || sceneChanged || separatorLabel) {
           const timeline = Array.isArray(existingTimeline) ? existingTimeline : [];
           update.story_timeline = [
             ...timeline.filter((item) => String(item?.message_id || "") !== String(savedMessage.id)),
-            { message_id: savedMessage.id, note, created_at: savedMessage.created_at || new Date().toISOString() },
+            {
+              message_id: savedMessage.id,
+              note,
+              scene_changed: sceneChanged,
+              separator_label: separatorLabel,
+              location: nextPhysicalState.scene.location || "",
+              time_label: nextPhysicalState.scene.time_label || "",
+              present: nextPhysicalState.scene.present || [],
+              created_at: savedMessage.created_at || new Date().toISOString(),
+            },
           ].slice(-80);
         }
         await supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
         if (!replacementMessage && Array.isArray(memoryUpdates) && memoryUpdates.length) {
           await mergeAutomaticMemories({
             supabase, userId, conversationId, characterId: character.id, memoryUpdates,
+            sourceMessageId: latestUserMessageId,
+            sourceExcerpt: cleanPromptValue(latestUserMessage, 220),
           });
         }
-        sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: Array.isArray(memoryUpdates) ? memoryUpdates.length : 0 });
+        sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: Array.isArray(memoryUpdates) ? memoryUpdates.length : 0, model, repairUsed });
         console.log("[character-chat] response saved", { conversationId, messageId: savedMessage.id });
       } catch (error) {
         if (getErrorName(error) !== "AbortError") {
@@ -1540,7 +1698,7 @@ function memorySimilarity(left = "", right = "") {
   return overlap / Math.max(1, Math.min(a.size, b.size));
 }
 
-async function mergeAutomaticMemories({ supabase, userId, conversationId, characterId, memoryUpdates = [] }) {
+async function mergeAutomaticMemories({ supabase, userId, conversationId, characterId, memoryUpdates = [], sourceMessageId = "", sourceExcerpt = "" }) {
   const allowedCategories = new Set(["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"]);
   const { data: existingRows, error: existingError } = await supabase.from("memories")
     .select("id, conversation_id, content, category, importance, scope, is_canon, is_pinned, superseded_at")
@@ -1582,8 +1740,8 @@ async function mergeAutomaticMemories({ supabase, userId, conversationId, charac
     if (closest?.score >= 0.78) {
       // Canon/user-pinned memories may gain importance/reason, but automatic learning never rewrites their wording.
       const patch = closest.memory.is_canon || closest.memory.is_pinned
-        ? { importance: Math.max(Number(closest.memory.importance || 1), importance), why_remembered: whyRemembered, updated_at: new Date().toISOString() }
-        : { content, category, importance: Math.max(Number(closest.memory.importance || 1), importance), why_remembered: whyRemembered, updated_at: new Date().toISOString() };
+        ? { importance: Math.max(Number(closest.memory.importance || 1), importance), why_remembered: whyRemembered, source_message_id: cleanId(sourceMessageId), source_excerpt: cleanPromptValue(sourceExcerpt, 220), updated_at: new Date().toISOString() }
+        : { content, category, importance: Math.max(Number(closest.memory.importance || 1), importance), why_remembered: whyRemembered, source_message_id: cleanId(sourceMessageId), source_excerpt: cleanPromptValue(sourceExcerpt, 220), updated_at: new Date().toISOString() };
       const { error } = await supabase.from("memories").update(patch).eq("id", closest.memory.id).eq("user_id", userId);
       if (error) console.warn("[character-chat] automatic memory update failed", { message: error.message });
       continue;
@@ -1592,6 +1750,7 @@ async function mergeAutomaticMemories({ supabase, userId, conversationId, charac
     const { error } = await supabase.from("memories").insert({
       user_id: userId, conversation_id: conversationId, character_id: characterId, content, category,
       importance, scope, source: "automatic", is_pinned: false, is_canon: false, why_remembered: whyRemembered,
+      source_message_id: cleanId(sourceMessageId), source_excerpt: cleanPromptValue(sourceExcerpt, 220),
     });
     if (error) console.warn("[character-chat] automatic memory insert failed", { message: error.message });
   }

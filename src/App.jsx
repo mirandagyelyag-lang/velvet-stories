@@ -13,6 +13,7 @@ import Profile from "./pages/Profile";
 import Personas from "./pages/Personas";
 import Lorebooks from "./pages/Lorebooks";
 import Settings from "./pages/Settings";
+import Diagnostics from "./pages/Diagnostics";
 import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import WelcomeSplash from "./components/WelcomeSplash";
@@ -25,7 +26,7 @@ function App() {
   const { createNewConversation } = useChats();
   const [activePage, setActivePage] = useState(() => {
     const requestedPage = new URLSearchParams(window.location.search).get("open");
-    return ["characters", "chats", "memories", "personas", "lorebooks", "profile", "settings"].includes(requestedPage)
+    return ["characters", "chats", "memories", "personas", "lorebooks", "profile", "settings", "diagnostics"].includes(requestedPage)
       ? requestedPage
       : "chats";
   });
@@ -211,7 +212,9 @@ function App() {
 
     if (activePage === "lorebooks") return <Lorebooks onBack={() => navigate("profile")} />;
 
-    if (activePage === "settings") return <Settings onBack={() => navigate("profile")} />;
+    if (activePage === "settings") return <Settings onBack={() => navigate("profile")} onOpenDiagnostics={() => navigate("diagnostics")} />;
+
+    if (activePage === "diagnostics") return <Diagnostics onBack={() => navigate("settings")} />;
 
     if (activePage === "profile") return <Profile onManagePersonas={() => navigate("personas")} onManageLorebooks={() => navigate("lorebooks")} onOpenSettings={() => navigate("settings")} />;
 
@@ -228,7 +231,7 @@ function App() {
     <WelcomeSplash />
     <div className={`app ${selectedCharacter ? "app--chat" : ""}`}>
       {!selectedCharacter && (
-        <Sidebar activePage={["personas", "lorebooks", "settings"].includes(activePage) ? "profile" : activePage} onNavigate={navigate} />
+        <Sidebar activePage={["personas", "lorebooks", "settings", "diagnostics"].includes(activePage) ? "profile" : activePage} onNavigate={navigate} />
       )}
 
       <main className="app__content">{renderPage()}</main>

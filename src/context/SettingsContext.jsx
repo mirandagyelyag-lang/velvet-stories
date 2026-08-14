@@ -5,7 +5,7 @@ import { useAuth } from "./AuthContext";
 
 const SettingsContext = createContext();
 const STORAGE_KEY = "velvet_general_settings";
-const SETTINGS_SCHEMA_VERSION = 2;
+const SETTINGS_SCHEMA_VERSION = 3;
 
 const defaults = {
   settingsSchemaVersion: SETTINGS_SCHEMA_VERSION,
@@ -16,6 +16,8 @@ const defaults = {
   haptics: true,
   confirmBeforeDelete: true,
   exportFormat: "markdown",
+  readingWidth: "comfortable",
+  readingFont: "clean",
   storyProse: "contemporary",
   storyDialogue: "dialogue_forward",
   storyEmotion: "interior_visible",
@@ -91,6 +93,8 @@ export function SettingsProvider({ children }) {
     document.documentElement.dataset.textSize = settings.textSize;
     document.documentElement.dataset.density = settings.density;
     document.documentElement.dataset.reduceMotion = String(settings.reduceMotion);
+    document.documentElement.dataset.readingWidth = settings.readingWidth || "comfortable";
+    document.documentElement.dataset.readingFont = settings.readingFont || "clean";
   }, [settings]);
 
   useEffect(() => {
