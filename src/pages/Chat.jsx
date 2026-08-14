@@ -1834,10 +1834,108 @@ function MessageBubble({
   showTimestamp,
   feedbackValue,
 }) {
-  // v1.8: message surfaces never install drag/pointer gesture handlers.
-  // Native one-finger scrolling owns the entire touch surface. Long-press/right-click
-  // uses the browser contextmenu event, which does not compete with vertical pan.
-  const canSwipe = false;
+  // v1.8.1: guarded touch swipe. Vertical movement always wins and is never
+  // prevented, so native one-finger scrolling remains owned by Android/iOS.
+  // Only a deliberate, clearly-horizontal single-finger gesture changes versions.
+  const SWIPE_TRIGGER_PX = 72;
+  const SWIPE_DIRECTION_RATIO = 1.8;
+  const SWIPE_MAX_VERTICAL_PX = 48;
+  const swipeGestureRef = useRef(null);
+  const canSwipe =
+    message.sender === "character" &&
+    !message.isStreaming &&
+    versionNavigationEnabled &&
+    !swipeDisabled;
+
+  function resetSwipeGesture() {
+    swipeGestureRef.current = null;
+  }
+
+  function shouldIgnoreSwipeTarget(target) {
+    return Boolean(target?.closest?.(
+      "button, a, input, textarea, select, [role='button'], [contenteditable='true']"
+    ));
+  }
+
+  function handleTouchStart(event) {
+    if (!canSwipe || event.touches.length !== 1 || shouldIgnoreSwipeTarget(event.target)) {
+      resetSwipeGesture();
+      return;
+    }
+
+    const touch = event.touches[0];
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const edgeGuard = 28;
+
+    // Leave the OS/browser back gesture alone at the extreme left/right edges.
+    if (touch.clientX <= edgeGuard || (viewportWidth && touch.clientX >= viewportWidth - edgeGuard)) {
+      resetSwipeGesture();
+      return;
+    }
+
+    swipeGestureRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      lastX: touch.clientX,
+      lastY: touch.clientY,
+      axis: null,
+    };
+  }
+
+  function handleTouchMove(event) {
+    const gesture = swipeGestureRef.current;
+    if (!gesture || event.touches.length !== 1) return;
+
+    const touch = event.touches[0];
+    const dx = touch.clientX - gesture.startX;
+    const dy = touch.clientY - gesture.startY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    gesture.lastX = touch.clientX;
+    gesture.lastY = touch.clientY;
+
+    if (!gesture.axis) {
+      if (absX < 12 && absY < 12) return;
+
+      // Vertical wins early. We intentionally never call preventDefault here.
+      if (absY >= absX * 1.12) {
+        gesture.axis = "vertical";
+        return;
+      }
+
+      if (absX >= 18 && absX >= absY * 1.45) {
+        gesture.axis = "horizontal";
+      }
+    }
+  }
+
+  function handleTouchEnd(event) {
+    const gesture = swipeGestureRef.current;
+    const finalTouch = event.changedTouches?.[0];
+    if (gesture && finalTouch) {
+      gesture.lastX = finalTouch.clientX;
+      gesture.lastY = finalTouch.clientY;
+    }
+    resetSwipeGesture();
+
+    if (!gesture || gesture.axis !== "horizontal" || !canSwipe) return;
+
+    const dx = gesture.lastX - gesture.startX;
+    const dy = gesture.lastY - gesture.startY;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    const deliberateHorizontalSwipe =
+      absX >= SWIPE_TRIGGER_PX &&
+      absY <= SWIPE_MAX_VERTICAL_PX &&
+      absX >= absY * SWIPE_DIRECTION_RATIO;
+
+    if (!deliberateHorizontalSwipe) return;
+
+    // Left = next/new response. Right = previous response.
+    onVersionNavigate(message, dx < 0 ? 1 : -1);
+  }
 
   if (isSilentContinuation(message)) {
     return null;
@@ -1852,6 +1950,10 @@ function MessageBubble({
     <article
       data-message-id={message.id}
       className={`chat-message chat-message--${message.sender}${message.isStreaming ? " chat-message--streaming" : ""}${message.isBookmarked ? " chat-message--bookmarked" : ""}${canSwipe ? " chat-message--swipeable" : ""}`}
+      onTouchStart={canSwipe ? handleTouchStart : undefined}
+      onTouchMove={canSwipe ? handleTouchMove : undefined}
+      onTouchEnd={canSwipe ? handleTouchEnd : undefined}
+      onTouchCancel={resetSwipeGesture}
       onContextMenu={(event) => { event.preventDefault(); onOpenActions(message); }}
     >
       <div className="chat-message__swipe-content">

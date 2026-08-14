@@ -108,10 +108,12 @@ const checks = [
       readFileSync("src/context/CharactersContext.jsx", "utf8").includes("response.clone().text()"),
   },
   {
-    name: "v1.8 keeps one-finger native scrolling sacred",
+    name: "v1.8.1 guarded swipe preserves one-finger native scrolling",
     pass:
       v18.includes("touch-action:pan-y pinch-zoom!important") &&
-      chat.includes("message surfaces never install drag/pointer gesture handlers") &&
+      chat.includes("Vertical movement always wins") &&
+      chat.includes("SWIPE_TRIGGER_PX = 72") &&
+      chat.includes("SWIPE_DIRECTION_RATIO = 1.8") &&
       !/onPointerMove=\{handlePointerMove\}/.test(chat) &&
       !/onPointerUp=\{handlePointerUp\}/.test(chat),
   },
@@ -187,9 +189,14 @@ const checks = [
       emergency.includes("The page itself scrolls"),
   },
   {
-    name: "touch swipe handlers no longer own message surfaces",
+    name: "guarded touch swipe never steals vertical pan",
     pass:
-      chat.includes("const canSwipe = false") &&
+      chat.includes("onTouchStart={canSwipe ? handleTouchStart : undefined}") &&
+      chat.includes("onTouchMove={canSwipe ? handleTouchMove : undefined}") &&
+      chat.includes("onTouchEnd={canSwipe ? handleTouchEnd : undefined}") &&
+      chat.includes("We intentionally never call preventDefault here.") &&
+      chat.includes("absY >= absX * 1.12") &&
+      chat.includes("absX >= absY * SWIPE_DIRECTION_RATIO") &&
       !/onPointerMove=\{handlePointerMove\}/.test(chat) &&
       !/onPointerUp=\{handlePointerUp\}/.test(chat),
   },
