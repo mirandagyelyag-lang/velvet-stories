@@ -136,6 +136,15 @@ function App() {
     const created = await createNewConversation(character);
     openCharacter(character, created.conversationId);
   }
+
+  function goBackOr(fallback = "profile") {
+    if (window.history.state?.velvetNavigation && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    navigate(fallback, { replace: true });
+  }
+
   function leaveCurrentChat() {
     if (window.history.state?.velvetNavigation && window.history.state?.character) {
       window.history.back();
@@ -204,19 +213,20 @@ function App() {
     if (activePage === "memories") {
       return (
         <Memories
+          onBack={() => goBackOr("profile")}
           onBrowseCharacters={() => navigate("characters")}
           onOpenCharacter={openCharacter}
         />
       );
     }
 
-    if (activePage === "personas") return <Personas onBack={() => navigate("profile")} />;
+    if (activePage === "personas") return <Personas onBack={() => goBackOr("profile")} />;
 
-    if (activePage === "lorebooks") return <Lorebooks onBack={() => navigate("profile")} />;
+    if (activePage === "lorebooks") return <Lorebooks onBack={() => goBackOr("profile")} />;
 
-    if (activePage === "settings") return <Settings onBack={() => navigate("profile")} onOpenDiagnostics={() => navigate("diagnostics")} />;
+    if (activePage === "settings") return <Settings onBack={() => goBackOr("profile")} onOpenDiagnostics={() => navigate("diagnostics")} />;
 
-    if (activePage === "diagnostics") return <Diagnostics onBack={() => navigate("settings")} />;
+    if (activePage === "diagnostics") return <Diagnostics onBack={() => goBackOr("profile")} />;
 
     if (activePage === "profile") return <Profile onManagePersonas={() => navigate("personas")} onManageLorebooks={() => navigate("lorebooks")} onOpenMemories={() => navigate("memories")} onOpenDiagnostics={() => navigate("diagnostics")} onOpenSettings={() => navigate("settings")} />;
 

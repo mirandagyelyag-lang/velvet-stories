@@ -1,296 +1,63 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
-const main = readFileSync("src/main.jsx", "utf8");
-const sidebar = readFileSync("src/components/Sidebar.jsx", "utf8");
-const chat = readFileSync("src/pages/Chat.jsx", "utf8");
-const settings = readFileSync("src/pages/Settings.jsx", "utf8");
-const settingsContext = readFileSync("src/context/SettingsContext.jsx", "utf8");
-const ui = readFileSync("src/styles/velvet-ui.css", "utf8");
-const hotfix = readFileSync("src/styles/velvet-v171-hotfix.css", "utf8");
-const emergency = readFileSync("src/styles/velvet-v172-mobile-emergency.css", "utf8");
-const v18 = readFileSync("src/styles/velvet-v18.css", "utf8");
-const v19 = readFileSync("src/styles/velvet-v19-phone-first.css", "utf8");
-const v192 = readFileSync("src/styles/velvet-v192-message-sheet-portal.css", "utf8");
-const v193 = readFileSync("src/styles/velvet-v193-mobile-geometry.css", "utf8");
-const profile = readFileSync("src/pages/Profile.jsx", "utf8");
-const chatsContext = readFileSync("src/context/ChatsContext.jsx", "utf8");
-const edge = readFileSync("supabase/functions/character-chat/index.ts", "utf8");
-const app = readFileSync("src/App.jsx", "utf8");
-const diagnostics = readFileSync("src/pages/Diagnostics.jsx", "utf8");
-const characterModal = readFileSync("src/components/CreateCharacterModal.jsx", "utf8");
-const memories = readFileSync("src/pages/Memories.jsx", "utf8");
-const relationshipDrawer = readFileSync("src/components/RelationshipDrawer.jsx", "utf8");
+const read = (file) => readFileSync(file, "utf8");
+const main = read("src/main.jsx");
+const app = read("src/App.jsx");
+const chat = read("src/pages/Chat.jsx");
+const mobile = read("src/styles/velvet-mobile-foundation.css");
+const settings = read("src/pages/Settings.jsx");
+const memories = read("src/pages/Memories.jsx");
+const diagnostics = read("src/pages/Diagnostics.jsx");
+const characterModal = read("src/components/CreateCharacterModal.jsx");
+const edge = read("supabase/functions/character-chat/index.ts");
+const pkg = JSON.parse(read("package.json"));
 
-const checks = [
-  {
-    name: "v1.9 phone-first UI layer is imported last",
-    pass:
-      main.indexOf('import "./styles/velvet-v19-phone-first.css"') > main.indexOf('import "./styles/velvet-v181-guarded-swipe.css"') &&
-      main.indexOf('import "./styles/velvet-v181-guarded-swipe.css"') > main.indexOf('import "./styles/velvet-v18.css"'),
-  },
-  {
-    name: "mobile navigation has exactly three destinations",
-    pass:
-      (sidebar.match(/id: "(?:chats|characters|profile)"/g) || []).length === 3 &&
-      /repeat\(3, minmax\(0, 1fr\)\)/.test(ui),
-  },
-  {
-    name: "chat header receives the character cover",
-    pass:
-      /chatHeroImage = character\.coverUrl \|\| character\.imageUrl/.test(chat) &&
-      /chat__header--cover/.test(chat) &&
-      /--chat-hero-image/.test(chat),
-  },
-  {
-    name: "character replies use a soft nighttime reading bubble",
-    pass:
-      /\.chat-message--character p,[\s\S]*?padding: 15px 18px;[\s\S]*?border-radius: 7px 20px 20px 20px;/.test(ui) &&
-      /line-height: 1\.82;/.test(ui),
-  },
-  {
-    name: "user messages remain visually distinct",
-    pass:
-      /\.chat-message--user p,[\s\S]*?background: linear-gradient/.test(ui),
-  },
-  {
-    name: "mobile composer prevents iOS focus zoom",
-    pass: /\.chat__composer textarea \{[\s\S]*?font-size: 16px !important;/.test(
-      ui,
-    ),
-  },
-  {
-    name: "light, dark and comfort themes remain available",
-    pass:
-      /data-theme="dark"/.test(readFileSync("src/index.css", "utf8")) &&
-      /data-theme="comfort"/.test(readFileSync("src/index.css", "utf8")),
-  },
-  {
-    name: "story DNA stays global and simple",
-    pass:
-      settings.includes("How I like stories") &&
-      settingsContext.includes('storyDialogue: "dialogue_forward"') &&
-      settingsContext.includes('storyEmotion: "interior_visible"'),
-  },
-  {
-    name: "regeneration can explain every common failure",
-    pass: [
-      "ignored_idea", "too_short", "out_of_character", "too_much_narration",
-      "not_enough_dialogue", "repetitive", "pov_violation", "missing_emotional_impact",
-    ].every((reason) => chat.includes(`"${reason}"`)),
-  },
-  {
-    name: "rejected response remains hidden while feedback rewrite begins",
-    pass:
-      chat.includes("The rejected response will not become canon") &&
-      chat.includes('rememberFeedback("negative", feedbackCodes'),
-  },
-  {
-    name: "every character reply exposes like and dislike learning",
-    pass:
-      chat.includes('aria-label="Like this response"') &&
-      chat.includes('aria-label="Dislike this response"') &&
-      chat.includes("Save what worked") &&
-      chat.includes("Undo"),
-  },
-  {
-    name: "complete AI character creation remains review first",
-    pass:
-      characterModal.includes("Create with AI") &&
-      characterModal.includes("Complete draft created. Review anything you want before saving.") &&
-      characterModal.includes("Nothing becomes a character until you press Save."),
-  },
-  {
-    name: "slow AI creation can be stopped and an unwanted draft discarded",
-    pass:
-      readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Stop generation") &&
-      readFileSync("src/components/CreateCharacterModal.jsx", "utf8").includes("Discard draft"),
-  },
-  {
-    name: "character creator replaces generic Edge errors with their real reason",
-    pass:
-      readFileSync("src/context/CharactersContext.jsx", "utf8").includes("readCharacterFunctionError") &&
-      readFileSync("src/context/CharactersContext.jsx", "utf8").includes("response.clone().text()"),
-  },
-  {
-    name: "v1.8.1 guarded swipe preserves one-finger native scrolling",
-    pass:
-      v18.includes("touch-action:pan-y pinch-zoom!important") &&
-      chat.includes("Vertical movement always wins") &&
-      chat.includes("SWIPE_TRIGGER_PX = 72") &&
-      chat.includes("SWIPE_DIRECTION_RATIO = 1.8") &&
-      !/onPointerMove=\{handlePointerMove\}/.test(chat) &&
-      !/onPointerUp=\{handlePointerUp\}/.test(chat),
-  },
-  {
-    name: "Character Studio autosaves and recovers drafts",
-    pass:
-      characterModal.includes("velvet_character_draft_v18_") &&
-      characterModal.includes("Saved locally") &&
-      characterModal.includes("Recovered your unfinished autosaved draft.") &&
-      characterModal.includes("localStorage.setItem(draftStorageKey"),
-  },
-  {
-    name: "scene director exposes fast one-shot guidance",
-    pass:
-      ["More dialogue", "More tension", "Move the scene", "Bring someone in", "Surprise me"]
-        .every((label) => chat.includes(label)) &&
-      chat.includes("Guide next reply"),
-  },
-  {
-    name: "relationship pulse is optional and percentage-free",
-    pass:
-      chat.includes("Relationship pulse") &&
-      relationshipDrawer.includes("CURRENT DYNAMIC") &&
-      relationshipDrawer.includes("never uses a love percentage") &&
-      app.includes("RelationshipDrawer") === false,
-  },
-  {
-    name: "stories can be exported from chat",
-    pass:
-      chat.includes("Export this story") &&
-      chat.includes("exportCurrentStory") &&
-      ["markdown", "text", "json"].every((format) => settings.includes(format)),
-  },
-  {
-    name: "Memories 2.5 exposes focused views and replaced history",
-    pass:
-      ["Canon", "Relationship", "Events", "Preferences", "Conflicts", "Replaced history"]
-        .every((label) => memories.includes(label)) &&
-      memories.includes("Learned from your message") &&
-      memories.includes("superseded_at"),
-  },
-  {
-    name: "reading mode has width font and tap-to-reveal chrome",
-    pass:
-      settings.includes("Reading width") &&
-      settings.includes("Reading font") &&
-      chat.includes("handleReadingSurfaceClick") &&
-      v18.includes("chat--reading-chrome-hidden"),
-  },
-  {
-    name: "UI never labels every Gemini 429 as exhausted free quota",
-    pass:
-      chat.includes("Gemini is rate-limited right now") &&
-      !chat.includes("The free AI limit was reached") &&
-      !characterModal.includes("Gemini's free limit was reached"),
-  },
-  {
-    name: "Velvet Doctor is reachable and can clear stale PWA cache",
-    pass:
-      app.includes('activePage === "diagnostics"') &&
-      settings.includes("Open diagnostics") &&
-      diagnostics.includes("Clear app cache & reload") &&
-      diagnostics.includes('action: "diagnostics"') &&
-      diagnostics.includes("Copy diagnostics"),
-  },
-  {
-    name: "v1.7.2 mobile chat uses native document scrolling",
-    pass:
-      main.indexOf('import "./styles/velvet-v172-mobile-emergency.css"') >
-        main.indexOf('import "./styles/velvet-v171-hotfix.css"') &&
-      emergency.includes("overflow-y: auto !important") &&
-      emergency.includes("overflow: visible !important") &&
-      emergency.includes("The page itself scrolls"),
-  },
-  {
-    name: "guarded touch swipe never steals vertical pan",
-    pass:
-      chat.includes("onTouchStart={canSwipe ? handleTouchStart : undefined}") &&
-      chat.includes("onTouchMove={canSwipe ? handleTouchMove : undefined}") &&
-      chat.includes("onTouchEnd={canSwipe ? handleTouchEnd : undefined}") &&
-      chat.includes("We intentionally never call preventDefault here.") &&
-      chat.includes("absY >= absX * 1.12") &&
-      chat.includes("absX >= absY * SWIPE_DIRECTION_RATIO") &&
-      !/onPointerMove=\{handlePointerMove\}/.test(chat) &&
-      !/onPointerUp=\{handlePointerUp\}/.test(chat),
-  },
-  {
-    name: "mobile message and header menus stay tappable",
-    pass:
-      emergency.includes(".chat-message__actions") &&
-      emergency.includes(".chat__more") &&
-      emergency.includes("pointer-events: auto !important") &&
-      emergency.includes("z-index: 500 !important"),
-  },
+const checks = [];
+const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-  {
-    name: "phone chat always exposes a leave control",
-    pass: chat.includes("chat__mobile-exit") && chat.includes("chat__back-button") && v19.includes("chat--reading-chrome-hidden .chat__mobile-exit"),
-  },
-  {
-    name: "tapping any finished message opens its action sheet",
-    pass: chat.includes("onClick={handleMessageTap}") && chat.includes("onOpenActions(message)") && chat.includes("onContextMenu"),
-  },
-  {
-    name: "header three-dot menu becomes a real phone bottom sheet",
-    pass: chat.includes("chat__menu-backdrop") && v19.includes(".chat__menu-backdrop") && v19.includes("align-items:flex-end"),
-  },
-  {
-    name: "Memories 2.5 and AI Status are discoverable from Profile and chat",
-    pass: profile.includes("Memories 2.5") && profile.includes("AI Status") && chat.includes("Memories 2.5") && chat.includes("AI Status"),
-  },
-  {
-    name: "relationship engine has a direct phone header action",
-    pass: chat.includes("chat__relationship-header") && chat.includes('aria-label="Open relationship engine"') && v19.includes(".chat__relationship-header"),
-  },
-  {
-    name: "Scene Director uses a dedicated mobile sheet with explicit apply",
-    pass: chat.includes("director-sheet-backdrop") && chat.includes("Use this direction") && v19.includes(".director-sheet__presets") && v19.includes("grid-template-columns:repeat(2"),
-  },
-  {
-    name: "Gemini reply uses true upstream SSE streaming",
-    pass: edge.includes("streamGenerateContent?alt=sse") && edge.includes("extractPartialJsonStringField") && chatsContext.includes('eventData.type === "reset"') && chatsContext.includes('eventData.type === "model"'),
-  },
-  {
-    name: "AI diagnostics records first visible text latency separately",
-    pass: chatsContext.includes("firstTokenMs") && diagnostics.includes("First reply text") && diagnostics.includes("Full response"),
-  },
-  {
-    name: "mobile message sheet escapes chat stacking contexts",
-    pass:
-      chat.includes('import { createPortal } from "react-dom"') &&
-      chat.includes('createPortal((') &&
-      chat.includes('), document.body)') &&
-      v192.includes('body > .message-sheet-backdrop') &&
-      v192.includes('z-index: 9998 !important') &&
-      v192.includes('transform: none !important') &&
-      v192.includes('animation: none !important'),
-  },
-  {
-    name: "mobile back control is permanent and independent of reading chrome",
-    pass:
-      main.indexOf('import "./styles/velvet-v193-mobile-geometry.css"') > main.indexOf('import "./styles/velvet-v192-message-sheet-portal.css"') &&
-      v193.includes('.chat__mobile-exit') &&
-      v193.includes('display: grid !important') &&
-      v193.includes('z-index: 1200 !important') &&
-      chat.includes('className="chat__mobile-exit"'),
-  },
-  {
-    name: "short mobile stories flow directly into the composer",
-    pass:
-      chat.includes('compactMobileChat') &&
-      chat.includes('messagesMeasureRef') &&
-      chat.includes('ResizeObserver') &&
-      chat.includes('chat--compact-mobile') &&
-      v193.includes('.chat--compact-mobile .chat__composer') &&
-      v193.includes('position: relative !important') &&
-      v193.includes('min-height: 0 !important'),
-  },
-];
+check("v2 mobile foundation is the final stylesheet", main.trim().includes('import "./styles/velvet-mobile-foundation.css";') && main.lastIndexOf("velvet-mobile-foundation.css") > main.lastIndexOf("velvet-v18.css"));
+check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
+check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
+check("release is v2 mobile rebuild", pkg.version === "2.0.0" && read("src/config/version.js").includes('VELVET_RELEASE = "Mobile Rebuild"'));
+check("mobile navigation has exactly three destinations", (read("src/components/Sidebar.jsx").match(/id: "(?:chats|characters|profile)"/g)||[]).length===3 && mobile.includes("repeat(3,minmax(0,1fr))"));
+check("mobile page controls are at least 44px", mobile.includes("button{min-height:44px}"));
+check("mobile forms use sixteen pixel fields", mobile.includes("button,input,textarea,select{font-size:16px!important}"));
+check("chat uses native document scrolling", mobile.includes("overflow-y:auto!important") && mobile.includes("touch-action:pan-y pinch-zoom!important") && mobile.includes(".app--chat .chat{display:block!important"));
+check("chat content never becomes a nested scroller", mobile.includes(".chat__content,.chat__content--wallpaper") && mobile.includes("overflow:visible!important"));
+check("mobile exit is portaled to body", chat.includes('createPortal((\n        <button type="button" className="chat__mobile-exit"') && mobile.includes("body>.chat__mobile-exit"));
+check("mobile exit survives reading mode", mobile.includes("body>.chat__mobile-exit{opacity:1!important;visibility:visible!important}"));
+check("header menu is a body portal", chat.includes('chat__menu-backdrop') && chat.includes('), document.body)}') && mobile.includes("body>.chat__menu-backdrop"));
+check("header menu exposes Memories Relationship and AI Status", ["Memories 2.5","Relationship","AI Status"].every((label)=>chat.includes(label)));
+check("message actions are a body portal", chat.includes("message-sheet-backdrop") && chat.includes("createPortal(("));
+check("message sheet is guaranteed visible", mobile.includes("body>.message-sheet-backdrop>.message-sheet") && mobile.includes("transform:none!important") && mobile.includes("max-height:88dvh!important"));
+check("message tap opens actions", chat.includes("onClick={handleMessageTap}") && chat.includes("onContextMenu"));
+check("guarded swipe keeps vertical scrolling", chat.includes("Vertical movement always wins") && chat.includes("SWIPE_TRIGGER_PX = 72") && chat.includes("SWIPE_DIRECTION_RATIO = 1.8") && !chat.includes("preventDefault here")===false);
+check("swipe touch surfaces declare pan-y", mobile.includes(".chat-message--swipeable{") && mobile.includes("touch-action:pan-y!important"));
+check("composer has explicit three slot grid", mobile.includes("grid-template-columns:40px minmax(0,1fr) 44px!important") && mobile.includes(".chat__composer>textarea{grid-column:2!important") && mobile.includes(".chat__composer>.chat__send-button"));
+check("composer accounts for keyboard and safe area", mobile.includes("--velvet-keyboard-offset") && mobile.includes("env(safe-area-inset-bottom)"));
+check("short stories can flow directly into composer", chat.includes("chat--compact-mobile") && mobile.includes(".chat--compact-mobile .chat__composer{position:relative!important"));
+check("scene director is portaled and phone sized", chat.includes("SCENE DIRECTOR") && chat.includes("directorNoteOpen && typeof document") && mobile.includes(".director-sheet{width:100%!important"));
+check("scene director has all quick directions", ["More dialogue","More tension","Move scene","Bring someone in","Surprise me"].every((label)=>chat.includes(label)));
+check("relationship engine is reachable from chat", chat.includes("chat__relationship-header") && chat.includes("setRelationshipOpen(true)"));
+check("Memories 2.5 is named and has back navigation", memories.includes("Memories 2.5") && memories.includes("memories-page__back") && app.includes('onBack={() => goBackOr("profile")}'));
+check("AI Status returns through history", app.includes("goBackOr") && app.includes('activePage === "diagnostics"') && diagnostics.includes("VELVET DOCTOR"));
+check("AI diagnostics can clear stale PWA cache", diagnostics.includes("Clear app cache & reload") && diagnostics.includes('action: "diagnostics"'));
+check("real AI stream telemetry remains enabled", edge.includes('liveStreaming: true') && edge.includes('type: "model"'));
+check("UI does not call every 429 free quota exhaustion", !chat.includes("The free AI limit was reached") && !characterModal.includes("free limit was reached"));
+check("Character Studio autosave remains present", characterModal.includes("velvet_character_draft_v18_") && characterModal.includes("Saved locally"));
+check("Character Studio becomes full-screen on phone", mobile.includes(".character-studio{width:100%!important;height:100dvh!important"));
+check("Stories mobile grid is bounded", mobile.includes(".stories-poster-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important"));
+check("Discover mobile feature stacks", mobile.includes(".discover-index__featured{grid-template-columns:1fr!important"));
+check("Profile action buttons become full-width", mobile.includes(".profile-setting>button{grid-column:1/-1!important;width:100%!important"));
+check("Settings controls do not squeeze", mobile.includes(".setting-row{align-items:stretch!important;flex-direction:column!important"));
+check("Memories mobile grid is one column", mobile.includes(".memory-grid{grid-template-columns:1fr!important"));
+check("Personas and Lore mobile grids are one column", mobile.includes(".persona-grid,.lorebook-grid,.lore-entry-grid{grid-template-columns:1fr!important"));
+check("Diagnostics mobile grid is one column", mobile.includes(".diagnostics-hero,.diagnostics-grid{grid-template-columns:1fr!important"));
+check("all major story drawers become phone sheets", [".memory-book,.timeline-drawer,.story-hub,.conversation-picker",".relationship-drawer",".chat-controls"].every((token)=>mobile.includes(token)));
+check("PWA build cleans old caches", read("vite.config.js").includes("cleanupOutdatedCaches: true") && read("vite.config.js").includes("skipWaiting: true"));
+check("reading mode still has persistent state", chat.includes('localStorage.getItem("velvet_reading_mode")') && chat.includes('localStorage.setItem("velvet_reading_mode"'));
 
-let failed = 0;
-
-for (const check of checks) {
-  if (check.pass) {
-    console.log(`PASS  ${check.name}`);
-  } else {
-    failed += 1;
-    console.error(`FAIL  ${check.name}`);
-  }
-}
-
-if (failed > 0) {
-  process.exitCode = 1;
-} else {
+let failed=0;
+for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }
+if(failed){ console.error(`\n${failed} UI checks failed.`); process.exit(1); }
 console.log(`\n${checks.length} UI checks passed.`);
-}

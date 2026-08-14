@@ -13,16 +13,9 @@ import { ThemeProvider } from "./context/ThemeContext";
 
 import App from "./App";
 import "./index.css";
-import "./styles/mobile-v71.css";
 import "./styles/velvet-ui.css";
-import "./styles/velvet-v171-hotfix.css";
-import "./styles/velvet-v172-mobile-emergency.css";
 import "./styles/velvet-v18.css";
-import "./styles/velvet-v181-guarded-swipe.css";
-import "./styles/velvet-v19-phone-first.css";
-import "./styles/velvet-v191-composer-hotfix.css";
-import "./styles/velvet-v192-message-sheet-portal.css";
-import "./styles/velvet-v193-mobile-geometry.css";
+import "./styles/velvet-mobile-foundation.css";
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {

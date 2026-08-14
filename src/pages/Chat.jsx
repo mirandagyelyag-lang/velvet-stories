@@ -1210,7 +1210,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     let extension = "txt";
     if (format === "json") {
       content = JSON.stringify({
-        velvetVersion: "1.8.0",
+        velvetVersion: "2.0.0",
         title,
         character: { name: character.name, role: character.role },
         exportedAt: new Date().toISOString(),
@@ -1304,51 +1304,35 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
           <MoreHorizontal size={20} />
         </button>
 
-        {menuOpen && (
+        {menuOpen && typeof document !== "undefined" && createPortal((
           <div className="chat__menu-backdrop" onClick={(event) => event.target === event.currentTarget && setMenuOpen(false)}>
-          <div className="chat__menu" onClick={(event) => event.stopPropagation()}>
-            <button className="chat__menu-new" onClick={handleNewConversation} disabled={busy || creatingConversation}>
-              {creatingConversation ? <LoaderCircle className="spin" size={17} /> : <SquarePen size={17} />}
-              New conversation
-            </button>
-            <div className="chat__menu-quick">
-              <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Current story</small></span></button>
-              <button type="button" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
-              <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Activity size={17}/><span>AI Status<small>Velvet Doctor</small></span></button>
-            </div>
-            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); onOpenMemories?.(); }}>
-              <Brain size={17} /> Memories 2.5
-            </button>
-            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setControlsOpen(true); }} disabled={!conversationReady}>
-              <SlidersHorizontal size={17} /> Story settings
-            </button>
-            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setReadingMode((current) => !current); }}>
-              <Eye size={17} /> {readingMode ? "Exit reading mode" : "Reading mode"}
-            </button>
-            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setDirectorNoteOpen(true); }} disabled={!conversationReady || busy}>
-              <Sparkles size={17} /> Guide next reply <small style={{ opacity: 0.62 }}>(optional)</small>
-            </button>
-            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}>
-              <BookOpen size={17} /> Story Hub
-            </button>
-            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}>
-              <HeartHandshake size={17} /> Relationship pulse
-            </button>
-            <button className="chat__menu-controls" onClick={exportCurrentStory} disabled={!conversationReady || !visibleMessages.length}>
-              <Download size={17} /> Export this story
-            </button>
-            <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }} disabled={!conversationReady}>
-              <Clock3 size={17} /> Story timeline
-            </button>
-            <button onClick={handleDeleteConversation} disabled={deleting}>
-              <Trash2 size={17} /> {deleting ? "Deleting..." : "Delete conversation"}
-            </button>
+            <section className="chat__menu" role="dialog" aria-modal="true" aria-label="Story options" onClick={(event) => event.stopPropagation()}>
+              <header className="chat__menu-sheet-header"><div><small>STORY OPTIONS</small><strong>{conversation?.title || character.name}</strong></div><button type="button" onClick={() => setMenuOpen(false)} aria-label="Close story options"><X size={19}/></button></header>
+              <button className="chat__menu-new" onClick={handleNewConversation} disabled={busy || creatingConversation}>
+                {creatingConversation ? <LoaderCircle className="spin" size={17} /> : <SquarePen size={17} />}
+                New conversation
+              </button>
+              <div className="chat__menu-quick">
+                <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Current story</small></span></button>
+                <button type="button" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
+                <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Activity size={17}/><span>AI Status<small>Velvet Doctor</small></span></button>
+              </div>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); onOpenMemories?.(); }}><Brain size={17} /> Memories 2.5</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setControlsOpen(true); }} disabled={!conversationReady}><SlidersHorizontal size={17} /> Story settings</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setReadingMode((current) => !current); }}><Eye size={17} /> {readingMode ? "Exit reading mode" : "Reading mode"}</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setDirectorNoteOpen(true); }} disabled={!conversationReady || busy}><Sparkles size={17} /> Guide next reply</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><BookOpen size={17} /> Story Hub</button>
+              <button className="chat__menu-controls" onClick={exportCurrentStory} disabled={!conversationReady || !visibleMessages.length}><Download size={17} /> Export this story</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }} disabled={!conversationReady}><Clock3 size={17} /> Story timeline</button>
+              <button className="chat__menu-danger" onClick={handleDeleteConversation} disabled={deleting}><Trash2 size={17} /> {deleting ? "Deleting..." : "Delete conversation"}</button>
+            </section>
           </div>
-          </div>
-        )}
+        ), document.body)}
       </header>
 
-      <button type="button" className="chat__mobile-exit" onClick={onBack} aria-label="Leave chat"><ArrowLeft size={18}/></button>
+      {typeof document !== "undefined" && createPortal((
+        <button type="button" className="chat__mobile-exit" onClick={onBack} aria-label="Leave chat"><ArrowLeft size={20}/></button>
+      ), document.body)}
 
       <div onClick={handleReadingSurfaceClick} className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
 
@@ -1502,7 +1486,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         )}
       </form>
 
-      {directorNoteOpen && (
+      {directorNoteOpen && typeof document !== "undefined" && createPortal((
         <div className="director-sheet-backdrop" onClick={(event) => event.target === event.currentTarget && setDirectorNoteOpen(false)}>
           <section className="director-sheet" role="dialog" aria-modal="true" aria-label="Scene Director">
             <div className="director-sheet__grab" />
@@ -1519,7 +1503,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
             <footer><button type="button" className="secondary" onClick={()=>{setDirectorNote("");setDirectorNoteOpen(false);}}>Clear</button><button type="button" className="primary" onClick={()=>setDirectorNoteOpen(false)} disabled={!directorNote.trim()}><Check size={16}/>Use this direction</button></footer>
           </section>
         </div>
-      )}
+      ), document.body)}
 
       <MemoryBookDrawer
         open={memoryBookOpen}
