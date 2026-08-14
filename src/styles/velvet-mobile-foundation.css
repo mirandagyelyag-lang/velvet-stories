@@ -64,6 +64,25 @@
   .chat--compact-mobile .chat__content,.chat--compact-mobile .chat__content--wallpaper{padding-bottom:8px!important}.chat--compact-mobile .chat__composer{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;width:calc(100% - 16px)!important;margin:8px 8px calc(12px + env(safe-area-inset-bottom))!important}.chat--compact-mobile .chat__jump-bottom,.chat--compact-mobile .chat__silent-cue{display:none!important}
   .chat--reading .chat__content{width:100%!important}.chat--reading.chat--reading-chrome-hidden .chat__content{padding-top:calc(18px + env(safe-area-inset-top))!important}.chat--reading.chat--reading-chrome-hidden .chat__composer{opacity:.96!important}
 
+
+  /* Dialogue-first chat presentation. UI only: the story text itself is unchanged. */
+  .chat__messages{gap:13px!important}
+  .chat-message--character{max-width:94%!important;justify-self:start!important}
+  .chat-message--character .chat-message__swipe-content{align-items:flex-end!important;gap:7px!important}
+  .chat-message--character .chat-message__body{max-width:calc(100% - 34px)!important;padding:11px 12px!important;background:color-mix(in srgb,var(--accent) 4%,var(--surface))!important;border:1px solid color-mix(in srgb,var(--accent) 9%,var(--border))!important;border-radius:18px 18px 18px 7px!important;box-shadow:0 5px 18px rgba(30,10,18,.045)!important}
+  .chat-message--character p,.chat__content--wallpaper .chat-message--character p{margin:0!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;font-size:.9rem!important;line-height:1.55!important;text-shadow:none!important}
+  .chat-message--user{max-width:82%!important}.chat-message--user p{font-size:.88rem!important;line-height:1.5!important}
+  .roleplay-text{display:grid!important;gap:7px!important;width:100%!important}
+  .roleplay-text__paragraph{display:block!important;margin:0!important;white-space:normal!important}
+  .roleplay-text__paragraph--narration{color:color-mix(in srgb,var(--text-primary) 88%,var(--text-secondary))!important;font-size:.9rem!important;line-height:1.52!important}
+  .roleplay-text__paragraph--dialogue{margin:1px 0!important;padding:8px 10px!important;color:var(--text-primary)!important;background:color-mix(in srgb,var(--accent) 6%,var(--background))!important;border-left:3px solid color-mix(in srgb,var(--accent) 74%,var(--gold))!important;border-radius:5px 12px 12px 5px!important;font-size:.98rem!important;font-weight:600!important;line-height:1.44!important}
+  .roleplay-text__dialogue{color:color-mix(in srgb,var(--accent) 88%,var(--text-primary))!important;font-weight:650!important}
+  .roleplay-text__paragraph--dialogue .roleplay-text__dialogue{color:inherit!important}
+  .chat-message--character .roleplay-text__narration,.chat-message--character .roleplay-text__thought{opacity:.78!important}
+  .chat-message--character .chat-message__feedback{margin:5px 0 -3px!important}
+  .chat-message--character .chat-message__version-nav{margin:4px 0 -4px!important}
+  .chat-message__time,.chat-message__edited{opacity:.55!important}
+
   /* Overlay stack: portaled to body where possible */
   body>.chat__menu-backdrop,.director-sheet-backdrop,body>.message-sheet-backdrop,.chat-controls-backdrop,.character-profile-backdrop,.relationship-drawer-backdrop,.memory-book-backdrop,.story-timeline-backdrop,.story-hub-backdrop{position:fixed!important;inset:0!important;padding:0!important;align-items:flex-end!important;justify-content:center!important;overflow:hidden!important;background:rgba(24,13,18,.42)!important;backdrop-filter:blur(5px)!important;-webkit-backdrop-filter:blur(5px)!important;pointer-events:auto!important}
   body>.chat__menu-backdrop{z-index:2100!important}.director-sheet-backdrop{z-index:2200!important}body>.message-sheet-backdrop{z-index:2300!important}.chat-controls-backdrop{z-index:2250!important}.character-profile-backdrop{z-index:2250!important}.relationship-drawer-backdrop{z-index:2250!important}

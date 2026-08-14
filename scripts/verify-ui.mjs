@@ -18,7 +18,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("v2 mobile foundation is the final stylesheet", main.trim().includes('import "./styles/velvet-mobile-foundation.css";') && main.lastIndexOf("velvet-mobile-foundation.css") > main.lastIndexOf("velvet-v18.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2 mobile rebuild", pkg.version === "2.0.0" && read("src/config/version.js").includes('VELVET_RELEASE = "Mobile Rebuild"'));
+check("release is v2 dialogue UI", pkg.version === "2.0.1" && read("src/config/version.js").includes('VELVET_RELEASE = "Dialogue UI"'));
 check("mobile navigation has exactly three destinations", (read("src/components/Sidebar.jsx").match(/id: "(?:chats|characters|profile)"/g)||[]).length===3 && mobile.includes("repeat(3,minmax(0,1fr))"));
 check("mobile page controls are at least 44px", mobile.includes("button{min-height:44px}"));
 check("mobile forms use sixteen pixel fields", mobile.includes("button,input,textarea,select{font-size:16px!important}"));
@@ -56,6 +56,9 @@ check("Diagnostics mobile grid is one column", mobile.includes(".diagnostics-her
 check("all major story drawers become phone sheets", [".memory-book,.timeline-drawer,.story-hub,.conversation-picker",".relationship-drawer",".chat-controls"].every((token)=>mobile.includes(token)));
 check("PWA build cleans old caches", read("vite.config.js").includes("cleanupOutdatedCaches: true") && read("vite.config.js").includes("skipWaiting: true"));
 check("reading mode still has persistent state", chat.includes('localStorage.getItem("velvet_reading_mode")') && chat.includes('localStorage.setItem("velvet_reading_mode"'));
+check("dialogue UI changes presentation without touching story generation", read("src/components/RoleplayText.jsx").includes("roleplay-text__paragraph--dialogue") && mobile.includes("Dialogue-first chat presentation. UI only"));
+check("quoted dialogue gets a distinct visual treatment", read("src/components/RoleplayText.jsx").includes('type: "dialogue"') && mobile.includes(".roleplay-text__dialogue"));
+check("character replies use compact conversation surfaces", mobile.includes(".chat-message--character .chat-message__body") && mobile.includes("border-radius:18px 18px 18px 7px"));
 
 let failed=0;
 for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }

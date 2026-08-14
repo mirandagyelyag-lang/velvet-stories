@@ -1,24 +1,47 @@
 import { Fragment } from "react";
 
 function RoleplayText({ content = "" }) {
-  const lines = String(content).split("\n");
+  const paragraphs = splitParagraphs(String(content));
 
   return (
     <span className="roleplay-text">
-      {lines.map((line, lineIndex) => (
-        <Fragment key={`${lineIndex}-${line.slice(0, 12)}`}>
-          {line.startsWith("> ") ? (
-            <span className="roleplay-text__quote">
-              {renderInline(line.slice(2), lineIndex)}
-            </span>
-          ) : (
-            renderInline(line, lineIndex)
-          )}
-          {lineIndex < lines.length - 1 && <br />}
-        </Fragment>
-      ))}
+      {paragraphs.map((paragraph, paragraphIndex) => {
+        const isDialogueLed = startsLikeDialogue(paragraph);
+        const lines = paragraph.split("\n");
+
+        return (
+          <span
+            key={`${paragraphIndex}-${paragraph.slice(0, 18)}`}
+            className={`roleplay-text__paragraph${isDialogueLed ? " roleplay-text__paragraph--dialogue" : " roleplay-text__paragraph--narration"}`}
+          >
+            {lines.map((line, lineIndex) => (
+              <Fragment key={`${paragraphIndex}-${lineIndex}-${line.slice(0, 12)}`}>
+                {line.startsWith("> ") ? (
+                  <span className="roleplay-text__quote">
+                    {renderInline(line.slice(2), lineIndex)}
+                  </span>
+                ) : (
+                  renderInline(line, lineIndex)
+                )}
+                {lineIndex < lines.length - 1 && <br />}
+              </Fragment>
+            ))}
+          </span>
+        );
+      })}
     </span>
   );
+}
+
+function splitParagraphs(value) {
+  const clean = String(value || "").replace(/\r\n/g, "\n").trim();
+  if (!clean) return [""];
+  return clean.split(/\n\s*\n+/g).filter((item) => item.trim().length > 0);
+}
+
+function startsLikeDialogue(value = "") {
+  const text = String(value).trim();
+  return /^(?:[—–-]\s*)?(?:[«“\"])/u.test(text);
 }
 
 function renderInline(text, lineIndex) {
@@ -62,6 +85,9 @@ function findNextToken(text, from) {
     { type: "narration", open: "*", close: "*" },
     { type: "thought", open: "/", close: "/" },
     { type: "strike", open: "~~", close: "~~" },
+    { type: "dialogue", open: "«", close: "»", preserveMarkers: true },
+    { type: "dialogue", open: "“", close: "”", preserveMarkers: true },
+    { type: "dialogue", open: '"', close: '"', preserveMarkers: true },
   ];
 
   let winner = null;
@@ -80,11 +106,14 @@ function findNextToken(text, from) {
       if (/\w/.test(before) || /\w/.test(after)) continue;
     }
 
+    const inner = text.slice(contentStart, close);
     const candidate = {
       type: definition.type,
       start,
       end: close + definition.close.length,
-      content: text.slice(contentStart, close),
+      content: definition.preserveMarkers
+        ? `${definition.open}${inner}${definition.close}`
+        : inner,
     };
 
     if (!winner || candidate.start < winner.start) winner = candidate;
