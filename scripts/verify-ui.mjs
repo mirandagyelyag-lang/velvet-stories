@@ -11,6 +11,7 @@ const emergency = readFileSync("src/styles/velvet-v172-mobile-emergency.css", "u
 const v18 = readFileSync("src/styles/velvet-v18.css", "utf8");
 const v19 = readFileSync("src/styles/velvet-v19-phone-first.css", "utf8");
 const v192 = readFileSync("src/styles/velvet-v192-message-sheet-portal.css", "utf8");
+const v193 = readFileSync("src/styles/velvet-v193-mobile-geometry.css", "utf8");
 const profile = readFileSync("src/pages/Profile.jsx", "utf8");
 const chatsContext = readFileSync("src/context/ChatsContext.jsx", "utf8");
 const edge = readFileSync("supabase/functions/character-chat/index.ts", "utf8");
@@ -254,6 +255,26 @@ const checks = [
       v192.includes('z-index: 9998 !important') &&
       v192.includes('transform: none !important') &&
       v192.includes('animation: none !important'),
+  },
+  {
+    name: "mobile back control is permanent and independent of reading chrome",
+    pass:
+      main.indexOf('import "./styles/velvet-v193-mobile-geometry.css"') > main.indexOf('import "./styles/velvet-v192-message-sheet-portal.css"') &&
+      v193.includes('.chat__mobile-exit') &&
+      v193.includes('display: grid !important') &&
+      v193.includes('z-index: 1200 !important') &&
+      chat.includes('className="chat__mobile-exit"'),
+  },
+  {
+    name: "short mobile stories flow directly into the composer",
+    pass:
+      chat.includes('compactMobileChat') &&
+      chat.includes('messagesMeasureRef') &&
+      chat.includes('ResizeObserver') &&
+      chat.includes('chat--compact-mobile') &&
+      v193.includes('.chat--compact-mobile .chat__composer') &&
+      v193.includes('position: relative !important') &&
+      v193.includes('min-height: 0 !important'),
   },
 ];
 

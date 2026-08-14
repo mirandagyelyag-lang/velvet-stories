@@ -152,9 +152,11 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   const [backgroundBlur, setBackgroundBlur] = useState(0);
   const [backgroundDim, setBackgroundDim] = useState(42);
   const [backgroundSlideshow, setBackgroundSlideshow] = useState(false);
+  const [compactMobileChat, setCompactMobileChat] = useState(false);
   const sceneImageInputRef = useRef(null);
 
   const messagesEndRef = useRef(null);
+  const messagesMeasureRef = useRef(null);
   const textareaRef = useRef(null);
   const stoppedRef = useRef(false);
   const generationRunRef = useRef(0);
@@ -173,6 +175,54 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   const characterGenerating = isCharacterGenerating(character.id);
   const conversationReady = Boolean(conversation?.conversationId);
   const latestMessageContent = messages[messages.length - 1]?.content || "";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const media = window.matchMedia("(max-width: 760px), (pointer: coarse)");
+    const measure = () => {
+      if (!media.matches || !conversationReady) {
+        setCompactMobileChat(false);
+        return;
+      }
+
+      const messagesNode = messagesMeasureRef.current;
+      const composerNode = textareaRef.current?.closest(".chat__composer");
+      if (!messagesNode || !composerNode) {
+        setCompactMobileChat(false);
+        return;
+      }
+
+      const viewportHeight = window.visualViewport?.height || window.innerHeight || 0;
+      const composerHeight = Math.max(54, composerNode.getBoundingClientRect().height || 0);
+      const headerAllowance = readingMode && !readingChromeVisible ? 24 : 76;
+      const availableStoryHeight = Math.max(0, viewportHeight - composerHeight - headerAllowance - 28);
+      const storyHeight = messagesNode.getBoundingClientRect().height;
+
+      // Short stories should flow naturally into the composer instead of leaving
+      // a giant empty slab. Once the story is taller than the usable viewport,
+      // the composer returns to its fixed mobile position.
+      setCompactMobileChat(storyHeight > 0 && storyHeight < availableStoryHeight);
+    };
+
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (messagesMeasureRef.current) resizeObserver?.observe(messagesMeasureRef.current);
+    if (textareaRef.current?.closest(".chat__composer")) resizeObserver?.observe(textareaRef.current.closest(".chat__composer"));
+
+    const viewport = window.visualViewport;
+    const timer = window.requestAnimationFrame(measure);
+    window.addEventListener("resize", measure, { passive: true });
+    viewport?.addEventListener("resize", measure, { passive: true });
+    media.addEventListener?.("change", measure);
+
+    return () => {
+      window.cancelAnimationFrame(timer);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", measure);
+      viewport?.removeEventListener("resize", measure);
+      media.removeEventListener?.("change", measure);
+    };
+  }, [conversationReady, visibleMessages.length, latestMessageContent, readingMode, readingChromeVisible]);
 
   // VELVET_GENERATION_MANAGER_V1
   // Never lock sending merely because a stale temporary bubble exists.
@@ -1193,7 +1243,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
 
   return (
     <section
-      className={`chat${readingMode ? " chat--reading" : ""}${readingMode && !readingChromeVisible ? " chat--reading-chrome-hidden" : ""}`}
+      className={`chat${readingMode ? " chat--reading" : ""}${readingMode && !readingChromeVisible ? " chat--reading-chrome-hidden" : ""}${compactMobileChat ? " chat--compact-mobile" : ""}`}
       data-reading-width={settings.readingWidth || "comfortable"}
       data-reading-font={settings.readingFont || "clean"}
     >
@@ -1337,7 +1387,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         )}
 
         {!conversationLoading && conversationReady && (
-          <div className="chat__messages" aria-live="polite">
+          <div ref={messagesMeasureRef} className="chat__messages" aria-live="polite">
             {conversation?.hasMoreMessages && (
               <button className="chat__load-earlier" onClick={handleLoadEarlierMessages} disabled={conversation.loadingEarlierMessages}>
                 {conversation.loadingEarlierMessages ? <LoaderCircle className="spin" size={16}/> : <ChevronDown size={16}/>} 
