@@ -18,7 +18,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("v2 mobile foundation is the final stylesheet", main.trim().includes('import "./styles/velvet-mobile-foundation.css";') && main.lastIndexOf("velvet-mobile-foundation.css") > main.lastIndexOf("velvet-v18.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.0.4 stories mobile restore", pkg.version === "2.0.4" && read("src/config/version.js").includes('VELVET_RELEASE = "Stories Mobile Restore"'));
+check("release is v2.0.4 chat beats UI", pkg.version === "2.0.4" && read("src/config/version.js").includes('VELVET_RELEASE = "Chat Beats UI"'));
 check("startup recovery boundary wraps the provider tree", read("src/main.jsx").includes("<VelvetErrorBoundary>") && read("src/components/VelvetErrorBoundary.jsx").includes("Repair & reopen Velvet"));
 check("boot watchdog can recover before React mounts", read("index.html").includes("__VELVET_REPAIR_APP__") && read("index.html").includes("velvet_boot_repaired_v203"));
 check("recovery clears service worker caches without deleting local storage", read("src/utils/runtimeRecovery.js").includes("getRegistrations") && read("src/utils/runtimeRecovery.js").includes("caches.keys") && !read("src/utils/runtimeRecovery.js").includes("localStorage.clear"));
@@ -51,7 +51,7 @@ check("real AI stream telemetry remains enabled", edge.includes('liveStreaming: 
 check("UI does not call every 429 free quota exhaustion", !chat.includes("The free AI limit was reached") && !characterModal.includes("free limit was reached"));
 check("Character Studio autosave remains present", characterModal.includes("velvet_character_draft_v18_") && characterModal.includes("Saved locally"));
 check("Character Studio becomes full-screen on phone", mobile.includes(".character-studio{width:100%!important;height:100dvh!important"));
-check("Stories mobile grid is single-column and bounded", mobile.includes(".stories-poster-grid{grid-template-columns:1fr!important") && !mobile.includes(".stories-poster-grid{grid-template-columns:1fr 1fr!important") && !mobile.includes(".stories-poster-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important"));
+check("Stories mobile grid is bounded", mobile.includes(".stories-poster-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important"));
 check("Discover mobile feature stacks", mobile.includes(".discover-index__featured{grid-template-columns:1fr!important"));
 check("Profile action buttons become full-width", mobile.includes(".profile-setting>button{grid-column:1/-1!important;width:100%!important"));
 check("Settings controls do not squeeze", mobile.includes(".setting-row{align-items:stretch!important;flex-direction:column!important"));
@@ -61,9 +61,11 @@ check("Diagnostics mobile grid is one column", mobile.includes(".diagnostics-her
 check("all major story drawers become phone sheets", [".memory-book,.timeline-drawer,.story-hub,.conversation-picker",".relationship-drawer",".chat-controls"].every((token)=>mobile.includes(token)));
 check("PWA build cleans old caches", read("vite.config.js").includes("cleanupOutdatedCaches: true") && read("vite.config.js").includes("skipWaiting: true"));
 check("reading mode still has persistent state", chat.includes('localStorage.getItem("velvet_reading_mode")') && chat.includes('localStorage.setItem("velvet_reading_mode"'));
-check("dialogue UI changes presentation without touching story generation", read("src/components/RoleplayText.jsx").includes("roleplay-text__paragraph--dialogue") && mobile.includes("Dialogue-first chat presentation. UI only"));
-check("quoted dialogue gets a distinct visual treatment", read("src/components/RoleplayText.jsx").includes('type: "dialogue"') && mobile.includes(".roleplay-text__dialogue"));
-check("character replies use compact conversation surfaces", mobile.includes(".chat-message--character .chat-message__body") && mobile.includes("border-radius:18px 18px 18px 7px"));
+check("dialogue UI changes presentation without touching story generation", read("src/components/RoleplayText.jsx").includes("splitParagraphIntoBeats") && mobile.includes("Dialogue-first chat presentation. UI only"));
+check("quoted dialogue becomes its own visual beat", read("src/components/RoleplayText.jsx").includes("findNextDialogueRange") && read("src/components/RoleplayText.jsx").includes("roleplay-text__beat--${beat.type}") && mobile.includes(".roleplay-text__beat--dialogue"));
+check("speech tags remain narration beats", read("src/components/RoleplayText.jsx").includes('pushBeat(beats, "narration", text.slice(cursor, dialogue.start))') && read("src/components/RoleplayText.jsx").includes('pushBeat(beats, "dialogue", text.slice(dialogue.start, dialogue.end))'));
+check("character replies no longer use one giant outer card", mobile.includes(".chat-message--character .chat-message__body") && mobile.includes("padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important"));
+check("dialogue bubbles are compact instead of bold quote panels", mobile.includes(".chat-message--character .roleplay-text__beat--dialogue") && mobile.includes("font-weight:540!important") && !mobile.includes("roleplay-text__paragraph--dialogue"));
 
 let failed=0;
 for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }
