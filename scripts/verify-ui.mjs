@@ -21,7 +21,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("burgundy reference layer is the final stylesheet", main.includes('import "./styles/velvet-burgundy-reference.css";') && main.lastIndexOf("velvet-burgundy-reference.css") > main.lastIndexOf("velvet-mobile-foundation.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.1.2 burgundy theme shell", pkg.version === "2.1.2" && read("src/config/version.js").includes('VELVET_RELEASE = "Burgundy Theme Shell"'));
+check("release is v2.1.4 discover continuity lock", pkg.version === "2.1.4" && read("src/config/version.js").includes('VELVET_RELEASE = "Discover + Continuity Lock"'));
 check("Stories owns the document canvas while mounted", read("src/pages/Chats.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/Chats.jsx").includes('classList.remove("velvet-burgundy-route")'));
 check("Burgundy background cannot end before the document", reference.includes('body.velvet-burgundy-route .app__content') && reference.includes('background: var(--stories-canvas) !important'));
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
@@ -78,7 +78,14 @@ check("dialogue and narration are never split into separate bubbles", !mobile.in
 check("AI inline roleplay formatting cannot create nested cards", mobile.includes(".roleplay-text__dialogue,.chat-message--character .roleplay-text__narration") && mobile.includes("background:none!important") && mobile.includes("box-shadow:none!important"));
 check("full AI content remains one conversation turn", chat.includes('<RoleplayText content={message.content} />') && chat.includes('message.sender === "character"'));
 
+const discoverPage = read("src/pages/MyCharacters.jsx");
+const discoverStyles = read("src/styles/my-characters.css");
+check("Discover matches approved Who will you choose composition", discoverPage.includes("Who will") && discoverPage.includes("choose?") && discoverPage.includes("FEATURED THIS WEEK") && discoverPage.includes("Trending now") && discoverPage.includes("New for you") && discoverStyles.includes("discover-burgundy__headline h1 span"));
+check("Discover keeps full real character actions", ["toggleFavorite", "onEditCharacter", "openTags", "handleDelete"].every((token)=>discoverPage.includes(token)));
+check("Discover has responsive phone layout", discoverStyles.includes("@media (max-width: 760px)") && discoverStyles.includes("grid-template-columns: 1fr"));
+
 let failed=0;
 for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }
 if(failed){ console.error(`\n${failed} UI checks failed.`); process.exit(1); }
 console.log(`\n${checks.length} UI checks passed.`);
+

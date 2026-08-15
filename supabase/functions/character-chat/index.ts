@@ -639,6 +639,9 @@ NON-NEGOTIABLE PRIORITY
 8. A character can only hear, see or answer something they were physically or digitally able to receive. Leaving the room, hanging up, muting a chat or being elsewhere matters until the visible transcript changes it.
 9. Never teleport a character, silently change location/time, or make an absent NPC reappear merely to create drama. If a location, time or presence detail is unknown, keep it unknown.
 10. Established side characters remain real participants until the scene visibly moves them. Do not erase them just because the romantic lead speaks, and do not force every social beat back into romance.
+11. CONTINUITY LOCK: before drafting, compare the proposed opening and physical action against the immediately previous character turn. Never restart the same pose, gesture, location beat, vehicle beat or exit sequence. Once a character drives away, leaves, hangs up, enters a building or otherwise changes state, that state remains true until the visible transcript explicitly changes it.
+12. OBJECT CONTINUITY: do not introduce a plot-relevant prop, possession, package, clothing item, food, gift, injury, vehicle, phone event or household object unless it is established in the visible transcript, profile, lore or confirmed memory. Incidental scenery may remain generic, but never make a newly invented object drive the action.
+13. EMOTIONAL PRIORITY: when the latest user turn contains rejection, confrontation, anger, fear, affection, a boundary, or a relationship-threatening statement, that emotional event is the center of the response. Show what it does to ${character.name} before decorative environment description or logistics.
 
 TURN CONTRACT
 - Response language: ${responseLanguage}. Match the language of the latest ordinary user message.
@@ -654,6 +657,8 @@ TURN CONTRACT
 - If Intent is return_main_pov, return the narrative focus to ${character.name} immediately. A secondary character may bridge at most one brief line, then ${character.name}'s presence, perspective, meaningful action or spoken dialogue must become the center of the turn.
 - After two consecutive silent turns, return the meaningful focus to ${character.name} even if an NPC spoke last.
 - If ${userIdentity.name} leaves, showers, walks away or otherwise exits, do not narrate inside ${userIdentity.name}'s private space. Follow ${character.name}'s immediate reaction and give ${character.name} something meaningful to say, think or do.
+- If Intent is confrontation or confrontation_exit, treat the user's accusation, rejection or boundary as the primary event. Do not bury it beneath weather, driving, room description or repetitive body language. If ${userIdentity.name} also exits, respect the separation; ${character.name} may react, call after them only if physically plausible, leave, stay, or choose another grounded action, but cannot reset to the pre-exit position on the next beat.
+- Before introducing any concrete object into ${character.name}'s hands or plans, ask whether that object already exists in visible canon. If not, omit it. Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop to manufacture an action.
 - If the latest turn is a direct text message, show its effect and normally include ${character.name}'s written reply before NPC banter.
 - Do not repeat the same gesture, denial, accusation, rhetorical tactic or signature line from recent turns.
 - Do not over-describe rain, breathing, jaws, umbrellas, wet pavement, silence or eye movements. Choose only details that change the emotional beat.
@@ -749,7 +754,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Make the character's reaction specific and socially responsive. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. Make the character's reaction specific and socially responsive, with the latest emotional event taking priority over scenery. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -944,10 +949,15 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
   const isQuestion = looksLikeQuestion(raw);
 
   let kind = "ordinary";
+  const confrontation = /\b(?:olvidate de mi|no me vuelvas a|no vuelvas a|no me invites otra vez|para la proxima|me trat(?:as|es) asi|forget about me|forget me|don'?t invite me again|do not invite me again|never invite me again|treat me like that again|we are done|leave me alone)\b/i.test(normalized);
+  const exitsScene = /\b(?:i\s+(?:walk|leave|left|go|went|head|headed|run|ran)|me\s+(?:voy|fui|alejo)|salgo|me fui|me baje|me bajé)\b[^.!?]{0,110}\b(?:away|bathroom|home|outside|opposite|dorm|room|apartment|building|ban[oa]|casa|apartamento|edificio|afuera|lejos)?\b/i.test(raw);
+
   if (raw.startsWith("[RETURN_MAIN_POV")) kind = "return_main_pov";
   else if (isSilentContinueText(raw)) kind = "silent_continue";
   else if (/\[(?:time\s*skip|timeskip)|\b(?:later that|hours later|days later|next day|al dia siguiente|más tarde|mas tarde)\b/i.test(raw)) kind = "time_skip";
-  else if (/\b(?:i\s+(?:walk|leave|left|go|went|head|headed|run|ran)|me\s+(?:voy|fui|alejo)|salgo|me fui)\b[^.!?]{0,90}\b(?:away|bathroom|home|outside|opposite|dorm|room|ban[oa]|casa|afuera|lejos)?\b/i.test(raw)) kind = "user_exit";
+  else if (confrontation && exitsScene) kind = "confrontation_exit";
+  else if (confrontation) kind = "confrontation";
+  else if (exitsScene) kind = "user_exit";
   else if (/\b(?:i\s+(?:miss(?:ed)?|love|adore|care about)\s+you|te\s+(?:extrano|extraño|quiero|amo)|if\s+i\s+(?:hated|didn'?t\s+like|didn'?t\s+care\s+about)\s+you|si\s+te\s+odiara|wouldn'?t\s+(?:be\s+)?(?:by\s+your\s+side|with\s+you)|no\s+estaria\s+(?:a\s+tu\s+lado|contigo))\b/i.test(raw)) kind = "affection";
   else if (/^(?:it'?s|its|that'?s)?\s*(?:okay|ok|fine|alright|all good|no worries|est[aá]\s+bien|tranqui|no\s+importa)[.!\s]*$/i.test(raw)) kind = "reassurance";
   else if (medium === "direct_message") kind = "digital_message";
@@ -1361,6 +1371,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "unfinished_reply",
   "controls_user_pov",
   "exposes_system_language",
+  "repeated_recent_signature",
 ]);
 
 function blockingNarrativeIssues(issues = []) {
@@ -1381,10 +1392,11 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
 
-  const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message"].includes(turnIntent.kind);
+  const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 24) issues.push("underdeveloped_social_beat");
   if (["reassurance", "affection", "silent_continue", "return_main_pov"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
   if (turnIntent.kind === "affection" && words.length < 34) issues.push("missing_emotional_impact");
+  if (["confrontation", "confrontation_exit"].includes(turnIntent.kind) && words.length < 40) issues.push("underdeveloped_emotional_confrontation");
 
   for (const rejected of options.rejectedResponses || []) {
     if (replySimilarity(text, rejected) >= 0.72) {

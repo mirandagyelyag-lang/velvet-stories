@@ -646,6 +646,13 @@ check("cancellation rows remain server-private",
   privateCancellationMigration.includes("revoke all on table public.generation_requests from anon, authenticated") &&
   privateCancellationMigration.includes("grant select, insert, update, delete on table public.generation_requests to service_role"));
 
+
+const confrontationExit = helpers?.classifyTurnIntent("Para la próxima que me vuelvas a invitar a alguna parte y me trates así, olvídate de mí *me bajé del auto y me fui directo a mi apartamento sin mirar atrás*", []);
+check("rejection plus exit is treated as an emotional confrontation exit", confrontationExit?.kind === "confrontation_exit");
+check("continuity lock forbids restarting a prior physical beat", edge.includes("CONTINUITY LOCK") && edge.includes("Never restart the same pose, gesture, location beat, vehicle beat or exit sequence"));
+check("object continuity forbids convenient invented props", edge.includes("OBJECT CONTINUITY") && edge.includes("Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop"));
+check("emotional priority outranks decorative scenery", edge.includes("EMOTIONAL PRIORITY") && edge.includes("that emotional event is the center of the response"));
+check("repeated recent openings are blocking and repaired once", edge.includes('"repeated_recent_signature",') && edge.includes("Never restart a physical beat from the immediately previous character turn"));
 let failures = 0;
 for (const item of checks) {
   if (!item.condition) failures += 1;
