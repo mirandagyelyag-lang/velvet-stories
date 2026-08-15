@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, BookOpen, Check, Copy, Download, GitBranch, Heart, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Pin, PinOff, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Check, ChevronRight, Copy, Crown, Download, Heart, HeartOff, History, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useCharacters } from "../context/CharactersContext";
@@ -27,8 +27,18 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
   const [view, setView] = useState("active");
   const [pendingDeletionIds, setPendingDeletionIds] = useState([]);
   const [menuId, setMenuId] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [showAllRecent, setShowAllRecent] = useState(false);
 
   useEffect(() => { loadConversations(); }, [user?.id, characters.length]);
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) return undefined;
+    const previous = meta.getAttribute("content");
+    meta.setAttribute("content", "#10090e");
+    return () => meta.setAttribute("content", previous || "#722640");
+  }, []);
 
   async function loadConversations() {
     if (!user) return;
@@ -249,8 +259,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
       if (pendingDeletionIds.includes(conversation.id)) return false;
       if (view === "trash" && !conversation.trashed_at) return false;
       if (view !== "trash" && conversation.trashed_at) return false;
-      if ((view === "active" || view === "pinned") && conversation.archived_at) return false;
-      if (view === "pinned" && !conversation.is_pinned) return false;
+      if (view === "active" && conversation.archived_at) return false;
+      if (view === "favorites" && (conversation.archived_at || !conversation.is_pinned)) return false;
       if (view === "archived" && !conversation.archived_at) return false;
       if (!value) return true;
       const character = conversation.character;
@@ -259,8 +269,59 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
     });
   }, [conversations, search, view, pendingDeletionIds]);
 
-  const featuredStory = filtered[0] || null;
-  const shelfStories = filtered.slice(1);
+  const collectionCounts = useMemo(() => ({
+    favorites: conversations.filter((item) => !item.trashed_at && !item.archived_at && item.is_pinned && !pendingDeletionIds.includes(item.id)).length,
+    archived: conversations.filter((item) => !item.trashed_at && item.archived_at && !pendingDeletionIds.includes(item.id)).length,
+    trash: conversations.filter((item) => item.trashed_at && !pendingDeletionIds.includes(item.id)).length,
+  }), [conversations, pendingDeletionIds]);
+
+  const collectionCards = [
+    { id: "favorites", label: "Favorites", count: collectionCounts.favorites, icon: Heart },
+    { id: "archived", label: "Archived", count: collectionCounts.archived, icon: History },
+    { id: "trash", label: "Trash", count: collectionCounts.trash, icon: Trash2 },
+  ];
+
+  const visibleStories = showAllRecent ? filtered : filtered.slice(0, 3);
+
+  function collectionArt(type) {
+    const match = conversations.find((item) => {
+      if (type === "favorites") return !item.trashed_at && !item.archived_at && item.is_pinned;
+      if (type === "archived") return !item.trashed_at && item.archived_at;
+      return Boolean(item.trashed_at);
+    });
+    const fallback = conversations.find((item) => !item.trashed_at);
+    const character = (match || fallback)?.character;
+    return character?.coverUrl || character?.imageUrl || "";
+  }
+
+  function renderRecentStory(conversation) {
+    const character = conversation.character;
+    if (!character) return null;
+    const title = conversation.title || character.name;
+    const art = character.coverUrl || character.imageUrl;
+    const preview = shelfPreview(conversation.latestMessage?.content || character.firstMessage || character.role || "Continue the story.");
+    return (
+      <article
+        className={`reference-story-row${conversation.is_pinned ? " reference-story-row--favorite" : ""}`}
+        key={conversation.id}
+        onClick={() => !conversation.trashed_at && onOpenCharacter(character, conversation.id)}
+      >
+        <div className="reference-story-row__art">{art ? <img src={art} alt=""/> : <span>{character.initials}</span>}</div>
+        <div className="reference-story-row__copy">
+          {editingId === conversation.id ? (
+            <form className="reference-story-row__rename" onSubmit={(event) => saveTitle(event, conversation)} onClick={(event) => event.stopPropagation()}>
+              <input autoFocus value={editTitle} maxLength={80} onChange={(event) => setEditTitle(event.target.value)} />
+              <button type="submit" disabled={!editTitle.trim() || updatingId === conversation.id} aria-label="Save title"><Check size={15}/></button>
+              <button type="button" onClick={() => setEditingId(null)} aria-label="Cancel rename"><X size={15}/></button>
+            </form>
+          ) : <h3>{title}</h3>}
+          <p>{preview}</p>
+          <time>{formatShelfDate(conversation.updated_at)}</time>
+        </div>
+        {renderStoryMenu(conversation, title, "reference")}
+      </article>
+    );
+  }
 
   function renderStoryMenu(conversation, title, variant = "card") {
     const menuOpen = menuId === conversation.id;
@@ -276,7 +337,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
         </button>
         {menuOpen && (
           <div className="story-action-menu__panel">
-            <button onClick={(event) => { setMenuId(null); togglePinned(event, conversation); }}>{conversation.is_pinned ? <PinOff size={15}/> : <Pin size={15}/>}<span>{conversation.is_pinned ? "Unpin" : "Pin"}</span></button>
+            <button onClick={(event) => { setMenuId(null); togglePinned(event, conversation); }}>{conversation.is_pinned ? <HeartOff size={15}/> : <Heart size={15}/>}<span>{conversation.is_pinned ? "Remove favorite" : "Favorite"}</span></button>
             <button onClick={(event) => { setMenuId(null); beginRename(event, conversation); }}><Pencil size={15}/><span>Rename</span></button>
             <button onClick={(event) => { setMenuId(null); duplicateConversation(event, conversation); }} disabled={updatingId === conversation.id}><Copy size={15}/><span>Duplicate</span></button>
             <button onClick={(event) => { setMenuId(null); exportConversation(event, conversation); }} disabled={updatingId === conversation.id}><Download size={15}/><span>Export</span></button>
@@ -290,153 +351,90 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
     );
   }
 
-  function renderFeaturedStory(conversation) {
-    const character = conversation?.character;
-    if (!character) return null;
-    const title = conversation.title || character.name;
-    const preview = cleanPreview(conversation.latestMessage?.content || character.firstMessage) || "Open the story and return to the moment you left behind.";
-    const kicker = view === "trash" ? "IN THE TRASH" : view === "archived" ? "FROM THE ARCHIVE" : conversation.is_pinned ? "PINNED STORY" : "PICK UP THE THREAD";
-
-    return (
-      <article
-        className="story-feature"
-        style={{ "--character-color": character.color }}
-        onClick={() => !conversation.trashed_at && onOpenCharacter(character, conversation.id)}
-      >
-        <div className="story-feature__art">
-          {character.coverUrl ? <img src={character.coverUrl} alt="" /> : <div className="story-feature__fallback" />}
-          <div className="story-feature__scrim" />
-        </div>
-        <div className="story-feature__content">
-          <div className="story-feature__topline">
-            <span className="story-feature__kicker">{kicker}</span>
-            {renderStoryMenu(conversation, title, "feature")}
-          </div>
-          <div className="story-feature__character">
-            <span className="story-feature__avatar">{character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}</span>
-            <div><small>STORY WITH</small><strong>{character.name}</strong></div>
-          </div>
-          <h2>{title}</h2>
-          <p>{preview}</p>
-          <div className="story-feature__footer">
-            {!conversation.trashed_at && <button type="button" onClick={(event) => { event.stopPropagation(); onOpenCharacter(character, conversation.id); }}><BookOpen size={16}/>Continue story</button>}
-            {conversation.trashed_at && <button type="button" onClick={(event) => restoreConversation(event, conversation.id)}><ArchiveRestore size={16}/>Restore story</button>}
-            <time>{formatDate(conversation.updated_at)}</time>
-          </div>
-        </div>
-      </article>
-    );
-  }
-
-  function renderStoryCard(conversation) {
-    const character = conversation.character;
-    if (!character) return null;
-    const title = conversation.title || character.name;
-    const preview = cleanPreview(conversation.latestMessage?.content || character.firstMessage);
-
-    return (
-      <article
-        key={conversation.id}
-        className={`story-poster${conversation.is_pinned ? " story-poster--pinned" : ""}`}
-        onClick={() => !conversation.trashed_at && editingId !== conversation.id && onOpenCharacter(character, conversation.id)}
-        style={{ "--character-color": character.color }}
-      >
-        <div className="story-poster__visual">
-          {character.coverUrl ? <img src={character.coverUrl} alt="" /> : <div className="story-poster__fallback" />}
-          <div className="story-poster__shade" />
-          <div className="story-poster__badges">
-            {conversation.is_pinned && <span><Pin size={11}/>Pinned</span>}
-            {conversation.branch_parent_id && <span><GitBranch size={11}/>Branch</span>}
-          </div>
-          {renderStoryMenu(conversation, title)}
-          <div className="story-poster__person">
-            <span>{character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}</span>
-            <strong>{character.name}</strong>
-          </div>
-        </div>
-
-        <div className="story-poster__copy">
-          {editingId === conversation.id ? (
-            <form className="story-poster__rename" onSubmit={(event) => saveTitle(event, conversation)} onClick={(event) => event.stopPropagation()}>
-              <input autoFocus value={editTitle} maxLength={80} onChange={(event) => setEditTitle(event.target.value)} />
-              <button type="submit" disabled={!editTitle.trim() || updatingId === conversation.id} aria-label="Save title"><Check size={16}/></button>
-              <button type="button" onClick={() => setEditingId(null)} aria-label="Cancel rename"><X size={16}/></button>
-            </form>
-          ) : <h3>{title}</h3>}
-          <div className="story-poster__meta"><span>{character.role || "Character"}</span><time>{formatDate(conversation.updated_at)}</time></div>
-          <p>{preview || "Open the story to continue."}</p>
-        </div>
-      </article>
-    );
-  }
 
   return (
-    <section className="chats-page chats-page--shelf">
-      <header className="stories-header stories-header--velvet">
-        <div className="stories-header__copy">
-          <span className="stories-header__eyebrow"><Sparkles size={12}/> YOUR PRIVATE LIBRARY</span>
-          <h1><span>your</span> STORIES</h1>
-          <p>Every story you keep, right where you left it.</p>
+    <section className="chats-page chats-page--reference">
+      <header className="reference-stories-hero">
+        <div className="reference-stories-hero__private"><Crown size={19}/><span>PRIVATE LIBRARY</span></div>
+        <div className="reference-stories-title" aria-label="Your Stories">
+          <span className="reference-stories-title__script">your</span>
+          <span className="reference-stories-title__line reference-stories-title__line--left" />
+          <h1>STORIES</h1>
+          <span className="reference-stories-title__spark">✦</span>
+          <span className="reference-stories-title__line reference-stories-title__line--right" />
         </div>
-        <button className="stories-header__new" onClick={() => setPickerOpen(true)}><Plus size={18}/><span>New story</span></button>
+        <button className="reference-stories-new" type="button" onClick={() => setPickerOpen(true)} aria-label="New story"><Sparkles size={26}/></button>
       </header>
 
-      {!loading && conversations.length > 0 && (
-        <>
-          <div className="stories-tools stories-tools--velvet">
-            <label className="stories-search">
-              <Search size={18}/>
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your stories..." />
-              {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={15}/></button>}
-            </label>
-            <button className="stories-filter-button" type="button" onClick={() => setView("active")}><Sparkles size={16}/> Filter</button>
-          </div>
+      <div className="reference-search-wrap">
+        <label className="reference-search">
+          <Search size={25}/>
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search a story, character or moment..." />
+          {search && <button type="button" className="reference-search__clear" onClick={() => setSearch("")} aria-label="Clear search"><X size={16}/></button>}
+        </label>
+        <button className={`reference-filter${filtersOpen ? " is-open" : ""}`} type="button" onClick={() => setFiltersOpen((value) => !value)} aria-label="Filter stories"><SlidersHorizontal size={25}/></button>
+      </div>
 
-          <section className="story-collections" aria-label="Story collections">
-            <button className={view === "pinned" ? "active" : ""} onClick={() => setView("pinned")}><span className="story-collections__icon"><Heart size={20}/></span><span><strong>Favorites</strong><small>{conversations.filter((item) => item.is_pinned && !item.archived_at && !item.trashed_at).length} stories</small></span></button>
-            <button className={view === "archived" ? "active" : ""} onClick={() => setView("archived")}><span className="story-collections__icon"><Archive size={20}/></span><span><strong>Archived</strong><small>{conversations.filter((item) => item.archived_at && !item.trashed_at).length} stories</small></span></button>
-            <button className={view === "trash" ? "active" : ""} onClick={() => setView("trash")}><span className="story-collections__icon"><Trash2 size={20}/></span><span><strong>Trash</strong><small>{conversations.filter((item) => item.trashed_at).length} stories</small></span></button>
-          </section>
-
-          <div className="stories-library-bar">
-            <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}>Recent</button>
-            {view !== "active" && <button className="stories-library-bar__back" onClick={() => setView("active")}>View all stories</button>}
-          </div>
-        </>
+      {filtersOpen && (
+        <div className="reference-filter-menu">
+          {[
+            ["active", "All stories"],
+            ["favorites", "Favorites"],
+            ["archived", "Archived"],
+            ["trash", "Trash"],
+          ].map(([id, label]) => (
+            <button key={id} className={view === id ? "active" : ""} onClick={() => { setView(id); setFiltersOpen(false); setShowAllRecent(true); }}>{label}</button>
+          ))}
+        </div>
       )}
 
       {loading && <PageState icon={<LoaderCircle className="spin" size={28}/>} text="Opening your library..." />}
       {!loading && error && <div className="chats-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")} aria-label="Dismiss"><X size={16}/></button></div>}
 
       {!loading && conversations.length === 0 && (
-        <div className="page-state page-state--empty chats-empty">
-          <span><MessageCircle size={28}/></span><small>YOUR FIRST STORY</small><h2>Nothing here yet</h2><p>Choose a character and open the first page.</p>
+        <div className="reference-empty">
+          <Sparkles size={28}/><span>YOUR FIRST STORY</span><h2>Nothing here yet</h2><p>Choose a character and begin a private world.</p>
           <button onClick={() => setPickerOpen(true)}><Plus size={17}/> Start a story</button>
         </div>
       )}
 
-      {!loading && conversations.length > 0 && filtered.length === 0 && <PageState icon={<Search size={27}/>} text="No stories match that search." />}
-
-      {!loading && featuredStory && (
-        <main className="stories-content">
-          <section className="stories-feature-section">
-            <div className="stories-section-heading">
-              <div><span>{view === "active" ? "RECENT STORIES" : view === "pinned" ? "FAVORITES" : view === "archived" ? "ARCHIVE" : "TRASH"}</span><h2>{view === "active" ? "Continue where you left off" : view === "pinned" ? "Stories you love" : view === "archived" ? "Saved away" : "Recently removed"}</h2></div>
-              <small>{filtered.length} {filtered.length === 1 ? "story" : "stories"}</small>
+      {!loading && conversations.length > 0 && (
+        <>
+          <section className="reference-collections">
+            <h2>COLLECTIONS</h2>
+            <div className="reference-collections__grid">
+              {collectionCards.map((collection) => {
+                const Icon = collection.icon;
+                const art = collectionArt(collection.id);
+                return (
+                  <button
+                    key={collection.id}
+                    className={`reference-collection-card${view === collection.id ? " is-active" : ""}`}
+                    type="button"
+                    onClick={() => { setView(collection.id); setShowAllRecent(true); }}
+                  >
+                    {art && <img src={art} alt=""/>}
+                    <span className={`reference-collection-card__fallback reference-collection-card__fallback--${collection.id}`} />
+                    <span className="reference-collection-card__shade" />
+                    <span className="reference-collection-card__icon"><Icon size={28}/></span>
+                    <strong>{collection.label}</strong>
+                    <small>{collection.count} {collection.count === 1 ? "story" : "stories"}</small>
+                  </button>
+                );
+              })}
             </div>
-            {renderFeaturedStory(featuredStory)}
           </section>
 
-          {shelfStories.length > 0 && (
-            <section className="stories-library-section">
-              <div className="stories-section-heading stories-section-heading--library">
-                <div><span>YOUR LIBRARY</span><h2>{view === "active" ? "More worlds" : view === "pinned" ? "More favorites" : view === "archived" ? "More from the archive" : "More in trash"}</h2></div>
-              </div>
-              <div className="stories-poster-grid">{shelfStories.map(renderStoryCard)}</div>
-            </section>
-          )}
-        </main>
+          <section className="reference-recent">
+            <header className="reference-section-heading">
+              <h2>{view === "active" ? "RECENT STORIES" : view === "favorites" ? "FAVORITE STORIES" : view === "archived" ? "ARCHIVED STORIES" : "TRASH"}</h2>
+              {filtered.length > 3 && <button type="button" onClick={() => setShowAllRecent((value) => !value)}>{showAllRecent ? "SHOW LESS" : "VIEW ALL"}<ChevronRight size={17}/></button>}
+            </header>
+            {filtered.length ? <div className="reference-story-list">{visibleStories.map(renderRecentStory)}</div> : <div className="reference-no-results"><Search size={22}/><span>No stories here yet.</span></div>}
+          </section>
+        </>
       )}
+
       {pickerOpen && (
         <div className="conversation-picker-backdrop" onMouseDown={() => !creatingId && setPickerOpen(false)}>
           <section className="conversation-picker conversation-picker--editorial" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="conversation-picker-title">
@@ -462,6 +460,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
       )}
     </section>
   );
+
 }
 
 function PageState({ icon, text }) { return <div className="page-state">{icon}<p>{text}</p></div>; }
@@ -481,6 +480,25 @@ function formatDate(value) {
   const today = new Date();
   if (date.toDateString() === today.toDateString()) return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return date.toLocaleDateString([], { day: "2-digit", month: "short", year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined });
+}
+
+function shelfPreview(value = "") {
+  const clean = cleanPreview(value);
+  if (!clean) return "Continue your story.";
+  const short = clean.length > 82 ? `${clean.slice(0, 79).trimEnd()}…` : clean;
+  return `“${short}”`;
+}
+
+function formatShelfDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  const today = new Date();
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (date.toDateString() === today.toDateString()) return `Today at ${time}`;
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return `Yesterday at ${time}`;
+  return date.toLocaleDateString([], { day: "2-digit", month: "short" });
 }
 
 function downloadStory(conversation, messages, format) {

@@ -18,6 +18,7 @@ import "./index.css";
 import "./styles/velvet-ui.css";
 import "./styles/velvet-v18.css";
 import "./styles/velvet-mobile-foundation.css";
+import "./styles/velvet-burgundy-reference.css";
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {

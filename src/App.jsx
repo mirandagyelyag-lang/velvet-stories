@@ -7,6 +7,7 @@ import Auth from "./pages/Auth";
 import Chat from "./pages/Chat";
 import CharacterDetail from "./pages/CharacterDetail";
 import Chats from "./pages/Chats";
+import ChatInbox from "./pages/ChatInbox";
 import MyCharacters from "./pages/MyCharacters";
 import Memories from "./pages/Memories";
 import Profile from "./pages/Profile";
@@ -26,7 +27,7 @@ function App() {
   const { createNewConversation } = useChats();
   const [activePage, setActivePage] = useState(() => {
     const requestedPage = new URLSearchParams(window.location.search).get("open");
-    return ["characters", "chats", "memories", "personas", "lorebooks", "profile", "settings", "diagnostics"].includes(requestedPage)
+    return ["characters", "chats", "inbox", "memories", "personas", "lorebooks", "profile", "settings", "diagnostics"].includes(requestedPage)
       ? requestedPage
       : "chats";
   });
@@ -208,6 +209,10 @@ function App() {
           onBrowseCharacters={() => navigate("characters")}
         />
       );
+    }
+
+    if (activePage === "inbox") {
+      return <ChatInbox onOpenCharacter={openCharacter} />;
     }
 
     if (activePage === "memories") {

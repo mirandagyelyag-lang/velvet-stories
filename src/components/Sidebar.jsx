@@ -1,9 +1,11 @@
 import {
+  BookOpen,
+  BookMarked,
+  Compass,
   MessageCircle,
   Moon,
   Sun,
   UserRound,
-  BookOpen,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -11,9 +13,11 @@ import velvetLogo from "../assets/velvet-logo.webp";
 import "../styles/sidebar.css";
 
 const navigation = [
-  { id: "chats", label: "Stories", icon: MessageCircle },
-  { id: "characters", label: "Discover", icon: BookOpen },
-  { id: "profile", label: "You", icon: UserRound },
+  { id: "chats", label: "Stories", icon: BookOpen },
+  { id: "characters", label: "Discover", icon: Compass },
+  { id: "inbox", label: "Chats", icon: MessageCircle },
+  { id: "memories", label: "Memories", icon: BookMarked },
+  { id: "profile", label: "Profile", icon: UserRound },
 ];
 
 function Sidebar({ activePage, onNavigate }) {
@@ -46,7 +50,7 @@ function Sidebar({ activePage, onNavigate }) {
 
         <footer className="sidebar__footer">
           <button className="sidebar__theme" onClick={toggleTheme}>
-            {theme === "dark" ? <Moon size={18} /> : theme === "comfort" ? <Sun size={18} /> : <Sun size={18} />}
+            {theme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
             <span>{theme === "light" ? "Light" : theme === "dark" ? "Dark" : "Comfort"}</span>
           </button>
 
@@ -60,7 +64,7 @@ function Sidebar({ activePage, onNavigate }) {
         </footer>
       </aside>
 
-      <nav className="mobile-nav" aria-label="Mobile navigation">
+      <nav className="mobile-nav velvet-reference-nav" aria-label="Mobile navigation">
         {navigation.map((item) => (
           <NavButton
             key={item.id}
