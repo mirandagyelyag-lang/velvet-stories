@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, BookOpen, Check, Copy, Download, GitBranch, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Pin, PinOff, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, BookOpen, Check, Copy, Download, GitBranch, Heart, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Pin, PinOff, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useCharacters } from "../context/CharactersContext";
@@ -249,7 +249,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
       if (pendingDeletionIds.includes(conversation.id)) return false;
       if (view === "trash" && !conversation.trashed_at) return false;
       if (view !== "trash" && conversation.trashed_at) return false;
-      if (view === "active" && conversation.archived_at) return false;
+      if ((view === "active" || view === "pinned") && conversation.archived_at) return false;
+      if (view === "pinned" && !conversation.is_pinned) return false;
       if (view === "archived" && !conversation.archived_at) return false;
       if (!value) return true;
       const character = conversation.character;
@@ -371,28 +372,37 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
 
   return (
     <section className="chats-page chats-page--shelf">
-      <header className="stories-header">
+      <header className="stories-header stories-header--velvet">
         <div className="stories-header__copy">
-          <span className="stories-header__eyebrow"><Sparkles size={13}/> PRIVATE LIBRARY</span>
-          <h1>Stories</h1>
-          <p>Return to what still feels unfinished.</p>
+          <span className="stories-header__eyebrow"><Sparkles size={12}/> YOUR PRIVATE LIBRARY</span>
+          <h1><span>your</span> STORIES</h1>
+          <p>Every story you keep, right where you left it.</p>
         </div>
         <button className="stories-header__new" onClick={() => setPickerOpen(true)}><Plus size={18}/><span>New story</span></button>
       </header>
 
       {!loading && conversations.length > 0 && (
-        <div className="stories-tools">
-          <label className="stories-search">
-            <Search size={18}/>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a story, character or moment" />
-            {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={15}/></button>}
-          </label>
-          <nav className="stories-tabs" aria-label="Story library view">
-            <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}>Stories</button>
-            <button className={view === "archived" ? "active" : ""} onClick={() => setView("archived")}>Archived</button>
-            <button className={view === "trash" ? "active" : ""} onClick={() => setView("trash")}>Trash</button>
-          </nav>
-        </div>
+        <>
+          <div className="stories-tools stories-tools--velvet">
+            <label className="stories-search">
+              <Search size={18}/>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your stories..." />
+              {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={15}/></button>}
+            </label>
+            <button className="stories-filter-button" type="button" onClick={() => setView("active")}><Sparkles size={16}/> Filter</button>
+          </div>
+
+          <section className="story-collections" aria-label="Story collections">
+            <button className={view === "pinned" ? "active" : ""} onClick={() => setView("pinned")}><span className="story-collections__icon"><Heart size={20}/></span><span><strong>Favorites</strong><small>{conversations.filter((item) => item.is_pinned && !item.archived_at && !item.trashed_at).length} stories</small></span></button>
+            <button className={view === "archived" ? "active" : ""} onClick={() => setView("archived")}><span className="story-collections__icon"><Archive size={20}/></span><span><strong>Archived</strong><small>{conversations.filter((item) => item.archived_at && !item.trashed_at).length} stories</small></span></button>
+            <button className={view === "trash" ? "active" : ""} onClick={() => setView("trash")}><span className="story-collections__icon"><Trash2 size={20}/></span><span><strong>Trash</strong><small>{conversations.filter((item) => item.trashed_at).length} stories</small></span></button>
+          </section>
+
+          <div className="stories-library-bar">
+            <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}>Recent</button>
+            {view !== "active" && <button className="stories-library-bar__back" onClick={() => setView("active")}>View all stories</button>}
+          </div>
+        </>
       )}
 
       {loading && <PageState icon={<LoaderCircle className="spin" size={28}/>} text="Opening your library..." />}
@@ -411,7 +421,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
         <main className="stories-content">
           <section className="stories-feature-section">
             <div className="stories-section-heading">
-              <div><span>{view === "active" ? "CONTINUE" : view === "archived" ? "ARCHIVE" : "TRASH"}</span><h2>{view === "active" ? "Right where you left it" : view === "archived" ? "Saved away" : "Recently removed"}</h2></div>
+              <div><span>{view === "active" ? "RECENT STORIES" : view === "pinned" ? "FAVORITES" : view === "archived" ? "ARCHIVE" : "TRASH"}</span><h2>{view === "active" ? "Continue where you left off" : view === "pinned" ? "Stories you love" : view === "archived" ? "Saved away" : "Recently removed"}</h2></div>
               <small>{filtered.length} {filtered.length === 1 ? "story" : "stories"}</small>
             </div>
             {renderFeaturedStory(featuredStory)}
@@ -420,7 +430,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
           {shelfStories.length > 0 && (
             <section className="stories-library-section">
               <div className="stories-section-heading stories-section-heading--library">
-                <div><span>YOUR LIBRARY</span><h2>{view === "active" ? "More worlds" : view === "archived" ? "More from the archive" : "More in trash"}</h2></div>
+                <div><span>YOUR LIBRARY</span><h2>{view === "active" ? "More worlds" : view === "pinned" ? "More favorites" : view === "archived" ? "More from the archive" : "More in trash"}</h2></div>
               </div>
               <div className="stories-poster-grid">{shelfStories.map(renderStoryCard)}</div>
             </section>
