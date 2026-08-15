@@ -2,13 +2,30 @@ import { LoaderCircle, MessageCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useCharacters } from "../context/CharactersContext";
+import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
 
 function ChatInbox({ onOpenCharacter }) {
   const { user } = useAuth();
   const { characters } = useCharacters();
+  const { theme } = useTheme();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    document.documentElement.classList.add("velvet-burgundy-route");
+    document.body.classList.add("velvet-burgundy-route");
+    return () => {
+      document.documentElement.classList.remove("velvet-burgundy-route");
+      document.body.classList.remove("velvet-burgundy-route");
+    };
+  }, []);
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const colors = { light: "#f7eff2", comfort: "#eee4dc", dark: "#10090e" };
+    meta?.setAttribute("content", colors[theme] || colors.dark);
+  }, [theme]);
 
   useEffect(() => {
     let alive = true;

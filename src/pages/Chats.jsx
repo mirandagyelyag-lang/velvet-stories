@@ -6,6 +6,7 @@ import { useChats } from "../context/ChatsContext";
 import { supabase } from "../services/supabase";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
+import { useTheme } from "../context/ThemeContext";
 import "../styles/chats.css";
 
 function Chats({ onOpenCharacter, onBrowseCharacters }) {
@@ -14,6 +15,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
   const { createNewConversation } = useChats();
   const { settings } = useSettings();
   const { confirmAction, scheduleDeletion } = useFeedback();
+  const { theme } = useTheme();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -33,19 +35,20 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
   useEffect(() => { loadConversations(); }, [user?.id, characters.length]);
 
   useEffect(() => {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    const previous = meta?.getAttribute("content");
-
     document.documentElement.classList.add("velvet-burgundy-route");
     document.body.classList.add("velvet-burgundy-route");
-    meta?.setAttribute("content", "#10090e");
 
     return () => {
       document.documentElement.classList.remove("velvet-burgundy-route");
       document.body.classList.remove("velvet-burgundy-route");
-      meta?.setAttribute("content", previous || "#722640");
     };
   }, []);
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const colors = { light: "#f7eff2", comfort: "#eee4dc", dark: "#10090e" };
+    meta?.setAttribute("content", colors[theme] || colors.dark);
+  }, [theme]);
 
   async function loadConversations() {
     if (!user) return;

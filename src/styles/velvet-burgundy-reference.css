@@ -593,3 +593,386 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   border: 1px solid rgba(226,138,160,.16);
   border-radius: 9px;
 }
+
+/* =========================================================
+   Velvet Stories v2.1.2 · Burgundy Theme Shell
+   Stories is now a real app surface in every theme, not a
+   dark artwork pasted on top of Velvet's global canvas.
+   ========================================================= */
+
+html.velvet-burgundy-route[data-theme="dark"] {
+  --stories-canvas: #0f090e;
+  --stories-canvas-2: #170b12;
+  --stories-ink: #f8edf0;
+  --stories-ink-soft: #f0c8d2;
+  --stories-muted: #a5868e;
+  --stories-muted-2: #8f727b;
+  --stories-accent: #e28aa0;
+  --stories-accent-strong: #b84865;
+  --stories-line: rgba(224,117,143,.18);
+  --stories-line-strong: rgba(231,116,143,.34);
+  --stories-panel: rgba(34,20,27,.84);
+  --stories-panel-strong: rgba(41,22,31,.95);
+  --stories-panel-solid: #1b1016;
+  --stories-row: linear-gradient(95deg, rgba(43,19,30,.95), rgba(28,16,22,.90));
+  --stories-search: linear-gradient(105deg, rgba(26,17,22,.94), rgba(39,22,30,.90));
+  --stories-sidebar: linear-gradient(180deg, rgba(24,15,21,.99), rgba(14,9,13,.995));
+  --stories-sidebar-control: rgba(49,29,38,.72);
+  --stories-nav: linear-gradient(100deg, rgba(28,18,23,.97), rgba(23,16,20,.96));
+  --stories-shadow: rgba(0,0,0,.38);
+  --stories-art-filter: saturate(.68) brightness(.58) sepia(.08);
+  --stories-row-art-filter: saturate(.72) brightness(.72);
+  --stories-card-shade: linear-gradient(180deg, rgba(9,5,8,.12), rgba(14,7,11,.40) 42%, rgba(13,7,10,.88) 100%);
+  --stories-atmosphere:
+    radial-gradient(ellipse at 72% 7%, rgba(125,39,66,.28) 0%, rgba(77,20,40,.13) 26%, transparent 52%),
+    radial-gradient(ellipse at 15% 42%, rgba(82,18,43,.24) 0%, transparent 34%),
+    radial-gradient(ellipse at 86% 70%, rgba(112,26,52,.18) 0%, transparent 34%),
+    linear-gradient(155deg, #0d080c 0%, #160a11 47%, #0b080b 100%);
+}
+
+html.velvet-burgundy-route[data-theme="light"] {
+  --stories-canvas: #f7eff2;
+  --stories-canvas-2: #f1e4e9;
+  --stories-ink: #402832;
+  --stories-ink-soft: #6f3549;
+  --stories-muted: #846f77;
+  --stories-muted-2: #9a848c;
+  --stories-accent: #a94f69;
+  --stories-accent-strong: #7e2d4a;
+  --stories-line: rgba(116,48,71,.14);
+  --stories-line-strong: rgba(132,48,76,.26);
+  --stories-panel: rgba(255,250,251,.88);
+  --stories-panel-strong: rgba(255,249,251,.97);
+  --stories-panel-solid: #fff8fa;
+  --stories-row: linear-gradient(95deg, rgba(255,250,251,.98), rgba(249,239,243,.96));
+  --stories-search: linear-gradient(105deg, rgba(255,251,252,.96), rgba(246,235,240,.93));
+  --stories-sidebar: linear-gradient(180deg, #fffafb 0%, #f4e9ed 100%);
+  --stories-sidebar-control: rgba(255,255,255,.72);
+  --stories-nav: linear-gradient(100deg, rgba(255,250,251,.96), rgba(244,233,238,.96));
+  --stories-shadow: rgba(93,47,62,.13);
+  --stories-art-filter: saturate(.72) brightness(.79) sepia(.05);
+  --stories-row-art-filter: saturate(.82) brightness(.90);
+  --stories-card-shade: linear-gradient(180deg, rgba(72,25,43,.03), rgba(71,27,44,.20) 42%, rgba(55,20,34,.76) 100%);
+  --stories-atmosphere:
+    radial-gradient(ellipse at 74% 3%, rgba(166,76,103,.13) 0%, transparent 42%),
+    radial-gradient(ellipse at 13% 54%, rgba(188,112,134,.10) 0%, transparent 34%),
+    linear-gradient(155deg, #fff9fb 0%, #f7eef2 48%, #f1e5e9 100%);
+}
+
+html.velvet-burgundy-route[data-theme="comfort"] {
+  --stories-canvas: #eee4dc;
+  --stories-canvas-2: #e8dbd2;
+  --stories-ink: #4c3a37;
+  --stories-ink-soft: #744f50;
+  --stories-muted: #806f68;
+  --stories-muted-2: #95837b;
+  --stories-accent: #a76370;
+  --stories-accent-strong: #80505a;
+  --stories-line: rgba(111,76,72,.15);
+  --stories-line-strong: rgba(130,78,82,.26);
+  --stories-panel: rgba(249,242,235,.88);
+  --stories-panel-strong: rgba(250,243,236,.97);
+  --stories-panel-solid: #f8efe8;
+  --stories-row: linear-gradient(95deg, rgba(249,242,235,.97), rgba(239,228,219,.96));
+  --stories-search: linear-gradient(105deg, rgba(250,244,238,.95), rgba(236,224,216,.93));
+  --stories-sidebar: linear-gradient(180deg, #f8f1ea 0%, #e9ded5 100%);
+  --stories-sidebar-control: rgba(255,250,244,.62);
+  --stories-nav: linear-gradient(100deg, rgba(248,241,234,.96), rgba(235,224,216,.96));
+  --stories-shadow: rgba(74,54,45,.12);
+  --stories-art-filter: saturate(.62) brightness(.77) sepia(.18);
+  --stories-row-art-filter: saturate(.70) brightness(.88) sepia(.12);
+  --stories-card-shade: linear-gradient(180deg, rgba(63,39,34,.03), rgba(72,43,39,.19) 42%, rgba(61,37,35,.73) 100%);
+  --stories-atmosphere:
+    radial-gradient(ellipse at 72% 5%, rgba(159,95,105,.12) 0%, transparent 42%),
+    radial-gradient(ellipse at 16% 58%, rgba(166,122,101,.10) 0%, transparent 35%),
+    linear-gradient(155deg, #f7f0e9 0%, #eee4dc 48%, #e7dad1 100%);
+}
+
+/* The route owns the complete canvas in the selected theme. */
+html.velvet-burgundy-route,
+body.velvet-burgundy-route,
+body.velvet-burgundy-route .app,
+body.velvet-burgundy-route .app__content {
+  min-height: 100dvh !important;
+  background: var(--stories-canvas) !important;
+}
+
+body.velvet-burgundy-route::before {
+  background: var(--stories-atmosphere) !important;
+}
+
+body.velvet-burgundy-route .chats-page--reference,
+body.velvet-burgundy-route .reference-inbox {
+  min-height: 100dvh !important;
+  color: var(--stories-ink) !important;
+  background: var(--stories-atmosphere) !important;
+}
+
+body.velvet-burgundy-route .chats-page--reference::before,
+body.velvet-burgundy-route .reference-inbox::before {
+  opacity: .38;
+}
+
+/* Typography and hero adapt rather than staying permanently dark. */
+body.velvet-burgundy-route .reference-stories-hero__private,
+body.velvet-burgundy-route .reference-collections > h2,
+body.velvet-burgundy-route .reference-section-heading h2,
+body.velvet-burgundy-route .reference-inbox__header > span {
+  color: var(--stories-accent) !important;
+}
+body.velvet-burgundy-route .reference-stories-title h1,
+body.velvet-burgundy-route .reference-empty h2,
+body.velvet-burgundy-route .reference-inbox__header h1,
+body.velvet-burgundy-route .reference-story-row__copy h3,
+body.velvet-burgundy-route .reference-inbox__copy strong {
+  color: var(--stories-ink-soft) !important;
+}
+body.velvet-burgundy-route .reference-stories-title__script,
+body.velvet-burgundy-route .reference-stories-title__spark {
+  color: var(--stories-accent-strong) !important;
+}
+body.velvet-burgundy-route .reference-stories-title__line {
+  background: linear-gradient(90deg, transparent, var(--stories-accent-strong)) !important;
+}
+body.velvet-burgundy-route .reference-stories-title__line--right {
+  background: linear-gradient(90deg, var(--stories-accent-strong), transparent) !important;
+}
+body.velvet-burgundy-route .reference-section-heading button,
+body.velvet-burgundy-route .reference-empty > span {
+  color: var(--stories-accent) !important;
+}
+
+/* Search and menus. */
+body.velvet-burgundy-route .reference-search-wrap {
+  background: var(--stories-search) !important;
+  border-color: var(--stories-line) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 14px 38px var(--stories-shadow) !important;
+}
+body.velvet-burgundy-route .reference-search,
+body.velvet-burgundy-route .reference-search__clear {
+  color: var(--stories-muted) !important;
+}
+body.velvet-burgundy-route .reference-search input {
+  color: var(--stories-ink) !important;
+}
+body.velvet-burgundy-route .reference-search input::placeholder {
+  color: var(--stories-muted) !important;
+}
+body.velvet-burgundy-route .reference-filter,
+body.velvet-burgundy-route .reference-search__clear {
+  color: var(--stories-accent) !important;
+}
+body.velvet-burgundy-route .reference-filter.is-open {
+  background: color-mix(in srgb, var(--stories-accent) 12%, transparent) !important;
+}
+body.velvet-burgundy-route .reference-filter-menu,
+body.velvet-burgundy-route .story-action-menu__panel {
+  color: var(--stories-ink) !important;
+  background: var(--stories-panel-strong) !important;
+  border-color: var(--stories-line) !important;
+  box-shadow: 0 24px 60px var(--stories-shadow) !important;
+}
+body.velvet-burgundy-route .reference-filter-menu button {
+  color: var(--stories-muted) !important;
+}
+body.velvet-burgundy-route .reference-filter-menu button.active {
+  color: var(--stories-ink) !important;
+  background: color-mix(in srgb, var(--stories-accent) 13%, transparent) !important;
+}
+
+/* Collection imagery keeps the cinematic feel while respecting the palette. */
+body.velvet-burgundy-route .reference-collection-card {
+  color: #fff2f5 !important;
+  background: color-mix(in srgb, var(--stories-panel-solid) 65%, #32131f) !important;
+  border-color: var(--stories-line) !important;
+  box-shadow: inset 0 0 38px rgba(255,255,255,.025), 0 12px 28px var(--stories-shadow) !important;
+}
+body.velvet-burgundy-route .reference-collection-card.is-active {
+  border-color: var(--stories-line-strong) !important;
+  box-shadow: 0 0 25px color-mix(in srgb, var(--stories-accent) 18%, transparent), inset 0 0 34px rgba(255,255,255,.025) !important;
+}
+body.velvet-burgundy-route .reference-collection-card > img {
+  filter: var(--stories-art-filter) !important;
+}
+body.velvet-burgundy-route .reference-collection-card__shade {
+  background: var(--stories-card-shade) !important;
+}
+body.velvet-burgundy-route .reference-collection-card__icon {
+  color: #ffd3dd !important;
+  background: rgba(34,17,23,.64) !important;
+  border-color: rgba(242,166,185,.24) !important;
+}
+body.velvet-burgundy-route .reference-collection-card small {
+  color: rgba(255,226,233,.76) !important;
+}
+
+/* Recent stories are true theme surfaces, not always-black cards. */
+body.velvet-burgundy-route .reference-story-row {
+  color: var(--stories-ink) !important;
+  background: var(--stories-row) !important;
+  border-color: var(--stories-line) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 28px var(--stories-shadow) !important;
+}
+body.velvet-burgundy-route .reference-story-row--favorite {
+  border-color: var(--stories-line-strong) !important;
+}
+body.velvet-burgundy-route .reference-story-row__art {
+  color: var(--stories-ink-soft) !important;
+  background: color-mix(in srgb, var(--stories-panel-solid) 72%, var(--stories-accent) 28%) !important;
+}
+body.velvet-burgundy-route .reference-story-row__art img {
+  filter: var(--stories-row-art-filter) !important;
+}
+body.velvet-burgundy-route .reference-story-row__copy p {
+  color: var(--stories-accent-strong) !important;
+}
+body.velvet-burgundy-route .reference-story-row__copy time,
+body.velvet-burgundy-route .reference-empty,
+body.velvet-burgundy-route .reference-empty p,
+body.velvet-burgundy-route .reference-no-results,
+body.velvet-burgundy-route .reference-inbox__state,
+body.velvet-burgundy-route .reference-inbox__header p,
+body.velvet-burgundy-route .reference-inbox__copy small {
+  color: var(--stories-muted) !important;
+}
+body.velvet-burgundy-route .story-action-menu--reference .story-action-menu__trigger {
+  color: var(--stories-accent) !important;
+  background: color-mix(in srgb, var(--stories-panel-strong) 80%, transparent) !important;
+  border-color: var(--stories-line) !important;
+}
+body.velvet-burgundy-route .reference-empty button {
+  color: #fff8fa !important;
+  background: var(--stories-accent-strong) !important;
+  border-color: color-mix(in srgb, var(--stories-accent-strong) 72%, white 8%) !important;
+}
+
+/* Dedicated inbox shares the same shell. */
+body.velvet-burgundy-route .reference-inbox__row {
+  color: var(--stories-ink) !important;
+  background: var(--stories-row) !important;
+  border-color: var(--stories-line) !important;
+  box-shadow: 0 10px 26px var(--stories-shadow) !important;
+}
+body.velvet-burgundy-route .reference-inbox__avatar {
+  background: color-mix(in srgb, var(--stories-panel-solid) 74%, var(--stories-accent) 26%) !important;
+}
+
+/* Rename controls stay readable in all three themes. */
+body.velvet-burgundy-route .reference-story-row__rename input {
+  color: var(--stories-ink) !important;
+  background: color-mix(in srgb, var(--stories-panel-solid) 82%, transparent) !important;
+  border-color: var(--stories-line) !important;
+}
+body.velvet-burgundy-route .reference-story-row__rename button {
+  color: var(--stories-accent) !important;
+  background: color-mix(in srgb, var(--stories-accent) 10%, var(--stories-panel-solid)) !important;
+  border-color: var(--stories-line) !important;
+}
+
+/* New-story action belongs to the palette too. */
+body.velvet-burgundy-route .reference-stories-new {
+  color: var(--stories-ink-soft) !important;
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--stories-accent) 22%, transparent), transparent 68%),
+    color-mix(in srgb, var(--stories-panel-strong) 90%, transparent) !important;
+  border-color: var(--stories-line-strong) !important;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--stories-accent) 20%, transparent), inset 0 0 20px rgba(255,255,255,.06) !important;
+}
+
+/* Desktop: make the sidebar a genuine full-height app rail. */
+@media (min-width: 761px) {
+  body.velvet-burgundy-route .app:not(.app--chat) {
+    display: grid !important;
+    grid-template-columns: var(--velvet-rail-width) minmax(0,1fr) !important;
+    min-height: 100dvh !important;
+    align-items: stretch !important;
+  }
+
+  body.velvet-burgundy-route .sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    z-index: 120 !important;
+    width: var(--velvet-rail-width) !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+    color: var(--stories-ink) !important;
+    background: var(--stories-sidebar) !important;
+    border-right: 1px solid var(--stories-line) !important;
+    box-shadow: 14px 0 42px var(--stories-shadow) !important;
+    backdrop-filter: blur(24px) saturate(1.04) !important;
+  }
+
+  body.velvet-burgundy-route .app:not(.app--chat) > .app__content {
+    grid-column: 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 100dvh !important;
+  }
+
+  body.velvet-burgundy-route .sidebar__brand,
+  body.velvet-burgundy-route .sidebar__link,
+  body.velvet-burgundy-route .sidebar__theme,
+  body.velvet-burgundy-route .sidebar__profile {
+    color: var(--stories-ink) !important;
+  }
+  body.velvet-burgundy-route .sidebar__brand span::after,
+  body.velvet-burgundy-route .sidebar__profile-copy small {
+    color: var(--stories-muted) !important;
+  }
+  body.velvet-burgundy-route .sidebar__link {
+    color: var(--stories-muted) !important;
+  }
+  body.velvet-burgundy-route .sidebar__link svg {
+    color: var(--stories-accent) !important;
+  }
+  body.velvet-burgundy-route .sidebar__link:hover,
+  body.velvet-burgundy-route .sidebar__link--active {
+    color: var(--stories-ink) !important;
+    background: color-mix(in srgb, var(--stories-accent) 10%, transparent) !important;
+    border-color: transparent !important;
+  }
+  body.velvet-burgundy-route .sidebar__theme,
+  body.velvet-burgundy-route .sidebar__profile {
+    background: var(--stories-sidebar-control) !important;
+    border-color: var(--stories-line) !important;
+  }
+  body.velvet-burgundy-route .sidebar__avatar {
+    color: #fff8fa !important;
+    background: var(--stories-accent-strong) !important;
+    border-color: var(--stories-line-strong) !important;
+  }
+}
+
+/* Mobile navigation follows Light / Comfort / Dark instantly. */
+@media (max-width: 760px) {
+  html.velvet-burgundy-route,
+  body.velvet-burgundy-route,
+  body.velvet-burgundy-route .app,
+  body.velvet-burgundy-route .app__content {
+    background: var(--stories-canvas) !important;
+  }
+
+  body.velvet-burgundy-route .mobile-nav.velvet-reference-nav {
+    background: var(--stories-nav) !important;
+    border-color: var(--stories-line) !important;
+    box-shadow: 0 18px 55px var(--stories-shadow), inset 0 1px 0 rgba(255,255,255,.08) !important;
+  }
+  body.velvet-burgundy-route .mobile-nav.velvet-reference-nav .sidebar__link {
+    color: var(--stories-muted) !important;
+  }
+  body.velvet-burgundy-route .mobile-nav.velvet-reference-nav .sidebar__link--active {
+    color: var(--stories-accent) !important;
+  }
+  body.velvet-burgundy-route .mobile-nav.velvet-reference-nav .sidebar__link--active::after {
+    background: var(--stories-accent) !important;
+    box-shadow: 0 0 9px color-mix(in srgb, var(--stories-accent) 55%, transparent) !important;
+  }
+  body.velvet-burgundy-route .story-action-menu--reference .story-action-menu__panel {
+    background: var(--stories-panel-strong) !important;
+    border-color: var(--stories-line) !important;
+    box-shadow: 0 25px 70px var(--stories-shadow) !important;
+  }
+}

@@ -2,6 +2,7 @@ import {
   BookOpen,
   BookMarked,
   Compass,
+  Eye,
   MessageCircle,
   Moon,
   Sun,
@@ -50,7 +51,7 @@ function Sidebar({ activePage, onNavigate }) {
 
         <footer className="sidebar__footer">
           <button className="sidebar__theme" onClick={toggleTheme}>
-            {theme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
+            {theme === "dark" ? <Moon size={18} /> : theme === "comfort" ? <Eye size={18} /> : <Sun size={18} />}
             <span>{theme === "light" ? "Light" : theme === "dark" ? "Dark" : "Comfort"}</span>
           </button>
 
