@@ -1,6 +1,41 @@
 /* Velvet 2.1 · Burgundy reference UI
    Final visual layer. It intentionally loads after the mobile foundation. */
 
+/* v2.1.1 · Route-level canvas protection.
+   Stories owns the whole document background while mounted, so scrolling or
+   overscrolling can never expose Velvet's light global canvas underneath. */
+html.velvet-burgundy-route,
+body.velvet-burgundy-route {
+  min-height: 100%;
+  background: #0f090e !important;
+}
+
+body.velvet-burgundy-route {
+  min-height: 100dvh;
+}
+
+body.velvet-burgundy-route::before {
+  background:
+    radial-gradient(ellipse at 72% 7%, rgba(125,39,66,.22), transparent 52%),
+    radial-gradient(ellipse at 14% 60%, rgba(82,18,43,.16), transparent 38%) !important;
+}
+
+body.velvet-burgundy-route .app {
+  min-height: 100dvh;
+  align-items: stretch;
+  background: #0f090e !important;
+}
+
+body.velvet-burgundy-route .app__content {
+  min-height: 100dvh;
+  background: #0f090e !important;
+}
+
+body.velvet-burgundy-route .chats-page.chats-page--reference {
+  min-height: 100dvh;
+  height: auto;
+}
+
 .chats-page--reference,
 .reference-inbox {
   --ref-bg: #0f090e;

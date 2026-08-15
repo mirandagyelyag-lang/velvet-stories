@@ -34,10 +34,17 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (!meta) return undefined;
-    const previous = meta.getAttribute("content");
-    meta.setAttribute("content", "#10090e");
-    return () => meta.setAttribute("content", previous || "#722640");
+    const previous = meta?.getAttribute("content");
+
+    document.documentElement.classList.add("velvet-burgundy-route");
+    document.body.classList.add("velvet-burgundy-route");
+    meta?.setAttribute("content", "#10090e");
+
+    return () => {
+      document.documentElement.classList.remove("velvet-burgundy-route");
+      document.body.classList.remove("velvet-burgundy-route");
+      meta?.setAttribute("content", previous || "#722640");
+    };
   }, []);
 
   async function loadConversations() {
