@@ -1,97 +1,19 @@
 import { Fragment } from "react";
 
 function RoleplayText({ content = "" }) {
-  const paragraphs = splitParagraphs(String(content));
+  const value = String(content ?? "").replace(/\r\n/g, "\n");
+  const lines = value.split("\n");
 
   return (
-    <span className="roleplay-text">
-      {paragraphs.map((paragraph, paragraphIndex) => {
-        const beats = splitParagraphIntoBeats(paragraph);
-
-        return (
-          <span
-            key={`${paragraphIndex}-${paragraph.slice(0, 18)}`}
-            className="roleplay-text__paragraph"
-          >
-            {beats.map((beat, beatIndex) => (
-              <span
-                key={`${paragraphIndex}-${beatIndex}-${beat.text.slice(0, 18)}`}
-                className={`roleplay-text__beat roleplay-text__beat--${beat.type}`}
-              >
-                {renderInline(beat.text, `${paragraphIndex}-${beatIndex}`)}
-              </span>
-            ))}
-          </span>
-        );
-      })}
+    <span className="roleplay-text roleplay-text--single-message">
+      {lines.map((line, index) => (
+        <Fragment key={`${index}-${line.slice(0, 18)}`}>
+          {renderInline(line, String(index))}
+          {index < lines.length - 1 && <br />}
+        </Fragment>
+      ))}
     </span>
   );
-}
-
-function splitParagraphs(value) {
-  const clean = String(value || "").replace(/\r\n/g, "\n").trim();
-  if (!clean) return [""];
-  return clean.split(/\n\s*\n+/g).filter((item) => item.trim().length > 0);
-}
-
-function splitParagraphIntoBeats(paragraph = "") {
-  const text = String(paragraph || "");
-  const beats = [];
-  let cursor = 0;
-
-  while (cursor < text.length) {
-    const dialogue = findNextDialogueRange(text, cursor);
-
-    if (!dialogue) {
-      pushBeat(beats, "narration", text.slice(cursor));
-      break;
-    }
-
-    if (dialogue.start > cursor) {
-      pushBeat(beats, "narration", text.slice(cursor, dialogue.start));
-    }
-
-    pushBeat(beats, "dialogue", text.slice(dialogue.start, dialogue.end));
-    cursor = dialogue.end;
-  }
-
-  if (!beats.length) pushBeat(beats, "narration", text);
-  return beats;
-}
-
-function findNextDialogueRange(text, from = 0) {
-  const quotePairs = [
-    { open: "«", close: "»" },
-    { open: "“", close: "”" },
-    { open: '"', close: '"' },
-  ];
-
-  let winner = null;
-
-  for (const pair of quotePairs) {
-    const start = text.indexOf(pair.open, from);
-    if (start === -1) continue;
-
-    const contentStart = start + pair.open.length;
-    const close = text.indexOf(pair.close, contentStart);
-    if (close === -1 || close === contentStart) continue;
-
-    const candidate = {
-      start,
-      end: close + pair.close.length,
-    };
-
-    if (!winner || candidate.start < winner.start) winner = candidate;
-  }
-
-  return winner;
-}
-
-function pushBeat(beats, type, value) {
-  const text = String(value || "").trim();
-  if (!text) return;
-
-  beats.push({ type, text });
 }
 
 function renderInline(text, keyPrefix) {
