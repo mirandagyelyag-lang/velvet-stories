@@ -1,0 +1,559 @@
+/* =========================================================
+   Velvet Stories v1.6.0 · Calm Editorial System
+   Unifies the app around the Stories + Discover visual language.
+   Imported LAST on purpose.
+   ========================================================= */
+
+:root {
+  --velvet-page-max: 1180px;
+  --velvet-radius: 24px 24px 9px 24px;
+  --velvet-radius-small: 16px 16px 7px 16px;
+  --velvet-line: color-mix(in srgb, var(--accent) 12%, var(--border));
+  --velvet-panel: color-mix(in srgb, var(--surface) 88%, transparent);
+  --velvet-panel-soft: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  --velvet-shadow: 0 20px 58px color-mix(in srgb, #32151f 9%, transparent);
+  --velvet-shadow-small: 0 12px 34px color-mix(in srgb, #32151f 7%, transparent);
+}
+
+/* ---------- App atmosphere ---------- */
+.app {
+  background:
+    radial-gradient(circle at 83% -6%, color-mix(in srgb, var(--gold) 7%, transparent), transparent 31%),
+    radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 29%),
+    var(--background);
+}
+
+.app__content {
+  position: relative;
+  isolation: isolate;
+}
+
+.app__content::before {
+  content: "";
+  position: fixed;
+  right: -180px;
+  bottom: -210px;
+  z-index: -1;
+  width: 520px;
+  height: 520px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--gold) 7%, transparent), transparent 68%);
+  filter: blur(8px);
+}
+
+/* ---------- Global controls ---------- */
+:where(.profile-page, .settings-page, .memories-page, .personas-page, .lore-page) input,
+:where(.profile-page, .settings-page, .memories-page, .personas-page, .lore-page) textarea,
+:where(.profile-page, .settings-page, .memories-page, .personas-page, .lore-page) select {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  border-color: var(--velvet-line);
+}
+
+:where(.profile-page, .settings-page, .memories-page, .personas-page, .lore-page) input:focus,
+:where(.profile-page, .settings-page, .memories-page, .personas-page, .lore-page) textarea:focus,
+:where(.profile-page, .settings-page, .memories-page, .personas-page, .lore-page) select:focus {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+/* ---------- Sidebar / bottom navigation ---------- */
+.sidebar {
+  padding: 28px 16px 20px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--surface) 90%, transparent),
+      color-mix(in srgb, var(--accent) 3%, var(--surface)));
+  border-right-color: color-mix(in srgb, var(--accent) 10%, var(--border));
+  box-shadow: 12px 0 42px color-mix(in srgb, #32151f 3.5%, transparent);
+  backdrop-filter: blur(22px);
+}
+
+.sidebar__brand {
+  justify-items: start;
+  margin: 0 7px 42px;
+  gap: 9px;
+}
+
+.sidebar__brand span {
+  padding-left: .08em;
+  color: color-mix(in srgb, var(--text-primary) 82%, var(--accent));
+  font-size: 1.72rem;
+  letter-spacing: .12em;
+}
+
+.sidebar__brand img {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px 13px 5px 13px;
+  box-shadow: 0 11px 26px color-mix(in srgb, var(--accent) 13%, transparent);
+}
+
+.sidebar__navigation { gap: 3px; }
+
+.sidebar__link {
+  position: relative;
+  gap: 12px;
+  min-height: 46px;
+  padding: 0 12px;
+  font-family: "Manrope", sans-serif;
+  font-size: .72rem;
+  border: 0;
+  border-radius: 12px;
+}
+
+.sidebar__link svg { color: color-mix(in srgb, var(--accent) 60%, var(--gold)); }
+.sidebar__link:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.sidebar__link--active {
+  color: var(--text-primary);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent);
+  border: 0;
+  box-shadow: none;
+}
+.sidebar__link--active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 11px;
+  bottom: 11px;
+  width: 2px;
+  border-radius: 99px;
+  background: linear-gradient(var(--accent), var(--gold));
+}
+
+.sidebar__theme,
+.sidebar__profile {
+  border-color: var(--velvet-line);
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  border-radius: 14px 14px 6px 14px;
+}
+
+.sidebar__avatar {
+  background: linear-gradient(145deg, var(--accent), var(--accent-dark));
+  border-color: color-mix(in srgb, var(--gold) 52%, transparent);
+}
+
+/* ---------- Standard inner pages ---------- */
+:where(.memories-page, .personas-page, .lore-page, .profile-page, .settings-page) {
+  width: min(var(--velvet-page-max), calc(100% - 48px));
+  margin: 0 auto;
+  padding-top: 34px;
+  padding-bottom: 80px;
+}
+
+:where(.memories-page__heading, .personas-page__heading, .page-heading) {
+  position: relative;
+  border-bottom-color: var(--velvet-line);
+}
+
+:where(.memories-page__heading, .personas-page__heading, .page-heading)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 86px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--gold) 70%, transparent), transparent);
+}
+
+:where(.memories-page__heading, .personas-page__heading, .page-heading) h1,
+:where(.profile-page, .settings-page, .lore-page) h1 {
+  color: color-mix(in srgb, var(--text-primary) 94%, var(--accent-dark));
+  letter-spacing: -.045em;
+}
+
+/* ---------- Memories ---------- */
+.memory-toolbar,
+.memory-editor,
+.memory-card {
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 4%, var(--surface)),
+      color-mix(in srgb, var(--gold) 3%, var(--surface)));
+  border-color: var(--velvet-line);
+  box-shadow: var(--velvet-shadow-small);
+}
+
+.memory-toolbar { border-radius: 18px 18px 7px 18px; }
+.memory-card { border-radius: var(--velvet-radius); }
+.memory-card--pinned { border-color: color-mix(in srgb, var(--gold) 38%, var(--border)); }
+.memory-card__category,
+.memory-card__character { color: color-mix(in srgb, var(--accent) 66%, var(--gold)); }
+.memory-categories button { border-radius: 999px; }
+.memory-categories button.active { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+
+/* ---------- Personas ---------- */
+.persona-card {
+  overflow: hidden;
+  border-radius: var(--velvet-radius);
+  border-color: var(--velvet-line);
+  background:
+    linear-gradient(150deg,
+      color-mix(in srgb, var(--accent) 5%, var(--surface)),
+      color-mix(in srgb, var(--gold) 3%, var(--surface)));
+  box-shadow: var(--velvet-shadow-small);
+}
+.persona-card__visual { border-radius: 22px 22px 7px 22px; }
+.persona-editor { border-radius: 28px 28px 10px 28px; background: var(--surface); }
+.personas-page__new { border-radius: 999px; }
+
+/* ---------- Lorebooks ---------- */
+.lorebook-card {
+  border-radius: var(--velvet-radius);
+  border-color: var(--velvet-line);
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 5%, var(--surface)),
+      color-mix(in srgb, var(--gold) 4%, var(--surface)));
+  box-shadow: var(--velvet-shadow-small);
+}
+.lorebook-card__genre { color: color-mix(in srgb, var(--accent) 66%, var(--gold)); }
+.lorebook-card__main { border-radius: 18px 18px 7px 18px; }
+.lorebook-search { border-radius: 16px 16px 7px 16px; border-color: var(--velvet-line); }
+
+/* ---------- Profile ---------- */
+.profile-page { max-width: 980px; }
+.profile-card,
+.profile-setting,
+.profile-private-access {
+  border-color: var(--velvet-line);
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 4%, var(--surface)),
+      color-mix(in srgb, var(--gold) 3%, var(--surface)));
+  box-shadow: var(--velvet-shadow-small);
+}
+.profile-card { border-radius: var(--velvet-radius); }
+.profile-card--identity { overflow: hidden; }
+.profile-card__avatar { border-radius: 20px 20px 7px 20px; }
+.profile-setting { border-radius: 17px 17px 7px 17px; }
+.profile-setting__icon { color: color-mix(in srgb, var(--accent) 60%, var(--gold)); }
+.profile-page__logout { border-radius: 999px; }
+.profile-private-access { border-radius: 20px 20px 7px 20px; }
+
+/* ---------- Settings ---------- */
+.settings-page { max-width: 980px; }
+.settings-group,
+.settings-install,
+.settings-story-dna {
+  border-color: var(--velvet-line) !important;
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 3%, var(--surface)),
+      color-mix(in srgb, var(--gold) 2.5%, var(--surface))) !important;
+  border-radius: 22px 22px 8px 22px !important;
+  box-shadow: var(--velvet-shadow-small);
+}
+.setting-row,
+.setting-toggle { border-bottom-color: var(--velvet-line) !important; }
+.setting-segments { background: color-mix(in srgb, var(--background) 68%, transparent); border-radius: 999px; }
+.setting-segments button { border-radius: 999px; }
+.setting-segments button.active {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.settings-story-dna__learning,
+.settings-story-dna__learned { border-radius: 16px 16px 7px 16px; }
+.settings-install__icon { border-radius: 16px 16px 6px 16px; }
+.settings-install__body > button { border-radius: 999px; }
+
+/* ---------- Character profile ---------- */
+.character-profile { padding-top: 28px; }
+.character-profile__hero {
+  min-height: 500px;
+  border-radius: 34px 34px 12px 34px;
+  border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+  box-shadow: 0 30px 82px color-mix(in srgb, #241016 16%, transparent);
+}
+.character-profile__cover-shade {
+  background:
+    linear-gradient(90deg,
+      rgba(45, 24, 31, .88) 0%,
+      rgba(48, 26, 33, .60) 42%,
+      rgba(48, 26, 33, .18) 76%,
+      rgba(48, 26, 33, .06) 100%),
+    linear-gradient(0deg, rgba(42,22,29,.70), transparent 58%);
+}
+.character-profile__avatar { border-radius: 28px 28px 8px 28px; border-color: rgba(255,255,255,.46); }
+.character-profile__continue { border-radius: 999px; }
+.character-profile__new,
+.character-profile__edit,
+.character-profile__back { border-radius: 999px; }
+
+.character-profile__relationship,
+.character-profile__section,
+.character-profile__opening,
+.character-profile__stories,
+.character-profile__quick-card {
+  border-color: var(--velvet-line);
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 4%, var(--surface)),
+      color-mix(in srgb, var(--gold) 3%, var(--surface)));
+  box-shadow: var(--velvet-shadow-small);
+  border-radius: var(--velvet-radius);
+}
+.character-profile__section--quiet { box-shadow: none; }
+.character-profile__section-icon { color: color-mix(in srgb, var(--accent) 62%, var(--gold)); }
+
+/* ---------- Character Studio ---------- */
+.character-studio-backdrop {
+  background: color-mix(in srgb, #2b171f 64%, transparent);
+  backdrop-filter: blur(22px) saturate(.8);
+}
+.character-studio {
+  border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+  border-radius: 30px 30px 11px 30px;
+  background:
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--gold) 5%, transparent), transparent 28%),
+    color-mix(in srgb, var(--surface) 97%, var(--background));
+  box-shadow: 0 38px 110px rgba(37, 14, 23, .28);
+}
+.character-studio__topbar {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-bottom-color: var(--velvet-line);
+  backdrop-filter: blur(18px);
+}
+.character-studio__eyebrow { color: color-mix(in srgb, var(--accent) 68%, var(--gold)); }
+.character-studio__save,
+.character-studio__ai--primary,
+.character-studio__voice-test { border-radius: 999px; }
+.character-studio__cancel,
+.character-studio__close { border-radius: 999px; }
+.studio-section,
+.character-preview-card,
+.studio-voice-fingerprint {
+  border-color: var(--velvet-line);
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 3.5%, var(--surface)),
+      color-mix(in srgb, var(--gold) 2.5%, var(--surface)));
+  border-radius: 22px 22px 8px 22px;
+  box-shadow: 0 10px 28px color-mix(in srgb, #32151f 5%, transparent);
+}
+.studio-field input,
+.studio-field textarea,
+.studio-field select {
+  border-radius: 13px 13px 6px 13px !important;
+  background: color-mix(in srgb, var(--background) 65%, transparent) !important;
+  border-color: var(--velvet-line) !important;
+}
+.character-preview-card__cover { border-radius: 21px 21px 0 0; }
+
+/* ---------- Chat: calm reading room ---------- */
+.chat {
+  background:
+    radial-gradient(circle at 50% -8%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 34%),
+    radial-gradient(circle at 100% 80%, color-mix(in srgb, var(--gold) 5%, transparent), transparent 30%),
+    var(--background);
+}
+
+.chat__header {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--accent) 10%, var(--border));
+  box-shadow: 0 8px 28px color-mix(in srgb, #32151f 4%, transparent);
+  backdrop-filter: blur(22px);
+}
+.chat__icon-button { border-color: var(--velvet-line); background: color-mix(in srgb, var(--surface) 34%, transparent); }
+.chat__avatar { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+.chat__identity strong { color: color-mix(in srgb, var(--text-primary) 92%, var(--accent)); }
+
+.chat__content { width: min(850px, calc(100% - 32px)); padding-top: 34px; }
+.chat__introduction--covered {
+  overflow: hidden;
+  border-radius: 28px 28px 10px 28px;
+  border-color: var(--velvet-line);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: var(--velvet-shadow-small);
+}
+.chat__profile-cover { height: 225px; }
+.chat__introduction--covered .chat__large-avatar { border-color: var(--surface); }
+.chat__relationship { border-color: var(--velvet-line); }
+
+.chat__messages { gap: 18px; }
+.chat-message { max-width: 82%; }
+.chat-message p {
+  padding: 15px 17px;
+  line-height: 1.75;
+  border-color: color-mix(in srgb, var(--accent) 10%, var(--border));
+  box-shadow: 0 8px 24px color-mix(in srgb, #32151f 4%, transparent);
+}
+.chat-message--character p {
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent) 4%, var(--surface)),
+      color-mix(in srgb, var(--gold) 2%, var(--surface)));
+  border-radius: 5px 18px 18px 18px;
+}
+.chat-message--user p {
+  color: #fff9f6;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-dark) 88%, var(--accent)), var(--accent));
+  border-color: color-mix(in srgb, var(--gold) 18%, var(--accent));
+  border-radius: 18px 18px 5px 18px;
+  box-shadow: 0 10px 27px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.typing-indicator {
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  border-color: var(--velvet-line);
+  box-shadow: 0 8px 22px color-mix(in srgb, #32151f 4%, transparent);
+}
+
+.chat__composer {
+  padding: 7px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 13%, var(--border));
+  border-radius: 20px 20px 8px 20px;
+  box-shadow: 0 22px 60px color-mix(in srgb, #271018 15%, transparent);
+  backdrop-filter: blur(22px);
+}
+.chat__composer textarea { padding-inline: 9px; }
+.chat__send-button { border-radius: 12px 12px 5px 12px; }
+.chat__add-button { border-radius: 12px; }
+.chat__jump-bottom { box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 20%, transparent); }
+.chat__menu,
+.character-profile-sheet,
+.message-sheet,
+.memory-book,
+.chat-controls {
+  border-color: var(--velvet-line) !important;
+  background: color-mix(in srgb, var(--surface) 95%, var(--background)) !important;
+  box-shadow: 0 28px 80px color-mix(in srgb, #241016 22%, transparent) !important;
+}
+.character-profile-sheet { border-radius: 28px 28px 10px 28px; }
+.character-profile-section,
+.memory-book__item,
+.chat-controls__simple-section,
+.chat-controls__advanced-panel {
+  border-color: var(--velvet-line) !important;
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface)) !important;
+  border-radius: 17px 17px 7px 17px !important;
+}
+
+/* ---------- Auth ---------- */
+.auth__card--first-choice {
+  border-radius: 32px 32px 12px 32px;
+  border-color: rgba(158, 104, 88, .22);
+  background: rgba(250, 244, 238, .92);
+  box-shadow: 0 30px 80px rgba(88, 45, 42, .17);
+  backdrop-filter: blur(15px);
+}
+.auth__input--first-choice,
+.auth__remembered--first-choice { border-radius: 16px 16px 7px 16px; }
+.auth__submit--first-choice { border-radius: 999px !important; }
+
+/* ---------- Floating system UI ---------- */
+.pwa-toast,
+.pwa-guide,
+.network-pill {
+  border-color: var(--velvet-line) !important;
+  background: color-mix(in srgb, var(--surface) 91%, transparent) !important;
+  box-shadow: var(--velvet-shadow-small) !important;
+  backdrop-filter: blur(18px);
+}
+.pwa-toast,
+.pwa-guide { border-radius: 18px 18px 7px 18px !important; }
+
+/* ---------- Dark mode remains warm, not black ---------- */
+:root[data-theme="dark"] {
+  --velvet-shadow: 0 22px 64px rgba(7, 3, 5, .24);
+  --velvet-shadow-small: 0 13px 38px rgba(7, 3, 5, .18);
+}
+:root[data-theme="dark"] .chat-message--character p,
+:root[data-theme="dark"] :where(.memory-card, .persona-card, .lorebook-card, .profile-card, .profile-setting, .settings-group, .studio-section) {
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+/* ---------- Mobile first polish ---------- */
+@media (max-width: 760px) {
+  .app__content::before { display: none; }
+
+  .mobile-nav {
+    right: 12px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 12px;
+    height: 66px;
+    padding: 5px 7px;
+    border-color: color-mix(in srgb, var(--accent) 13%, var(--border));
+    border-radius: 22px 22px 9px 22px;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    box-shadow: 0 18px 48px color-mix(in srgb, #271018 16%, transparent);
+    backdrop-filter: blur(22px);
+  }
+  .mobile-nav .sidebar__link { border-radius: 13px 13px 6px 13px; }
+  .mobile-nav .sidebar__link--active {
+    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    box-shadow: none;
+  }
+  .mobile-nav .sidebar__link--active::before { display: none; }
+
+  :where(.memories-page, .personas-page, .lore-page, .profile-page, .settings-page) {
+    width: calc(100% - 26px);
+    padding-top: 21px;
+    padding-bottom: 102px;
+  }
+
+  .character-profile {
+    width: calc(100% - 24px);
+    padding-top: 16px;
+  }
+  .character-profile__hero {
+    min-height: 470px;
+    border-radius: 27px 27px 9px 27px;
+  }
+  .character-profile__cover-shade {
+    background: linear-gradient(0deg, rgba(43,23,30,.88), rgba(43,23,30,.13) 73%);
+  }
+  .character-profile__hero-content { padding: 26px 20px; }
+
+  .character-studio-backdrop { padding: 0; place-items: end center; }
+  .character-studio {
+    width: 100%;
+    height: min(94dvh, 940px);
+    border-radius: 26px 26px 0 0;
+    border-bottom: 0;
+  }
+  .studio-section,
+  .character-preview-card { border-radius: 18px 18px 7px 18px; }
+
+  .chat__header {
+    padding: 8px 9px;
+    box-shadow: 0 7px 24px color-mix(in srgb, #32151f 5%, transparent);
+  }
+  .chat__content { width: calc(100% - 20px); padding-top: 22px; }
+  .chat__introduction--covered { border-radius: 22px 22px 8px 22px; }
+  .chat__profile-cover { height: 165px; }
+  .chat-message { max-width: 96%; }
+  .chat-message p {
+    padding: 13px 14px;
+    font-size: .88rem;
+    line-height: 1.68;
+  }
+  .chat__composer {
+    right: 7px;
+    bottom: max(7px, env(safe-area-inset-bottom));
+    width: calc(100vw - 14px);
+    border-radius: 18px 18px 7px 18px;
+  }
+
+  .character-profile-sheet,
+  .message-sheet,
+  .memory-book,
+  .chat-controls {
+    border-radius: 25px 25px 0 0 !important;
+  }
+
+  .auth__card--first-choice {
+    width: min(94vw, 500px);
+    padding: 27px 20px;
+    border-radius: 27px 27px 10px 27px;
+  }
+}
+
+@media (max-width: 420px) {
+  .chat-message p { font-size: .86rem; }
+  .chat__content { width: calc(100% - 16px); }
+}
