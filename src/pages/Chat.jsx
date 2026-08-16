@@ -111,6 +111,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   const [replyTo, setReplyTo] = useState(null);
   const [directorNote, setDirectorNote] = useState("");
   const [directorNoteOpen, setDirectorNoteOpen] = useState(false);
+  const [directorMode, setDirectorMode] = useState("next");
   const [isTyping, setIsTyping] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
@@ -567,7 +568,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
       // Stop may have happened while the user message was being saved.
       if (generationRunRef.current !== runId || stoppedRef.current) return;
 
-      const noteForThisGeneration = "";
+      const noteForThisGeneration = directorNote.trim();
       setMessage("");
       setReplyTo(null);
       setDirectorNote("");
@@ -1195,6 +1196,27 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     setDirectorNoteOpen(true);
   }
 
+  function openDirector(mode = "next") {
+    setDirectorMode(mode);
+    setDirectorNoteOpen(true);
+  }
+
+  function queueDirectorForNextBeat() {
+    const instruction = directorNote.trim();
+    if (!instruction || busy || actionLoading || !conversationReady) return;
+    setDirectorMode("next");
+    setDirectorNoteOpen(false);
+    setSendError("");
+    if (settings.haptics) navigator.vibrate?.(5);
+  }
+
+  function clearQueuedDirector() {
+    setDirectorNote("");
+    if (conversation?.conversationId) {
+      localStorage.removeItem(`velvet_director_note_${conversation.conversationId}`);
+    }
+  }
+
   function handleReadingSurfaceClick() {
     // v2.1.7: immersive mode never hides the story header. The character name,
     // navigation and three-dot menu stay available at all times.
@@ -1209,7 +1231,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     const latestMessage = canonicalMessages.at(-1);
 
     if (!latestMessage || latestMessage.sender !== "character") {
-      setSendError("Guide the next beat can reshape the latest character reply after the character has answered.");
+      setSendError("Rewrite last reply works after the character has answered.");
       return;
     }
 
@@ -1357,7 +1379,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); onOpenMemories?.(); }}><Brain size={17} /> Memories 2.5</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setControlsOpen(true); }} disabled={!conversationReady}><SlidersHorizontal size={17} /> Story settings</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setReadingMode((current) => !current); }}><Eye size={17} /> {readingMode ? "Exit immersive mode" : "Immersive mode"}</button>
-              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setDirectorNoteOpen(true); }} disabled={!conversationReady || busy}><Sparkles size={17} /> Guide the next beat</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); openDirector("next"); }} disabled={!conversationReady || busy}><Sparkles size={17} /> Guide the next beat</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><BookOpen size={17} /> Story Hub</button>
               <button className="chat__menu-controls" onClick={exportCurrentStory} disabled={!conversationReady || !visibleMessages.length}><Download size={17} /> Export this story</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }} disabled={!conversationReady}><Clock3 size={17} /> Story timeline</button>
@@ -1481,7 +1503,13 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
           </div>
         )}
                 <input ref={sceneImageInputRef} className="chat__scene-file-input" type="file" accept="image/*" multiple onChange={handleSceneImages} />
-        <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>setDirectorNoteOpen((current)=>!current)} aria-label="Guide next reply" title="Guide next reply"><Sparkles size={16}/></button>
+        {directorNote.trim() && !directorNoteOpen && (
+          <div className="chat__director-active" role="status" title={directorNote}>
+            <Sparkles size={12}/><span>Next beat: {directorNote}</span>
+            <button type="button" onClick={clearQueuedDirector} aria-label="Clear queued direction"><X size={12}/></button>
+          </div>
+        )}
+        <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>directorNoteOpen ? setDirectorNoteOpen(false) : openDirector("next")} aria-label="Guide next reply" title="Guide next reply"><Sparkles size={16}/></button>
         <textarea
           ref={textareaRef}
           value={message}
@@ -1525,7 +1553,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         <div className="director-sheet-backdrop" onClick={(event) => event.target === event.currentTarget && setDirectorNoteOpen(false)}>
           <section className="director-sheet" role="dialog" aria-modal="true" aria-label="Scene Director">
             <div className="director-sheet__grab" />
-            <header><div><span><Sparkles size={15}/> SCENE DIRECTOR</span><h2>Guide the next beat</h2><p>Choose or write a direction. Velvet immediately rewrites the latest character reply in place.</p></div><button type="button" onClick={()=>setDirectorNoteOpen(false)} aria-label="Close Scene Director"><X size={19}/></button></header>
+            <header><div><span><Sparkles size={15}/> SCENE DIRECTOR</span><h2>Guide the story</h2><p>Write one direction, then choose whether it belongs to the next beat or should replace the latest reply.</p></div><button type="button" onClick={()=>setDirectorNoteOpen(false)} aria-label="Close Scene Director"><X size={19}/></button></header>
             <div className="director-sheet__presets">
               <button type="button" onClick={()=>applyDirectorPreset("Use more natural audible dialogue and less descriptive filler in the next beat.")}><MessageSquareQuote size={17}/><span>More dialogue<small>Less filler</small></span></button>
               <button type="button" onClick={()=>applyDirectorPreset("Increase believable tension through choices and subtext, without forcing a confession or melodrama.")}><Sparkles size={17}/><span>More tension<small>Keep it believable</small></span></button>
@@ -1534,8 +1562,14 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
               <button type="button" onClick={()=>applyDirectorPreset(`Follow ${character.name}'s point of view/presence for the next beat without controlling my character.`)}><Eye size={17}/><span>Follow {character.name}<small>Shift the camera</small></span></button>
               <button type="button" onClick={()=>applyDirectorPreset("Surprise me with a plausible next beat that fits canon and this character's independent life.")}><GitBranch size={17}/><span>Surprise me<small>Canon-safe twist</small></span></button>
             </div>
-            <label className="director-sheet__custom"><span>Custom direction</span><textarea value={directorNote} onChange={(event)=>setDirectorNote(event.target.value)} maxLength={500} rows={3} placeholder="Tell Velvet what you want next…"/><small>{directorNote.length}/500</small></label>
-            <footer><button type="button" className="secondary" onClick={()=>{setDirectorNote("");setDirectorNoteOpen(false);}}>Clear</button><button type="button" className="primary" onClick={applyDirectorAndRegenerate} disabled={!directorNote.trim() || busy || actionLoading}>{actionLoading ? <LoaderCircle className="spin" size={16}/> : <Check size={16}/>}Rewrite last reply</button></footer>
+            <label className="director-sheet__custom"><span>What should Velvet do?</span><textarea value={directorNote} onChange={(event)=>setDirectorNote(event.target.value)} maxLength={500} rows={3} placeholder="e.g. Two hours later he texts me… or: Make him stay instead of leaving…"/><small>{directorNote.length}/500</small></label>
+            <footer className="director-sheet__dual-footer">
+              <button type="button" className="secondary director-sheet__clear" onClick={()=>{clearQueuedDirector();setDirectorNoteOpen(false);}}>Clear</button>
+              <div className="director-sheet__dual-actions">
+                <button type="button" className="director-sheet__next-action" onClick={queueDirectorForNextBeat} disabled={!directorNote.trim() || busy || actionLoading}><Check size={17}/><span>Next beat<small>Save for the next reply</small></span></button>
+                <button type="button" className="director-sheet__rewrite-action" onClick={applyDirectorAndRegenerate} disabled={!directorNote.trim() || busy || actionLoading}>{actionLoading ? <LoaderCircle className="spin" size={17}/> : <RefreshCw size={17}/>}<span>Rewrite last reply<small>Replace the current answer</small></span></button>
+              </div>
+            </footer>
           </section>
         </div>
       ), document.body)}

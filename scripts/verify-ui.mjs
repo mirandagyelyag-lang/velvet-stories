@@ -21,7 +21,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("burgundy reference layer is the final stylesheet", main.includes('import "./styles/velvet-burgundy-reference.css";') && main.lastIndexOf("velvet-burgundy-reference.css") > main.lastIndexOf("velvet-mobile-foundation.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.1.7 chat header and director rewrite", pkg.version === "2.1.7" && read("src/config/version.js").includes('VELVET_RELEASE = "Chat Header + Director Rewrite"'));
+check("release is v2.1.10 unified discover canvas", pkg.version === "2.1.10" && read("src/config/version.js").includes('VELVET_RELEASE = "Unified Discover Canvas"'));
 check("Stories owns the document canvas while mounted", read("src/pages/Chats.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/Chats.jsx").includes('classList.remove("velvet-burgundy-route")'));
 check("Burgundy background cannot end before the document", reference.includes('body.velvet-burgundy-route .app__content') && reference.includes('background: var(--stories-canvas) !important'));
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
@@ -74,7 +74,9 @@ check("PWA build cleans old caches", read("vite.config.js").includes("cleanupOut
 check("reading mode still has persistent state", chat.includes('localStorage.getItem("velvet_reading_mode")') && chat.includes('localStorage.setItem("velvet_reading_mode"'));
 check("immersive mode keeps chat header and three-dot menu visible", chat.includes("Immersive mode") && reference.includes(".chat--reading .chat__more") && reference.includes("transform: none !important"));
 check("scene director rewrites latest reply in place", chat.includes("applyDirectorAndRegenerate") && chat.includes("regenerateCharacterReply(character.id, targetId, instruction, [])") && chat.includes("Rewrite last reply"));
-check("scene director no longer queues direction for a new user turn", chat.includes('const noteForThisGeneration = "";') && !chat.includes('>Directed</span>'));
+check("scene director next beat queues direction for the next generation", chat.includes("const noteForThisGeneration = directorNote.trim();") && chat.includes("queueDirectorForNextBeat") && chat.includes("Save for the next reply"));
+check("scene director keeps next beat tick and rewrite visible together", chat.includes("director-sheet__next-action") && chat.includes("director-sheet__rewrite-action") && chat.includes("<Check size={17}/>") && mobile.includes("director-sheet__dual-actions"));
+check("queued next beat can be cleared from composer", chat.includes("chat__director-active") && chat.includes("clearQueuedDirector"));
 check("AI replies stay as one complete visual message", read("src/components/RoleplayText.jsx").includes("roleplay-text--single-message") && !read("src/components/RoleplayText.jsx").includes("splitParagraphIntoBeats") && !read("src/components/RoleplayText.jsx").includes("findNextDialogueRange"));
 check("all AI prose shares the same message surface", mobile.includes("the entire AI turn is one visual message") && mobile.includes(".chat-message--character p,.chat__content--wallpaper .chat-message--character p") && mobile.includes("width:fit-content!important"));
 check("dialogue and narration are never split into separate bubbles", !mobile.includes("roleplay-text__beat--dialogue") && !mobile.includes("roleplay-text__beat--narration") && !read("src/components/RoleplayText.jsx").includes("roleplay-text__beat"));
@@ -83,13 +85,18 @@ check("full AI content remains one conversation turn", chat.includes('<RoleplayT
 
 const discoverPage = read("src/pages/MyCharacters.jsx");
 const discoverStyles = read("src/styles/my-characters.css");
-check("Discover matches approved Who will you choose composition", discoverPage.includes("Who will") && discoverPage.includes("choose?") && discoverPage.includes("FEATURED THIS WEEK") && discoverPage.includes("Trending now") && discoverPage.includes("New for you") && discoverStyles.includes("discover-burgundy__headline h1 span"));
+check("Discover keeps the approved Who will you choose identity", discoverPage.includes("Who will") && discoverPage.includes("choose?") && discoverStyles.includes("discover-burgundy__headline h1 span"));
+check("Discover is calmer with Featured Popular and Vibes only", discoverPage.includes(">Featured<") && discoverPage.includes("Popular this week") && discoverPage.includes("Explore by vibe") && !discoverPage.includes("New for you") && !discoverPage.includes("FEATURED THIS WEEK"));
 check("Discover keeps full real character actions", ["toggleFavorite", "onEditCharacter", "openTags", "handleDelete"].every((token)=>discoverPage.includes(token)));
-check("Discover has responsive phone layout", discoverStyles.includes("@media (max-width: 760px)") && discoverStyles.includes("min-height: 430px") && discoverStyles.includes("flex-basis: min(218px, 60vw)"));
-check("Discover owns the shared theme route", discoverPage.includes('classList.add("velvet-burgundy-route")') && discoverPage.includes('classList.remove("velvet-burgundy-route")'));
-check("Discover uses Light Comfort Dark shell tokens", discoverStyles.includes("--discover-canvas: var(--stories-canvas") && discoverStyles.includes("--discover-search: var(--stories-search") && discoverStyles.includes("--discover-panel: var(--stories-panel"));
-check("Discover removes the giant Open Trash hero control", !discoverPage.includes(">Open Trash<") && discoverPage.includes("discover-burgundy__trash-chip"));
-check("Discover desktop width is editorial not stretched", discoverStyles.includes("width: min(1080px, calc(100% - 48px))"));
+check("Discover never fabricates popularity counts", !discoverPage.includes("fauxPopularity") && !discoverPage.includes("toFixed(1)") && !discoverPage.includes("↗"));
+check("Discover has compact responsive phone cards", discoverStyles.includes("@media (max-width:760px)") && discoverStyles.includes("flex-basis:min(176px,47vw)") && discoverStyles.includes("flex-basis:min(210px,61vw)"));
+check("Discover owns the shared theme route", discoverPage.includes('classList.add("velvet-burgundy-route", "velvet-discover-route")') && discoverPage.includes('classList.remove("velvet-burgundy-route", "velvet-discover-route")'));
+check("Discover uses Light Comfort Dark shell tokens", discoverStyles.includes("--discover-canvas: var(--discover-page-bg") && discoverStyles.includes("--discover-search: var(--stories-search") && discoverStyles.includes("--discover-panel: var(--stories-panel"));
+check("Discover hides secondary filters behind More", discoverPage.includes("showMore") && discoverPage.includes("discover-burgundy__more-filters") && discoverPage.includes("Trash"));
+check("Discover desktop width stays editorial", discoverStyles.includes("width: min(1040px, calc(100% - 48px))"));
+check("Discover uses one flat canvas per theme", discoverStyles.includes("--discover-page-bg: #f6efeb") && discoverStyles.includes("--discover-page-bg: #ece2d9") && discoverStyles.includes("--discover-page-bg: #100a0e"));
+check("Discover removes stacked background atmosphere", discoverStyles.includes(".discover-burgundy::before,") && discoverStyles.includes("content:none; display:none") && discoverStyles.includes("background-image: none !important"));
+check("Discover sidebar shares the same canvas", discoverStyles.includes("body.velvet-discover-route .sidebar") && discoverStyles.includes("background: var(--discover-page-bg) !important"));
 
 let failed=0;
 for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }

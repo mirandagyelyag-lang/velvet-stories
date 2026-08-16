@@ -10,7 +10,7 @@ import {
   MoreHorizontal,
   Pencil,
   ArrowRight,
-  Bookmark,
+  ChevronDown,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useCharacters } from "../context/CharactersContext";
@@ -18,14 +18,12 @@ import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import "../styles/my-characters.css";
 
-const DEFAULT_CHIPS = ["All", "Trending", "Romance", "Dark", "College", "Fantasy", "Mystery", "Favorites"];
-const TROPE_CHIPS = [
-  { id: "enemies", label: "Enemies\nto Lovers", mark: "⚔" },
-  { id: "forbidden", label: "Forbidden\nLove", mark: "✦" },
-  { id: "broken", label: "Broken\nHeroes", mark: "♡" },
-  { id: "slow", label: "Slow\nBurn", mark: "⌛" },
-  { id: "secret", label: "Secret\nIdentity", mark: "◌" },
-  { id: "chaos", label: "Who Did\nThis To You?", mark: "❣" },
+const MAIN_FILTERS = ["For you", "Romance", "Drama", "Fantasy", "Mystery"];
+const VIBES = [
+  { id: "angst", label: "Angst", hint: "Broken but beautiful", query: "angst" },
+  { id: "cozy", label: "Soft & Cozy", hint: "Warm stories", query: "soft cozy" },
+  { id: "dark", label: "Dark Romance", hint: "Dangerously close", query: "dark romance" },
+  { id: "fluffy", label: "Fluffy", hint: "Sweet & light", query: "fluffy" },
 ];
 
 function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
@@ -43,60 +41,45 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
   const { confirmAction, scheduleDeletion } = useFeedback();
 
   const [search, setSearch] = useState("");
-  const [activeChip, setActiveChip] = useState("All");
+  const [activeChip, setActiveChip] = useState("For you");
   const [tagEditor, setTagEditor] = useState(null);
   const [tagValue, setTagValue] = useState("");
   const [view, setView] = useState("active");
   const [trashed, setTrashed] = useState([]);
   const [menuId, setMenuId] = useState(null);
+  const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
-    document.documentElement.classList.add("velvet-burgundy-route");
-    document.body.classList.add("velvet-burgundy-route");
-
+    document.documentElement.classList.add("velvet-burgundy-route", "velvet-discover-route");
+    document.body.classList.add("velvet-burgundy-route", "velvet-discover-route");
     return () => {
-      document.documentElement.classList.remove("velvet-burgundy-route");
-      document.body.classList.remove("velvet-burgundy-route");
+      document.documentElement.classList.remove("velvet-burgundy-route", "velvet-discover-route");
+      document.body.classList.remove("velvet-burgundy-route", "velvet-discover-route");
     };
   }, []);
 
   useEffect(() => {
-    if (view === "trash") {
-      listTrashedCharacters().then(setTrashed).catch(console.error);
-    }
+    if (view === "trash") listTrashedCharacters().then(setTrashed).catch(console.error);
   }, [view, listTrashedCharacters]);
 
   const sourceCharacters = view === "trash" ? trashed : characters;
-
   const dynamicTags = useMemo(
-    () =>
-      [...new Set(characters.flatMap((character) => character.tags || []))]
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b)),
+    () => [...new Set(characters.flatMap((character) => character.tags || []))].filter(Boolean).sort((a, b) => a.localeCompare(b)),
     [characters]
   );
-
-  const filterChips = useMemo(() => {
-    const extras = dynamicTags.slice(0, 4).map((tag) => normalizeLabel(tag));
-    return Array.from(new Set([...DEFAULT_CHIPS, ...extras]));
-  }, [dynamicTags]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     const chip = activeChip.toLowerCase();
-
     return sourceCharacters
       .filter((character) => {
         const haystack = `${character.name || ""} ${character.role || ""} ${character.description || ""} ${character.world || ""} ${(character.tags || []).join(" ")}`.toLowerCase();
         const matchesQuery = !query || haystack.includes(query);
-
         const matchesChip =
-          chip === "all" ||
-          chip === "trending" ||
+          chip === "for you" ||
           (chip === "favorites" && character.isFavorite) ||
           haystack.includes(chip) ||
           (character.tags || []).some((tag) => normalizeLabel(tag).toLowerCase() === chip);
-
         return matchesQuery && matchesChip;
       })
       .sort((a, b) => {
@@ -105,28 +88,20 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
       });
   }, [sourceCharacters, search, activeChip]);
 
-  const featured = view === "active" ? filtered[0] : null;
-  const trending = useMemo(() => pickCharacters(filtered, 1, 3), [filtered]);
-  const newcomers = useMemo(() => pickCharacters(filtered, 4, 3), [filtered]);
+  const featured = useMemo(() => filtered.slice(0, 3), [filtered]);
+  const popular = useMemo(() => filtered.slice(3, 7), [filtered]);
 
   async function handleDelete(character) {
-    const approved =
-      !settings.confirmBeforeDelete ||
-      (await confirmAction({
-        title: `Delete ${character.name}?`,
-        message: "Every conversation and memory connected to this character will also be deleted.",
-        confirmLabel: "Delete character",
-      }));
-
+    const approved = !settings.confirmBeforeDelete || (await confirmAction({
+      title: `Delete ${character.name}?`,
+      message: "Every conversation and memory connected to this character will also be deleted.",
+      confirmLabel: "Delete character",
+    }));
     if (!approved) return;
-
     scheduleDeletion({
       message: `Deleting ${character.name}`,
       onCommit: () => deleteCharacter(character.id),
-      onError: (error) => {
-        console.error(error);
-        window.alert("We couldn't delete this character.");
-      },
+      onError: (error) => { console.error(error); window.alert("We couldn't delete this character."); },
     });
   }
 
@@ -136,14 +111,8 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
   }
 
   async function handleDeleteForever(character) {
-    const approved = await confirmAction({
-      title: `Delete ${character.name} forever?`,
-      message: "This cannot be undone.",
-      confirmLabel: "Delete forever",
-    });
-
+    const approved = await confirmAction({ title: `Delete ${character.name} forever?`, message: "This cannot be undone.", confirmLabel: "Delete forever" });
     if (!approved) return;
-
     await permanentlyDeleteCharacter(character.id);
     setTrashed((current) => current.filter((item) => item.id !== character.id));
   }
@@ -163,15 +132,22 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
   function openTrash() {
     setView("trash");
     setSearch("");
-    setActiveChip("All");
+    setActiveChip("For you");
+    setShowMore(false);
     setMenuId(null);
   }
 
   function openDiscover() {
     setView("active");
     setSearch("");
-    setActiveChip("All");
+    setActiveChip("For you");
+    setShowMore(false);
     setMenuId(null);
+  }
+
+  function chooseVibe(vibe) {
+    setActiveChip("For you");
+    setSearch(vibe.query);
   }
 
   if (view === "active" && characters.length === 0) {
@@ -179,13 +155,9 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
       <section className="discover-burgundy discover-burgundy--empty">
         <div className="discover-burgundy__empty-hero">
           <small>DISCOVER</small>
-          <h1>
-            Who will <span>you</span> choose?
-          </h1>
-          <p>Create your first character and start building the dark, romantic library you wanted.</p>
-          <button className="discover-burgundy__primary" onClick={onCreateCharacter}>
-            <PenLine size={18} /> Create a character
-          </button>
+          <h1>Who will <span>you</span> choose?</h1>
+          <p>Create your first character and start building your private story library.</p>
+          <button className="discover-burgundy__primary" onClick={onCreateCharacter}><PenLine size={18} /> Create a character</button>
         </div>
       </section>
     );
@@ -196,64 +168,38 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
       <header className="discover-burgundy__hero">
         <div className="discover-burgundy__headline">
           <small>{view === "trash" ? "TRASH" : "DISCOVER"}</small>
-          <h1>
-            {view === "trash" ? (
-              <>
-                Deleted <span>stories</span>
-              </>
-            ) : (
-              <>
-                Who will <span>you</span> choose?
-              </>
-            )}
-          </h1>
-          <div className="discover-burgundy__ornament" aria-hidden="true">
-            <span />
-            <i>✦</i>
-            <span />
-          </div>
+          <h1>{view === "trash" ? <>Deleted <span>stories</span></> : <>Who will <span>you</span> choose?</>}</h1>
+          <div className="discover-burgundy__ornament" aria-hidden="true"><span /><i>✦</i><span /></div>
         </div>
-
         <div className="discover-burgundy__hero-actions">
-          {view === "trash" && (
-            <button className="discover-burgundy__back-link" onClick={openDiscover}>
-              Back to Discover
-            </button>
-          )}
-          <button className="discover-burgundy__glow" onClick={onCreateCharacter} aria-label="Create character">
-            <Sparkles size={24} />
-          </button>
+          {view === "trash" && <button className="discover-burgundy__back-link" onClick={openDiscover}>Back to Discover</button>}
+          <button className="discover-burgundy__glow" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={21} /></button>
         </div>
       </header>
 
       <div className="discover-burgundy__controls">
         <label className="discover-burgundy__search">
-          <Search size={22} />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={view === "trash" ? "Search trash" : "Search characters, stories, or moments..."}
-          />
-          <button
-            type="button"
-            onClick={search ? () => setSearch("") : onCreateCharacter}
-            aria-label={search ? "Clear search" : "Create character"}
-          >
-            {search ? <X size={18} /> : <Sparkles size={18} />}
-          </button>
+          <Search size={20} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={view === "trash" ? "Search trash" : "Search a story, character or vibe..."} />
+          {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={17} /></button>}
         </label>
 
         {view === "active" && (
-          <div className="discover-burgundy__chips" role="tablist" aria-label="Discover filters">
-            {filterChips.map((chip) => (
-              <button key={chip} className={activeChip === chip ? "active" : ""} onClick={() => setActiveChip(chip)}>
-                {chip}
-              </button>
-            ))}
-            <button className="discover-burgundy__trash-chip" onClick={openTrash}>
-              <Trash2 size={14} /> Trash
-            </button>
-          </div>
+          <>
+            <div className="discover-burgundy__chips" role="tablist" aria-label="Discover filters">
+              {MAIN_FILTERS.map((chip) => (
+                <button key={chip} className={activeChip === chip ? "active" : ""} onClick={() => { setActiveChip(chip); setSearch(""); }}>{chip}</button>
+              ))}
+              <button className={showMore ? "active" : ""} onClick={() => setShowMore((current) => !current)} aria-expanded={showMore}>More <ChevronDown size={14} /></button>
+            </div>
+            {showMore && (
+              <div className="discover-burgundy__more-filters">
+                <button className={activeChip === "Favorites" ? "active" : ""} onClick={() => { setActiveChip("Favorites"); setSearch(""); }}>Favorites</button>
+                {dynamicTags.slice(0, 5).map((tag) => <button key={tag} onClick={() => { setActiveChip(normalizeLabel(tag)); setSearch(""); }}>{normalizeLabel(tag)}</button>)}
+                <button className="danger" onClick={openTrash}><Trash2 size={14} /> Trash</button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -262,130 +208,56 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
           <div className="discover-burgundy__trash-list">
             {filtered.map((character) => (
               <article key={character.id} className="discover-burgundy__trash-row">
-                <div className="discover-burgundy__trash-media">
-                  <CharacterImage character={character} />
-                </div>
-                <div className="discover-burgundy__trash-copy">
-                  <small>{character.role || "Character"}</small>
-                  <h2>{character.name}</h2>
-                  <p>{character.description || "This character can still be restored."}</p>
-                </div>
-                <div className="discover-burgundy__trash-actions">
-                  <button onClick={() => handleRestore(character)}><RotateCcw size={15} /> Restore</button>
-                  <button className="danger" onClick={() => handleDeleteForever(character)}><Trash2 size={15} /> Forever</button>
-                </div>
+                <div className="discover-burgundy__trash-media"><CharacterImage character={character} /></div>
+                <div className="discover-burgundy__trash-copy"><small>{character.role || "Character"}</small><h2>{character.name}</h2><p>{character.description || "This character can still be restored."}</p></div>
+                <div className="discover-burgundy__trash-actions"><button onClick={() => handleRestore(character)}><RotateCcw size={15} /> Restore</button><button className="danger" onClick={() => handleDeleteForever(character)}><Trash2 size={15} /> Forever</button></div>
               </article>
             ))}
           </div>
-        ) : (
-          <EmptyState title="Trash is empty" text="Deleted characters will wait here until you restore them or remove them forever." />
-        )
+        ) : <EmptyState title="Trash is empty" text="Deleted characters will wait here until you restore them or remove them forever." />
       ) : filtered.length === 0 ? (
-        <EmptyState title="No characters found" text="Try another search or switch to a different mood." />
+        <EmptyState title="No characters found" text="Try another search or choose a different mood." />
       ) : (
         <>
-          {featured && (
-            <section className="discover-burgundy__feature">
-              <button className="discover-burgundy__feature-media" onClick={() => onOpenCharacter(featured)}>
-                <CharacterImage character={featured} />
-              </button>
+          <DiscoverFeatured
+            items={featured}
+            menuId={menuId}
+            setMenuId={setMenuId}
+            onOpenCharacter={onOpenCharacter}
+            onToggleFavorite={toggleFavorite}
+            onEditCharacter={onEditCharacter}
+            onOpenTags={openTags}
+            onDeleteCharacter={handleDelete}
+          />
 
-              <div className="discover-burgundy__feature-overlay" aria-hidden="true" />
-
-              <div className="discover-burgundy__feature-copy">
-                <small>FEATURED THIS WEEK</small>
-                <h2>{featured.name}</h2>
-                <p className="discover-burgundy__feature-role">{featured.role || featured.world || "Velvet favorite"}</p>
-                <p className="discover-burgundy__feature-quote">“{extractQuote(featured)}”</p>
-
-                <div className="discover-burgundy__feature-actions">
-                  <button className="discover-burgundy__primary" onClick={() => onOpenCharacter(featured)}>
-                    Open <ArrowRight size={16} />
-                  </button>
-                  <button className={featured.isFavorite ? "active" : ""} onClick={() => toggleFavorite(featured.id)} aria-label="Toggle favorite">
-                    <Heart size={18} fill={featured.isFavorite ? "currentColor" : "none"} />
-                  </button>
-                  <button onClick={() => onEditCharacter(featured)} aria-label="Edit character">
-                    <Pencil size={18} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="discover-burgundy__feature-dots" aria-hidden="true">
-                <span className="active" />
-                <span />
-                <span />
-              </div>
-            </section>
+          {popular.length > 0 && (
+            <DiscoverPopular
+              items={popular}
+              menuId={menuId}
+              setMenuId={setMenuId}
+              onOpenCharacter={onOpenCharacter}
+              onToggleFavorite={toggleFavorite}
+              onEditCharacter={onEditCharacter}
+              onOpenTags={openTags}
+              onDeleteCharacter={handleDelete}
+            />
           )}
 
-          <div className="discover-burgundy__tropes">
-            {TROPE_CHIPS.map((item) => (
-              <button key={item.id} className="discover-burgundy__trope" onClick={() => setSearch(item.label.replace(/\n/g, " "))}>
-                <span>{item.mark}</span>
-                <strong>{item.label.split("\n").map((part) => <em key={part}>{part}</em>)}</strong>
-              </button>
-            ))}
-          </div>
-
-          <DiscoverRail
-            title="Trending now"
-            actionLabel="View all"
-            onAction={() => setActiveChip("Trending")}
-            items={trending}
-            menuId={menuId}
-            setMenuId={setMenuId}
-            onOpenCharacter={onOpenCharacter}
-            onToggleFavorite={toggleFavorite}
-            onEditCharacter={onEditCharacter}
-            onOpenTags={openTags}
-            onDeleteCharacter={handleDelete}
-          />
-
-          <DiscoverRail
-            title="New for you"
-            actionLabel="View all"
-            onAction={() => setSearch("")}
-            items={newcomers}
-            menuId={menuId}
-            setMenuId={setMenuId}
-            onOpenCharacter={onOpenCharacter}
-            onToggleFavorite={toggleFavorite}
-            onEditCharacter={onEditCharacter}
-            onOpenTags={openTags}
-            onDeleteCharacter={handleDelete}
-            badgeLabel="NEW"
-          />
+          <section className="discover-burgundy__vibes">
+            <header><h3>Explore by vibe</h3></header>
+            <div className="discover-burgundy__vibe-rail">
+              {VIBES.map((vibe) => <button key={vibe.id} onClick={() => chooseVibe(vibe)}><strong>{vibe.label}</strong><span>{vibe.hint}</span></button>)}
+            </div>
+          </section>
         </>
       )}
 
       {tagEditor && (
         <div className="tag-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setTagEditor(null)}>
           <form className="tag-modal" onSubmit={saveTags}>
-            <header>
-              <span><Tag size={18} /></span>
-              <div>
-                <small>ORGANIZE CHARACTER</small>
-                <h2>{tagEditor.name}'s tags</h2>
-              </div>
-              <button type="button" onClick={() => setTagEditor(null)}><X size={19} /></button>
-            </header>
-
-            <label>
-              Tags separated by commas
-              <input
-                autoFocus
-                value={tagValue}
-                onChange={(event) => setTagValue(event.target.value)}
-                placeholder="university, romance, favorite"
-              />
-              <small>Use up to 12 short tags.</small>
-            </label>
-
-            <footer>
-              <button type="button" onClick={() => setTagEditor(null)}>Cancel</button>
-              <button type="submit">Save tags</button>
-            </footer>
+            <header><span><Tag size={18} /></span><div><small>ORGANIZE CHARACTER</small><h2>{tagEditor.name}'s tags</h2></div><button type="button" onClick={() => setTagEditor(null)}><X size={19} /></button></header>
+            <label>Tags separated by commas<input autoFocus value={tagValue} onChange={(event) => setTagValue(event.target.value)} placeholder="university, romance, favorite" /><small>Use up to 12 short tags.</small></label>
+            <footer><button type="button" onClick={() => setTagEditor(null)}>Cancel</button><button type="submit">Save tags</button></footer>
           </form>
         </div>
       )}
@@ -393,67 +265,43 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
   );
 }
 
-function DiscoverRail({
-  title,
-  actionLabel,
-  onAction,
-  items,
-  menuId,
-  setMenuId,
-  onOpenCharacter,
-  onToggleFavorite,
-  onEditCharacter,
-  onOpenTags,
-  onDeleteCharacter,
-  badgeLabel,
-}) {
+function DiscoverFeatured({ items, ...actions }) {
   if (!items.length) return null;
-
   return (
-    <section className="discover-burgundy__section">
-      <header>
-        <h3>{title}</h3>
-        <button onClick={onAction}>{actionLabel} <ArrowRight size={15} /></button>
-      </header>
+    <section className="discover-burgundy__section discover-burgundy__section--featured">
+      <header><h3>Featured</h3></header>
+      <div className="discover-burgundy__featured-rail">
+        {items.map((character) => <FeatureCard key={character.id} character={character} {...actions} />)}
+      </div>
+    </section>
+  );
+}
 
-      <div className="discover-burgundy__rail">
+function FeatureCard({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onOpenTags, onDeleteCharacter }) {
+  return (
+    <article className="discover-burgundy__feature-card">
+      <button className="discover-burgundy__feature-card-main" onClick={() => onOpenCharacter(character)}>
+        <CharacterImage character={character} />
+        <span className="discover-burgundy__feature-card-shade" />
+        <span className="discover-burgundy__feature-card-copy"><strong>{character.name}</strong><small>{character.role || character.world || "Velvet story"}</small><em>{shortQuote(character)}</em></span>
+      </button>
+      <CharacterMenu character={character} menuId={menuId} setMenuId={setMenuId} onOpenCharacter={onOpenCharacter} onToggleFavorite={onToggleFavorite} onEditCharacter={onEditCharacter} onOpenTags={onOpenTags} onDeleteCharacter={onDeleteCharacter} />
+    </article>
+  );
+}
+
+function DiscoverPopular({ items, ...actions }) {
+  return (
+    <section className="discover-burgundy__section discover-burgundy__section--popular">
+      <header><h3>Popular this week</h3></header>
+      <div className="discover-burgundy__popular-rail">
         {items.map((character) => (
-          <article key={character.id} className="discover-burgundy__card">
-            <button className="discover-burgundy__card-media" onClick={() => onOpenCharacter(character)}>
-              <CharacterImage character={character} />
-              <span className="discover-burgundy__card-bookmark">
-                <Bookmark size={16} />
-              </span>
+          <article key={character.id} className="discover-burgundy__popular-card">
+            <button className="discover-burgundy__popular-main" onClick={() => actions.onOpenCharacter(character)}>
+              <span className="discover-burgundy__popular-image"><CharacterImage character={character} /></span>
+              <span className="discover-burgundy__popular-copy"><strong>{character.name}</strong><small>{character.role || character.world || "Velvet story"}</small>{character.isFavorite && <em><Heart size={11} fill="currentColor" /> Favorite</em>}</span>
             </button>
-
-            <div className="discover-burgundy__card-copy">
-              <button className="discover-burgundy__card-name" onClick={() => onOpenCharacter(character)}>
-                <h4>{character.name}</h4>
-                <p>{character.role || character.world || "Velvet story"}</p>
-              </button>
-
-              <div className="discover-burgundy__card-meta">
-                <span>{badgeLabel || fauxPopularity(character)}</span>
-                <button className={character.isFavorite ? "active" : ""} onClick={() => onToggleFavorite(character.id)} aria-label="Toggle favorite">
-                  <Heart size={15} fill={character.isFavorite ? "currentColor" : "none"} />
-                </button>
-              </div>
-            </div>
-
-            <div className="discover-burgundy__menu-wrap">
-              <button className="discover-burgundy__more" onClick={() => setMenuId(menuId === character.id ? null : character.id)} aria-label="Character actions">
-                <MoreHorizontal size={18} />
-              </button>
-
-              {menuId === character.id && (
-                <div className="discover-burgundy__menu">
-                  <button onClick={() => { setMenuId(null); onOpenCharacter(character); }}><ArrowRight size={14} /> Open</button>
-                  <button onClick={() => { setMenuId(null); onEditCharacter(character); }}><Pencil size={14} /> Edit</button>
-                  <button onClick={() => onOpenTags(character)}><Tag size={14} /> Tags</button>
-                  <button className="danger" onClick={() => { setMenuId(null); onDeleteCharacter(character); }}><Trash2 size={14} /> Delete</button>
-                </div>
-              )}
-            </div>
+            <CharacterMenu character={character} compact {...actions} />
           </article>
         ))}
       </div>
@@ -461,55 +309,41 @@ function DiscoverRail({
   );
 }
 
-function CharacterImage({ character }) {
-  const source = character.coverUrl || character.imageUrl;
-
-  if (source) {
-    return <img src={source} alt="" loading="lazy" />;
-  }
-
+function CharacterMenu({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onOpenTags, onDeleteCharacter, compact = false }) {
   return (
-    <span className="discover-burgundy__image-fallback" style={{ "--character-color": character.color || "var(--accent)" }}>
-      {character.initials || character.name?.slice(0, 2) || "VS"}
-    </span>
-  );
-}
-
-function EmptyState({ title, text }) {
-  return (
-    <div className="discover-burgundy__empty">
-      <Sparkles size={24} />
-      <h2>{title}</h2>
-      <p>{text}</p>
+    <div className={`discover-burgundy__menu-wrap${compact ? " compact" : ""}`}>
+      <button className="discover-burgundy__more" onClick={() => setMenuId(menuId === character.id ? null : character.id)} aria-label={`${character.name} actions`}><MoreHorizontal size={17} /></button>
+      {menuId === character.id && (
+        <div className="discover-burgundy__menu">
+          <button onClick={() => { setMenuId(null); onOpenCharacter(character); }}><ArrowRight size={14} /> Open</button>
+          <button onClick={() => { setMenuId(null); onToggleFavorite(character.id); }}><Heart size={14} /> {character.isFavorite ? "Unfavorite" : "Favorite"}</button>
+          <button onClick={() => { setMenuId(null); onEditCharacter(character); }}><Pencil size={14} /> Edit</button>
+          <button onClick={() => onOpenTags(character)}><Tag size={14} /> Tags</button>
+          <button className="danger" onClick={() => { setMenuId(null); onDeleteCharacter(character); }}><Trash2 size={14} /> Delete</button>
+        </div>
+      )}
     </div>
   );
 }
 
-function pickCharacters(list, start, count) {
-  const primary = list.slice(start, start + count);
-  if (primary.length >= count) return primary;
+function CharacterImage({ character }) {
+  const source = character.coverUrl || character.imageUrl;
+  if (source) return <img src={source} alt="" loading="lazy" />;
+  return <span className="discover-burgundy__image-fallback" style={{ "--character-color": character.color || "var(--accent)" }}>{character.initials || character.name?.slice(0, 2) || "VS"}</span>;
+}
 
-  const fallback = list.filter((item) => !primary.includes(item)).slice(0, count - primary.length);
-  return [...primary, ...fallback].slice(0, count);
+function EmptyState({ title, text }) {
+  return <div className="discover-burgundy__empty"><Sparkles size={24} /><h2>{title}</h2><p>{text}</p></div>;
 }
 
 function normalizeLabel(value) {
-  return String(value || "")
-    .trim()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .replace(/\b\w/g, (match) => match.toUpperCase());
+  return String(value || "").trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
-function extractQuote(character) {
-  const source = character.description || character.world || character.role || "A story worth opening again.";
-  return source.length > 110 ? `${source.slice(0, 107).trim()}…` : source;
-}
-
-function fauxPopularity(character) {
-  const seed = (character.name || "Velvet").split("").reduce((total, letter) => total + letter.charCodeAt(0), 0);
-  const value = ((seed % 48) + 52) / 10;
-  return `↗ ${value.toFixed(1)}K`;
+function shortQuote(character) {
+  const source = character.description || character.world || "Open their story";
+  const clean = source.replace(/\s+/g, " ").trim();
+  return clean.length > 52 ? `${clean.slice(0, 49).trim()}…` : clean;
 }
 
 export default MyCharacters;
