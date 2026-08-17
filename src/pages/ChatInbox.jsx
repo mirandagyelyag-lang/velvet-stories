@@ -123,7 +123,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
   ];
 
   return (
-    <section className="reference-inbox reference-inbox--v2114">
+    <section className="reference-inbox reference-inbox--v2115">
       <header className="reference-stories-hero reference-inbox__hero">
         <div className="reference-stories-hero__private"><Crown size={19}/><span>PRIVATE LIBRARY</span></div>
         <div className="reference-stories-title reference-inbox__title" aria-label="Your Chats">
@@ -170,21 +170,22 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
           {visible.map((conversation) => {
             const character = conversation.character;
             const art = character.coverUrl || character.imageUrl;
-            const characterPreview = clean(conversation.latestCharacter?.content || (conversation.latest?.sender !== "user" ? conversation.latest?.content : "") || character.firstMessage || character.role || "Continue your story.");
-            const userPreview = clean(conversation.latestUser?.content || "");
+            const lastMessage = clean(conversation.latest?.content || character.firstMessage || character.role || "Continue your story.");
+            const lastMessageAt = formatChatDate(conversation.latest?.created_at || conversation.updated_at);
             return (
               <button key={conversation.id} className={`reference-inbox__row reference-inbox__row--rich${conversation.unreadCount ? " is-unread" : ""}`} onClick={() => openConversation(conversation)}>
                 <span className="reference-inbox__unread-dot" aria-hidden="true" />
                 <span className="reference-inbox__avatar reference-inbox__avatar--round">{art ? <img src={art} alt=""/> : character.initials}</span>
                 <span className="reference-inbox__copy reference-inbox__copy--rich">
-                  <span className="reference-inbox__name-line"><strong>{conversation.title || character.name}</strong>{conversation.is_pinned && <Star size={17} fill="currentColor"/>}</span>
-                  <em>{quote(characterPreview)}</em>
-                  {userPreview && <small>You: {truncate(userPreview, 72)}</small>}
+                  <span className="reference-inbox__name-line"><strong>{character.name}</strong>{conversation.is_pinned && <Star size={17} fill="currentColor"/>}</span>
+                  <em>{truncate(lastMessage, 92)}</em>
+                  <small className="reference-inbox__when">{lastMessageAt}</small>
                 </span>
-                <span className="reference-inbox__meta">
-                  <time>{formatChatDate(conversation.latest?.created_at || conversation.updated_at)}</time>
-                  {conversation.unreadCount > 0 ? <b>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</b> : <MessageCircle size={18}/>} 
-                </span>
+                {conversation.unreadCount > 0 && (
+                  <span className="reference-inbox__meta" aria-label={`${conversation.unreadCount} unread message${conversation.unreadCount === 1 ? "" : "s"}`}>
+                    <b>{conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</b>
+                  </span>
+                )}
               </button>
             );
           })}
@@ -202,11 +203,6 @@ function clean(value = "") {
 
 function truncate(value = "", max = 95) {
   return value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
-}
-
-function quote(value = "") {
-  const short = truncate(value || "Continue your story.", 92);
-  return `“${short}”`;
 }
 
 function formatChatDate(value) {

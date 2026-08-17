@@ -1009,10 +1009,10 @@ body.velvet-burgundy-route .reference-stories-new {
 }
 
 /* =========================================================
-   Velvet v2.1.14 · Chats inbox
+   Velvet v2.1.15 · Compact chats inbox
    Same Stories shell, calmer message-first conversation list.
    ========================================================= */
-.reference-inbox--v2114 {
+.reference-inbox--v2115 {
   position: relative;
   width: min(1120px, 100%);
   min-height: 100dvh;
@@ -1022,15 +1022,15 @@ body.velvet-burgundy-route .reference-stories-new {
   color: var(--stories-ink);
   background: transparent !important;
 }
-.reference-inbox--v2114 .reference-inbox__hero {
-  min-height: 174px;
-  margin-bottom: 10px;
+.reference-inbox--v2115 .reference-inbox__hero {
+  min-height: 150px;
+  margin-bottom: 4px;
 }
-.reference-inbox--v2114 .reference-inbox__title {
+.reference-inbox--v2115 .reference-inbox__title {
   width: min(500px, 56vw);
 }
-.reference-inbox--v2114 .reference-inbox__search-wrap {
-  margin-bottom: 20px;
+.reference-inbox--v2115 .reference-inbox__search-wrap {
+  margin-bottom: 14px;
 }
 .reference-inbox__sort-menu {
   top: 236px;
@@ -1038,48 +1038,48 @@ body.velvet-burgundy-route .reference-stories-new {
 }
 .reference-inbox__filter-row {
   display: grid;
-  grid-template-columns: minmax(0,1fr) 54px;
+  grid-template-columns: minmax(0,1fr) 42px;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 .reference-inbox__tabs {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
   overflow-x: auto;
   scrollbar-width: none;
 }
 .reference-inbox__tabs::-webkit-scrollbar { display: none; }
 .reference-inbox__tabs > button {
-  min-height: 44px;
+  min-height: 36px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 0 18px;
+  gap: 6px;
+  padding: 0 12px;
   color: var(--stories-muted);
   background: color-mix(in srgb, var(--stories-panel-strong) 72%, transparent);
   border: 1px solid var(--stories-line);
   border-radius: 999px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
   cursor: pointer;
-  font-size: .68rem;
-  font-weight: 640;
-  letter-spacing: .055em;
+  font-size: .60rem;
+  font-weight: 660;
+  letter-spacing: .045em;
 }
 .reference-inbox__tabs > button b {
-  min-width: 25px;
-  height: 25px;
+  min-width: 19px;
+  height: 19px;
   display: grid;
   place-items: center;
-  padding: 0 6px;
+  padding: 0 4px;
   color: var(--stories-ink-soft);
   background: color-mix(in srgb, var(--stories-panel-solid) 88%, transparent);
   border-radius: 999px;
-  font-size: .65rem;
+  font-size: .53rem;
 }
 .reference-inbox__tabs > button.is-active {
   color: #fff7fa;
@@ -1092,8 +1092,8 @@ body.velvet-burgundy-route .reference-stories-new {
   background: color-mix(in srgb, var(--stories-accent) 84%, #f2bdca);
 }
 .reference-inbox__new-chat {
-  width: 54px;
-  height: 54px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
   color: var(--stories-accent);
@@ -1109,10 +1109,10 @@ body.velvet-burgundy-route .reference-stories-new {
 }
 .reference-inbox__row--rich {
   position: relative;
-  min-height: 108px;
-  grid-template-columns: 78px minmax(0,1fr) 88px;
-  gap: 16px;
-  padding: 10px 18px 10px 10px;
+  min-height: 94px;
+  grid-template-columns: 68px minmax(0,1fr) auto;
+  gap: 13px;
+  padding: 9px 14px 9px 9px;
   overflow: visible;
   border-radius: 22px;
 }
@@ -1137,8 +1137,8 @@ body.velvet-burgundy-route .reference-stories-new {
 }
 .reference-inbox__row--rich.is-unread .reference-inbox__unread-dot { opacity: 1; }
 .reference-inbox__avatar--round {
-  width: 78px;
-  height: 78px;
+  width: 68px;
+  height: 68px;
   border: 1px solid var(--stories-line-strong);
   border-radius: 50%;
   box-shadow: inset 0 0 18px rgba(255,255,255,.03);
@@ -1161,7 +1161,7 @@ body.velvet-burgundy-route .reference-stories-new {
   overflow: hidden;
   color: var(--stories-ink-soft);
   font-family: "Cormorant Garamond", serif;
-  font-size: 1.58rem;
+  font-size: 1.45rem;
   font-weight: 560;
   line-height: 1;
   text-overflow: ellipsis;
@@ -1180,24 +1180,24 @@ body.velvet-burgundy-route .reference-stories-new {
   white-space: nowrap;
 }
 .reference-inbox__copy--rich em {
-  margin-top: 7px;
+  margin-top: 6px;
   color: var(--stories-accent-strong);
-  font-family: "Cormorant Garamond", serif;
-  font-size: .92rem;
-  font-style: italic;
+  font-family: inherit;
+  font-size: .76rem;
+  font-style: normal;
 }
 .reference-inbox__copy--rich small {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--stories-muted);
-  font-size: .72rem;
+  font-size: .60rem;
+  letter-spacing: .02em;
 }
 .reference-inbox__meta {
-  align-self: stretch;
+  align-self: center;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 0;
   color: var(--stories-accent);
 }
 .reference-inbox__meta time {
@@ -1221,80 +1221,87 @@ body.velvet-burgundy-route .reference-stories-new {
 }
 
 @media (max-width: 760px) {
-  .reference-inbox.reference-inbox--v2114 {
+  .reference-inbox.reference-inbox--v2115 {
     width: 100% !important;
     max-width: none !important;
     padding: calc(20px + env(safe-area-inset-top)) 14px calc(108px + env(safe-area-inset-bottom)) !important;
     overflow-x: clip !important;
   }
-  .reference-inbox--v2114 .reference-inbox__hero {
-    min-height: 148px !important;
-    margin-bottom: 6px !important;
+  .reference-inbox--v2115 .reference-inbox__hero {
+    min-height: 124px !important;
+    margin-bottom: 2px !important;
   }
-  .reference-inbox--v2114 .reference-stories-hero__private {
+  .reference-inbox--v2115 .reference-stories-hero__private {
     margin-top: 2px;
   }
-  .reference-inbox--v2114 .reference-inbox__title {
-    top: 30px;
-    width: 64vw;
+  .reference-inbox--v2115 .reference-inbox__title {
+    top: 22px;
+    width: 61vw;
   }
-  .reference-inbox--v2114 .reference-inbox__title h1 {
-    margin: 25px 11px 0;
-    font-size: clamp(3.05rem, 14vw, 4rem);
+  .reference-inbox--v2115 .reference-inbox__title h1 {
+    margin: 21px 8px 0;
+    font-size: clamp(2.72rem, 12.6vw, 3.5rem);
   }
-  .reference-inbox--v2114 .reference-inbox__title .reference-stories-title__script {
-    top: -7px;
-    font-size: 2.45rem;
+  .reference-inbox--v2115 .reference-inbox__title .reference-stories-title__script {
+    top: -5px;
+    font-size: 2.15rem;
   }
-  .reference-inbox--v2114 .reference-inbox__title .reference-stories-title__line {
-    margin-top: 29px;
+  .reference-inbox--v2115 .reference-inbox__title .reference-stories-title__line {
+    margin-top: 25px;
   }
-  .reference-inbox--v2114 .reference-inbox__title .reference-stories-title__spark {
-    top: 54px;
+  .reference-inbox--v2115 .reference-inbox__title .reference-stories-title__spark {
+    top: 46px;
   }
-  .reference-inbox--v2114 .reference-stories-new {
+  .reference-inbox--v2115 .reference-stories-new {
     width: 48px !important;
     height: 48px !important;
     min-height: 48px !important;
   }
-  .reference-inbox--v2114 .reference-inbox__search-wrap {
-    min-height: 60px;
-    margin-bottom: 14px;
+  .reference-inbox--v2115 .reference-inbox__search-wrap {
+    min-height: 52px;
+    margin-bottom: 10px;
     border-radius: 22px;
   }
   .reference-inbox__sort-menu {
-    top: calc(222px + env(safe-area-inset-top));
+    top: calc(190px + env(safe-area-inset-top));
     right: 14px;
   }
   .reference-inbox__filter-row {
-    grid-template-columns: minmax(0,1fr) 48px;
-    gap: 9px;
-    margin-bottom: 18px;
+    grid-template-columns: minmax(0,1fr) 40px;
+    gap: 7px;
+    margin-bottom: 12px;
   }
   .reference-inbox__tabs {
-    gap: 8px;
-    padding: 1px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 0;
+    overflow: visible;
   }
   .reference-inbox__tabs > button {
-    min-height: 44px;
-    gap: 8px;
-    padding: 0 15px;
-    font-size: .63rem;
+    min-width: 0;
+    min-height: 33px;
+    gap: 3px;
+    padding: 0 5px;
+    font-size: .50rem;
+    letter-spacing: .025em;
   }
   .reference-inbox__tabs > button b {
-    min-width: 24px;
-    height: 24px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 3px;
+    font-size: .46rem;
   }
   .reference-inbox__new-chat {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
   }
   .reference-inbox__list--cards { gap: 8px; }
   .reference-inbox__row--rich {
-    min-height: 88px;
-    grid-template-columns: 62px minmax(0,1fr) 63px;
-    gap: 10px;
-    padding: 8px 10px 8px 8px;
+    min-height: 78px;
+    grid-template-columns: 54px minmax(0,1fr) auto;
+    gap: 9px;
+    padding: 7px 9px 7px 7px;
     border-radius: 18px;
   }
   .reference-inbox__unread-dot {
@@ -1303,32 +1310,32 @@ body.velvet-burgundy-route .reference-stories-new {
     height: 9px;
   }
   .reference-inbox__avatar--round {
-    width: 62px;
-    height: 62px;
+    width: 54px;
+    height: 54px;
   }
   .reference-inbox__name-line { gap: 6px; }
-  .reference-inbox__name-line strong { font-size: 1.28rem; }
+  .reference-inbox__name-line strong { font-size: 1.16rem; }
   .reference-inbox__name-line svg { width: 15px; height: 15px; }
   .reference-inbox__copy--rich em {
-    margin-top: 5px;
-    font-size: .80rem;
+    margin-top: 4px;
+    font-size: .69rem;
   }
   .reference-inbox__copy--rich small {
     margin-top: 3px;
-    font-size: .66rem;
+    font-size: .55rem;
   }
-  .reference-inbox__meta { gap: 13px; }
+  .reference-inbox__meta { gap: 0; }
   .reference-inbox__meta time { font-size: .64rem; }
   .reference-inbox__meta b { min-width: 24px; height: 24px; font-size: .64rem; }
 }
 
 @media (max-width: 390px) {
-  .reference-inbox.reference-inbox--v2114 { padding-left: 12px !important; padding-right: 12px !important; }
-  .reference-inbox--v2114 .reference-inbox__title { width: 67vw; }
-  .reference-inbox--v2114 .reference-inbox__title h1 { font-size: 2.95rem; }
-  .reference-inbox__row--rich { grid-template-columns: 58px minmax(0,1fr) 56px; gap: 8px; }
-  .reference-inbox__avatar--round { width: 58px; height: 58px; }
-  .reference-inbox__name-line strong { font-size: 1.16rem; }
-  .reference-inbox__copy--rich em { font-size: .74rem; }
-  .reference-inbox__copy--rich small { font-size: .62rem; }
+  .reference-inbox.reference-inbox--v2115 { padding-left: 12px !important; padding-right: 12px !important; }
+  .reference-inbox--v2115 .reference-inbox__title { width: 64vw; }
+  .reference-inbox--v2115 .reference-inbox__title h1 { font-size: 2.64rem; }
+  .reference-inbox__row--rich { grid-template-columns: 50px minmax(0,1fr) auto; gap: 7px; }
+  .reference-inbox__avatar--round { width: 50px; height: 50px; }
+  .reference-inbox__name-line strong { font-size: 1.08rem; }
+  .reference-inbox__copy--rich em { font-size: .65rem; }
+  .reference-inbox__copy--rich small { font-size: .52rem; }
 }
