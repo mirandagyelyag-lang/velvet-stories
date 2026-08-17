@@ -1,48 +1,25 @@
 /* =========================================================
-   Velvet Stories v2.1.10 · Unified Discover Canvas
-   Compact editorial discovery with one calm canvas per Light / Comfort / Dark theme.
+   Velvet Stories v2.1.11 · One Velvet Shell
+   Discover now inherits the exact Stories route background,
+   sidebar palette and title language in Light / Comfort / Dark.
    ========================================================= */
 
-
-/* Discover owns ONE background color per theme.
-   No stacked radial gradients, no vertical color bands, no separate sidebar tint. */
-html.velvet-discover-route[data-theme="light"] {
-  --discover-page-bg: #f6efeb;
-}
-
-html.velvet-discover-route[data-theme="comfort"] {
-  --discover-page-bg: #ece2d9;
-}
-
-html.velvet-discover-route[data-theme="dark"] {
-  --discover-page-bg: #100a0e;
-}
-
+/* Discover no longer owns a separate page color. The same
+   velvet-burgundy-route tokens that paint Stories paint this route too. */
 html.velvet-discover-route,
 body.velvet-discover-route,
 body.velvet-discover-route .app,
 body.velvet-discover-route .app__content {
-  background: var(--discover-page-bg) !important;
-  background-image: none !important;
+  min-height: 100dvh !important;
+  background: var(--stories-canvas) !important;
 }
 
-body.velvet-discover-route::before,
-body.velvet-discover-route::after {
-  content: none !important;
-  display: none !important;
-  background: none !important;
-}
-
-body.velvet-discover-route .sidebar {
-  background: var(--discover-page-bg) !important;
-  background-image: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border-right-color: var(--discover-line) !important;
+body.velvet-discover-route::before {
+  background: var(--stories-atmosphere) !important;
 }
 
 .discover-burgundy {
-  --discover-canvas: var(--discover-page-bg, var(--stories-canvas, var(--background)));
+  --discover-canvas: var(--stories-canvas, var(--background));
   --discover-ink: var(--stories-ink, var(--text-primary));
   --discover-ink-soft: var(--stories-ink-soft, var(--text-primary));
   --discover-muted: var(--stories-muted, var(--text-secondary));
@@ -54,7 +31,6 @@ body.velvet-discover-route .sidebar {
   --discover-panel-strong: var(--stories-panel-strong, var(--surface-strong));
   --discover-search: var(--stories-search, var(--surface));
   --discover-shadow: var(--stories-shadow, rgba(0,0,0,.14));
-  --discover-atmosphere: var(--stories-atmosphere, transparent);
   position: relative;
   isolation: isolate;
   width: min(1040px, calc(100% - 48px));
@@ -62,22 +38,62 @@ body.velvet-discover-route .sidebar {
   margin: 0 auto;
   padding: 30px 0 118px;
   color: var(--discover-ink);
+  background: transparent;
 }
 
 .discover-burgundy::before,
 .discover-burgundy::after { content:none; display:none; }
 
-.discover-burgundy__hero { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:18px; margin-bottom:18px; }
-.discover-burgundy__headline small,.discover-burgundy__empty-hero small,.discover-burgundy__trash-copy small { display:block; margin-bottom:7px; color:var(--discover-accent); font-size:.66rem; font-weight:750; letter-spacing:.22em; }
-.discover-burgundy__headline h1,.discover-burgundy__empty-hero h1 { margin:0; color:var(--discover-ink-soft); font-family:"Cormorant Garamond",serif; font-size:clamp(2.85rem,4.5vw,4.5rem); font-weight:500; line-height:.92; letter-spacing:-.045em; }
-.discover-burgundy__headline h1 span,.discover-burgundy__empty-hero h1 span { color:var(--discover-accent-strong); font-family:"Allura",cursive; font-size:1.06em; font-weight:400; letter-spacing:0; }
-.discover-burgundy__ornament { width:min(260px,62%); display:flex; align-items:center; gap:11px; margin:12px 0 0 64px; color:var(--discover-accent-strong); }
-.discover-burgundy__ornament span { flex:1; height:1px; background:linear-gradient(90deg,transparent,var(--discover-accent-strong)); opacity:.58; }
-.discover-burgundy__ornament span:last-child { background:linear-gradient(90deg,var(--discover-accent-strong),transparent); }
-.discover-burgundy__ornament i { font-style:normal; font-size:.7rem; }
-.discover-burgundy__hero-actions { display:flex; align-items:center; gap:9px; }
-.discover-burgundy__glow { width:50px; height:50px; min-height:50px; display:grid; place-items:center; color:var(--discover-ink-soft); background:radial-gradient(circle at 50% 42%,color-mix(in srgb,var(--discover-accent) 20%,transparent),transparent 67%),color-mix(in srgb,var(--discover-panel-strong) 92%,transparent); border:1px solid var(--discover-line-strong); border-radius:50%; box-shadow:0 0 24px color-mix(in srgb,var(--discover-accent) 13%,transparent); }
-.discover-burgundy__back-link { min-height:42px; padding:0 14px; color:var(--discover-accent); background:var(--discover-panel); border:1px solid var(--discover-line); border-radius:999px; }
+/* Same hero component and exact type language as Stories. */
+.discover-reference-hero {
+  margin-bottom: 18px;
+}
+
+.discover-reference-title {
+  width: min(700px, 72vw);
+}
+
+.discover-reference-title h1 {
+  white-space: nowrap;
+  font-size: clamp(3.15rem, 6.5vw, 4.75rem);
+}
+
+.discover-reference-title .reference-stories-title__script {
+  font-size: 3.1rem;
+}
+
+.discover-reference-hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.discover-burgundy__back-link {
+  min-height:42px;
+  padding:0 14px;
+  color:var(--discover-accent);
+  background:var(--discover-panel);
+  border:1px solid var(--discover-line);
+  border-radius:999px;
+}
+
+.discover-burgundy__empty-hero small,
+.discover-burgundy__trash-copy small {
+  display:block;
+  margin-bottom:7px;
+  color:var(--discover-accent);
+  font-size:.66rem;
+  font-weight:750;
+  letter-spacing:.22em;
+}
+
+.discover-burgundy__empty-hero h2 {
+  margin: 0;
+  color: var(--discover-ink-soft);
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 500;
+}
 
 .discover-burgundy__controls { display:grid; gap:11px; margin-bottom:18px; }
 .discover-burgundy__search { min-height:54px; display:grid; grid-template-columns:25px minmax(0,1fr) auto; align-items:center; gap:9px; padding:5px 9px 5px 16px; color:var(--discover-muted); background:var(--discover-search); border:1px solid var(--discover-line); border-radius:20px; box-shadow:0 10px 28px var(--discover-shadow); backdrop-filter:blur(18px); }
@@ -132,7 +148,7 @@ body.velvet-discover-route .sidebar {
 .discover-burgundy__menu button:hover,.discover-burgundy__menu button:focus-visible { color:var(--discover-ink); background:color-mix(in srgb,var(--discover-accent) 8%,transparent); }
 .discover-burgundy__menu button.danger { color:#c8647b; }
 
-.discover-burgundy--empty { display:grid; place-items:center; }
+.discover-burgundy--empty-page { display:block; }
 .discover-burgundy__empty-hero { width:min(590px,100%); padding:36px 28px; border:1px solid var(--discover-line); border-radius:26px; text-align:center; background:var(--discover-panel); box-shadow:0 22px 58px var(--discover-shadow); }
 .discover-burgundy__empty-hero p { max-width:430px; margin:16px auto 0; color:var(--discover-muted); line-height:1.65; }
 .discover-burgundy__primary { min-height:46px; display:inline-flex; align-items:center; justify-content:center; gap:8px; margin-top:18px; padding:0 19px; color:#fff7f9; background:linear-gradient(135deg,#a94e6d,#6f2946); border:1px solid rgba(244,151,174,.35); border-radius:999px; }
@@ -173,11 +189,11 @@ body.velvet-discover-route .sidebar {
 
 @media (max-width:760px) {
   .discover-burgundy { width:calc(100% - 28px); padding:20px 0 calc(108px + env(safe-area-inset-bottom)); }
-  .discover-burgundy__hero { grid-template-columns:minmax(0,1fr) 48px; gap:7px; margin-bottom:16px; }
-  .discover-burgundy__headline small { font-size:.6rem; }
-  .discover-burgundy__headline h1,.discover-burgundy__empty-hero h1 { font-size:clamp(2.5rem,10.5vw,3.35rem); }
-  .discover-burgundy__ornament { width:64%; margin:10px 0 0 46px; }
-  .discover-burgundy__glow { width:46px; height:46px; min-height:46px; }
+  .discover-reference-hero { min-height:170px; margin-bottom:16px; }
+  .discover-reference-title { top:38px; width:min(78vw,520px); }
+  .discover-reference-title h1 { margin:28px 10px 0; font-size:clamp(2.55rem,11vw,3.35rem); }
+  .discover-reference-title .reference-stories-title__script { top:-6px; font-size:2.7rem; }
+  .discover-reference-hero__actions .reference-stories-new { width:50px !important; height:50px !important; min-height:50px !important; }
   .discover-burgundy__back-link { display:none; }
   .discover-burgundy__search { min-height:50px; grid-template-columns:23px minmax(0,1fr) auto; padding-left:14px; border-radius:18px; }
   .discover-burgundy__search input { height:40px; font-size:16px; }

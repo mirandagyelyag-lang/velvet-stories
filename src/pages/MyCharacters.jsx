@@ -11,6 +11,7 @@ import {
   Pencil,
   ArrowRight,
   ChevronDown,
+  Crown,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useCharacters } from "../context/CharactersContext";
@@ -152,10 +153,11 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
 
   if (view === "active" && characters.length === 0) {
     return (
-      <section className="discover-burgundy discover-burgundy--empty">
+      <section className="discover-burgundy discover-burgundy--empty-page">
+        <DiscoverReferenceHero onCreateCharacter={onCreateCharacter} />
         <div className="discover-burgundy__empty-hero">
-          <small>DISCOVER</small>
-          <h1>Who will <span>you</span> choose?</h1>
+          <small>YOUR PRIVATE CAST</small>
+          <h2>No characters yet</h2>
           <p>Create your first character and start building your private story library.</p>
           <button className="discover-burgundy__primary" onClick={onCreateCharacter}><PenLine size={18} /> Create a character</button>
         </div>
@@ -165,17 +167,11 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
 
   return (
     <section className={`discover-burgundy ${view === "trash" ? "discover-burgundy--trash" : ""}`}>
-      <header className="discover-burgundy__hero">
-        <div className="discover-burgundy__headline">
-          <small>{view === "trash" ? "TRASH" : "DISCOVER"}</small>
-          <h1>{view === "trash" ? <>Deleted <span>stories</span></> : <>Who will <span>you</span> choose?</>}</h1>
-          <div className="discover-burgundy__ornament" aria-hidden="true"><span /><i>✦</i><span /></div>
-        </div>
-        <div className="discover-burgundy__hero-actions">
-          {view === "trash" && <button className="discover-burgundy__back-link" onClick={openDiscover}>Back to Discover</button>}
-          <button className="discover-burgundy__glow" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={21} /></button>
-        </div>
-      </header>
+      <DiscoverReferenceHero
+        view={view}
+        onCreateCharacter={onCreateCharacter}
+        onBack={openDiscover}
+      />
 
       <div className="discover-burgundy__controls">
         <label className="discover-burgundy__search">
@@ -262,6 +258,32 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
         </div>
       )}
     </section>
+  );
+}
+
+
+function DiscoverReferenceHero({ view = "active", onCreateCharacter, onBack }) {
+  const inTrash = view === "trash";
+  return (
+    <header className="reference-stories-hero discover-reference-hero">
+      <div className="reference-stories-hero__private">
+        <Crown size={19} />
+        <span>{inTrash ? "PRIVATE ARCHIVE" : "PRIVATE LIBRARY"}</span>
+      </div>
+
+      <div className="reference-stories-title discover-reference-title" aria-label={inTrash ? "Deleted Stories" : "Discover New Stories"}>
+        <span className="reference-stories-title__script">{inTrash ? "deleted" : "discover"}</span>
+        <span className="reference-stories-title__line reference-stories-title__line--left" />
+        <h1>{inTrash ? "STORIES" : "NEW STORIES"}</h1>
+        <span className="reference-stories-title__spark">✦</span>
+        <span className="reference-stories-title__line reference-stories-title__line--right" />
+      </div>
+
+      <div className="discover-reference-hero__actions">
+        {inTrash && <button className="discover-burgundy__back-link" onClick={onBack}>Back to Discover</button>}
+        <button className="reference-stories-new" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={26} /></button>
+      </div>
+    </header>
   );
 }
 
