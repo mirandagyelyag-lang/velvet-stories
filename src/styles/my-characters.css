@@ -232,3 +232,69 @@ body.velvet-discover-route {
 }
 
 @media (prefers-reduced-motion:reduce) { .discover-burgundy *,.discover-burgundy *::before,.discover-burgundy *::after { animation:none!important; transition:none!important; } }
+
+/* =========================================================
+   Velvet Stories v2.1.13 · Compact Discover Header
+   Discover keeps the exact Stories shell, but the phone hero
+   is intentionally shorter so content starts sooner.
+   ========================================================= */
+@media (max-width:760px) {
+  body.velvet-discover-route .discover-reference-hero {
+    min-height: 124px !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title {
+    top: 27px !important;
+    width: min(250px, 62vw) !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title h1 {
+    margin: 24px 10px 0 !important;
+    font-size: clamp(2.75rem, 13vw, 3.65rem) !important;
+    line-height: .82 !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title .reference-stories-title__script {
+    top: -7px !important;
+    font-size: 2.42rem !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title .reference-stories-title__line {
+    margin-top: 27px !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title .reference-stories-title__spark {
+    top: 51px !important;
+  }
+
+  body.velvet-discover-route .discover-reference-hero__actions .reference-stories-new {
+    width: 46px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+  }
+
+  body.velvet-discover-route .discover-burgundy__controls {
+    gap: 9px !important;
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-width:390px) {
+  body.velvet-discover-route .discover-reference-hero {
+    min-height: 116px !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title {
+    top: 25px !important;
+    width: min(230px, 64vw) !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title h1 {
+    font-size: clamp(2.55rem, 12.5vw, 3.25rem) !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title .reference-stories-title__script {
+    font-size: 2.22rem !important;
+  }
+}
