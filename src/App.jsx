@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import CreateCharacterModal from "./components/CreateCharacterModal";
 import Sidebar from "./components/Sidebar";
@@ -17,20 +17,81 @@ import Settings from "./pages/Settings";
 import Diagnostics from "./pages/Diagnostics";
 import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
+import { useCharacters } from "./context/CharactersContext";
 import WelcomeSplash from "./components/WelcomeSplash";
 import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
 
+const VELVET_PAGES = new Set([
+  "characters",
+  "chats",
+  "inbox",
+  "memories",
+  "personas",
+  "lorebooks",
+  "profile",
+  "settings",
+  "diagnostics",
+]);
+
+function readVelvetLocation() {
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get("open");
+
+  if (requested === "chat") {
+    return {
+      mode: "chat",
+      page: "chats",
+      characterId: params.get("character"),
+      conversationId: params.get("conversation"),
+    };
+  }
+
+  if (requested === "character") {
+    const from = params.get("from");
+    return {
+      mode: "character",
+      page: VELVET_PAGES.has(from) ? from : "characters",
+      characterId: params.get("character"),
+      conversationId: null,
+    };
+  }
+
+  return {
+    mode: "page",
+    page: VELVET_PAGES.has(requested) ? requested : "chats",
+    characterId: null,
+    conversationId: null,
+  };
+}
+
+function buildVelvetUrl({ mode = "page", page = "chats", characterId = null, conversationId = null }) {
+  const params = new URLSearchParams();
+
+  if (mode === "chat" && characterId) {
+    params.set("open", "chat");
+    params.set("character", characterId);
+    if (conversationId) params.set("conversation", conversationId);
+  } else if (mode === "character" && characterId) {
+    params.set("open", "character");
+    params.set("character", characterId);
+    params.set("from", VELVET_PAGES.has(page) ? page : "characters");
+  } else {
+    params.set("open", VELVET_PAGES.has(page) ? page : "chats");
+  }
+
+  return `${window.location.pathname}?${params.toString()}`;
+}
+
 function App() {
   const { user, authLoading } = useAuth();
   const { createNewConversation } = useChats();
-  const [activePage, setActivePage] = useState(() => {
-    const requestedPage = new URLSearchParams(window.location.search).get("open");
-    return ["characters", "chats", "inbox", "memories", "personas", "lorebooks", "profile", "settings", "diagnostics"].includes(requestedPage)
-      ? requestedPage
-      : "chats";
-  });
+  const { characters, charactersLoading } = useCharacters();
+  const initialNavigation = useRef(readVelvetLocation());
+  const charactersRef = useRef(characters);
+  const restoredLocationRef = useRef(false);
+  const [activePage, setActivePage] = useState(() => initialNavigation.current.page);
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
@@ -38,41 +99,124 @@ function App() {
   const [previewCharacter, setPreviewCharacter] = useState(null);
 
   useEffect(() => {
+    charactersRef.current = characters;
+  }, [characters]);
+
+  useEffect(() => {
     const currentState = window.history.state;
+    const locationState = readVelvetLocation();
 
     if (!currentState?.velvetNavigation) {
       window.history.replaceState(
         {
           velvetNavigation: true,
-          page: activePage,
+          mode: locationState.mode,
+          page: locationState.page,
           character: null,
-          conversationId: null,
+          characterId: locationState.characterId,
+          conversationId: locationState.conversationId,
         },
-        ""
+        "",
+        buildVelvetUrl(locationState)
       );
     }
 
     function handleBrowserBack(event) {
-      const state = event.state;
+      const state = event.state?.velvetNavigation ? event.state : readVelvetLocation();
+      const availableCharacters = charactersRef.current || [];
+      const character =
+        state.character ||
+        (state.characterId
+          ? availableCharacters.find((item) => item.id === state.characterId) || null
+          : null);
 
-      if (!state?.velvetNavigation) {
+      if (state.mode === "chat" && character) {
+        setActivePage("chats");
+        setSelectedCharacter(character);
+        setSelectedConversationId(state.conversationId || null);
+        setPreviewCharacter(null);
+      } else if (state.mode === "character" && character) {
+        setActivePage(VELVET_PAGES.has(state.page) ? state.page : "characters");
+        setSelectedCharacter(null);
+        setSelectedConversationId(null);
+        setPreviewCharacter(character);
+      } else {
+        setActivePage(VELVET_PAGES.has(state.page) ? state.page : "chats");
         setSelectedCharacter(null);
         setSelectedConversationId(null);
         setPreviewCharacter(null);
-        setActivePage("chats");
-        return;
       }
 
-      setActivePage(state.page || "chats");
-      setSelectedCharacter(state.character || null);
-      setSelectedConversationId(state.conversationId || null);
-      setPreviewCharacter(null);
       window.scrollTo({ top: 0, behavior: "auto" });
     }
 
     window.addEventListener("popstate", handleBrowserBack);
     return () => window.removeEventListener("popstate", handleBrowserBack);
   }, []);
+
+  useEffect(() => {
+    if (authLoading || !user || charactersLoading || restoredLocationRef.current) return;
+
+    restoredLocationRef.current = true;
+    const locationState = readVelvetLocation();
+
+    if (locationState.mode === "chat" && locationState.characterId) {
+      const character = characters.find((item) => item.id === locationState.characterId);
+      if (character) {
+        setActivePage("chats");
+        setSelectedCharacter(character);
+        setSelectedConversationId(locationState.conversationId || null);
+        setPreviewCharacter(null);
+        window.history.replaceState(
+          {
+            velvetNavigation: true,
+            ...locationState,
+            character,
+          },
+          "",
+          buildVelvetUrl(locationState)
+        );
+        return;
+      }
+    }
+
+    if (locationState.mode === "character" && locationState.characterId) {
+      const character = characters.find((item) => item.id === locationState.characterId);
+      if (character) {
+        setActivePage(locationState.page);
+        setSelectedCharacter(null);
+        setSelectedConversationId(null);
+        setPreviewCharacter(character);
+        window.history.replaceState(
+          {
+            velvetNavigation: true,
+            ...locationState,
+            character,
+          },
+          "",
+          buildVelvetUrl(locationState)
+        );
+        return;
+      }
+    }
+
+    setActivePage(locationState.page);
+    setSelectedCharacter(null);
+    setSelectedConversationId(null);
+    setPreviewCharacter(null);
+    window.history.replaceState(
+      {
+        velvetNavigation: true,
+        mode: "page",
+        page: locationState.page,
+        character: null,
+        characterId: null,
+        conversationId: null,
+      },
+      "",
+      buildVelvetUrl({ mode: "page", page: locationState.page })
+    );
+  }, [authLoading, user, charactersLoading, characters]);
 
   if (authLoading) {
     return (
@@ -93,15 +237,18 @@ function App() {
 
     const nextState = {
       velvetNavigation: true,
+      mode: "page",
       page,
       character: null,
+      characterId: null,
       conversationId: null,
     };
+    const nextUrl = buildVelvetUrl({ mode: "page", page });
 
     if (options.replace) {
-      window.history.replaceState(nextState, "");
+      window.history.replaceState(nextState, "", nextUrl);
     } else {
-      window.history.pushState(nextState, "");
+      window.history.pushState(nextState, "", nextUrl);
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -113,14 +260,21 @@ function App() {
     setSelectedConversationId(conversationId);
     setActivePage("chats");
 
+    const nextLocation = {
+      mode: "chat",
+      page: "chats",
+      characterId: character.id,
+      conversationId,
+    };
+
     window.history.pushState(
       {
         velvetNavigation: true,
-        page: "chats",
+        ...nextLocation,
         character,
-        conversationId,
       },
-      ""
+      "",
+      buildVelvetUrl(nextLocation)
     );
   }
 
@@ -129,7 +283,17 @@ function App() {
     setSelectedCharacter(null);
     setSelectedConversationId(null);
     setPreviewCharacter(character);
-    window.history.pushState({ velvetNavigation: true, page: activePage, character: null, conversationId: null }, "");
+    const nextLocation = {
+      mode: "character",
+      page: activePage,
+      characterId: character.id,
+      conversationId: null,
+    };
+    window.history.pushState(
+      { velvetNavigation: true, ...nextLocation, character },
+      "",
+      buildVelvetUrl(nextLocation)
+    );
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
