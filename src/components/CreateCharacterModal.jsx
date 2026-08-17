@@ -63,6 +63,8 @@ const generatedDraftFields = [
 
 function CreateCharacterModal({ onClose, onCreated, character = null }) {
   const { createCharacter, updateCharacter, enhanceCharacterDraft, enhanceCharacterFields, organizeCharacterDraft, generateCharacterDraft, testCharacterVoice } = useCharacters();
+  const onCloseRef = useRef(onClose);
+  const savingRef = useRef(false);
   const [form, setForm] = useState(() => character ? {
     ...initialForm,
     name: character.name || "",
@@ -100,6 +102,39 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   const [coverPreview, setCoverPreview] = useState(character?.coverUrl || "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => { savingRef.current = saving; }, [saving]);
+
+  useEffect(() => {
+    document.body.classList.add("character-studio-open");
+
+    const marker = `velvet-character-studio-${Date.now()}`;
+    const markerState = { ...(window.history.state || {}), velvetCharacterStudio: marker };
+    window.history.pushState(markerState, "", window.location.href);
+    let historyEntryActive = true;
+
+    const handleBack = () => {
+      if (!historyEntryActive) return;
+      historyEntryActive = false;
+      if (savingRef.current) {
+        window.history.pushState(markerState, "", window.location.href);
+        historyEntryActive = true;
+        return;
+      }
+      onCloseRef.current?.();
+    };
+
+    window.addEventListener("popstate", handleBack);
+    return () => {
+      document.body.classList.remove("character-studio-open");
+      window.removeEventListener("popstate", handleBack);
+      if (historyEntryActive && window.history.state?.velvetCharacterStudio === marker) {
+        historyEntryActive = false;
+        window.history.back();
+      }
+    };
+  }, []);
   const [enhancing, setEnhancing] = useState(false);
   const [fieldPolishing, setFieldPolishing] = useState("");
   const [organizing, setOrganizing] = useState(false);
@@ -343,6 +378,9 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   return (
     <div className="modal-backdrop character-studio-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && onClose()}>
       <section className="character-studio" role="dialog" aria-modal="true" aria-labelledby="character-studio-title">
+        <button type="button" className="character-studio__mobile-exit" onClick={onClose} disabled={saving} aria-label="Close character studio and return">
+          <X size={21} />
+        </button>
         <header className="character-studio__topbar">
           <div>
             <p className="character-studio__eyebrow">PRIVATE CHARACTER STUDIO</p>
