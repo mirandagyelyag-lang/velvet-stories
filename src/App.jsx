@@ -212,7 +212,7 @@ function App() {
     }
 
     if (activePage === "inbox") {
-      return <ChatInbox onOpenCharacter={openCharacter} />;
+      return <ChatInbox onOpenCharacter={openCharacter} onBrowseCharacters={() => navigate("characters")} />;
     }
 
     if (activePage === "memories") {

@@ -276,6 +276,12 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   useEffect(() => {
     const id = conversation?.conversationId;
     if (!id) return;
+    localStorage.setItem(`velvet_chat_seen_v2114_${id}`, new Date().toISOString());
+  }, [conversation?.conversationId, messages.length]);
+
+  useEffect(() => {
+    const id = conversation?.conversationId;
+    if (!id) return;
     if (message) localStorage.setItem(`velvet_draft_${id}`, message);
     else localStorage.removeItem(`velvet_draft_${id}`);
   }, [message, conversation?.conversationId]);
