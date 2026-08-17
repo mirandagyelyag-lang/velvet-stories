@@ -21,6 +21,7 @@ import "./styles/velvet-mobile-foundation.css";
 import "./styles/velvet-burgundy-reference.css";
 import "./styles/velvet-v220.css";
 import "./styles/velvet-v222-character-studio-exit.css";
+import "./styles/velvet-v223-character-studio-real-exit.css";
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {

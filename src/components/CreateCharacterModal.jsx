@@ -3,6 +3,7 @@ import {
   Brain,
   Check,
   ChevronDown,
+  ChevronLeft,
   Heart,
   ImagePlus,
   LoaderCircle,
@@ -378,6 +379,12 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   return (
     <div className="modal-backdrop character-studio-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && onClose()}>
       <section className="character-studio" role="dialog" aria-modal="true" aria-labelledby="character-studio-title">
+        <div className="character-studio__escape-row">
+          <button type="button" className="character-studio__escape-button" onClick={onClose} disabled={saving} aria-label="Back to Discover">
+            <ChevronLeft size={19} />
+            <span>Back to Discover</span>
+          </button>
+        </div>
         <button type="button" className="character-studio__mobile-exit" onClick={onClose} disabled={saving} aria-label="Close character studio and return">
           <X size={21} />
         </button>

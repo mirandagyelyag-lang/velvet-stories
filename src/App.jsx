@@ -412,11 +412,11 @@ function App() {
     <>
     <WelcomeSplash />
     <div className={`app ${selectedCharacter ? "app--chat" : ""}`}>
-      {!selectedCharacter && (
+      {!selectedCharacter && !creatorOpen && (
         <Sidebar activePage={["personas", "lorebooks", "settings", "diagnostics"].includes(activePage) ? "profile" : activePage} onNavigate={navigate} />
       )}
 
-      <main className="app__content"><Suspense fallback={<VelvetRouteLoading />}>{renderPage()}</Suspense></main>
+      {!creatorOpen && <main className="app__content"><Suspense fallback={<VelvetRouteLoading />}>{renderPage()}</Suspense></main>}
 
       {creatorOpen && (
         <Suspense fallback={<VelvetRouteLoading overlay />}>
