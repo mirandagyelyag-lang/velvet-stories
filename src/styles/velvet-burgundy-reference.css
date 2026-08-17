@@ -1341,8 +1341,9 @@ body.velvet-burgundy-route .reference-stories-new {
 }
 
 /* =========================================================
-   Velvet v2.1.16 · Quiet Chats
-   A calmer, message-first inbox with no oversized filter pills.
+   Velvet v2.1.20 · Softer Chat Typography
+   Keeps Quiet Chats, but gives search and filters the same
+   elegant editorial type language as the rest of Velvet.
    ========================================================= */
 .reference-inbox--v2116 {
   position: relative;
@@ -1372,7 +1373,10 @@ body.velvet-burgundy-route .reference-stories-new {
   border-radius: 22px;
 }
 .reference-inbox--v2116 .reference-search input {
-  font-size: .92rem;
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.08rem;
+  font-weight: 500;
+  letter-spacing: .01em;
 }
 .reference-inbox--v2116 .reference-filter {
   width: 44px;
@@ -1405,10 +1409,11 @@ body.velvet-burgundy-route .reference-stories-new {
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  font-size: .67rem;
-  font-weight: 650;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font-family: "Cormorant Garamond", serif;
+  font-size: .98rem;
+  font-weight: 500;
+  letter-spacing: .012em;
+  text-transform: none;
   cursor: pointer;
 }
 .reference-inbox__tabs--quiet > button::after {
@@ -1573,7 +1578,10 @@ body.velvet-burgundy-route .reference-stories-new {
     border-radius: 20px;
   }
   .reference-inbox--v2116 .reference-search input {
-    font-size: 16px !important;
+    font-family: "Cormorant Garamond", serif;
+    font-size: 1.08rem !important;
+    font-weight: 500;
+    letter-spacing: .01em;
   }
   .reference-inbox--v2116 .reference-inbox__sort-menu {
     top: calc(174px + env(safe-area-inset-top));
@@ -1586,8 +1594,11 @@ body.velvet-burgundy-route .reference-stories-new {
   }
   .reference-inbox__tabs--quiet > button {
     min-height: 42px;
-    font-size: .59rem;
-    letter-spacing: .065em;
+    font-family: "Cormorant Garamond", serif;
+    font-size: .92rem;
+    font-weight: 500;
+    letter-spacing: .01em;
+    text-transform: none;
   }
   .reference-inbox__row--quiet {
     min-height: 72px;
@@ -1610,7 +1621,7 @@ body.velvet-burgundy-route .reference-stories-new {
 @media (max-width: 390px) {
   .reference-inbox.reference-inbox--v2116 { padding-left: 14px !important; padding-right: 14px !important; }
   .reference-inbox__tabs--quiet { gap: 16px; }
-  .reference-inbox__tabs--quiet > button { font-size: .56rem; }
+  .reference-inbox__tabs--quiet > button { font-size: .88rem; }
   .reference-inbox__row--quiet { grid-template-columns: 46px minmax(0,1fr) 7px; gap: 10px; }
   .reference-inbox__avatar--quiet { width: 46px; height: 46px; }
   .reference-inbox__name-line--quiet strong { font-size: 1.06rem; }
