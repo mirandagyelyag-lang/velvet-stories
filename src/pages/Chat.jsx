@@ -1311,6 +1311,10 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
       className={`chat${readingMode ? " chat--reading" : ""}${compactMobileChat ? " chat--compact-mobile" : ""}`}
       data-reading-width={settings.readingWidth || "comfortable"}
       data-reading-font={settings.readingFont || "clean"}
+      style={{
+        "--character-presence-color": character.color || "var(--accent)",
+        ...(chatHeroImage ? { "--character-presence-image": `url(${JSON.stringify(chatHeroImage)})` } : {}),
+      }}
     >
       <header
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
@@ -1320,19 +1324,18 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
           <ArrowLeft size={20} />
         </button>
         <button className="chat__avatar chat__character-avatar-button" style={{ "--character-color": character.color }} onClick={() => setCharacterProfileOpen(true)} aria-label={`View ${character.name}'s profile`}>
-          {character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}
+          {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : character.initials}
         </button>
         <div className="chat__identity">
-          <span className="chat__eyebrow">STORY WITH {character.name.toUpperCase()}</span>
+          <button className="chat__character-name-button chat__character-name-button--primary" onClick={() => setCharacterProfileOpen(true)} aria-label={`View ${character.name}'s profile`}>
+            <strong>{character.name}</strong>
+          </button>
           <label className="chat__conversation-picker chat__conversation-picker--title">
             <select value={conversation?.conversationId || activeConversationId} onChange={(event) => switchConversation(event.target.value)} disabled={busy || conversationLoading} aria-label="Current story">
-              {conversationList.map((item) => <option key={item.id} value={item.id}>{item.is_pinned ? "★ " : ""}{item.title || character.name}</option>)}
+              {conversationList.map((item) => <option key={item.id} value={item.id}>{item.is_pinned ? "★ " : ""}{item.title || "Current story"}</option>)}
             </select>
-            <ChevronDown size={14} />
+            <ChevronDown size={13} />
           </label>
-          <button className="chat__character-name-button chat__character-name-button--subtle" onClick={() => setCharacterProfileOpen(true)} aria-label={`View ${character.name}'s profile`}>
-            <span>{character.role || "Character profile"}</span>
-          </button>
           {conversation?.branchParentId && <span className="chat__branch-badge"><GitBranch size={12}/>Branch</span>}
         </div>
         <button
@@ -1402,9 +1405,9 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
       <div onClick={handleReadingSurfaceClick} className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
 
         {visibleMessages.length === 0 && <div className={`chat__introduction${character.coverUrl ? " chat__introduction--covered" : ""}`} style={{ "--character-color": character.color }}>
-          {character.coverUrl && <div className="chat__profile-cover"><img src={character.coverUrl} alt="" /></div>}
+          {character.coverUrl && <div className="chat__profile-cover"><img src={character.coverUrl} alt="" decoding="async" /></div>}
           <div className="chat__large-avatar">
-            {character.imageUrl ? <img src={character.imageUrl} alt="" /> : <span>{character.initials}</span>}
+            {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : <span>{character.initials}</span>}
           </div>
           <h1>{character.name}</h1>
           <p>{character.description || character.role}</p>
@@ -1470,9 +1473,9 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
             {(isTyping || generationState === "generating") && !characterStreaming && (
               <article className="chat-message chat-message--character">
                 <span className="chat-message__avatar" style={{ "--character-color": character.color }}>
-                  {character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}
+                  {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : character.initials}
                 </span>
-                <div className="typing-indicator"><small>{character.name} is writing</small><span /><span /><span /></div>
+                <div className="typing-indicator"><small>{character.name} is writing…</small><span /><span /><span /></div>
               </article>
             )}
 
@@ -1515,7 +1518,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
             <button type="button" onClick={clearQueuedDirector} aria-label="Clear queued direction"><X size={12}/></button>
           </div>
         )}
-        <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>directorNoteOpen ? setDirectorNoteOpen(false) : openDirector("next")} aria-label="Guide next reply" title="Guide next reply"><Sparkles size={16}/></button>
+        <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>directorNoteOpen ? setDirectorNoteOpen(false) : openDirector("next")} aria-label="Open Scene Director" title="Scene Director"><Sparkles size={15}/><span>Direct</span></button>
         <textarea
           ref={textareaRef}
           value={message}
@@ -1728,7 +1731,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
               <div className="character-profile-sheet__shade" />
               <button className="character-profile-sheet__close" onClick={() => setCharacterProfileOpen(false)} aria-label="Close character profile"><X size={20}/></button>
               <span className="character-profile-sheet__avatar">
-                {character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}
+                {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : character.initials}
               </span>
               <div className="character-profile-sheet__title">
                 <small>CHARACTER PROFILE</small>
@@ -2099,7 +2102,7 @@ function MessageBubble({
     >
       <div className="chat-message__swipe-content">
         {message.sender === "character" && <span className="chat-message__avatar" style={{ "--character-color": character.color }}>
-          {character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}
+          {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : character.initials}
         </span>}
         <div className="chat-message__body">
           {message.replyPreview && (

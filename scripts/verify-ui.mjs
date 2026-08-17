@@ -21,7 +21,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("burgundy reference layer is the final stylesheet", main.includes('import "./styles/velvet-burgundy-reference.css";') && main.lastIndexOf("velvet-burgundy-reference.css") > main.lastIndexOf("velvet-mobile-foundation.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.1.20 Softer Chat Typography", pkg.version === "2.1.20" && read("src/config/version.js").includes('VELVET_RELEASE = "Softer Chat Typography"'));
+check("release is v2.2.0 Native Story Experience", pkg.version === "2.2.0" && read("src/config/version.js").includes('VELVET_RELEASE = "Native Story Experience"'));
 check("Stories owns the document canvas while mounted", read("src/pages/Chats.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/Chats.jsx").includes('classList.remove("velvet-burgundy-route")'));
 check("Burgundy background cannot end before the document", reference.includes('body.velvet-burgundy-route .app__content') && reference.includes('background: var(--stories-canvas) !important'));
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
@@ -128,6 +128,21 @@ check("Discover does not repaint the sidebar", !discoverStyles.includes("body.ve
 check("Discover hero keeps Stories line spark and new-story button", discoverPage.includes("reference-stories-title__line") && discoverPage.includes("reference-stories-title__spark") && discoverPage.includes("reference-stories-new"));
 check("Discover mobile title and rails cannot widen the page", discoverStyles.includes("overflow-x: clip") && !discoverStyles.includes("margin-right:-14px"));
 check("Discover phone hero is compact without changing Stories", discoverStyles.includes(".discover-reference-hero {\n    min-height: 124px !important") && discoverStyles.includes("margin-bottom: 8px !important") && discoverStyles.includes("font-size: clamp(2.75rem, 13vw, 3.65rem)"));
+
+const nativeStyles = read("src/styles/velvet-v220.css");
+const characterDetail = read("src/pages/CharacterDetail.jsx");
+check("secondary Velvet routes are lazy loaded", app.includes('lazy(() => import("./pages/Chat"))') && app.includes('lazy(() => import("./pages/Settings"))') && app.includes('<Suspense fallback={<VelvetRouteLoading />}>' ));
+check("native experience override loads after the burgundy reference", main.includes('import "./styles/velvet-v220.css";') && main.lastIndexOf("velvet-v220.css") > main.lastIndexOf("velvet-burgundy-reference.css"));
+check("chat header keeps character name as the primary identity", chat.includes("chat__character-name-button--primary") && chat.includes("<strong>{character.name}</strong>") && nativeStyles.includes(".chat__reading-button,.chat__memory-book-button,.chat__relationship-header{display:none!important}"));
+check("chat has subtle per-character presence instead of separate skins", chat.includes("--character-presence-color") && chat.includes("--character-presence-image") && nativeStyles.includes("--chat-presence-wash") && nativeStyles.includes("opacity:.055"));
+check("Scene Director is integrated into the composer", chat.includes('<span>Direct</span>') && nativeStyles.includes(".chat__director-trigger") && chat.includes("Next beat") && chat.includes("Rewrite last reply"));
+check("character landing continues the real latest story", characterDetail.includes("const latestStory = stories[0] || null") && characterDetail.includes("Continue latest story") && characterDetail.includes("character-profile__story-signature"));
+check("new story setup can keep or replace the opening beat", characterDetail.includes("story-setup-sheet") && characterDetail.includes("Original opening") && characterDetail.includes("Custom opening") && characterDetail.includes("storyOpening.trim() || character.firstMessage"));
+check("character and settings screens inherit the shared Stories shell", characterDetail.includes('classList.add("velvet-burgundy-route")') && settings.includes('classList.add("velvet-burgundy-route")'));
+check("Character Studio exposes the five-step editorial journey", characterModal.includes("character-studio__journey") && ["Essence","Relationship","Depth","Voice","Opening"].every((label)=>characterModal.includes(`\"${label}\"`)) && characterModal.includes("jumpStudio"));
+check("Create with AI stays a first-class Character Studio action", characterModal.includes("Create with AI") && nativeStyles.includes(".character-studio__ai--primary") && nativeStyles.includes(".character-studio__creator"));
+check("Settings is organized into four calm destinations", settings.includes("settings-page__nav") && ["Appearance","Storytelling","AI & app","Privacy"].every((label)=>settings.includes(`>${label}<`)) && nativeStyles.includes(".settings-page--editorial"));
+check("native layer adds cheap rendering wins", nativeStyles.includes("content-visibility:auto") && nativeStyles.includes("contain-intrinsic-size") && nativeStyles.includes("velvet-page-enter"));
 
 let failed=0;
 for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }

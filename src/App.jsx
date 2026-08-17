@@ -1,20 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
-import CreateCharacterModal from "./components/CreateCharacterModal";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "./context/AuthContext";
 import Auth from "./pages/Auth";
-import Chat from "./pages/Chat";
-import CharacterDetail from "./pages/CharacterDetail";
 import Chats from "./pages/Chats";
-import ChatInbox from "./pages/ChatInbox";
 import MyCharacters from "./pages/MyCharacters";
-import Memories from "./pages/Memories";
-import Profile from "./pages/Profile";
-import Personas from "./pages/Personas";
-import Lorebooks from "./pages/Lorebooks";
-import Settings from "./pages/Settings";
-import Diagnostics from "./pages/Diagnostics";
 import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import { useCharacters } from "./context/CharactersContext";
@@ -22,6 +12,17 @@ import WelcomeSplash from "./components/WelcomeSplash";
 import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
+
+const Chat = lazy(() => import("./pages/Chat"));
+const CharacterDetail = lazy(() => import("./pages/CharacterDetail"));
+const ChatInbox = lazy(() => import("./pages/ChatInbox"));
+const Memories = lazy(() => import("./pages/Memories"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Personas = lazy(() => import("./pages/Personas"));
+const Lorebooks = lazy(() => import("./pages/Lorebooks"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Diagnostics = lazy(() => import("./pages/Diagnostics"));
+const CreateCharacterModal = lazy(() => import("./components/CreateCharacterModal"));
 
 const VELVET_PAGES = new Set([
   "characters",
@@ -415,9 +416,10 @@ function App() {
         <Sidebar activePage={["personas", "lorebooks", "settings", "diagnostics"].includes(activePage) ? "profile" : activePage} onNavigate={navigate} />
       )}
 
-      <main className="app__content">{renderPage()}</main>
+      <main className="app__content"><Suspense fallback={<VelvetRouteLoading />}>{renderPage()}</Suspense></main>
 
       {creatorOpen && (
+        <Suspense fallback={<VelvetRouteLoading overlay />}>
         <CreateCharacterModal
           character={editingCharacter}
           onClose={() => {
@@ -430,11 +432,16 @@ function App() {
             if (!editingCharacter) openCharacter(character);
           }}
         />
+        </Suspense>
       )}
       <PWAStatus />
     </div>
     </>
   );
+}
+
+function VelvetRouteLoading({ overlay = false }) {
+  return <div className={`velvet-route-loading${overlay ? " velvet-route-loading--overlay" : ""}`} role="status" aria-live="polite"><span>✦</span><small>Opening Velvet…</small></div>;
 }
 
 export default App;

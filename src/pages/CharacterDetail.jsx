@@ -11,10 +11,12 @@ import {
   Volume2,
   WandSparkles,
   LoaderCircle,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../services/supabase";
 import { useCharacters } from "../context/CharactersContext";
+import { useTheme } from "../context/ThemeContext";
 import "../styles/character-detail.css";
 
 export default function CharacterDetail({
@@ -28,8 +30,25 @@ export default function CharacterDetail({
 }) {
   const [stories, setStories] = useState([]);
   const { generateInstantStory } = useCharacters();
+  const { theme } = useTheme();
   const [instantLoading, setInstantLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [storySetupOpen, setStorySetupOpen] = useState(false);
+  const [storyOpening, setStoryOpening] = useState("");
+
+  useEffect(() => {
+    document.documentElement.classList.add("velvet-burgundy-route");
+    document.body.classList.add("velvet-burgundy-route");
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    const previousThemeColor = themeMeta?.getAttribute("content") || "";
+    const colors = { light: "#f7eff2", comfort: "#eee4dc", dark: "#10090e" };
+    themeMeta?.setAttribute("content", colors[theme] || colors.dark);
+    return () => {
+      document.documentElement.classList.remove("velvet-burgundy-route");
+      document.body.classList.remove("velvet-burgundy-route");
+      if (themeMeta && previousThemeColor) themeMeta.setAttribute("content", previousThemeColor);
+    };
+  }, [theme]);
 
   useEffect(() => {
     let alive = true;
@@ -65,6 +84,7 @@ export default function CharacterDetail({
   }
 
   const tags = character.tags || [];
+  const latestStory = stories[0] || null;
   const depth = useMemo(
     () => [
       { label: "Values", value: character.values },
@@ -97,7 +117,7 @@ export default function CharacterDetail({
       <section className="character-profile__hero">
         <div className="character-profile__cover" aria-hidden="true">
           {character.coverUrl || character.imageUrl ? (
-            <img src={character.coverUrl || character.imageUrl} alt="" />
+            <img src={character.coverUrl || character.imageUrl} alt="" decoding="async" />
           ) : (
             <span>{character.initials}</span>
           )}
@@ -106,7 +126,7 @@ export default function CharacterDetail({
 
         <div className="character-profile__hero-content">
           <div className="character-profile__avatar">
-            {character.imageUrl ? <img src={character.imageUrl} alt="" /> : <span>{character.initials}</span>}
+            {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : <span>{character.initials}</span>}
           </div>
 
           <div className="character-profile__identity">
@@ -116,6 +136,12 @@ export default function CharacterDetail({
               {character.description || "A story waiting to become something unforgettable."}
             </p>
 
+            <div className="character-profile__story-signature" aria-label="Story signature">
+              {character.relationship && <span><Heart size={13}/>{String(character.relationship).split(/[.!?]/)[0].slice(0, 56)}</span>}
+              {character.world && <span><BookOpen size={13}/>{String(character.world).split(/[.!?]/)[0].slice(0, 48)}</span>}
+              {latestStory && <span><MessageCircle size={13}/>Last opened {formatDate(latestStory.updated_at)}</span>}
+            </div>
+
             {tags.length > 0 && (
               <div className="character-profile__tags">
                 {tags.slice(0, 6).map((tag) => <span key={tag}>{tag}</span>)}
@@ -124,11 +150,11 @@ export default function CharacterDetail({
           </div>
 
           <div className="character-profile__hero-actions">
-            <button className="character-profile__continue" onClick={() => onContinue(character)}>
+            <button className="character-profile__continue" onClick={() => latestStory ? onOpenStory(character, latestStory.id) : onContinue(character)}>
               <MessageCircle size={18} />
-              <span>Continue story</span>
+              <span>{latestStory ? "Continue latest story" : "Begin story"}</span>
             </button>
-            <button className="character-profile__new" onClick={() => onNewStory(character)}><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
+            <button className="character-profile__new" onClick={() => { setStoryOpening(""); setStorySetupOpen(true); }}><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
           </div>
         </div>
       </section>
@@ -271,7 +297,7 @@ export default function CharacterDetail({
               <div className="character-profile__empty character-profile__empty--stories">
                 <MessageCircle size={21} />
                 <p>No stories yet.</p>
-                <button onClick={() => onNewStory(character)}>Begin the first one</button>
+                <button onClick={() => { setStoryOpening(""); setStorySetupOpen(true); }}>Begin the first one</button>
               </div>
             )}
           </section>
@@ -289,6 +315,23 @@ export default function CharacterDetail({
           </section>
         </aside>
       </div>
+
+      {storySetupOpen && (
+        <div className="story-setup-backdrop" onMouseDown={(event)=>event.target === event.currentTarget && setStorySetupOpen(false)}>
+          <section className="story-setup-sheet" role="dialog" aria-modal="true" aria-label={`Start a new story with ${character.name}`}>
+            <header>
+              <div><small>NEW STORY</small><h2>Where should this one begin?</h2><p>Keep the character. Change only the opening if you want a different universe, day or situation.</p></div>
+              <button type="button" onClick={()=>setStorySetupOpen(false)} aria-label="Close new story setup"><X size={19}/></button>
+            </header>
+            <label><span>Opening beat <small>optional</small></span><textarea rows="5" value={storyOpening} onChange={(event)=>setStoryOpening(event.target.value)} placeholder={character.firstMessage || `The next story with ${character.name} begins…`} /></label>
+            <div className="story-setup-sheet__choices">
+              <button type="button" onClick={()=>setStoryOpening("")} className={!storyOpening.trim() ? "is-active" : ""}><BookOpen size={16}/><span>Original opening<small>Use the character's saved scene</small></span></button>
+              <button type="button" onClick={()=>document.querySelector(".story-setup-sheet textarea")?.focus()} className={storyOpening.trim() ? "is-active" : ""}><Sparkles size={16}/><span>Custom opening<small>Write what happens first</small></span></button>
+            </div>
+            <footer><button type="button" className="secondary" onClick={()=>setStorySetupOpen(false)}>Cancel</button><button type="button" className="primary" onClick={()=>{ setStorySetupOpen(false); onNewStory({ ...character, firstMessage: storyOpening.trim() || character.firstMessage }); }}><MessageCircle size={17}/>Start story</button></footer>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

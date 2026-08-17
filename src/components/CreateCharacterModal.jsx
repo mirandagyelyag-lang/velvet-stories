@@ -333,6 +333,13 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
     }
   }
 
+  function jumpStudio(step) {
+    const node = document.querySelector(`[data-studio-step="${step}"]`);
+    const disclosure = node?.closest("details");
+    if (disclosure) disclosure.open = true;
+    requestAnimationFrame(() => node?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
   return (
     <div className="modal-backdrop character-studio-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && onClose()}>
       <section className="character-studio" role="dialog" aria-modal="true" aria-labelledby="character-studio-title">
@@ -384,7 +391,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
           <aside className="character-studio__preview" style={{ "--preview-color": form.color }}>
             <div className="character-preview-card">
               <div className="character-preview-card__cover">
-                {coverPreview ? <img src={coverPreview} alt="Character cover preview" /> : <div className="character-preview-card__cover-fallback"><ImagePlus size={28} /><span>Add a cover</span></div>}
+                {coverPreview ? <img src={coverPreview} alt="Character cover preview" decoding="async" /> : <div className="character-preview-card__cover-fallback"><ImagePlus size={28} /><span>Add a cover</span></div>}
                 <div className="character-preview-card__shade" />
                 <div className="character-preview-card__completion">
                   <span>{completion}% ready</span>
@@ -394,7 +401,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
 
               <div className="character-preview-card__identity">
                 <div className="character-preview-card__avatar">
-                  {avatarPreview ? <img src={avatarPreview} alt="Character avatar preview" /> : <span>{createInitials(form.name)}</span>}
+                  {avatarPreview ? <img src={avatarPreview} alt="Character avatar preview" decoding="async" /> : <span>{createInitials(form.name)}</span>}
                 </div>
                 <div>
                   <small>{form.role || "Role / archetype"}</small>
@@ -428,7 +435,16 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
           </aside>
 
           <main className="character-studio__editor">
-            <StudioSection icon={<UserRound size={18} />} kicker="ESSENCE" title="Who are they?" description="The few things Velvet should understand before anything else." onPolish={() => handlePolishFields(["description", "personality"], "essence")} polishing={fieldPolishing === "essence"}>
+            <nav className="character-studio__journey" aria-label="Character creation steps">
+              {[
+                ["essence", "01", "Essence"],
+                ["bond", "02", "Relationship"],
+                ["depth", "03", "Depth"],
+                ["voice", "04", "Voice"],
+                ["opening", "05", "Opening"],
+              ].map(([step, number, label]) => <button type="button" key={step} onClick={()=>jumpStudio(step)}><small>{number}</small><span>{label}</span></button>)}
+            </nav>
+            <StudioSection step="essence" icon={<UserRound size={18} />} kicker="ESSENCE" title="Who are they?" description="The few things Velvet should understand before anything else." onPolish={() => handlePolishFields(["description", "personality"], "essence")} polishing={fieldPolishing === "essence"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Name" required><input name="name" value={form.name} onChange={updateField} placeholder="Theo Calloway" disabled={saving} /></StudioField>
                 <StudioField label="Role / archetype" required><input name="role" value={form.role} onChange={updateField} placeholder="Campus prince, heartbreaker, best friend…" disabled={saving} /></StudioField>
@@ -441,7 +457,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </StudioField>
             </StudioSection>
 
-            <StudioSection icon={<Heart size={18} />} kicker="THE BOND" title="Who are they to you?" description="This relationship should shape how they notice, remember and react to you." onPolish={() => handlePolishFields(["relationship", "world", "scenario"], "bond")} polishing={fieldPolishing === "bond"}>
+            <StudioSection step="bond" icon={<Heart size={18} />} kicker="THE BOND" title="Who are they to you?" description="This relationship should shape how they notice, remember and react to you." onPolish={() => handlePolishFields(["relationship", "world", "scenario"], "bond")} polishing={fieldPolishing === "bond"}>
               <StudioField label="Relationship to you" hint="Make this specific. History, current dynamic, what is known and what is not.">
                 <textarea name="relationship" value={form.relationship} onChange={updateField} placeholder="Friends since high school. He already likes me, but I read his distance as indifference…" rows="5" disabled={saving} />
               </StudioField>
@@ -458,7 +474,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
                 <ChevronDown size={17}/>
               </summary>
               <div className="character-studio__depth-body">
-            <StudioSection icon={<Brain size={18} />} kicker="CHARACTER DNA" title="What makes them human?" description="Useful contradictions and recurring patterns, not a personality spreadsheet." onPolish={() => handlePolishFields(["values", "fears", "habits", "contradictions"], "dna")} polishing={fieldPolishing === "dna"}>
+            <StudioSection step="depth" icon={<Brain size={18} />} kicker="CHARACTER DNA" title="What makes them human?" description="Useful contradictions and recurring patterns, not a personality spreadsheet." onPolish={() => handlePolishFields(["values", "fears", "habits", "contradictions"], "dna")} polishing={fieldPolishing === "dna"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Values"><textarea name="values" value={form.values} onChange={updateField} placeholder="Loyalty, independence, family, reputation…" rows="3" disabled={saving} /></StudioField>
                 <StudioField label="Fears"><textarea name="fears" value={form.fears} onChange={updateField} placeholder="What can actually get under their skin?" rows="3" disabled={saving} /></StudioField>
@@ -476,7 +492,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </div>
             </StudioSection>
 
-            <StudioSection icon={<MessageCircle size={18} />} kicker="VOICE & BEHAVIOR" title="How do they feel on the page?" description="The difference between knowing a character and actually hearing them." onPolish={() => handlePolishFields(["speechStyle", "boundaries", "exampleDialogue", "voiceVocabulary", "humorStyle", "conflictStyle", "affectionStyle", "voiceAvoidances"], "voice")} polishing={fieldPolishing === "voice"}>
+            <StudioSection step="voice" icon={<MessageCircle size={18} />} kicker="VOICE & BEHAVIOR" title="How do they feel on the page?" description="The difference between knowing a character and actually hearing them." onPolish={() => handlePolishFields(["speechStyle", "boundaries", "exampleDialogue", "voiceVocabulary", "humorStyle", "conflictStyle", "affectionStyle", "voiceAvoidances"], "voice")} polishing={fieldPolishing === "voice"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Speech style"><textarea name="speechStyle" value={form.speechStyle} onChange={updateField} placeholder="Dry, concise, teasing without performing, rarely over-explains…" rows="4" disabled={saving} /></StudioField>
                 <StudioField label="Boundaries"><textarea name="boundaries" value={form.boundaries} onChange={updateField} placeholder="Things they should never do unless the story genuinely earns it." rows="4" disabled={saving} /></StudioField>
@@ -503,7 +519,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </div>
             </details>
 
-            <StudioSection icon={<BookOpen size={18} />} kicker="STORY FEEL" title="How should stories with them read?" description="Velvet handles most pacing automatically. You only choose the broad feel." onPolish={() => handlePolishFields(["firstMessage"], "opening")} polishing={fieldPolishing === "opening"}>
+            <StudioSection step="opening" icon={<BookOpen size={18} />} kicker="STORY FEEL" title="How should stories with them read?" description="Velvet handles most pacing automatically. You only choose the broad feel." onPolish={() => handlePolishFields(["firstMessage"], "opening")} polishing={fieldPolishing === "opening"}>
               <div className="studio-choice-row">
                 <ChoiceGroup label="Response length" name="responseLength" value={form.responseLength} onChange={updateField} options={[
                   ["short", "Short", "Quick beats"],
@@ -542,9 +558,9 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   );
 }
 
-function StudioSection({ icon, kicker, title, description, children, onPolish = null, polishing = false }) {
+function StudioSection({ step = "", icon, kicker, title, description, children, onPolish = null, polishing = false }) {
   return (
-    <section className="studio-section">
+    <section className="studio-section" data-studio-step={step || undefined}>
       <header className="studio-section__header">
         <span className="studio-section__icon">{icon}</span>
         <div>
