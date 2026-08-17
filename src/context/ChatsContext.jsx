@@ -228,6 +228,7 @@ export function ChatsProvider({
         innerThoughts: conversation.inner_thoughts || "rare",
         storyPreset: conversation.story_preset || "natural",
         pacingMode: conversation.pacing_mode || "natural",
+        matureMode: Boolean(conversation.mature_mode),
         sceneState: conversation.scene_state || {},
         storyTimeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline : [],
         relationshipState: conversation.relationship_state || {},
@@ -1076,6 +1077,7 @@ export function ChatsProvider({
     if (Object.hasOwn(changes, "innerThoughts")) databaseChanges.inner_thoughts = ["none", "rare", "important", "sometimes", "literary", "frequent"].includes(changes.innerThoughts) ? changes.innerThoughts : "rare";
     if (Object.hasOwn(changes, "storyPreset")) databaseChanges.story_preset = ["natural", "romantic", "dramatic", "slow_burn"].includes(changes.storyPreset) ? changes.storyPreset : "natural";
     if (Object.hasOwn(changes, "pacingMode")) databaseChanges.pacing_mode = ["quick", "natural", "cinematic"].includes(changes.pacingMode) ? changes.pacingMode : "natural";
+    if (Object.hasOwn(changes, "matureMode")) databaseChanges.mature_mode = Boolean(changes.matureMode);
     if (Object.hasOwn(changes, "personaId")) databaseChanges.persona_id = changes.personaId || null;
     if (Object.hasOwn(changes, "lorebookId")) databaseChanges.lorebook_id = changes.lorebookId || null;
 
@@ -1103,6 +1105,7 @@ export function ChatsProvider({
         innerThoughts: data.inner_thoughts || "rare",
         storyPreset: data.story_preset || "natural",
         pacingMode: data.pacing_mode || "natural",
+        matureMode: Boolean(data.mature_mode),
         sceneState: data.scene_state || currentChats[characterId]?.sceneState || {},
         relationshipState: data.relationship_state || currentChats[characterId]?.relationshipState || {},
         castState: data.cast_state || currentChats[characterId]?.castState || {},
@@ -1337,6 +1340,7 @@ export function ChatsProvider({
         inner_thoughts: conversation.innerThoughts || "rare",
         story_preset: conversation.storyPreset || "natural",
         pacing_mode: conversation.pacingMode || "natural",
+        mature_mode: Boolean(conversation.matureMode),
         // Derived story state can describe events after the branch point. Start
         // the branch clean and let the story engine rebuild it from the copied
         // messages/memories instead of leaking the source timeline's future.

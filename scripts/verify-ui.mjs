@@ -21,7 +21,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("burgundy reference layer is the final stylesheet", main.includes('import "./styles/velvet-burgundy-reference.css";') && main.lastIndexOf("velvet-burgundy-reference.css") > main.lastIndexOf("velvet-mobile-foundation.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.2.0 Native Story Experience", pkg.version === "2.2.0" && read("src/config/version.js").includes('VELVET_RELEASE = "Native Story Experience"'));
+check("release is v2.2.1 Mature Story Mode", pkg.version === "2.2.1" && read("src/config/version.js").includes('VELVET_RELEASE = "Mature Story Mode"'));
 check("Stories owns the document canvas while mounted", read("src/pages/Chats.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/Chats.jsx").includes('classList.remove("velvet-burgundy-route")'));
 check("Burgundy background cannot end before the document", reference.includes('body.velvet-burgundy-route .app__content') && reference.includes('background: var(--stories-canvas) !important'));
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
@@ -129,6 +129,8 @@ check("Discover hero keeps Stories line spark and new-story button", discoverPag
 check("Discover mobile title and rails cannot widen the page", discoverStyles.includes("overflow-x: clip") && !discoverStyles.includes("margin-right:-14px"));
 check("Discover phone hero is compact without changing Stories", discoverStyles.includes(".discover-reference-hero {\n    min-height: 124px !important") && discoverStyles.includes("margin-bottom: 8px !important") && discoverStyles.includes("font-size: clamp(2.75rem, 13vw, 3.65rem)"));
 
+check("NSFW Mature mode is visible in Story settings", chat.includes("NSFW / Mature mode") && chat.includes("chat-controls__mature-switch") && chat.includes("toggleMatureMode"));
+check("NSFW Mature mode saves as a real conversation setting", read("src/context/ChatsContext.jsx").includes("mature_mode") && read("src/context/ChatsContext.jsx").includes("matureMode"));
 const nativeStyles = read("src/styles/velvet-v220.css");
 const characterDetail = read("src/pages/CharacterDetail.jsx");
 check("secondary Velvet routes are lazy loaded", app.includes('lazy(() => import("./pages/Chat"))') && app.includes('lazy(() => import("./pages/Settings"))') && app.includes('<Suspense fallback={<VelvetRouteLoading />}>' ));

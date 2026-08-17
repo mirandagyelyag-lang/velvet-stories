@@ -653,6 +653,8 @@ check("continuity lock forbids restarting a prior physical beat", edge.includes(
 check("object continuity forbids convenient invented props", edge.includes("OBJECT CONTINUITY") && edge.includes("Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop"));
 check("emotional priority outranks decorative scenery", edge.includes("EMOTIONAL PRIORITY") && edge.includes("that emotional event is the center of the response"));
 check("repeated recent openings are blocking and repaired once", edge.includes('"repeated_recent_signature",') && edge.includes("Never restart a physical beat from the immediately previous character turn"));
+check("mature mode reaches the narrative engine", edge.includes("mature_mode=${character.mature_mode ? \"on\" : \"off\"}") && edge.includes("MATURE CONTENT MODE") && edge.includes("mature_mode"));
+check("mature mode preserves consent age and non-graphic boundaries", edge.includes("never overrides consent") && edge.includes("under 18") && edge.includes("fade to black"));
 let failures = 0;
 for (const item of checks) {
   if (!item.condition) failures += 1;

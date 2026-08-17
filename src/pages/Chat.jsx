@@ -15,6 +15,7 @@ import {
   GitBranch,
   Globe2,
   HeartHandshake,
+  Flame,
   ImagePlus,
   Eye,
   Moon,
@@ -132,7 +133,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   const [activeConversationId, setActiveConversationId] = useState(conversationId || "");
   const [conversationList, setConversationList] = useState([]);
   const [controlsOpen, setControlsOpen] = useState(false);
-  const [controlDraft, setControlDraft] = useState({ title: "", responseLengthOverride: "", narrationStyleOverride: "", creativity: 0.84, personaId: "", lorebookId: "", romanceIntensity: 35, initiative: 65, drama: 45, flirting: 30, humor: 45, descriptionLevel: 55, characterIndependence: 80, dialogueFrequency: 55, narrativeCamera: "balanced", innerThoughts: "rare", pacingMode: "natural" });
+  const [controlDraft, setControlDraft] = useState({ title: "", responseLengthOverride: "", narrationStyleOverride: "", creativity: 0.84, personaId: "", lorebookId: "", romanceIntensity: 35, initiative: 65, drama: 45, flirting: 30, humor: 45, descriptionLevel: 55, characterIndependence: 80, dialogueFrequency: 55, narrativeCamera: "balanced", innerThoughts: "rare", pacingMode: "natural", matureMode: false });
   const [savingControls, setSavingControls] = useState(false);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [characterProfileOpen, setCharacterProfileOpen] = useState(false);
@@ -371,13 +372,14 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
       innerThoughts: conversation.innerThoughts || "rare",
       storyPreset: conversation.storyPreset || "natural",
       pacingMode: conversation.pacingMode || "natural",
+      matureMode: Boolean(conversation.matureMode),
     });
     const romance = Number(conversation.romanceIntensity ?? 35);
     const flirting = Number(conversation.flirting ?? 30);
     const description = Number(conversation.descriptionLevel ?? 55);
     setSimpleVibe(conversation.storyPreset === "slow_burn" ? "slowburn" : (conversation.storyPreset || (romance >= 65 ? "romantic" : (flirting <= 25 && description >= 60 ? "slowburn" : "natural"))));
     setSimpleResponseStyle(conversation.responseLengthOverride === "short" ? "short" : (conversation.responseLengthOverride === "long" ? "detailed" : "balanced"));
-  }, [conversation?.conversationId, conversation?.title, conversation?.responseLengthOverride, conversation?.narrationStyleOverride, conversation?.creativity, conversation?.personaId, conversation?.lorebookId, conversation?.romanceIntensity, conversation?.initiative, conversation?.drama, conversation?.flirting, conversation?.humor, conversation?.descriptionLevel, conversation?.characterIndependence, conversation?.dialogueFrequency, conversation?.narrativeCamera, conversation?.innerThoughts, conversation?.storyPreset, conversation?.pacingMode]);
+  }, [conversation?.conversationId, conversation?.title, conversation?.responseLengthOverride, conversation?.narrationStyleOverride, conversation?.creativity, conversation?.personaId, conversation?.lorebookId, conversation?.romanceIntensity, conversation?.initiative, conversation?.drama, conversation?.flirting, conversation?.humor, conversation?.descriptionLevel, conversation?.characterIndependence, conversation?.dialogueFrequency, conversation?.narrativeCamera, conversation?.innerThoughts, conversation?.storyPreset, conversation?.pacingMode, conversation?.matureMode]);
 
   async function loadConversationList() {
     const { data, error } = await supabase.from("conversations")
@@ -728,6 +730,20 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
       await updateConversationSettings(character.id, values);
     } catch (error) {
       setSendError(error.message || "We couldn't save that response style.");
+    } finally {
+      setSavingControls(false);
+    }
+  }
+
+  async function toggleMatureMode(enabled) {
+    const value = Boolean(enabled);
+    setControlDraft((current) => ({ ...current, matureMode: value }));
+    try {
+      setSavingControls(true);
+      await updateConversationSettings(character.id, { matureMode: value });
+    } catch (error) {
+      setControlDraft((current) => ({ ...current, matureMode: !value }));
+      setSendError(error.message || "We couldn't save Mature mode.");
     } finally {
       setSavingControls(false);
     }
@@ -1643,6 +1659,11 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
                     <button type="button" className={simpleResponseStyle === "detailed" ? "active" : ""} onClick={() => applyResponseStyle("detailed")} disabled={savingControls}>Detailed</button>
                   </div>
                 </section>
+                <section className={`chat-controls__simple-section chat-controls__mature${controlDraft.matureMode ? " is-active" : ""}`}>
+                  <span><Flame size={17}/><strong>NSFW / Mature mode</strong><em>18+</em></span>
+                  <p>Lets adult characters use stronger chemistry, mature language and non-graphic intimacy. Explicit sexual detail still fades to black.</p>
+                  <label className="chat-controls__mature-switch"><input type="checkbox" checked={Boolean(controlDraft.matureMode)} onChange={(event)=>toggleMatureMode(event.target.checked)} disabled={savingControls}/><i/><b>{controlDraft.matureMode ? "On" : "Off"}</b></label>
+                </section>
                 <section className="chat-controls__simple-section">
                   <span><Clock3 size={17}/><strong>Story pace</strong></span>
                   <p>Controls rhythm, not how many words Velvet is forced to write.</p>
@@ -1691,6 +1712,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
                   <label>Response length<select value={controlDraft.responseLengthOverride} onChange={(event) => setControlDraft((current) => ({ ...current, responseLengthOverride: event.target.value }))}><option value="">Character default</option><option value="short">Short</option><option value="balanced">Balanced</option><option value="long">Long and detailed</option></select></label>
                   <label>Narration style<select value={controlDraft.narrationStyleOverride} onChange={(event) => setControlDraft((current) => ({ ...current, narrationStyleOverride: event.target.value }))}><option value="">Character default</option><option value="dialogue">Mostly dialogue</option><option value="balanced">Balanced</option><option value="immersive">Immersive</option></select></label>
                 </div>
+                <label className={`chat-controls__advanced-mature${controlDraft.matureMode ? " is-active" : ""}`}><span><Flame size={17}/><span><strong>NSFW / Mature mode</strong><small>Adult themes, stronger chemistry and non-graphic intimacy. Explicit sexual detail fades to black.</small></span></span><input type="checkbox" checked={Boolean(controlDraft.matureMode)} onChange={(event)=>setControlDraft((current)=>({ ...current, matureMode:event.target.checked }))}/><i/></label>
                 <label className="chat-controls__creativity"><span><strong>Creativity</strong><small>{creativityLabel(controlDraft.creativity)} · {Number(controlDraft.creativity).toFixed(2)}</small></span><input type="range" min="0.2" max="1.2" step="0.05" value={controlDraft.creativity} onChange={(event) => setControlDraft((current) => ({ ...current, creativity: Number(event.target.value) }))} /></label>
                 <div className="chat-controls__presets"><button type="button" onClick={() => applyDynamicsPreset("grounded")}>Grounded</button><button type="button" onClick={() => applyDynamicsPreset("natural")}>Natural</button><button type="button" onClick={() => applyDynamicsPreset("cinematic")}>Cinematic</button><button type="button" onClick={() => applyDynamicsPreset("social")}>Social</button></div>
                 <ControlSlider label="Romance" value={controlDraft.romanceIntensity} onChange={(value) => setControlDraft((current) => ({ ...current, romanceIntensity: value }))} low="Platonic" high="Romantic" />

@@ -432,7 +432,7 @@ async function handleCharacterGenerate({ apiKey, concept }) {
 async function loadContext({ supabase, conversationId, userId }): Promise<LoadedContext> {
   const { data: conversation, error: conversationError } = await supabase
     .from("conversations")
-    .select("id, character_id, persona_id, lorebook_id, title, summary, response_length_override, narration_style_override, creativity, romance_intensity, initiative, drama, flirting, humor, description_level, character_independence, dialogue_frequency, narrative_camera, inner_thoughts, story_preset, scene_state, story_timeline, pacing_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, character_development, story_engine_version, story_revision")
+    .select("id, character_id, persona_id, lorebook_id, title, summary, response_length_override, narration_style_override, creativity, romance_intensity, initiative, drama, flirting, humor, description_level, character_independence, dialogue_frequency, narrative_camera, inner_thoughts, story_preset, scene_state, story_timeline, pacing_mode, mature_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, character_development, story_engine_version, story_revision")
     .eq("id", conversationId)
     .eq("user_id", userId)
     .single();
@@ -501,6 +501,7 @@ function applyConversationControls(character, conversation) {
     inner_thoughts: conversation.inner_thoughts || "rare",
     story_preset: conversation.story_preset || "natural",
     pacing_mode: conversation.pacing_mode || "natural",
+    mature_mode: Boolean(conversation.mature_mode),
   };
 }
 
@@ -701,7 +702,13 @@ USER-CONTROLLED PROTAGONIST
 ${persona}
 
 CONTROLS
-romance=${character.romance_intensity}/100, flirting=${character.flirting}/100, humor=${character.humor}/100, drama=${character.drama}/100, initiative=${character.initiative}/100, dialogue=${character.dialogue_frequency}/100, description=${character.description_level}/100, independence=${character.character_independence}/100, inner_thoughts=${character.inner_thoughts}, camera=${character.narrative_camera}, pacing=${character.pacing_mode}, preset=${character.story_preset}
+romance=${character.romance_intensity}/100, flirting=${character.flirting}/100, humor=${character.humor}/100, drama=${character.drama}/100, initiative=${character.initiative}/100, dialogue=${character.dialogue_frequency}/100, description=${character.description_level}/100, independence=${character.character_independence}/100, inner_thoughts=${character.inner_thoughts}, camera=${character.narrative_camera}, pacing=${character.pacing_mode}, preset=${character.story_preset}, mature_mode=${character.mature_mode ? "on" : "off"}
+
+MATURE CONTENT MODE
+${character.mature_mode ? `- Mature mode is ON. This is an adult-fiction tone control, not a command to make every scene sexual. Allow stronger attraction, adult language, sensual tension, kissing, consensual physical intimacy and darker adult themes when they are earned by the scene and consistent with the character.
+- Do not become coy about ordinary adult romance merely because mature mode is on. Keep the character natural and specific.
+- Mature mode never overrides consent, boundaries, continuity, character identity or relationship pacing. Never sexualize anyone stated or implied to be under 18.
+- Keep sexual material non-graphic. If intimacy would become sexually explicit, fade to black before graphic sexual detail and continue with the emotional or narrative aftermath.` : `- Mature mode is OFF. Keep romance and attraction at the standard story level. Do not escalate into sexualized or adult-intimacy detail unless the user explicitly changes this story setting.`}
 
 CONFIRMED OR USER-SAVED MEMORIES
 ${memoryText}
@@ -745,7 +752,7 @@ Write the response to that exact turn now.`;
 async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {
   return await callGeminiWithFailover({
     apiKey,
-    systemInstruction: "Produce one grounded, emotionally intelligent roleplay continuation. The prose must be natural, complete and anchored to the final latest-user-turn block. Return valid JSON only.",
+    systemInstruction: `Produce one grounded, emotionally intelligent roleplay continuation. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
     prompt,
     maxOutputTokens: getMaximumOutputTokens(character.response_length),
     temperature: getTemperature(character.creativity, isRegeneration),
