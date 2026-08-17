@@ -21,7 +21,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("burgundy reference layer is the final stylesheet", main.includes('import "./styles/velvet-burgundy-reference.css";') && main.lastIndexOf("velvet-burgundy-reference.css") > main.lastIndexOf("velvet-mobile-foundation.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.1.11 one Velvet shell", pkg.version === "2.1.11" && read("src/config/version.js").includes('VELVET_RELEASE = "One Velvet Shell"'));
+check("release is v2.1.12 exact Stories shell", pkg.version === "2.1.12" && read("src/config/version.js").includes('VELVET_RELEASE = "Exact Stories Shell"'));
 check("Stories owns the document canvas while mounted", read("src/pages/Chats.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/Chats.jsx").includes('classList.remove("velvet-burgundy-route")'));
 check("Burgundy background cannot end before the document", reference.includes('body.velvet-burgundy-route .app__content') && reference.includes('background: var(--stories-canvas) !important'));
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
@@ -85,19 +85,20 @@ check("full AI content remains one conversation turn", chat.includes('<RoleplayT
 
 const discoverPage = read("src/pages/MyCharacters.jsx");
 const discoverStyles = read("src/styles/my-characters.css");
-check("Discover uses the same hero language as Stories", discoverPage.includes("DiscoverReferenceHero") && discoverPage.includes("reference-stories-hero") && discoverPage.includes("reference-stories-title") && discoverPage.includes("NEW STORIES") && discoverPage.includes("discover"));
+check("Discover uses the same hero language as Stories", discoverPage.includes("DiscoverReferenceHero") && discoverPage.includes("reference-stories-hero") && discoverPage.includes("reference-stories-title") && discoverPage.includes("<h1>STORIES</h1>") && discoverPage.includes("discover"));
 check("Discover repeats the private-library identity", discoverPage.includes("PRIVATE LIBRARY") && discoverPage.includes("<Crown size={19}"));
 check("Discover is calmer with Featured Popular and Vibes only", discoverPage.includes(">Featured<") && discoverPage.includes("Popular this week") && discoverPage.includes("Explore by vibe") && !discoverPage.includes("New for you") && !discoverPage.includes("FEATURED THIS WEEK"));
 check("Discover keeps full real character actions", ["toggleFavorite", "onEditCharacter", "openTags", "handleDelete"].every((token)=>discoverPage.includes(token)));
 check("Discover never fabricates popularity counts", !discoverPage.includes("fauxPopularity") && !discoverPage.includes("toFixed(1)") && !discoverPage.includes("↗"));
-check("Discover has compact responsive phone cards", discoverStyles.includes("@media (max-width:760px)") && discoverStyles.includes("flex-basis:min(176px,47vw)") && discoverStyles.includes("flex-basis:min(210px,61vw)"));
+check("Discover has compact responsive phone cards", discoverStyles.includes("@media (max-width:760px)") && discoverStyles.includes("flex-basis:min(164px,44vw)") && discoverStyles.includes("flex-basis:min(196px,56vw)"));
 check("Discover owns the shared theme route", discoverPage.includes('classList.add("velvet-burgundy-route", "velvet-discover-route")') && discoverPage.includes('classList.remove("velvet-burgundy-route", "velvet-discover-route")'));
 check("Discover directly inherits Stories theme tokens", discoverStyles.includes("--discover-canvas: var(--stories-canvas") && discoverStyles.includes("--discover-search: var(--stories-search") && discoverStyles.includes("--discover-panel: var(--stories-panel"));
 check("Discover hides secondary filters behind More", discoverPage.includes("showMore") && discoverPage.includes("discover-burgundy__more-filters") && discoverPage.includes("Trash"));
-check("Discover desktop width stays editorial", discoverStyles.includes("width: min(1040px, calc(100% - 48px))"));
-check("Discover and Stories share the exact canvas", discoverStyles.includes("background: var(--stories-canvas) !important") && discoverStyles.includes("background: var(--stories-atmosphere) !important") && !discoverStyles.includes("--discover-page-bg"));
+check("Discover desktop content stays editorial", discoverStyles.includes("width: min(1040px, 100%)"));
+check("Discover mounts on the exact Stories canvas", discoverPage.includes("chats-page chats-page--reference discover-burgundy") && discoverStyles.includes("exact Stories") && !discoverStyles.includes("--discover-page-bg") && !discoverStyles.includes("discover-burgundy::before"));
 check("Discover does not repaint the sidebar", !discoverStyles.includes("body.velvet-discover-route .sidebar") && reference.includes("body.velvet-burgundy-route .sidebar"));
 check("Discover hero keeps Stories line spark and new-story button", discoverPage.includes("reference-stories-title__line") && discoverPage.includes("reference-stories-title__spark") && discoverPage.includes("reference-stories-new"));
+check("Discover mobile title and rails cannot widen the page", discoverStyles.includes("overflow-x: clip") && !discoverStyles.includes("margin-right:-14px"));
 
 let failed=0;
 for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }

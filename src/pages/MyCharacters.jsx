@@ -153,7 +153,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
 
   if (view === "active" && characters.length === 0) {
     return (
-      <section className="discover-burgundy discover-burgundy--empty-page">
+      <section className="chats-page chats-page--reference discover-burgundy discover-burgundy--empty-page">
         <DiscoverReferenceHero onCreateCharacter={onCreateCharacter} />
         <div className="discover-burgundy__empty-hero">
           <small>YOUR PRIVATE CAST</small>
@@ -166,7 +166,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
   }
 
   return (
-    <section className={`discover-burgundy ${view === "trash" ? "discover-burgundy--trash" : ""}`}>
+    <section className={`chats-page chats-page--reference discover-burgundy ${view === "trash" ? "discover-burgundy--trash" : ""}`}>
       <DiscoverReferenceHero
         view={view}
         onCreateCharacter={onCreateCharacter}
@@ -271,10 +271,10 @@ function DiscoverReferenceHero({ view = "active", onCreateCharacter, onBack }) {
         <span>{inTrash ? "PRIVATE ARCHIVE" : "PRIVATE LIBRARY"}</span>
       </div>
 
-      <div className="reference-stories-title discover-reference-title" aria-label={inTrash ? "Deleted Stories" : "Discover New Stories"}>
+      <div className="reference-stories-title discover-reference-title" aria-label={inTrash ? "Deleted Stories" : "Discover Stories"}>
         <span className="reference-stories-title__script">{inTrash ? "deleted" : "discover"}</span>
         <span className="reference-stories-title__line reference-stories-title__line--left" />
-        <h1>{inTrash ? "STORIES" : "NEW STORIES"}</h1>
+        <h1>STORIES</h1>
         <span className="reference-stories-title__spark">✦</span>
         <span className="reference-stories-title__line reference-stories-title__line--right" />
       </div>
