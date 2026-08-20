@@ -351,6 +351,26 @@ export function CharactersProvider({ children }) {
     return updated;
   }
 
+  async function updateCharacterVoice(characterId, voiceSettings = {}) {
+    const patch = {
+      tts_voice_name: String(voiceSettings.voiceName || "").trim() || null,
+      tts_rate: Math.max(0.65, Math.min(1.45, Number(voiceSettings.rate ?? 1))),
+      tts_pitch: Math.max(0.65, Math.min(1.35, Number(voiceSettings.pitch ?? 1))),
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from("characters")
+      .update(patch)
+      .eq("id", characterId)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+    if (error) throw error;
+    const updated = convertDatabaseCharacter(data);
+    setCharacters((current) => current.map((item) => item.id === characterId ? updated : item));
+    return updated;
+  }
+
   return (
     <CharactersContext.Provider
       value={{
@@ -372,6 +392,7 @@ export function CharactersProvider({ children }) {
         permanentlyDeleteCharacter,
         toggleFavorite,
         updateTags,
+        updateCharacterVoice,
       }}
     >
       {children}
@@ -471,6 +492,9 @@ function convertDatabaseCharacter(character) {
     imageUrl: character.image_url || "",
     coverUrl: character.cover_url || "",
     color: character.color || "#7a2942",
+    ttsVoiceName: character.tts_voice_name || "",
+    ttsRate: Number(character.tts_rate ?? 1),
+    ttsPitch: Number(character.tts_pitch ?? 1),
     isFavorite: Boolean(character.is_favorite),
     tags: Array.isArray(character.tags) ? character.tags : [],
 

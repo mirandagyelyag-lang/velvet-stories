@@ -1,9 +1,10 @@
-import { Crown, Filter, LoaderCircle, MessageCircle, Search, Sparkles, Star, X } from "lucide-react";
+import { Crown, Filter, LoaderCircle, MessageCircle, Search, Sparkles, Star, UsersRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useCharacters } from "../context/CharactersContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
+import GroupStoryModal from "../components/GroupStoryModal";
 
 const READ_KEY_PREFIX = "velvet_chat_seen_v2114_";
 
@@ -17,6 +18,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
   const [view, setView] = useState("all");
   const [sortOrder, setSortOrder] = useState("recent");
   const [sortOpen, setSortOpen] = useState(false);
+  const [groupStoryOpen, setGroupStoryOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route");
@@ -40,7 +42,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
       setLoading(true);
       const { data: conversations } = await supabase
         .from("conversations")
-        .select("id, character_id, title, updated_at, archived_at, trashed_at, is_pinned")
+        .select("id, character_id, title, updated_at, archived_at, trashed_at, is_pinned, group_mode, group_character_ids, group_title")
         .is("trashed_at", null)
         .order("updated_at", { ascending: false })
         .limit(60);
@@ -66,6 +68,9 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
       if (alive) {
         const nextRows = (conversations || []).map((conversation) => {
           const character = characters.find((item) => item.id === conversation.character_id);
+          const groupCharacters = conversation.group_mode
+            ? (conversation.group_character_ids || []).map((id) => characters.find((item) => item.id === id)).filter(Boolean)
+            : [];
           const thread = byConversation.get(conversation.id) || [];
           const latest = thread[0];
           const readKey = `${READ_KEY_PREFIX}${conversation.id}`;
@@ -73,7 +78,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
           if (!storedSeen && latest?.created_at) window.localStorage.setItem(readKey, latest.created_at);
           const seenAt = storedSeen ? new Date(storedSeen).getTime() : new Date(latest?.created_at || 0).getTime();
           const unreadCount = thread.filter((item) => item.sender !== "user" && new Date(item.created_at).getTime() > seenAt).length;
-          return { ...conversation, character, latest, unreadCount };
+          return { ...conversation, character, groupCharacters, latest, unreadCount };
         }).filter((item) => item.character);
         setRows(nextRows);
         setLoading(false);
@@ -91,7 +96,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
       if (view === "favorites" && (row.archived_at || !row.is_pinned)) return false;
       if (view === "archived" && !row.archived_at) return false;
       if (!needle) return true;
-      return `${row.character?.name || ""} ${row.character?.role || ""} ${row.latest?.content || ""}`.toLowerCase().includes(needle);
+      return `${row.character?.name || ""} ${(row.groupCharacters || []).map((item) => item.name).join(" ")} ${row.character?.role || ""} ${row.title || ""} ${row.latest?.content || ""}`.toLowerCase().includes(needle);
     });
     return filtered.sort((a, b) => sortOrder === "oldest"
       ? new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
@@ -143,13 +148,16 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
         </div>
       )}
 
-      <nav className="reference-inbox__tabs reference-inbox__tabs--quiet" aria-label="Chat filters">
-        {tabs.map(([id, label]) => (
-          <button key={id} type="button" aria-current={view === id ? "page" : undefined} className={view === id ? "is-active" : ""} onClick={() => setView(id)}>
-            {label}
-          </button>
-        ))}
-      </nav>
+      <div className="reference-inbox__filter-row">
+        <nav className="reference-inbox__tabs reference-inbox__tabs--quiet" aria-label="Chat filters">
+          {tabs.map(([id, label]) => (
+            <button key={id} type="button" aria-current={view === id ? "page" : undefined} className={view === id ? "is-active" : ""} onClick={() => setView(id)}>
+              {label}
+            </button>
+          ))}
+        </nav>
+        <button type="button" className="reference-inbox__group-button" onClick={() => setGroupStoryOpen(true)}><UsersRound size={16}/>Group story</button>
+      </div>
 
       {loading ? (
         <div className="reference-inbox__state"><LoaderCircle className="spin" size={28}/><span>Opening chats...</span></div>
@@ -157,15 +165,19 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
         <div className="reference-inbox__list reference-inbox__list--quiet">
           {visible.map((conversation) => {
             const character = conversation.character;
+            const groupCharacters = conversation.groupCharacters || [];
             const art = character.coverUrl || character.imageUrl;
+            const displayName = conversation.group_mode
+              ? (conversation.group_title || conversation.title || groupCharacters.map((item) => item.name).join(" · "))
+              : character.name;
             const lastMessage = clean(conversation.latest?.content || character.firstMessage || character.role || "Continue your story.");
             const lastMessageAt = formatChatDate(conversation.latest?.created_at || conversation.updated_at);
             return (
               <button key={conversation.id} className={`reference-inbox__row reference-inbox__row--quiet${conversation.unreadCount ? " is-unread" : ""}`} onClick={() => openConversation(conversation)}>
-                <span className="reference-inbox__avatar reference-inbox__avatar--quiet">{art ? <img src={art} alt=""/> : character.initials}</span>
+                <span className={`reference-inbox__avatar reference-inbox__avatar--quiet${conversation.group_mode ? " reference-inbox__avatar--group" : ""}`}>{conversation.group_mode ? groupCharacters.slice(0,3).map((member, index) => <span key={member.id} style={{ "--stack-index": index }}>{member.imageUrl ? <img src={member.imageUrl} alt="" loading="lazy" decoding="async"/> : member.initials}</span>) : (art ? <img src={art} alt=""/> : character.initials)}</span>
                 <span className="reference-inbox__copy reference-inbox__copy--quiet">
                   <span className="reference-inbox__name-line reference-inbox__name-line--quiet">
-                    <strong>{character.name}</strong>
+                    <strong>{displayName}</strong>
                     {conversation.is_pinned && <Star size={13} fill="currentColor" aria-label="Favorite"/>}
                     <time>{lastMessageAt}</time>
                   </span>
@@ -179,6 +191,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
       ) : (
         <div className="reference-inbox__state"><MessageCircle size={28}/><span>{search ? "No chats match your search." : view === "unread" ? "You're all caught up." : "No chats here yet."}</span></div>
       )}
+      {groupStoryOpen && <GroupStoryModal onClose={() => setGroupStoryOpen(false)} onOpenStory={onOpenCharacter}/>}
     </section>
   );
 }

@@ -3,8 +3,6 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import { useAuth } from "./context/AuthContext";
 import Auth from "./pages/Auth";
-import Chats from "./pages/Chats";
-import MyCharacters from "./pages/MyCharacters";
 import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import { useCharacters } from "./context/CharactersContext";
@@ -13,16 +11,34 @@ import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
 
-const Chat = lazy(() => import("./pages/Chat"));
-const CharacterDetail = lazy(() => import("./pages/CharacterDetail"));
-const ChatInbox = lazy(() => import("./pages/ChatInbox"));
-const Memories = lazy(() => import("./pages/Memories"));
-const Profile = lazy(() => import("./pages/Profile"));
-const Personas = lazy(() => import("./pages/Personas"));
-const Lorebooks = lazy(() => import("./pages/Lorebooks"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Diagnostics = lazy(() => import("./pages/Diagnostics"));
-const CreateCharacterModal = lazy(() => import("./components/CreateCharacterModal"));
+const routeImports = {
+  stories: () => import("./pages/Chats"),
+  discover: () => import("./pages/MyCharacters"),
+  chat: () => import("./pages/Chat"),
+  detail: () => import("./pages/CharacterDetail"),
+  inbox: () => import("./pages/ChatInbox"),
+  memories: () => import("./pages/Memories"),
+  profile: () => import("./pages/Profile"),
+  personas: () => import("./pages/Personas"),
+  lorebooks: () => import("./pages/Lorebooks"),
+  settings: () => import("./pages/Settings"),
+  diagnostics: () => import("./pages/Diagnostics"),
+  search: () => import("./pages/Search"),
+  studio: () => import("./components/CreateCharacterModal"),
+};
+const Chats = lazy(routeImports.stories);
+const MyCharacters = lazy(routeImports.discover);
+const Chat = lazy(routeImports.chat);
+const CharacterDetail = lazy(routeImports.detail);
+const ChatInbox = lazy(routeImports.inbox);
+const Memories = lazy(routeImports.memories);
+const Profile = lazy(routeImports.profile);
+const Personas = lazy(routeImports.personas);
+const Lorebooks = lazy(routeImports.lorebooks);
+const Settings = lazy(routeImports.settings);
+const Diagnostics = lazy(routeImports.diagnostics);
+const SearchPage = lazy(routeImports.search);
+const CreateCharacterModal = lazy(routeImports.studio);
 
 const VELVET_PAGES = new Set([
   "characters",
@@ -34,6 +50,7 @@ const VELVET_PAGES = new Set([
   "profile",
   "settings",
   "diagnostics",
+  "search",
 ]);
 
 function readVelvetLocation() {
@@ -46,6 +63,7 @@ function readVelvetLocation() {
       page: "chats",
       characterId: params.get("character"),
       conversationId: params.get("conversation"),
+      messageId: params.get("message"),
     };
   }
 
@@ -56,6 +74,7 @@ function readVelvetLocation() {
       page: VELVET_PAGES.has(from) ? from : "characters",
       characterId: params.get("character"),
       conversationId: null,
+      messageId: null,
     };
   }
 
@@ -64,16 +83,18 @@ function readVelvetLocation() {
     page: VELVET_PAGES.has(requested) ? requested : "chats",
     characterId: null,
     conversationId: null,
+    messageId: null,
   };
 }
 
-function buildVelvetUrl({ mode = "page", page = "chats", characterId = null, conversationId = null }) {
+function buildVelvetUrl({ mode = "page", page = "chats", characterId = null, conversationId = null, messageId = null }) {
   const params = new URLSearchParams();
 
   if (mode === "chat" && characterId) {
     params.set("open", "chat");
     params.set("character", characterId);
     if (conversationId) params.set("conversation", conversationId);
+    if (messageId) params.set("message", messageId);
   } else if (mode === "character" && characterId) {
     params.set("open", "character");
     params.set("character", characterId);
@@ -97,11 +118,28 @@ function App() {
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [previewCharacter, setPreviewCharacter] = useState(null);
 
   useEffect(() => {
     charactersRef.current = characters;
   }, [characters]);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const preload = () => {
+      const likelyRoutes = activePage === "chats"
+        ? [routeImports.chat, routeImports.discover, routeImports.memories]
+        : [routeImports.stories, routeImports.chat, routeImports.profile];
+      likelyRoutes.forEach((load) => load().catch(() => {}));
+    };
+    const idleId = window.requestIdleCallback?.(preload, { timeout: 1600 });
+    const timerId = idleId == null ? window.setTimeout(preload, 700) : null;
+    return () => {
+      if (idleId != null) window.cancelIdleCallback?.(idleId);
+      if (timerId != null) window.clearTimeout(timerId);
+    };
+  }, [authLoading, user, activePage]);
 
   useEffect(() => {
     const currentState = window.history.state;
@@ -116,6 +154,7 @@ function App() {
           character: null,
           characterId: locationState.characterId,
           conversationId: locationState.conversationId,
+          messageId: locationState.messageId || null,
         },
         "",
         buildVelvetUrl(locationState)
@@ -135,16 +174,19 @@ function App() {
         setActivePage("chats");
         setSelectedCharacter(character);
         setSelectedConversationId(state.conversationId || null);
+        setSelectedMessageId(state.messageId || null);
         setPreviewCharacter(null);
       } else if (state.mode === "character" && character) {
         setActivePage(VELVET_PAGES.has(state.page) ? state.page : "characters");
         setSelectedCharacter(null);
         setSelectedConversationId(null);
+        setSelectedMessageId(null);
         setPreviewCharacter(character);
       } else {
         setActivePage(VELVET_PAGES.has(state.page) ? state.page : "chats");
         setSelectedCharacter(null);
         setSelectedConversationId(null);
+        setSelectedMessageId(null);
         setPreviewCharacter(null);
       }
 
@@ -167,6 +209,7 @@ function App() {
         setActivePage("chats");
         setSelectedCharacter(character);
         setSelectedConversationId(locationState.conversationId || null);
+        setSelectedMessageId(locationState.messageId || null);
         setPreviewCharacter(null);
         window.history.replaceState(
           {
@@ -187,6 +230,7 @@ function App() {
         setActivePage(locationState.page);
         setSelectedCharacter(null);
         setSelectedConversationId(null);
+        setSelectedMessageId(null);
         setPreviewCharacter(character);
         window.history.replaceState(
           {
@@ -204,6 +248,7 @@ function App() {
     setActivePage(locationState.page);
     setSelectedCharacter(null);
     setSelectedConversationId(null);
+    setSelectedMessageId(null);
     setPreviewCharacter(null);
     window.history.replaceState(
       {
@@ -219,6 +264,28 @@ function App() {
     );
   }, [authLoading, user, charactersLoading, characters]);
 
+  useEffect(() => {
+    if (!user) return;
+    function handleGlobalSearchShortcut(event) {
+      const target = event.target;
+      const typing = target?.matches?.("input, textarea, select, [contenteditable='true']");
+      if (typing) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSelectedCharacter(null);
+        setSelectedConversationId(null);
+        setSelectedMessageId(null);
+        setPreviewCharacter(null);
+        setActivePage("search");
+        const nextState = { velvetNavigation: true, mode: "page", page: "search", character: null, characterId: null, conversationId: null, messageId: null };
+        window.history.pushState(nextState, "", buildVelvetUrl({ mode: "page", page: "search" }));
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+    window.addEventListener("keydown", handleGlobalSearchShortcut);
+    return () => window.removeEventListener("keydown", handleGlobalSearchShortcut);
+  }, [user?.id]);
+
   if (authLoading) {
     return (
       <main className="app-loading">
@@ -233,6 +300,7 @@ function App() {
   function navigate(page, options = {}) {
     setSelectedCharacter(null);
     setSelectedConversationId(null);
+    setSelectedMessageId(null);
     setPreviewCharacter(null);
     setActivePage(page);
 
@@ -243,6 +311,7 @@ function App() {
       character: null,
       characterId: null,
       conversationId: null,
+      messageId: null,
     };
     const nextUrl = buildVelvetUrl({ mode: "page", page });
 
@@ -255,10 +324,11 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function openCharacter(character, conversationId = null) {
+  function openCharacter(character, conversationId = null, messageId = null) {
     setPreviewCharacter(null);
     setSelectedCharacter(character);
     setSelectedConversationId(conversationId);
+    setSelectedMessageId(messageId);
     setActivePage("chats");
 
     const nextLocation = {
@@ -266,6 +336,7 @@ function App() {
       page: "chats",
       characterId: character.id,
       conversationId,
+      messageId,
     };
 
     window.history.pushState(
@@ -283,6 +354,7 @@ function App() {
   function openCharacterProfile(character) {
     setSelectedCharacter(null);
     setSelectedConversationId(null);
+    setSelectedMessageId(null);
     setPreviewCharacter(character);
     const nextLocation = {
       mode: "character",
@@ -298,8 +370,8 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function startNewStoryFromProfile(character) {
-    const created = await createNewConversation(character);
+  async function startNewStoryFromProfile(character, options = {}) {
+    const created = await createNewConversation(character, options);
     openCharacter(character, created.conversationId);
   }
 
@@ -343,6 +415,7 @@ function App() {
         <Chat
           character={selectedCharacter}
           conversationId={selectedConversationId}
+          focusMessageId={selectedMessageId}
           onBack={leaveCurrentChat}
           onDeleted={() => navigate("chats", { replace: true })}
           onOpenMemories={() => navigate("memories")}
@@ -372,6 +445,7 @@ function App() {
         <Chats
           onOpenCharacter={openCharacter}
           onBrowseCharacters={() => navigate("characters")}
+          onOpenDiagnostics={() => navigate("diagnostics")}
         />
       );
     }
@@ -398,12 +472,15 @@ function App() {
 
     if (activePage === "diagnostics") return <Diagnostics onBack={() => goBackOr("profile")} />;
 
-    if (activePage === "profile") return <Profile onManageCharacters={() => navigate("characters")} onManagePersonas={() => navigate("personas")} onManageLorebooks={() => navigate("lorebooks")} onOpenMemories={() => navigate("memories")} onOpenDiagnostics={() => navigate("diagnostics")} onOpenSettings={() => navigate("settings")} />;
+    if (activePage === "search") return <SearchPage onBack={() => goBackOr("profile")} onOpenCharacter={openCharacter} onOpenMemories={() => navigate("memories")} onOpenLorebooks={() => navigate("lorebooks")} />;
+
+    if (activePage === "profile") return <Profile onManageCharacters={() => navigate("characters")} onManagePersonas={() => navigate("personas")} onManageLorebooks={() => navigate("lorebooks")} onOpenMemories={() => navigate("memories")} onOpenDiagnostics={() => navigate("diagnostics")} onOpenSettings={() => navigate("settings")} onOpenSearch={() => navigate("search")} />;
 
     return (
       <Chats
         onOpenCharacter={openCharacter}
         onBrowseCharacters={() => navigate("characters")}
+        onOpenDiagnostics={() => navigate("diagnostics")}
       />
     );
   }

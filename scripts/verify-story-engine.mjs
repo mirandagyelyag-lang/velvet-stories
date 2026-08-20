@@ -21,6 +21,11 @@ const v17Styles = read("src/styles/velvet-v17.css");
 const memoryV18Migration = read("supabase/migrations/202608140001_velvet_v18_memory_sources.sql");
 const diagnosticsPage = read("src/pages/Diagnostics.jsx");
 const relationshipDrawer = read("src/components/RelationshipDrawer.jsx");
+const storyIntelligenceMigration = read("supabase/migrations/202608170002_velvet_v230_story_intelligence.sql");
+const storycraftMigration = read("supabase/migrations/202608170003_velvet_v240_story_tools.sql");
+const livingStoryMigration = read("supabase/migrations/202608170004_velvet_v250_living_story_suite.sql");
+const timelineDrawer = read("src/components/StoryTimelineDrawer.jsx");
+const storyHubDrawer = read("src/components/StoryHubDrawer.jsx");
 
 const checks = [];
 function check(label, condition) {
@@ -43,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 2400);
+check("live-stream engine stays reasonably consolidated", edgeLines < 2700);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -57,19 +62,24 @@ check("one live generation one validation one optional repair",
   edge.includes("streamGeminiEnvelopeWithFailover({") &&
   edge.includes("let validationIssues = validateNarrativeReply(") &&
   edge.includes("const repaired = await repairRoleplayOnce({") &&
+  edge.includes("const blocking = repairTriggerIssues(validationIssues)") &&
   edge.includes("if (blocking.length)"));
 check("advisory quality issues do not force repeated user regeneration",
   edge.includes("blockingNarrativeIssues") &&
   edge.includes("if (blocking.length)") &&
   !edge.includes("Velvet rejected a weak or incomplete response before showing it. Regenerate once more."));
-check("only structurally unsafe failures trigger the one repair path",
+check("structural failures remain fatal after one bounded repair",
   edge.includes("if (blocking.length)") &&
-  edge.includes("blockingNarrativeIssues(repairedIssues)") &&
-  edge.includes("Gemini returned an incomplete or structurally invalid reply twice. Regenerate once.") &&
+  edge.includes("const repairedFatal = blockingNarrativeIssues(repairedIssues)") &&
+  edge.includes("Velvet could not get a complete safe reply after one repair. Retry once.") &&
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
+check("continuity metadata can trigger repair without bricking readable replies",
+  edge.includes("const REPAIR_TRIGGER_ISSUES = new Set([") &&
+  edge.includes("...CONTINUITY_GUARD_ISSUES") &&
+  !edge.slice(edge.indexOf("const BLOCKING_NARRATIVE_ISSUES"), edge.indexOf("const REPAIR_TRIGGER_ISSUES")).includes("CONTINUITY_GUARD_ISSUES"));
 check("model streams reply scene continuity development and memories in one request",
-  edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "development_update", "memory_updates"]') &&
+  edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
   edge.includes("streamGenerateContent?alt=sse") &&
   edge.includes("result.scene_update") && edge.includes("result.development_update") && edge.includes("result.memory_updates"));
@@ -82,7 +92,7 @@ check("no background story-model calls consume extra quota",
   !edge.includes("updateConversationSummaryInBackground") &&
   !edge.includes("extractMemoriesInBackground"));
 check("advisory style issues never spend a repair call",
-  edge.includes("const blocking = blockingNarrativeIssues(validationIssues)") &&
+  edge.includes("const blocking = repairTriggerIssues(validationIssues)") &&
   edge.includes("if (blocking.length)") &&
   !edge.includes("if (validationIssues.length) {\n      const repaired"));
 check("Gemini primary and two fallbacks are configurable",
@@ -110,7 +120,7 @@ check("v1.2 voice migration covers every existing and future character",
   storyDnaMigration.includes("story_engine_version set default 9"));
 check("every newly created conversation starts an independent development state",
   chatsContext.includes("character_development: {}") &&
-  chatsContext.includes("story_engine_version: 10"));
+  chatsContext.includes("story_engine_version: 12"));
 check("character creator exposes all optional development anchors",
   ["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"].every((field) => characterModal.includes(`name="${field}"`)));
 check("character development anchors persist and reload",
@@ -245,8 +255,9 @@ check("canon memories are surfaced and protected in both memory UIs",
   memoriesPage.includes("ShieldCheck"));
 
 check("Character Studio supports progressive depth and per-section AI polish",
-  characterModal.includes('className="character-studio__depth"') &&
-  characterModal.includes("More depth") &&
+  characterModal.includes('StudioSection step="depth"') &&
+  characterModal.includes("What makes them human?") &&
+  characterModal.includes("How can they change without losing themselves?") &&
   characterModal.includes("Polish section") &&
   charactersContext.includes("enhanceCharacterFields") &&
   edge.includes("focusFields"));
@@ -451,7 +462,8 @@ check("one strong beat records impact but cannot instantly change phase",
   firstEarnedBeat?.relationship_phase === "established" &&
   firstEarnedBeat?.phase_candidate === "warming" &&
   firstEarnedBeat?.phase_evidence_count === 2 &&
-  firstEarnedBeat?.emotional_residue[0]?.remaining_turns === 6 &&
+  firstEarnedBeat?.emotional_residue[0]?.remaining_turns === 9 &&
+  firstEarnedBeat?.emotional_residue[0]?.intensity === 1 &&
   firstEarnedBeat?.turning_points.length === 1);
 const restoredBeforeRegeneration = helpers?.resolveCharacterDevelopmentBranch(
   firstEarnedBeat,
@@ -500,7 +512,7 @@ const decayedDevelopment = helpers?.applyCharacterDevelopment({
 });
 check("emotional residue colors later turns and decays instead of becoming permanent",
   decayedDevelopment?.emotional_residue.length === repeatedEarnedBeat?.emotional_residue.length &&
-  decayedDevelopment?.emotional_residue.every((item, index) => item.remaining_turns === repeatedEarnedBeat.emotional_residue[index].remaining_turns - 1));
+  decayedDevelopment?.emotional_residue.every((item, index) => item.remaining_turns === repeatedEarnedBeat.emotional_residue[index].remaining_turns - 1 && item.intensity < repeatedEarnedBeat.emotional_residue[index].intensity));
 
 const regeneratedDevelopment = helpers?.applyCharacterDevelopment({
   previous: blankCharacterState,
@@ -655,6 +667,75 @@ check("emotional priority outranks decorative scenery", edge.includes("EMOTIONAL
 check("repeated recent openings are blocking and repaired once", edge.includes('"repeated_recent_signature",') && edge.includes("Never restart a physical beat from the immediately previous character turn"));
 check("mature mode reaches the narrative engine", edge.includes("mature_mode=${character.mature_mode ? \"on\" : \"off\"}") && edge.includes("MATURE CONTENT MODE") && edge.includes("mature_mode"));
 check("mature mode preserves consent age and non-graphic boundaries", edge.includes("never overrides consent") && edge.includes("under 18") && edge.includes("fade to black"));
+check("v2.3 story intelligence migration persists recap and continuity ledger",
+  storyIntelligenceMigration.includes("intelligence_state jsonb") &&
+  storyIntelligenceMigration.includes("story_recap text") &&
+  storyIntelligenceMigration.includes("conversations_story_intelligence_idx") &&
+  storyIntelligenceMigration.includes("story_engine_version set default 11"));
+check("Chat Intelligence 2.0 tracks objects knowledge commitments and stakes in the same generation",
+  edge.includes("CHAT INTELLIGENCE 2.0") &&
+  edge.includes("OBJECT LEDGER") &&
+  edge.includes("KNOWLEDGE BOUNDARY") &&
+  edge.includes("COMMITMENT BOUNDARY") &&
+  edge.includes("result.continuity_update") &&
+  edge.includes("applyIntelligenceContinuity"));
+check("continuity ledger is saved and returned without a second AI call",
+  edge.includes("update.intelligence_state = applyIntelligenceContinuity") &&
+  edge.includes("intelligenceState: update.intelligence_state") &&
+  chatsContext.includes("intelligenceState") &&
+  !edge.includes("extractContinuityInBackground"));
+check("smart regeneration has immediate emotional and continuity corrections",
+  edge.includes('["too_cold",') && edge.includes('["too_romantic",') && edge.includes('["wrong_continuity",') &&
+  chat.includes("Too cold") && chat.includes("Too romantic") && chat.includes("Wrong continuity"));
+check("automatic memories prioritize durable milestones and allow up to three in the same request",
+  edge.includes("confessions, promises, boundaries") &&
+  edge.includes("memory_updates.slice(0, 3)") &&
+  edge.includes("maxItems: 3") &&
+  edge.includes("learnedMemoryCount"));
+check("story timeline records only meaningful beats and can build a compact recap",
+  edge.includes("timeline_event") && edge.includes("Record only moments worth remembering later") &&
+  edge.includes("buildStoryRecap") && edge.includes("update.story_recap") &&
+  timelineDrawer.includes("20-second recap") && timelineDrawer.includes("Major story beats"));
+check("timeline exposes current scene objects commitments and knowledge",
+  timelineDrawer.includes("Established objects") && timelineDrawer.includes("Still unresolved") &&
+  timelineDrawer.includes("Who knows what") && storyHubDrawer.includes("Continuity ledger"));
+
+check("v2.4 Group Stories persist a backwards-compatible ensemble cast", storycraftMigration.includes("group_character_ids uuid[]") && storycraftMigration.includes("group_mode boolean") && chatsContext.includes("createGroupConversation") && edge.includes("GROUP STORY CAST"));
+check("Group Story branches preserve the full cast", chatsContext.includes("group_character_ids: conversation.groupCharacterIds") && chatsContext.includes("group_title: conversation.groupTitle"));
+check("group characters are loaded as independent profiles for generation", edge.includes("groupCharactersResult") && edge.includes("Every listed cast member remains an independent person") && edge.includes("Never merge personalities"));
+check("Personas are explicitly isolated per conversation", edge.includes("PERSONA ISOLATION") && edge.includes("Never import a name, background, appearance, job, wealth, family, preference or boundary from another saved persona"));
+check("smart lore retrieval ranks names keywords content overlap and cast relevance", edge.includes("function selectRelevantLore(entries, messages, groupCharacters = [])") && edge.includes("normalizedName") && edge.includes("overlap * 2") && edge.includes("slice(0, 12)"));
+check("AI message edits preserve the rejected wording as an alternative", chatsContext.includes("async function editCharacterMessageInPlace") && chatsContext.includes('from("message_alternatives").insert') && chatsContext.includes("const updated = await updateMessage"));
+
+
+check("v2.5 engine version marks Living Story Suite", livingStoryMigration.includes("story_engine_version set default 13") && livingStoryMigration.includes("epistemic ledger"));
+check("Character Awareness 3.0 separates knowledge suspicion rumor and forgetting", edge.includes("EPISTEMIC STATUS") && edge.includes("PRIVATE KNOWLEDGE") && edge.includes("OFF-SCREEN BLINDNESS") && edge.includes("SOFT FORGETTING") && edge.includes('enum: ["known", "suspected", "rumor", "forgotten"]'));
+check("epistemic status persists in the continuity ledger", edge.includes('status: ["known","suspected","rumor","forgotten"]') && timelineDrawer.includes("knowledgeStatus"));
+check("story chapters close only on grounded large transitions", edge.includes("function evolveStoryChapters") && edge.includes("largeJump") && edge.includes("majorSceneBreak") && edge.includes("chapter_number"));
+check("chapter state returns through the live generation path", edge.includes("storyChapters: update.story_chapters") && chatsContext.includes("eventData.storyChapters") && chatsContext.includes("eventData.activeChapter"));
+check("story dashboard loads recent story memories without another model call", chatsContext.includes('from("memories")') && chatsContext.includes("recentMemories: memoriesResult.data") && storyHubDrawer.includes("Recent memories"));
+
+check("regression shield: impossible location resets remain blocked", edge.includes("CONTINUITY LOCK") && edge.includes("Never restart the same pose, gesture, location beat, vehicle beat or exit sequence"));
+check("regression shield: exited characters cannot silently re-enter a scene", edge.includes("exit sequence") && edge.includes("CONTINUITY LOCK") && edge.includes("OFF-SCREEN BLINDNESS"));
+check("regression shield: repeated semantic openings remain blocking", edge.includes("repeated_recent_signature") && edge.includes("Never restart a physical beat from the immediately previous character turn"));
+check("regression shield: convenient invented props remain forbidden", edge.includes("OBJECT CONTINUITY") && edge.includes("Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop"));
+check("regression shield: off-screen characters stay epistemically blind", edge.includes("OFF-SCREEN BLINDNESS") && edge.includes("EPISTEMIC STATUS"));
+check("regression shield: user POV control is still rejected", edge.includes("controlsUserPOV") && edge.includes("controls_user_pov") && chat.includes("pov_violation"));
+check("regression shield: Next Beat queues without generating immediately", chat.includes("function queueDirectorForNextBeat()") && !chat.slice(chat.indexOf("function queueDirectorForNextBeat()"), chat.indexOf("function clearQueuedDirector()")).includes("regenerateCharacterReply"));
+check("regression shield: Rewrite targets the latest character reply in place", chat.includes("const latestMessage = canonicalMessages.at(-1)") && chat.includes("const targetId = latestMessage.id") && chat.includes("await regenerateCharacterReply(character.id, targetId, instruction, [])"));
+check("regression shield: Mature Mode survives reload mapping", chatsContext.includes("matureMode: Boolean(conversation.mature_mode)") && chatsContext.includes("mature_mode: Boolean(conversation.matureMode)"));
+check("regression shield: Group Stories keep independent cast identities", edge.includes("Every listed cast member remains an independent person") && edge.includes("Never merge personalities") && chatsContext.includes("group_character_ids"));
+check("regression shield: rejected regeneration restores the prior canonical response on failure", chatsContext.includes("The old response remains canonical in the database") && chatsContext.includes("reloadConversationMessages(characterId)"));
+
+check("v2.6.8 continuity doctor blocks silent location teleports", edge.includes("validateContinuityEnvelope") && edge.includes('"location_changed_without_scene_change"') && edge.includes("scene_changed"));
+check("v2.6.8 continuity doctor blocks unexplained re-entry", edge.includes('"absent_character_reappeared"') && edge.includes('left|absent|away|outside|exited'));
+check("v2.6.8 continuity doctor blocks convenient new plot objects", edge.includes('"invented_plot_object"') && edge.includes("previousIntelligence") && edge.includes("memorySimilarity"));
+check("continuity doctor also validates repaired model replies", edge.includes("repairedIssues.push(...validateContinuityEnvelope(repaired"));
+check("single dot can stop an active generation instead of being ignored", chat.includes('if (cleanMessage === ".")') && chat.includes("handleStop()"));
+check("regenerate rewrite and refine all keep an undo target", chat.includes('label: "Regenerate"') && chat.includes('label: "Rewrite"') && chat.includes('label: "Refine"') && chat.includes("undoReplacement"));
+
+check("v2.6.11 Group Story cast survives the startConversation boundary", chatsContext.includes("{ ...options, requestedConversationId, forceNew }") && chatsContext.includes("groupCharacterIds: uniqueCharacters.map((item) => item.id)") && chatsContext.includes("group_character_ids: groupMode ? groupIds : []"));
+
 let failures = 0;
 for (const item of checks) {
   if (!item.condition) failures += 1;

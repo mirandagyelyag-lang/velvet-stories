@@ -1,9 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { lockVelvetPortrait } from "../utils/lockOrientation";
+import { VELVET_VERSION } from "../config/version";
 
 const PWAContext = createContext(null);
 const INSTALL_DISMISSED_KEY = "velvet_install_prompt_dismissed";
+const UPDATE_PENDING_KEY = "velvet_update_pending_v269";
 
 export function PWAProvider({ children }) {
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -14,6 +16,11 @@ export function PWAProvider({ children }) {
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [installed, setInstalled] = useState(isStandalone);
+  const [serverVersion, setServerVersion] = useState("");
+  const [checkingForUpdate, setCheckingForUpdate] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updateProblem, setUpdateProblem] = useState("");
+
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
@@ -22,8 +29,116 @@ export function PWAProvider({ children }) {
     immediate: true,
     onRegisterError(error) {
       console.error("Velvet service worker registration failed:", error);
+      setUpdateProblem("The app updater could not start on this device.");
     },
   });
+
+  const serverUpdateAvailable = Boolean(serverVersion && serverVersion !== VELVET_VERSION);
+
+  async function checkForUpdate({ silent = true } = {}) {
+    if (!navigator.onLine) return { available: false, version: serverVersion || "" };
+    if (!silent) setCheckingForUpdate(true);
+    try {
+      const response = await fetch(`/velvet-version.json?ts=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "cache-control": "no-cache" },
+      });
+      if (!response.ok) throw new Error(`Version check returned ${response.status}`);
+      const payload = await response.json();
+      const remote = String(payload?.version || "").trim();
+      if (remote) setServerVersion(remote);
+      if ("serviceWorker" in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          await registration.update();
+        } catch {}
+      }
+      return { available: Boolean(remote && remote !== VELVET_VERSION), version: remote };
+    } catch (error) {
+      if (!silent) setUpdateProblem(error?.message || "Could not check for updates.");
+      return { available: false, version: serverVersion || "", error };
+    } finally {
+      if (!silent) setCheckingForUpdate(false);
+    }
+  }
+
+  async function clearOldShellCaches() {
+    if (!("caches" in window)) return;
+    const keys = await caches.keys();
+    const staleShellKeys = keys.filter((key) => /workbox|precache|vite-pwa|velvet-shell/i.test(key));
+    await Promise.allSettled(staleShellKeys.map((key) => caches.delete(key)));
+  }
+
+  async function updateApp() {
+    if (updating) return;
+    setUpdating(true);
+    setUpdateProblem("");
+    const target = serverVersion || "latest";
+    try {
+      localStorage.setItem(UPDATE_PENDING_KEY, JSON.stringify({ target, from: VELVET_VERSION, at: Date.now() }));
+    } catch {}
+    try {
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.update();
+      }
+      await clearOldShellCaches();
+      await updateServiceWorker(true);
+      window.setTimeout(() => window.location.reload(), 1200);
+    } catch (error) {
+      setUpdateProblem(error?.message || "The update was interrupted before Velvet could reopen.");
+      setUpdating(false);
+    }
+  }
+
+  async function repairUpdate() {
+    if (updating) return;
+    setUpdating(true);
+    setUpdateProblem("");
+    try {
+      await clearOldShellCaches();
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.allSettled(registrations.map((registration) => registration.unregister()));
+      }
+      try { localStorage.removeItem(UPDATE_PENDING_KEY); } catch {}
+      const url = new URL(window.location.href);
+      url.searchParams.set("velvet_repair", String(Date.now()));
+      window.location.replace(url.toString());
+    } catch (error) {
+      setUpdating(false);
+      setUpdateProblem(error?.message || "Velvet could not repair the updater automatically.");
+    }
+  }
+
+  useEffect(() => {
+    try {
+      const pending = JSON.parse(localStorage.getItem(UPDATE_PENDING_KEY) || "null");
+      if (pending?.target === VELVET_VERSION || (pending?.target === "latest" && Date.now() - Number(pending?.at || 0) > 120000)) {
+        localStorage.removeItem(UPDATE_PENDING_KEY);
+      } else if (pending && pending.target !== VELVET_VERSION && Date.now() - Number(pending.at || 0) > 8000) {
+        setUpdateProblem(`An update started from v${pending.from || "?"} but this tab is still on v${VELVET_VERSION}.`);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    let timer = 0;
+    const run = () => {
+      if (!navigator.onLine || document.visibilityState !== "visible") return;
+      void checkForUpdate({ silent: true });
+    };
+    window.setTimeout(run, 1600);
+    timer = window.setInterval(run, 20 * 60 * 1000);
+    const onVisible = () => { if (document.visibilityState === "visible") run(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", run);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", run);
+    };
+  }, []);
 
   useEffect(() => {
     void lockVelvetPortrait();
@@ -37,18 +152,10 @@ export function PWAProvider({ children }) {
   }, [installed]);
 
   useEffect(() => {
-    function captureInstallPrompt(event) {
-      event.preventDefault();
-      setInstallPrompt(event);
-    }
-    function markInstalled() {
-      setInstalled(true);
-      setInstallPrompt(null);
-      try { localStorage.removeItem(INSTALL_DISMISSED_KEY); } catch {}
-    }
+    function captureInstallPrompt(event) { event.preventDefault(); setInstallPrompt(event); }
+    function markInstalled() { setInstalled(true); setInstallPrompt(null); try { localStorage.removeItem(INSTALL_DISMISSED_KEY); } catch {} }
     function goOnline() { setOnline(true); }
     function goOffline() { setOnline(false); }
-
     window.addEventListener("beforeinstallprompt", captureInstallPrompt);
     window.addEventListener("appinstalled", markInstalled);
     window.addEventListener("online", goOnline);
@@ -73,10 +180,6 @@ export function PWAProvider({ children }) {
       }
       return choice;
     }
-    if (isIOS()) {
-      setShowIOSInstructions(true);
-      return { outcome: "instructions" };
-    }
     setShowIOSInstructions(true);
     return { outcome: "instructions" };
   }
@@ -86,38 +189,17 @@ export function PWAProvider({ children }) {
     setInstallDismissed(true);
   }
 
-  const value = {
-    canInstall: Boolean(installPrompt) || (isIOS() && !installed),
-    installed,
-    installDismissed,
-    installApp,
-    dismissInstall,
-    showIOSInstructions,
-    closeIOSInstructions: () => setShowIOSInstructions(false),
-    online,
-    offlineReady,
-    dismissOfflineReady: () => setOfflineReady(false),
-    needRefresh,
-    dismissRefresh: () => setNeedRefresh(false),
-    updateApp: () => updateServiceWorker(true),
-    platform: isIOS() ? "ios" : "other",
-  };
+  const value = useMemo(() => ({
+    canInstall: Boolean(installPrompt) || (isIOS() && !installed), installed, installDismissed, installApp, dismissInstall,
+    showIOSInstructions, closeIOSInstructions: () => setShowIOSInstructions(false), online, offlineReady,
+    dismissOfflineReady: () => setOfflineReady(false), needRefresh, dismissRefresh: () => setNeedRefresh(false), updateApp,
+    platform: isIOS() ? "ios" : "other", localVersion: VELVET_VERSION, serverVersion, serverUpdateAvailable,
+    checkingForUpdate, updating, updateProblem, checkForUpdate, repairUpdate,
+  }), [installPrompt, installed, installDismissed, showIOSInstructions, online, offlineReady, needRefresh, serverVersion, serverUpdateAvailable, checkingForUpdate, updating, updateProblem]);
 
   return <PWAContext.Provider value={value}>{children}</PWAContext.Provider>;
 }
 
-function isIOS() {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-
-function isStandalone() {
-  return window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true;
-}
-
-export function usePWA() {
-  const context = useContext(PWAContext);
-  if (!context) throw new Error("usePWA must be used inside PWAProvider");
-  return context;
-}
+function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
+function isStandalone() { return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true; }
+export function usePWA() { const context = useContext(PWAContext); if (!context) throw new Error("usePWA must be used inside PWAProvider"); return context; }

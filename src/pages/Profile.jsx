@@ -11,6 +11,7 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  Search,
   UserRound,
   UsersRound,
   X,
@@ -34,6 +35,7 @@ function Profile({
   onOpenMemories,
   onOpenDiagnostics,
   onOpenSettings,
+  onOpenSearch,
 }) {
   const { user, signOut } = useAuth();
   const { characters } = useCharacters();
@@ -150,6 +152,7 @@ function Profile({
     { icon: UsersRound, label: "Roleplay Personas", value: personas.length, action: onManagePersonas },
     { icon: Globe2, label: "World & Lorebooks", value: lorebooks.length, action: onManageLorebooks },
     { icon: BookHeart, label: "Memories", value: stats.memories, action: onOpenMemories },
+    { icon: Search, label: "Search Velvet", action: onOpenSearch },
     { icon: Settings2, label: "Settings", action: onOpenSettings },
     { icon: Activity, label: "AI Status", action: onOpenDiagnostics },
   ];

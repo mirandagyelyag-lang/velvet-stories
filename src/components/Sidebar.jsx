@@ -4,6 +4,7 @@ import {
   Compass,
   Eye,
   MessageCircle,
+  Search,
   Moon,
   Sun,
   UserRound,
@@ -50,6 +51,7 @@ function Sidebar({ activePage, onNavigate }) {
         </nav>
 
         <footer className="sidebar__footer">
+          <button className={`sidebar__global-search${activePage === "search" ? " is-active" : ""}`} onClick={() => onNavigate("search")}><Search size={18}/><span>Search Velvet</span><kbd>⌘K</kbd></button>
           <button className="sidebar__theme" onClick={toggleTheme}>
             {theme === "dark" ? <Moon size={18} /> : theme === "comfort" ? <Eye size={18} /> : <Sun size={18} />}
             <span>{theme === "light" ? "Light" : theme === "dark" ? "Dark" : "Comfort"}</span>
@@ -65,6 +67,7 @@ function Sidebar({ activePage, onNavigate }) {
         </footer>
       </aside>
 
+      <button type="button" className={`mobile-global-search${activePage === "search" ? " is-active" : ""}`} onClick={() => onNavigate("search")} aria-label="Search Velvet"><Search size={20}/></button>
       <nav className="mobile-nav velvet-reference-nav" aria-label="Mobile navigation">
         {navigation.map((item) => (
           <NavButton

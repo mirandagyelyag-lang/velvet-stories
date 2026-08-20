@@ -54,7 +54,7 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: true,
         navigateFallback: "/index.html",
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2,mp3}"],
         runtimeCaching: [
           {
             urlPattern: ({ request, url }) => request.destination === "image" && !url.pathname.includes("velvet-vs-v4-"),

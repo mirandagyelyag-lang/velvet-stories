@@ -16,6 +16,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../services/supabase";
 import { useCharacters } from "../context/CharactersContext";
+import { usePersonas } from "../context/PersonasContext";
+import { useLorebooks } from "../context/LorebooksContext";
 import { useTheme } from "../context/ThemeContext";
 import "../styles/character-detail.css";
 
@@ -30,11 +32,15 @@ export default function CharacterDetail({
 }) {
   const [stories, setStories] = useState([]);
   const { generateInstantStory } = useCharacters();
+  const { personas } = usePersonas();
+  const { lorebooks } = useLorebooks();
   const { theme } = useTheme();
   const [instantLoading, setInstantLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [storySetupOpen, setStorySetupOpen] = useState(false);
   const [storyOpening, setStoryOpening] = useState("");
+  const [storyPersonaId, setStoryPersonaId] = useState("");
+  const [storyLorebookId, setStoryLorebookId] = useState("");
 
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route");
@@ -59,6 +65,7 @@ export default function CharacterDetail({
         .from("conversations")
         .select("id, title, updated_at, branch_parent_id")
         .eq("character_id", character.id)
+        .eq("group_mode", false)
         .is("trashed_at", null)
         .order("updated_at", { ascending: false })
         .limit(8);
@@ -73,6 +80,14 @@ export default function CharacterDetail({
       alive = false;
     };
   }, [character.id]);
+
+
+  function openStorySetup() {
+    setStoryOpening("");
+    setStoryPersonaId(personas.find((item) => item.isDefault)?.id || "");
+    setStoryLorebookId("");
+    setStorySetupOpen(true);
+  }
 
   async function handleInstantStory() {
     if (instantLoading) return;
@@ -154,7 +169,7 @@ export default function CharacterDetail({
               <MessageCircle size={18} />
               <span>{latestStory ? "Continue latest story" : "Begin story"}</span>
             </button>
-            <button className="character-profile__new" onClick={() => { setStoryOpening(""); setStorySetupOpen(true); }}><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
+            <button className="character-profile__new" onClick={() => { setStoryOpening(""); setStoryPersonaId(personas.find((item) => item.isDefault)?.id || ""); setStoryLorebookId(""); setStorySetupOpen(true); }}><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
           </div>
         </div>
       </section>
@@ -259,7 +274,7 @@ export default function CharacterDetail({
                 <span>OPENING SCENE</span>
               </div>
               <blockquote>{character.firstMessage}</blockquote>
-              <button onClick={() => onNewStory(character)}>
+              <button onClick={openStorySetup}>
                 Start from the beginning <ChevronRight size={16} />
               </button>
             </section>
@@ -273,7 +288,7 @@ export default function CharacterDetail({
                 <small>YOUR STORIES</small>
                 <h2>With {character.name}</h2>
               </div>
-              <button onClick={() => onNewStory(character)} aria-label="Start new story">
+              <button onClick={openStorySetup} aria-label="Start new story">
                 <Plus size={17} />
               </button>
             </header>
@@ -297,7 +312,7 @@ export default function CharacterDetail({
               <div className="character-profile__empty character-profile__empty--stories">
                 <MessageCircle size={21} />
                 <p>No stories yet.</p>
-                <button onClick={() => { setStoryOpening(""); setStorySetupOpen(true); }}>Begin the first one</button>
+                <button onClick={openStorySetup}>Begin the first one</button>
               </div>
             )}
           </section>
@@ -323,12 +338,17 @@ export default function CharacterDetail({
               <div><small>NEW STORY</small><h2>Where should this one begin?</h2><p>Keep the character. Change only the opening if you want a different universe, day or situation.</p></div>
               <button type="button" onClick={()=>setStorySetupOpen(false)} aria-label="Close new story setup"><X size={19}/></button>
             </header>
+            <div className="story-setup-sheet__identity-grid">
+              <label><span>Your persona <small>this story only</small></span><select value={storyPersonaId} onChange={(event)=>setStoryPersonaId(event.target.value)}><option value="">Account identity</option>{personas.map((persona)=><option key={persona.id} value={persona.id}>{persona.isDefault ? "★ " : ""}{persona.name}{persona.role ? ` · ${persona.role}` : ""}</option>)}</select></label>
+              <label><span>World / lorebook <small>optional</small></span><select value={storyLorebookId} onChange={(event)=>setStoryLorebookId(event.target.value)}><option value="">No linked world</option>{lorebooks.map((book)=><option key={book.id} value={book.id}>{book.name}{book.genre ? ` · ${book.genre}` : ""}</option>)}</select></label>
+            </div>
+            <p className="story-setup-sheet__persona-note">Velvet keeps this persona isolated from your other identities and retrieves only world lore relevant to the current scene.</p>
             <label><span>Opening beat <small>optional</small></span><textarea rows="5" value={storyOpening} onChange={(event)=>setStoryOpening(event.target.value)} placeholder={character.firstMessage || `The next story with ${character.name} begins…`} /></label>
             <div className="story-setup-sheet__choices">
               <button type="button" onClick={()=>setStoryOpening("")} className={!storyOpening.trim() ? "is-active" : ""}><BookOpen size={16}/><span>Original opening<small>Use the character's saved scene</small></span></button>
               <button type="button" onClick={()=>document.querySelector(".story-setup-sheet textarea")?.focus()} className={storyOpening.trim() ? "is-active" : ""}><Sparkles size={16}/><span>Custom opening<small>Write what happens first</small></span></button>
             </div>
-            <footer><button type="button" className="secondary" onClick={()=>setStorySetupOpen(false)}>Cancel</button><button type="button" className="primary" onClick={()=>{ setStorySetupOpen(false); onNewStory({ ...character, firstMessage: storyOpening.trim() || character.firstMessage }); }}><MessageCircle size={17}/>Start story</button></footer>
+            <footer><button type="button" className="secondary" onClick={()=>setStorySetupOpen(false)}>Cancel</button><button type="button" className="primary" onClick={()=>{ setStorySetupOpen(false); onNewStory({ ...character, firstMessage: storyOpening.trim() || character.firstMessage }, { personaId: storyPersonaId, lorebookId: storyLorebookId }); }}><MessageCircle size={17}/>Start story</button></footer>
           </section>
         </div>
       )}

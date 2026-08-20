@@ -18,6 +18,7 @@ type ModelEnvelope = {
   development_update: Record<string, any>;
   voice_plan: Record<string, any>;
   scene_update: Record<string, any>;
+  continuity_update: Record<string, any>;
   memory_updates: Record<string, any>[];
 };
 
@@ -29,6 +30,7 @@ type ModelResult = ModelEnvelope & {
 type LoadedContext = {
   conversation: Record<string, any>;
   character: Record<string, any>;
+  groupCharacters: Record<string, any>[];
   persona: Record<string, any> | null;
   messages: Record<string, any>[];
   memories: Record<string, any>[];
@@ -147,7 +149,7 @@ Deno.serve(async (request) => {
     const turnIntent = classifyTurnIntent(latestUserMessage, messages);
     const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
     const selectedMemories = selectRelevantMemories(loaded.memories, messages);
-    const selectedLore = selectRelevantLore(loaded.loreEntries, messages);
+    const selectedLore = selectRelevantLore(loaded.loreEntries, messages, loaded.groupCharacters);
     const developmentState = resolveCharacterDevelopmentBranch(
       loaded.conversation.character_development,
       configuredCharacter.relationship,
@@ -157,6 +159,7 @@ Deno.serve(async (request) => {
     const prompt = buildNarrativePrompt({
       conversation: loaded.conversation,
       character: configuredCharacter,
+      groupCharacters: loaded.groupCharacters,
       userIdentity,
       messages,
       memories: selectedMemories,
@@ -213,6 +216,11 @@ Deno.serve(async (request) => {
       existingSceneState: loaded.conversation.scene_state || {},
       existingCastState: loaded.conversation.cast_state || {},
       existingRelationshipState: loaded.conversation.relationship_state || {},
+      existingIntelligenceState: loaded.conversation.intelligence_state || {},
+      existingUnresolvedThreads: loaded.conversation.unresolved_threads || [],
+      existingStoryRecap: loaded.conversation.story_recap || loaded.conversation.summary || "",
+      existingStoryChapters: loaded.conversation.story_chapters || [],
+      existingActiveChapter: loaded.conversation.active_chapter || {},
       regenerationInstruction,
       regenerationFeedback,
       isRegeneration: Boolean(regenerateMessageId),
@@ -432,13 +440,15 @@ async function handleCharacterGenerate({ apiKey, concept }) {
 async function loadContext({ supabase, conversationId, userId }): Promise<LoadedContext> {
   const { data: conversation, error: conversationError } = await supabase
     .from("conversations")
-    .select("id, character_id, persona_id, lorebook_id, title, summary, response_length_override, narration_style_override, creativity, romance_intensity, initiative, drama, flirting, humor, description_level, character_independence, dialogue_frequency, narrative_camera, inner_thoughts, story_preset, scene_state, story_timeline, pacing_mode, mature_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, character_development, story_engine_version, story_revision")
+    .select("id, character_id, persona_id, lorebook_id, title, summary, response_length_override, narration_style_override, creativity, romance_intensity, initiative, drama, flirting, humor, description_level, character_independence, dialogue_frequency, narrative_camera, inner_thoughts, story_preset, scene_state, story_timeline, pacing_mode, mature_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, intelligence_state, story_recap, character_development, story_engine_version, story_revision, group_mode, group_character_ids, group_title")
     .eq("id", conversationId)
     .eq("user_id", userId)
     .single();
   if (conversationError || !conversation) throw new Error(conversationError?.message || "Conversation not found");
 
-  const [characterResult, personaResult, messagesResult, memoriesResult, loreResult] = await Promise.all([
+  const groupCharacterIds = [...new Set([conversation.character_id, ...(Array.isArray(conversation.group_character_ids) ? conversation.group_character_ids : [])].filter(Boolean))];
+
+  const [characterResult, personaResult, messagesResult, memoriesResult, loreResult, groupCharactersResult] = await Promise.all([
     supabase.from("characters")
       .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, voice_vocabulary, humor_style, conflict_style, affection_style, verbal_tells, voice_avoidances, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
       .eq("id", conversation.character_id).eq("user_id", userId).single(),
@@ -453,7 +463,7 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
       .order("created_at", { ascending: false }).limit(80),
     supabase.from("memories")
       .select("id, conversation_id, content, importance, category, is_pinned, is_canon, why_remembered, source, scope, superseded_at, created_at, updated_at")
-      .eq("character_id", conversation.character_id).eq("user_id", userId)
+      .in("character_id", groupCharacterIds).eq("user_id", userId)
       .or(`conversation_id.eq.${conversationId},scope.eq.character`)
       .is("superseded_at", null)
       .order("is_canon", { ascending: false })
@@ -466,9 +476,14 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
         .eq("is_active", true).order("always_include", { ascending: false })
         .order("updated_at", { ascending: false }).limit(60)
       : Promise.resolve({ data: [], error: null }),
+    groupCharacterIds.length > 1
+      ? supabase.from("characters")
+        .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, voice_vocabulary, humor_style, conflict_style, affection_style, verbal_tells, voice_avoidances, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
+        .in("id", groupCharacterIds).eq("user_id", userId)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
-  for (const result of [characterResult, personaResult, messagesResult, memoriesResult, loreResult]) {
+  for (const result of [characterResult, personaResult, messagesResult, memoriesResult, loreResult, groupCharactersResult]) {
     if (result.error) throw new Error(result.error.message);
   }
   if (!characterResult.data) throw new Error("Character not found");
@@ -476,6 +491,9 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
   return {
     conversation,
     character: characterResult.data,
+    groupCharacters: groupCharacterIds.length > 1
+      ? groupCharacterIds.map((id) => (groupCharactersResult.data || []).find((item) => item.id === id)).filter(Boolean)
+      : [characterResult.data],
     persona: personaResult.data || null,
     messages: [...(messagesResult.data || [])].reverse(),
     memories: memoriesResult.data || [],
@@ -536,6 +554,7 @@ async function resolveGenerationBranch({ supabase, messages, regenerateMessageId
 function buildNarrativePrompt({
   conversation,
   character,
+  groupCharacters = [],
   userIdentity,
   messages,
   memories,
@@ -576,6 +595,22 @@ function buildNarrativePrompt({
     `Example dialogue (voice reference, never copy): ${character.example_dialogue || "none"}`,
   ].join("\n");
 
+  const supportingCast = (Array.isArray(groupCharacters) ? groupCharacters : [])
+    .filter((item) => item?.id && item.id !== character.id);
+  const groupCastText = supportingCast.length
+    ? supportingCast.map((member) => [
+      `Name: ${cleanPromptValue(member.name, 100)}`,
+      `Role: ${cleanPromptValue(member.role || "not specified", 180)}`,
+      `Personality: ${cleanPromptValue(member.personality || "not specified", 900)}`,
+      `Relationship to ${userIdentity.name}: ${cleanPromptValue(member.relationship || "not specified", 900)}`,
+      `World/scenario: ${cleanPromptValue(member.scenario || member.world || "not specified", 700)}`,
+      `Speech style: ${cleanPromptValue(member.speech_style || "not specified", 500)}`,
+      `Conflict style: ${cleanPromptValue(member.conflict_style || "not specified", 500)}`,
+      `Affection style: ${cleanPromptValue(member.affection_style || "not specified", 500)}`,
+      `Boundaries: ${cleanPromptValue(member.boundaries || "not specified", 500)}`,
+    ].join("\n")).join("\n\n---\n\n")
+    : "none";
+
   const persona = [
     `Name: ${userIdentity.name}`,
     `Pronouns: ${userIdentity.pronouns || "not specified"}`,
@@ -590,12 +625,12 @@ function buildNarrativePrompt({
   ].join("\n");
 
   const immediate = messages.slice(-18).map((message) => {
-    const speaker = message.sender === "user" ? userIdentity.name : character.name;
+    const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
     return `${speaker}: ${compactMessageForPrompt(message.content, 3200)}`;
   }).join("\n\n") || "none";
 
   const older = messages.slice(-60, -18).map((message) => {
-    const speaker = message.sender === "user" ? userIdentity.name : character.name;
+    const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
     return `${speaker}: ${compactMessageForPrompt(message.content, 900)}`;
   }).join("\n") || "none";
 
@@ -616,6 +651,7 @@ function buildNarrativePrompt({
     relationship: conversation.relationship_state || {},
     cast: conversation.cast_state || {},
     open_threads: conversation.unresolved_threads || [],
+    intelligence: conversation.intelligence_state || {},
     recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-20) : [],
   }).slice(0, 9000);
 
@@ -643,6 +679,15 @@ NON-NEGOTIABLE PRIORITY
 11. CONTINUITY LOCK: before drafting, compare the proposed opening and physical action against the immediately previous character turn. Never restart the same pose, gesture, location beat, vehicle beat or exit sequence. Once a character drives away, leaves, hangs up, enters a building or otherwise changes state, that state remains true until the visible transcript explicitly changes it.
 12. OBJECT CONTINUITY: do not introduce a plot-relevant prop, possession, package, clothing item, food, gift, injury, vehicle, phone event or household object unless it is established in the visible transcript, profile, lore or confirmed memory. Incidental scenery may remain generic, but never make a newly invented object drive the action.
 13. EMOTIONAL PRIORITY: when the latest user turn contains rejection, confrontation, anger, fear, affection, a boundary, or a relationship-threatening statement, that emotional event is the center of the response. Show what it does to ${character.name} before decorative environment description or logistics.
+14. KNOWLEDGE BOUNDARY: track who knows each reveal. A character cannot react to a secret, message, confession or event unless the visible transcript, confirmed memory or continuity state shows how they learned it.
+15. COMMITMENT BOUNDARY: promises, plans, invitations, threats, deadlines and unresolved questions persist until visibly fulfilled, withdrawn or contradicted. Do not silently forget them.
+16. OBJECT LEDGER: treat the continuity state's established objects as the only plot-relevant movable props currently available unless the latest visible turn explicitly introduces a new one.
+17. EPISTEMIC STATUS: distinguish KNOWN from SUSPECTED and RUMOR. Suspicion is not fact. A rumor can be wrong. Never upgrade either to confirmed knowledge without visible evidence.
+18. PRIVATE KNOWLEDGE: a secret learned by one character stays private to that character until a visible telling, overhearing, message, or other grounded transfer occurs.
+19. OFF-SCREEN BLINDNESS: when a character leaves the room, hangs up, or is absent, they do not gain new scene knowledge. Re-entry does not magically fill the gap.
+20. SOFT FORGETTING: minor low-stakes details may fade, but canon, pinned memories, promises, boundaries, major relationship shifts and important reveals do not disappear merely to simplify the scene.
+21. PRESENCE ENGINE: the current-scene roster persists until a visible exit or genuine scene transition changes it. Never silently drop a side character who is still there, and never let someone outside the scene hear local dialogue.
+22. EMOTIONAL AFTERMATH: major emotional beats have inertia. A confession, breakup threat, rejection, kiss, betrayal, vulnerable admission or serious fight should continue shaping behavior across later turns until the stored emotional residue naturally decays or visible repair changes it.
 
 TURN CONTRACT
 - Response language: ${responseLanguage}. Match the language of the latest ordinary user message.
@@ -665,8 +710,16 @@ TURN CONTRACT
 - Do not over-describe rain, breathing, jaws, umbrellas, wet pavement, silence or eye movements. Choose only details that change the emotional beat.
 - End after the beat lands. Never cut off mid-sentence.
 
-CHARACTER
+PRIMARY CHARACTER
 ${profile}
+
+GROUP STORY CAST
+${groupCastText}
+${supportingCast.length ? `- This is a true ensemble story. ${character.name} is the primary anchor, not the only person allowed to act or speak.
+- Every listed cast member remains an independent person with their own voice, motives, knowledge, boundaries and relationship to ${userIdentity.name}.
+- Never merge personalities, dialogue habits, memories or relationship progress across cast members.
+- Keep speaker identity obvious in prose/dialogue without turning the reply into a screenplay or chat transcript.
+- Track presence separately. A cast member who left cannot hear or answer until canon brings them back or a plausible digital channel is established.` : "- This is a single-character story."}
 
 VOICE FINGERPRINT — PASS THE BLIND-VOICE TEST
 - Internally decide ${character.name}'s conversational goal, outward tactic and private pressure before writing.
@@ -692,7 +745,8 @@ ${learnedNegativeFeedback.length ? `- Avoid these patterns learned from repeated
 PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND
 ${JSON.stringify(characterDevelopmentPromptView(developmentState)).slice(0, 7000)}
 - Identity, values, boundaries, core motivation and emotional defense remain anchored to the CHARACTER profile.
-- Emotional residue should color behavior subtly; do not restate it as exposition.
+- Emotional residue should color behavior subtly; do not restate it as exposition. Intensity decays turn by turn, but a confession, fight, rejection, boundary, kiss or major reveal must not vanish emotionally after one or two replies.
+- When residue is active, let it alter timing, openness, avoidance, humor, distance or initiative in character-specific ways. Never reset the character to neutral merely because the immediate topic changes.
 - Learned preferences describe how this user wants roleplay to read. Obey them without copying old dialogue.
 - Relationship phases move gradually. Never jump phase because of one ordinary line, one touch, one argument or one flattering remark.
 - A possible growth direction is not a destination. The character may resist, relapse or choose differently until visible turning points earn change.
@@ -700,6 +754,7 @@ ${JSON.stringify(characterDevelopmentPromptView(developmentState)).slice(0, 7000
 
 USER-CONTROLLED PROTAGONIST
 ${persona}
+- PERSONA ISOLATION: only this identity belongs to the protagonist in this conversation. Never import a name, background, appearance, job, wealth, family, preference or boundary from another saved persona or another story unless the visible canon explicitly establishes it here.
 
 CONTROLS
 romance=${character.romance_intensity}/100, flirting=${character.flirting}/100, humor=${character.humor}/100, drama=${character.drama}/100, initiative=${character.initiative}/100, dialogue=${character.dialogue_frequency}/100, description=${character.description_level}/100, independence=${character.character_independence}/100, inner_thoughts=${character.inner_thoughts}, camera=${character.narrative_camera}, pacing=${character.pacing_mode}, preset=${character.story_preset}, mature_mode=${character.mature_mode ? "on" : "off"}
@@ -722,11 +777,16 @@ ${older}
 IMMEDIATE CONTINUITY—READ LITERALLY
 ${immediate}
 
-DERIVED CONTINUITY AIDS—TENTATIVE IF THEY CONFLICT WITH THE TRANSCRIPT
+CHAT INTELLIGENCE 2.0 — DERIVED CONTINUITY AIDS
 ${derivedContext}
+- The visible transcript always wins. Use the intelligence object only to prevent continuity mistakes, never to invent canon.
+- objects = plot-relevant established props/items currently available.
+- knowledge = who visibly learned what and from which source.
+- commitments = promises/plans/questions still relevant.
+- stakes = the immediate emotional or practical pressure, if any.
 
-ROLLING SUMMARY—TENTATIVE IF IT CONFLICTS WITH THE TRANSCRIPT
-${cleanPromptValue(conversation.summary || "none", 6000)}
+ROLLING STORY RECAP—TENTATIVE IF IT CONFLICTS WITH THE TRANSCRIPT
+${cleanPromptValue(conversation.story_recap || conversation.summary || "none", 6000)}
 
 GENERATION MODE
 ${regeneration}
@@ -740,8 +800,9 @@ Return JSON with fields in this exact order so reply can stream first:
 - voice_plan: a private planning object with conversational_goal, outward_tactic, private_pressure, verbal_signature and avoided_pattern. Each value is one short string. Never place this analysis inside reply.
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
 - scene_update: a strict physical-continuity object with scene_changed (boolean), separator_label (short string such as "Later that night" only when the visible turn truly changes scene/time, otherwise empty), location (current established location or empty), time_label (established time/daypart or empty), present (names visibly present now), exited (names who visibly left in this turn), and heard_user_turn (names who were physically/digitally able to receive the latest user turn). Do not infer attendance, proximity, overhearing or off-screen movement. Keep existing scene facts when the transcript does not change them.
+- continuity_update: one compact object with objects_present (only established plot-relevant objects still available), knowledge_updates (who, knows, source, status; status is known/suspected/rumor/forgotten and only visible knowledge gained, corrected, suspected, rumored or intentionally faded this turn), commitments (still-live promises/plans/questions), resolved_commitments (items visibly resolved this turn), stakes (one short current pressure), and timeline_event. timeline_event has record (boolean), label, detail, kind (relationship/conflict/promise/reveal/decision/scene/other), importance (1-5). Record only moments worth remembering later: confessions, meaningful fights, promises, firsts, secrets/reveals, consequential decisions, relationship shifts or real scene milestones. Ordinary banter should record=false.
 - development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
-- memory_updates: zero to two durable facts learned directly from the visible user turn only. Each item has content, category (fact/person/relationship/world/event/preference/boundary/promise/conflict), importance (1-5), scope (conversation/character), reason (one short explanation of why this is useful later), and replaces (the exact older tentative memory this user turn corrects, otherwise an empty string). Prefer updating an existing durable idea over creating a near-duplicate. Never store facts invented by the character reply. Never infer identity, diagnosis, secrets or off-screen facts. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
+- memory_updates: zero to three durable facts learned directly from the visible user turn only. Each item has content, category (fact/person/relationship/world/event/preference/boundary/promise/conflict), importance (1-5), scope (conversation/character), reason (one short explanation of why this is useful later), and replaces (the exact older tentative memory this user turn corrects, otherwise an empty string). Prefer updating an existing durable idea over creating a near-duplicate. Prioritize confessions, promises, boundaries, important preferences, relationship changes, recurring places, secrets the user explicitly reveals, consequential conflicts and first-time milestones. Importance 1-2 is too trivial for automatic storage; use [] for ordinary banter, temporary gestures, scenery, clothing, food or throwaway logistics. Never store facts invented by the character reply. Never infer identity, diagnosis, secrets or off-screen facts. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
 
 AUTHORITATIVE LATEST USER TURN (message_id=${latestUserRecord.id})
 ${userIdentity.name}: ${latest}
@@ -813,7 +874,7 @@ async function callGeminiWithFailover({
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
-              required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "development_update", "memory_updates"],
+              required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"],
               properties: {
                 reply: { type: "string" },
                 turn_reading: { type: "string" },
@@ -843,7 +904,19 @@ async function callGeminiWithFailover({
                     heard_user_turn: { type: "array", items: { type: "string" } },
                   },
                 },
-                memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content: { type: "string" }, category: { type: "string", enum: ["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"] }, importance: { type: "integer" }, scope: { type: "string", enum: ["conversation", "character"] }, reason: { type: "string" }, replaces: { type: "string" } } } },
+                continuity_update: {
+                  type: "object",
+                  required: ["objects_present", "knowledge_updates", "commitments", "resolved_commitments", "stakes", "timeline_event"],
+                  properties: {
+                    objects_present: { type: "array", maxItems: 12, items: { type: "string" } },
+                    knowledge_updates: { type: "array", maxItems: 6, items: { type: "object", required: ["who", "knows", "source", "status"], properties: { who: { type: "string" }, knows: { type: "string" }, source: { type: "string" }, status: { type: "string", enum: ["known", "suspected", "rumor", "forgotten"] } } } },
+                    commitments: { type: "array", maxItems: 8, items: { type: "string" } },
+                    resolved_commitments: { type: "array", maxItems: 8, items: { type: "string" } },
+                    stakes: { type: "string" },
+                    timeline_event: { type: "object", required: ["record", "label", "detail", "kind", "importance"], properties: { record: { type: "boolean" }, label: { type: "string" }, detail: { type: "string" }, kind: { type: "string", enum: ["relationship", "conflict", "promise", "reveal", "decision", "scene", "other"] }, importance: { type: "integer" } } },
+                  },
+                },
+                memory_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content: { type: "string" }, category: { type: "string", enum: ["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"] }, importance: { type: "integer" }, scope: { type: "string", enum: ["conversation", "character"] }, reason: { type: "string" }, replaces: { type: "string" } } } },
                 development_update: {
                   type: "object",
                   required: ["significance", "evidence", "relationship_phase", "relationship_dynamic", "emotional_residue", "active_contradiction", "behavioral_effect", "turning_point"],
@@ -907,10 +980,11 @@ function parseModelEnvelope(raw): ModelEnvelope {
         : {},
       voice_plan: parsed?.voice_plan && typeof parsed.voice_plan === "object" ? parsed.voice_plan : {},
       scene_update: parsed?.scene_update && typeof parsed.scene_update === "object" ? parsed.scene_update : {},
-      memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 2) : [],
+      continuity_update: parsed?.continuity_update && typeof parsed.continuity_update === "object" ? parsed.continuity_update : {},
+      memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 3) : [],
     };
   } catch {
-    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, memory_updates: [] };
+    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, memory_updates: [] };
   }
 }
 
@@ -1065,6 +1139,9 @@ const regenerationFeedbackRules = new Map([
   ["repetitive", "Choose a new opening, gesture, conversational tactic and line structure."],
   ["pov_violation", "Do not write any action, thought, emotion, decision or dialogue for the user."],
   ["missing_emotional_impact", "Let the latest user's words affect the character privately before the outward answer."],
+  ["too_cold", "The response felt too emotionally cold. Keep the character in voice, but let the visible event genuinely reach them instead of flattening it."],
+  ["too_romantic", "The response pushed romance too hard. Pull back to the earned relationship phase and let the scene breathe without forced intimacy."],
+  ["wrong_continuity", "Correct continuity first: location, exits, who is present, what each person knows, established objects and unresolved commitments must match visible canon."],
 ]);
 
 function normalizeRegenerationFeedback(value = []) {
@@ -1156,12 +1233,16 @@ function normalizeCharacterDevelopment(value = {}, relationshipPremise = "", inc
   const phase = allowedPhases.has(requestedPhase) ? requestedPhase : defaultPhase;
 
   const residue = (Array.isArray(source.emotional_residue) ? source.emotional_residue : [])
-    .map((item) => ({
-      emotion: developmentText(item?.emotion, 120),
-      cause: developmentText(item?.cause, 240),
-      behavioral_effect: developmentText(item?.behavioral_effect, 240),
-      remaining_turns: Math.max(1, Math.min(6, Number(item?.remaining_turns) || 1)),
-    }))
+    .map((item) => {
+      const remaining = Math.max(1, Math.min(10, Number(item?.remaining_turns) || 1));
+      return {
+        emotion: developmentText(item?.emotion, 120),
+        cause: developmentText(item?.cause, 240),
+        behavioral_effect: developmentText(item?.behavioral_effect, 240),
+        remaining_turns: remaining,
+        intensity: Math.max(0.15, Math.min(1, Number(item?.intensity) || Math.min(1, 0.28 + remaining * 0.08))),
+      };
+    })
     .filter((item) => item.emotion && item.cause)
     .slice(-4);
 
@@ -1281,8 +1362,8 @@ function applyCharacterDevelopment({
     undo_snapshot: characterDevelopmentPromptView(state, relationshipPremise),
     turns_observed: state.turns_observed + 1,
     emotional_residue: state.emotional_residue
-      .map((item) => ({ ...item, remaining_turns: item.remaining_turns - 1 }))
-      .filter((item) => item.remaining_turns > 0),
+      .map((item) => ({ ...item, remaining_turns: item.remaining_turns - 1, intensity: Math.max(0.12, Number(item.intensity || 0.5) * 0.82) }))
+      .filter((item) => item.remaining_turns > 0 && item.intensity >= 0.14),
     learned_preferences: {
       encourage: [...state.learned_preferences.encourage],
       avoid: [...state.learned_preferences.avoid],
@@ -1302,7 +1383,8 @@ function applyCharacterDevelopment({
         emotion,
         cause: evidence,
         behavioral_effect: developmentText(proposal.behavioral_effect, 260),
-        remaining_turns: significance === "high" ? 6 : significance === "medium" ? 4 : 2,
+        remaining_turns: significance === "high" ? 9 : significance === "medium" ? 6 : 3,
+        intensity: significance === "high" ? 1 : significance === "medium" ? 0.78 : 0.52,
       };
       const duplicateKey = normalizeText(`${emotion} ${evidence}`);
       next.emotional_residue = [
@@ -1372,17 +1454,33 @@ function applyCharacterDevelopment({
   return normalizeCharacterDevelopment(next, relationshipPremise);
 }
 
+const CONTINUITY_GUARD_ISSUES = new Set([
+  "location_changed_without_scene_change",
+  "time_changed_without_scene_change",
+  "present_character_silently_dropped",
+  "absent_character_reappeared",
+  "offscreen_character_heard_turn",
+  "invented_plot_object",
+]);
 const BLOCKING_NARRATIVE_ISSUES = new Set([
   "empty_reply",
   "truncated_by_model",
   "unfinished_reply",
   "controls_user_pov",
   "exposes_system_language",
+]);
+const REPAIR_TRIGGER_ISSUES = new Set([
+  ...BLOCKING_NARRATIVE_ISSUES,
   "repeated_recent_signature",
+  ...CONTINUITY_GUARD_ISSUES,
 ]);
 
 function blockingNarrativeIssues(issues = []) {
   return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => BLOCKING_NARRATIVE_ISSUES.has(issue));
+}
+
+function repairTriggerIssues(issues = []) {
+  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => REPAIR_TRIGGER_ISSUES.has(issue));
 }
 
 function validateNarrativeReply(reply = "", options = {}) {
@@ -1414,6 +1512,46 @@ function validateNarrativeReply(reply = "", options = {}) {
   return [...new Set(issues)];
 }
 
+function validateContinuityEnvelope(result = {}, options = {}) {
+  const issues = [];
+  const previousScene = options.previousScene && typeof options.previousScene === "object" ? options.previousScene : {}, previousCast = options.previousCast && typeof options.previousCast === "object" ? options.previousCast : {}, previousIntelligence = options.previousIntelligence && typeof options.previousIntelligence === "object" ? options.previousIntelligence : {};
+  const sceneUpdate = result?.scene_update && typeof result.scene_update === "object" ? result.scene_update : {}, continuityUpdate = result?.continuity_update && typeof result.continuity_update === "object" ? result.continuity_update : {};
+  const latest = normalizeText(options.latestUserMessage || "");
+  const reply = normalizeText(result?.reply || "");
+  const turnIntent = options.turnIntent || { medium: "physical" };
+  const sceneChanged = Boolean(sceneUpdate?.scene_changed);
+
+  const oldLocation = normalizeText(previousScene?.location || ""), nextLocation = normalizeText(sceneUpdate?.location || "");
+  if (oldLocation && nextLocation && oldLocation !== nextLocation && !sceneChanged) issues.push("location_changed_without_scene_change");
+  const oldTime = normalizeText(previousScene?.time_label || ""), nextTime = normalizeText(sceneUpdate?.time_label || "");
+  if (oldTime && nextTime && oldTime !== nextTime && !sceneChanged) issues.push("time_changed_without_scene_change");
+
+  const priorPresent = compactSceneNames(previousScene?.present || []), proposed = compactSceneNames(sceneUpdate?.present || []), exited = new Set(compactSceneNames(sceneUpdate?.exited || []).map(normalizeText));
+  if (!sceneChanged && proposed.length) {
+    const proposedKeys = new Set(proposed.map(normalizeText));
+    if (priorPresent.some((name) => !proposedKeys.has(normalizeText(name)) && !exited.has(normalizeText(name)))) issues.push("present_character_silently_dropped");
+  }
+  const reentryVerb = /\b(?:enters|returns|arrives|comes back|walks in|steps in|entra|vuelve|regresa|llega)\b/.test(reply);
+  for (const name of proposed) {
+    const key = normalizeText(name), status = normalizeText(previousCast?.[name]?.current_status || "");
+    if (/left|absent|away|outside|exited/.test(status) && !latest.includes(key) && !(reply.includes(key) && reentryVerb)) {
+      issues.push("absent_character_reappeared");
+      break;
+    }
+  }
+  if (turnIntent.medium !== "digital") {
+    const presentKeys = new Set(proposed.length ? proposed.map(normalizeText) : priorPresent.map(normalizeText));
+    const heard = compactSceneNames(sceneUpdate?.heard_user_turn || []);
+    if (heard.some((name) => !presentKeys.has(normalizeText(name)) && /left|absent|away|outside|exited/.test(normalizeText(previousCast?.[name]?.current_status || "")))) issues.push("offscreen_character_heard_turn");
+  }
+
+  const oldObjects = compactTextList(previousIntelligence?.objects || [], 12, 180);
+  const nextObjects = compactTextList(continuityUpdate?.objects_present || [], 12, 180);
+  if (oldObjects.length && nextObjects.some((item) => !oldObjects.some((prior) => memorySimilarity(prior, item) >= 0.72) && !latest.includes(normalizeText(item)))) issues.push("invented_plot_object");
+
+  return [...new Set(issues)];
+}
+
 function detectResponseLanguage(latestUserMessage = "", previousCharacterMessage = "") {
   const latest = String(latestUserMessage || "").trim();
   const raw = isSilentContinueText(latest)
@@ -1433,29 +1571,93 @@ function compactSceneNames(value: any, limit = 14) {
 }
 
 function applySceneContinuity({ previousScene = {}, previousCast = {}, sceneUpdate = {}, mainCharacterName = "" }) {
-  const priorPresent = compactSceneNames(previousScene?.present || []);
-  const proposedPresent = compactSceneNames(sceneUpdate?.present || []);
-  const exited = new Set(compactSceneNames(sceneUpdate?.exited || []));
-  const present = (proposedPresent.length ? proposedPresent : priorPresent).filter((name) => !exited.has(name));
+  const priorPresent = compactSceneNames(previousScene?.present || []), proposedPresent = compactSceneNames(sceneUpdate?.present || []), sceneChanged = Boolean(sceneUpdate?.scene_changed);
+  const exitedNames = compactSceneNames(sceneUpdate?.exited || []), exitedKeys = new Set(exitedNames.map(normalizeText));
+  const roster = sceneChanged
+    ? (proposedPresent.length ? proposedPresent : priorPresent)
+    : [...priorPresent, ...proposedPresent].filter((name, index, all) => all.findIndex((other) => normalizeText(other) === normalizeText(name)) === index);
+  const present = roster.filter((name) => !exitedKeys.has(normalizeText(name)));
   const scene = {
     ...(previousScene && typeof previousScene === "object" ? previousScene : {}),
     location: cleanPromptValue(sceneUpdate?.location, 180) || cleanPromptValue(previousScene?.location, 180),
     time_label: cleanPromptValue(sceneUpdate?.time_label, 120) || cleanPromptValue(previousScene?.time_label, 120),
     present,
     heard_user_turn: compactSceneNames(sceneUpdate?.heard_user_turn || []),
-    last_scene_change: Boolean(sceneUpdate?.scene_changed) ? new Date().toISOString() : previousScene?.last_scene_change || null,
+    last_scene_change: sceneChanged ? new Date().toISOString() : previousScene?.last_scene_change || null,
   };
   const cast = { ...(previousCast && typeof previousCast === "object" ? previousCast : {}) };
-  for (const name of present) {
-    cast[name] = { ...(cast[name] || {}), current_status: "present", last_seen: scene.location || "current scene" };
+  for (const name of present) cast[name] = { ...(cast[name] || {}), current_status: "present", last_seen: scene.location || "current scene" };
+  for (const name of exitedNames) cast[name] = { ...(cast[name] || {}), current_status: "left the current scene", last_seen: scene.location || cast[name]?.last_seen || "previous scene" };
+  if (sceneChanged) {
+    const presentKeys = new Set(present.map(normalizeText));
+    for (const name of priorPresent) if (!presentKeys.has(normalizeText(name)) && !exitedKeys.has(normalizeText(name))) cast[name] = { ...(cast[name] || {}), current_status: "outside current scene", last_seen: cleanPromptValue(previousScene?.location, 180) || cast[name]?.last_seen || "previous scene" };
   }
-  for (const name of exited) {
-    cast[name] = { ...(cast[name] || {}), current_status: "left the current scene", last_seen: scene.location || cast[name]?.last_seen || "previous scene" };
-  }
-  if (mainCharacterName && cast[mainCharacterName] && present.includes(mainCharacterName)) {
-    cast[mainCharacterName] = { ...cast[mainCharacterName], current_status: "present" };
-  }
+  if (mainCharacterName && present.some((name) => normalizeText(name) === normalizeText(mainCharacterName))) cast[mainCharacterName] = { ...(cast[mainCharacterName] || {}), current_status: "present", last_seen: scene.location || "current scene" };
   return { scene, cast };
+}
+
+function buildSceneSeparatorLabel(previousScene: any = {}, sceneUpdate: any = {}) {
+  const explicit = cleanPromptValue(sceneUpdate?.separator_label, 100);
+  if (explicit || !sceneUpdate?.scene_changed) return explicit;
+  const nextTime = cleanPromptValue(sceneUpdate?.time_label, 100), timeKey = normalizeText(nextTime), oldTime = normalizeText(previousScene?.time_label || "");
+  if (nextTime && timeKey !== oldTime) {
+    if (/next morning|following morning/.test(timeKey)) return "The next morning";
+    if (/morning/.test(timeKey)) return "That morning";
+    if (/night/.test(timeKey)) return /later/.test(timeKey) ? nextTime : "Later that night";
+    if (/evening/.test(timeKey)) return /later/.test(timeKey) ? nextTime : "Later that evening";
+    if (/afternoon/.test(timeKey)) return /later/.test(timeKey) ? nextTime : "Later that afternoon";
+    return nextTime;
+  }
+  const location = cleanPromptValue(sceneUpdate?.location, 100);
+  if (location && normalizeText(location) !== normalizeText(previousScene?.location || "")) return location;
+  return "A little later";
+}
+
+function compactTextList(value: any, limit = 12, itemLimit = 260) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map((item) => cleanPromptValue(item, itemLimit)).filter(Boolean))].slice(0, limit);
+}
+
+function applyIntelligenceContinuity(previous: any = {}, update: any = {}) {
+  const prior = previous && typeof previous === "object" ? previous : {};
+  const resolved = compactTextList(update?.resolved_commitments, 8, 260);
+  const proposedCommitments = compactTextList(update?.commitments, 8, 260);
+  const commitments = compactTextList([...(prior.commitments || []), ...proposedCommitments], 12, 260)
+    .filter((item) => !resolved.some((done) => memorySimilarity(item, done) >= 0.72));
+  const knowledge = [...(Array.isArray(prior.knowledge) ? prior.knowledge : []), ...(Array.isArray(update?.knowledge_updates) ? update.knowledge_updates : [])]
+    .map((item) => ({ who: cleanPromptValue(item?.who, 80), knows: cleanPromptValue(item?.knows, 280), source: cleanPromptValue(item?.source, 180), status: ["known","suspected","rumor","forgotten"].includes(String(item?.status)) ? String(item.status) : "known" }))
+    .filter((item) => item.who && item.knows)
+    .filter((item, index, all) => all.findLastIndex((other) => normalizeText(other.who) === normalizeText(item.who) && memorySimilarity(other.knows, item.knows) >= 0.76) === index)
+    .slice(-24);
+  return {
+    objects: compactTextList(update?.objects_present?.length ? update.objects_present : prior.objects, 12, 180),
+    knowledge, commitments,
+    stakes: cleanPromptValue(update?.stakes, 360) || cleanPromptValue(prior.stakes, 360),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function buildStoryRecap(timeline: any[] = [], previous = "") {
+  const meaningful = (Array.isArray(timeline) ? timeline : []).filter((item) => Number(item?.importance || 0) >= 3 || item?.scene_changed).slice(-8);
+  if (!meaningful.length) return cleanPromptValue(previous, 2200);
+  return meaningful.map((item) => cleanPromptValue(item?.detail || item?.note || item?.label, 320)).filter(Boolean).join(" • ").slice(0, 2200);
+}
+
+function evolveStoryChapters({ chapters = [], activeChapter = {}, latestUserMessage = "", sceneUpdate = {}, timelineEvent = {}, savedMessage = {}, recap = "" }) {
+  const closed = Array.isArray(chapters) ? [...chapters] : [];
+  let active = activeChapter && typeof activeChapter === "object" ? { ...activeChapter } : {};
+  if (!active.title) {
+    active = { number: closed.length + 1, title: "Opening", summary: "The current chapter of the story.", started_at: savedMessage?.created_at || new Date().toISOString(), start_message_id: savedMessage?.id || "" };
+  }
+  const text = `${latestUserMessage} ${sceneUpdate?.separator_label || ""}`.toLowerCase();
+  const largeJump = /(?:next day|next morning|next week|next month|next year|the following day|days later|weeks later|months later|years later|later that week|time skip|al día siguiente|a la mañana siguiente|días después|semanas después|meses después|años después|tiempo después)/i.test(text);
+  const majorSceneBreak = Boolean(sceneUpdate?.scene_changed) && Number(timelineEvent?.importance || 0) >= 4 && /later|after|next|following|después|siguiente/i.test(String(sceneUpdate?.separator_label || ""));
+  if ((largeJump || majorSceneBreak) && !String(active?.start_message_id || "").includes(String(savedMessage?.id || ""))) {
+    closed.push({ ...active, ended_at: savedMessage?.created_at || new Date().toISOString(), summary: cleanPromptValue(recap, 520) || active.summary || "Chapter completed." });
+    const title = cleanPromptValue(sceneUpdate?.separator_label, 80) || cleanPromptValue(timelineEvent?.label, 80) || `Chapter ${closed.length + 1}`;
+    active = { number: closed.length + 1, title, summary: cleanPromptValue(timelineEvent?.detail, 280) || "A new phase of the story begins.", started_at: savedMessage?.created_at || new Date().toISOString(), start_message_id: savedMessage?.id || "" };
+  }
+  return { chapters: closed.slice(-20), activeChapter: active, chapterNumber: Number(active.number || closed.length + 1) };
 }
 
 function relationshipStateFromDevelopment(development = {}, previous = {}) {
@@ -1501,6 +1703,11 @@ async function streamRoleplayV19({
   existingSceneState,
   existingCastState,
   existingRelationshipState,
+  existingIntelligenceState,
+  existingUnresolvedThreads,
+  existingStoryRecap,
+  existingStoryChapters,
+  existingActiveChapter,
   regenerationInstruction,
   regenerationFeedback,
   isRegeneration,
@@ -1556,12 +1763,16 @@ async function streamRoleplayV19({
           rejectedResponses,
           recentCharacterReplies,
         });
+        validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent })])];
         const originalResult = result;
         const originalIssues = validationIssues;
-        const blocking = blockingNarrativeIssues(validationIssues);
+        const continuityIssuesBeforeRepair = originalIssues.filter((issue) => CONTINUITY_GUARD_ISSUES.has(issue));
+        const blocking = repairTriggerIssues(validationIssues);
 
-        // Rare safety repair. The live draft is replaced in-place instead of
-        // forcing the user to manually regenerate again.
+        // One bounded repair for structural, repetition, or continuity issues.
+        // Continuity metadata is never allowed to brick an otherwise readable turn:
+        // after the repair we keep the safest non-structurally-invalid draft and
+        // let the deterministic continuity merge protect stored scene state.
         if (blocking.length) {
           repairUsed = true;
           sendEvent(controller, { type: "reset", reason: "repair" });
@@ -1583,12 +1794,18 @@ async function streamRoleplayV19({
             rejectedResponses,
             recentCharacterReplies,
           });
-          if (!blockingNarrativeIssues(repairedIssues).length) {
+          repairedIssues.push(...validateContinuityEnvelope(repaired, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent }));
+          const repairedFatal = blockingNarrativeIssues(repairedIssues);
+          const originalFatal = blockingNarrativeIssues(originalIssues);
+          if (!repairedFatal.length && (originalFatal.length || repairTriggerIssues(repairedIssues).length <= repairTriggerIssues(originalIssues).length)) {
             result = repaired;
             validationIssues = repairedIssues;
-          } else {
+          } else if (!originalFatal.length) {
             result = originalResult;
             validationIssues = originalIssues;
+          } else {
+            result = repaired;
+            validationIssues = repairedIssues;
           }
           for (const chunk of splitForStreaming(result.reply)) {
             if (await isCancelled()) return;
@@ -1598,7 +1815,7 @@ async function streamRoleplayV19({
         }
 
         if (blockingNarrativeIssues(validationIssues).length) {
-          throw new Error("Gemini returned an incomplete or structurally invalid reply twice. Regenerate once.");
+          throw new Error("Velvet could not get a complete safe reply after one repair. Retry once.");
         }
         if (await isCancelled()) return;
         if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
@@ -1629,26 +1846,50 @@ async function streamRoleplayV19({
         });
         update.scene_state = nextPhysicalState.scene;
         update.cast_state = nextPhysicalState.cast;
+        update.intelligence_state = applyIntelligenceContinuity(existingIntelligenceState, result.continuity_update);
+        const resolvedCommitments = compactTextList(result.continuity_update?.resolved_commitments, 8, 260);
+        const newCommitments = compactTextList(result.continuity_update?.commitments, 8, 260);
+        update.unresolved_threads = compactTextList([...(Array.isArray(existingUnresolvedThreads) ? existingUnresolvedThreads.map((item) => typeof item === "string" ? item : item?.title || item?.detail) : []), ...newCommitments], 16, 320)
+          .filter((item) => !resolvedCommitments.some((done) => memorySimilarity(item, done) >= 0.72))
+          .map((title, index) => ({ id: `commitment-${index}`, title, status: "open" }));
 
         const note = cleanPromptValue(result.continuity_note, 600);
         const sceneChanged = Boolean(result.scene_update?.scene_changed);
-        const separatorLabel = cleanPromptValue(result.scene_update?.separator_label, 100);
-        if (note || sceneChanged || separatorLabel) {
-          const timeline = Array.isArray(existingTimeline) ? existingTimeline : [];
+        const separatorLabel = buildSceneSeparatorLabel(existingSceneState, result.scene_update);
+        const timelineEvent = result.continuity_update?.timeline_event || {};
+        const shouldRecordTimeline = Boolean(timelineEvent?.record) || sceneChanged || Boolean(separatorLabel);
+        const timeline = Array.isArray(existingTimeline) ? existingTimeline : [];
+        if (shouldRecordTimeline) {
           update.story_timeline = [
             ...timeline.filter((item) => String(item?.message_id || "") !== String(savedMessage.id)),
             {
               message_id: savedMessage.id,
-              note,
-              scene_changed: sceneChanged,
-              separator_label: separatorLabel,
-              location: nextPhysicalState.scene.location || "",
-              time_label: nextPhysicalState.scene.time_label || "",
-              present: nextPhysicalState.scene.present || [],
-              created_at: savedMessage.created_at || new Date().toISOString(),
+              label: cleanPromptValue(timelineEvent?.label, 120) || separatorLabel || "Story beat",
+              detail: cleanPromptValue(timelineEvent?.detail, 420) || note,
+              kind: ["relationship","conflict","promise","reveal","decision","scene","other"].includes(String(timelineEvent?.kind)) ? String(timelineEvent.kind) : (sceneChanged ? "scene" : "other"),
+              importance: Math.max(1, Math.min(5, Number(timelineEvent?.importance) || (sceneChanged ? 3 : 2))),
+              note, scene_changed: sceneChanged, separator_label: separatorLabel,
+              location: nextPhysicalState.scene.location || "", time_label: nextPhysicalState.scene.time_label || "",
+              present: nextPhysicalState.scene.present || [], created_at: savedMessage.created_at || new Date().toISOString(),
             },
           ].slice(-80);
         }
+        const chapterState = evolveStoryChapters({
+          chapters: existingStoryChapters,
+          activeChapter: existingActiveChapter,
+          latestUserMessage,
+          sceneUpdate: result.scene_update,
+          timelineEvent,
+          savedMessage,
+          recap: existingStoryRecap || "",
+        });
+        update.story_chapters = chapterState.chapters;
+        update.active_chapter = chapterState.activeChapter;
+        if (chapterState.chapterNumber) {
+          await supabase.from("messages").update({ chapter_number: chapterState.chapterNumber }).eq("id", savedMessage.id).eq("user_id", userId);
+          if (update.story_timeline?.length) update.story_timeline[update.story_timeline.length - 1].chapter_number = chapterState.chapterNumber;
+        }
+        update.story_recap = buildStoryRecap(update.story_timeline || timeline, existingStoryRecap || "");
         await supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
         if (!replacementMessage && Array.isArray(result.memory_updates) && result.memory_updates.length) {
           await mergeAutomaticMemories({
@@ -1662,7 +1903,7 @@ async function streamRoleplayV19({
           });
         }
 
-        sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: result.memory_updates?.length || 0, model: result.model, repairUsed, liveStreaming: true });
+        sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: (result.memory_updates || []).filter((item) => Number(item?.importance || 0) >= 3 || ["boundary","promise","conflict"].includes(String(item?.category))).length, model: result.model, repairUsed, liveStreaming: true, sceneState: update.scene_state, castState: update.cast_state, characterDevelopment: update.character_development, relationshipState: update.relationship_state, continuityGuard: { status: repairUsed && continuityIssuesBeforeRepair.length ? "repaired" : "stable", protected: continuityIssuesBeforeRepair }, intelligenceState: update.intelligence_state, storyTimeline: update.story_timeline || existingTimeline, storyRecap: update.story_recap || existingStoryRecap || "", storyChapters: update.story_chapters || existingStoryChapters || [], activeChapter: update.active_chapter || existingActiveChapter || {}, unfinishedThreads: update.unresolved_threads || existingUnresolvedThreads });
       } catch (error) {
         if (getErrorName(error) !== "AbortError") {
           console.error("[character-chat] live stream failed", { message: getErrorMessage(error) });
@@ -1805,8 +2046,8 @@ async function streamGeminiEnvelopeWithFailover({
 function roleplayResponseSchema() {
   return {
     type: "object",
-    required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "development_update", "memory_updates"],
-    propertyOrdering: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "development_update", "memory_updates"],
+    required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"],
+    propertyOrdering: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"],
     properties: {
       reply: { type: "string" },
       turn_reading: { type: "string" },
@@ -1814,7 +2055,8 @@ function roleplayResponseSchema() {
       voice_plan: { type: "object", required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"], properties: { conversational_goal:{type:"string"}, outward_tactic:{type:"string"}, private_pressure:{type:"string"}, verbal_signature:{type:"string"}, avoided_pattern:{type:"string"} } },
       continuity_note: { type: "string" },
       scene_update: { type: "object", required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"], properties: { scene_changed:{type:"boolean"}, separator_label:{type:"string"}, location:{type:"string"}, time_label:{type:"string"}, present:{type:"array",items:{type:"string"}}, exited:{type:"array",items:{type:"string"}}, heard_user_turn:{type:"array",items:{type:"string"}} } },
-      memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content","category","importance","scope","reason","replaces"], properties: { content:{type:"string"}, category:{type:"string",enum:["fact","person","relationship","world","event","preference","boundary","promise","conflict"]}, importance:{type:"integer"}, scope:{type:"string",enum:["conversation","character"]}, reason:{type:"string"}, replaces:{type:"string"} } } },
+      continuity_update: { type: "object", required: ["objects_present","knowledge_updates","commitments","resolved_commitments","stakes","timeline_event"], properties: { objects_present:{type:"array",maxItems:12,items:{type:"string"}}, knowledge_updates:{type:"array",maxItems:6,items:{type:"object",required:["who","knows","source","status"],properties:{who:{type:"string"},knows:{type:"string"},source:{type:"string"},status:{type:"string",enum:["known","suspected","rumor","forgotten"]}}}}, commitments:{type:"array",maxItems:8,items:{type:"string"}}, resolved_commitments:{type:"array",maxItems:8,items:{type:"string"}}, stakes:{type:"string"}, timeline_event:{type:"object",required:["record","label","detail","kind","importance"],properties:{record:{type:"boolean"},label:{type:"string"},detail:{type:"string"},kind:{type:"string",enum:["relationship","conflict","promise","reveal","decision","scene","other"]},importance:{type:"integer"}}} } },
+      memory_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["content","category","importance","scope","reason","replaces"], properties: { content:{type:"string"}, category:{type:"string",enum:["fact","person","relationship","world","event","preference","boundary","promise","conflict"]}, importance:{type:"integer"}, scope:{type:"string",enum:["conversation","character"]}, reason:{type:"string"}, replaces:{type:"string"} } } },
       development_update: { type: "object", required: ["significance","evidence","relationship_phase","relationship_dynamic","emotional_residue","active_contradiction","behavioral_effect","turning_point"], properties: { significance:{type:"string"}, evidence:{type:"string"}, relationship_phase:{type:"string"}, relationship_dynamic:{type:"string"}, emotional_residue:{type:"string"}, active_contradiction:{type:"string"}, behavioral_effect:{type:"string"}, turning_point:{type:"string"} } },
     },
   };
@@ -1937,7 +2179,7 @@ async function streamAndPersist({
 
         const note = cleanPromptValue(continuityNote, 600);
         const sceneChanged = Boolean(sceneUpdate?.scene_changed);
-        const separatorLabel = cleanPromptValue(sceneUpdate?.separator_label, 100);
+        const separatorLabel = buildSceneSeparatorLabel(existingSceneState, sceneUpdate);
         if (note || sceneChanged || separatorLabel) {
           const timeline = Array.isArray(existingTimeline) ? existingTimeline : [];
           update.story_timeline = [
@@ -1962,7 +2204,7 @@ async function streamAndPersist({
             sourceExcerpt: cleanPromptValue(latestUserMessage, 220),
           });
         }
-        sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: Array.isArray(memoryUpdates) ? memoryUpdates.length : 0, model, repairUsed });
+        sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: Array.isArray(memoryUpdates) ? memoryUpdates.length : 0, model, repairUsed, sceneState: update.scene_state, castState: update.cast_state, characterDevelopment: update.character_development, relationshipState: update.relationship_state, continuityGuard: { status: "stable", protected: [] }, storyTimeline: update.story_timeline || existingTimeline });
         console.log("[character-chat] response saved", { conversationId, messageId: savedMessage.id });
       } catch (error) {
         if (getErrorName(error) !== "AbortError") {
@@ -2007,12 +2249,13 @@ async function mergeAutomaticMemories({ supabase, userId, conversationId, charac
   if (existingError) console.warn("[character-chat] memory merge lookup failed", { message: existingError.message });
   const existing = existingRows || [];
 
-  for (const item of memoryUpdates.slice(0, 2)) {
+  for (const item of memoryUpdates.slice(0, 3)) {
     const content = cleanPromptValue(item?.content, 500);
     if (!content) continue;
     const category = allowedCategories.has(String(item?.category)) ? String(item.category) : "fact";
     const scope = String(item?.scope) === "character" ? "character" : "conversation";
     const importance = Math.max(1, Math.min(5, Number(item?.importance) || 2));
+    if (importance < 3 && !["boundary", "promise", "conflict"].includes(category)) continue;
     const whyRemembered = cleanPromptValue(item?.reason, 320) || "Useful continuity for later turns.";
     const replaces = cleanPromptValue(item?.replaces, 500);
 
@@ -2122,17 +2365,42 @@ function selectRelevantMemories(memories, messages) {
   }).slice(0, 24);
 }
 
-function selectRelevantLore(entries, messages) {
-  const recent = normalizeText(messages.slice(-24).map((message) => message.content).join(" "));
+function selectRelevantLore(entries, messages, groupCharacters = []) {
+  const recentRaw = messages.slice(-28).map((message) => message.content).join(" ");
+  const recent = normalizeText(recentRaw);
+  const recentTerms = new Set(recent.split(/\s+/).filter((word) => word.length >= 4));
+  const castNames = (Array.isArray(groupCharacters) ? groupCharacters : [])
+    .map((item) => normalizeText(item?.name || ""))
+    .filter(Boolean);
+
   const scored = entries.map((entry) => {
+    if (entry.always_include) return { entry, score: 1000 };
     const keywords = Array.isArray(entry.keywords) ? entry.keywords : String(entry.keywords || "").split(",");
-    const matches = keywords.filter((keyword) => {
+    const normalizedName = normalizeText(entry.name || "");
+    const normalizedContent = normalizeText(entry.content || "");
+    let score = 0;
+
+    if (normalizedName && recent.includes(normalizedName)) score += 18;
+    for (const keyword of keywords) {
       const normalized = normalizeText(keyword);
-      return normalized && recent.includes(normalized);
-    }).length;
-    return { entry, score: entry.always_include ? 100 : matches };
+      if (normalized && recent.includes(normalized)) score += normalized.includes(" ") ? 12 : 8;
+    }
+
+    const entryTerms = [...new Set(`${normalizedName} ${normalizedContent}`.split(/\s+/).filter((word) => word.length >= 5))].slice(0, 80);
+    const overlap = entryTerms.filter((word) => recentTerms.has(word)).length;
+    score += Math.min(12, overlap * 2);
+
+    if (castNames.some((name) => name && (normalizedName.includes(name) || normalizedContent.includes(name)))) score += 5;
+    if (entry.entry_type === "location" && /\b(at|in|into|inside|outside|campus|home|apartment|room|office|school|university|club|bar|cafe|restaurant)\b/.test(recent)) score += 1;
+
+    return { entry, score };
   });
-  return scored.filter((item) => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 18).map((item) => item.entry);
+
+  return scored
+    .filter((item) => item.score >= 4)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 12)
+    .map((item) => item.entry);
 }
 
 function getUserIdentity(user, persona = null) {

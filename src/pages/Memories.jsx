@@ -4,6 +4,10 @@ import {
   ChevronDown,
   Clock3,
   Crown,
+  Star,
+  Combine,
+  HelpCircle,
+  Heart,
   Filter,
   History,
   LoaderCircle,
@@ -15,6 +19,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Trash2,
   UserRound,
@@ -53,13 +58,14 @@ const views = [
 
 const groups = [
   { id: "all", label: "All", icon: null },
-  { id: "characters", label: "Characters", icon: UserRound },
-  { id: "places", label: "Places", icon: MapPin },
   { id: "moments", label: "Moments", icon: Sparkles },
-  { id: "other", label: "Other", icon: MoreHorizontal },
+  { id: "characters", label: "Characters", icon: UserRound },
+  { id: "relationships", label: "Relationships", icon: Heart },
+  { id: "preferences", label: "Preferences", icon: SlidersHorizontal },
+  { id: "places", label: "Places", icon: MapPin },
 ];
 
-const emptyDraft = { content: "", category: "fact", importance: 3, isPinned: true, isCanon: false, scope: "character", replaceMemoryId: "" };
+const emptyDraft = { content: "", category: "fact", importance: 3, isImportant: false, isPinned: true, isCanon: false, scope: "character", replaceMemoryId: "", mergeMemoryId: "" };
 
 function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
   const { confirmAction, scheduleDeletion } = useFeedback();
@@ -128,7 +134,7 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
 
   function openEdit(memory) {
     setEditingMemory(memory);
-    setDraft({ content: memory.content, category: memory.category || "fact", importance: memory.importance || 3, isPinned: Boolean(memory.is_pinned), isCanon: Boolean(memory.is_canon), scope: memory.scope || "conversation", replaceMemoryId: "" });
+    setDraft({ content: memory.content, category: memory.category || "fact", importance: memory.importance || 3, isImportant: Number(memory.importance || 0) >= 5, isPinned: Boolean(memory.is_pinned), isCanon: Boolean(memory.is_canon), scope: memory.scope || "conversation", replaceMemoryId: "", mergeMemoryId: "" });
     setDraftCharacterId(memory.character_id); setError(""); setEditorOpen(true); setMenuId(null);
   }
 
@@ -143,7 +149,7 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
     try {
       setSaving(true); setError("");
       const payload = {
-        content, category: draft.category, importance: Number(draft.importance), is_pinned: Boolean(draft.isPinned || draft.isCanon), is_canon: Boolean(draft.isCanon), scope: draft.scope,
+        content, category: draft.category, importance: draft.isImportant ? 5 : Number(draft.importance), is_pinned: Boolean(draft.isPinned || draft.isCanon), is_canon: Boolean(draft.isCanon), scope: draft.scope,
         why_remembered: draft.isCanon ? "Marked as canon by you. Velvet should treat this as authoritative continuity." : "Added manually so Velvet can preserve this detail.",
         updated_at: new Date().toISOString(), source: "manual",
       };
@@ -152,7 +158,13 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
         const { data, error: requestError } = await supabase.from("memories").update(payload).eq("id", editingMemory.id).select().single();
         if (requestError) throw requestError;
         saved = data;
-        setMemories((current) => current.map((item) => item.id === saved.id ? { ...saved, character: item.character } : item).sort(sortMemoryRows));
+        if (draft.mergeMemoryId) {
+          const mergeTarget = activeForCharacter.find((memory) => memory.id === draft.mergeMemoryId);
+          if (mergeTarget?.is_canon) throw new Error("Remove canon from the other memory before merging it.");
+          const { error: mergeError } = await supabase.from("memories").update({ superseded_at: new Date().toISOString(), superseded_by: saved.id, updated_at: new Date().toISOString() }).eq("id", draft.mergeMemoryId);
+          if (mergeError) throw mergeError;
+        }
+        setMemories((current) => current.map((item) => item.id === saved.id ? { ...saved, character: item.character } : item.id === draft.mergeMemoryId ? { ...item, superseded_at: new Date().toISOString(), superseded_by: saved.id } : item).sort(sortMemoryRows));
       } else {
         const conversationId = conversationByCharacter.get(draftCharacterId);
         if (!conversationId) throw new Error("Start a conversation with this character before adding memories.");
@@ -258,8 +270,12 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
       <label><span>Exact type</span><div><select value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><ChevronDown size={15}/></div></label>
     </div>}
 
+    <div className="memories-reference__category-heading">
+      <span>CATEGORIES</span>
+      <small>{group === "all" ? "Everything Velvet remembers" : groupDescription(group)}</small>
+    </div>
     <nav className="memories-reference__groups" aria-label="Memory categories">
-      {groups.map(({ id, label, icon: Icon }) => <button key={id} className={group === id ? "is-active" : ""} onClick={() => setGroup(id)}>{Icon && <Icon size={15}/>}<span>{label}</span><b>{groupCounts[id] || 0}</b></button>)}
+      {groups.map(({ id, label, icon: Icon }) => <button key={id} className={group === id ? "is-active" : ""} onClick={() => setGroup(id)} aria-pressed={group === id}>{Icon && <Icon size={15}/>}<span>{label}</span><b>{groupCounts[id] || 0}</b></button>)}
     </nav>
 
     {error && !editorOpen && <div className="memories-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")}><X size={16}/></button></div>}
@@ -270,14 +286,14 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
     {!loading && memories.length > 0 && filtered.length === 0 && <div className="page-state"><Search size={27}/><p>No memories match this view.</p></div>}
 
     {!loading && pinned.length > 0 && <section className="memories-reference__section memories-reference__pinned">
-      <div className="memories-reference__section-heading"><h2><Pin size={16}/> PINNED MEMORIES</h2><span>{pinned.length}</span></div>
+      <div className="memories-reference__section-heading"><h2><Pin size={16}/> {groupSectionLabel(group, "PINNED")}</h2><span>{pinned.length}</span></div>
       <div className="memories-reference__pinned-rail">
         {pinned.map((memory) => <PinnedMemoryCard key={memory.id} memory={memory} onOpen={() => openEdit(memory)} onPin={() => togglePinned(memory)} />)}
       </div>
     </section>}
 
     {!loading && filtered.length > 0 && <section className="memories-reference__section memories-reference__recent">
-      <div className="memories-reference__section-heading"><h2><Clock3 size={16}/> {view === "history" ? "REPLACED HISTORY" : "RECENT MEMORIES"}</h2><span>{filtered.length}</span></div>
+      <div className="memories-reference__section-heading"><h2><Clock3 size={16}/> {view === "history" ? "REPLACED HISTORY" : groupSectionLabel(group, "RECENT")}</h2><span>{filtered.length}</span></div>
       <div className="memories-reference__list">
         {(recent.length ? recent : filtered).map((memory) => <MemoryRow key={memory.id} memory={memory} busy={workingId === memory.id} menuOpen={menuId === memory.id} onMenu={() => setMenuId((current) => current === memory.id ? null : memory.id)} onCanon={() => toggleCanon(memory)} onPin={() => togglePinned(memory)} onEdit={() => openEdit(memory)} onDelete={() => deleteMemory(memory)} onOpenCharacter={onOpenCharacter} />)}
       </div>
@@ -310,9 +326,9 @@ function MemoryRow({ memory, busy, menuOpen, onMenu, onCanon, onPin, onEdit, onD
   return <article className={`memories-reference__row${memory.is_canon ? " is-canon" : ""}${replaced ? " is-replaced" : ""}`}>
     <button className="memories-reference__row-art" onClick={() => character && onOpenCharacter(character)} aria-label={character ? `Open ${character.name}` : "Memory character"}>{art ? <img src={art} alt=""/> : <span style={{ "--memory-color": character?.color }}>{character?.initials || "✦"}</span>}</button>
     <div className="memories-reference__row-copy">
-      <small>{groupLabel(memory)}{memory.is_canon ? " · CANON" : ""}{replaced ? " · REPLACED" : ""}</small>
+      <small>{groupLabel(memory)}{Number(memory.importance || 0) >= 5 ? " · IMPORTANT" : ""}{memory.is_canon ? " · CANON" : ""}{replaced ? " · REPLACED" : ""}</small>
       <p>{memory.content}</p>
-      <span>{character?.name || "Unknown character"} · {formatMemoryDate(memory.updated_at || memory.created_at)}</span>
+      <span>{character?.name || "Unknown character"} · {memory.scope === "conversation" ? "THIS STORY" : "ALL STORIES"} · {formatMemoryDate(memory.updated_at || memory.created_at)}</span>{memory.why_remembered && <details className="memories-reference__why"><summary><HelpCircle size={12}/> Why Velvet remembers this</summary><p>{memory.why_remembered}</p></details>}
     </div>
     <div className="memories-reference__row-menu-wrap">
       <button className="memories-reference__row-menu" onClick={onMenu} disabled={busy} aria-label="Memory actions">{busy ? <LoaderCircle className="spin" size={17}/> : <MoreHorizontal size={19}/>}</button>
@@ -325,30 +341,76 @@ function MemoryRow({ memory, busy, menuOpen, onMenu, onCanon, onPin, onEdit, onD
 }
 
 function MemoryEditor({ editingMemory, draft, setDraft, draftCharacterId, setDraftCharacterId, characters, replacementCandidates, saving, error, setError, onClose, onSubmit }) {
-  return <div className="memory-editor-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && onClose()}><form className="memory-editor" onSubmit={onSubmit}><header><div><p>MEMORY BOOK</p><h2>{editingMemory ? "Refine this memory" : "Add something important"}</h2></div><button type="button" onClick={onClose} disabled={saving}><X size={20}/></button></header>
-    {!editingMemory && <label>Character<select value={draftCharacterId} onChange={(event) => { setDraftCharacterId(event.target.value); setDraft((current) => ({ ...current, replaceMemoryId: "" })); }} disabled={saving}><option value="">Choose a character</option>{characters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}</select></label>}
-    <label>What should they remember?<textarea value={draft.content} onChange={(event) => { setDraft((current) => ({ ...current, content: event.target.value })); setError(""); }} maxLength={500} rows="5" placeholder="A specific fact, boundary, promise or relationship shift…" autoFocus disabled={saving}/><small>{draft.content.length}/500</small></label>
-    <div className="memory-editor__row"><label>Category<select value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}>{categories.slice(1).map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label>Importance<select value={draft.importance} onChange={(event) => setDraft((current) => ({ ...current, importance: event.target.value }))}>{[1,2,3,4,5].map((value) => <option key={value} value={value}>{value} · {importanceLabel(value)}</option>)}</select></label></div>
-    <label>Memory scope<select value={draft.scope} onChange={(event) => setDraft((current) => ({ ...current, scope: event.target.value }))}><option value="conversation">This story only</option><option value="character">All stories with this character</option></select><small>Use “all stories” only for facts that belong to the character across different timelines.</small></label>
-    {!editingMemory && replacementCandidates.length > 0 && <label className="memory-editor__replace"><span><Archive size={15}/>Replace an older memory <em>(optional)</em></span><select value={draft.replaceMemoryId} onChange={(event) => setDraft((current) => ({ ...current, replaceMemoryId: event.target.value }))}><option value="">Keep every existing memory</option>{replacementCandidates.map((memory) => <option key={memory.id} value={memory.id}>{memory.content.slice(0, 90)}</option>)}</select><small>The old memory moves to Replaced history instead of being silently deleted.</small></label>}
-    <label className="memory-editor__pin"><input type="checkbox" checked={draft.isPinned} onChange={(event) => setDraft((current) => ({ ...current, isPinned: event.target.checked }))}/><span><Pin size={17}/><strong>Never forget this</strong><small>Pinned memories receive priority.</small></span></label>
-    <label className="memory-editor__pin memory-editor__canon"><input type="checkbox" checked={draft.isCanon} onChange={(event) => setDraft((current) => ({ ...current, isCanon: event.target.checked, isPinned: event.target.checked ? true : current.isPinned }))}/><span><ShieldCheck size={17}/><strong>Canon</strong><small>Velvet treats this as authoritative continuity.</small></span></label>
-    {error && <p className="memory-editor__error">{error}</p>}<footer><button type="button" onClick={onClose} disabled={saving}>Cancel</button><button type="submit" disabled={saving || !draft.content.trim() || !draftCharacterId}>{saving ? <LoaderCircle className="spin" size={17}/> : <Check size={17}/>} {saving ? "Saving…" : "Save memory"}</button></footer>
-  </form></div>;
+  const categoryOptions = categories.slice(1);
+  return <div className="memory-editor-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && onClose()}>
+    <form className={`memory-editor memory-editor--${editingMemory ? "edit" : "create"}`} onSubmit={onSubmit}>
+      <header className="memory-editor__header">
+        <span className="memory-editor__header-icon"><Sparkles size={19}/></span>
+        <div><p>MEMORY BOOK</p><h2>{editingMemory ? "Refine this memory" : "Add something important"}</h2><small>Give Velvet one clear thing worth carrying into future scenes.</small></div>
+        <button type="button" onClick={onClose} disabled={saving} aria-label="Close memory editor"><X size={20}/></button>
+      </header>
+
+      <section className="memory-editor__primary">
+        {!editingMemory && <label className="memory-editor__character"><span>Who is this about?</span><select value={draftCharacterId} onChange={(event) => { setDraftCharacterId(event.target.value); setDraft((current) => ({ ...current, replaceMemoryId: "" })); }} disabled={saving}><option value="">Choose a character</option>{characters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}</select></label>}
+        <label className="memory-editor__content"><span>What should Velvet remember?</span><textarea value={draft.content} onChange={(event) => { setDraft((current) => ({ ...current, content: event.target.value })); setError(""); }} maxLength={500} rows="5" placeholder="Example: He hates being touched when he is angry, but always stays nearby until the argument is resolved." autoFocus disabled={saving}/><small>{draft.content.length}/500</small></label>
+      </section>
+
+      <section className="memory-editor__category-block">
+        <div className="memory-editor__section-label"><span>Category</span><small>Pick the closest match</small></div>
+        <div className="memory-editor__category-chips" role="group" aria-label="Memory category">
+          {categoryOptions.map((item) => <button key={item.id} type="button" className={draft.category === item.id ? "is-active" : ""} onClick={() => setDraft((current) => ({ ...current, category: item.id }))}>{item.label}</button>)}
+        </div>
+      </section>
+
+      <section className="memory-editor__details-grid">
+        <label><span>Importance</span><select value={draft.importance} onChange={(event) => setDraft((current) => ({ ...current, importance: event.target.value }))}>{[1,2,3,4,5].map((value) => <option key={value} value={value}>{value} · {importanceLabel(value)}</option>)}</select></label>
+        <label><span>Where should it apply?</span><select value={draft.scope} onChange={(event) => setDraft((current) => ({ ...current, scope: event.target.value }))}><option value="conversation">This story only</option><option value="character">All stories with this character</option></select></label>
+      </section>
+
+      <section className="memory-editor__switches" aria-label="Memory priorities">
+        <label className="memory-editor__pin memory-editor__important"><input type="checkbox" checked={draft.isImportant} onChange={(event) => setDraft((current) => ({ ...current, isImportant: event.target.checked, importance: event.target.checked ? 5 : current.importance }))}/><span><Star size={17}/><strong>Important</strong><small>Push this toward the top of memory priority.</small></span></label>
+        <label className="memory-editor__pin"><input type="checkbox" checked={draft.isPinned} onChange={(event) => setDraft((current) => ({ ...current, isPinned: event.target.checked }))}/><span><Pin size={17}/><strong>Never forget</strong><small>Keep it available even when the story gets long.</small></span></label>
+        <label className="memory-editor__pin memory-editor__canon"><input type="checkbox" checked={draft.isCanon} onChange={(event) => setDraft((current) => ({ ...current, isCanon: event.target.checked, isPinned: event.target.checked ? true : current.isPinned }))}/><span><ShieldCheck size={17}/><strong>Canon</strong><small>Treat this as authoritative continuity.</small></span></label>
+      </section>
+
+      {!editingMemory && replacementCandidates.length > 0 && <details className="memory-editor__advanced"><summary><Archive size={15}/><span>Replace an older memory</span><small>Optional</small><ChevronDown size={15}/></summary><label className="memory-editor__replace"><select value={draft.replaceMemoryId} onChange={(event) => setDraft((current) => ({ ...current, replaceMemoryId: event.target.value }))}><option value="">Keep every existing memory</option>{replacementCandidates.map((memory) => <option key={memory.id} value={memory.id}>{memory.content.slice(0, 90)}</option>)}</select><small>The old memory moves to Replaced history instead of disappearing.</small></label></details>}
+      {editingMemory && replacementCandidates.filter((memory) => memory.id !== editingMemory.id).length > 0 && <details className="memory-editor__advanced"><summary><Combine size={15}/><span>Merge another memory</span><small>Optional</small><ChevronDown size={15}/></summary><label className="memory-editor__replace"><select value={draft.mergeMemoryId} onChange={(event) => setDraft((current) => ({ ...current, mergeMemoryId: event.target.value }))}><option value="">Do not merge</option>{replacementCandidates.filter((memory) => memory.id !== editingMemory.id).map((memory) => <option key={memory.id} value={memory.id}>{memory.content.slice(0, 90)}</option>)}</select><small>Edit the text above into the final merged version. The other memory moves to Replaced history.</small></label></details>}
+
+      {error && <p className="memory-editor__error">{error}</p>}
+      <footer><button type="button" onClick={onClose} disabled={saving}>Cancel</button><button type="submit" disabled={saving || !draft.content.trim() || !draftCharacterId}>{saving ? <LoaderCircle className="spin" size={17}/> : <Check size={17}/>} {saving ? "Saving…" : editingMemory ? "Save changes" : "Remember this"}</button></footer>
+    </form>
+  </div>;
 }
 
 function memoryMatchesGroup(memory, group) {
   if (group === "all") return true;
-  if (group === "characters") return ["person", "relationship", "promise", "boundary"].includes(memory.category);
-  if (group === "places") return memory.category === "world";
   if (group === "moments") return ["event", "conflict"].includes(memory.category);
-  return ["fact", "preference"].includes(memory.category) || !memory.category;
+  if (group === "characters") return ["person", "fact"].includes(memory.category) || !memory.category;
+  if (group === "relationships") return ["relationship", "promise"].includes(memory.category);
+  if (group === "preferences") return ["preference", "boundary"].includes(memory.category);
+  if (group === "places") return memory.category === "world";
+  return true;
 }
 function groupLabel(memory) {
-  if (["person", "relationship", "promise", "boundary"].includes(memory.category)) return "CHARACTER";
-  if (memory.category === "world") return "PLACE";
   if (["event", "conflict"].includes(memory.category)) return "MOMENT";
+  if (["person", "fact"].includes(memory.category) || !memory.category) return "CHARACTER";
+  if (["relationship", "promise"].includes(memory.category)) return "RELATIONSHIP";
+  if (["preference", "boundary"].includes(memory.category)) return "PREFERENCE";
+  if (memory.category === "world") return "PLACE";
   return categoryLabel(memory.category).toUpperCase();
+}
+function groupSectionLabel(group, prefix) {
+  const label = groups.find((item) => item.id === group)?.label || "Memories";
+  return `${prefix} ${group === "all" ? "MEMORIES" : label.toUpperCase()}`;
+}
+function groupDescription(group) {
+  return ({
+    moments: "Scenes, events and conflicts",
+    characters: "People and character facts",
+    relationships: "Relationship shifts and promises",
+    preferences: "Likes, dislikes and boundaries",
+    places: "Locations and world details",
+  })[group] || "Everything Velvet remembers";
 }
 function formatMemoryDate(value) {
   if (!value) return "";

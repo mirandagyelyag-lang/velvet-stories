@@ -1,5 +1,6 @@
-import { Archive, ArchiveRestore, Check, ChevronRight, Copy, Crown, Download, Heart, HeartOff, History, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Bug, Check, ChevronRight, Copy, Crown, Download, Heart, HeartOff, History, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Sparkles, Trash2, UsersRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCharacters } from "../context/CharactersContext";
 import { useChats } from "../context/ChatsContext";
@@ -7,9 +8,10 @@ import { supabase } from "../services/supabase";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { useTheme } from "../context/ThemeContext";
+import GroupStoryModal from "../components/GroupStoryModal";
 import "../styles/chats.css";
 
-function Chats({ onOpenCharacter, onBrowseCharacters }) {
+function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   const { user } = useAuth();
   const { characters } = useCharacters();
   const { createNewConversation } = useChats();
@@ -31,8 +33,28 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
   const [menuId, setMenuId] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
+  const [groupStoryOpen, setGroupStoryOpen] = useState(false);
 
   useEffect(() => { loadConversations(); }, [user?.id, characters.length]);
+
+  useEffect(() => {
+    if (!menuId) return undefined;
+
+    function closeStoryMenu(event) {
+      if (event.type === "keydown") {
+        if (event.key === "Escape") setMenuId(null);
+        return;
+      }
+      if (!event.target?.closest?.(".story-action-menu")) setMenuId(null);
+    }
+
+    document.addEventListener("pointerdown", closeStoryMenu);
+    document.addEventListener("keydown", closeStoryMenu);
+    return () => {
+      document.removeEventListener("pointerdown", closeStoryMenu);
+      document.removeEventListener("keydown", closeStoryMenu);
+    };
+  }, [menuId]);
 
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route");
@@ -78,6 +100,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
       setConversations((rows || []).map((row) => ({
         ...row,
         character: characters.find((item) => item.id === row.character_id),
+        groupCharacters: row.group_mode ? (row.group_character_ids || []).map((id) => characters.find((item) => item.id === id)).filter(Boolean) : [],
         latestMessage: latestByConversation.get(row.id),
       })));
     } catch (requestError) {
@@ -206,6 +229,17 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
         story_preset: conversation.story_preset || "natural",
         scene_state: conversation.scene_state || {},
         story_timeline: conversation.story_timeline || [],
+        intelligence_state: conversation.intelligence_state || {},
+        story_recap: conversation.story_recap || conversation.summary || null,
+        unresolved_threads: conversation.unresolved_threads || [],
+        group_mode: Boolean(conversation.group_mode),
+        group_character_ids: conversation.group_character_ids || [],
+        group_title: conversation.group_title || null,
+        cover_url: conversation.cover_url || null,
+        cover_title: conversation.cover_title || null,
+        cover_mood: conversation.cover_mood || null,
+        ambient_mode: conversation.ambient_mode || "none",
+        ambient_volume: conversation.ambient_volume ?? 18,
         branch_parent_id: conversation.id,
         branch_label: "Duplicate",
       }).select().single();
@@ -274,7 +308,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
       if (view === "archived" && !conversation.archived_at) return false;
       if (!value) return true;
       const character = conversation.character;
-      return `${conversation.title || ""} ${character?.name || ""} ${character?.role || ""} ${conversation.latestMessage?.content || ""}`
+      return `${conversation.title || ""} ${character?.name || ""} ${(conversation.groupCharacters || []).map((item) => item.name).join(" ")} ${character?.role || ""} ${conversation.latestMessage?.content || ""}`
         .toLowerCase().includes(value);
     });
   }, [conversations, search, view, pendingDeletionIds]);
@@ -300,15 +334,16 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
       return Boolean(item.trashed_at);
     });
     const fallback = conversations.find((item) => !item.trashed_at);
-    const character = (match || fallback)?.character;
-    return character?.coverUrl || character?.imageUrl || "";
+    const target = match || fallback;
+    const character = target?.character;
+    return target?.cover_url || character?.coverUrl || character?.imageUrl || "";
   }
 
   function renderRecentStory(conversation) {
     const character = conversation.character;
     if (!character) return null;
     const title = conversation.title || character.name;
-    const art = character.coverUrl || character.imageUrl;
+    const art = conversation.cover_url || character.coverUrl || character.imageUrl;
     const preview = shelfPreview(conversation.latestMessage?.content || character.firstMessage || character.role || "Continue the story.");
     return (
       <article
@@ -325,6 +360,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
               <button type="button" onClick={() => setEditingId(null)} aria-label="Cancel rename"><X size={15}/></button>
             </form>
           ) : <h3>{title}</h3>}
+          {conversation.group_mode && <small className="reference-story-row__group">Group Story · {(conversation.groupCharacters || []).map((item)=>item.name).join(" · ")}</small>}
           <p>{preview}</p>
           <time>{formatShelfDate(conversation.updated_at)}</time>
         </div>
@@ -335,28 +371,39 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
 
   function renderStoryMenu(conversation, title, variant = "card") {
     const menuOpen = menuId === conversation.id;
+    const panel = menuOpen && typeof document !== "undefined" ? createPortal(
+      <div className="story-action-menu story-action-menu__portal-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) setMenuId(null); }}>
+        <div className="story-action-menu__panel story-action-menu__panel--portal" role="menu" aria-label={`Actions for ${title}`} onPointerDown={(event)=>event.stopPropagation()} onClick={(event)=>event.stopPropagation()}>
+          <div className="story-action-menu__sheet-handle" aria-hidden="true" />
+          <strong className="story-action-menu__sheet-title">{title}</strong>
+          <button type="button" role="menuitem" onClick={(event) => { setMenuId(null); togglePinned(event, conversation); }}>{conversation.is_pinned ? <HeartOff size={15}/> : <Heart size={15}/>}<span>{conversation.is_pinned ? "Remove favorite" : "Favorite"}</span></button>
+          <button type="button" role="menuitem" onClick={(event) => { setMenuId(null); beginRename(event, conversation); }}><Pencil size={15}/><span>Rename</span></button>
+          <button type="button" role="menuitem" onClick={(event) => { setMenuId(null); duplicateConversation(event, conversation); }} disabled={updatingId === conversation.id}><Copy size={15}/><span>Duplicate</span></button>
+          <button type="button" role="menuitem" onClick={(event) => { setMenuId(null); exportConversation(event, conversation); }} disabled={updatingId === conversation.id}><Download size={15}/><span>Export</span></button>
+          <button type="button" role="menuitem" onClick={(event) => { setMenuId(null); toggleArchived(event, conversation); }} disabled={updatingId === conversation.id}>{conversation.archived_at ? <ArchiveRestore size={15}/> : <Archive size={15}/>}<span>{conversation.archived_at ? "Restore" : "Archive"}</span></button>
+          {onOpenDiagnostics && <button type="button" role="menuitem" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId(null); onOpenDiagnostics(); }}><Bug size={15}/><span>Report a problem</span></button>}
+          <span className="story-action-menu__separator" />
+          <button type="button" role="menuitem" className={conversation.trashed_at ? "" : "danger"} onClick={(event) => { setMenuId(null); conversation.trashed_at ? restoreConversation(event, conversation.id) : deleteConversation(event, conversation.id); }} disabled={deletingId === conversation.id || updatingId === conversation.id}>{conversation.trashed_at ? <ArchiveRestore size={15}/> : <Trash2 size={15}/>}<span>{conversation.trashed_at ? "Restore" : "Move to Trash"}</span></button>
+          {conversation.trashed_at && <button type="button" role="menuitem" className="danger" onClick={(event) => { setMenuId(null); permanentlyDeleteConversation(event, conversation.id); }}><Trash2 size={15}/><span>Delete forever</span></button>}
+        </div>
+      </div>,
+      document.body,
+    ) : null;
+
     return (
-      <div className={`story-action-menu story-action-menu--${variant}`} onClick={(event) => event.stopPropagation()}>
+      <div className={`story-action-menu story-action-menu--${variant}${menuOpen ? " is-open" : ""}`} onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
         <button
+          type="button"
           className="story-action-menu__trigger"
-          onClick={() => setMenuId((current) => current === conversation.id ? null : conversation.id)}
+          onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId((current) => current === conversation.id ? null : conversation.id); }}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); }}
           aria-label={`Story actions for ${title}`}
           aria-expanded={menuOpen}
+          aria-haspopup="menu"
         >
           <MoreHorizontal size={18}/>
         </button>
-        {menuOpen && (
-          <div className="story-action-menu__panel">
-            <button onClick={(event) => { setMenuId(null); togglePinned(event, conversation); }}>{conversation.is_pinned ? <HeartOff size={15}/> : <Heart size={15}/>}<span>{conversation.is_pinned ? "Remove favorite" : "Favorite"}</span></button>
-            <button onClick={(event) => { setMenuId(null); beginRename(event, conversation); }}><Pencil size={15}/><span>Rename</span></button>
-            <button onClick={(event) => { setMenuId(null); duplicateConversation(event, conversation); }} disabled={updatingId === conversation.id}><Copy size={15}/><span>Duplicate</span></button>
-            <button onClick={(event) => { setMenuId(null); exportConversation(event, conversation); }} disabled={updatingId === conversation.id}><Download size={15}/><span>Export</span></button>
-            <button onClick={(event) => { setMenuId(null); toggleArchived(event, conversation); }} disabled={updatingId === conversation.id}>{conversation.archived_at ? <ArchiveRestore size={15}/> : <Archive size={15}/>}<span>{conversation.archived_at ? "Restore" : "Archive"}</span></button>
-            <span className="story-action-menu__separator" />
-            <button className={conversation.trashed_at ? "" : "danger"} onClick={(event) => { setMenuId(null); conversation.trashed_at ? restoreConversation(event, conversation.id) : deleteConversation(event, conversation.id); }} disabled={deletingId === conversation.id || updatingId === conversation.id}>{conversation.trashed_at ? <ArchiveRestore size={15}/> : <Trash2 size={15}/>}<span>{conversation.trashed_at ? "Restore" : "Move to Trash"}</span></button>
-            {conversation.trashed_at && <button className="danger" onClick={(event) => { setMenuId(null); permanentlyDeleteConversation(event, conversation.id); }}><Trash2 size={15}/><span>Delete forever</span></button>}
-          </div>
-        )}
+        {panel}
       </div>
     );
   }
@@ -373,7 +420,10 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
           <span className="reference-stories-title__spark">✦</span>
           <span className="reference-stories-title__line reference-stories-title__line--right" />
         </div>
-        <button className="reference-stories-new" type="button" onClick={() => setPickerOpen(true)} aria-label="New story"><Sparkles size={26}/></button>
+        <div className="reference-stories-hero__actions">
+          <button className="reference-stories-group" type="button" onClick={() => setGroupStoryOpen(true)} aria-label="New Group Story"><UsersRound size={22}/><span>Group</span></button>
+          <button className="reference-stories-new" type="button" onClick={() => setPickerOpen(true)} aria-label="New story"><Sparkles size={26}/></button>
+        </div>
       </header>
 
       <div className="reference-search-wrap">
@@ -444,6 +494,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters }) {
           </section>
         </>
       )}
+
+      {groupStoryOpen && <GroupStoryModal onClose={() => setGroupStoryOpen(false)} onOpenStory={onOpenCharacter}/>}
 
       {pickerOpen && (
         <div className="conversation-picker-backdrop" onMouseDown={() => !creatingId && setPickerOpen(false)}>

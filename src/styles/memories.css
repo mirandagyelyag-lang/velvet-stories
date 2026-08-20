@@ -31,22 +31,44 @@
 .memories-reference__filter-menu select { min-width: 0; width: 100%; height: 40px; color: var(--ref-ink); background: transparent; border: 0; outline: 0; appearance: none; font-size: .72rem; }
 .memories-reference__filter-menu svg { color: var(--ref-rose); pointer-events: none; }
 
+
+.memories-reference__category-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 9px;
+}
+.memories-reference__category-heading > span {
+  color: var(--ref-rose);
+  font-size: .61rem;
+  font-weight: 700;
+  letter-spacing: .18em;
+}
+.memories-reference__category-heading > small {
+  overflow: hidden;
+  color: var(--ref-muted);
+  font-size: .64rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .memories-reference__groups {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  margin: 0 0 30px;
+  margin: 0 0 28px;
   padding: 2px 0 5px;
   scrollbar-width: none;
 }
 .memories-reference__groups::-webkit-scrollbar { display: none; }
 .memories-reference__groups button {
-  min-height: 42px;
+  min-height: 40px;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 0 14px;
+  padding: 0 12px;
   color: var(--ref-muted);
   background: color-mix(in srgb, var(--stories-panel, #201019) 82%, transparent);
   border: 1px solid var(--stories-border, rgba(225,112,141,.14));
@@ -218,9 +240,11 @@
   .memories-reference__new { width:47px!important; height:47px!important; min-height:47px!important; }
   .memories-reference__search-wrap { min-height:58px!important; margin-bottom:13px!important; border-radius:20px!important; }
   .memories-reference__filter-menu { grid-template-columns:1fr; gap:8px; margin-top:0; }
-  .memories-reference__groups { gap:5px; margin-bottom:25px; }
-  .memories-reference__groups button { min-height:38px; padding:0 11px; gap:6px; font-size:.65rem; }
-  .memories-reference__groups button b { min-width:21px; height:21px; font-size:.56rem; }
+  .memories-reference__category-heading { margin-bottom:8px; }
+  .memories-reference__category-heading > small { max-width:58vw; font-size:.58rem; }
+  .memories-reference__groups { gap:5px; margin-bottom:24px; padding-bottom:4px; scroll-snap-type:x proximity; }
+  .memories-reference__groups button { min-height:37px; padding:0 10px; gap:6px; font-size:.63rem; scroll-snap-align:start; }
+  .memories-reference__groups button b { min-width:20px; height:20px; font-size:.54rem; }
   .memories-reference__section { margin-bottom:28px; }
   .memories-reference__section-heading { margin-bottom:12px; }
   .memories-reference__section-heading h2 { font-size:.66rem; letter-spacing:.13em; }

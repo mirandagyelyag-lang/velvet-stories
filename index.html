@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="velvet-version" content="2.0.4" />
+    <meta name="velvet-version" content="2.6.13" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
@@ -38,7 +38,7 @@
               await Promise.allSettled(keys.map((key) => caches.delete(key)));
             }
           } catch {}
-          safeSessionSet("velvet_boot_repaired_v203", "1");
+          safeSessionSet("velvet_boot_repaired_v269", "1");
           const url = new URL(location.href);
           url.searchParams.set("velvet_recovered", String(Date.now()));
           location.replace(url.toString());
@@ -50,8 +50,8 @@
           const target = event.target;
           if (!(target instanceof HTMLLinkElement)) return;
           if (target.rel !== "stylesheet") return;
-          if (safeSessionGet("velvet_asset_repaired_v203") === "1") return;
-          safeSessionSet("velvet_asset_repaired_v203", "1");
+          if (safeSessionGet("velvet_asset_repaired_v269") === "1") return;
+          safeSessionSet("velvet_asset_repaired_v269", "1");
           repair();
         }, true);
 
@@ -60,7 +60,7 @@
           const root = document.getElementById("root");
           if (root && root.childElementCount > 0) return;
 
-          if (safeSessionGet("velvet_boot_repaired_v203") !== "1" && navigator.onLine) {
+          if (safeSessionGet("velvet_boot_repaired_v269") !== "1" && navigator.onLine) {
             repair();
             return;
           }

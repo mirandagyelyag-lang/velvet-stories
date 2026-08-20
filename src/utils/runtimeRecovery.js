@@ -47,7 +47,6 @@ export async function repairVelvetRuntime(reason = "manual") {
 
   const url = new URL(window.location.href);
   url.searchParams.set(RECOVERY_QUERY, String(Date.now()));
-  url.searchParams.delete("open");
   window.location.replace(url.toString());
 }
 

@@ -136,7 +136,7 @@
 .settings-page--editorial .settings-page__reset{margin-top:28px!important;border-radius:999px!important}
 
 /* ---------- cheap performance wins ---------- */
-.reference-story-row,.discover-burgundy__card,.memory-reference-card,.profile-reference-panel,.quiet-chat-row{content-visibility:auto;contain-intrinsic-size:120px}
+.discover-burgundy__card,.memory-reference-card,.profile-reference-panel,.quiet-chat-row{content-visibility:auto;contain-intrinsic-size:120px}
 img{image-rendering:auto}
 
 @media(max-width:760px){

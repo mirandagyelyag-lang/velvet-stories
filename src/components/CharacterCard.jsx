@@ -9,13 +9,13 @@ function CharacterCard({ character, onOpen, onEdit, onDelete, onFavorite, onTags
       <button className="character-card__main" onClick={() => onOpen(character)}>
         <div className="character-card__portrait">
           {character.coverUrl || character.imageUrl ? (
-            <img src={character.coverUrl || character.imageUrl} alt="" />
+            <img src={character.coverUrl || character.imageUrl} alt="" loading="lazy" decoding="async" />
           ) : (
             <span className="character-card__initials">{character.initials}</span>
           )}
           <span className="character-card__portrait-shade" />
           <span className="character-card__avatar">
-            {character.imageUrl ? <img src={character.imageUrl} alt="" /> : character.initials}
+            {character.imageUrl ? <img src={character.imageUrl} alt="" loading="lazy" decoding="async" /> : character.initials}
           </span>
         </div>
 

@@ -117,7 +117,7 @@ export function ChatsProvider({
     const openingPromise =
       openOrCreateConversation(
         character,
-        { requestedConversationId, forceNew }
+        { ...options, requestedConversationId, forceNew }
       );
 
     openingConversations
@@ -168,11 +168,14 @@ export function ChatsProvider({
       }
 
       if (!conversation) {
-        conversation =
-          await createConversation(
-            character,
-            options.forceNew
-          );
+        conversation = await createConversation(character, {
+          isAdditional: options.forceNew,
+          personaId: options.personaId,
+          lorebookId: options.lorebookId,
+          title: options.title,
+          groupCharacterIds: options.groupCharacterIds,
+          groupTitle: options.groupTitle,
+        });
       }
 
       const messagePage = await loadConversationMessages(conversation.id);
@@ -205,7 +208,24 @@ export function ChatsProvider({
           conversation.title ||
           character.name,
 
+        groupMode: Boolean(conversation.group_mode),
+        groupCharacterIds: Array.isArray(conversation.group_character_ids) ? conversation.group_character_ids : [],
+        groupTitle: conversation.group_title || "",
+        coverUrl: conversation.cover_url || "",
+        coverTitle: conversation.cover_title || "",
+        coverMood: conversation.cover_mood || "",
+        ambientMode: conversation.ambient_mode || "none",
+        ambientVolume: Number(conversation.ambient_volume ?? 18),
+        previousOpenedAt: conversation.last_opened_at || "",
+        catchUpAvailable: Boolean(
+          conversation.last_opened_at &&
+          Date.now() - new Date(conversation.last_opened_at).getTime() >= 18 * 60 * 60 * 1000 &&
+          (conversation.story_recap || conversation.summary)
+        ),
+
         summary: conversation.summary || "",
+        storyRecap: conversation.story_recap || conversation.summary || "",
+        intelligenceState: conversation.intelligence_state || { objects: [], knowledge: [], commitments: [], stakes: "" },
 
         responseLengthOverride:
           conversation.response_length_override || "",
@@ -233,6 +253,7 @@ export function ChatsProvider({
         storyTimeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline : [],
         relationshipState: conversation.relationship_state || {},
         castState: conversation.cast_state || {},
+        continuityGuard: { status: "stable", protected: [] },
         storyChapters: Array.isArray(conversation.story_chapters) ? conversation.story_chapters : [],
         activeChapter: conversation.active_chapter || {},
         unfinishedThreads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads : [],
@@ -252,6 +273,7 @@ export function ChatsProvider({
         memoryUsage: null,
 
         loreUsage: null,
+        lastLearnedMemoryCount: 0,
 
         messages,
         hasMoreMessages,
@@ -268,6 +290,14 @@ export function ChatsProvider({
             chatData,
         })
       );
+
+      // Keep the previous open time in memory for Catch Me Up, then mark this
+      // visit without changing the story's content timestamp.
+      void supabase
+        .from("conversations")
+        .update({ last_opened_at: new Date().toISOString() })
+        .eq("id", conversation.id)
+        .eq("user_id", user.id);
 
       return chatData;
     } catch (error) {
@@ -311,6 +341,7 @@ export function ChatsProvider({
         "character_id",
         characterId
       )
+      .eq("group_mode", false)
       .is("trashed_at", null)
       .order(
         "updated_at",
@@ -328,37 +359,30 @@ export function ChatsProvider({
     return data;
   }
 
-  async function createConversation(
-    character,
-    isAdditional = false
-  ) {
+  async function createConversation(character, options = {}) {
     const { data: defaultPersona } = await supabase
       .from("personas")
       .select("id")
       .eq("is_default", true)
       .maybeSingle();
 
-    const {
-      data,
-      error,
-    } = await supabase
+    const groupIds = [...new Set((options.groupCharacterIds || []).filter(Boolean))];
+    if (groupIds.length && !groupIds.includes(character.id)) groupIds.unshift(character.id);
+    const groupMode = groupIds.length > 1;
+
+    const { data, error } = await supabase
       .from("conversations")
       .insert({
         user_id: user.id,
-
-        character_id:
-          character.id,
-
-        title:
-          isAdditional
-            ? createConversationTitle()
-            : character.name,
-
-        persona_id:
-          defaultPersona?.id || null,
-
+        character_id: character.id,
+        title: options.title?.trim() || options.groupTitle?.trim() || (options.isAdditional ? createConversationTitle() : character.name),
+        persona_id: options.personaId || defaultPersona?.id || null,
+        lorebook_id: options.lorebookId || null,
+        group_mode: groupMode,
+        group_character_ids: groupMode ? groupIds : [],
+        group_title: groupMode ? (options.groupTitle?.trim() || groupIds.length + " character story") : null,
         character_development: {},
-        story_engine_version: 10,
+        story_engine_version: 12,
       })
       .select()
       .single();
@@ -590,6 +614,7 @@ export function ChatsProvider({
     let streamStarted = false;
     let completeContent = "";
     let finalMessage = null;
+    let learnedMemoryCount = 0;
     let streamError = "";
     let reader = null;
 
@@ -820,6 +845,27 @@ export function ChatsProvider({
               appendMessageToState(characterId, finalMessage);
             }
 
+            learnedMemoryCount = Number(eventData.learnedMemoryCount || 0);
+            setChats((currentChats) => ({
+              ...currentChats,
+              [characterId]: {
+                ...currentChats[characterId],
+                sceneState: eventData.sceneState || currentChats[characterId]?.sceneState || {},
+                castState: eventData.castState || currentChats[characterId]?.castState || {},
+                characterDevelopment: eventData.characterDevelopment || currentChats[characterId]?.characterDevelopment || {},
+                relationshipState: eventData.relationshipState || currentChats[characterId]?.relationshipState || {},
+                continuityGuard: eventData.continuityGuard || currentChats[characterId]?.continuityGuard || { status: "stable", protected: [] },
+                intelligenceState: eventData.intelligenceState || currentChats[characterId]?.intelligenceState || {},
+                storyTimeline: Array.isArray(eventData.storyTimeline) ? eventData.storyTimeline : (currentChats[characterId]?.storyTimeline || []),
+                storyRecap: eventData.storyRecap || currentChats[characterId]?.storyRecap || "",
+                storyChapters: Array.isArray(eventData.storyChapters) ? eventData.storyChapters : (currentChats[characterId]?.storyChapters || []),
+                activeChapter: eventData.activeChapter || currentChats[characterId]?.activeChapter || {},
+                unfinishedThreads: Array.isArray(eventData.unfinishedThreads) ? eventData.unfinishedThreads : (currentChats[characterId]?.unfinishedThreads || []),
+                lastLearnedMemoryCount: learnedMemoryCount,
+                lastLearnedMemoryAt: learnedMemoryCount ? Date.now() : currentChats[characterId]?.lastLearnedMemoryAt || 0,
+              },
+            }));
+
             continue;
           }
 
@@ -915,10 +961,10 @@ export function ChatsProvider({
         }
       }
 
-      recordAiSession({ success: 1, lastModel: diagnosticModel, lastDurationMs: Date.now() - requestStartedAt, lastError: "" });
+      recordAiSession({ success: 1, lastSuccessAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: Date.now() - requestStartedAt, lastError: "" });
       return {
         message: finalMessage,
-        memories: [],
+        learnedMemoryCount,
       };
     } catch (error) {
       cleanupStreamingBubble();
@@ -938,7 +984,7 @@ export function ChatsProvider({
         throw cancellationError();
       }
 
-      recordAiSession({ failed: 1, lastModel: diagnosticModel, lastDurationMs: Date.now() - requestStartedAt, lastError: String(error?.message || "Generation failed").slice(0, 220) });
+      recordAiSession({ failed: 1, lastErrorAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: Date.now() - requestStartedAt, lastError: String(error?.message || "Generation failed").slice(0, 220) });
       throw error;
     } finally {
       if (reader && requestWasCancelled()) {
@@ -967,8 +1013,24 @@ export function ChatsProvider({
     return data;
   }
 
-  async function createNewConversation(character) {
-    return startConversation(character, { forceNew: true });
+  async function createNewConversation(character, options = {}) {
+    return startConversation(character, { forceNew: true, ...options });
+  }
+
+  async function createGroupConversation(groupCharacters, options = {}) {
+    const uniqueCharacters = [...new Map((groupCharacters || []).filter(Boolean).map((item) => [item.id, item])).values()];
+    if (uniqueCharacters.length < 2) throw new Error("Choose at least two characters for a Group Story.");
+    if (uniqueCharacters.length > 5) throw new Error("Group Stories currently support up to five characters.");
+    const primary = uniqueCharacters[0];
+    const groupTitle = options.groupTitle?.trim() || uniqueCharacters.map((item) => item.name).join(" · ");
+    return startConversation(primary, {
+      forceNew: true,
+      personaId: options.personaId || "",
+      lorebookId: options.lorebookId || "",
+      title: groupTitle,
+      groupTitle,
+      groupCharacterIds: uniqueCharacters.map((item) => item.id),
+    });
   }
 
   async function sendServerCancellation(generationId, characterId) {
@@ -1112,8 +1174,14 @@ export function ChatsProvider({
         storyChapters: Array.isArray(data.story_chapters) ? data.story_chapters : (currentChats[characterId]?.storyChapters || []),
         activeChapter: data.active_chapter || currentChats[characterId]?.activeChapter || {},
         storyTimeline: Array.isArray(data.story_timeline) ? data.story_timeline : (currentChats[characterId]?.storyTimeline || []),
+        intelligenceState: data.intelligence_state || currentChats[characterId]?.intelligenceState || {},
+        storyRecap: data.story_recap || currentChats[characterId]?.storyRecap || "",
+        unfinishedThreads: Array.isArray(data.unresolved_threads) ? data.unresolved_threads : (currentChats[characterId]?.unfinishedThreads || []),
         personaId: data.persona_id || "",
         lorebookId: data.lorebook_id || "",
+        groupMode: Boolean(data.group_mode ?? currentChats[characterId]?.groupMode),
+        groupCharacterIds: Array.isArray(data.group_character_ids) ? data.group_character_ids : (currentChats[characterId]?.groupCharacterIds || []),
+        groupTitle: data.group_title || currentChats[characterId]?.groupTitle || "",
       },
     }));
     return data;
@@ -1195,6 +1263,8 @@ export function ChatsProvider({
       summary: null,
       scene_state: {},
       story_timeline: [],
+      intelligence_state: {},
+      story_recap: null,
       relationship_state: {},
       character_development: {},
       cast_state: {},
@@ -1235,6 +1305,58 @@ export function ChatsProvider({
         storyRevision,
       },
     }));
+  }
+
+  async function editCharacterMessageInPlace(characterId, messageId, content) {
+    stopGeneration(characterId);
+    const conversation = chats[characterId];
+    const currentMessage = (conversation?.messages || []).find((item) => item.id === messageId);
+    if (!conversation?.conversationId || !currentMessage || currentMessage.sender !== "character") {
+      throw new Error("Character response not found.");
+    }
+
+    const nextContent = content.trim();
+    if (!nextContent) throw new Error("A response cannot be empty.");
+    if (nextContent === currentMessage.content.trim()) return currentMessage;
+
+    const { error: alternativeError } = await supabase.from("message_alternatives").insert({
+      user_id: user.id,
+      conversation_id: conversation.conversationId,
+      message_id: messageId,
+      content: currentMessage.content,
+    });
+    if (alternativeError && alternativeError.code !== "23505") {
+      console.warn("Could not preserve the previous response version:", alternativeError);
+    }
+
+    const updated = await updateMessage(characterId, messageId, nextContent);
+    const storyRevision = crypto.randomUUID();
+    const { error: resetError } = await supabase.from("conversations").update({
+      story_revision: storyRevision,
+      summary: null,
+      scene_state: {},
+      story_timeline: [],
+      intelligence_state: {},
+      story_recap: null,
+      relationship_state: {},
+      character_development: {},
+      cast_state: {},
+      story_chapters: [],
+      active_chapter: {},
+      unresolved_threads: [],
+      updated_at: new Date().toISOString(),
+    }).eq("id", conversation.conversationId).eq("user_id", user.id);
+    if (resetError) throw resetError;
+
+    setChats((currentChats) => ({
+      ...currentChats,
+      [characterId]: {
+        ...currentChats[characterId],
+        summary: "", sceneState: {}, storyTimeline: [], intelligenceState: {}, storyRecap: "",
+        relationshipState: {}, characterDevelopment: {}, castState: {}, storyChapters: [], activeChapter: {}, unfinishedThreads: [], storyRevision,
+      },
+    }));
+    return updated;
   }
 
   async function editMessageAndRemoveFollowing(characterId, messageId, content) {
@@ -1353,10 +1475,20 @@ export function ChatsProvider({
         story_chapters: [],
         active_chapter: {},
         unresolved_threads: [],
-        story_engine_version: 10,
+        intelligence_state: {},
+        story_recap: null,
+        story_engine_version: 12,
         branch_parent_id: conversation.conversationId,
         branch_from_message_id: sourceMessage.id,
         branch_label: branchTitle.slice(0, 80),
+        group_mode: Boolean(conversation.groupMode),
+        group_character_ids: conversation.groupCharacterIds || [],
+        group_title: conversation.groupTitle || null,
+        cover_url: conversation.coverUrl || null,
+        cover_title: conversation.coverTitle || null,
+        cover_mood: conversation.coverMood || null,
+        ambient_mode: conversation.ambientMode || "none",
+        ambient_volume: Number(conversation.ambientVolume ?? 18),
       })
       .select()
       .single();
@@ -1709,7 +1841,7 @@ export function ChatsProvider({
     if (!conversation?.conversationId) return null;
     const { data, error } = await supabase
       .from("conversations")
-      .select("scene_state, story_timeline, summary, story_preset, pacing_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, character_development, story_engine_version, story_revision, updated_at")
+      .select("scene_state, story_timeline, summary, story_recap, intelligence_state, story_preset, pacing_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, character_development, story_engine_version, story_revision, updated_at")
       .eq("id", conversation.conversationId)
       .single();
     if (error) throw error;
@@ -1720,6 +1852,8 @@ export function ChatsProvider({
         sceneState: data.scene_state || {},
         storyTimeline: Array.isArray(data.story_timeline) ? data.story_timeline : [],
         summary: data.summary || current[characterId]?.summary || "",
+        storyRecap: data.story_recap || data.summary || current[characterId]?.storyRecap || "",
+        intelligenceState: data.intelligence_state || current[characterId]?.intelligenceState || {},
         storyPreset: data.story_preset || current[characterId]?.storyPreset || "natural",
         pacingMode: data.pacing_mode || current[characterId]?.pacingMode || "natural",
         relationshipState: data.relationship_state || current[characterId]?.relationshipState || {},
@@ -1802,7 +1936,7 @@ export function ChatsProvider({
   async function getStoryHubData(characterId) {
     const conversation = chats[characterId];
     if (!conversation?.conversationId) return { bookmarks: [], branches: [], chapters: [], cast: {}, relationship: {}, unfinishedThreads: [] };
-    const [bookmarksResult, branchesResult, currentResult] = await Promise.all([
+    const [bookmarksResult, branchesResult, currentResult, memoriesResult] = await Promise.all([
       supabase.from("messages")
         .select("id, sender, content, created_at, is_bookmarked, bookmark_label, chapter_number")
         .eq("conversation_id", conversation.conversationId)
@@ -1814,13 +1948,21 @@ export function ChatsProvider({
         .or(`id.eq.${conversation.conversationId},branch_parent_id.eq.${conversation.conversationId},id.eq.${conversation.branchParentId || conversation.conversationId}`)
         .order("updated_at", { ascending: false }),
       supabase.from("conversations")
-        .select("relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, character_development, pacing_mode, story_engine_version, story_revision")
+        .select("relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, intelligence_state, story_recap, story_timeline, character_development, pacing_mode, story_engine_version, story_revision, persona_id, lorebook_id, group_mode, group_character_ids, group_title, cover_url, cover_title, cover_mood, ambient_mode, ambient_volume, last_opened_at")
         .eq("id", conversation.conversationId)
         .single(),
+      supabase.from("memories")
+        .select("id, content, category, importance, scope, why_remembered, is_pinned, is_canon, created_at, updated_at")
+        .eq("conversation_id", conversation.conversationId)
+        .is("superseded_at", null)
+        .order("importance", { ascending: false })
+        .order("updated_at", { ascending: false })
+        .limit(8),
     ]);
     if (bookmarksResult.error) throw bookmarksResult.error;
     if (branchesResult.error) console.warn("Could not load branches:", branchesResult.error);
     if (currentResult.error) throw currentResult.error;
+    if (memoriesResult.error) console.warn("Could not load dashboard memories:", memoriesResult.error);
     return {
       bookmarks: (bookmarksResult.data || []).map(convertDatabaseMessage),
       branches: branchesResult.data || [],
@@ -1829,11 +1971,280 @@ export function ChatsProvider({
       cast: currentResult.data?.cast_state || {},
       relationship: currentResult.data?.relationship_state || {},
       unfinishedThreads: Array.isArray(currentResult.data?.unresolved_threads) ? currentResult.data.unresolved_threads : [],
+      intelligenceState: currentResult.data?.intelligence_state || {},
+      storyRecap: currentResult.data?.story_recap || "",
+      storyTimeline: Array.isArray(currentResult.data?.story_timeline) ? currentResult.data.story_timeline : [],
       characterDevelopment: currentResult.data?.character_development || {},
       pacingMode: currentResult.data?.pacing_mode || "natural",
       storyEngineVersion: Number(currentResult.data?.story_engine_version || 9),
       storyRevision: currentResult.data?.story_revision || "",
+      personaId: currentResult.data?.persona_id || "",
+      lorebookId: currentResult.data?.lorebook_id || "",
+      groupMode: Boolean(currentResult.data?.group_mode),
+      groupCharacterIds: Array.isArray(currentResult.data?.group_character_ids) ? currentResult.data.group_character_ids : [],
+      groupTitle: currentResult.data?.group_title || "",
+      coverUrl: currentResult.data?.cover_url || "",
+      coverTitle: currentResult.data?.cover_title || "",
+      coverMood: currentResult.data?.cover_mood || "",
+      ambientMode: currentResult.data?.ambient_mode || "none",
+      ambientVolume: Number(currentResult.data?.ambient_volume ?? 18),
+      lastOpenedAt: currentResult.data?.last_opened_at || "",
+      recentMemories: memoriesResult.data || [],
     };
+  }
+
+
+  async function updateStoryExperience(characterId, patch = {}) {
+    const conversation = chats[characterId];
+    if (!conversation?.conversationId) throw new Error("The conversation is not ready yet.");
+
+    const databasePatch = {};
+    if (patch.coverUrl !== undefined) databasePatch.cover_url = String(patch.coverUrl || "").trim() || null;
+    if (patch.coverTitle !== undefined) databasePatch.cover_title = String(patch.coverTitle || "").trim().slice(0, 120) || null;
+    if (patch.coverMood !== undefined) databasePatch.cover_mood = String(patch.coverMood || "").trim().slice(0, 160) || null;
+    if (patch.ambientMode !== undefined) databasePatch.ambient_mode = ["none","rain","night_city","street_racing","cafe","campus","fireplace","home","party"].includes(patch.ambientMode) ? patch.ambientMode : "none";
+    if (patch.ambientVolume !== undefined) databasePatch.ambient_volume = Math.max(0, Math.min(100, Math.round(Number(patch.ambientVolume) || 0)));
+
+    const { data, error } = await supabase
+      .from("conversations")
+      .update(databasePatch)
+      .eq("id", conversation.conversationId)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+    if (error) throw error;
+
+    setChats((current) => ({
+      ...current,
+      [characterId]: {
+        ...current[characterId],
+        coverUrl: data.cover_url || "",
+        coverTitle: data.cover_title || "",
+        coverMood: data.cover_mood || "",
+        ambientMode: data.ambient_mode || "none",
+        ambientVolume: Number(data.ambient_volume ?? 18),
+      },
+    }));
+    return data;
+  }
+
+  async function uploadStoryCover(characterId, file) {
+    const conversation = chats[characterId];
+    if (!conversation?.conversationId || !file) throw new Error("Choose a cover image first.");
+    if (!String(file.type || "").startsWith("image/")) throw new Error("The cover must be an image.");
+    if (file.size > 5 * 1024 * 1024) throw new Error("Keep story covers under 5 MB.");
+
+    const extension = String(file.name || "cover.jpg").split(".").pop()?.toLowerCase() || "jpg";
+    const storagePath = `${user.id}/stories/${conversation.conversationId}-${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage.from("character-media").upload(storagePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+    if (error) throw error;
+    const { data } = supabase.storage.from("character-media").getPublicUrl(storagePath);
+    await updateStoryExperience(characterId, { coverUrl: data.publicUrl });
+    return data.publicUrl;
+  }
+
+  async function collectStorySnapshot(characterId) {
+    const conversation = chats[characterId];
+    if (!conversation?.conversationId) throw new Error("The conversation is not ready yet.");
+    const conversationId = conversation.conversationId;
+
+    const [conversationResult, messagesResult, memoriesResult, alternativesResult] = await Promise.all([
+      supabase.from("conversations").select("*").eq("id", conversationId).eq("user_id", user.id).single(),
+      supabase.from("messages").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
+      supabase.from("memories").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
+      supabase.from("message_alternatives").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
+    ]);
+    if (conversationResult.error) throw conversationResult.error;
+    if (messagesResult.error) throw messagesResult.error;
+    if (memoriesResult.error) throw memoriesResult.error;
+    if (alternativesResult.error) console.warn("Could not include response alternatives in snapshot:", alternativesResult.error);
+
+    return {
+      schema: 1,
+      velvetVersion: "2.6.0",
+      capturedAt: new Date().toISOString(),
+      conversation: conversationResult.data,
+      messages: messagesResult.data || [],
+      memories: memoriesResult.data || [],
+      alternatives: alternativesResult.data || [],
+    };
+  }
+
+  async function createStorySnapshot(characterId, label = "Snapshot") {
+    const conversation = chats[characterId];
+    if (!conversation?.conversationId) throw new Error("The conversation is not ready yet.");
+    const payload = await collectStorySnapshot(characterId);
+    const { data, error } = await supabase
+      .from("story_snapshots")
+      .insert({
+        user_id: user.id,
+        conversation_id: conversation.conversationId,
+        label: String(label || "Snapshot").trim().slice(0, 80) || "Snapshot",
+        payload,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async function listStorySnapshots(characterId) {
+    const conversationId = chats[characterId]?.conversationId;
+    if (!conversationId) return [];
+    const { data, error } = await supabase
+      .from("story_snapshots")
+      .select("id, label, created_at")
+      .eq("conversation_id", conversationId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function deleteStorySnapshot(snapshotId) {
+    const { error } = await supabase.from("story_snapshots").delete().eq("id", snapshotId).eq("user_id", user.id);
+    if (error) throw error;
+  }
+
+  async function applyStorySnapshot(characterId, payload, { safetySnapshot = true } = {}) {
+    const conversation = chats[characterId];
+    if (!conversation?.conversationId) throw new Error("The conversation is not ready yet.");
+    if (!payload || !Array.isArray(payload.messages) || !payload.conversation) throw new Error("This Velvet backup is incomplete.");
+    if (payload.conversation.id && payload.conversation.id !== conversation.conversationId) {
+      throw new Error("This backup belongs to a different story.");
+    }
+
+    if (safetySnapshot) {
+      try { await createStorySnapshot(characterId, "Before restore"); } catch (error) { console.warn("Safety snapshot skipped:", error); }
+    }
+
+    stopGeneration(characterId);
+    const conversationId = conversation.conversationId;
+    const { error: alternativesDeleteError } = await supabase.from("message_alternatives").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
+    if (alternativesDeleteError) console.warn("Could not clear old alternatives:", alternativesDeleteError);
+    const { error: memoriesDeleteError } = await supabase.from("memories").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
+    if (memoriesDeleteError) throw memoriesDeleteError;
+    const { error: messagesDeleteError } = await supabase.from("messages").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
+    if (messagesDeleteError) throw messagesDeleteError;
+
+    if (payload.messages.length) {
+      const messageRows = payload.messages.map((row) => ({
+        ...row,
+        conversation_id: conversationId,
+        user_id: user.id,
+      }));
+      const { error } = await supabase.from("messages").insert(messageRows);
+      if (error) throw error;
+    }
+
+    if (Array.isArray(payload.memories) && payload.memories.length) {
+      const memoryRows = payload.memories.map((row) => ({
+        ...row,
+        conversation_id: conversationId,
+        user_id: user.id,
+      }));
+      const { error } = await supabase.from("memories").insert(memoryRows);
+      if (error) throw error;
+    }
+
+    if (Array.isArray(payload.alternatives) && payload.alternatives.length) {
+      const rows = payload.alternatives.map((row) => ({
+        ...row,
+        conversation_id: conversationId,
+        user_id: user.id,
+      }));
+      const { error } = await supabase.from("message_alternatives").insert(rows);
+      if (error) console.warn("Could not restore response alternatives:", error);
+    }
+
+    const source = payload.conversation || {};
+    const restorableKeys = [
+      "title","summary","response_length_override","narration_style_override","creativity","romance_intensity","initiative","drama","flirting","humor","description_level","character_independence","dialogue_frequency","narrative_camera","inner_thoughts","story_preset","pacing_mode","mature_mode","scene_state","story_timeline","relationship_state","cast_state","story_chapters","active_chapter","unresolved_threads","character_development","intelligence_state","story_recap","story_engine_version","story_revision","persona_id","lorebook_id","group_mode","group_character_ids","group_title","cover_url","cover_title","cover_mood","ambient_mode","ambient_volume"
+    ];
+    const conversationPatch = Object.fromEntries(restorableKeys.filter((key) => Object.prototype.hasOwnProperty.call(source, key)).map((key) => [key, source[key]]));
+    conversationPatch.updated_at = new Date().toISOString();
+    const { error: conversationError } = await supabase
+      .from("conversations")
+      .update(conversationPatch)
+      .eq("id", conversationId)
+      .eq("user_id", user.id);
+    if (conversationError) throw conversationError;
+
+    await reloadConversationMessages(characterId);
+    await refreshStoryMetadata(characterId);
+    setChats((current) => ({
+      ...current,
+      [characterId]: {
+        ...current[characterId],
+        title: source.title || current[characterId]?.title,
+        coverUrl: source.cover_url || "",
+        coverTitle: source.cover_title || "",
+        coverMood: source.cover_mood || "",
+        ambientMode: source.ambient_mode || "none",
+        ambientVolume: Number(source.ambient_volume ?? 18),
+      },
+    }));
+    return true;
+  }
+
+  async function restoreStorySnapshot(characterId, snapshotId) {
+    const { data, error } = await supabase
+      .from("story_snapshots")
+      .select("payload")
+      .eq("id", snapshotId)
+      .eq("user_id", user.id)
+      .single();
+    if (error) throw error;
+    return applyStorySnapshot(characterId, data.payload, { safetySnapshot: true });
+  }
+
+  async function exportStoryBackupData(characterId) {
+    const snapshot = await collectStorySnapshot(characterId);
+    return {
+      type: "velvet-story-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      snapshot,
+    };
+  }
+
+  async function importStoryBackupData(characterId, backup) {
+    if (backup?.type !== "velvet-story-backup" || !backup.snapshot) throw new Error("This is not a Velvet story backup.");
+    return applyStorySnapshot(characterId, backup.snapshot, { safetySnapshot: true });
+  }
+
+  async function getStoryExportData(characterId) {
+    const conversation = chats[characterId];
+    if (!conversation?.conversationId) throw new Error("The conversation is not ready yet.");
+    const { data, error } = await supabase
+      .from("messages")
+      .select("id, sender, content, created_at, edited_at, chapter_number")
+      .eq("conversation_id", conversation.conversationId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return {
+      title: conversation.title || "",
+      coverUrl: conversation.coverUrl || "",
+      coverTitle: conversation.coverTitle || "",
+      coverMood: conversation.coverMood || "",
+      messages: (data || []).map(convertDatabaseMessage),
+    };
+  }
+
+  function dismissCatchUp(characterId) {
+    setChats((current) => ({
+      ...current,
+      [characterId]: {
+        ...current[characterId],
+        catchUpAvailable: false,
+      },
+    }));
   }
 
   async function deleteConversation(
@@ -1888,12 +2299,14 @@ export function ChatsProvider({
         isCharacterGenerating,
         startConversation,
         createNewConversation,
+        createGroupConversation,
         addMessage,
         generateCharacterReply,
         stopGeneration,
         updateConversationSettings,
         deleteMessage,
         updateMessage,
+        editCharacterMessageInPlace,
         editMessageAndRemoveFollowing,
         rewindToMessage,
         branchConversationFromMessage,
@@ -1908,6 +2321,16 @@ export function ChatsProvider({
         searchConversationMessages,
         loadMessageIntoView,
         getStoryHubData,
+        updateStoryExperience,
+        uploadStoryCover,
+        createStorySnapshot,
+        listStorySnapshots,
+        deleteStorySnapshot,
+        restoreStorySnapshot,
+        exportStoryBackupData,
+        importStoryBackupData,
+        getStoryExportData,
+        dismissCatchUp,
         deleteConversation,
       }}
     >
@@ -1919,7 +2342,7 @@ export function ChatsProvider({
 function recordAiSession(patch = {}) {
   try {
     const key = "velvet_ai_session_v19";
-    const current = { started: 0, success: 0, failed: 0, repairs: 0, lastModel: "", lastError: "", lastDurationMs: 0, firstTokenMs: 0, ...JSON.parse(sessionStorage.getItem(key) || sessionStorage.getItem("velvet_ai_session_v18") || "{}") };
+    const current = { started: 0, success: 0, failed: 0, repairs: 0, lastModel: "", lastError: "", lastSuccessAt: "", lastErrorAt: "", lastDurationMs: 0, firstTokenMs: 0, ...JSON.parse(sessionStorage.getItem(key) || sessionStorage.getItem("velvet_ai_session_v18") || "{}") };
     const next = {
       ...current,
       started: Number(current.started || 0) + Number(patch.started || 0),
@@ -1928,6 +2351,8 @@ function recordAiSession(patch = {}) {
       repairs: Number(current.repairs || 0) + Number(patch.repairs || 0),
       lastModel: patch.lastModel !== undefined && patch.lastModel !== "" ? patch.lastModel : current.lastModel,
       lastError: patch.lastError !== undefined ? patch.lastError : current.lastError,
+      lastSuccessAt: patch.lastSuccessAt !== undefined ? patch.lastSuccessAt : current.lastSuccessAt,
+      lastErrorAt: patch.lastErrorAt !== undefined ? patch.lastErrorAt : current.lastErrorAt,
       lastDurationMs: patch.lastDurationMs !== undefined ? patch.lastDurationMs : current.lastDurationMs,
       firstTokenMs: patch.firstTokenMs !== undefined ? patch.firstTokenMs : current.firstTokenMs,
       updatedAt: new Date().toISOString(),

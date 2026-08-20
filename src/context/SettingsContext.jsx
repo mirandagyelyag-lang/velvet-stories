@@ -14,6 +14,7 @@ const defaults = {
   reduceMotion: false,
   showMessageTimestamps: false,
   haptics: true,
+  enterToSend: true,
   confirmBeforeDelete: true,
   exportFormat: "markdown",
   readingWidth: "comfortable",

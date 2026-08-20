@@ -56,6 +56,15 @@ const initialForm = {
 
 const palette = ["#7a2942", "#243b6b", "#36594d", "#6d3e78", "#81552f", "#34343f", "#8a334f", "#405b78"];
 const voiceFingerprintFields = ["voiceVocabulary", "humorStyle", "conflictStyle", "affectionStyle", "verbalTells", "voiceAvoidances"];
+const STUDIO_STEPS = [
+  ["essence", "Essence"],
+  ["bond", "Relationship"],
+  ["depth", "Depth"],
+  ["voice", "Voice"],
+  ["world", "World"],
+  ["opening", "Opening"],
+];
+
 const generatedDraftFields = [
   "name", "role", "description", "personality", "relationship", "world", "values", "fears", "habits", "contradictions",
   "coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection", "speechStyle", "voiceVocabulary", "humorStyle",
@@ -145,6 +154,8 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   const [creatorStatus, setCreatorStatus] = useState("");
   const [voiceTesting, setVoiceTesting] = useState(false);
   const [voiceSample, setVoiceSample] = useState("");
+  const [toolNotice, setToolNotice] = useState("");
+  const [studioStep, setStudioStep] = useState("essence");
   const draftStorageKey = useMemo(() => `velvet_character_draft_v18_${character?.id || "new"}`, [character?.id]);
   const generationAbortRef = useRef(null);
   const autosaveTimerRef = useRef(null);
@@ -245,7 +256,8 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   async function handleEnhanceCharacter() {
     if (aiBusy || saving) return;
     if (!form.name.trim() || !form.role.trim()) {
-      setError("Add a name and role before using AI Polish.");
+      setToolNotice("AI Polish needs a name and role first. I moved you to Essence.");
+      jumpStudio("essence");
       return;
     }
 
@@ -254,6 +266,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
       setError("");
       const suggestions = await enhanceCharacterDraft(form);
       setForm((current) => mergeCharacterSuggestions(current, suggestions));
+      setToolNotice("AI Polish updated the character draft. Review the highlighted sections before saving.");
     } catch (requestError) {
       console.error("Character AI Polish failed:", requestError);
       setError(requestError.message || "AI Polish couldn't refine this character.");
@@ -279,7 +292,8 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   async function handleOrganizeCharacter() {
     if (aiBusy || saving) return;
     if (!form.name.trim() || !form.personality.trim()) {
-      setError("Add a name and some personality text before organizing the profile.");
+      setToolNotice("Organize Profile needs a name and some Personality text first. Add those in Essence, then tap Organize again.");
+      jumpStudio("essence");
       return;
     }
     try {
@@ -287,6 +301,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
       setError("");
       const suggestions = await organizeCharacterDraft(form);
       setForm((current) => mergeCharacterSuggestions(current, suggestions));
+      setToolNotice("Profile organized. Velvet distributed what you wrote into the matching sections.");
     } catch (requestError) {
       console.error("Character profile organization failed:", requestError);
       setError(requestError.message || "Velvet couldn't organize this profile.");
@@ -332,7 +347,12 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   }
 
   async function handleVoiceTest() {
-    if (aiBusy || saving || !form.name.trim() || !form.personality.trim()) return;
+    if (aiBusy || saving) return;
+    if (!form.name.trim() || !form.personality.trim()) {
+      setToolNotice("Add a name and Personality first, then Voice Preview can show how this character sounds on the page.");
+      jumpStudio("essence");
+      return;
+    }
     try {
       setVoiceTesting(true); setError(""); setVoiceSample("");
       setVoiceSample(await testCharacterVoice(form));
@@ -370,10 +390,19 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   }
 
   function jumpStudio(step) {
-    const node = document.querySelector(`[data-studio-step="${step}"]`);
-    const disclosure = node?.closest("details");
-    if (disclosure) disclosure.open = true;
-    requestAnimationFrame(() => node?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    if (!STUDIO_STEPS.some(([id]) => id === step)) return;
+    setStudioStep(step);
+    requestAnimationFrame(() => {
+      const layout = document.querySelector(".character-studio__layout");
+      if (window.matchMedia?.("(max-width: 760px)")?.matches) layout?.scrollTo?.({ top: 0, behavior: "smooth" });
+      else document.querySelector(`[data-studio-step="${step}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function moveStudioStep(direction) {
+    const index = Math.max(0, STUDIO_STEPS.findIndex(([id]) => id === studioStep));
+    const nextIndex = Math.max(0, Math.min(STUDIO_STEPS.length - 1, index + direction));
+    jumpStudio(STUDIO_STEPS[nextIndex][0]);
   }
 
   return (
@@ -411,6 +440,8 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
           </div>
         </header>
 
+        {toolNotice && <div className="character-studio__tool-notice" role="status"><Sparkles size={15}/><span>{toolNotice}</span><button type="button" onClick={()=>setToolNotice("")} aria-label="Dismiss"><X size={15}/></button></div>}
+
         {!character && creatorOpen && <section className="character-studio__creator" aria-label="Create a complete character with AI" aria-busy={generating}>
           <div>
             <span><Sparkles size={17}/></span>
@@ -432,7 +463,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
           </footer>
         </section>}
 
-        <form className="character-studio__layout" onSubmit={handleSubmit}>
+        <form className="character-studio__layout" onSubmit={handleSubmit} data-studio-current={studioStep}>
           <aside className="character-studio__preview" style={{ "--preview-color": form.color }}>
             <div className="character-preview-card">
               <div className="character-preview-card__cover">
@@ -481,15 +512,9 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
 
           <main className="character-studio__editor">
             <nav className="character-studio__journey" aria-label="Character creation steps">
-              {[
-                ["essence", "01", "Essence"],
-                ["bond", "02", "Relationship"],
-                ["depth", "03", "Depth"],
-                ["voice", "04", "Voice"],
-                ["opening", "05", "Opening"],
-              ].map(([step, number, label]) => <button type="button" key={step} onClick={()=>jumpStudio(step)}><small>{number}</small><span>{label}</span></button>)}
+              {STUDIO_STEPS.map(([step, label], index) => <button type="button" key={step} className={studioStep === step ? "active" : ""} aria-current={studioStep === step ? "step" : undefined} onClick={()=>jumpStudio(step)}><small>{String(index + 1).padStart(2, "0")}</small><span>{label}</span></button>)}
             </nav>
-            <StudioSection step="essence" icon={<UserRound size={18} />} kicker="ESSENCE" title="Who are they?" description="The few things Velvet should understand before anything else." onPolish={() => handlePolishFields(["description", "personality"], "essence")} polishing={fieldPolishing === "essence"}>
+            <StudioSection step="essence" active={studioStep === "essence"} icon={<UserRound size={18} />} kicker="ESSENCE" title="Who are they?" description="The few things Velvet should understand before anything else." onPolish={() => handlePolishFields(["description", "personality"], "essence")} polishing={fieldPolishing === "essence"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Name" required><input name="name" value={form.name} onChange={updateField} placeholder="Theo Calloway" disabled={saving} /></StudioField>
                 <StudioField label="Role / archetype" required><input name="role" value={form.role} onChange={updateField} placeholder="Campus prince, heartbreaker, best friend…" disabled={saving} /></StudioField>
@@ -502,24 +527,14 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </StudioField>
             </StudioSection>
 
-            <StudioSection step="bond" icon={<Heart size={18} />} kicker="THE BOND" title="Who are they to you?" description="This relationship should shape how they notice, remember and react to you." onPolish={() => handlePolishFields(["relationship", "world", "scenario"], "bond")} polishing={fieldPolishing === "bond"}>
+            <StudioSection step="bond" active={studioStep === "bond"} icon={<Heart size={18} />} kicker="THE BOND" title="Who are they to you?" description="This relationship should shape how they notice, remember and react to you." onPolish={() => handlePolishFields(["relationship"], "bond")} polishing={fieldPolishing === "bond"}>
               <StudioField label="Relationship to you" hint="Make this specific. History, current dynamic, what is known and what is not.">
                 <textarea name="relationship" value={form.relationship} onChange={updateField} placeholder="Friends since high school. He already likes me, but I read his distance as indifference…" rows="5" disabled={saving} />
               </StudioField>
-              <div className="studio-grid studio-grid--two">
-                <StudioField label="World"><textarea name="world" value={form.world} onChange={updateField} placeholder="Private university, wealthy social circle, modern city…" rows="3" disabled={saving} /></StudioField>
-                <StudioField label="Recurring setup"><textarea name="scenario" value={form.scenario} onChange={updateField} placeholder="Where do your stories with this character naturally happen?" rows="3" disabled={saving} /></StudioField>
-              </div>
+
             </StudioSection>
 
-            <details className="character-studio__depth">
-              <summary>
-                <span><Sparkles size={16}/><strong>More depth</strong></span>
-                <small>Values, fears, growth, boundaries and advanced voice · only when you want them</small>
-                <ChevronDown size={17}/>
-              </summary>
-              <div className="character-studio__depth-body">
-            <StudioSection step="depth" icon={<Brain size={18} />} kicker="CHARACTER DNA" title="What makes them human?" description="Useful contradictions and recurring patterns, not a personality spreadsheet." onPolish={() => handlePolishFields(["values", "fears", "habits", "contradictions"], "dna")} polishing={fieldPolishing === "dna"}>
+            <StudioSection step="depth" active={studioStep === "depth"} icon={<Brain size={18} />} kicker="CHARACTER DNA" title="What makes them human?" description="Useful contradictions and recurring patterns, not a personality spreadsheet." onPolish={() => handlePolishFields(["values", "fears", "habits", "contradictions"], "dna")} polishing={fieldPolishing === "dna"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Values"><textarea name="values" value={form.values} onChange={updateField} placeholder="Loyalty, independence, family, reputation…" rows="3" disabled={saving} /></StudioField>
                 <StudioField label="Fears"><textarea name="fears" value={form.fears} onChange={updateField} placeholder="What can actually get under their skin?" rows="3" disabled={saving} /></StudioField>
@@ -528,7 +543,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </div>
             </StudioSection>
 
-            <StudioSection icon={<Sparkles size={18} />} kicker="DEVELOPMENT" title="How can they change without losing themselves?" description="Optional anchors for gradual growth. Velvet will never treat these as an instant transformation." onPolish={() => handlePolishFields(["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"], "development")} polishing={fieldPolishing === "development"}>
+            <StudioSection step="depth" active={studioStep === "depth"} icon={<Sparkles size={18} />} kicker="DEVELOPMENT" title="How can they change without losing themselves?" description="Optional anchors for gradual growth. Velvet will never treat these as an instant transformation." onPolish={() => handlePolishFields(["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"], "development")} polishing={fieldPolishing === "development"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Core motivation" hint="What do they want beneath the surface?"><textarea name="coreMotivation" value={form.coreMotivation} onChange={updateField} placeholder="To be chosen without having to ask; to protect the life he built…" rows="4" disabled={saving} /></StudioField>
                 <StudioField label="Emotional defense" hint="How do they protect themselves when something matters?"><textarea name="emotionalDefense" value={form.emotionalDefense} onChange={updateField} placeholder="Turns tenderness into teasing, leaves when feelings become too visible…" rows="4" disabled={saving} /></StudioField>
@@ -537,7 +552,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </div>
             </StudioSection>
 
-            <StudioSection step="voice" icon={<MessageCircle size={18} />} kicker="VOICE & BEHAVIOR" title="How do they feel on the page?" description="The difference between knowing a character and actually hearing them." onPolish={() => handlePolishFields(["speechStyle", "boundaries", "exampleDialogue", "voiceVocabulary", "humorStyle", "conflictStyle", "affectionStyle", "voiceAvoidances"], "voice")} polishing={fieldPolishing === "voice"}>
+            <StudioSection step="voice" active={studioStep === "voice"} icon={<MessageCircle size={18} />} kicker="VOICE & BEHAVIOR" title="How do they feel on the page?" description="The difference between knowing a character and actually hearing them." onPolish={() => handlePolishFields(["speechStyle", "boundaries", "exampleDialogue", "voiceVocabulary", "humorStyle", "conflictStyle", "affectionStyle", "voiceAvoidances"], "voice")} polishing={fieldPolishing === "voice"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Speech style"><textarea name="speechStyle" value={form.speechStyle} onChange={updateField} placeholder="Dry, concise, teasing without performing, rarely over-explains…" rows="4" disabled={saving} /></StudioField>
                 <StudioField label="Boundaries"><textarea name="boundaries" value={form.boundaries} onChange={updateField} placeholder="Things they should never do unless the story genuinely earns it." rows="4" disabled={saving} /></StudioField>
@@ -545,6 +560,14 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               <StudioField label="Example dialogue" hint="A few lines are enough. This is a voice sample, not a script.">
                 <textarea name="exampleDialogue" value={form.exampleDialogue} onChange={updateField} placeholder={'"You called me. I came. Don\'t make it weird."'} rows="4" disabled={saving} />
               </StudioField>
+              <div className="studio-voice-preview">
+                <button type="button" onClick={handleVoiceTest} disabled={saving || aiBusy}>
+                  {voiceTesting ? <LoaderCircle className="character-modal__spinner" size={16}/> : <MessageCircle size={16}/>}
+                  <span>{voiceTesting ? "Listening to the profile…" : "Preview character voice"}</span>
+                </button>
+                <small>This previews writing voice, not device text-to-speech.</small>
+                {voiceSample && <blockquote>{voiceSample}</blockquote>}
+              </div>
               <details className="studio-voice-fingerprint">
                 <summary>
                   <span><ChevronDown className="studio-voice-fingerprint__chevron" size={16}/><Sparkles size={15}/>Advanced voice fingerprint</span>
@@ -561,10 +584,13 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
               </details>
             </StudioSection>
 
-              </div>
-            </details>
 
-            <StudioSection step="opening" icon={<BookOpen size={18} />} kicker="STORY FEEL" title="How should stories with them read?" description="Velvet handles most pacing automatically. You only choose the broad feel." onPolish={() => handlePolishFields(["firstMessage"], "opening")} polishing={fieldPolishing === "opening"}>
+            <StudioSection step="world" active={studioStep === "world"} icon={<BookOpen size={18} />} kicker="WORLD" title="Where does their life happen?" description="Give Velvet the recurring places, social rules and everyday context that should stay consistent." onPolish={() => handlePolishFields(["world", "scenario"], "world")} polishing={fieldPolishing === "world"}>
+              <StudioField label="World"><textarea name="world" value={form.world} onChange={updateField} placeholder="Private university, wealthy social circle, modern city…" rows="4" disabled={saving} /></StudioField>
+              <StudioField label="Recurring setup" hint="Where do your stories with this character naturally happen?"><textarea name="scenario" value={form.scenario} onChange={updateField} placeholder="Campus events, the friend group's apartments, late drives after practice…" rows="4" disabled={saving} /></StudioField>
+            </StudioSection>
+
+            <StudioSection step="opening" active={studioStep === "opening"} icon={<BookOpen size={18} />} kicker="STORY FEEL" title="How should stories with them read?" description="Velvet handles most pacing automatically. You only choose the broad feel." onPolish={() => handlePolishFields(["firstMessage"], "opening")} polishing={fieldPolishing === "opening"}>
               <div className="studio-choice-row">
                 <ChoiceGroup label="Response length" name="responseLength" value={form.responseLength} onChange={updateField} options={[
                   ["short", "Short", "Quick beats"],
@@ -581,6 +607,16 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
                 <textarea name="firstMessage" value={form.firstMessage} onChange={updateField} placeholder="The first Monday of the semester was exactly as chaotic as everyone expected…" rows="7" disabled={saving} />
               </StudioField>
             </StudioSection>
+
+            <div className="character-studio__wizard-controls" aria-label="Character Studio navigation">
+              <button type="button" onClick={() => moveStudioStep(-1)} disabled={studioStep === STUDIO_STEPS[0][0] || saving}><ChevronLeft size={18}/>Back</button>
+              <span>{STUDIO_STEPS.findIndex(([id]) => id === studioStep) + 1} / {STUDIO_STEPS.length}</span>
+              {studioStep === STUDIO_STEPS.at(-1)[0] ? (
+                <button type="submit" className="primary" disabled={saving}>{saving ? <LoaderCircle className="character-modal__spinner" size={17}/> : <Check size={17}/>} {character ? "Save character" : "Create character"}</button>
+              ) : (
+                <button type="button" className="primary" onClick={() => moveStudioStep(1)} disabled={saving}>Continue<ChevronLeft className="character-studio__wizard-next-icon" size={18}/></button>
+              )}
+            </div>
 
             {error && <p className="character-studio__error">{error}</p>}
 
@@ -603,9 +639,9 @@ function CreateCharacterModal({ onClose, onCreated, character = null }) {
   );
 }
 
-function StudioSection({ step = "", icon, kicker, title, description, children, onPolish = null, polishing = false }) {
+function StudioSection({ step = "", active = false, icon, kicker, title, description, children, onPolish = null, polishing = false }) {
   return (
-    <section className="studio-section" data-studio-step={step || undefined}>
+    <section className={`studio-section${active ? " is-wizard-active" : ""}`} data-studio-step={step || undefined}>
       <header className="studio-section__header">
         <span className="studio-section__icon">{icon}</span>
         <div>

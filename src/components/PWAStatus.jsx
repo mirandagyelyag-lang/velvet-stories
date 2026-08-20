@@ -5,22 +5,23 @@ import "../styles/pwa-status.css";
 function PWAStatus() {
   const pwa = usePWA();
   const showInstall = pwa.canInstall && !pwa.installed && !pwa.installDismissed;
+  const showUpdate = pwa.needRefresh || pwa.serverUpdateAvailable;
 
   return <>
     {!pwa.online && (
       <div className="network-pill" role="status"><WifiOff size={15}/>Offline mode</div>
     )}
 
-    {pwa.needRefresh && (
+    {showUpdate && (
       <aside className="pwa-toast" role="status">
         <span className="pwa-toast__icon"><RefreshCw size={19}/></span>
-        <div><strong>Velvet has an update</strong><small>Install it without losing your place.</small></div>
-        <button className="pwa-toast__primary" onClick={pwa.updateApp}>Update</button>
+        <div><strong>Velvet has an update</strong><small>{pwa.serverVersion ? `v${pwa.serverVersion} is ready. ` : ""}Install it without losing your place.</small></div>
+        <button className="pwa-toast__primary" onClick={pwa.updateApp} disabled={pwa.updating}>{pwa.updating ? "Updating…" : "Update now"}</button>
         <button className="pwa-toast__close" onClick={pwa.dismissRefresh} aria-label="Dismiss"><X size={17}/></button>
       </aside>
     )}
 
-    {!pwa.needRefresh && pwa.offlineReady && !showInstall && (
+    {!showUpdate && !pwa.updateProblem && pwa.offlineReady && !showInstall && (
       <aside className="pwa-toast" role="status">
         <span className="pwa-toast__icon">✦</span>
         <div><strong>Velvet is ready</strong><small>The interface can now open without a connection.</small></div>
@@ -29,7 +30,7 @@ function PWAStatus() {
       </aside>
     )}
 
-    {!pwa.needRefresh && showInstall && (
+    {!showUpdate && !pwa.updateProblem && showInstall && (
       <aside className="pwa-toast pwa-toast--install">
         <span className="pwa-toast__icon"><Download size={19}/></span>
         <div><strong>Install Velvet Stories</strong><small>Open it from your home screen like an app.</small></div>
@@ -38,6 +39,14 @@ function PWAStatus() {
       </aside>
     )}
 
+
+    {pwa.updateProblem && !showUpdate && (
+      <aside className="pwa-toast pwa-toast--repair" role="alert">
+        <span className="pwa-toast__icon"><RefreshCw size={19}/></span>
+        <div><strong>Velvet update needs repair</strong><small>{pwa.updateProblem}</small></div>
+        <button className="pwa-toast__primary" onClick={pwa.repairUpdate} disabled={pwa.updating}>{pwa.updating ? "Repairing…" : "Repair & reopen"}</button>
+      </aside>
+    )}
     {pwa.showIOSInstructions && (
       <div className="pwa-guide" role="dialog" aria-modal="true" aria-labelledby="pwa-guide-title" onMouseDown={(event) => event.target === event.currentTarget && pwa.closeIOSInstructions()}>
         <section>

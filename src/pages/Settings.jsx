@@ -1,9 +1,12 @@
-import { useEffect } from "react";
-import { Activity, ArrowLeft, Check, Download, Eye, FileDown, Heart, MessageCircle, MonitorSmartphone, Moon, RotateCcw, ShieldCheck, Sparkles, Sun, Type, WifiOff, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Activity, ArrowLeft, Check, Download, Eye, FileDown, Heart, MessageCircle, MonitorSmartphone, Moon, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Sun, Type, WifiOff, X, Wrench } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { usePWA } from "../context/PWAContext";
 import { useTheme } from "../context/ThemeContext";
+import { supabase } from "../services/supabase";
+import { VELVET_BUILD_TIME, VELVET_RELEASE, VELVET_VERSION } from "../config/version";
+import { isSafeModeEnabled, leaveVelvetSafeMode, startVelvetSafeMode } from "../utils/safeMode";
 import "../styles/settings.css";
 
 function Settings({ onBack, onOpenDiagnostics }) {
@@ -11,6 +14,27 @@ function Settings({ onBack, onOpenDiagnostics }) {
   const { confirmAction } = useFeedback();
   const pwa = usePWA();
   const { theme, setTheme } = useTheme();
+  const [health, setHealth] = useState({ supabase: "checking", engine: "checking" });
+  const [safeMode, setSafeMode] = useState(() => isSafeModeEnabled());
+  const [safeModeBusy, setSafeModeBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      let supabaseState = "offline";
+      let engineState = "offline";
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        supabaseState = !error && data?.session ? "connected" : "signed out";
+      } catch {}
+      try {
+        const { data, error } = await supabase.functions.invoke("character-chat", { body: { action: "diagnostics", probeAi: false } });
+        engineState = !error && data?.edge?.ok ? "connected" : "unavailable";
+      } catch {}
+      if (live) setHealth({ supabase: supabaseState, engine: engineState });
+    })();
+    return () => { live = false; };
+  }, []);
+
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route");
     document.body.classList.add("velvet-burgundy-route");
@@ -25,6 +49,15 @@ function Settings({ onBack, onOpenDiagnostics }) {
     };
   }, [theme]);
   async function confirmReset() { if (await confirmAction({ title: "Reset all preferences?", message: "Reading, story style, learned feedback, export and safety preferences will return to their defaults.", confirmLabel: "Reset settings" })) resetSettings(); }
+  async function toggleSafeMode() {
+    if (safeModeBusy) return;
+    setSafeModeBusy(true);
+    try {
+      if (safeMode) leaveVelvetSafeMode();
+      else await startVelvetSafeMode();
+      setSafeMode(!safeMode);
+    } finally { setSafeModeBusy(false); }
+  }
   const jumpTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: settings.reduceMotion ? "auto" : "smooth", block: "start" });
   return <section className="settings-page settings-page--editorial">
     <header className="page-heading settings-page__heading"><div><button onClick={onBack}><ArrowLeft size={17}/>Profile</button><p>MAKE VELVET YOURS</p><h1>Settings</h1><span>A quieter control room for reading, storytelling and the app.</span></div></header>
@@ -33,6 +66,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
       <button onClick={()=>jumpTo("settings-storytelling")}>Storytelling</button>
       <button onClick={()=>jumpTo("settings-app")}>AI & app</button>
       <button onClick={()=>jumpTo("settings-privacy")}>Privacy</button>
+      <button onClick={()=>jumpTo("settings-about")}>About</button>
     </nav>
     <div className="settings-group" id="settings-appearance"><header><Eye size={19}/><div><h2>Appearance</h2><p>Choose the light that feels best for reading.</p></div></header>
       <div className="setting-row"><strong>Theme</strong><div className="setting-segments">
@@ -47,6 +81,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
       <Toggle label="Reduce motion" description="Minimize transitions and animated effects." checked={settings.reduceMotion} onChange={(value)=>updateSetting('reduceMotion',value)}/>
       <Toggle label="Message timestamps" description="Show the exact time below every message." checked={settings.showMessageTimestamps} onChange={(value)=>updateSetting('showMessageTimestamps',value)}/>
       <Toggle label="Haptic feedback" description="Use a tiny vibration when sending or stopping on supported phones." checked={settings.haptics} onChange={(value)=>updateSetting('haptics',value)}/>
+      <SettingChoice label="Desktop Enter key" value={settings.enterToSend === false ? "newline" : "send"} options={[["send","Send message"],["newline","New line"]]} onChange={(value)=>updateSetting("enterToSend",value === "send")}/>
       <SettingChoice label="Reading width" value={settings.readingWidth || "comfortable"} options={[["narrow","Narrow"],["comfortable","Comfortable"],["wide","Wide"]]} onChange={(value)=>updateSetting("readingWidth",value)}/>
       <SettingChoice label="Reading font" value={settings.readingFont || "clean"} options={[["clean","Clean"],["serif","Book serif"]]} onChange={(value)=>updateSetting("readingFont",value)}/>
     </div>
@@ -72,7 +107,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
     <div className="settings-group" id="settings-privacy"><header><ShieldCheck size={19}/><div><h2>Privacy & safety</h2><p>Protection against accidental destructive actions.</p></div></header>
       <Toggle label="Confirm before deleting" description="Ask before deleting characters, conversations and lore." checked={settings.confirmBeforeDelete} onChange={(value)=>updateSetting('confirmBeforeDelete',value)}/>
     </div>
-    <div className="settings-group settings-diagnostics" id="settings-app"><header><Activity size={19}/><div><h2>AI & diagnostics</h2><p>Check the app version, mobile touch, Supabase, the Edge Function and Gemini separately.</p></div></header><div className="settings-install__body"><span className="settings-install__icon">✦</span><div><strong>Something acting weird?</strong><small>Open diagnostics before changing code or reinstalling the app.</small></div><button onClick={onOpenDiagnostics}><Activity size={17}/>Open diagnostics</button></div></div>
+    <div className="settings-group settings-diagnostics" id="settings-app"><header><Activity size={19}/><div><h2>AI & diagnostics</h2><p>Check the app version, mobile touch, Supabase, the Edge Function and Gemini separately.</p></div></header><div className="settings-install__body"><span className="settings-install__icon">✦</span><div><strong>Something acting weird?</strong><small>Open diagnostics before changing code or reinstalling the app.</small></div><button onClick={onOpenDiagnostics}><Activity size={17}/>Open diagnostics</button></div><div className={`settings-safe-mode${safeMode ? " is-active" : ""}`}><span><Wrench size={17}/><span><strong>Velvet Safe Mode</strong><small>Temporarily disables voice, ambience and motion-heavy extras, then clears only app cache. Stories, characters and Memories stay untouched.</small></span></span><button type="button" onClick={toggleSafeMode} disabled={safeModeBusy}>{safeModeBusy ? "Working…" : safeMode ? "Leave Safe Mode" : "Start Safe Mode"}</button></div></div>
     <div className="settings-group settings-install"><header><MonitorSmartphone size={19}/><div><h2>Velvet on your phone</h2><p>Install it with its own icon and full-screen experience.</p></div></header>
       <div className="settings-install__body">
         <span className="settings-install__icon">✦</span>
@@ -84,6 +119,17 @@ function Settings({ onBack, onOpenDiagnostics }) {
         {!pwa.installed && <button onClick={pwa.installApp}><Download size={17}/>Install app</button>}
         {pwa.installed && <span className="settings-install__installed"><Check size={16}/>Installed</span>}
       </div>
+    </div>
+    <div className="settings-group settings-about" id="settings-about"><header><Sparkles size={19}/><div><h2>About Velvet</h2><p>Know exactly which build is on your phone before chasing ghosts.</p></div></header>
+      <div className="settings-about__grid">
+        <span><small>VERSION</small><strong>Velvet Stories {VELVET_VERSION}</strong><em>{VELVET_RELEASE}</em></span>
+        <span><small>BUILD</small><strong>Production build</strong><em>{formatBuild(VELVET_BUILD_TIME)}</em></span>
+        <span><small>SUPABASE</small><strong>{health.supabase === "connected" ? "Connected ✓" : health.supabase}</strong><em>Private account sync</em></span>
+        <span><small>STORY ENGINE</small><strong>{health.engine === "connected" ? "Connected ✓" : health.engine}</strong><em>Edge Function health</em></span>
+        <span><small>PWA</small><strong>{pwa.serverUpdateAvailable ? `Update v${pwa.serverVersion} ready` : "Up to date ✓"}</strong><em>Installed v{pwa.localVersion}</em></span>
+        <span><small>SAFE MODE</small><strong>{safeMode ? "Active" : "Off ✓"}</strong><em>{safeMode ? "Audio + heavy effects paused" : "Normal Velvet experience"}</em></span>
+      </div>
+      <div className="settings-about__actions"><button onClick={()=>pwa.checkForUpdate({ silent:false })} disabled={pwa.checkingForUpdate}><RefreshCw size={16}/>{pwa.checkingForUpdate ? "Checking…" : "Check for update"}</button>{pwa.serverUpdateAvailable && <button className="primary" onClick={pwa.updateApp} disabled={pwa.updating}>{pwa.updating ? "Updating…" : "Update now"}</button>}{pwa.updateProblem && <button onClick={pwa.repairUpdate}>Repair updater</button>}</div>
     </div>
     <button className="settings-page__reset" onClick={confirmReset}><RotateCcw size={16}/>Reset preferences</button>
     <div className="settings-page__saved"><Check size={15}/>{storySyncReady ? "Story preferences sync to your Velvet account." : "Saving preferences…"}</div>
@@ -129,4 +175,5 @@ function LearningPreferenceGroup({ title, kind, entries, onRemove }) {
     </em>)}</p>
   </section>;
 }
+function formatBuild(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString([], { month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit" }); }
 export default Settings;

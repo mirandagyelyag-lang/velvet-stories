@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   BookOpen,
   BookmarkPlus,
+  Bug,
   Clock3,
   Brain,
   Check,
@@ -22,6 +23,7 @@ import {
   Sun,
   LoaderCircle,
   MessageSquareQuote,
+  MapPin,
   MoreHorizontal,
   Pencil,
   RefreshCw,
@@ -32,10 +34,14 @@ import {
   Sparkles,
   Square,
   SquarePen,
+  Star,
+  ShieldCheck,
   ThumbsDown,
   ThumbsUp,
   Trash2,
   UserRound,
+  UsersRound,
+  Volume2,
   X,
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -44,14 +50,21 @@ import RoleplayText from "../components/RoleplayText";
 import MemoryBookDrawer from "../components/MemoryBookDrawer";
 import StoryTimelineDrawer from "../components/StoryTimelineDrawer";
 import StoryHubDrawer from "../components/StoryHubDrawer";
+import StoryAmbience from "../components/StoryAmbience";
+import AudioStatusPill from "../components/AudioStatusPill";
 import RelationshipDrawer from "../components/RelationshipDrawer";
 import { useChats } from "../context/ChatsContext";
+import { useCharacters } from "../context/CharactersContext";
 import { usePersonas } from "../context/PersonasContext";
 import { useLorebooks } from "../context/LorebooksContext";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
+import { speakText, stopSpeech } from "../utils/speech";
+import { readAudioPreference, stopAllAudio } from "../utils/audioBus";
+import { clearBugReportPrivateContext, setBugReportPrivateContext } from "../utils/bugReporter";
+import { buildLivingSceneHeader, buildNextBeatSuggestion, continuityGuardLabel, continuityGuardTitle } from "../utils/livingScenes";
 import "../styles/chat.css";
 
 const SILENT_CONTINUE_MESSAGE = "[SILENT_CONTINUE]";
@@ -65,6 +78,9 @@ const REGENERATION_FEEDBACK = [
   ["repetitive", "Repetitive"],
   ["pov_violation", "Controlled my POV"],
   ["missing_emotional_impact", "Missing emotional impact"],
+  ["too_cold", "Too cold"],
+  ["too_romantic", "Too romantic"],
+  ["wrong_continuity", "Wrong continuity"],
 ];
 const POSITIVE_FEEDBACK = [
   ["voice", "Character voice"],
@@ -73,11 +89,12 @@ const POSITIVE_FEEDBACK = [
   ["pacing", "Pacing"],
 ];
 
-function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, onOpenDiagnostics }) {
+function Chat({ character, conversationId, focusMessageId = null, onBack, onDeleted, onOpenMemories, onOpenDiagnostics }) {
   const { settings, recordStoryFeedback, undoStoryFeedback } = useSettings();
   const { theme, setTheme } = useTheme();
   const { confirmAction, scheduleDeletion } = useFeedback();
   const { personas } = usePersonas();
+  const { characters } = useCharacters();
   const { lorebooks } = useLorebooks();
   const {
     getCharacterMessages,
@@ -95,6 +112,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     deleteConversation,
     deleteMessage,
     editMessageAndRemoveFollowing,
+    editCharacterMessageInPlace,
     rewindToMessage,
     branchConversationFromMessage,
     regenerateCharacterReply,
@@ -106,6 +124,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     refreshStoryMetadata,
     toggleMessageBookmark,
     loadMessageIntoView,
+    dismissCatchUp,
   } = useChats();
 
   const [message, setMessage] = useState("");
@@ -120,6 +139,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   const [deleting, setDeleting] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
+  const [speakingMessageId, setSpeakingMessageId] = useState(null);
   const [actionMode, setActionMode] = useState("menu");
   const [actionDraft, setActionDraft] = useState("");
   const [regenerationFeedback, setRegenerationFeedback] = useState([]);
@@ -127,6 +147,8 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   const [feedbackOnly, setFeedbackOnly] = useState(false);
   const [messageFeedback, setMessageFeedback] = useState({});
   const [feedbackNotice, setFeedbackNotice] = useState(null);
+  const [replacementUndo, setReplacementUndo] = useState(null);
+  const [memoryCaptureNotice, setMemoryCaptureNotice] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [alternatives, setAlternatives] = useState([]);
   const [responseVersions, setResponseVersions] = useState({});
@@ -155,6 +177,12 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   const [backgroundDim, setBackgroundDim] = useState(42);
   const [backgroundSlideshow, setBackgroundSlideshow] = useState(false);
   const [compactMobileChat, setCompactMobileChat] = useState(false);
+  const [ambientSoundOn, setAmbientSoundOn] = useState(() => {
+    try { return localStorage.getItem("velvet_ambient_sound") === "1"; }
+    catch { return false; }
+  });
+  const [catchUpOpen, setCatchUpOpen] = useState(false);
+  const [dismissedBeatSuggestion, setDismissedBeatSuggestion] = useState("");
   const sceneImageInputRef = useRef(null);
 
   const messagesEndRef = useRef(null);
@@ -170,13 +198,46 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   const previousConversationRef = useRef("");
   const messages = getCharacterMessages(character.id);
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
+  useEffect(() => {
+    setBugReportPrivateContext({
+      character: character.name,
+      excerpt: visibleMessages.slice(-4).map((item) => ({ sender: item.sender === "user" ? "you" : character.name, text: String(item.content || "").slice(0, 500) })),
+    });
+    return () => clearBugReportPrivateContext();
+  }, [character.name, visibleMessages.length, visibleMessages.at(-1)?.id]);
+  useEffect(() => {
+    return () => stopSpeech();
+  }, []);
+
   const conversation = getConversation(character.id);
   const conversationLoading = isConversationLoading(character.id);
   const characterStreaming = isCharacterStreaming(character.id);
   const generationState = getGenerationState(character.id);
   const characterGenerating = isCharacterGenerating(character.id);
   const conversationReady = Boolean(conversation?.conversationId);
+  const groupCast = useMemo(() => {
+    if (!conversation?.groupMode) return [character];
+    const ids = conversation.groupCharacterIds || [];
+    const resolved = ids.map((id) => characters.find((item) => item.id === id)).filter(Boolean);
+    return resolved.length ? resolved : [character];
+  }, [conversation?.groupMode, conversation?.groupCharacterIds, characters, character]);
+  const conversationDisplayName = conversation?.groupMode
+    ? (conversation.groupTitle || conversation.title || groupCast.map((item) => item.name).join(" · "))
+    : character.name;
   const latestMessageContent = messages[messages.length - 1]?.content || "";
+
+  useEffect(() => {
+    if (!conversation?.conversationId || !conversation.catchUpAvailable || !conversation.storyRecap) return;
+    const key = `velvet_catchup_${conversation.conversationId}`;
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+    } catch {}
+    setCatchUpOpen(true);
+  }, [conversation?.conversationId, conversation?.catchUpAvailable, conversation?.storyRecap]);
+
+  useEffect(() => {
+    try { localStorage.setItem("velvet_ambient_sound", ambientSoundOn ? "1" : "0"); } catch {}
+  }, [ambientSoundOn]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -239,11 +300,25 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     }
     return map;
   }, [conversation?.storyTimeline]);
+  const livingSceneHeader = useMemo(
+    () => buildLivingSceneHeader(conversation || {}, character.name),
+    [conversation?.sceneState, conversation?.ambientMode, character.name]
+  );
+  const nextBeatSuggestion = useMemo(
+    () => buildNextBeatSuggestion(conversation || {}, character.name),
+    [conversation?.sceneState, conversation?.castState, conversation?.intelligenceState, conversation?.characterDevelopment, character.name]
+  );
+  const continuityLabel = continuityGuardLabel(conversation?.continuityGuard || {});
+
 
   useEffect(() => {
     localStorage.setItem("velvet_reading_mode", readingMode ? "1" : "0");
     setReadingChromeVisible(false);
   }, [readingMode]);
+
+  useEffect(() => {
+    setDismissedBeatSuggestion("");
+  }, [conversation?.conversationId, visibleMessages.at(-1)?.id]);
 
   useEffect(() => {
     startConversation(character, { conversationId: activeConversationId || conversationId }).catch((error) => {
@@ -468,6 +543,26 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     }
   }, [messages.length, latestMessageContent, isTyping, conversationLoading, characterStreaming, conversation?.conversationId]);
 
+  useEffect(() => {
+    if (!focusMessageId || !conversationReady || conversationLoading) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadMessageIntoView(character.id, focusMessageId);
+        if (cancelled) return;
+        window.setTimeout(() => {
+          const node = document.querySelector(`[data-message-id="${focusMessageId}"]`);
+          node?.scrollIntoView({ behavior: "smooth", block: "center" });
+          node?.classList.add("chat-message--flash");
+          if (node) window.setTimeout(() => node.classList.remove("chat-message--flash"), 1400);
+        }, 120);
+      } catch (error) {
+        console.debug("Could not focus searched message:", error);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [focusMessageId, conversationReady, conversationLoading, conversation?.conversationId]);
+
   async function handleLoadEarlierMessages() {
     if (loadingHistoryRef.current || conversation?.loadingEarlierMessages) return;
 
@@ -541,7 +636,14 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     stopBurstTimersRef.current = [];
 
     const cleanMessage = message.trim();
-    if (busy || !conversationReady) return;
+    if (!conversationReady) return;
+    if (busy) {
+      if (cleanMessage === ".") {
+        setMessage("");
+        handleStop();
+      }
+      return;
+    }
 
     const dotsOnly = /^[.…。]+$/u.test(cleanMessage);
     const compactDots = cleanMessage.replace(/[…。]/gu, ".");
@@ -590,10 +692,14 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
       if (settings.haptics) navigator.vibrate?.(6);
       setSending(false);
       setIsTyping(true);
-      await generateCharacterReply(character.id, {
+      const generationResult = await generateCharacterReply(character.id, {
         directorInstruction: noteForThisGeneration,
         expectedUserMessageId: savedUserMessage.id,
       });
+      if (generationResult?.learnedMemoryCount) {
+        setMemoryCaptureNotice(generationResult.learnedMemoryCount);
+        window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
+      }
     } catch (error) {
       if (
         generationRunRef.current !== runId ||
@@ -784,6 +890,11 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
   }
 
   function handleKeyDown(event) {
+    if (busy && event.key === "." && !message.trim()) {
+      event.preventDefault();
+      handleStop();
+      return;
+    }
     if (event.key !== "Enter") return;
 
     const isMobileInput =
@@ -794,8 +905,10 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     // Sending is intentionally button-only on touch devices.
     if (isMobileInput) return;
 
-    // Desktop: Shift + Enter creates a new line.
-    if (event.shiftKey) return;
+    // Desktop can choose whether Enter sends or creates a new line.
+    if (settings.enterToSend === false) {
+      if (!(event.ctrlKey || event.metaKey)) return;
+    } else if (event.shiftKey) return;
 
     event.preventDefault();
     handleSubmit(event);
@@ -835,6 +948,32 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     setAlternatives([]);
   }
 
+  function stopCharacterVoice() {
+    stopSpeech();
+    setSpeakingMessageId(null);
+  }
+
+  function speakCharacterText(content, messageId = null) {
+    const clean = String(content || "").replace(/\*+/g, "").trim();
+    if (!clean) return;
+    setSpeakingMessageId(messageId);
+    speakText({
+      text: clean,
+      voiceId: String(character.ttsVoiceName || ""),
+      rate: Number(character.ttsRate ?? 1),
+      pitch: Number(character.ttsPitch ?? 1),
+      volume: Math.max(0, Math.min(1, Number(readAudioPreference("story", conversation?.conversationId || character.id, { voiceVolume: readAudioPreference("voice", character.id, { volume: 100 }).volume ?? 100 }).voiceVolume ?? 100) / 100)),
+      label: `${character.name} voice`,
+      onEnd: () => setSpeakingMessageId(null),
+      onError: (error) => {
+        setSpeakingMessageId(null);
+        if (error?.error && error.error !== "interrupted") {
+          setSendError(`Voice stopped: ${error.error}`);
+        }
+      },
+    });
+  }
+
   async function runAction(action) {
     if (!selectedMessage) return;
 
@@ -845,6 +984,16 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
       if (action === "copy") {
         await navigator.clipboard.writeText(selectedMessage.content);
         closeActionsAfterAction();
+      }
+
+      if (action === "listen") {
+        if (speakingMessageId === selectedMessage.id) {
+          stopCharacterVoice();
+        } else {
+          speakCharacterText(selectedMessage.content, selectedMessage.id);
+        }
+        setActionLoading(false);
+        return;
       }
 
       if (action === "reply") {
@@ -876,6 +1025,10 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
 
       if (action === "rewind") {
         const messageId = selectedMessage.id;
+        // Close the message sheet before showing the confirmation. On mobile the
+        // sheet is a high-z-index body portal, so keeping it open can visually
+        // swallow a confirmation even though the Rewind handler did run.
+        closeActionsAfterAction();
         const approved = await confirmAction({
           title: "Rewind story to this message?",
           message: "Everything after this message will be permanently removed from this conversation.",
@@ -883,7 +1036,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         });
         if (!approved) return;
         await rewindToMessage(character.id, messageId);
-        closeActionsAfterAction();
+        return;
       }
 
       if (action === "delete") {
@@ -926,6 +1079,17 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     if (!accepted.length) return;
     setMessageFeedback((current) => ({ ...current, [messageId]: kind }));
     setFeedbackNotice({ kind, codes: accepted, messageId });
+  }
+
+  async function undoReplacement() {
+    if (!replacementUndo || busy) return;
+    try {
+      setSendError("");
+      await selectMessageAlternative(character.id, replacementUndo.messageId, replacementUndo.content);
+      setReplacementUndo(null);
+    } catch (error) {
+      setSendError(translateMessageError(error.message));
+    }
   }
 
   function undoLatestFeedback() {
@@ -987,9 +1151,11 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     if (!selectedMessage || !actionDraft.trim()) return;
     try {
       setActionLoading(true);
-      await editMessageAndRemoveFollowing(character.id, selectedMessage.id, actionDraft);
+      const previousContent = selectedMessage.content;
+      const editedId = selectedMessage.id;
+      await editCharacterMessageInPlace(character.id, editedId, actionDraft);
+      setReplacementUndo({ messageId: editedId, content: previousContent, label: "Rewrite" });
       closeActionsAfterAction();
-      await refreshStoryMetadata(character.id).catch(() => {});
     } catch (error) {
       setSendError(translateMessageError(error.message));
     } finally {
@@ -1008,13 +1174,19 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
 
     try {
       const targetId = selectedMessage.id;
+      const previousContent = selectedMessage.content;
       const instruction = actionDraft.trim();
       const feedbackCodes = [...regenerationFeedback];
       rememberFeedback("negative", feedbackCodes, targetId);
       setActionLoading(true);
       closeActionsAfterAction();
       setIsTyping(true);
-      await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
+      const regenerationResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
+      setReplacementUndo({ messageId: regenerationResult?.message?.id || targetId, content: previousContent, label: "Regenerate" });
+      if (regenerationResult?.learnedMemoryCount) {
+        setMemoryCaptureNotice(regenerationResult.learnedMemoryCount);
+        window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
+      }
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Regeneration failed:", error);
@@ -1131,6 +1303,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     }
 
     const targetId = selectedMessage.id;
+    const previousContent = selectedMessage.content;
     try {
       const feedbackCodes = feedbackCode ? [feedbackCode] : [];
       rememberFeedback("negative", feedbackCodes, targetId);
@@ -1138,7 +1311,12 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
       setSendError("");
       closeActionsAfterAction();
       setIsTyping(true);
-      await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
+      const refinementResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
+      setReplacementUndo({ messageId: refinementResult?.message?.id || targetId, content: previousContent, label: "Refine" });
+      if (refinementResult?.learnedMemoryCount) {
+        setMemoryCaptureNotice(refinementResult.learnedMemoryCount);
+        window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
+      }
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Quick refinement failed:", error);
@@ -1239,6 +1417,17 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
     }
   }
 
+  function queueLivingSceneSuggestion() {
+    if (!nextBeatSuggestion?.instruction || busy || !conversationReady) return;
+    setDirectorNote(nextBeatSuggestion.instruction);
+    setDirectorMode("next");
+    setDirectorNoteOpen(false);
+    setDismissedBeatSuggestion(nextBeatSuggestion.id);
+    setSilentCue(`Possible next beat queued · ${nextBeatSuggestion.label}`);
+    window.setTimeout(() => setSilentCue(""), 1800);
+    if (settings.haptics) navigator.vibrate?.(5);
+  }
+
   function handleReadingSurfaceClick() {
     // v2.1.7: immersive mode never hides the story header. The character name,
     // navigation and three-dot menu stay available at all times.
@@ -1324,7 +1513,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
 
   return (
     <section
-      className={`chat${readingMode ? " chat--reading" : ""}${compactMobileChat ? " chat--compact-mobile" : ""}`}
+      className={`chat${readingMode ? " chat--reading" : ""}${compactMobileChat ? " chat--compact-mobile" : ""}${conversation?.ambientMode && conversation.ambientMode !== "none" ? ` chat--ambient-${conversation.ambientMode}` : ""}`}
       data-reading-width={settings.readingWidth || "comfortable"}
       data-reading-font={settings.readingFont || "clean"}
       style={{
@@ -1332,6 +1521,8 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         ...(chatHeroImage ? { "--character-presence-image": `url(${JSON.stringify(chatHeroImage)})` } : {}),
       }}
     >
+      <StoryAmbience mode={conversation?.ambientMode || "none"} volume={conversation?.ambientVolume ?? 18} soundOn={ambientSoundOn} />
+      <AudioStatusPill onStopAll={() => { setAmbientSoundOn(false); stopAllAudio(); setSpeakingMessageId(null); }} />
       <header
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
@@ -1344,8 +1535,9 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         </button>
         <div className="chat__identity">
           <button className="chat__character-name-button chat__character-name-button--primary" onClick={() => setCharacterProfileOpen(true)} aria-label={`View ${character.name}'s profile`}>
-            <strong>{character.name}</strong>
+            <strong>{conversationDisplayName}</strong>
           </button>
+          {conversation?.groupMode && <span className="chat__group-cast-line">{groupCast.map((item) => item.name).join(" · ")}</span>}
           <label className="chat__conversation-picker chat__conversation-picker--title">
             <select value={conversation?.conversationId || activeConversationId} onChange={(event) => switchConversation(event.target.value)} disabled={busy || conversationLoading} aria-label="Current story">
               {conversationList.map((item) => <option key={item.id} value={item.id}>{item.is_pinned ? "★ " : ""}{item.title || "Current story"}</option>)}
@@ -1391,7 +1583,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         {menuOpen && typeof document !== "undefined" && createPortal((
           <div className="chat__menu-backdrop" onClick={(event) => event.target === event.currentTarget && setMenuOpen(false)}>
             <section className="chat__menu" role="dialog" aria-modal="true" aria-label="Story options" onClick={(event) => event.stopPropagation()}>
-              <header className="chat__menu-sheet-header"><div><small>STORY OPTIONS</small><strong>{conversation?.title || character.name}</strong></div><button type="button" onClick={() => setMenuOpen(false)} aria-label="Close story options"><X size={19}/></button></header>
+              <header className="chat__menu-sheet-header"><div><small>STORY OPTIONS</small><strong>{conversationDisplayName}</strong></div><button type="button" onClick={() => setMenuOpen(false)} aria-label="Close story options"><X size={19}/></button></header>
               <button className="chat__menu-new" onClick={handleNewConversation} disabled={busy || creatingConversation}>
                 {creatingConversation ? <LoaderCircle className="spin" size={17} /> : <SquarePen size={17} />}
                 New conversation
@@ -1400,6 +1592,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
                 <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Current story</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Activity size={17}/><span>AI Status<small>Velvet Doctor</small></span></button>
+                <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Bug size={17}/><span>Report a problem<small>Private by default</small></span></button>
               </div>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); onOpenMemories?.(); }}><Brain size={17} /> Memories 2.5</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setControlsOpen(true); }} disabled={!conversationReady}><SlidersHorizontal size={17} /> Story settings</button>
@@ -1413,6 +1606,20 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
           </div>
         ), document.body)}
       </header>
+
+      {conversationReady && (livingSceneHeader.items.length > 0 || livingSceneHeader.present.length > 0) && (
+        <div className="chat__living-scene" aria-label="Current scene">
+          <div className="chat__living-scene-meta">
+            {livingSceneHeader.items.map((item, index) => (
+              <span key={`${item}-${index}`}><MapPin size={11}/>{item}</span>
+            ))}
+          </div>
+          <div className="chat__living-scene-status">
+            <span className="chat__presence-status" title={livingSceneHeader.presenceTitle}><UsersRound size={12}/>{livingSceneHeader.presenceLabel}</span>
+            <span className={`chat__continuity-status${conversation?.continuityGuard?.status === "repaired" ? " is-repaired" : ""}`} title={continuityGuardTitle(conversation?.continuityGuard || {})}><ShieldCheck size={12}/>{continuityLabel}</span>
+          </div>
+        </div>
+      )}
 
       {typeof document !== "undefined" && createPortal((
         <button type="button" className="chat__mobile-exit" onClick={onBack} aria-label="Leave chat"><ArrowLeft size={20}/></button>
@@ -1498,6 +1705,13 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
             {sendError && (
               <div className="chat__send-error"><AlertCircle size={16} /><span>{sendError}</span><button onClick={retryGeneration} disabled={busy}><RefreshCw size={14} />Retry</button></div>
             )}
+            {replacementUndo && (
+              <div className="chat__replacement-undo" role="status">
+                <Check size={15}/><span>{replacementUndo.label} applied.</span>
+                <button type="button" onClick={undoReplacement} disabled={busy}>Undo</button>
+                <button type="button" onClick={()=>setReplacementUndo(null)} aria-label="Dismiss undo"><X size={13}/></button>
+              </div>
+            )}
             {feedbackNotice && (
               <div className="chat__feedback-notice" role="status">
                 <Check size={15}/>
@@ -1517,6 +1731,15 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         </button>
       )}
 
+      {conversationReady && visibleMessages.length >= 2 && visibleMessages.at(-1)?.sender === "character" && !busy && !directorNote.trim() && nextBeatSuggestion && dismissedBeatSuggestion !== nextBeatSuggestion.id && (
+        <div className="chat__beat-suggestion" role="status">
+          <button type="button" className="chat__beat-suggestion-main" onClick={queueLivingSceneSuggestion}>
+            <Sparkles size={13}/><span><small>Possible next beat</small><strong>{nextBeatSuggestion.label}</strong><em>{nextBeatSuggestion.detail}</em></span>
+          </button>
+          <button type="button" className="chat__beat-suggestion-dismiss" onClick={() => setDismissedBeatSuggestion(nextBeatSuggestion.id)} aria-label="Dismiss suggestion"><X size={13}/></button>
+        </div>
+      )}
+
       {silentCue && <div className="chat__silent-cue" role="status"><Sparkles size={13}/><span>{silentCue}</span></div>}
 
       <form className={`chat__composer${replyTo ? " chat__composer--replying" : ""}`} onSubmit={handleSubmit}>
@@ -1528,6 +1751,12 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
           </div>
         )}
                 <input ref={sceneImageInputRef} className="chat__scene-file-input" type="file" accept="image/*" multiple onChange={handleSceneImages} />
+        {memoryCaptureNotice > 0 && (
+          <div className="chat__memory-capture-notice" role="status">
+            <Brain size={13}/><span>{memoryCaptureNotice} important {memoryCaptureNotice === 1 ? "memory" : "memories"} captured</span>
+          </div>
+        )}
+
         {directorNote.trim() && !directorNoteOpen && (
           <div className="chat__director-active" role="status" title={directorNote}>
             <Sparkles size={12}/><span>Next beat: {directorNote}</span>
@@ -1613,20 +1842,45 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
         conversation={conversation}
         onRefresh={handleRefreshTimeline}
         refreshing={refreshingTimeline}
+        onJumpToMessage={jumpToStoryMessage}
       />
 
       <StoryHubDrawer
         open={storyHubOpen}
         onClose={() => setStoryHubOpen(false)}
         character={character}
+        characters={characters}
+        persona={personas.find((item) => item.id === conversation?.personaId) || null}
+        lorebook={lorebooks.find((item) => item.id === conversation?.lorebookId) || null}
         onJumpToMessage={jumpToStoryMessage}
         onOpenConversation={openStoryConversation}
+        ambientSoundOn={ambientSoundOn}
+        onAmbientSoundToggle={setAmbientSoundOn}
+        recentSceneText={visibleMessages.slice(-6).map((item)=>String(item.content || "")).join("\n")}
       />
+
+      {catchUpOpen && conversation?.storyRecap && typeof document !== "undefined" && createPortal((
+        <div className="catchup-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setCatchUpOpen(false)}>
+          <section className="catchup-card" role="dialog" aria-modal="true" aria-label="Catch me up">
+            <small>WELCOME BACK</small>
+            <h2>Last time in this story…</h2>
+            <p>{conversation.storyRecap}</p>
+            {conversation.unfinishedThreads?.length > 0 && <div className="catchup-threads"><strong>Still unresolved</strong>{conversation.unfinishedThreads.slice(0,3).map((thread,index)=><span key={thread.id || index}>{thread.title || thread.label || thread}</span>)}</div>}
+            <footer>
+              <button onClick={() => { setCatchUpOpen(false); dismissCatchUp(character.id); setTimelineOpen(true); }}>Timeline</button>
+              <button onClick={() => { setCatchUpOpen(false); dismissCatchUp(character.id); setMemoryBookOpen(true); }}>Memories</button>
+              <button className="primary" onClick={() => { setCatchUpOpen(false); dismissCatchUp(character.id); try { sessionStorage.setItem(`velvet_catchup_${conversation.conversationId}`, "1"); } catch {} }}>Continue</button>
+            </footer>
+          </section>
+        </div>
+      ), document.body)}
 
       <RelationshipDrawer
         open={relationshipOpen}
         onClose={() => setRelationshipOpen(false)}
         character={character}
+        characters={characters}
+        persona={personas.find((item) => item.id === conversation?.personaId) || null}
         conversation={conversation}
       />
 
@@ -1804,23 +2058,13 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
                       What went wrong? Velvet will use the reason now and learn it globally after you choose it twice.
                     </p>
 
-                    <div className="message-sheet__refine-grid">
-                      <button onClick={() => quickRefineSelected("ignored_idea")}>
-                        <Sparkles size={18} />
-                        <span>Ignored my idea</span>
-                      </button>
-                      <button onClick={() => quickRefineSelected("out_of_character")}>
-                        <UserRound size={18} />
-                        <span>Out of character</span>
-                      </button>
-                      <button onClick={() => quickRefineSelected("too_short")}>
-                        <MessageSquareQuote size={18} />
-                        <span>Too short</span>
-                      </button>
-                      <button onClick={() => quickRefineSelected("repetitive")}>
-                        <RefreshCw size={18} />
-                        <span>Repetitive</span>
-                      </button>
+                    <div className="message-sheet__refine-grid message-sheet__refine-grid--smart">
+                      <button onClick={() => quickRefineSelected("wrong_continuity")}><Clock3 size={18}/><span>Wrong continuity</span></button>
+                      <button onClick={() => quickRefineSelected("out_of_character")}><UserRound size={18}/><span>Out of character</span></button>
+                      <button onClick={() => quickRefineSelected("too_cold")}><HeartHandshake size={18}/><span>Too cold</span></button>
+                      <button onClick={() => quickRefineSelected("too_romantic")}><Flame size={18}/><span>Too romantic</span></button>
+                      <button onClick={() => quickRefineSelected("not_enough_dialogue")}><MessageSquareQuote size={18}/><span>More dialogue</span></button>
+                      <button onClick={() => quickRefineSelected("repetitive")}><RefreshCw size={18}/><span>Repetitive</span></button>
                     </div>
 
                     <button
@@ -1842,7 +2086,8 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
                         <Pencil size={16} />
                         <span>Different direction…</span>
                       </button>
-                      <button onClick={() => runAction("reply")}><Reply size={16} /><span>Reply</span></button>
+                      <button onClick={() => runAction("quote")}><MessageSquareQuote size={16} /><span>Quote</span></button>
+                      <button onClick={() => runAction("listen")} aria-pressed={speakingMessageId === selectedMessage.id}>{speakingMessageId === selectedMessage.id ? <Square size={16}/> : <Volume2 size={16}/>}<span>{speakingMessageId === selectedMessage.id ? "Stop voice" : "Listen"}</span></button>
                       <button onClick={() => runAction("copy")}><Copy size={16} /><span>Copy</span></button>
                       <button onClick={() => setActionMode("more")}><MoreHorizontal size={16} /><span>More</span></button>
                     </div>
@@ -1855,7 +2100,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
                     </button>
                     <div className="message-sheet__refine-secondary">
                       <button onClick={() => { setActionDraft(selectedMessage.content); setActionMode("edit"); }}><Pencil size={16}/><span>Edit</span></button>
-                      <button onClick={() => runAction("reply")}><Reply size={16}/><span>Reply</span></button>
+                      <button onClick={() => runAction("quote")}><MessageSquareQuote size={16}/><span>Quote</span></button>
                       <button onClick={() => runAction("copy")}><Copy size={16}/><span>Copy</span></button>
                       <button onClick={() => setActionMode("more")}><MoreHorizontal size={16}/><span>More</span></button>
                     </div>
@@ -1872,7 +2117,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
                   </>
                 )}
                 <button onClick={() => runAction("memory")}><BookmarkPlus size={17} /><span>Save to memory</span></button>
-                <button onClick={() => runAction("bookmark")}><BookmarkPlus size={17} /><span>{selectedMessage.isBookmarked ? "Remove bookmark" : "Bookmark"}</span></button>
+                <button onClick={() => runAction("bookmark")}><Star size={17} /><span>{selectedMessage.isBookmarked ? "Remove saved moment" : "Save moment"}</span></button>
                 <button onClick={() => runAction("quote")}><MessageSquareQuote size={17} /><span>Quote</span></button>
                 <button onClick={() => { setActionDraft(`${conversation?.title || character.name} · branch`); setActionMode("branch"); }}><GitBranch size={17} /><span>Branch from here</span></button>
                 <button className="danger" onClick={() => runAction("delete")}><Trash2 size={17} /><span>Delete</span></button>
@@ -1904,7 +2149,7 @@ function Chat({ character, conversationId, onBack, onDeleted, onOpenMemories, on
 
             {actionMode === "edit-ai" && (
               <div className="message-sheet__editor">
-                <p>Edit only what you want. Everything after this response will be removed so the story continues from your version.</p>
+                <p>Edit only what you want. Later messages stay in place, and Velvet will rebuild hidden continuity from the visible story. Your previous wording is saved as an alternative.</p>
                 <textarea value={actionDraft} onChange={(event) => setActionDraft(event.target.value)} rows="7" autoFocus />
                 <button onClick={saveEditedAIResponse} disabled={!actionDraft.trim() || actionLoading}>
                   {actionLoading ? <LoaderCircle className="spin" size={17} /> : <Check size={17} />}

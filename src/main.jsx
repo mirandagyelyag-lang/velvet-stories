@@ -14,6 +14,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import App from "./App";
 import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
 import { markVelvetHealthy, recordVelvetRuntimeError } from "./utils/runtimeRecovery";
+import { applySafeModeClass } from "./utils/safeMode";
 import "./index.css";
 import "./styles/velvet-ui.css";
 import "./styles/velvet-v18.css";
@@ -22,6 +23,19 @@ import "./styles/velvet-burgundy-reference.css";
 import "./styles/velvet-v220.css";
 import "./styles/velvet-v222-character-studio-exit.css";
 import "./styles/velvet-v223-character-studio-real-exit.css";
+import "./styles/velvet-v230-story-intelligence.css";
+import "./styles/search.css";
+import "./styles/velvet-v240-storycraft.css";
+import "./styles/velvet-v250-living-story.css";
+import "./styles/velvet-v260-keepsake.css";
+import "./styles/velvet-v265-stability.css";
+import "./styles/velvet-v269-character-studio-mobile.css";
+import "./styles/velvet-v2610-character-studio-scroll.css";
+import "./styles/velvet-v2611-six-fixes.css";
+import "./styles/velvet-v2616-audio-center.css";
+import "./styles/velvet-v270-living-scenes.css";
+
+applySafeModeClass();
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
@@ -76,3 +90,4 @@ window.requestAnimationFrame(() => {
     window.__VELVET_BOOT_OK__ = true;
   });
 });
+

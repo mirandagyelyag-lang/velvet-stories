@@ -1,4 +1,5 @@
 import { createContext, useContext, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, RotateCcw, Trash2, X } from "lucide-react";
 import "../styles/feedback.css";
 
@@ -40,10 +41,32 @@ export function FeedbackProvider({ children }) {
     setToast(null);
   }
 
+  const overlayRoot = typeof document !== "undefined" ? document.body : null;
+  const dialogOverlay = dialog && overlayRoot ? createPortal(
+    <div className="velvet-dialog-backdrop" onPointerDown={(event) => event.target === event.currentTarget && closeDialog(false)}>
+      <section className="velvet-dialog" role="alertdialog" aria-modal="true">
+        <button type="button" className="velvet-dialog__close" onClick={() => closeDialog(false)}><X size={19}/></button>
+        <span className="velvet-dialog__icon"><AlertTriangle size={23}/></span>
+        <small>VELVET CONFIRMATION</small>
+        <h2>{dialog.title}</h2>
+        <p>{dialog.message}</p>
+        <footer>
+          <button type="button" onClick={() => closeDialog(false)}>Cancel</button>
+          <button type="button" className="danger" onClick={() => closeDialog(true)}><Trash2 size={16}/>{dialog.confirmLabel}</button>
+        </footer>
+      </section>
+    </div>,
+    overlayRoot,
+  ) : null;
+  const undoOverlay = toast && overlayRoot ? createPortal(
+    <div className="velvet-undo" role="status"><span><Trash2 size={17}/>{toast.message}</span><button type="button" onClick={undoDeletion}><RotateCcw size={16}/>Undo</button><i/></div>,
+    overlayRoot,
+  ) : null;
+
   return <FeedbackContext.Provider value={{ confirmAction, scheduleDeletion }}>
     {children}
-    {dialog && <div className="velvet-dialog-backdrop" onMouseDown={(event) => event.target === event.currentTarget && closeDialog(false)}><section className="velvet-dialog" role="alertdialog" aria-modal="true"><button className="velvet-dialog__close" onClick={() => closeDialog(false)}><X size={19}/></button><span className="velvet-dialog__icon"><AlertTriangle size={23}/></span><small>VELVET CONFIRMATION</small><h2>{dialog.title}</h2><p>{dialog.message}</p><footer><button onClick={() => closeDialog(false)}>Cancel</button><button className="danger" onClick={() => closeDialog(true)}><Trash2 size={16}/>{dialog.confirmLabel}</button></footer></section></div>}
-    {toast && <div className="velvet-undo" role="status"><span><Trash2 size={17}/>{toast.message}</span><button onClick={undoDeletion}><RotateCcw size={16}/>Undo</button><i/></div>}
+    {dialogOverlay}
+    {undoOverlay}
   </FeedbackContext.Provider>;
 }
 
