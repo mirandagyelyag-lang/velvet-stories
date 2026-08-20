@@ -190,6 +190,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const textareaRef = useRef(null);
   const stoppedRef = useRef(false);
   const generationRunRef = useRef(0);
+  const chatExitGuardUntilRef = useRef(0);
   const loadingHistoryRef = useRef(false);
   const stickToBottomRef = useRef(true);
   const preserveScrollOnKeyboardRef = useRef(null);
@@ -197,6 +198,39 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const previousConversationRef = useRef("");
   const messages = getCharacterMessages(character.id);
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
+  const chatOverlayOpen = Boolean(
+    menuOpen || directorNoteOpen || selectedMessage || controlsOpen || characterProfileOpen ||
+    memoryBookOpen || relationshipOpen || timelineOpen || storyHubOpen || catchUpOpen
+  );
+
+  function armChatExitGuard(duration = 700) {
+    chatExitGuardUntilRef.current = Date.now() + duration;
+  }
+
+  function closeChatOverlaysForBack() {
+    armChatExitGuard();
+    setMenuOpen(false);
+    setDirectorNoteOpen(false);
+    setControlsOpen(false);
+    setCharacterProfileOpen(false);
+    setMemoryBookOpen(false);
+    setRelationshipOpen(false);
+    setTimelineOpen(false);
+    setStoryHubOpen(false);
+    setCatchUpOpen(false);
+    if (selectedMessage) closeActionsAfterAction();
+  }
+
+  function handleChatBack(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    if (chatOverlayOpen) {
+      closeChatOverlaysForBack();
+      return;
+    }
+    if (Date.now() < chatExitGuardUntilRef.current) return;
+    onBack?.();
+  }
   useEffect(() => {
     setBugReportPrivateContext({
       character: character.name,
@@ -965,7 +999,9 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     });
   }
 
-  async function runAction(action) {
+  async function runAction(action, event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
     if (!selectedMessage) return;
 
     try {
@@ -1015,6 +1051,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       }
 
       if (action === "rewind") {
+        armChatExitGuard();
         const messageId = selectedMessage.id;
         // Close the message sheet before showing the confirmation. On mobile the
         // sheet is a high-z-index body portal, so keeping it open can visually
@@ -1056,6 +1093,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   function closeActionsAfterAction() {
+    armChatExitGuard();
     setSelectedMessage(null);
     setActionMode("menu");
     setActionDraft("");
@@ -1392,7 +1430,10 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     setDirectorNoteOpen(true);
   }
 
-  function queueDirectorForNextBeat() {
+  function queueDirectorForNextBeat(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    armChatExitGuard();
     const instruction = directorNote.trim();
     if (!instruction || busy || actionLoading || !conversationReady) return;
     setDirectorMode("next");
@@ -1408,7 +1449,10 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     }
   }
 
-  function queueLivingSceneSuggestion() {
+  function queueLivingSceneSuggestion(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    armChatExitGuard();
     if (!nextBeatSuggestion?.instruction || busy || !conversationReady) return;
     setDirectorNote(nextBeatSuggestion.instruction);
     setDirectorMode("next");
@@ -1425,7 +1469,10 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     if (readingMode && !readingChromeVisible) setReadingChromeVisible(true);
   }
 
-  async function applyDirectorAndRegenerate() {
+  async function applyDirectorAndRegenerate(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    armChatExitGuard();
     const instruction = directorNote.trim();
     if (!instruction || busy || actionLoading || !conversationReady) return;
 
@@ -1518,7 +1565,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
       >
-        <button className="chat__icon-button chat__back-button" onClick={onBack} aria-label="Go back">
+        <button className="chat__icon-button chat__back-button" onClick={handleChatBack} aria-label="Go back">
           <ArrowLeft size={20} />
         </button>
         <button className="chat__avatar chat__character-avatar-button" style={{ "--character-color": character.color }} onClick={() => setCharacterProfileOpen(true)} aria-label={`View ${character.name}'s profile`}>
@@ -1612,8 +1659,8 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         </div>
       )}
 
-      {typeof document !== "undefined" && createPortal((
-        <button type="button" className="chat__mobile-exit" onClick={onBack} aria-label="Leave chat"><ArrowLeft size={20}/></button>
+      {!chatOverlayOpen && typeof document !== "undefined" && createPortal((
+        <button type="button" className="chat__mobile-exit" onClick={handleChatBack} aria-label="Leave chat"><ArrowLeft size={20}/></button>
       ), document.body)}
 
       <div onClick={handleReadingSurfaceClick} className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
@@ -1793,7 +1840,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
       {directorNoteOpen && typeof document !== "undefined" && createPortal((
         <div className="director-sheet-backdrop" onClick={(event) => event.target === event.currentTarget && setDirectorNoteOpen(false)}>
-          <section className="director-sheet" role="dialog" aria-modal="true" aria-label="Scene Director">
+          <section className="director-sheet" role="dialog" aria-modal="true" aria-label="Scene Director" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
             <div className="director-sheet__grab" />
             <header><div><span><Sparkles size={15}/> SCENE DIRECTOR</span><h2>Guide the story</h2><p>Write one direction, then choose whether it belongs to the next beat or should replace the latest reply.</p></div><button type="button" onClick={()=>setDirectorNoteOpen(false)} aria-label="Close Scene Director"><X size={19}/></button></header>
             <div className="director-sheet__presets">
@@ -2029,7 +2076,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
       {selectedMessage && typeof document !== "undefined" && createPortal((
         <div className="message-sheet-backdrop" onMouseDown={(event) => event.target === event.currentTarget && closeActions()}>
-          <section className="message-sheet" role="dialog" aria-modal="true">
+          <section className="message-sheet" role="dialog" aria-modal="true" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
             <header>
               <div>
                 <small>{selectedMessage.sender === "user" ? "YOUR MESSAGE" : character.name.toUpperCase()}</small>
@@ -2057,7 +2104,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
                     <button
                       className="message-sheet__branch-feature"
-                      onClick={() => runAction("rewind")}
+                      onClick={(event) => runAction("rewind", event)}
                     >
                       <Rewind size={19} />
                       <span><strong>Rewind to here</strong><small>Keep this message and remove everything that came after it.</small></span>
@@ -2082,7 +2129,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
                   </>
                 ) : (
                   <div className="message-sheet__user-menu">
-                    <button className="message-sheet__branch-feature" onClick={() => runAction("rewind")}>
+                    <button className="message-sheet__branch-feature" onClick={(event) => runAction("rewind", event)}>
                       <Rewind size={19} />
                       <span><strong>Rewind to here</strong><small>Keep this message and remove everything that came after it.</small></span>
                     </button>

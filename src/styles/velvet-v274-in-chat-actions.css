@@ -1,0 +1,8 @@
+/* Velvet v2.7.4 · In-Chat Actions Guard
+   Chat action sheets must fully own the touch surface. */
+@media (max-width:760px),(pointer:coarse){
+  .director-sheet-backdrop{z-index:4200!important;isolation:isolate!important}
+  body>.message-sheet-backdrop{z-index:4300!important;isolation:isolate!important}
+  .velvet-dialog-backdrop{z-index:5200!important;isolation:isolate!important}
+  .director-sheet,.message-sheet,.velvet-dialog{pointer-events:auto!important;touch-action:pan-y!important}
+}
