@@ -175,9 +175,14 @@ Deno.serve(async (request) => {
       storyPreferences,
     });
 
-    const isCancelled = () => generationId
+    const rawIsCancelled = () => generationId
       ? isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)
       : Promise.resolve(false);
+    // VELVET_CANCEL_PROBE_V1
+    // Do not put a Supabase round trip in front of every Gemini SSE chunk. The
+    // browser AbortController still stops immediately; the server-side probe is
+    // a safety net and only needs to poll a few times per second.
+    const isCancelled = createThrottledCancellationProbe(rawIsCancelled, 420);
 
     console.log("[character-chat] generation started", {
       conversationId,
@@ -2332,6 +2337,32 @@ async function replaceCharacterReply({ supabase, conversationId, userId, message
     .select().single();
   if (error || !data) throw new Error(error?.message || "The regenerated response couldn't be saved");
   return data;
+}
+
+function createThrottledCancellationProbe(check, intervalMs = 420) {
+  let lastCheckedAt = 0;
+  let lastValue = false;
+  let inFlight = null;
+
+  return async () => {
+    if (lastValue) return true;
+    const now = Date.now();
+    if (now - lastCheckedAt < intervalMs) return false;
+    if (inFlight) return await inFlight;
+
+    lastCheckedAt = now;
+    inFlight = Promise.resolve(check())
+      .then((value) => {
+        lastValue = Boolean(value);
+        return lastValue;
+      })
+      .catch(() => false)
+      .finally(() => {
+        inFlight = null;
+      });
+
+    return await inFlight;
+  };
 }
 
 async function isGenerationCancelled(supabase, generationId, userId) {

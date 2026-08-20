@@ -190,7 +190,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const textareaRef = useRef(null);
   const stoppedRef = useRef(false);
   const generationRunRef = useRef(0);
-  const stopBurstTimersRef = useRef([]);
   const loadingHistoryRef = useRef(false);
   const stickToBottomRef = useRef(true);
   const preserveScrollOnKeyboardRef = useRef(null);
@@ -629,11 +628,9 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   async function handleSubmit(event) {
     event.preventDefault();
 
-    // VELVET_STOP_V6_CLEAR_LATCH
-    // A deliberate new message cancels any delayed Stop attempts belonging
-    // to the previous generation.
-    stopBurstTimersRef.current.forEach((timerId) => clearTimeout(timerId));
-    stopBurstTimersRef.current = [];
+    // VELVET_STOP_V7_SINGLE_TAP
+    // There are no delayed Stop bursts anymore. A new send can never inherit
+    // a timer from an older generation and accidentally cancel itself.
 
     const cleanMessage = message.trim();
     if (!conversationReady) return;
@@ -665,20 +662,18 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     // catch/finally finishes later.
     const runId = ++generationRunRef.current;
 
+    const replyForThisMessage = replyTo;
+    const noteForThisGeneration = directorNote.trim();
+
     try {
       stoppedRef.current = false;
       setSending(true);
+      setIsTyping(true);
       setSendError("");
-      const savedUserMessage = await addMessage(character.id, "user", messageToSend, replyTo ? {
-        replyToMessageId: replyTo.id,
-        replyPreview: replyTo.content,
-        replySender: replyTo.sender,
-      } : {});
 
-      // Stop may have happened while the user message was being saved.
-      if (generationRunRef.current !== runId || stoppedRef.current) return;
-
-      const noteForThisGeneration = directorNote.trim();
+      // VELVET_FAST_SEND_V1
+      // The composer clears immediately. ChatsContext paints an optimistic user
+      // bubble while the database save finishes, so tapping Send feels instant.
       setMessage("");
       setReplyTo(null);
       setDirectorNote("");
@@ -690,8 +685,17 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       }
       window.requestAnimationFrame(() => resizeComposer());
       if (settings.haptics) navigator.vibrate?.(6);
+
+      const savedUserMessage = await addMessage(character.id, "user", messageToSend, replyForThisMessage ? {
+        replyToMessageId: replyForThisMessage.id,
+        replyPreview: replyForThisMessage.content,
+        replySender: replyForThisMessage.sender,
+      } : {});
+
+      // Stop may have happened while the user message was being saved.
+      if (generationRunRef.current !== runId || stoppedRef.current) return;
+
       setSending(false);
-      setIsTyping(true);
       const generationResult = await generateCharacterReply(character.id, {
         directorInstruction: noteForThisGeneration,
         expectedUserMessageId: savedUserMessage.id,
@@ -721,28 +725,15 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   function handleStop() {
-    // VELVET_STOP_V6_LATCH
-    // One physical tap becomes a short-lived Stop latch. The first tap can
-    // happen a few milliseconds before generateCharacterReply has installed
-    // its AbortController. Re-checking catches that late request automatically
-    // instead of making the user tap Stop repeatedly.
+    // VELVET_STOP_V7_SINGLE_TAP
+    // One user action means exactly one local Stop. Older versions scheduled
+    // five more Stop calls for the next second; those timers could catch a new
+    // regeneration/send and kill it immediately.
     generationRunRef.current += 1;
     stoppedRef.current = true;
     if (settings.haptics) navigator.vibrate?.(10);
 
-    stopBurstTimersRef.current.forEach((timerId) => clearTimeout(timerId));
-    stopBurstTimersRef.current = [];
-
-    const stopNow = () => {
-      stopGeneration(character.id);
-    };
-
-    stopNow();
-
-    for (const delayMs of [50, 150, 300, 600, 1000]) {
-      const timerId = setTimeout(stopNow, delayMs);
-      stopBurstTimersRef.current.push(timerId);
-    }
+    stopGeneration(character.id);
 
     setSending(false);
     setIsTyping(false);
@@ -1781,10 +1772,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           <button
             type="button"
             className="chat__send-button chat__stop-button"
-            onPointerDown={(event) => {
-              event.preventDefault();
-              handleStop();
-            }}
+            onClick={handleStop}
             aria-label="Stop generating"
             title="Stop generating"
           >
