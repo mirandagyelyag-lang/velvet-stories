@@ -194,3 +194,32 @@ img{image-rendering:auto}
 .story-setup-sheet__choices svg{color:var(--accent)}.story-setup-sheet__choices span{display:grid;gap:2px;font-size:.68rem;font-weight:700}.story-setup-sheet__choices small{color:var(--text-secondary);font-size:.56rem;font-weight:500}
 .story-setup-sheet>footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.story-setup-sheet>footer button{min-height:42px;padding:0 15px;border-radius:13px}.story-setup-sheet>footer .secondary{color:var(--text-secondary);background:transparent;border:1px solid var(--border)}.story-setup-sheet>footer .primary{display:flex;align-items:center;gap:7px;color:#fff;background:var(--accent);border:0}
 @media(max-width:620px){.story-setup-backdrop{place-items:end center;padding:0}.story-setup-sheet{border-radius:26px 26px 0 0;padding:18px 15px calc(18px + env(safe-area-inset-bottom))}.story-setup-sheet__choices{grid-template-columns:1fr}.story-setup-sheet>footer{display:grid;grid-template-columns:1fr 1.3fr}.story-setup-sheet>footer button{width:100%;justify-content:center}}
+
+
+/* v2.10.2 · New Story portal guard */
+.story-setup-backdrop--portal{
+  z-index:6200!important;
+  isolation:isolate!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+}
+.story-setup-backdrop--portal .story-setup-sheet{
+  position:relative!important;
+  z-index:1!important;
+  max-height:min(88dvh,760px)!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch;
+}
+@media(max-width:620px){
+  .story-setup-backdrop--portal{
+    display:grid!important;
+    place-items:center!important;
+    padding:max(18px,env(safe-area-inset-top)) 14px max(18px,env(safe-area-inset-bottom))!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet{
+    width:min(100%,560px)!important;
+    max-height:calc(100dvh - 56px)!important;
+    padding:18px 15px!important;
+    border-radius:24px!important;
+  }
+}

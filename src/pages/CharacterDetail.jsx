@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "../services/supabase";
 import { useCharacters } from "../context/CharactersContext";
 import { usePersonas } from "../context/PersonasContext";
@@ -331,8 +332,8 @@ export default function CharacterDetail({
         </aside>
       </div>
 
-      {storySetupOpen && (
-        <div className="story-setup-backdrop" onMouseDown={(event)=>event.target === event.currentTarget && setStorySetupOpen(false)}>
+      {storySetupOpen && typeof document !== "undefined" && createPortal((
+        <div className="story-setup-backdrop story-setup-backdrop--portal" onMouseDown={(event)=>event.target === event.currentTarget && setStorySetupOpen(false)}>
           <section className="story-setup-sheet" role="dialog" aria-modal="true" aria-label={`Start a new story with ${character.name}`}>
             <header>
               <div><small>NEW STORY</small><h2>Where should this one begin?</h2><p>Keep the character. Change only the opening if you want a different universe, day or situation.</p></div>
@@ -351,7 +352,7 @@ export default function CharacterDetail({
             <footer><button type="button" className="secondary" onClick={()=>setStorySetupOpen(false)}>Cancel</button><button type="button" className="primary" onClick={()=>{ setStorySetupOpen(false); onNewStory({ ...character, firstMessage: storyOpening.trim() || character.firstMessage }, { personaId: storyPersonaId, lorebookId: storyLorebookId }); }}><MessageCircle size={17}/>Start story</button></footer>
           </section>
         </div>
-      )}
+      ), document.body)}
     </section>
   );
 }

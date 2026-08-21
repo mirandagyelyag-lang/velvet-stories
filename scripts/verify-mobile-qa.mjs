@@ -49,3 +49,12 @@ check("library three-dot controls are compact and scroll-safe", precisionActions
 check("Characters hides redundant floating search and uses a shorter route dock", charactersClean.includes(".mobile-global-search { display: none !important; }") && charactersClean.includes("height: 60px !important"));
 let failed=0; for(const x of checks){console.log(`${x.p?"PASS":"FAIL"}  ${x.n}`);if(!x.p)failed++;} if(failed){console.error(`\n${failed} mobile QA checks failed.`);process.exit(1);} console.log(`\n${checks.length} mobile QA checks passed.`);
 
+
+
+// v2.10.2 regression: Character Profile New Story must portal above mobile stacking contexts.
+{
+  const detail = read("src/pages/CharacterDetail.jsx");
+  const storyCss = read("src/styles/velvet-v220.css");
+  check("New Story setup uses a body portal above mobile navigation", detail.includes("createPortal((") && detail.includes("story-setup-backdrop--portal") && detail.includes("document.body"));
+  check("New Story portal is isolated, centered and scrollable on mobile", storyCss.includes(".story-setup-backdrop--portal") && storyCss.includes("z-index:6200") && storyCss.includes("place-items:center") && storyCss.includes("overflow-y:auto"));
+}
