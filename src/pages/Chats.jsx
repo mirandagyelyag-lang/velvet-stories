@@ -171,7 +171,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     if (!approved) return;
     setPendingDeletionIds((current) => [...current, conversationId]);
     scheduleDeletion({
-      message: `Deleting ${conversation?.title || conversation?.character?.name || "conversation"}`,
+      message: "Moved to Trash",
       onUndo: () => setPendingDeletionIds((current) => current.filter((id) => id !== conversationId)),
       onCommit: async () => {
         setDeletingId(conversationId);

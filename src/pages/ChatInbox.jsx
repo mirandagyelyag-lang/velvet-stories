@@ -132,7 +132,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
 
     setPendingDeletionIds((current) => [...current, conversation.id]);
     scheduleDeletion({
-      message: `Deleting ${conversation.group_title || conversation.title || conversation.character?.name || "conversation"}`,
+      message: "Moved to Trash",
       onUndo: () => setPendingDeletionIds((current) => current.filter((id) => id !== conversation.id)),
       onCommit: async () => {
         setDeletingId(conversation.id);

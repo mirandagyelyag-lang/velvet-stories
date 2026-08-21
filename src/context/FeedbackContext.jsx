@@ -31,7 +31,7 @@ export function FeedbackProvider({ children }) {
       toastTimer.current = null;
       try { await onCommit(); }
       catch (error) { onError?.(error); }
-    }, 7000);
+    }, 4000);
   }
 
   function undoDeletion() {
@@ -59,7 +59,7 @@ export function FeedbackProvider({ children }) {
     overlayRoot,
   ) : null;
   const undoOverlay = toast && overlayRoot ? createPortal(
-    <div className="velvet-undo" role="status"><span><Trash2 size={17}/>{toast.message}</span><button type="button" onClick={undoDeletion}><RotateCcw size={16}/>Undo</button><i/></div>,
+    <div className="velvet-undo" role="status"><span>{toast.message || "Moved to Trash"}</span><button type="button" onClick={undoDeletion}><RotateCcw size={13}/>Undo</button><i/></div>,
     overlayRoot,
   ) : null;
 
