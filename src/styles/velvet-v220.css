@@ -223,3 +223,102 @@ img{image-rendering:auto}
     border-radius:24px!important;
   }
 }
+
+
+/* v2.10.6 · Mobile New Story sheet comfort */
+@media(max-width:620px){
+  .story-setup-backdrop--portal{
+    place-items:center!important;
+    padding:max(18px,env(safe-area-inset-top)) 14px calc(104px + env(safe-area-inset-bottom))!important;
+    overflow:hidden!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet{
+    width:min(100%,560px)!important;
+    max-height:min(74dvh,620px)!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    padding:14px 14px 0!important;
+    border-radius:22px!important;
+    scrollbar-width:none;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet::-webkit-scrollbar{display:none}
+  .story-setup-backdrop--portal .story-setup-sheet>header{
+    gap:10px!important;
+    margin-bottom:10px!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet>header h2{
+    margin:3px 0 2px!important;
+    font-size:1.62rem!important;
+    line-height:1!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet>header p{
+    font-size:.64rem!important;
+    line-height:1.35!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet>header>button{
+    width:32px!important;
+    height:32px!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet__identity-grid{
+    gap:8px!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet__identity-grid label{
+    gap:5px!important;
+    font-size:.64rem!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet__identity-grid select{
+    min-height:40px!important;
+    padding:8px 10px!important;
+    border-radius:12px!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet__persona-note{
+    margin:7px 1px 0!important;
+    font-size:.59rem!important;
+    line-height:1.35!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet>label{
+    gap:5px!important;
+    margin-top:10px!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet textarea{
+    min-height:78px!important;
+    max-height:120px!important;
+    padding:10px 11px!important;
+    border-radius:13px!important;
+    font-size:.76rem!important;
+    line-height:1.4!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet__choices{
+    grid-template-columns:1fr 1fr!important;
+    gap:7px!important;
+    margin-top:8px!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet__choices button{
+    grid-template-columns:20px minmax(0,1fr)!important;
+    gap:6px!important;
+    min-height:48px!important;
+    padding:8px 9px!important;
+    border-radius:12px!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet__choices span{font-size:.62rem!important}
+  .story-setup-backdrop--portal .story-setup-sheet__choices small{font-size:.5rem!important;line-height:1.2!important}
+  .story-setup-backdrop--portal .story-setup-sheet>footer{
+    position:sticky!important;
+    bottom:0!important;
+    z-index:3!important;
+    display:grid!important;
+    grid-template-columns:.85fr 1.15fr!important;
+    gap:7px!important;
+    margin:10px -14px 0!important;
+    padding:10px 14px calc(12px + env(safe-area-inset-bottom))!important;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 78%,transparent),var(--surface) 28%)!important;
+    border-top:1px solid color-mix(in srgb,var(--border) 72%,transparent)!important;
+    backdrop-filter:blur(14px)!important;
+  }
+  .story-setup-backdrop--portal .story-setup-sheet>footer button{
+    min-height:40px!important;
+    padding:0 10px!important;
+    border-radius:12px!important;
+    font-size:.72rem!important;
+  }
+}

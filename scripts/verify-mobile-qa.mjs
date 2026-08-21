@@ -47,6 +47,9 @@ check("background return cannot double-stack ambience decks",ambience.includes("
 check("rapid-clean Undo moves above the list lane and supports Undo all", feedbackCss.includes(".velvet-undo--batch") && feedbackCss.includes("top:max(76px") && feedback.includes("Undo all") && feedback.includes("2500"));
 check("library three-dot controls are compact and scroll-safe", precisionActions.includes(".story-action-menu--reference .story-action-menu__trigger") && precisionActions.includes("width: 32px !important") && precisionActions.includes("touch-action: pan-y !important") && precisionActions.includes(".characters-library__card .discover-burgundy__more") && stories.includes("onClick={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId"));
 check("Characters hides redundant floating search and uses a shorter route dock", charactersClean.includes(".mobile-global-search { display: none !important; }") && charactersClean.includes("height: 60px !important"));
+check("New Story mobile sheet stays above the route dock", read("src/styles/velvet-v220.css").includes("max-height:min(74dvh,620px)"));
+check("New Story mobile footer stays visible while content scrolls", read("src/styles/velvet-v220.css").includes("position:sticky!important"));
+check("New Story opening choices stay compact side by side", read("src/styles/velvet-v220.css").includes("grid-template-columns:1fr 1fr!important"));
 let failed=0; for(const x of checks){console.log(`${x.p?"PASS":"FAIL"}  ${x.n}`);if(!x.p)failed++;} if(failed){console.error(`\n${failed} mobile QA checks failed.`);process.exit(1);} console.log(`\n${checks.length} mobile QA checks passed.`);
 
 
@@ -57,4 +60,12 @@ let failed=0; for(const x of checks){console.log(`${x.p?"PASS":"FAIL"}  ${x.n}`)
   const storyCss = read("src/styles/velvet-v220.css");
   check("New Story setup uses a body portal above mobile navigation", detail.includes("createPortal((") && detail.includes("story-setup-backdrop--portal") && detail.includes("document.body"));
   check("New Story portal is isolated, centered and scrollable on mobile", storyCss.includes(".story-setup-backdrop--portal") && storyCss.includes("z-index:6200") && storyCss.includes("place-items:center") && storyCss.includes("overflow-y:auto"));
+}
+
+
+// v2.10.7 memories safe-area regression checks
+{
+  const memoriesSafe = read("src/styles/velvet-v2107-memories-safe-area.css");
+  check("Memories detail clears the floating mobile dock", memoriesSafe.includes("padding-bottom: calc(188px + env(safe-area-inset-bottom))") && memoriesSafe.includes("scroll-padding-bottom: calc(164px + env(safe-area-inset-bottom))"));
+  check("Memories final action stays in normal scroll flow above the dock", memoriesSafe.includes(".memories-reference__add-bottom") && memoriesSafe.includes("margin: 12px auto 0"));
 }

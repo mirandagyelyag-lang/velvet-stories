@@ -170,19 +170,22 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     if (!conversation || conversation.trashed_at) return;
     const trashedAt = new Date().toISOString();
 
-    // Remove it from the active shelf immediately. Supabase commits after the short Undo window.
-    setConversations((current) => current.map((item) => item.id === conversationId ? { ...item, trashed_at: trashedAt } : item));
+    // Remove the row itself immediately. Do not leave a visually identical story behind during Undo.
+    setConversations((current) => current.filter((item) => item.id !== conversationId));
+    const restoreSnapshot = () => setConversations((current) =>
+      current.some((item) => item.id === conversationId) ? current : [...current, conversation].sort(sortConversations)
+    );
     scheduleDeletion({
       batchKey: "story-cleanup",
       message: (count) => `${count} ${count === 1 ? "story" : "stories"} removed`,
-      onUndo: () => setConversations((current) => current.map((item) => item.id === conversationId ? conversation : item)),
+      onUndo: restoreSnapshot,
       onCommit: async () => {
         const { error: requestError } = await supabase.from("conversations").update({ trashed_at: trashedAt }).eq("id", conversationId);
         if (requestError) throw requestError;
       },
       onError: (requestError) => {
         console.error(requestError);
-        setConversations((current) => current.map((item) => item.id === conversationId ? conversation : item));
+        restoreSnapshot();
         setError("We couldn't delete that conversation.");
       },
     });

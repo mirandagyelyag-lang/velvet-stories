@@ -101,3 +101,5 @@ window.requestAnimationFrame(() => {
 
 
 import "./styles/velvet-v2101-character-profile-actions.css";
+
+import "./styles/velvet-v2107-memories-safe-area.css";

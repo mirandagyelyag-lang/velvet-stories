@@ -1,0 +1,58 @@
+/* Velvet Stories v2.10.7 · Memories Safe Area + Cleanup Fix */
+
+@media (max-width: 760px) {
+  /* The reference dock is 76px tall and floats above the bottom edge. Give the
+     memory book enough real runway that its final rows/actions can scroll fully
+     above it instead of disappearing underneath. */
+  body.velvet-burgundy-route .memories-character-detail.memories-reference-page {
+    padding-bottom: calc(188px + env(safe-area-inset-bottom)) !important;
+    scroll-padding-bottom: calc(164px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.velvet-burgundy-route .memories-character-detail .memory-character-detail__hero {
+    margin-bottom: 11px !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,.12) !important;
+  }
+
+  body.velvet-burgundy-route .memories-character-detail .memory-character-detail__toolbar {
+    position: relative;
+    z-index: 2;
+    margin-bottom: 12px !important;
+  }
+
+  body.velvet-burgundy-route .memories-character-detail .memory-character-detail__list {
+    margin-bottom: 14px !important;
+    padding-bottom: 10px !important;
+    border-radius: 20px !important;
+    box-shadow: 0 14px 34px rgba(0,0,0,.10) !important;
+  }
+
+  body.velvet-burgundy-route .memories-character-detail .memory-character-detail__list > header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    margin: 0 -2px 2px;
+    padding: 14px 3px 11px !important;
+    background: color-mix(in srgb, var(--stories-panel-strong) 94%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  body.velvet-burgundy-route .memories-character-detail .memories-reference__add-bottom {
+    width: min(860px, 100%) !important;
+    min-height: 50px !important;
+    margin: 12px auto 0 !important;
+    border-radius: 17px !important;
+  }
+
+  /* The last thought gets its own breathing room before the action button. */
+  body.velvet-burgundy-route .memories-character-detail .swipe-trash--memory:last-of-type {
+    margin-bottom: 8px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  body.velvet-burgundy-route .memories-character-detail.memories-reference-page {
+    padding-bottom: calc(198px + env(safe-area-inset-bottom)) !important;
+  }
+}
