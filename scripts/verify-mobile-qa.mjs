@@ -44,5 +44,5 @@ check("Group Story touch surfaces remain native",sixFix.includes(".group-story-s
 check("Audio Center 2.0 transport remains thumb-sized on phone",audio2616.includes("audio-center__transport")&&audio2616.includes("min-height:44px"));
 check("ambience mode rail stays one-finger horizontally scrollable",audio2616.includes("overflow-x:auto")&&audio2616.includes("-webkit-overflow-scrolling:touch"));
 check("background return cannot double-stack ambience decks",ambience.includes("visibilityPausedRef")&&ambience.includes("activeAmbience")&&ambience.includes("looping = false"));
-check("mobile trash Undo stays a compact pill above navigation", feedbackCss.includes("width:max-content") && feedbackCss.includes("bottom:calc(80px + env(safe-area-inset-bottom))") && feedbackCss.includes("max-width:calc(100vw - 32px)"));
+check("mobile trash Undo stays a compact centered pill", feedbackCss.includes("width:max-content") && feedbackCss.includes("top:50%") && feedbackCss.includes("transform:translate(-50%,-50%)") && feedbackCss.includes("max-width:calc(100vw - 36px)"));
 let failed=0; for(const x of checks){console.log(`${x.p?"PASS":"FAIL"}  ${x.n}`);if(!x.p)failed++;} if(failed){console.error(`\n${failed} mobile QA checks failed.`);process.exit(1);} console.log(`\n${checks.length} mobile QA checks passed.`);

@@ -1,8 +1,28 @@
-.velvet-dialog-backdrop{position:fixed;inset:0;z-index:5200;display:grid;place-items:center;padding:18px;background:rgba(8,3,5,.72);backdrop-filter:blur(12px)}.velvet-dialog{position:relative;width:min(430px,100%);padding:25px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:0 30px 90px rgba(0,0,0,.45)}.velvet-dialog__close{position:absolute;top:13px;right:13px;width:34px;height:34px;display:grid;place-items:center;color:var(--text-secondary);background:transparent;border:0;border-radius:50%}.velvet-dialog__icon{width:52px;height:52px;display:grid;place-items:center;margin:0 auto 13px;color:#d5798f;background:color-mix(in srgb,#d5798f 12%,transparent);border:1px solid color-mix(in srgb,#d5798f 35%,transparent);border-radius:50%}.velvet-dialog small{color:var(--gold);font-size:.55rem;letter-spacing:.17em}.velvet-dialog h2{margin:6px 0 7px;font-family:"Cormorant Garamond",serif;font-size:2rem;font-weight:500}.velvet-dialog p{margin:0;color:var(--text-secondary);font-size:.72rem;line-height:1.55}.velvet-dialog footer{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:22px}.velvet-dialog footer button{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:10px}.velvet-dialog footer .danger{color:white;background:#8e2f49;border-color:#a84b65}.velvet-undo{position:fixed;right:22px;bottom:24px;z-index:5210;min-width:290px;overflow:hidden;display:flex;align-items:center;gap:15px;padding:13px 14px;color:var(--text-primary);background:color-mix(in srgb,var(--surface) 94%,transparent);border:1px solid var(--border);border-radius:13px;box-shadow:0 18px 55px rgba(0,0,0,.38);backdrop-filter:blur(16px)}.velvet-undo>span{display:flex;align-items:center;gap:8px;flex:1;font-size:.68rem}.velvet-undo>span svg{color:#d5798f}.velvet-undo button{display:flex;align-items:center;gap:5px;padding:7px 9px;color:var(--gold);background:transparent;border:1px solid var(--border);border-radius:8px;font-size:.63rem}.velvet-undo i{position:absolute;right:0;bottom:0;left:0;height:2px;background:var(--gold);transform-origin:left;animation:undo-countdown 7s linear forwards}@keyframes undo-countdown{to{transform:scaleX(0)}}@media(max-width:760px){.velvet-dialog-backdrop{align-items:end;padding:0}.velvet-dialog{width:100%;padding:25px 18px calc(22px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0}.velvet-undo{right:10px;bottom:calc(84px + env(safe-area-inset-bottom));left:10px;min-width:0}}
+.velvet-dialog-backdrop{position:fixed;inset:0;z-index:5200;display:grid;place-items:center;padding:18px;background:rgba(8,3,5,.72);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.velvet-dialog{position:relative;width:min(340px,calc(100vw - 36px));padding:20px 18px 18px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.42)}
+.velvet-dialog__close{position:absolute;top:10px;right:10px;width:32px;height:32px;display:grid;place-items:center;color:var(--text-secondary);background:transparent;border:0;border-radius:50%}
+.velvet-dialog__icon{width:42px;height:42px;display:grid;place-items:center;margin:0 auto 10px;color:#d5798f;background:color-mix(in srgb,#d5798f 12%,transparent);border:1px solid color-mix(in srgb,#d5798f 35%,transparent);border-radius:50%}
+.velvet-dialog small{display:block;color:var(--gold);font-size:.5rem;letter-spacing:.15em}
+.velvet-dialog h2{margin:6px 24px 6px;font-family:"Cormorant Garamond",serif;font-size:1.5rem;line-height:1.05;font-weight:500}
+.velvet-dialog p{margin:0 auto;max-width:270px;color:var(--text-secondary);font-size:.66rem;line-height:1.45}
+.velvet-dialog footer{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.velvet-dialog footer button{min-height:42px;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:10px;font-size:.72rem}
+.velvet-dialog footer .danger{color:white;background:#8e2f49;border-color:#a84b65}
 
-/* v2.9.4 Compact Undo Toast */
-.velvet-undo{left:50%;right:auto;bottom:24px;transform:translateX(-50%);min-width:0;width:max-content;max-width:calc(100vw - 28px);gap:7px;padding:7px 8px 7px 10px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.velvet-undo>span{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.61rem;line-height:1.15}
-.velvet-undo button{flex:0 0 auto;min-height:30px;gap:4px;padding:4px 8px;border-radius:999px;font-size:.61rem;font-weight:700}
-.velvet-undo i{height:1px;animation-duration:4s}
-@media(max-width:760px){.velvet-undo{left:50%;right:auto;bottom:calc(80px + env(safe-area-inset-bottom));width:max-content;max-width:calc(100vw - 32px);min-width:0;padding:6px 7px 6px 10px;gap:6px}.velvet-undo>span{font-size:.6rem}.velvet-undo button{min-height:28px;padding:3px 7px;font-size:.6rem}}
+.velvet-undo{position:fixed;left:50%;top:50%;right:auto;bottom:auto;z-index:5210;transform:translate(-50%,-50%);min-width:0;width:max-content;max-width:calc(100vw - 32px);overflow:hidden;display:flex;align-items:center;gap:6px;padding:6px 7px 6px 10px;color:var(--text-primary);background:color-mix(in srgb,var(--surface) 96%,transparent);border:1px solid var(--border);border-radius:999px;box-shadow:0 14px 38px rgba(0,0,0,.34);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.velvet-undo>span{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.6rem;line-height:1.15}
+.velvet-undo button{flex:0 0 auto;min-height:28px;display:flex;align-items:center;gap:4px;padding:3px 7px;color:var(--gold);background:transparent;border:1px solid var(--border);border-radius:999px;font-size:.6rem;font-weight:700}
+.velvet-undo i{position:absolute;right:0;bottom:0;left:0;height:1px;background:var(--gold);transform-origin:left;animation:undo-countdown 4s linear forwards}
+@keyframes undo-countdown{to{transform:scaleX(0)}}
+
+/* v2.9.5 Centered Confirmation UI */
+@media(max-width:760px){
+  .velvet-dialog-backdrop{display:grid;place-items:center;align-items:center;padding:18px calc(16px + env(safe-area-inset-right)) 18px calc(16px + env(safe-area-inset-left))}
+  .velvet-dialog{width:min(326px,calc(100vw - 32px));padding:18px 16px 16px;border-radius:18px}
+  .velvet-dialog__icon{width:40px;height:40px;margin-bottom:9px}
+  .velvet-dialog h2{font-size:1.42rem;margin:5px 22px 5px}
+  .velvet-dialog p{font-size:.64rem;line-height:1.42}
+  .velvet-dialog footer{margin-top:14px;gap:7px}
+  .velvet-dialog footer button{min-height:40px;padding:7px 8px;font-size:.68rem}
+  .velvet-undo{left:50%;top:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);max-width:calc(100vw - 36px)}
+}
