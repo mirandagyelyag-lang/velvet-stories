@@ -58,7 +58,7 @@ function SwipeToTrash({ children, onDelete, disabled = false, label = "Delete", 
   const armed = isRight ? offset >= DELETE_THRESHOLD : offset <= -DELETE_THRESHOLD;
   return (
     <div className={`swipe-trash${isRight ? " swipe-trash--right" : ""}${dragging ? " is-dragging" : ""}${revealed ? " is-revealed" : ""}${armed ? " is-armed" : ""}${className ? ` ${className}` : ""}`} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={finishGesture} onTouchCancel={() => { setDragging(false); setOffset(0); }} onClickCapture={guardClick} role="group" aria-label={label}>
-      <div className="swipe-trash__action" aria-hidden="true"><Trash2 size={20}/><span>{armed ? "Release" : "Delete"}</span></div>
+      <div className="swipe-trash__action" aria-hidden="true"><Trash2 size={20}/></div>
       <div className="swipe-trash__content" style={{ transform: `translate3d(${offset}px,0,0)` }}>{children}</div>
     </div>
   );

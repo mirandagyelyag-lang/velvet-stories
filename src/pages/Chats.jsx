@@ -167,11 +167,11 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   async function deleteConversation(event, conversationId) {
     event?.stopPropagation?.();
     const conversation = conversations.find((item) => item.id === conversationId);
-    const approved = !settings.confirmBeforeDelete || await confirmAction({ title: "Delete this conversation?", message: "Its messages and alternatives will also be removed after the Undo period.", confirmLabel: "Delete story" });
-    if (!approved) return;
-    setPendingDeletionIds((current) => [...current, conversationId]);
+    if (!conversation || pendingDeletionIds.includes(conversationId)) return;
+    setPendingDeletionIds((current) => current.includes(conversationId) ? current : [...current, conversationId]);
     scheduleDeletion({
-      message: "Moved to Trash",
+      batchKey: "story-cleanup",
+      message: (count) => `${count} ${count === 1 ? "story" : "stories"} moved to Trash`,
       onUndo: () => setPendingDeletionIds((current) => current.filter((id) => id !== conversationId)),
       onCommit: async () => {
         setDeletingId(conversationId);
@@ -350,6 +350,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       <SwipeToTrash
         key={conversation.id}
         className="swipe-trash--story"
+        direction="right"
         disabled={Boolean(conversation.trashed_at || deletingId === conversation.id || updatingId === conversation.id)}
         onDelete={() => deleteConversation(null, conversation.id)}
         label={`Delete ${title}`}
