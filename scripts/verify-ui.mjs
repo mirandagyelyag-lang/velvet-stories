@@ -64,7 +64,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("burgundy reference layer stays after the mobile foundation", main.includes('import "./styles/velvet-burgundy-reference.css";') && main.lastIndexOf("velvet-burgundy-reference.css") > main.lastIndexOf("velvet-mobile-foundation.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.10.4 Unified Rapid Cleanup", pkg.version === "2.10.4" && read("src/config/version.js").includes('VELVET_RELEASE = "Unified Rapid Cleanup"'));
+check("release is v2.10.5 Instant Cleanup Commit", pkg.version === "2.10.5" && read("src/config/version.js").includes('VELVET_RELEASE = "Instant Cleanup Commit"'));
 check("Stories owns the document canvas while mounted", read("src/pages/Chats.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/Chats.jsx").includes('classList.remove("velvet-burgundy-route")'));
 check("Burgundy background cannot end before the document", reference.includes('body.velvet-burgundy-route .app__content') && reference.includes('background: var(--stories-canvas) !important'));
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
@@ -262,7 +262,7 @@ check("ambience fades cleanly and enforces one active room", storyAmbience.inclu
 check("mobile ambience pauses and resumes instead of restarting on visibility changes", audioBus.includes('window.addEventListener("pagehide", stopAllAudio)') && !audioBus.includes('document.visibilityState === "hidden"') && storyAmbience.includes("visibilityPausedRef") && storyAmbience.includes("pauseActiveAmbience") && storyAmbience.includes("switchAmbience(latest.mode, latest.volume)"));
 check("device voice center supports language filters favorites and future neural engines", storyHubDrawer.includes("All languages") && storyHubDrawer.includes("Favorite this voice") && speechUtil.includes("neuralReady: true") && storyHubDrawer.includes("Neural-ready architecture"));
 check("voice volume is remembered without changing story ambience volume", storyHubDrawer.includes('writeAudioPreference("voice", character.id') && chat.includes('readAudioPreference("voice", character.id') && storyHubDrawer.includes("ambientVolume"));
-check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes('"2.10.4"'));
+check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes('"2.10.5"'));
 check("Characters keeps the v2.9.8 layout and only swaps the Characters title font", read("src/pages/MyCharacters.jsx").includes('characters-library__velvet-title') && read("src/pages/MyCharacters.jsx").includes('inTrash ? "Trash" : "Characters"') && read("src/styles/velvet-v298-characters-clean-mobile.css").includes('.characters-library__compact-copy .characters-library__velvet-title') && read("src/styles/velvet-v298-characters-clean-mobile.css").includes('font-family: "Pinyon Script", cursive !important;'));
 check("updater only offers genuinely newer semantic versions", pwaContext.includes("compareVersions(serverVersion, VELVET_VERSION) > 0") && pwaContext.includes("compareVersions(remote, VELVET_VERSION) > 0"));
 check("Stories rapid cleanup uses intentional right swipe with no confirmation", stories.includes('direction="right"') && stories.includes('batchKey: "story-cleanup"') && !stories.includes('title: "Delete this conversation?"'));
@@ -309,7 +309,7 @@ check("AI phases are compact and explicit", chat.includes('"Sending"') && chat.i
 check("response versions refresh after regeneration", chat.includes("regeneratedVersions") && chat.includes("rewrittenVersions") && chat.includes("refinedVersions"));
 check("stream paints adapt to touch devices", chatsContextV260.includes("VELVET_STREAM_POLISH_V2") && chatsContextV260.includes("targetCadence"));
 
-check("rapid cleanup uses one compact batch Undo without blocking the swipe lane", feedbackContext.includes("5200") && feedbackContext.includes("toastRef") && feedbackContext.includes("commitPending") && feedbackStyles.includes(".velvet-undo--batch") && feedbackStyles.includes("Undo all") === false);
+check("rapid cleanup uses one compact batch Undo without blocking the swipe lane", feedbackContext.includes("2500") && feedbackContext.includes("toastRef") && feedbackContext.includes("commitPending") && feedbackStyles.includes(".velvet-undo--batch") && feedbackStyles.includes("Undo all") === false);
 check("trash Undo action has its own high-contrast button", feedbackStyles.includes("background:color-mix(in srgb,var(--accent) 14%,var(--surface))") && feedbackStyles.includes("font-weight:800") && feedbackStyles.includes("min-height:34px"));
 check("mobile confirmation stays compact and centered instead of becoming a bottom sheet", feedbackStyles.includes("place-items:center") && feedbackStyles.includes("align-items:center") && !feedbackStyles.includes("align-items:end") && feedbackStyles.includes("width:min(326px"));
 check("Stories ellipsis opens on completed tap instead of pointer-down", stories.includes("onPointerDown={(event) => { event.stopPropagation(); }}") && stories.includes("onClick={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId") && !stories.includes("onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId"));
@@ -320,3 +320,16 @@ for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item
 if(failed){ console.error(`\n${failed} UI checks failed.`); process.exit(1); }
 console.log(`\n${checks.length} UI checks passed.`);
 
+
+
+// v2.10.5 instant cleanup regression checks
+{
+  const feedback = read("src/context/FeedbackContext.jsx");
+  const stories = read("src/pages/Chats.jsx");
+  const inbox = read("src/pages/ChatInbox.jsx");
+  const memories = read("src/pages/Memories.jsx");
+  check("rapid cleanup Undo window is 2.5 seconds", feedback.includes("}, 2500);") && !feedback.includes("5200"));
+  check("Stories optimistically trash immediately", stories.includes("setConversations((current) => current.map((item) => item.id === conversationId ? { ...item, trashed_at: trashedAt } : item))"));
+  check("Chats optimistically disappear immediately", inbox.includes("setRows((current) => current.filter((item) => item.id !== conversation.id))"));
+  check("Memories optimistically disappear immediately", memories.includes("setMemories((current) => current.filter((item) => item.id !== memory.id))"));
+}

@@ -231,23 +231,20 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
 
   async function deleteMemory(memory) {
     setMenuId(null);
-    if (!memory || pendingMemoryDeletionIds.includes(memory.id)) return;
-    setPendingMemoryDeletionIds((current) => current.includes(memory.id) ? current : [...current, memory.id]);
+    if (!memory || !memories.some((item) => item.id === memory.id)) return;
+
+    // Remove from the book immediately; the DB delete waits only for the short Undo window.
+    setMemories((current) => current.filter((item) => item.id !== memory.id));
     scheduleDeletion({
       batchKey: "memory-cleanup",
-      message: (count) => `${count} ${count === 1 ? "memory removed" : "memories removed"}`,
-      onUndo: () => setPendingMemoryDeletionIds((current) => current.filter((id) => id !== memory.id)),
+      message: (count) => `${count} ${count === 1 ? "memory" : "memories"} removed`,
+      onUndo: () => setMemories((current) => current.some((item) => item.id === memory.id) ? current : [...current, memory].sort(sortMemoryRows)),
       onCommit: async () => {
-        setWorkingId(memory.id);
         const { error: requestError } = await supabase.from("memories").delete().eq("id", memory.id);
         if (requestError) throw requestError;
-        setMemories((current) => current.filter((item) => item.id !== memory.id));
-        setPendingMemoryDeletionIds((current) => current.filter((id) => id !== memory.id));
-        setWorkingId(null);
       },
       onError: (requestError) => {
-        setPendingMemoryDeletionIds((current) => current.filter((id) => id !== memory.id));
-        setWorkingId(null);
+        setMemories((current) => current.some((item) => item.id === memory.id) ? current : [...current, memory].sort(sortMemoryRows));
         setError(requestError.message);
       },
     });

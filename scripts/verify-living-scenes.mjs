@@ -14,7 +14,7 @@ const utility = read("src/utils/livingScenes.js");
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-check("release is v2.10.4 Unified Rapid Cleanup", pkg.version === "2.10.4" && read("src/config/version.js").includes('VELVET_RELEASE = "Unified Rapid Cleanup"'));
+check("release is v2.10.5 Instant Cleanup Commit", pkg.version === "2.10.5" && read("src/config/version.js").includes('VELVET_RELEASE = "Instant Cleanup Commit"'));
 check("Living Scenes stylesheet is the final release layer", main.lastIndexOf("velvet-v270-living-scenes.css") > main.lastIndexOf("velvet-v2616-audio-center.css"));
 
 const header = buildLivingSceneHeader({ sceneState: { location: "Campus quad", time_label: "Late night", present: ["Theo", "Jules"] }, ambientMode: "rain" }, "Theo");

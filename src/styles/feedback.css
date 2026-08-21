@@ -14,7 +14,7 @@
 .velvet-undo>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72rem;font-weight:600;line-height:1.2;letter-spacing:.005em}
 .velvet-undo button{min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 10px;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 38%,var(--border));border-radius:10px;font-size:.74rem;font-weight:800;line-height:1;box-shadow:0 5px 16px rgba(0,0,0,.2)}
 .velvet-undo button:active{transform:scale(.97)}
-.velvet-undo i{position:absolute;right:10px;bottom:5px;left:10px;height:2px;border-radius:999px;background:color-mix(in srgb,var(--accent) 76%,transparent);transform-origin:left;animation:undo-countdown 4s linear forwards}
+.velvet-undo i{position:absolute;right:10px;bottom:5px;left:10px;height:2px;border-radius:999px;background:color-mix(in srgb,var(--accent) 76%,transparent);transform-origin:left;animation:undo-countdown 2.5s linear forwards}
 @keyframes undo-countdown{to{transform:scaleX(0)}}
 
 /* v2.9.5 Centered Confirmation UI */
@@ -38,7 +38,7 @@
   border-radius:14px;
 }
 .velvet-undo--batch button { min-height:36px; white-space:nowrap; }
-.velvet-undo--batch i { animation-duration:5.2s; }
+.velvet-undo--batch i { animation-duration:2.5s; }
 @media (max-width:760px) {
   .velvet-undo--batch { top:max(76px,calc(env(safe-area-inset-top) + 58px)); width:min(278px,calc(100vw - 28px)); }
 }

@@ -120,24 +120,22 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
 
 
   async function deleteConversationFromSwipe(conversation) {
-    if (!conversation || pendingDeletionIds.includes(conversation.id)) return;
-    setPendingDeletionIds((current) => current.includes(conversation.id) ? current : [...current, conversation.id]);
+    if (!conversation || !rows.some((item) => item.id === conversation.id)) return;
+    const trashedAt = new Date().toISOString();
+
+    // Instant visual removal. Keep a snapshot only for the brief Undo window.
+    setRows((current) => current.filter((item) => item.id !== conversation.id));
     scheduleDeletion({
       batchKey: "chat-cleanup",
-      message: (count) => `${count} ${count === 1 ? "chat" : "chats"} moved to Trash`,
-      onUndo: () => setPendingDeletionIds((current) => current.filter((id) => id !== conversation.id)),
+      message: (count) => `${count} ${count === 1 ? "chat" : "chats"} removed`,
+      onUndo: () => setRows((current) => current.some((item) => item.id === conversation.id) ? current : [...current, conversation]),
       onCommit: async () => {
-        setDeletingId(conversation.id);
-        const { error: requestError } = await supabase.from("conversations").update({ trashed_at: new Date().toISOString() }).eq("id", conversation.id);
+        const { error: requestError } = await supabase.from("conversations").update({ trashed_at: trashedAt }).eq("id", conversation.id);
         if (requestError) throw requestError;
-        setRows((current) => current.filter((item) => item.id !== conversation.id));
-        setPendingDeletionIds((current) => current.filter((id) => id !== conversation.id));
-        setDeletingId(null);
       },
       onError: (requestError) => {
         console.error(requestError);
-        setPendingDeletionIds((current) => current.filter((id) => id !== conversation.id));
-        setDeletingId(null);
+        setRows((current) => current.some((item) => item.id === conversation.id) ? current : [...current, conversation]);
         setError("We couldn't delete that conversation.");
       },
     });

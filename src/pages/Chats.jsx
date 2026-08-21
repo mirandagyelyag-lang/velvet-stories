@@ -167,21 +167,24 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   async function deleteConversation(event, conversationId) {
     event?.stopPropagation?.();
     const conversation = conversations.find((item) => item.id === conversationId);
-    if (!conversation || pendingDeletionIds.includes(conversationId)) return;
-    setPendingDeletionIds((current) => current.includes(conversationId) ? current : [...current, conversationId]);
+    if (!conversation || conversation.trashed_at) return;
+    const trashedAt = new Date().toISOString();
+
+    // Remove it from the active shelf immediately. Supabase commits after the short Undo window.
+    setConversations((current) => current.map((item) => item.id === conversationId ? { ...item, trashed_at: trashedAt } : item));
     scheduleDeletion({
       batchKey: "story-cleanup",
-      message: (count) => `${count} ${count === 1 ? "story" : "stories"} moved to Trash`,
-      onUndo: () => setPendingDeletionIds((current) => current.filter((id) => id !== conversationId)),
+      message: (count) => `${count} ${count === 1 ? "story" : "stories"} removed`,
+      onUndo: () => setConversations((current) => current.map((item) => item.id === conversationId ? conversation : item)),
       onCommit: async () => {
-        setDeletingId(conversationId);
-        const { error: requestError } = await supabase.from("conversations").update({ trashed_at: new Date().toISOString() }).eq("id", conversationId);
+        const { error: requestError } = await supabase.from("conversations").update({ trashed_at: trashedAt }).eq("id", conversationId);
         if (requestError) throw requestError;
-        setConversations((current) => current.filter((item) => item.id !== conversationId));
-        setPendingDeletionIds((current) => current.filter((id) => id !== conversationId));
-        setDeletingId(null);
       },
-      onError: (requestError) => { console.error(requestError); setPendingDeletionIds((current) => current.filter((id) => id !== conversationId)); setError("We couldn't delete that conversation."); setDeletingId(null); },
+      onError: (requestError) => {
+        console.error(requestError);
+        setConversations((current) => current.map((item) => item.id === conversationId ? conversation : item));
+        setError("We couldn't delete that conversation.");
+      },
     });
   }
 

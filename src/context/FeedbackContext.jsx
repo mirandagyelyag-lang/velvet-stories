@@ -44,7 +44,7 @@ export function FeedbackProvider({ children }) {
         const pending = toastRef.current;
         setToastState(null); toastTimer.current = null;
         await commitPending(pending);
-      }, 5200);
+      }, 2500);
       return;
     }
 
@@ -62,7 +62,7 @@ export function FeedbackProvider({ children }) {
       const active = toastRef.current;
       setToastState(null); toastTimer.current = null;
       await commitPending(active);
-    }, batchKey ? 5200 : 4000);
+    }, batchKey ? 2500 : 2500);
   }
 
   function undoDeletion() {
