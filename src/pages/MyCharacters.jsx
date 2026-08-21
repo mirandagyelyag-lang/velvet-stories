@@ -11,7 +11,6 @@ import {
   Pencil,
   ArrowRight,
   ChevronDown,
-  Crown,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useCharacters } from "../context/CharactersContext";
@@ -139,7 +138,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
   if (view === "active" && characters.length === 0) {
     return (
       <section className="chats-page chats-page--reference discover-burgundy discover-burgundy--empty-page">
-        <CharacterLibraryHero onCreateCharacter={onCreateCharacter} />
+        <CharacterLibraryHero count={0} onCreateCharacter={onCreateCharacter} />
         <div className="discover-burgundy__empty-hero">
           <small>YOUR PRIVATE CAST</small>
           <h2>No characters yet</h2>
@@ -152,7 +151,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
 
   return (
     <section className={`chats-page chats-page--reference discover-burgundy characters-library ${view === "trash" ? "discover-burgundy--trash" : ""}`}>
-      <CharacterLibraryHero view={view} onCreateCharacter={onCreateCharacter} onBack={openCharacters} />
+      <CharacterLibraryHero view={view} count={sourceCharacters.length} onCreateCharacter={onCreateCharacter} onBack={openCharacters} />
 
       <div className="discover-burgundy__controls characters-library__controls">
         <label className="discover-burgundy__search">
@@ -195,7 +194,9 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
         <EmptyState title="No characters found" text="Try another name, role or tag." />
       ) : (
         <section className="discover-burgundy__section discover-burgundy__section--featured characters-library__section">
-          <header className="characters-library__heading"><div><small>PRIVATE CAST</small><h3>Your characters</h3></div><span>{filtered.length}</span></header>
+          {(search.trim() || activeChip !== "All") && (
+            <div className="characters-library__result-meta">{filtered.length} of {sourceCharacters.length} characters</div>
+          )}
           <div className="discover-burgundy__featured-rail characters-library__grid">
             {filtered.map((character) => (
               <FeatureCard
@@ -228,27 +229,20 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
   );
 }
 
-function CharacterLibraryHero({ view = "active", onCreateCharacter, onBack }) {
+function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, onBack }) {
   const inTrash = view === "trash";
   return (
-    <header className="reference-stories-hero discover-reference-hero characters-library__hero">
-      <div className="reference-stories-hero__private">
-        <Crown size={19} />
-        <span>{inTrash ? "PRIVATE ARCHIVE" : "PRIVATE CAST"}</span>
+    <header className="characters-library__compact-hero">
+      <div className="characters-library__compact-copy">
+        <h1 className={inTrash ? undefined : "characters-library__velvet-title"}>{inTrash ? "Trash" : "Characters"}</h1>
+        <p>{inTrash ? `${count} deleted ${count === 1 ? "character" : "characters"}` : `Your private cast · ${count} saved`}</p>
       </div>
 
-      <div className="reference-stories-title discover-reference-title" aria-label={inTrash ? "Deleted Characters" : "Your Characters"}>
-        <span className="reference-stories-title__script">{inTrash ? "deleted" : "your"}</span>
-        <span className="reference-stories-title__line reference-stories-title__line--left" />
-        <h1 className="characters-library__hero-wordmark">Characters</h1>
-        <span className="reference-stories-title__spark">✦</span>
-        <span className="reference-stories-title__line reference-stories-title__line--right" />
-      </div>
-
-      <div className="discover-reference-hero__actions">
-        {inTrash && <button className="discover-burgundy__back-link" onClick={onBack}>Back to Characters</button>}
-        <button className="reference-stories-new" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={26} /></button>
-      </div>
+      {inTrash ? (
+        <button className="characters-library__hero-back" type="button" onClick={onBack}>Back</button>
+      ) : (
+        <button className="characters-library__hero-create" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={20} /></button>
+      )}
     </header>
   );
 }

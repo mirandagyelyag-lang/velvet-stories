@@ -206,3 +206,9 @@ body.velvet-discover-route .mobile-global-search { display: none !important; }
   .characters-library__card .discover-burgundy__feature-card-main { aspect-ratio: .88 / 1 !important; }
   .characters-library__card .discover-burgundy__feature-card-copy strong { font-size: 1rem !important; }
 }
+
+
+/* v2.9.10: keep the v2.9.8 Characters layout exactly; only change the CHARACTERS wordmark font. */
+.characters-library__compact-copy .characters-library__velvet-title {
+  font-family: "Allura", cursive !important;
+}

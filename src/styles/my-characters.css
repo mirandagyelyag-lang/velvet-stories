@@ -298,35 +298,3 @@ body.velvet-discover-route {
     font-size: 2.22rem !important;
   }
 }
-
-
-/* =========================================================
-   Velvet Stories v2.9.9 · Characters Velvet Wordmark
-   Give Characters the softer Velvet vibe again by using the
-   former script typography from "your" for the main title.
-   ========================================================= */
-.characters-library__hero .characters-library__hero-wordmark {
-  font-family: "Allura", cursive !important;
-  font-weight: 400 !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-  line-height: .92 !important;
-  color: #f0c1cc !important;
-  margin: 30px 8px 0 !important;
-  font-size: clamp(3.25rem, 10vw, 4.85rem) !important;
-  text-shadow: 0 0 24px rgba(194, 83, 111, .14) !important;
-}
-
-@media (max-width:760px) {
-  body.velvet-discover-route .characters-library__hero .characters-library__hero-wordmark {
-    margin: 20px 8px 0 !important;
-    font-size: clamp(2.9rem, 12vw, 4rem) !important;
-    line-height: .96 !important;
-  }
-}
-
-@media (max-width:390px) {
-  body.velvet-discover-route .characters-library__hero .characters-library__hero-wordmark {
-    font-size: clamp(2.7rem, 11.5vw, 3.5rem) !important;
-  }
-}
