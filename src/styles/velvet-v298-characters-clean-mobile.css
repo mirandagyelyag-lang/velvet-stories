@@ -208,7 +208,7 @@ body.velvet-discover-route .mobile-global-search { display: none !important; }
 }
 
 
-/* v2.9.10: keep the v2.9.8 Characters layout exactly; only change the CHARACTERS wordmark font. */
+/* v2.9.11: keep v2.9.10 geometry exactly; only refine the Characters wordmark. */
 .characters-library__compact-copy .characters-library__velvet-title {
-  font-family: "Allura", cursive !important;
+  font-family: "Pinyon Script", cursive !important;
 }
