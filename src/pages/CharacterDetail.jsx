@@ -169,7 +169,7 @@ export default function CharacterDetail({
               <MessageCircle size={18} />
               <span>{latestStory ? "Continue latest story" : "Begin story"}</span>
             </button>
-            <button className="character-profile__new" onClick={() => { setStoryOpening(""); setStoryPersonaId(personas.find((item) => item.isDefault)?.id || ""); setStoryLorebookId(""); setStorySetupOpen(true); }}><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
+            <button className="character-profile__new" type="button" onClick={openStorySetup} aria-label="Start a new story"><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
           </div>
         </div>
       </section>

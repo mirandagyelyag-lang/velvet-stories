@@ -482,7 +482,7 @@
   .character-profile__intro { font-size: .8rem; line-height: 1.65; }
   .character-profile__hero-actions { grid-column: 1; display: grid; grid-template-columns: 1fr auto; width: 100%; }
   .character-profile__hero-actions button { padding: 0 14px; }
-  .character-profile__new span { display: none; }
+  .character-profile__new span { display: inline; }
 
   .character-profile__layout {
     gap: 14px;
