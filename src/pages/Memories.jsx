@@ -31,6 +31,7 @@ import { useCharacters } from "../context/CharactersContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
 import { useFeedback } from "../context/FeedbackContext";
+import SwipeToTrash from "../components/SwipeToTrash";
 import "../styles/memories.css";
 
 const categories = [
@@ -68,7 +69,7 @@ const groups = [
 const emptyDraft = { content: "", category: "fact", importance: 3, isImportant: false, isPinned: true, isCanon: false, scope: "character", replaceMemoryId: "", mergeMemoryId: "" };
 
 function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
-  const { confirmAction, scheduleDeletion } = useFeedback();
+  const { scheduleDeletion } = useFeedback();
   const { user } = useAuth();
   const { characters } = useCharacters();
   const { theme } = useTheme();
@@ -88,6 +89,7 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
   const [draft, setDraft] = useState(emptyDraft);
   const [draftCharacterId, setDraftCharacterId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pendingMemoryDeletionIds, setPendingMemoryDeletionIds] = useState([]);
   const [workingId, setWorkingId] = useState(null);
   const [importanceFilter, setImportanceFilter] = useState("all");
 
@@ -229,11 +231,29 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
 
   async function deleteMemory(memory) {
     setMenuId(null);
-    if (!await confirmAction({ title: "Delete this memory?", message: "The character will no longer receive this fact as long-term context.", confirmLabel: "Delete memory" })) return;
-    scheduleDeletion({ message: "Deleting memory", onCommit: async () => { setWorkingId(memory.id); const { error: requestError } = await supabase.from("memories").delete().eq("id", memory.id); if (requestError) throw requestError; setMemories((current) => current.filter((item) => item.id !== memory.id)); setWorkingId(null); }, onError: (requestError) => { setWorkingId(null); setError(requestError.message); } });
+    if (!memory || pendingMemoryDeletionIds.includes(memory.id)) return;
+    setPendingMemoryDeletionIds((current) => current.includes(memory.id) ? current : [...current, memory.id]);
+    scheduleDeletion({
+      batchKey: "memory-cleanup",
+      message: (count) => `${count} ${count === 1 ? "memory removed" : "memories removed"}`,
+      onUndo: () => setPendingMemoryDeletionIds((current) => current.filter((id) => id !== memory.id)),
+      onCommit: async () => {
+        setWorkingId(memory.id);
+        const { error: requestError } = await supabase.from("memories").delete().eq("id", memory.id);
+        if (requestError) throw requestError;
+        setMemories((current) => current.filter((item) => item.id !== memory.id));
+        setPendingMemoryDeletionIds((current) => current.filter((id) => id !== memory.id));
+        setWorkingId(null);
+      },
+      onError: (requestError) => {
+        setPendingMemoryDeletionIds((current) => current.filter((id) => id !== memory.id));
+        setWorkingId(null);
+        setError(requestError.message);
+      },
+    });
   }
 
-  const activeMemories = useMemo(() => memories.filter((memory) => !memory.superseded_at), [memories]);
+  const activeMemories = useMemo(() => memories.filter((memory) => !memory.superseded_at && !pendingMemoryDeletionIds.includes(memory.id)), [memories, pendingMemoryDeletionIds]);
   const replacementCandidates = useMemo(() => activeMemories.filter((memory) => memory.character_id === draftCharacterId && !memory.is_canon && memory.id !== editingMemory?.id), [activeMemories, draftCharacterId, editingMemory?.id]);
 
   const memoryIndexGroups = useMemo(() => {
@@ -313,8 +333,14 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
 
       <section className="memory-character-detail__list">
         <header><div><small>MEMORY BOOK</small><h3>{importanceFilter === "all" ? "Everything Velvet remembers" : `${selectedCharacterMemories.length} matching memories`}</h3></div><span>{selectedCharacterMemories.length}</span></header>
-        {selectedCharacterMemories.length ? selectedCharacterMemories.map((memory) => <CharacterThoughtRow
+        {selectedCharacterMemories.length ? selectedCharacterMemories.map((memory) => <SwipeToTrash
           key={memory.id}
+          className="swipe-trash--memory"
+          direction="right"
+          disabled={workingId === memory.id}
+          onDelete={() => deleteMemory(memory)}
+          label={`Delete memory for ${selectedMemoryCharacter.name}`}
+        ><CharacterThoughtRow
           memory={memory}
           busy={workingId === memory.id}
           menuOpen={menuId === memory.id}
@@ -323,7 +349,7 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
           onPin={() => togglePinned(memory)}
           onEdit={() => openEdit(memory)}
           onDelete={() => deleteMemory(memory)}
-        />) : <div className="memory-character-detail__empty"><Sparkles size={18}/><strong>No memories at this importance.</strong><span>Try another filter or add one for {selectedMemoryCharacter.name}.</span></div>}
+        /></SwipeToTrash>) : <div className="memory-character-detail__empty"><Sparkles size={18}/><strong>No memories at this importance.</strong><span>Try another filter or add one for {selectedMemoryCharacter.name}.</span></div>}
       </section>
 
       <button className="memories-reference__add-bottom" onClick={() => openCreateFor(selectedMemoryCharacter.id)}><Plus size={22}/>Add memory for {selectedMemoryCharacter.name}</button>

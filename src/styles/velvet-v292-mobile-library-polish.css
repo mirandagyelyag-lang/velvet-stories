@@ -311,3 +311,13 @@
   .swipe-trash__content,
   .memory-character-index-card__main { transition:none !important; }
 }
+
+/* v2.10.3 · Rapid cleanup: intentional right-swipe on Chats + Memories */
+.swipe-trash--right .swipe-trash__action {
+  inset: 0 auto 0 0;
+}
+.swipe-trash--memory { border-radius: 14px; }
+.swipe-trash--memory .character-memory-thought { margin:0; background:var(--stories-canvas,#10090e); }
+@media (max-width:760px) {
+  .swipe-trash--right .swipe-trash__action { width:104px; }
+}

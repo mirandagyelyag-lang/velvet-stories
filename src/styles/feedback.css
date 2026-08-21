@@ -28,3 +28,17 @@
   .velvet-dialog footer button{min-height:40px;padding:7px 8px;font-size:.68rem}
   .velvet-undo{left:50%;top:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);width:min(224px,calc(100vw - 52px));padding:10px 10px 10px 13px;gap:9px;border-radius:15px}
 }
+
+/* v2.10.3 · Batch undo stays out of the rapid-clean swipe lane. */
+.velvet-undo--batch {
+  top:max(82px,calc(env(safe-area-inset-top) + 62px));
+  width:min(286px,calc(100vw - 36px));
+  grid-template-columns:minmax(0,1fr) auto;
+  padding:10px 10px 10px 13px;
+  border-radius:14px;
+}
+.velvet-undo--batch button { min-height:36px; white-space:nowrap; }
+.velvet-undo--batch i { animation-duration:5.2s; }
+@media (max-width:760px) {
+  .velvet-undo--batch { top:max(76px,calc(env(safe-area-inset-top) + 58px)); width:min(278px,calc(100vw - 28px)); }
+}

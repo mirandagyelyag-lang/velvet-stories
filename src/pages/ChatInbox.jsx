@@ -6,7 +6,6 @@ import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
 import GroupStoryModal from "../components/GroupStoryModal";
 import SwipeToTrash from "../components/SwipeToTrash";
-import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 
 const READ_KEY_PREFIX = "velvet_chat_seen_v2114_";
@@ -15,8 +14,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
   const { user } = useAuth();
   const { characters } = useCharacters();
   const { theme } = useTheme();
-  const { settings } = useSettings();
-  const { confirmAction, scheduleDeletion } = useFeedback();
+  const { scheduleDeletion } = useFeedback();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -123,16 +121,10 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
 
   async function deleteConversationFromSwipe(conversation) {
     if (!conversation || pendingDeletionIds.includes(conversation.id)) return;
-    const approved = !settings.confirmBeforeDelete || await confirmAction({
-      title: "Delete this conversation?",
-      message: "It will move to Trash. You can undo this action or restore it later from Stories.",
-      confirmLabel: "Move to Trash",
-    });
-    if (!approved) return;
-
-    setPendingDeletionIds((current) => [...current, conversation.id]);
+    setPendingDeletionIds((current) => current.includes(conversation.id) ? current : [...current, conversation.id]);
     scheduleDeletion({
-      message: "Moved to Trash",
+      batchKey: "chat-cleanup",
+      message: (count) => `${count} ${count === 1 ? "chat" : "chats"} moved to Trash`,
       onUndo: () => setPendingDeletionIds((current) => current.filter((id) => id !== conversation.id)),
       onCommit: async () => {
         setDeletingId(conversation.id);
@@ -218,6 +210,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
               <SwipeToTrash
                 key={conversation.id}
                 className="swipe-trash--chat"
+                direction="right"
                 disabled={deletingId === conversation.id}
                 onDelete={() => deleteConversationFromSwipe(conversation)}
                 label={`Delete ${displayName}`}
