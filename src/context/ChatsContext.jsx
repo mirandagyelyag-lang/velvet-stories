@@ -700,7 +700,10 @@ export function ChatsProvider({
       // Gemini can emit tiny deltas. Updating the whole React chat for every
       // syllable makes mobile scroll jump and can delay subsequent chunks.
       const elapsed = Date.now() - lastStreamFlushAt;
-      const waitMs = Math.max(0, 72 - elapsed);
+      // VELVET_STREAM_POLISH_V2: slightly slower paint cadence on touch devices
+      // keeps long replies fluid without making the stream feel delayed.
+      const targetCadence = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 88 : 60;
+      const waitMs = Math.max(0, targetCadence - elapsed);
       streamFlushTimer = setTimeout(() => {
         streamFlushTimer = null;
         if (!streamStarted || requestWasCancelled()) return;
@@ -2244,7 +2247,7 @@ export function ChatsProvider({
     return true;
   }
 
-  async function restoreStorySnapshot(characterId, snapshotId) {
+  async function restoreStorySnapshot(characterId, snapshotId, { safetySnapshot = true } = {}) {
     const { data, error } = await supabase
       .from("story_snapshots")
       .select("payload")
@@ -2252,7 +2255,7 @@ export function ChatsProvider({
       .eq("user_id", user.id)
       .single();
     if (error) throw error;
-    return applyStorySnapshot(characterId, data.payload, { safetySnapshot: true });
+    return applyStorySnapshot(characterId, data.payload, { safetySnapshot });
   }
 
   async function exportStoryBackupData(characterId) {

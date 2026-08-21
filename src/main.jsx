@@ -35,6 +35,7 @@ import "./styles/velvet-v2611-six-fixes.css";
 import "./styles/velvet-v2616-audio-center.css";
 import "./styles/velvet-v270-living-scenes.css";
 import "./styles/velvet-v274-in-chat-actions.css";
+import "./styles/velvet-v280-chat-experience.css";
 
 applySafeModeClass();
 

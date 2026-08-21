@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Reply,
   Rewind,
+  RotateCcw,
   Send,
   SlidersHorizontal,
   Sparkles,
@@ -124,6 +125,9 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     refreshStoryMetadata,
     toggleMessageBookmark,
     loadMessageIntoView,
+    createStorySnapshot,
+    restoreStorySnapshot,
+    deleteStorySnapshot,
     dismissCatchUp,
   } = useChats();
 
@@ -148,6 +152,9 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const [messageFeedback, setMessageFeedback] = useState({});
   const [feedbackNotice, setFeedbackNotice] = useState(null);
   const [replacementUndo, setReplacementUndo] = useState(null);
+  const [rewindUndo, setRewindUndo] = useState(null);
+  const [actionNotice, setActionNotice] = useState(null);
+  const [aiPhaseOverride, setAiPhaseOverride] = useState("");
   const [memoryCaptureNotice, setMemoryCaptureNotice] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [alternatives, setAlternatives] = useState([]);
@@ -191,6 +198,9 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const stoppedRef = useRef(false);
   const generationRunRef = useRef(0);
   const chatExitGuardUntilRef = useRef(0);
+  const actionNoticeTimerRef = useRef(null);
+  const aiPhaseTimerRef = useRef(null);
+  const rewindUndoTimerRef = useRef(null);
   const loadingHistoryRef = useRef(false);
   const stickToBottomRef = useRef(true);
   const preserveScrollOnKeyboardRef = useRef(null);
@@ -231,6 +241,66 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     if (Date.now() < chatExitGuardUntilRef.current) return;
     onBack?.();
   }
+
+  // VELVET_CHAT_POLISH_V280
+  // Tiny, deterministic feedback replaces silent button presses. These notices
+  // never navigate and never compete with the composer for focus.
+  function showActionNotice(text, tone = "success", duration = 1900) {
+    if (actionNoticeTimerRef.current) window.clearTimeout(actionNoticeTimerRef.current);
+    setActionNotice({ text, tone, id: Date.now() });
+    actionNoticeTimerRef.current = window.setTimeout(() => {
+      setActionNotice(null);
+      actionNoticeTimerRef.current = null;
+    }, duration);
+  }
+
+  function showAiPhase(label, duration = 850) {
+    if (aiPhaseTimerRef.current) window.clearTimeout(aiPhaseTimerRef.current);
+    setAiPhaseOverride(label);
+    aiPhaseTimerRef.current = window.setTimeout(() => {
+      setAiPhaseOverride("");
+      aiPhaseTimerRef.current = null;
+    }, duration);
+  }
+
+  async function clearRewindUndo({ removeSnapshot = true } = {}) {
+    const current = rewindUndo;
+    if (rewindUndoTimerRef.current) {
+      window.clearTimeout(rewindUndoTimerRef.current);
+      rewindUndoTimerRef.current = null;
+    }
+    setRewindUndo(null);
+    if (removeSnapshot && current?.snapshotId) {
+      try { await deleteStorySnapshot(current.snapshotId); }
+      catch (error) { console.debug("Could not remove temporary rewind snapshot:", error); }
+    }
+  }
+
+  function armRewindUndo(snapshotId) {
+    if (!snapshotId) return;
+    if (rewindUndoTimerRef.current) window.clearTimeout(rewindUndoTimerRef.current);
+    setRewindUndo({ snapshotId, label: "Rewind" });
+    rewindUndoTimerRef.current = window.setTimeout(() => {
+      setRewindUndo(null);
+      rewindUndoTimerRef.current = null;
+      deleteStorySnapshot(snapshotId).catch((error) => console.debug("Temporary rewind snapshot cleanup skipped:", error));
+    }, 10000);
+  }
+
+  async function undoRewind() {
+    if (!rewindUndo?.snapshotId || busy) return;
+    const snapshotId = rewindUndo.snapshotId;
+    try {
+      showActionNotice("Restoring story…", "working", 5000);
+      await restoreStorySnapshot(character.id, snapshotId, { safetySnapshot: false });
+      await clearRewindUndo({ removeSnapshot: true });
+      showActionNotice("Rewind undone ✓");
+      if (settings.haptics) navigator.vibrate?.(6);
+    } catch (error) {
+      setSendError(translateMessageError(error.message));
+      showActionNotice("Couldn’t undo rewind", "error", 2600);
+    }
+  }
   useEffect(() => {
     setBugReportPrivateContext({
       character: character.name,
@@ -241,6 +311,18 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   useEffect(() => {
     return () => stopSpeech();
   }, []);
+
+  useEffect(() => () => {
+    if (actionNoticeTimerRef.current) window.clearTimeout(actionNoticeTimerRef.current);
+    if (aiPhaseTimerRef.current) window.clearTimeout(aiPhaseTimerRef.current);
+    if (rewindUndoTimerRef.current) window.clearTimeout(rewindUndoTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (!replacementUndo) return undefined;
+    const timer = window.setTimeout(() => setReplacementUndo(null), 10000);
+    return () => window.clearTimeout(timer);
+  }, [replacementUndo?.messageId, replacementUndo?.content]);
 
   const conversation = getConversation(character.id);
   const conversationLoading = isConversationLoading(character.id);
@@ -324,6 +406,11 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   // Never lock sending merely because a stale temporary bubble exists.
   // The context generation manager is the authoritative busy state.
   const busy = sending || characterGenerating;
+  const aiStatusLabel = aiPhaseOverride || (
+    sending ? "Sending" :
+    characterStreaming ? "Writing" :
+    (isTyping || generationState === "generating") ? "Thinking" : ""
+  );
   const activeSceneImage = sceneImages[activeSceneImageIndex] || "";
   const sceneMarkers = useMemo(() => {
     const map = new Map();
@@ -698,6 +785,8 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
     const replyForThisMessage = replyTo;
     const noteForThisGeneration = directorNote.trim();
+    const submittedDraft = cleanMessage;
+    let userMessageSaved = false;
 
     try {
       stoppedRef.current = false;
@@ -725,6 +814,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         replyPreview: replyForThisMessage.content,
         replySender: replyForThisMessage.sender,
       } : {});
+      userMessageSaved = true;
 
       // Stop may have happened while the user message was being saved.
       if (generationRunRef.current !== runId || stoppedRef.current) return;
@@ -734,6 +824,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         directorInstruction: noteForThisGeneration,
         expectedUserMessageId: savedUserMessage.id,
       });
+      showAiPhase("Finishing", 420);
       if (generationResult?.learnedMemoryCount) {
         setMemoryCaptureNotice(generationResult.learnedMemoryCount);
         window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
@@ -746,6 +837,11 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       ) return;
 
       console.error("Error generating character response:", error);
+      if (!userMessageSaved && submittedDraft) {
+        setMessage((current) => current.trim() ? current : submittedDraft);
+        if (replyForThisMessage) setReplyTo(replyForThisMessage);
+        window.requestAnimationFrame(() => resizeComposer());
+      }
       setSendError(translateMessageError(error.message));
     } finally {
       // Critical: an older stopped request must not turn off the Stop button
@@ -773,6 +869,8 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     setIsTyping(false);
     setSilentCue("");
     setSendError("");
+    showAiPhase("Stopped", 900);
+    showActionNotice("Generation stopped", "neutral", 1200);
     window.requestAnimationFrame(() => {
       try { textareaRef.current?.focus({ preventScroll: true }); } catch { textareaRef.current?.focus(); }
     });
@@ -786,7 +884,10 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       setSendError("");
       setSilentCue("");
       setIsTyping(true);
+      showAiPhase("Retrying", 900);
+      showActionNotice("Retrying…", "working", 1200);
       await generateCharacterReply(character.id);
+      showAiPhase("Finishing", 420);
     } catch (error) {
       if (
         generationRunRef.current === runId &&
@@ -1043,11 +1144,14 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       if (action === "memory") {
         await saveMessageAsMemory(character.id, selectedMessage.content);
         closeActionsAfterAction();
+        showActionNotice("Saved to Memories ✓");
       }
 
       if (action === "bookmark") {
+        const wasBookmarked = Boolean(selectedMessage.isBookmarked);
         await toggleMessageBookmark(character.id, selectedMessage.id);
         closeActionsAfterAction();
+        showActionNotice(wasBookmarked ? "Saved moment removed" : "Moment saved ✓");
       }
 
       if (action === "rewind") {
@@ -1063,7 +1167,17 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           confirmLabel: "Rewind story",
         });
         if (!approved) return;
+        showActionNotice("Rewinding…", "working", 5000);
+        let safetySnapshot = null;
+        try {
+          safetySnapshot = await createStorySnapshot(character.id, "Temporary rewind undo");
+        } catch (snapshotError) {
+          console.warn("Rewind undo snapshot unavailable:", snapshotError);
+        }
         await rewindToMessage(character.id, messageId);
+        if (safetySnapshot?.id) armRewindUndo(safetySnapshot.id);
+        showActionNotice("Rewound ✓");
+        if (settings.haptics) navigator.vibrate?.(7);
         return;
       }
 
@@ -1115,7 +1229,12 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     try {
       setSendError("");
       await selectMessageAlternative(character.id, replacementUndo.messageId, replacementUndo.content);
+      const undoRows = await getMessageAlternatives(replacementUndo.messageId).catch(() => []);
+      const undoVersions = normalizeVersionRows(undoRows, replacementUndo.content);
+      undoVersions.index = Math.max(0, undoVersions.items.findIndex((item) => item.content === replacementUndo.content));
+      setResponseVersions((current) => ({ ...current, [replacementUndo.messageId]: undoVersions }));
       setReplacementUndo(null);
+      showActionNotice("Change undone ✓");
     } catch (error) {
       setSendError(translateMessageError(error.message));
     }
@@ -1185,6 +1304,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       await editCharacterMessageInPlace(character.id, editedId, actionDraft);
       setReplacementUndo({ messageId: editedId, content: previousContent, label: "Rewrite" });
       closeActionsAfterAction();
+      showActionNotice("Reply rewritten ✓");
     } catch (error) {
       setSendError(translateMessageError(error.message));
     } finally {
@@ -1210,8 +1330,17 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       setActionLoading(true);
       closeActionsAfterAction();
       setIsTyping(true);
+      showAiPhase("Rewriting", 1100);
+      showActionNotice("Generating another response…", "working", 5000);
       const regenerationResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
+      const regeneratedContent = regenerationResult?.message?.content || previousContent;
       setReplacementUndo({ messageId: regenerationResult?.message?.id || targetId, content: previousContent, label: "Regenerate" });
+      const regeneratedRows = await getMessageAlternatives(targetId).catch(() => []);
+      const regeneratedVersions = normalizeVersionRows(regeneratedRows, regeneratedContent);
+      regeneratedVersions.index = Math.max(0, regeneratedVersions.items.findIndex((item) => item.content === regeneratedContent));
+      setResponseVersions((current) => ({ ...current, [targetId]: regeneratedVersions }));
+      showAiPhase("Finishing", 420);
+      showActionNotice("New response ready ✓");
       if (regenerationResult?.learnedMemoryCount) {
         setMemoryCaptureNotice(regenerationResult.learnedMemoryCount);
         window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
@@ -1288,6 +1417,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           ...current,
           [chatMessage.id]: { ...state, index: nextIndex },
         }));
+        showActionNotice(`Response ${nextIndex + 1} / ${Math.max(1, state.items.length)}`, "neutral", 1000);
         return;
       }
 
@@ -1298,16 +1428,21 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           ...current,
           [chatMessage.id]: { ...state, index: nextIndex },
         }));
+        showActionNotice(`Response ${nextIndex + 1} / ${Math.max(1, state.items.length)}`, "neutral", 1000);
         return;
       }
 
       setIsTyping(true);
+      showAiPhase("Rewriting", 1100);
+      showActionNotice("Generating another response…", "working", 5000);
       const result = await regenerateCharacterReply(character.id, chatMessage.id, "");
       const currentContent = result?.message?.content || chatMessage.content;
       const rows = await getMessageAlternatives(chatMessage.id);
       const refreshed = normalizeVersionRows(rows, currentContent);
       refreshed.index = Math.max(0, refreshed.items.findIndex((item) => item.content === currentContent));
       setResponseVersions((current) => ({ ...current, [chatMessage.id]: refreshed }));
+      showAiPhase("Finishing", 420);
+      showActionNotice(`Response ${refreshed.index + 1} / ${Math.max(1, refreshed.items.length)} ✓`);
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Response version navigation failed:", error);
@@ -1340,8 +1475,17 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       setSendError("");
       closeActionsAfterAction();
       setIsTyping(true);
+      showAiPhase("Rewriting", 1100);
+      showActionNotice("Refining response…", "working", 5000);
       const refinementResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
       setReplacementUndo({ messageId: refinementResult?.message?.id || targetId, content: previousContent, label: "Refine" });
+      const refinedContent = refinementResult?.message?.content || previousContent;
+      const refinedRows = await getMessageAlternatives(targetId).catch(() => []);
+      const refinedVersions = normalizeVersionRows(refinedRows, refinedContent);
+      refinedVersions.index = Math.max(0, refinedVersions.items.findIndex((item) => item.content === refinedContent));
+      setResponseVersions((current) => ({ ...current, [targetId]: refinedVersions }));
+      showAiPhase("Finishing", 420);
+      showActionNotice("Refined ✓");
       if (refinementResult?.learnedMemoryCount) {
         setMemoryCaptureNotice(refinementResult.learnedMemoryCount);
         window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
@@ -1362,6 +1506,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       setActionLoading(true);
       await selectMessageAlternative(character.id, selectedMessage.id, alternative.content);
       closeActionsAfterAction();
+      showActionNotice("Response version selected ✓");
     } catch (error) {
       setSendError(error.message || "We couldn't select that response.");
     } finally {
@@ -1439,6 +1584,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     setDirectorMode("next");
     setDirectorNoteOpen(false);
     setSendError("");
+    showActionNotice("Next beat queued ✓");
     if (settings.haptics) navigator.vibrate?.(5);
   }
 
@@ -1458,8 +1604,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     setDirectorMode("next");
     setDirectorNoteOpen(false);
     setDismissedBeatSuggestion(nextBeatSuggestion.id);
-    setSilentCue(`Possible next beat queued · ${nextBeatSuggestion.label}`);
-    window.setTimeout(() => setSilentCue(""), 1800);
+    showActionNotice(`Next beat queued · ${nextBeatSuggestion.label} ✓`);
     if (settings.haptics) navigator.vibrate?.(5);
   }
 
@@ -1485,6 +1630,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     }
 
     const targetId = latestMessage.id;
+    const previousContent = latestMessage.content;
     try {
       setActionLoading(true);
       setSendError("");
@@ -1494,10 +1640,20 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         localStorage.removeItem(`velvet_director_note_${conversation.conversationId}`);
       }
       setIsTyping(true);
+      showAiPhase("Rewriting", 1100);
+      showActionNotice("Rewriting last reply…", "working", 5000);
 
       // Important: this is a regeneration of the same character message, not a
       // new turn. The previous response is replaced immediately in-place.
-      await regenerateCharacterReply(character.id, targetId, instruction, []);
+      const rewriteResult = await regenerateCharacterReply(character.id, targetId, instruction, []);
+      const rewrittenContent = rewriteResult?.message?.content || previousContent;
+      setReplacementUndo({ messageId: rewriteResult?.message?.id || targetId, content: previousContent, label: "Rewrite" });
+      const rewrittenRows = await getMessageAlternatives(targetId).catch(() => []);
+      const rewrittenVersions = normalizeVersionRows(rewrittenRows, rewrittenContent);
+      rewrittenVersions.index = Math.max(0, rewrittenVersions.items.findIndex((item) => item.content === rewrittenContent));
+      setResponseVersions((current) => ({ ...current, [targetId]: rewrittenVersions }));
+      showAiPhase("Finishing", 420);
+      showActionNotice("Reply rewritten ✓");
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Scene Director regeneration failed:", error);
@@ -1777,6 +1933,25 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           <button type="button" className="chat__beat-suggestion-dismiss" onClick={() => setDismissedBeatSuggestion(nextBeatSuggestion.id)} aria-label="Dismiss suggestion"><X size={13}/></button>
         </div>
       )}
+
+      <div className="chat__polish-stack" aria-live="polite" aria-atomic="true">
+        {aiStatusLabel && (
+          <div className={`chat__ai-phase${aiStatusLabel === "Stopped" ? " is-stopped" : ""}`} role="status">
+            {aiStatusLabel !== "Stopped" && <span className="chat__ai-phase-dot" />}<span>{aiStatusLabel}</span>
+          </div>
+        )}
+        {actionNotice && (
+          <div className={`chat__action-notice chat__action-notice--${actionNotice.tone}`} role="status">
+            {actionNotice.tone === "working" ? <LoaderCircle className="spin" size={14}/> : actionNotice.tone === "error" ? <AlertCircle size={14}/> : <Check size={14}/>}
+            <span>{actionNotice.text}</span>
+          </div>
+        )}
+        {rewindUndo && (
+          <div className="chat__rewind-undo" role="status">
+            <Rewind size={14}/><span>Story rewound.</span><button type="button" onClick={undoRewind} disabled={busy}><RotateCcw size={13}/>Undo</button>
+          </div>
+        )}
+      </div>
 
       {silentCue && <div className="chat__silent-cue" role="status"><Sparkles size={13}/><span>{silentCue}</span></div>}
 
