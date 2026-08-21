@@ -14,7 +14,7 @@ const utility = read("src/utils/livingScenes.js");
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-check("release is v2.9.8 Characters Clean Mobile Rework", pkg.version === "2.9.8" && read("src/config/version.js").includes('VELVET_RELEASE = "Characters Clean Mobile Rework"'));
+check("release is v2.9.7 Visible Centered Undo", pkg.version === "2.9.7" && read("src/config/version.js").includes('VELVET_RELEASE = "Visible Centered Undo"'));
 check("Living Scenes stylesheet is the final release layer", main.lastIndexOf("velvet-v270-living-scenes.css") > main.lastIndexOf("velvet-v2616-audio-center.css"));
 
 const header = buildLivingSceneHeader({ sceneState: { location: "Campus quad", time_label: "Late night", present: ["Theo", "Jules"] }, ambientMode: "rain" }, "Theo");

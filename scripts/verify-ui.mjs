@@ -53,7 +53,6 @@ const feedbackStyles = read("src/styles/feedback.css");
 const studioLiteStyles = read("src/styles/velvet-v290-character-studio-lite.css");
 const privateLibraryStyles = read("src/styles/velvet-v291-private-library-rework.css");
 const mobileLibraryStyles = read("src/styles/velvet-v292-mobile-library-polish.css");
-const charactersCleanStyles = read("src/styles/velvet-v298-characters-clean-mobile.css");
 const chatInbox = read("src/pages/ChatInbox.jsx");
 const swipeTrash = read("src/components/SwipeToTrash.jsx");
 const myCharacters = read("src/pages/MyCharacters.jsx");
@@ -64,7 +63,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("burgundy reference layer stays after the mobile foundation", main.includes('import "./styles/velvet-burgundy-reference.css";') && main.lastIndexOf("velvet-burgundy-reference.css") > main.lastIndexOf("velvet-mobile-foundation.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.9.8 Characters Clean Mobile Rework", pkg.version === "2.9.8" && read("src/config/version.js").includes('VELVET_RELEASE = "Characters Clean Mobile Rework"'));
+check("release is v2.9.7 Visible Centered Undo", pkg.version === "2.9.7" && read("src/config/version.js").includes('VELVET_RELEASE = "Visible Centered Undo"'));
 check("Stories owns the document canvas while mounted", read("src/pages/Chats.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/Chats.jsx").includes('classList.remove("velvet-burgundy-route")'));
 check("Burgundy background cannot end before the document", reference.includes('body.velvet-burgundy-route .app__content') && reference.includes('background: var(--stories-canvas) !important'));
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
@@ -139,7 +138,6 @@ check("Chats uses separated quiet conversation cards", privateLibraryStyles.incl
 check("Chats uses a tiny unread dot instead of count badges", inbox.includes("reference-inbox__status-dot") && !inbox.includes("conversation.unreadCount > 99") && reference.includes("width: 7px"));
 check("Chats hero and rows are denser on phone", reference.includes("min-height: 112px !important") && reference.includes("min-height: 72px") && reference.includes("width: 50px") && reference.includes("height: 50px"));
 check("Characters mobile library keeps a safe compact grid", privateLibraryStyles.includes(".characters-library__grid") && privateLibraryStyles.includes("grid-template-columns:repeat(2,minmax(0,1fr))"));
-check("Characters clean mobile layer removes duplicated search UI and shortens cards", charactersCleanStyles.includes("body.velvet-discover-route .mobile-global-search { display: none !important; }") && charactersCleanStyles.includes("aspect-ratio: .90 / 1 !important") && charactersCleanStyles.includes("height: 60px !important"));
 check("Profile action buttons become full-width", mobile.includes(".profile-setting>button{grid-column:1/-1!important;width:100%!important"));
 check("Settings controls do not squeeze", mobile.includes(".setting-row{align-items:stretch!important;flex-direction:column!important"));
 const profile = read("src/pages/Profile.jsx");
@@ -184,10 +182,10 @@ check("full AI content remains one conversation turn", chat.includes('<RoleplayT
 
 const discoverPage = read("src/pages/MyCharacters.jsx");
 const discoverStyles = read("src/styles/my-characters.css");
-check("Characters uses one clean private-library hierarchy", discoverPage.includes('h1>{inTrash ? "Trash" : "Characters"}</h1>') && discoverPage.includes('Your private cast · ${count} saved') && !discoverPage.includes("<h1>CHARACTERS</h1>") && !discoverPage.includes("Popular this week") && !discoverPage.includes("Explore by vibe"));
+check("Characters replaces public-style Discover in the visible product", discoverPage.includes("CharacterLibraryHero") && discoverPage.includes("<h1>CHARACTERS</h1>") && discoverPage.includes("PRIVATE CAST") && !discoverPage.includes("Popular this week") && !discoverPage.includes("Explore by vibe"));
 check("Characters keeps full real character actions", ["toggleFavorite", "onEditCharacter", "openTags", "handleDelete", "Duplicate & remix"].every((token)=>discoverPage.includes(token)));
 check("Characters library has search favorites tags and trash", discoverPage.includes("Search characters or tags") && discoverPage.includes('MAIN_FILTERS = ["All", "Favorites"]') && discoverPage.includes("dynamicTags") && discoverPage.includes("Trash"));
-check("Characters keeps the private Stories shell without the oversized decorative hero", discoverPage.includes("chats-page chats-page--reference discover-burgundy") && discoverPage.includes("characters-library__compact-hero") && !discoverPage.includes("reference-stories-title") && !discoverPage.includes("fauxPopularity") && !discoverPage.includes("toFixed(1)"));
+check("Characters uses the same private Stories shell without fake popularity", discoverPage.includes("chats-page chats-page--reference discover-burgundy") && discoverPage.includes("reference-stories-title") && !discoverPage.includes("fauxPopularity") && !discoverPage.includes("toFixed(1)"));
 check("Characters grid is responsive and private-library focused", privateLibraryStyles.includes(".characters-library__grid") && privateLibraryStyles.includes("repeat(auto-fill,minmax(210px,1fr))") && privateLibraryStyles.includes("PRIVATE CAST") === false);
 check("NSFW Mature mode is visible in Story settings", chat.includes("NSFW / Mature mode") && chat.includes("chat-controls__mature-switch") && chat.includes("toggleMatureMode"));
 check("NSFW Mature mode saves as a real conversation setting", read("src/context/ChatsContext.jsx").includes("mature_mode") && read("src/context/ChatsContext.jsx").includes("matureMode"));
@@ -260,7 +258,7 @@ check("ambience fades cleanly and enforces one active room", storyAmbience.inclu
 check("mobile ambience pauses and resumes instead of restarting on visibility changes", audioBus.includes('window.addEventListener("pagehide", stopAllAudio)') && !audioBus.includes('document.visibilityState === "hidden"') && storyAmbience.includes("visibilityPausedRef") && storyAmbience.includes("pauseActiveAmbience") && storyAmbience.includes("switchAmbience(latest.mode, latest.volume)"));
 check("device voice center supports language filters favorites and future neural engines", storyHubDrawer.includes("All languages") && storyHubDrawer.includes("Favorite this voice") && speechUtil.includes("neuralReady: true") && storyHubDrawer.includes("Neural-ready architecture"));
 check("voice volume is remembered without changing story ambience volume", storyHubDrawer.includes('writeAudioPreference("voice", character.id') && chat.includes('readAudioPreference("voice", character.id') && storyHubDrawer.includes("ambientVolume"));
-check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes('"2.9.8"'));
+check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes('"2.9.7"'));
 check("PWA Update Doctor can repair an interrupted update without clearing stories", pwaContext.includes("UPDATE_PENDING_KEY") && pwaContext.includes("repairUpdate") && pwaContext.includes("clearOldShellCaches") && !pwaContext.includes("localStorage.clear"));
 check("Settings shows exact build and service health", settings.includes("About Velvet") && settings.includes("VELVET_VERSION") && settings.includes("SUPABASE") && settings.includes("STORY ENGINE") && settings.includes("Check for update"));
 check("chat menu exposes the private-first bug reporter", chat.includes("Report a problem") && diagnostics.includes("Private chat text stays out unless you explicitly include it") && bugReporter.includes("includePrivate"));
