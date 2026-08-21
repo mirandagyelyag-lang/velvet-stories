@@ -65,7 +65,7 @@ import { supabase } from "../services/supabase";
 import { speakText, stopSpeech } from "../utils/speech";
 import { readAudioPreference, stopAllAudio } from "../utils/audioBus";
 import { clearBugReportPrivateContext, setBugReportPrivateContext } from "../utils/bugReporter";
-import { buildLivingSceneHeader, buildNextBeatSuggestion, continuityGuardLabel, continuityGuardTitle } from "../utils/livingScenes";
+import { buildLivingSceneHeader, continuityGuardLabel, continuityGuardTitle } from "../utils/livingScenes";
 import "../styles/chat.css";
 
 const SILENT_CONTINUE_MESSAGE = "[SILENT_CONTINUE]";
@@ -190,7 +190,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     catch { return false; }
   });
   const [catchUpOpen, setCatchUpOpen] = useState(false);
-  const [dismissedBeatSuggestion, setDismissedBeatSuggestion] = useState("");
   const sceneImageInputRef = useRef(null);
 
   const messagesEndRef = useRef(null);
@@ -425,10 +424,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     () => buildLivingSceneHeader(conversation || {}, character.name),
     [conversation?.sceneState, conversation?.ambientMode, character.name]
   );
-  const nextBeatSuggestion = useMemo(
-    () => buildNextBeatSuggestion(conversation || {}, character.name),
-    [conversation?.sceneState, conversation?.castState, conversation?.intelligenceState, conversation?.characterDevelopment, character.name]
-  );
   const continuityLabel = continuityGuardLabel(conversation?.continuityGuard || {});
 
 
@@ -436,10 +431,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     localStorage.setItem("velvet_reading_mode", readingMode ? "1" : "0");
     setReadingChromeVisible(false);
   }, [readingMode]);
-
-  useEffect(() => {
-    setDismissedBeatSuggestion("");
-  }, [conversation?.conversationId, visibleMessages.at(-1)?.id]);
 
   useEffect(() => {
     startConversation(character, { conversationId: activeConversationId || conversationId }).catch((error) => {
@@ -1602,18 +1593,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     }
   }
 
-  function queueLivingSceneSuggestion(event) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-    armChatExitGuard();
-    if (!nextBeatSuggestion?.instruction || busy || !conversationReady) return;
-    setDirectorNote(nextBeatSuggestion.instruction);
-    setDirectorMode("next");
-    setDirectorNoteOpen(false);
-    setDismissedBeatSuggestion(nextBeatSuggestion.id);
-    showActionNotice(`Next beat queued · ${nextBeatSuggestion.label} ✓`);
-    if (settings.haptics) navigator.vibrate?.(5);
-  }
 
   function handleReadingSurfaceClick() {
     // v2.1.7: immersive mode never hides the story header. The character name,
@@ -1930,15 +1909,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         <button className="chat__jump-bottom" onClick={jumpToBottom} aria-label="Jump to latest message" title="Jump to latest message">
           <ChevronDown size={20}/>
         </button>
-      )}
-
-      {conversationReady && visibleMessages.length >= 2 && visibleMessages.at(-1)?.sender === "character" && !busy && !directorNote.trim() && nextBeatSuggestion && dismissedBeatSuggestion !== nextBeatSuggestion.id && (
-        <div className="chat__beat-suggestion" role="status">
-          <button type="button" className="chat__beat-suggestion-main" onClick={queueLivingSceneSuggestion}>
-            <Sparkles size={13}/><span><small>Possible next beat</small><strong>{nextBeatSuggestion.label}</strong><em>{nextBeatSuggestion.detail}</em></span>
-          </button>
-          <button type="button" className="chat__beat-suggestion-dismiss" onClick={() => setDismissedBeatSuggestion(nextBeatSuggestion.id)} aria-label="Dismiss suggestion"><X size={13}/></button>
-        </div>
       )}
 
       <div className="chat__polish-stack" aria-live="polite" aria-atomic="true">

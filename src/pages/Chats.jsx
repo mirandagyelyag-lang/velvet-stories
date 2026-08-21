@@ -9,6 +9,7 @@ import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { useTheme } from "../context/ThemeContext";
 import GroupStoryModal from "../components/GroupStoryModal";
+import SwipeToTrash from "../components/SwipeToTrash";
 import "../styles/chats.css";
 
 function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
@@ -164,7 +165,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   }
 
   async function deleteConversation(event, conversationId) {
-    event.stopPropagation();
+    event?.stopPropagation?.();
     const conversation = conversations.find((item) => item.id === conversationId);
     const approved = !settings.confirmBeforeDelete || await confirmAction({ title: "Delete this conversation?", message: "Its messages and alternatives will also be removed after the Undo period.", confirmLabel: "Delete story" });
     if (!approved) return;
@@ -346,9 +347,15 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     const art = conversation.cover_url || character.coverUrl || character.imageUrl;
     const preview = shelfPreview(conversation.latestMessage?.content || character.firstMessage || character.role || "Continue the story.");
     return (
+      <SwipeToTrash
+        key={conversation.id}
+        className="swipe-trash--story"
+        disabled={Boolean(conversation.trashed_at || deletingId === conversation.id || updatingId === conversation.id)}
+        onDelete={() => deleteConversation(null, conversation.id)}
+        label={`Delete ${title}`}
+      >
       <article
         className={`reference-story-row${conversation.is_pinned ? " reference-story-row--favorite" : ""}`}
-        key={conversation.id}
         onClick={() => !conversation.trashed_at && onOpenCharacter(character, conversation.id)}
       >
         <div className="reference-story-row__art">{art ? <img src={art} alt=""/> : <span>{character.initials}</span>}</div>
@@ -366,6 +373,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         </div>
         {renderStoryMenu(conversation, title, "reference")}
       </article>
+      </SwipeToTrash>
     );
   }
 

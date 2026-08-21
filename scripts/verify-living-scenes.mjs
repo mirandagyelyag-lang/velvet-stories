@@ -14,7 +14,7 @@ const utility = read("src/utils/livingScenes.js");
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-check("release is v2.9.1 Private Library Rework", pkg.version === "2.9.1" && read("src/config/version.js").includes('VELVET_RELEASE = "Private Library Rework"'));
+check("release is v2.9.2 Mobile Library Polish", pkg.version === "2.9.2" && read("src/config/version.js").includes('VELVET_RELEASE = "Mobile Library Polish"'));
 check("Living Scenes stylesheet is the final release layer", main.lastIndexOf("velvet-v270-living-scenes.css") > main.lastIndexOf("velvet-v2616-audio-center.css"));
 
 const header = buildLivingSceneHeader({ sceneState: { location: "Campus quad", time_label: "Late night", present: ["Theo", "Jules"] }, ambientMode: "rain" }, "Theo");
@@ -35,7 +35,7 @@ check("smart suggestions are local and never spend an AI request", !/fetch\(|sup
 
 check("chat renders the compact Living Scene header", chat.includes('className="chat__living-scene"') && chat.includes("buildLivingSceneHeader"));
 check("Continuity Guard is visible from the chat scene strip", chat.includes("chat__continuity-status") && chat.includes("continuityGuardLabel") && chat.includes("ShieldCheck"));
-check("possible next beat stays optional and dismissible", chat.includes("Possible next beat") && chat.includes("chat__beat-suggestion-dismiss") && chat.includes("queueLivingSceneSuggestion"));
+check("automatic possible next beat card is removed while manual Scene Director remains", !chat.includes("Possible next beat") && !chat.includes("queueLivingSceneSuggestion") && chat.includes("Guide the next beat"));
 check("client receives live presence development and guard metadata", ["castState: eventData.castState", "characterDevelopment: eventData.characterDevelopment", "relationshipState: eventData.relationshipState", "continuityGuard: eventData.continuityGuard"].every((needle) => context.includes(needle)));
 
 check("Continuity Guard 2.0 blocks silent time location roster hearing re-entry and object errors", ["time_changed_without_scene_change", "present_character_silently_dropped", "offscreen_character_heard_turn", "absent_character_reappeared", "invented_plot_object"].every((needle) => edge.includes(needle)));
@@ -46,7 +46,7 @@ check("emotional residue now has intensity and slower high-impact decay", edge.i
 check("story prompt explicitly preserves presence and emotional aftermath", edge.includes("21. PRESENCE ENGINE") && edge.includes("22. EMOTIONAL AFTERMATH"));
 check("successful replies return Continuity Guard state without another model call", edge.includes("continuityIssuesBeforeRepair") && edge.includes('continuityGuard: { status: repairUsed && continuityIssuesBeforeRepair.length ? "repaired" : "stable"'));
 check("continuity metadata stays local and does not trigger another model call", edge.includes("VELVET_SPEED_REPAIR_BUDGET_V282") && !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes("CONTINUITY_GUARD_ISSUES"));
-check("Living Scene UI stays compact on phone", styles.includes("@media(max-width:760px)") && styles.includes("chat__living-scene") && styles.includes("chat__beat-suggestion") && styles.includes("min-height:44px"));
+check("Living Scene UI stays compact on phone without the retired suggestion card", styles.includes("@media(max-width:760px)") && styles.includes("chat__living-scene") && styles.includes("min-height:44px") && !chat.includes("chat__beat-suggestion"));
 check("Continuity Guard labels repaired turns without exposing internals", continuityGuardLabel({ status: "repaired" }) === "Continuity protected" && continuityGuardLabel({ status: "stable" }) === "Continuity on" && continuityGuardTitle({ status: "repaired", protected: ["invented_plot_object"] }).includes("established objects") && !continuityGuardTitle({ status: "repaired", protected: ["invented_plot_object"] }).includes("invented_plot_object"));
 
 let failed = 0;

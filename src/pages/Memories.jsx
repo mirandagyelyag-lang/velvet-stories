@@ -90,7 +90,6 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
   const [saving, setSaving] = useState(false);
   const [workingId, setWorkingId] = useState(null);
   const [importanceFilter, setImportanceFilter] = useState("all");
-  const [expandedCharacters, setExpandedCharacters] = useState(() => new Set());
 
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route");
@@ -144,14 +143,6 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
     setMenuId(null);
   }
 
-  function toggleCharacterExpanded(characterId) {
-    setExpandedCharacters((current) => {
-      const next = new Set(current);
-      if (next.has(characterId)) next.delete(characterId);
-      else next.add(characterId);
-      return next;
-    });
-  }
 
   function openEdit(memory) {
     setEditingMemory(memory);
@@ -245,25 +236,103 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
   const activeMemories = useMemo(() => memories.filter((memory) => !memory.superseded_at), [memories]);
   const replacementCandidates = useMemo(() => activeMemories.filter((memory) => memory.character_id === draftCharacterId && !memory.is_canon && memory.id !== editingMemory?.id), [activeMemories, draftCharacterId, editingMemory?.id]);
 
-  const characterMemoryGroups = useMemo(() => {
+  const memoryIndexGroups = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return characters.map((character) => {
-      const characterMatch = !needle || `${character.name || ""} ${character.role || ""}`.toLowerCase().includes(needle);
       const rows = activeMemories
         .filter((memory) => memory.character_id === character.id)
-        .filter((memory) => memoryMatchesImportance(memory, importanceFilter))
-        .filter((memory) => characterMatch || `${memory.content || ""} ${memory.category || ""} ${memory.source_excerpt || ""}`.toLowerCase().includes(needle))
         .sort(sortMemoryRows);
-      return { character, rows, characterMatch };
-    }).filter(({ rows, characterMatch }) => {
-      if (!needle) return true;
-      return characterMatch || rows.length > 0;
-    });
-  }, [characters, activeMemories, importanceFilter, search]);
+      const searchable = `${character.name || ""} ${character.role || ""} ${rows.map((memory) => `${memory.content || ""} ${memory.category || ""}`).join(" ")}`.toLowerCase();
+      return { character, rows };
+    }).filter(({ character, rows }) => !needle || `${character.name || ""} ${character.role || ""}`.toLowerCase().includes(needle) || rows.some((memory) => `${memory.content || ""} ${memory.category || ""}`.toLowerCase().includes(needle)));
+  }, [characters, activeMemories, search]);
 
-  const visibleMemoryCount = useMemo(() => characterMemoryGroups.reduce((sum, group) => sum + group.rows.length, 0), [characterMemoryGroups]);
+  const selectedMemoryCharacter = useMemo(
+    () => selectedCharacterId === "all" ? null : characters.find((character) => character.id === selectedCharacterId) || null,
+    [characters, selectedCharacterId]
+  );
 
-  return <section className="chats-page chats-page--reference memories-reference-page memories-character-library">
+  const selectedCharacterMemories = useMemo(() => {
+    if (!selectedMemoryCharacter) return [];
+    return activeMemories
+      .filter((memory) => memory.character_id === selectedMemoryCharacter.id)
+      .filter((memory) => memoryMatchesImportance(memory, importanceFilter))
+      .sort(sortMemoryRows);
+  }, [activeMemories, selectedMemoryCharacter, importanceFilter]);
+
+  function openMemoryCharacter(characterId) {
+    setSelectedCharacterId(characterId);
+    setImportanceFilter("all");
+    setMenuId(null);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function closeMemoryCharacter() {
+    setSelectedCharacterId("all");
+    setImportanceFilter("all");
+    setMenuId(null);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  if (selectedMemoryCharacter) {
+    const art = selectedMemoryCharacter.imageUrl || selectedMemoryCharacter.coverUrl;
+    const totalMemories = activeMemories.filter((memory) => memory.character_id === selectedMemoryCharacter.id).length;
+    return <section className="chats-page chats-page--reference memories-reference-page memories-character-library memories-character-detail">
+      <header className="reference-stories-hero memories-reference__hero">
+        <button className="reference-stories-hero__private memories-reference__private" type="button" onClick={closeMemoryCharacter} aria-label="Back to memory characters"><Crown size={19}/><span>BACK TO CHARACTERS</span></button>
+        <div className="reference-stories-title memories-reference__title" aria-label={`${selectedMemoryCharacter.name} Memories`}>
+          <span className="reference-stories-title__script">their</span>
+          <span className="reference-stories-title__line reference-stories-title__line--left" />
+          <h1>MEMORIES</h1>
+          <span className="reference-stories-title__spark">✦</span>
+          <span className="reference-stories-title__line reference-stories-title__line--right" />
+        </div>
+        <button className="reference-stories-new memories-reference__new" type="button" onClick={() => openCreateFor(selectedMemoryCharacter.id)} aria-label={`Add memory for ${selectedMemoryCharacter.name}`}><Plus size={23}/></button>
+      </header>
+
+      <section className="memory-character-detail__hero">
+        <div className="memory-character-detail__portrait">{art ? <img src={art} alt=""/> : <span style={{ "--memory-color": selectedMemoryCharacter.color }}>{selectedMemoryCharacter.initials || "✦"}</span>}</div>
+        <div className="memory-character-detail__copy"><small>CHARACTER · {selectedMemoryCharacter.name}</small><h2>{selectedMemoryCharacter.name}</h2><p>{selectedMemoryCharacter.role || "Character"}</p><span>{totalMemories} {totalMemories === 1 ? "saved memory" : "saved memories"}</span></div>
+      </section>
+
+      <div className="memory-character-detail__toolbar">
+        <label className="memories-character-library__importance">
+          <Star size={16}/>
+          <select value={importanceFilter} onChange={(event) => setImportanceFilter(event.target.value)} aria-label="Filter memories by importance">
+            <option value="all">All importance</option>
+            <option value="essential">Essential · 5</option>
+            <option value="high">High · 4+</option>
+            <option value="medium">Medium · 3+</option>
+            <option value="low">Low · 1–2</option>
+          </select>
+          <ChevronDown size={14}/>
+        </label>
+      </div>
+
+      {error && !editorOpen && <div className="memories-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")}><X size={16}/></button></div>}
+
+      <section className="memory-character-detail__list">
+        <header><div><small>MEMORY BOOK</small><h3>{importanceFilter === "all" ? "Everything Velvet remembers" : `${selectedCharacterMemories.length} matching memories`}</h3></div><span>{selectedCharacterMemories.length}</span></header>
+        {selectedCharacterMemories.length ? selectedCharacterMemories.map((memory) => <CharacterThoughtRow
+          key={memory.id}
+          memory={memory}
+          busy={workingId === memory.id}
+          menuOpen={menuId === memory.id}
+          onMenu={() => setMenuId((current) => current === memory.id ? null : memory.id)}
+          onCanon={() => toggleCanon(memory)}
+          onPin={() => togglePinned(memory)}
+          onEdit={() => openEdit(memory)}
+          onDelete={() => deleteMemory(memory)}
+        />) : <div className="memory-character-detail__empty"><Sparkles size={18}/><strong>No memories at this importance.</strong><span>Try another filter or add one for {selectedMemoryCharacter.name}.</span></div>}
+      </section>
+
+      <button className="memories-reference__add-bottom" onClick={() => openCreateFor(selectedMemoryCharacter.id)}><Plus size={22}/>Add memory for {selectedMemoryCharacter.name}</button>
+
+      {editorOpen && <MemoryEditor editingMemory={editingMemory} draft={draft} setDraft={setDraft} draftCharacterId={draftCharacterId} setDraftCharacterId={setDraftCharacterId} characters={characters} replacementCandidates={replacementCandidates} saving={saving} error={error} setError={setError} onClose={() => setEditorOpen(false)} onSubmit={saveMemory} />}
+    </section>;
+  }
+
+  return <section className="chats-page chats-page--reference memories-reference-page memories-character-library memories-character-index">
     <header className="reference-stories-hero memories-reference__hero">
       <button className="reference-stories-hero__private memories-reference__private" type="button" onClick={onBack} aria-label="Go back"><Crown size={19}/><span>PRIVATE MEMORY BOOK</span></button>
       <div className="reference-stories-title memories-reference__title" aria-label="Your Memories">
@@ -276,90 +345,37 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
       <button className="reference-stories-new memories-reference__new" type="button" onClick={openCreate} disabled={!characters.length} aria-label="Add new memory"><Sparkles size={24}/></button>
     </header>
 
-    <div className="reference-search-wrap memories-reference__search-wrap memories-character-library__toolbar">
+    <div className="reference-search-wrap memories-reference__search-wrap memories-character-index__search">
       <label className="reference-search">
         <Search size={23}/>
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search a character or memory..." />
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search characters..." />
         {search && <button type="button" className="reference-search__clear" onClick={() => setSearch("")} aria-label="Clear search"><X size={16}/></button>}
       </label>
-      <label className="memories-character-library__importance">
-        <Star size={16}/>
-        <select value={importanceFilter} onChange={(event) => setImportanceFilter(event.target.value)} aria-label="Filter memories by importance">
-          <option value="all">All importance</option>
-          <option value="essential">Essential · 5</option>
-          <option value="high">High · 4+</option>
-          <option value="medium">Medium · 3+</option>
-          <option value="low">Low · 1–2</option>
-        </select>
-        <ChevronDown size={14}/>
-      </label>
     </div>
 
-    <div className="memories-character-library__summary">
-      <span>CHARACTER MEMORIES</span>
-      <small>{visibleMemoryCount} {visibleMemoryCount === 1 ? "thought" : "thoughts"} visible</small>
-    </div>
+    <div className="memories-character-library__summary"><span>CHARACTERS</span><small>{memoryIndexGroups.length} in your memory book</small></div>
 
     {error && !editorOpen && <div className="memories-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")}><X size={16}/></button></div>}
-
     {loading && <div className="page-state"><LoaderCircle className="spin" size={28}/><p>Opening memories...</p></div>}
     {!loading && characters.length === 0 && <div className="page-state page-state--empty"><span><UserRound size={28}/></span><h2>No characters yet</h2><p>Create someone before giving them long-term memories.</p><button onClick={onBrowseCharacters}>Create a character</button></div>}
-    {!loading && characters.length > 0 && characterMemoryGroups.length === 0 && <div className="page-state"><Search size={27}/><p>No characters or memories match this search.</p></div>}
+    {!loading && characters.length > 0 && memoryIndexGroups.length === 0 && <div className="page-state"><Search size={27}/><p>No characters match this search.</p></div>}
 
-    {!loading && characterMemoryGroups.length > 0 && <div className="memories-character-library__grid">
-      {characterMemoryGroups.map(({ character, rows }) => <CharacterMemoryCard
-        key={character.id}
-        character={character}
-        memories={rows}
-        expanded={expandedCharacters.has(character.id)}
-        busyId={workingId}
-        menuId={menuId}
-        onToggleExpanded={() => toggleCharacterExpanded(character.id)}
-        onMenu={(memoryId) => setMenuId((current) => current === memoryId ? null : memoryId)}
-        onCanon={toggleCanon}
-        onPin={togglePinned}
-        onEdit={openEdit}
-        onDelete={deleteMemory}
-        onAdd={() => openCreateFor(character.id)}
-        onOpenCharacter={() => onOpenCharacter(character)}
-      />)}
+    {!loading && memoryIndexGroups.length > 0 && <div className="memory-character-index__grid">
+      {memoryIndexGroups.map(({ character, rows }) => <MemoryCharacterIndexCard key={character.id} character={character} count={rows.length} onOpen={() => openMemoryCharacter(character.id)}/>) }
     </div>}
-
-    {!loading && characters.length > 0 && <button className="memories-reference__add-bottom" onClick={openCreate}><Plus size={22}/>Add new memory</button>}
 
     {editorOpen && <MemoryEditor editingMemory={editingMemory} draft={draft} setDraft={setDraft} draftCharacterId={draftCharacterId} setDraftCharacterId={setDraftCharacterId} characters={characters} replacementCandidates={replacementCandidates} saving={saving} error={error} setError={setError} onClose={() => setEditorOpen(false)} onSubmit={saveMemory} />}
   </section>;
 }
 
-function CharacterMemoryCard({ character, memories, expanded, busyId, menuId, onToggleExpanded, onMenu, onCanon, onPin, onEdit, onDelete, onAdd, onOpenCharacter }) {
+function MemoryCharacterIndexCard({ character, count, onOpen }) {
   const art = character.imageUrl || character.coverUrl;
-  const visible = expanded ? memories : memories.slice(0, 4);
-  return <article className="character-memory-card">
-    <div className="character-memory-card__hero">
-      {art ? <img src={art} alt="" loading="lazy" decoding="async"/> : <span className="character-memory-card__fallback" style={{ "--memory-color": character.color }}>{character.initials || "✦"}</span>}
-      <span className="character-memory-card__shade"/>
-      <button type="button" className="character-memory-card__identity" onClick={onOpenCharacter}>
-        <small>CHARACTER · {character.name}</small>
-        <strong>{memories.length} {memories.length === 1 ? "saved thought" : "saved thoughts"}</strong>
-      </button>
-      <button type="button" className="character-memory-card__add" onClick={onAdd} aria-label={`Add memory for ${character.name}`}><Plus size={18}/></button>
-    </div>
-
-    <div className="character-memory-card__thoughts">
-      {visible.length ? visible.map((memory) => <CharacterThoughtRow
-        key={memory.id}
-        memory={memory}
-        busy={busyId === memory.id}
-        menuOpen={menuId === memory.id}
-        onMenu={() => onMenu(memory.id)}
-        onCanon={() => onCanon(memory)}
-        onPin={() => onPin(memory)}
-        onEdit={() => onEdit(memory)}
-        onDelete={() => onDelete(memory)}
-      />) : <div className="character-memory-card__empty"><Sparkles size={16}/><span>No saved thoughts at this importance level.</span></div>}
-    </div>
-
-    {memories.length > 4 && <button type="button" className="character-memory-card__expand" onClick={onToggleExpanded}>{expanded ? "Show less" : `Show all ${memories.length}`}<ChevronDown size={15}/></button>}
+  return <article className="memory-character-index-card">
+    <button type="button" className="memory-character-index-card__main" onClick={onOpen}>
+      {art ? <img src={art} alt="" loading="lazy" decoding="async"/> : <span className="memory-character-index-card__fallback" style={{ "--memory-color": character.color }}>{character.initials || "✦"}</span>}
+      <span className="memory-character-index-card__shade"/>
+      <span className="memory-character-index-card__copy"><strong>CHARACTER · {character.name}</strong><em>{count} {count === 1 ? "memory" : "memories"}</em></span>
+    </button>
   </article>;
 }
 

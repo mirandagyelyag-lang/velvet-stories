@@ -1,3 +1,3 @@
-export const VELVET_VERSION = "2.9.1";
-export const VELVET_RELEASE = "Private Library Rework";
-export const VELVET_BUILD_TIME = "2026-08-21T02:45:00.000Z";
+export const VELVET_VERSION = "2.9.2";
+export const VELVET_RELEASE = "Mobile Library Polish";
+export const VELVET_BUILD_TIME = "2026-08-21T15:55:00.000Z";
