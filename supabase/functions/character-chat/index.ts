@@ -117,9 +117,9 @@ Deno.serve(async (request) => {
         updated_at: new Date().toISOString(),
       });
       if (error && error.code !== "23505") throw new Error(error.message);
-      if (await isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)) {
-        return cancelledResponse();
-      }
+      // VELVET_SPEED_V282: the row was just created as not-cancelled. Avoid an
+      // immediate read-back round trip before context loading; the throttled
+      // cancellation probe below still catches a racing Stop request.
     }
 
     const loaded = await loadContext({
@@ -465,7 +465,7 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
     supabase.from("messages")
       .select("id, conversation_id, user_id, sender, content, created_at, edited_at, reply_to_message_id, reply_preview, reply_sender")
       .eq("conversation_id", conversationId).eq("user_id", userId)
-      .order("created_at", { ascending: false }).limit(80),
+      .order("created_at", { ascending: false }).limit(50),
     supabase.from("memories")
       .select("id, conversation_id, content, importance, category, is_pinned, is_canon, why_remembered, source, scope, superseded_at, created_at, updated_at")
       .in("character_id", groupCharacterIds).eq("user_id", userId)
@@ -629,12 +629,12 @@ function buildNarrativePrompt({
     `Notes: ${userIdentity.notes || "none"}`,
   ].join("\n");
 
-  const immediate = messages.slice(-18).map((message) => {
+  const immediate = messages.slice(-12).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
     return `${speaker}: ${compactMessageForPrompt(message.content, 3200)}`;
   }).join("\n\n") || "none";
 
-  const older = messages.slice(-60, -18).map((message) => {
+  const older = messages.slice(-32, -12).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
     return `${speaker}: ${compactMessageForPrompt(message.content, 900)}`;
   }).join("\n") || "none";
@@ -657,7 +657,7 @@ function buildNarrativePrompt({
     cast: conversation.cast_state || {},
     open_threads: conversation.unresolved_threads || [],
     intelligence: conversation.intelligence_state || {},
-    recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-20) : [],
+    recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-10) : [],
   }).slice(0, 9000);
 
   const latest = compactMessageForPrompt(latestUserRecord.content, 5000);
@@ -1536,15 +1536,16 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "controls_user_pov",
   "exposes_system_language",
 ]);
+// VELVET_SPEED_REPAIR_BUDGET_V282
+// A second model call is expensive. Style repetition and continuity metadata are
+// advisory after the first draft: the prompt discourages them and deterministic
+// continuity merging protects stored canon. Only structural failures or severe
+// user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
-  "repeated_recent_signature",
-  "stock_body_language_stack",
-  "recycled_stock_gesture",
   "unsupported_motive_escalation",
   "distance_boundary_override",
   "social_tension_overescalation",
-  ...CONTINUITY_GUARD_ISSUES,
 ]);
 
 function blockingNarrativeIssues(issues = []) {
@@ -1809,6 +1810,7 @@ async function streamRoleplayV19({
           loreItems: loreEntries.map((entry) => ({ id: entry.id, name: entry.name, type: entry.entry_type })),
         });
 
+        const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
           systemInstruction: "Produce one grounded, socially natural roleplay continuation. React literally before inferring subtext; do not invent motives or generic romance choreography. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
@@ -1831,6 +1833,9 @@ async function streamRoleplayV19({
           },
         });
 
+        const firstDraftDurationMs = Date.now() - firstDraftStartedAt;
+        console.log("[character-chat] first draft completed", { durationMs: firstDraftDurationMs, model: result.model });
+
         let validationIssues = validateNarrativeReply(result.reply, {
           characterName: character.name,
           userName: userIdentity.name,
@@ -1846,11 +1851,11 @@ async function streamRoleplayV19({
         const continuityIssuesBeforeRepair = originalIssues.filter((issue) => CONTINUITY_GUARD_ISSUES.has(issue));
         const blocking = repairTriggerIssues(validationIssues);
 
-        // One bounded repair for structural, repetition, or continuity issues.
-        // Continuity metadata is never allowed to brick an otherwise readable turn:
-        // after the repair we keep the safest non-structurally-invalid draft and
-        // let the deterministic continuity merge protect stored scene state.
+        // One bounded repair only for structural or severe user-facing naturalism issues.
+        // Continuity metadata never triggers another Gemini call. Deterministic
+        // continuity merging protects stored scene state without adding latency.
         if (blocking.length) {
+          console.log("[character-chat] bounded repair started", { issues: blocking, firstDraftDurationMs });
           repairUsed = true;
           sendEvent(controller, { type: "reset", reason: "repair" });
           streamedReply = "";
@@ -2018,15 +2023,20 @@ async function streamGeminiEnvelopeWithFailover({
   let lastError = "Gemini could not generate a response";
   let quotaReached = false;
   let emittedAnyReply = false;
+  // VELVET_ROLEPLAY_DEADLINE_V282: cap failover as one interaction budget
+  // instead of allowing every fallback model to consume a full 26 seconds.
+  const deadlineAt = Date.now() + 24000;
 
   for (const model of models) {
     if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs <= 1200) break;
     const controller = new AbortController();
     let watching = true;
-    const timeoutId = setTimeout(() => controller.abort(), 26000);
+    const timeoutId = setTimeout(() => controller.abort(), Math.min(16000, remainingMs));
     const cancellationWatcher = (async () => {
       while (watching && !controller.signal.aborted) {
-        await delay(160);
+        await delay(360);
         if (watching && await isCancelled()) controller.abort();
       }
     })();

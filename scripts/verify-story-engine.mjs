@@ -74,10 +74,19 @@ check("structural failures remain fatal after one bounded repair",
   edge.includes("Velvet could not get a complete safe reply after one repair. Retry once.") &&
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
-check("continuity metadata can trigger repair without bricking readable replies",
-  edge.includes("const REPAIR_TRIGGER_ISSUES = new Set([") &&
-  edge.includes("...CONTINUITY_GUARD_ISSUES") &&
-  !edge.slice(edge.indexOf("const BLOCKING_NARRATIVE_ISSUES"), edge.indexOf("const REPAIR_TRIGGER_ISSUES")).includes("CONTINUITY_GUARD_ISSUES"));
+check("continuity metadata never spends a second model call",
+  edge.includes("VELVET_SPEED_REPAIR_BUDGET_V282") &&
+  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes("...CONTINUITY_GUARD_ISSUES"));
+check("style-only naturalism warnings never spend a second model call",
+  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"stock_body_language_stack"') &&
+  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"recycled_stock_gesture"') &&
+  edge.includes('"unsupported_motive_escalation"') && edge.includes('"distance_boundary_override"'));
+check("roleplay failover has one bounded interaction deadline",
+  edge.includes("VELVET_ROLEPLAY_DEADLINE_V282") && edge.includes("const deadlineAt = Date.now() + 24000") && edge.includes("Math.min(16000, remainingMs)"));
+check("generation skips redundant cancellation read-back",
+  edge.includes("VELVET_SPEED_V282") && !edge.includes("if (await isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)) {\n        return cancelledResponse();"));
+check("prompt context is capped for faster first token",
+  edge.includes(".limit(50)") && edge.includes("messages.slice(-12)") && edge.includes("messages.slice(-32, -12)"));
 check("model streams reply scene continuity development and memories in one request",
   edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
@@ -679,7 +688,7 @@ check("rejection plus exit is treated as an emotional confrontation exit", confr
 check("continuity lock forbids restarting a prior physical beat", edge.includes("CONTINUITY LOCK") && edge.includes("Never restart the same pose, gesture, location beat, vehicle beat or exit sequence"));
 check("object continuity forbids convenient invented props", edge.includes("OBJECT CONTINUITY") && edge.includes("Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop"));
 check("emotional priority outranks decorative scenery", edge.includes("EMOTIONAL PRIORITY") && edge.includes("that emotional event is the center of the response"));
-check("repeated recent openings are blocking and repaired once", edge.includes('"repeated_recent_signature",') && edge.includes("Never restart a physical beat from the immediately previous character turn"));
+check("repeated recent openings are detected without forcing a second model call", edge.includes('issues.push("repeated_recent_signature")') && !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"repeated_recent_signature"'));
 check("mature mode reaches the narrative engine", edge.includes("mature_mode=${character.mature_mode ? \"on\" : \"off\"}") && edge.includes("MATURE CONTENT MODE") && edge.includes("mature_mode"));
 check("mature mode preserves consent age and non-graphic boundaries", edge.includes("never overrides consent") && edge.includes("under 18") && edge.includes("fade to black"));
 check("v2.3 story intelligence migration persists recap and continuity ledger",
