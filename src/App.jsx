@@ -420,6 +420,7 @@ function App() {
           onDeleted={() => navigate("chats", { replace: true })}
           onOpenMemories={() => navigate("memories")}
           onOpenDiagnostics={() => navigate("diagnostics")}
+          onOpenCharacter={openCharacterProfile}
         />
       );
     }

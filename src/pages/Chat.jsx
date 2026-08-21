@@ -91,7 +91,7 @@ const POSITIVE_FEEDBACK = [
   ["pacing", "Pacing"],
 ];
 
-function Chat({ character, conversationId, focusMessageId = null, onBack, onDeleted, onOpenMemories, onOpenDiagnostics }) {
+function Chat({ character, conversationId, focusMessageId = null, onBack, onDeleted, onOpenMemories, onOpenDiagnostics, onOpenCharacter }) {
   const { settings, recordStoryFeedback, undoStoryFeedback } = useSettings();
   const { theme, setTheme } = useTheme();
   const { confirmAction, scheduleDeletion } = useFeedback();
@@ -1784,6 +1784,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
                 New conversation
               </button>
               <div className="chat__menu-quick">
+                {!conversation?.groupMode && <button type="button" onClick={() => { setMenuOpen(false); onOpenCharacter?.(character); }}><UserRound size={17}/><span>Open character<small>Cover & profile</small></span></button>}
                 <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Current story</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Activity size={17}/><span>AI Status<small>Velvet Doctor</small></span></button>
