@@ -41,6 +41,7 @@ import "./styles/velvet-v291-private-library-rework.css";
 import "./styles/velvet-v292-mobile-library-polish.css";
 import "./styles/velvet-v296-precision-actions.css";
 import "./styles/velvet-v298-characters-clean-mobile.css";
+import "./styles/velvet-v2100-chats-inbox-rework.css";
 
 applySafeModeClass();
 

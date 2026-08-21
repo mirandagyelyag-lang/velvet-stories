@@ -159,7 +159,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
   ];
 
   return (
-    <section className="reference-inbox reference-inbox--v2116">
+    <section className="reference-inbox reference-inbox--v2116 reference-inbox--v2100">
       <header className="reference-stories-hero reference-inbox__hero">
         <div className="reference-stories-hero__private"><Crown size={19}/><span>ACTIVE CONVERSATIONS</span></div>
         <div className="reference-stories-title reference-inbox__title" aria-label="Your Chats">
@@ -171,8 +171,6 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
         </div>
         <button className="reference-stories-new reference-inbox__new-top" type="button" onClick={onBrowseCharacters} aria-label="Start a new chat"><Sparkles size={24}/></button>
       </header>
-
-      <div className="library-purpose-note library-purpose-note--chats"><strong>Chats are for jumping back in.</strong><span>Your active conversations live here; story management stays in Stories.</span></div>
 
       <div className="reference-search-wrap reference-inbox__search-wrap">
         <label className="reference-search">
@@ -198,7 +196,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
             </button>
           ))}
         </nav>
-        <button type="button" className="reference-inbox__group-button" onClick={() => setGroupStoryOpen(true)}><UsersRound size={16}/>Group story</button>
+        <button type="button" className="reference-inbox__group-button" onClick={() => setGroupStoryOpen(true)}><UsersRound size={16}/><span>Group story</span></button>
       </div>
 
       {error && <div className="chats-page__notice"><Sparkles size={16}/><span>{error}</span><button type="button" onClick={() => setError("")} aria-label="Dismiss"><X size={15}/></button></div>}
@@ -210,7 +208,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
           {visible.map((conversation) => {
             const character = conversation.character;
             const groupCharacters = conversation.groupCharacters || [];
-            const art = character.coverUrl || character.imageUrl;
+            const art = character.imageUrl || character.coverUrl;
             const displayName = conversation.group_mode
               ? (conversation.group_title || conversation.title || groupCharacters.map((item) => item.name).join(" · "))
               : character.name;
@@ -224,17 +222,19 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
                 onDelete={() => deleteConversationFromSwipe(conversation)}
                 label={`Delete ${displayName}`}
               >
-                <button className={`reference-inbox__row reference-inbox__row--quiet${conversation.unreadCount ? " is-unread" : ""}`} onClick={() => openConversation(conversation)}>
-                  <span className={`reference-inbox__avatar reference-inbox__avatar--quiet${conversation.group_mode ? " reference-inbox__avatar--group" : ""}`}>{conversation.group_mode ? groupCharacters.slice(0,3).map((member, index) => <span key={member.id} style={{ "--stack-index": index }}>{member.imageUrl ? <img src={member.imageUrl} alt="" loading="lazy" decoding="async"/> : member.initials}</span>) : (art ? <img src={art} alt=""/> : character.initials)}</span>
-                  <span className="reference-inbox__copy reference-inbox__copy--quiet">
-                    <span className="reference-inbox__name-line reference-inbox__name-line--quiet">
+                <button className={`reference-inbox__row reference-inbox__row--quiet reference-inbox__row--velvet${conversation.unreadCount ? " is-unread" : ""}`} onClick={() => openConversation(conversation)}>
+                  <span className={`reference-inbox__avatar reference-inbox__avatar--quiet reference-inbox__avatar--velvet${conversation.group_mode ? " reference-inbox__avatar--group" : ""}`}>{conversation.group_mode ? groupCharacters.slice(0,3).map((member, index) => <span key={member.id} style={{ "--stack-index": index }}>{member.imageUrl ? <img src={member.imageUrl} alt="" loading="lazy" decoding="async"/> : member.initials}</span>) : (art ? <img src={art} alt="" loading="lazy" decoding="async"/> : character.initials)}</span>
+                  <span className="reference-inbox__copy reference-inbox__copy--quiet reference-inbox__copy--velvet">
+                    <span className="reference-inbox__name-line reference-inbox__name-line--quiet reference-inbox__name-line--velvet">
                       <strong>{displayName}</strong>
-                      {conversation.is_pinned && <Star size={13} fill="currentColor" aria-label="Favorite"/>}
-                      <time>{lastMessageAt}</time>
+                      {conversation.is_pinned && <Star size={12} fill="currentColor" aria-label="Favorite"/>}
                     </span>
-                    <span className="reference-inbox__preview">{truncate(lastMessage, 112)}</span>
+                    <span className="reference-inbox__preview reference-inbox__preview--velvet">{truncate(lastMessage, 150)}</span>
                   </span>
-                  <span className="reference-inbox__status-dot" aria-label={conversation.unreadCount ? "Unread messages" : "Read"} />
+                  <span className="reference-inbox__meta--velvet">
+                    <time>{lastMessageAt}</time>
+                    {conversation.unreadCount > 0 ? <b aria-label={`${conversation.unreadCount} unread messages`}>{conversation.unreadCount > 9 ? "9+" : conversation.unreadCount}</b> : <i aria-hidden="true" />}
+                  </span>
                 </button>
               </SwipeToTrash>
             );
