@@ -196,8 +196,8 @@ check("AI can create an entire reviewable character draft",
   edge.includes("required: Object.keys(characterDraftProperties)") &&
   charactersContext.includes("generateCharacterDraft") &&
   characterModal.includes("Create with AI") && characterModal.includes("Surprise me") &&
-  characterModal.includes("Complete draft created. Review anything you want before saving.") &&
-  characterModal.includes("Nothing becomes a character until you press Save."));
+  characterModal.includes("Complete draft created. Velvet filled the deep profile for you.") &&
+  characterModal.includes("nothing is saved until you choose Create or Start chatting."));
 check("complete character creation is fast bounded and has model failover",
   edge.includes("deadlineMs = 28000") &&
   edge.includes("deadlineMs: 22000") &&
@@ -210,11 +210,24 @@ check("character creation exposes actionable upstream errors",
   charactersContext.includes("response.clone().text()") &&
   edge.includes('[character-chat] character tool model failed') &&
   edge.includes('[character-chat] character tool attempt ended'));
-check("AI character drafts can be stopped or discarded before save",
-  characterModal.includes("Stop generation") &&
-  characterModal.includes("Discard draft") &&
+check("AI character drafts can be stopped or regenerated before save",
+  characterModal.includes("stopCharacterGeneration") &&
+  characterModal.includes("Regenerate") &&
   characterModal.includes("generationAbortRef.current?.abort()") &&
-  characterModal.includes("discardGeneratedDraft"));
+  characterModal.includes("handleRegenerateQuickDraft"));
+check("Quick Create keeps advanced character depth while hiding field overload",
+  characterModal.includes("ONE IDEA IS ENOUGH") &&
+  characterModal.includes("Deep profile complete") &&
+  characterModal.includes("Fine-tune manually") &&
+  characterModal.includes("StudioSection step=\"depth\""));
+check("Duplicate and remix requests a new identity instead of cloning prose",
+  characterModal.includes("Create a NEW original character") &&
+  characterModal.includes("Do not copy the name, exact backstory, exact personality, dialogue, or relationship") &&
+  characterModal.includes("buildRemixSeed"));
+check("Quick variations produce a new character from a compact direction",
+  characterModal.includes("handleQuickVariation") &&
+  characterModal.includes("Variation direction") &&
+  characterModal.includes("Preserve the level of depth, not the identity"));
 check("existing profiles can be organized without changing facts",
   charactersContext.includes("organizeCharacterDraft") &&
   edge.includes("Do not invent, delete or change facts") &&
@@ -314,7 +327,7 @@ check("generation telemetry exposes model and repair status in the same stream",
 check("Character Studio draft autosave never server-saves before explicit Save",
   characterModal.includes("velvet_character_draft_v18_") &&
   characterModal.includes("localStorage.setItem(draftStorageKey") &&
-  characterModal.includes("Nothing becomes a character until you press Save."));
+  characterModal.includes("nothing is saved until you choose Create or Start chatting."));
 check("pure narrative helper API loads", helpers);
 check("compact silence is recognized", helpers?.isSilentContinueText("...") && helpers?.isSilentContinueText("[SILENT_CONTINUE]"));
 check("ordinary text is not silence", helpers && !helpers.isSilentContinueText("Okay."));

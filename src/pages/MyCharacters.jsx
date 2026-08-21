@@ -27,7 +27,7 @@ const VIBES = [
   { id: "fluffy", label: "Fluffy", hint: "Sweet & light", query: "fluffy" },
 ];
 
-function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
+function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onRemixCharacter }) {
   const {
     characters,
     deleteCharacter,
@@ -222,6 +222,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
             onOpenCharacter={onOpenCharacter}
             onToggleFavorite={toggleFavorite}
             onEditCharacter={onEditCharacter}
+            onRemixCharacter={onRemixCharacter}
             onOpenTags={openTags}
             onDeleteCharacter={handleDelete}
           />
@@ -234,6 +235,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter }) {
               onOpenCharacter={onOpenCharacter}
               onToggleFavorite={toggleFavorite}
               onEditCharacter={onEditCharacter}
+              onRemixCharacter={onRemixCharacter}
               onOpenTags={openTags}
               onDeleteCharacter={handleDelete}
             />
@@ -299,7 +301,7 @@ function DiscoverFeatured({ items, ...actions }) {
   );
 }
 
-function FeatureCard({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onOpenTags, onDeleteCharacter }) {
+function FeatureCard({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onRemixCharacter, onOpenTags, onDeleteCharacter }) {
   return (
     <article className="discover-burgundy__feature-card">
       <button className="discover-burgundy__feature-card-main" onClick={() => onOpenCharacter(character)}>
@@ -307,7 +309,7 @@ function FeatureCard({ character, menuId, setMenuId, onOpenCharacter, onToggleFa
         <span className="discover-burgundy__feature-card-shade" />
         <span className="discover-burgundy__feature-card-copy"><strong>{character.name}</strong><small>{character.role || character.world || "Velvet story"}</small><em>{shortQuote(character)}</em></span>
       </button>
-      <CharacterMenu character={character} menuId={menuId} setMenuId={setMenuId} onOpenCharacter={onOpenCharacter} onToggleFavorite={onToggleFavorite} onEditCharacter={onEditCharacter} onOpenTags={onOpenTags} onDeleteCharacter={onDeleteCharacter} />
+      <CharacterMenu character={character} menuId={menuId} setMenuId={setMenuId} onOpenCharacter={onOpenCharacter} onToggleFavorite={onToggleFavorite} onEditCharacter={onEditCharacter} onRemixCharacter={onRemixCharacter} onOpenTags={onOpenTags} onDeleteCharacter={onDeleteCharacter} />
     </article>
   );
 }
@@ -331,7 +333,7 @@ function DiscoverPopular({ items, ...actions }) {
   );
 }
 
-function CharacterMenu({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onOpenTags, onDeleteCharacter, compact = false }) {
+function CharacterMenu({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onRemixCharacter, onOpenTags, onDeleteCharacter, compact = false }) {
   return (
     <div className={`discover-burgundy__menu-wrap${compact ? " compact" : ""}`}>
       <button className="discover-burgundy__more" onClick={() => setMenuId(menuId === character.id ? null : character.id)} aria-label={`${character.name} actions`}><MoreHorizontal size={17} /></button>
@@ -340,6 +342,7 @@ function CharacterMenu({ character, menuId, setMenuId, onOpenCharacter, onToggle
           <button onClick={() => { setMenuId(null); onOpenCharacter(character); }}><ArrowRight size={14} /> Open</button>
           <button onClick={() => { setMenuId(null); onToggleFavorite(character.id); }}><Heart size={14} /> {character.isFavorite ? "Unfavorite" : "Favorite"}</button>
           <button onClick={() => { setMenuId(null); onEditCharacter(character); }}><Pencil size={14} /> Edit</button>
+          {onRemixCharacter && <button onClick={() => { setMenuId(null); onRemixCharacter(character); }}><Sparkles size={14} /> Duplicate & remix</button>}
           <button onClick={() => onOpenTags(character)}><Tag size={14} /> Tags</button>
           <button className="danger" onClick={() => { setMenuId(null); onDeleteCharacter(character); }}><Trash2 size={14} /> Delete</button>
         </div>

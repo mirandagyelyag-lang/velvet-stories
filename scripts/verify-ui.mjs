@@ -49,6 +49,8 @@ const ambienceIntelligence = read("src/utils/ambienceIntelligence.js");
 const ambienceQuality = read("src/utils/ambienceQuality.js");
 const feedbackContext = read("src/context/FeedbackContext.jsx");
 const feedbackStyles = read("src/styles/feedback.css");
+const studioLiteStyles = read("src/styles/velvet-v290-character-studio-lite.css");
+const myCharacters = read("src/pages/MyCharacters.jsx");
 
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
@@ -56,7 +58,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("burgundy reference layer stays after the mobile foundation", main.includes('import "./styles/velvet-burgundy-reference.css";') && main.lastIndexOf("velvet-burgundy-reference.css") > main.lastIndexOf("velvet-mobile-foundation.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.8.5 Message Character Shortcut", pkg.version === "2.8.5" && read("src/config/version.js").includes('VELVET_RELEASE = "Message Character Shortcut"'));
+check("release is v2.9.0 Character Studio Lite", pkg.version === "2.9.0" && read("src/config/version.js").includes('VELVET_RELEASE = "Character Studio Lite"'));
 check("Stories owns the document canvas while mounted", read("src/pages/Chats.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/Chats.jsx").includes('classList.remove("velvet-burgundy-route")'));
 check("Burgundy background cannot end before the document", reference.includes('body.velvet-burgundy-route .app__content') && reference.includes('background: var(--stories-canvas) !important'));
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
@@ -203,7 +205,11 @@ check("character landing continues the real latest story", characterDetail.inclu
 check("new story setup can keep or replace the opening beat", characterDetail.includes("story-setup-sheet") && characterDetail.includes("Original opening") && characterDetail.includes("Custom opening") && characterDetail.includes("storyOpening.trim() || character.firstMessage"));
 check("character and settings screens inherit the shared Stories shell", characterDetail.includes('classList.add("velvet-burgundy-route")') && settings.includes('classList.add("velvet-burgundy-route")'));
 check("Character Studio is a six-step phone wizard", characterModal.includes("STUDIO_STEPS") && ["Essence","Relationship","Depth","Voice","World","Opening"].every((label)=>characterModal.includes(`\"${label}\"`)) && characterModal.includes("data-studio-current={studioStep}") && characterModal.includes("character-studio__wizard-controls") && intelligenceStyles.includes("studio-section:not(.is-wizard-active){display:none!important}"));
-check("Create with AI stays a first-class Character Studio action", characterModal.includes("Create with AI") && nativeStyles.includes(".character-studio__ai--primary") && nativeStyles.includes(".character-studio__creator"));
+check("new characters open in Quick Create instead of the full wizard", characterModal.includes("!character && !advancedOpen") && characterModal.includes("ONE IDEA IS ENOUGH") && characterModal.includes("Describe the vibe. Velvet does the rest.") && studioLiteStyles.includes(".character-studio-lite__canvas"));
+check("Quick Create keeps the full advanced studio behind Fine-tune", characterModal.includes("Fine-tune manually") && characterModal.includes("Fine-tune") && characterModal.includes("setAdvancedOpen(true)") && characterModal.includes("STUDIO_STEPS"));
+check("Quick Create can save and start chatting in one action", characterModal.includes('saveCharacter("chat")') && characterModal.includes("Start chatting") && app.includes("options.startChat") && app.includes("createNewConversation(character)"));
+check("Quick Variations can make another character without refilling the form", ["Softer","Colder","Funnier","More arrogant","Different dynamic"].every((label)=>characterModal.includes(`"${label}"`)) && characterModal.includes("handleQuickVariation"));
+check("Discover exposes Duplicate & remix as a lightweight creation path", myCharacters.includes("Duplicate & remix") && app.includes("onRemixCharacter") && characterModal.includes("buildRemixSeed") && characterModal.includes("remixSource"));
 check("Settings is organized into four calm destinations", settings.includes("settings-page__nav") && ["Appearance","Storytelling","AI & app","Privacy"].every((label)=>settings.includes(`>${label}<`)) && nativeStyles.includes(".settings-page--editorial"));
 check("native layer adds cheap rendering wins", nativeStyles.includes("content-visibility:auto") && nativeStyles.includes("contain-intrinsic-size") && nativeStyles.includes("velvet-page-enter"));
 
@@ -255,7 +261,7 @@ check("ambience fades cleanly and enforces one active room", storyAmbience.inclu
 check("mobile ambience pauses and resumes instead of restarting on visibility changes", audioBus.includes('window.addEventListener("pagehide", stopAllAudio)') && !audioBus.includes('document.visibilityState === "hidden"') && storyAmbience.includes("visibilityPausedRef") && storyAmbience.includes("pauseActiveAmbience") && storyAmbience.includes("switchAmbience(latest.mode, latest.volume)"));
 check("device voice center supports language filters favorites and future neural engines", storyHubDrawer.includes("All languages") && storyHubDrawer.includes("Favorite this voice") && speechUtil.includes("neuralReady: true") && storyHubDrawer.includes("Neural-ready architecture"));
 check("voice volume is remembered without changing story ambience volume", storyHubDrawer.includes('writeAudioPreference("voice", character.id') && chat.includes('readAudioPreference("voice", character.id') && storyHubDrawer.includes("ambientVolume"));
-check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes('"2.8.5"'));
+check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes('"2.9.0"'));
 check("PWA Update Doctor can repair an interrupted update without clearing stories", pwaContext.includes("UPDATE_PENDING_KEY") && pwaContext.includes("repairUpdate") && pwaContext.includes("clearOldShellCaches") && !pwaContext.includes("localStorage.clear"));
 check("Settings shows exact build and service health", settings.includes("About Velvet") && settings.includes("VELVET_VERSION") && settings.includes("SUPABASE") && settings.includes("STORY ENGINE") && settings.includes("Check for update"));
 check("chat menu exposes the private-first bug reporter", chat.includes("Report a problem") && diagnostics.includes("Private chat text stays out unless you explicitly include it") && bugReporter.includes("includePrivate"));
