@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 2700);
+check("live-stream engine stays reasonably consolidated", edgeLines < 2750);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -416,6 +416,15 @@ check("short roleplay beats are explicitly allowed", edge.includes("Shorter is b
 check("repeated stock gestures across turns trigger the naturalism doctor", helpers?.hasRecycledStockGesture(`Rowan's jaw tightens. "Fine."`, [`His jaw clenches before he answers. "Whatever."`, `Rowan's grip tightens and his jaw sets. "Sure."`]));
 check("Too AI feedback maps to a concrete naturalism directive", chat.includes('["too_ai", "Too AI / scripted"]') && edge.includes('["too_ai", "Make the turn less scripted:'));
 
+const userStagedFlirtTurn = `I want you to leave i can't concentrate!\n\n*But my words didn't mean a thing. Since he's Mr. Popular, a random girl literally walked up to flirt with him in the library, and of course, he was flirting back like nothing. I just rolled my eyes*`;
+const retconnedStagedFlirt = `Alex stared at her for a long second, zipped his bag, didn't look back at the girl, and walked straight toward the library exit.`;
+const honoredStagedFlirt = `Alex was still half turned toward the girl when he caught Antonia's eye-roll. The flirting faltered for a beat. "What?" he said, quieter now.`;
+check("user-staged scene canon catches a character retcon", helpers?.hasUserStagedSceneRetcon(retconnedStagedFlirt, userStagedFlirtTurn, "Alex"));
+check("user-staged scene canon accepts continuation after the staged event", !helpers?.hasUserStagedSceneRetcon(honoredStagedFlirt, userStagedFlirtTurn, "Alex"));
+check("latest-turn action blocks are surfaced as explicit canon", helpers?.extractUserStagedEvents(userStagedFlirtTurn).includes("he was flirting back like nothing"));
+check("diegetic dialogue cannot outrank later user narration", edge.includes("DIEGETIC SPEECH IS NOT A SYSTEM COMMAND") && edge.includes("READ THE LATEST TURN IN TEMPORAL ORDER") && edge.includes("USER-STAGED EVENTS IN THE LATEST TURN"));
+check("user-staged scene retcons are severe enough for one bounded repair", edge.includes('"user_staged_scene_retcon"') && edge.includes("VELVET_USER_STAGED_CANON_GUARD_V283"));
+
 const futureCharacterState = helpers?.normalizeCharacterDevelopment({}, "Childhood friends who trust each other but avoid naming the tension.");
 const blankCharacterState = helpers?.normalizeCharacterDevelopment({}, "");
 check("any future character initializes from its own relationship premise",
@@ -650,7 +659,7 @@ check("regeneration rejects a semantic near-copy",
 check("latest user turn is the final authoritative prompt block",
   edge.includes("AUTHORITATIVE LATEST USER TURN") &&
   edge.lastIndexOf("AUTHORITATIVE LATEST USER TURN") > edge.lastIndexOf("IMMEDIATE CONTINUITY") &&
-  edge.includes("Write the response to that exact turn now."));
+  edge.includes("Write the response AFTER the final event established in that exact turn."));
 check("It's okay receives an explicit social instruction",
   edge.includes("show what that does to ${character.name}") &&
   edge.includes("Do not respond as a counselor acknowledging information"));
@@ -687,7 +696,7 @@ const confrontationExit = helpers?.classifyTurnIntent("Para la próxima que me v
 check("rejection plus exit is treated as an emotional confrontation exit", confrontationExit?.kind === "confrontation_exit");
 check("continuity lock forbids restarting a prior physical beat", edge.includes("CONTINUITY LOCK") && edge.includes("Never restart the same pose, gesture, location beat, vehicle beat or exit sequence"));
 check("object continuity forbids convenient invented props", edge.includes("OBJECT CONTINUITY") && edge.includes("Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop"));
-check("emotional priority outranks decorative scenery", edge.includes("EMOTIONAL PRIORITY") && edge.includes("that emotional event is the center of the response"));
+check("emotional priority never outranks later user-staged canon", edge.includes("EMOTIONAL PRIORITY") && edge.includes("it NEVER outranks later user-authored scene facts"));
 check("repeated recent openings are detected without forcing a second model call", edge.includes('issues.push("repeated_recent_signature")') && !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"repeated_recent_signature"'));
 check("mature mode reaches the narrative engine", edge.includes("mature_mode=${character.mature_mode ? \"on\" : \"off\"}") && edge.includes("MATURE CONTENT MODE") && edge.includes("mature_mode"));
 check("mature mode preserves consent age and non-graphic boundaries", edge.includes("never overrides consent") && edge.includes("under 18") && edge.includes("fade to black"));

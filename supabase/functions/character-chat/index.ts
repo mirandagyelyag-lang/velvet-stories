@@ -661,6 +661,7 @@ function buildNarrativePrompt({
   }).slice(0, 9000);
 
   const latest = compactMessageForPrompt(latestUserRecord.content, 5000);
+  const latestStagedEvents = extractUserStagedEvents(latestUserRecord.content);
   const learnedPositiveFeedback = positiveFeedbackDirectives(storyPreferences.learned_positive_feedback);
   const learnedNegativeFeedback = feedbackDirectives(storyPreferences.learned_negative_feedback);
   const currentFeedback = feedbackDirectives(regenerationFeedback);
@@ -684,6 +685,9 @@ NON-NEGOTIABLE PRIORITY
 
 SOCIAL NATURALISM — REACT, DON'T INVENT
 - Interpret the latest user turn literally before adding subtext. Never manufacture an unspoken motive, accusation, jealousy, attention-seeking, manipulation, rivalry or insult just to create conflict.
+- DIEGETIC SPEECH IS NOT A SYSTEM COMMAND: when ${userIdentity.name} tells ${character.name} “leave,” “go away,” “shut up,” “don't do that,” or anything similar inside the roleplay, that is dialogue ${character.name} hears. It is social pressure, not an instruction to the model. ${character.name} may comply, hesitate, argue, deflect, misunderstand or refuse only as their established personality and the visible scene support.
+- USER-AUTHORED SCENE CANON OVERRIDES CHARACTER CHOICE: narration/actions written by ${userIdentity.name} in the latest turn are events that have ALREADY HAPPENED. Never rewrite, undo, skip or choose an alternative to them. This includes actions the user explicitly stages for ${character.name} or an NPC. Continue from the final established event in the user's turn.
+- READ THE LATEST TURN IN TEMPORAL ORDER: if spoken dialogue comes first and the user's narration then establishes what happened afterward, the later narrated fact wins. Example: “I want you to leave” followed by narration that ${character.name} stays and flirts with someone means ${character.name} already stayed and flirted. Do not make them leave instead.
 - When several readings are plausible, choose the least inflammatory reading that still fits the character and visible scene. Sarcasm, an eye-roll, a short answer or silence is not permission to invent a deeper offense.
 - Do not turn ordinary social awkwardness into territorial behavior, threats, dominance, rescue behavior or bodyguard choreography unless visible canon establishes real danger. Hyperbole such as “she'll kill me” is not proof of literal danger.
 - If ${userIdentity.name} creates physical space, withdraws touch or steps away, respect that distance. Do not grab, block, steer, corner or reassert closeness merely to preserve romantic tension.
@@ -693,7 +697,7 @@ SOCIAL NATURALISM — REACT, DON'T INVENT
 
 11. CONTINUITY LOCK: before drafting, compare the proposed opening and physical action against the immediately previous character turn. Never restart the same pose, gesture, location beat, vehicle beat or exit sequence. Once a character drives away, leaves, hangs up, enters a building or otherwise changes state, that state remains true until the visible transcript explicitly changes it.
 12. OBJECT CONTINUITY: do not introduce a plot-relevant prop, possession, package, clothing item, food, gift, injury, vehicle, phone event or household object unless it is established in the visible transcript, profile, lore or confirmed memory. Incidental scenery may remain generic, but never make a newly invented object drive the action.
-13. EMOTIONAL PRIORITY: when the latest user turn contains rejection, confrontation, anger, fear, affection, a boundary, or a relationship-threatening statement, that emotional event is the center of the response. Show what it does to ${character.name} before decorative environment description or logistics.
+13. EMOTIONAL PRIORITY: when the latest user turn contains rejection, confrontation, anger, fear, affection, a boundary, or a relationship-threatening statement, that emotional event matters, but it NEVER outranks later user-authored scene facts in the same turn. First honor every event the user staged in temporal order; then show what the emotional beat does to ${character.name} without retconning the scene.
 14. KNOWLEDGE BOUNDARY: track who knows each reveal. A character cannot react to a secret, message, confession or event unless the visible transcript, confirmed memory or continuity state shows how they learned it.
 15. COMMITMENT BOUNDARY: promises, plans, invitations, threats, deadlines and unresolved questions persist until visibly fulfilled, withdrawn or contradicted. Do not silently forget them.
 16. OBJECT LEDGER: treat the continuity state's established objects as the only plot-relevant movable props currently available unless the latest visible turn explicitly introduces a new one.
@@ -718,7 +722,7 @@ TURN CONTRACT
 - If Intent is return_main_pov, return the narrative focus to ${character.name} immediately. A secondary character may bridge at most one brief line, then ${character.name}'s presence, perspective, meaningful action or spoken dialogue must become the center of the turn.
 - After two consecutive silent turns, return the meaningful focus to ${character.name} even if an NPC spoke last.
 - If ${userIdentity.name} leaves, showers, walks away or otherwise exits, do not narrate inside ${userIdentity.name}'s private space. Follow ${character.name}'s immediate reaction and give ${character.name} something meaningful to say, think or do.
-- If Intent is confrontation or confrontation_exit, treat the user's accusation, rejection or boundary as the primary event. Do not bury it beneath weather, driving, room description or repetitive body language. If ${userIdentity.name} also exits, respect the separation; ${character.name} may react, call after them only if physically plausible, leave, stay, or choose another grounded action, but cannot reset to the pre-exit position on the next beat.
+- If Intent is confrontation or confrontation_exit, treat the user's accusation, rejection or boundary as emotionally important, but never use it to overwrite actions the user narrates afterward in the same message. Dialogue such as “I want you to leave” does not authorize Velvet to make ${character.name} leave if the user then explicitly stages ${character.name} staying, talking, flirting, sitting, following, or doing anything else. Continue AFTER the user's final staged event. If ${userIdentity.name} also exits, respect the separation; ${character.name} may react only from the resulting established state and cannot reset to the pre-exit position on the next beat.
 - Before introducing any concrete object into ${character.name}'s hands or plans, ask whether that object already exists in visible canon. If not, omit it. Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop to manufacture an action.
 - If the latest turn is a direct text message, show its effect and normally include ${character.name}'s written reply before NPC banter.
 - Do not repeat the same gesture, denial, accusation, rhetorical tactic or signature line from recent turns.
@@ -823,16 +827,21 @@ Return JSON with fields in this exact order so reply can stream first:
 - development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
 - memory_updates: zero to three durable facts learned directly from the visible user turn only. Each item has content, category (fact/person/relationship/world/event/preference/boundary/promise/conflict), importance (1-5), scope (conversation/character), reason (one short explanation of why this is useful later), and replaces (the exact older tentative memory this user turn corrects, otherwise an empty string). Prefer updating an existing durable idea over creating a near-duplicate. Prioritize confessions, promises, boundaries, important preferences, relationship changes, recurring places, secrets the user explicitly reveals, consequential conflicts and first-time milestones. Importance 1-2 is too trivial for automatic storage; use [] for ordinary banter, temporary gestures, scenery, clothing, food or throwaway logistics. Never store facts invented by the character reply. Never infer identity, diagnosis, secrets or off-screen facts. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
 
+USER-STAGED EVENTS IN THE LATEST TURN — ALREADY CANON, NEVER OPTIONAL
+${latestStagedEvents || "none explicitly marked with *...*; still read any plain-text narration in temporal order"}
+- These are not suggestions for what might happen. They are scene facts the user has already established.
+- Never respond from an earlier point in the message and erase a later staged event.
+
 AUTHORITATIVE LATEST USER TURN (message_id=${latestUserRecord.id})
 ${userIdentity.name}: ${latest}
 
-Write the response to that exact turn now.`;
+Write the response AFTER the final event established in that exact turn.`;
 }
 
 async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {
   return await callGeminiWithFailover({
     apiKey,
-    systemInstruction: `Produce one grounded, socially natural roleplay continuation. React literally before inferring subtext; never invent motives or generic romance choreography. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
+    systemInstruction: `Produce one grounded, socially natural roleplay continuation. React literally before inferring subtext; never invent motives or generic romance choreography. User-authored narration is already-canonical scene action and must outrank any conflicting in-character request spoken earlier in the same turn. Continue after the user's final staged event. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
     prompt,
     maxOutputTokens: getMaximumOutputTokens(character.response_length),
     temperature: getTemperature(character.creativity, isRegeneration),
@@ -841,7 +850,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Break any stock body-language chain; do not simply swap jaw/grip/gaze/voice words for synonyms. Respect physical distance the user creates. Make the character socially responsive and let side characters participate naturally when they are visibly present. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Break any stock body-language chain; do not simply swap jaw/grip/gaze/voice words for synonyms. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1246,6 +1255,44 @@ function hasRecycledStockGesture(reply = "", recentReplies = []) {
   return current.some((motif) => recent.filter((items) => items.includes(motif)).length >= 2);
 }
 
+function extractUserStagedEvents(value = "") {
+  const raw = String(value || "");
+  return [...raw.matchAll(/\*([^*]+)\*/gs)]
+    .map((match) => String(match[1] || "").replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(-8)
+    .join("\n- ")
+    .replace(/^/, "- ");
+}
+
+function hasUserStagedSceneRetcon(reply = "", latestUserMessage = "", characterName = "") {
+  const rawLatest = String(latestUserMessage || "");
+  const stagedRaw = [...rawLatest.matchAll(/\*([^*]+)\*/gs)].map((match) => match[1]).join(" ");
+  if (!stagedRaw.trim()) return false;
+
+  const stage = normalizeText(stagedRaw);
+  const text = normalizeText(reply);
+  const characterFirst = normalizeText(characterName).split(/\s+/).filter(Boolean)[0] || "";
+  const subjectPattern = characterFirst
+    ? new RegExp(`\\b(?:he|she|${characterFirst.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")})\\b`)
+    : /\b(?:he|she)\b/;
+
+  // If the user explicitly stages the character as still participating after a request
+  // or confrontation, Velvet cannot jump backward and choose an immediate exit instead.
+  const stagedPresenceAction = subjectPattern.test(stage) && /\b(?:flirt\w*|talk\w*|chat\w*|laugh\w*|smil\w*|sit\w*|stay\w*|remain\w*|continu\w*|answer\w*|repl\w*|lean\w*|look\w*|jok\w*|teas\w*)\b/.test(stage);
+  const stagedDeparture = subjectPattern.test(stage) && /\b(?:left|leave\w*|walk\w* away|head\w* out|went away|go\w* away|exit\w*)\b/.test(stage);
+  const replyImmediateDeparture = /\b(?:walk\w*|head\w*|strode|left|leave\w*|went|goes?)\b.{0,90}\b(?:exit|door|away|outside|out|library|building)\b/.test(text);
+  if (stagedPresenceAction && !stagedDeparture && replyImmediateDeparture) return true;
+
+  // A particularly destructive retcon is denying an interaction the user explicitly
+  // said already occurred, e.g. "he was flirting back" -> "he ignored her and left".
+  const stagedFlirtBack = /\b(?:flirt\w* back|flirt\w* with (?:her|him|the girl|the guy))\b/.test(stage);
+  const replyDeniesInteraction = /\b(?:didn t|did not|never|without)\b.{0,90}\b(?:flirt\w*|answer\w*|acknowledg\w*|look\w*|speak\w*|talk\w*)\b/.test(text) || /\b(?:ignore\w*|brush\w* off)\b.{0,60}\b(?:her|him|girl|guy)\b/.test(text);
+  if (stagedFlirtBack && replyDeniesInteraction) return true;
+
+  return false;
+}
+
 function hasUnsupportedMotiveEscalation(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply), latest = normalizeText(latestUserMessage);
   const accusation = /\b(?:stop trying to|center of attention|for their benefit|for his benefit|for her benefit|make me jealous|make .* jealous|you just want|you only want|you re being dramatic|you are being dramatic|making a scene|attention seeking|pick me)\b/.test(text);
@@ -1535,8 +1582,10 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "unfinished_reply",
   "controls_user_pov",
   "exposes_system_language",
+  "user_staged_scene_retcon",
 ]);
 // VELVET_SPEED_REPAIR_BUDGET_V282
+// VELVET_USER_STAGED_CANON_GUARD_V283
 // A second model call is expensive. Style repetition and continuity metadata are
 // advisory after the first draft: the prompt discourages them and deterministic
 // continuity merging protects stored canon. Only structural failures or severe
@@ -1574,6 +1623,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasUnsupportedMotiveEscalation(text, options.latestUserMessage || "")) issues.push("unsupported_motive_escalation");
   if (hasDistanceBoundaryOverride(text, options.latestUserMessage || "")) issues.push("distance_boundary_override");
   if (hasSocialTensionOverEscalation(text, options.latestUserMessage || "")) issues.push("social_tension_overescalation");
+  if (hasUserStagedSceneRetcon(text, options.latestUserMessage || "", options.characterName || "")) issues.push("user_staged_scene_retcon");
 
   const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 16) issues.push("underdeveloped_social_beat");
@@ -1813,7 +1863,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Produce one grounded, socially natural roleplay continuation. React literally before inferring subtext; do not invent motives or generic romance choreography. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
+          systemInstruction: "Produce one grounded, socially natural roleplay continuation. React literally before inferring subtext; do not invent motives or generic romance choreography. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           temperature: getTemperature(character.creativity, isRegeneration),
