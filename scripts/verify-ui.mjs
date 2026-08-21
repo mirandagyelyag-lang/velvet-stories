@@ -25,6 +25,7 @@ const searchPage = read("src/pages/Search.jsx");
 const searchStyles = read("src/styles/search.css");
 const groupStoryModal = read("src/components/GroupStoryModal.jsx");
 const storycraftStyles = read("src/styles/velvet-v240-storycraft.css");
+const precisionActions = read("src/styles/velvet-v296-precision-actions.css");
 const livingStoryStyles = read("src/styles/velvet-v250-living-story.css");
 const keepsakeStyles = read("src/styles/velvet-v260-keepsake.css");
 const storyAmbience = read("src/components/StoryAmbience.jsx");
@@ -62,7 +63,7 @@ const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 check("burgundy reference layer stays after the mobile foundation", main.includes('import "./styles/velvet-burgundy-reference.css";') && main.lastIndexOf("velvet-burgundy-reference.css") > main.lastIndexOf("velvet-mobile-foundation.css"));
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
-check("release is v2.9.5 Centered Confirmation UI", pkg.version === "2.9.5" && read("src/config/version.js").includes('VELVET_RELEASE = "Centered Confirmation UI"'));
+check("release is v2.9.6 Precision Three-Dot Controls", pkg.version === "2.9.6" && read("src/config/version.js").includes('VELVET_RELEASE = "Precision Three-Dot Controls"'));
 check("Stories owns the document canvas while mounted", read("src/pages/Chats.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/Chats.jsx").includes('classList.remove("velvet-burgundy-route")'));
 check("Burgundy background cannot end before the document", reference.includes('body.velvet-burgundy-route .app__content') && reference.includes('background: var(--stories-canvas) !important'));
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
@@ -257,7 +258,7 @@ check("ambience fades cleanly and enforces one active room", storyAmbience.inclu
 check("mobile ambience pauses and resumes instead of restarting on visibility changes", audioBus.includes('window.addEventListener("pagehide", stopAllAudio)') && !audioBus.includes('document.visibilityState === "hidden"') && storyAmbience.includes("visibilityPausedRef") && storyAmbience.includes("pauseActiveAmbience") && storyAmbience.includes("switchAmbience(latest.mode, latest.volume)"));
 check("device voice center supports language filters favorites and future neural engines", storyHubDrawer.includes("All languages") && storyHubDrawer.includes("Favorite this voice") && speechUtil.includes("neuralReady: true") && storyHubDrawer.includes("Neural-ready architecture"));
 check("voice volume is remembered without changing story ambience volume", storyHubDrawer.includes('writeAudioPreference("voice", character.id') && chat.includes('readAudioPreference("voice", character.id') && storyHubDrawer.includes("ambientVolume"));
-check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes('"2.9.5"'));
+check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes('"2.9.6"'));
 check("PWA Update Doctor can repair an interrupted update without clearing stories", pwaContext.includes("UPDATE_PENDING_KEY") && pwaContext.includes("repairUpdate") && pwaContext.includes("clearOldShellCaches") && !pwaContext.includes("localStorage.clear"));
 check("Settings shows exact build and service health", settings.includes("About Velvet") && settings.includes("VELVET_VERSION") && settings.includes("SUPABASE") && settings.includes("STORY ENGINE") && settings.includes("Check for update"));
 check("chat menu exposes the private-first bug reporter", chat.includes("Report a problem") && diagnostics.includes("Private chat text stays out unless you explicitly include it") && bugReporter.includes("includePrivate"));
@@ -299,11 +300,13 @@ check("AI phases are compact and explicit", chat.includes('"Sending"') && chat.i
 check("response versions refresh after regeneration", chat.includes("regeneratedVersions") && chat.includes("rewrittenVersions") && chat.includes("refinedVersions"));
 check("stream paints adapt to touch devices", chatsContextV260.includes("VELVET_STREAM_POLISH_V2") && chatsContextV260.includes("targetCadence"));
 
+check("trash Undo is a compact centered four-second toast", feedbackContext.includes("4000") && feedbackContext.includes('toast.message || "Moved to Trash"') && feedbackStyles.includes("width:max-content") && feedbackStyles.includes("top:50%") && feedbackStyles.includes("animation:undo-countdown 4s"));
+check("mobile confirmation stays compact and centered instead of becoming a bottom sheet", feedbackStyles.includes("place-items:center") && feedbackStyles.includes("align-items:center") && !feedbackStyles.includes("align-items:end") && feedbackStyles.includes("width:min(326px"));
+check("Stories ellipsis opens on completed tap instead of pointer-down", stories.includes("onPointerDown={(event) => { event.stopPropagation(); }}") && stories.includes("onClick={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId") && !stories.includes("onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId"));
+check("library ellipsis controls use the compact precision layer", main.includes("velvet-v296-precision-actions.css") && precisionActions.includes("width: 32px !important") && precisionActions.includes("touch-action: pan-y !important"));
+
 let failed=0;
 for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }
 if(failed){ console.error(`\n${failed} UI checks failed.`); process.exit(1); }
 console.log(`\n${checks.length} UI checks passed.`);
 
-
-check("trash Undo is a compact centered four-second toast", feedbackContext.includes("4000") && feedbackContext.includes('toast.message || "Moved to Trash"') && feedbackStyles.includes("Centered Confirmation UI") && feedbackStyles.includes("width:max-content") && feedbackStyles.includes("top:50%") && feedbackStyles.includes("animation:undo-countdown 4s"));
-check("mobile confirmation stays compact and centered instead of becoming a bottom sheet", feedbackStyles.includes("place-items:center") && feedbackStyles.includes("align-items:center") && !feedbackStyles.includes("align-items:end") && feedbackStyles.includes("width:min(326px"));

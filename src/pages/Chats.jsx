@@ -403,8 +403,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         <button
           type="button"
           className="story-action-menu__trigger"
-          onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId((current) => current === conversation.id ? null : conversation.id); }}
-          onClick={(event) => { event.preventDefault(); event.stopPropagation(); }}
+          onPointerDown={(event) => { event.stopPropagation(); }}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId((current) => current === conversation.id ? null : conversation.id); }}
           aria-label={`Story actions for ${title}`}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
