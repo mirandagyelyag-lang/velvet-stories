@@ -37,6 +37,7 @@ import "./styles/velvet-v270-living-scenes.css";
 import "./styles/velvet-v274-in-chat-actions.css";
 import "./styles/velvet-v280-chat-experience.css";
 import "./styles/velvet-v290-character-studio-lite.css";
+import "./styles/velvet-v291-private-library-rework.css";
 
 applySafeModeClass();
 

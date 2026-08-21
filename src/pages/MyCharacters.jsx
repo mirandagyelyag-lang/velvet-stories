@@ -19,13 +19,7 @@ import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import "../styles/my-characters.css";
 
-const MAIN_FILTERS = ["For you", "Romance", "Drama", "Fantasy", "Mystery"];
-const VIBES = [
-  { id: "angst", label: "Angst", hint: "Broken but beautiful", query: "angst" },
-  { id: "cozy", label: "Soft & Cozy", hint: "Warm stories", query: "soft cozy" },
-  { id: "dark", label: "Dark Romance", hint: "Dangerously close", query: "dark romance" },
-  { id: "fluffy", label: "Fluffy", hint: "Sweet & light", query: "fluffy" },
-];
+const MAIN_FILTERS = ["All", "Favorites"];
 
 function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onRemixCharacter }) {
   const {
@@ -42,7 +36,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
   const { confirmAction, scheduleDeletion } = useFeedback();
 
   const [search, setSearch] = useState("");
-  const [activeChip, setActiveChip] = useState("For you");
+  const [activeChip, setActiveChip] = useState("All");
   const [tagEditor, setTagEditor] = useState(null);
   const [tagValue, setTagValue] = useState("");
   const [view, setView] = useState("active");
@@ -77,9 +71,8 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
         const haystack = `${character.name || ""} ${character.role || ""} ${character.description || ""} ${character.world || ""} ${(character.tags || []).join(" ")}`.toLowerCase();
         const matchesQuery = !query || haystack.includes(query);
         const matchesChip =
-          chip === "for you" ||
+          chip === "all" ||
           (chip === "favorites" && character.isFavorite) ||
-          haystack.includes(chip) ||
           (character.tags || []).some((tag) => normalizeLabel(tag).toLowerCase() === chip);
         return matchesQuery && matchesChip;
       })
@@ -88,9 +81,6 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
         return new Date(b.updated_at || b.updatedAt || b.created_at || 0) - new Date(a.updated_at || a.updatedAt || a.created_at || 0);
       });
   }, [sourceCharacters, search, activeChip]);
-
-  const featured = useMemo(() => filtered.slice(0, 3), [filtered]);
-  const popular = useMemo(() => filtered.slice(3, 7), [filtered]);
 
   async function handleDelete(character) {
     const approved = !settings.confirmBeforeDelete || (await confirmAction({
@@ -133,32 +123,27 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
   function openTrash() {
     setView("trash");
     setSearch("");
-    setActiveChip("For you");
+    setActiveChip("All");
     setShowMore(false);
     setMenuId(null);
   }
 
-  function openDiscover() {
+  function openCharacters() {
     setView("active");
     setSearch("");
-    setActiveChip("For you");
+    setActiveChip("All");
     setShowMore(false);
     setMenuId(null);
-  }
-
-  function chooseVibe(vibe) {
-    setActiveChip("For you");
-    setSearch(vibe.query);
   }
 
   if (view === "active" && characters.length === 0) {
     return (
       <section className="chats-page chats-page--reference discover-burgundy discover-burgundy--empty-page">
-        <DiscoverReferenceHero onCreateCharacter={onCreateCharacter} />
+        <CharacterLibraryHero onCreateCharacter={onCreateCharacter} />
         <div className="discover-burgundy__empty-hero">
           <small>YOUR PRIVATE CAST</small>
           <h2>No characters yet</h2>
-          <p>Create your first character and start building your private story library.</p>
+          <p>Create anyone you want. This is your private character library, not a public feed.</p>
           <button className="discover-burgundy__primary" onClick={onCreateCharacter}><PenLine size={18} /> Create a character</button>
         </div>
       </section>
@@ -166,32 +151,27 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
   }
 
   return (
-    <section className={`chats-page chats-page--reference discover-burgundy ${view === "trash" ? "discover-burgundy--trash" : ""}`}>
-      <DiscoverReferenceHero
-        view={view}
-        onCreateCharacter={onCreateCharacter}
-        onBack={openDiscover}
-      />
+    <section className={`chats-page chats-page--reference discover-burgundy characters-library ${view === "trash" ? "discover-burgundy--trash" : ""}`}>
+      <CharacterLibraryHero view={view} onCreateCharacter={onCreateCharacter} onBack={openCharacters} />
 
-      <div className="discover-burgundy__controls">
+      <div className="discover-burgundy__controls characters-library__controls">
         <label className="discover-burgundy__search">
           <Search size={20} />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={view === "trash" ? "Search trash" : "Search a story, character or vibe..."} />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={view === "trash" ? "Search trash" : "Search characters or tags..."} />
           {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={17} /></button>}
         </label>
 
         {view === "active" && (
           <>
-            <div className="discover-burgundy__chips" role="tablist" aria-label="Discover filters">
+            <div className="discover-burgundy__chips" role="tablist" aria-label="Character filters">
               {MAIN_FILTERS.map((chip) => (
                 <button key={chip} className={activeChip === chip ? "active" : ""} onClick={() => { setActiveChip(chip); setSearch(""); }}>{chip}</button>
               ))}
-              <button className={showMore ? "active" : ""} onClick={() => setShowMore((current) => !current)} aria-expanded={showMore}>More <ChevronDown size={14} /></button>
+              <button className={showMore ? "active" : ""} onClick={() => setShowMore((current) => !current)} aria-expanded={showMore}>Tags <ChevronDown size={14} /></button>
             </div>
             {showMore && (
-              <div className="discover-burgundy__more-filters">
-                <button className={activeChip === "Favorites" ? "active" : ""} onClick={() => { setActiveChip("Favorites"); setSearch(""); }}>Favorites</button>
-                {dynamicTags.slice(0, 5).map((tag) => <button key={tag} onClick={() => { setActiveChip(normalizeLabel(tag)); setSearch(""); }}>{normalizeLabel(tag)}</button>)}
+              <div className="discover-burgundy__more-filters characters-library__more-filters">
+                {dynamicTags.length ? dynamicTags.slice(0, 10).map((tag) => <button key={tag} className={activeChip === normalizeLabel(tag) ? "active" : ""} onClick={() => { setActiveChip(normalizeLabel(tag)); setSearch(""); }}>{normalizeLabel(tag)}</button>) : <span>No tags yet.</span>}
                 <button className="danger" onClick={openTrash}><Trash2 size={14} /> Trash</button>
               </div>
             )}
@@ -212,42 +192,27 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
           </div>
         ) : <EmptyState title="Trash is empty" text="Deleted characters will wait here until you restore them or remove them forever." />
       ) : filtered.length === 0 ? (
-        <EmptyState title="No characters found" text="Try another search or choose a different mood." />
+        <EmptyState title="No characters found" text="Try another name, role or tag." />
       ) : (
-        <>
-          <DiscoverFeatured
-            items={featured}
-            menuId={menuId}
-            setMenuId={setMenuId}
-            onOpenCharacter={onOpenCharacter}
-            onToggleFavorite={toggleFavorite}
-            onEditCharacter={onEditCharacter}
-            onRemixCharacter={onRemixCharacter}
-            onOpenTags={openTags}
-            onDeleteCharacter={handleDelete}
-          />
-
-          {popular.length > 0 && (
-            <DiscoverPopular
-              items={popular}
-              menuId={menuId}
-              setMenuId={setMenuId}
-              onOpenCharacter={onOpenCharacter}
-              onToggleFavorite={toggleFavorite}
-              onEditCharacter={onEditCharacter}
-              onRemixCharacter={onRemixCharacter}
-              onOpenTags={openTags}
-              onDeleteCharacter={handleDelete}
-            />
-          )}
-
-          <section className="discover-burgundy__vibes">
-            <header><h3>Explore by vibe</h3></header>
-            <div className="discover-burgundy__vibe-rail">
-              {VIBES.map((vibe) => <button key={vibe.id} onClick={() => chooseVibe(vibe)}><strong>{vibe.label}</strong><span>{vibe.hint}</span></button>)}
-            </div>
-          </section>
-        </>
+        <section className="discover-burgundy__section discover-burgundy__section--featured characters-library__section">
+          <header className="characters-library__heading"><div><small>PRIVATE CAST</small><h3>Your characters</h3></div><span>{filtered.length}</span></header>
+          <div className="discover-burgundy__featured-rail characters-library__grid">
+            {filtered.map((character) => (
+              <FeatureCard
+                key={character.id}
+                character={character}
+                menuId={menuId}
+                setMenuId={setMenuId}
+                onOpenCharacter={onOpenCharacter}
+                onToggleFavorite={toggleFavorite}
+                onEditCharacter={onEditCharacter}
+                onRemixCharacter={onRemixCharacter}
+                onOpenTags={openTags}
+                onDeleteCharacter={handleDelete}
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       {tagEditor && (
@@ -263,79 +228,47 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
   );
 }
 
-
-function DiscoverReferenceHero({ view = "active", onCreateCharacter, onBack }) {
+function CharacterLibraryHero({ view = "active", onCreateCharacter, onBack }) {
   const inTrash = view === "trash";
   return (
-    <header className="reference-stories-hero discover-reference-hero">
+    <header className="reference-stories-hero discover-reference-hero characters-library__hero">
       <div className="reference-stories-hero__private">
         <Crown size={19} />
-        <span>{inTrash ? "PRIVATE ARCHIVE" : "PRIVATE LIBRARY"}</span>
+        <span>{inTrash ? "PRIVATE ARCHIVE" : "PRIVATE CAST"}</span>
       </div>
 
-      <div className="reference-stories-title discover-reference-title" aria-label={inTrash ? "Deleted Stories" : "Discover Stories"}>
-        <span className="reference-stories-title__script">{inTrash ? "deleted" : "discover"}</span>
+      <div className="reference-stories-title discover-reference-title" aria-label={inTrash ? "Deleted Characters" : "Your Characters"}>
+        <span className="reference-stories-title__script">{inTrash ? "deleted" : "your"}</span>
         <span className="reference-stories-title__line reference-stories-title__line--left" />
-        <h1>STORIES</h1>
+        <h1>CHARACTERS</h1>
         <span className="reference-stories-title__spark">✦</span>
         <span className="reference-stories-title__line reference-stories-title__line--right" />
       </div>
 
       <div className="discover-reference-hero__actions">
-        {inTrash && <button className="discover-burgundy__back-link" onClick={onBack}>Back to Discover</button>}
+        {inTrash && <button className="discover-burgundy__back-link" onClick={onBack}>Back to Characters</button>}
         <button className="reference-stories-new" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={26} /></button>
       </div>
     </header>
   );
 }
 
-function DiscoverFeatured({ items, ...actions }) {
-  if (!items.length) return null;
-  return (
-    <section className="discover-burgundy__section discover-burgundy__section--featured">
-      <header><h3>Featured</h3></header>
-      <div className="discover-burgundy__featured-rail">
-        {items.map((character) => <FeatureCard key={character.id} character={character} {...actions} />)}
-      </div>
-    </section>
-  );
-}
-
 function FeatureCard({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onRemixCharacter, onOpenTags, onDeleteCharacter }) {
   return (
-    <article className="discover-burgundy__feature-card">
+    <article className="discover-burgundy__feature-card characters-library__card">
       <button className="discover-burgundy__feature-card-main" onClick={() => onOpenCharacter(character)}>
         <CharacterImage character={character} />
         <span className="discover-burgundy__feature-card-shade" />
-        <span className="discover-burgundy__feature-card-copy"><strong>{character.name}</strong><small>{character.role || character.world || "Velvet story"}</small><em>{shortQuote(character)}</em></span>
+        <span className="discover-burgundy__feature-card-copy"><strong>{character.name}</strong><small>{character.role || character.world || "Character"}</small><em>{shortQuote(character)}</em></span>
       </button>
       <CharacterMenu character={character} menuId={menuId} setMenuId={setMenuId} onOpenCharacter={onOpenCharacter} onToggleFavorite={onToggleFavorite} onEditCharacter={onEditCharacter} onRemixCharacter={onRemixCharacter} onOpenTags={onOpenTags} onDeleteCharacter={onDeleteCharacter} />
     </article>
   );
 }
 
-function DiscoverPopular({ items, ...actions }) {
+function CharacterMenu({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onRemixCharacter, onOpenTags, onDeleteCharacter }) {
   return (
-    <section className="discover-burgundy__section discover-burgundy__section--popular">
-      <header><h3>Popular this week</h3></header>
-      <div className="discover-burgundy__popular-rail">
-        {items.map((character) => (
-          <article key={character.id} className="discover-burgundy__popular-card">
-            <button className="discover-burgundy__popular-main" onClick={() => actions.onOpenCharacter(character)}>
-              <span className="discover-burgundy__popular-image"><CharacterImage character={character} /></span>
-              <span className="discover-burgundy__popular-copy"><strong>{character.name}</strong><small>{character.role || character.world || "Velvet story"}</small>{character.isFavorite && <em><Heart size={11} fill="currentColor" /> Favorite</em>}</span>
-            </button>
-            <CharacterMenu character={character} compact {...actions} />
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CharacterMenu({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onRemixCharacter, onOpenTags, onDeleteCharacter, compact = false }) {
-  return (
-    <div className={`discover-burgundy__menu-wrap${compact ? " compact" : ""}`}>
+    <div className="discover-burgundy__menu-wrap">
       <button className="discover-burgundy__more" onClick={() => setMenuId(menuId === character.id ? null : character.id)} aria-label={`${character.name} actions`}><MoreHorizontal size={17} /></button>
       {menuId === character.id && (
         <div className="discover-burgundy__menu">
@@ -366,7 +299,7 @@ function normalizeLabel(value) {
 }
 
 function shortQuote(character) {
-  const source = character.description || character.world || "Open their story";
+  const source = character.description || character.world || "Open their profile";
   const clean = source.replace(/\s+/g, " ").trim();
   return clean.length > 52 ? `${clean.slice(0, 49).trim()}…` : clean;
 }

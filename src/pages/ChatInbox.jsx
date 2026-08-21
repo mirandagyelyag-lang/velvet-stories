@@ -121,7 +121,7 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
   return (
     <section className="reference-inbox reference-inbox--v2116">
       <header className="reference-stories-hero reference-inbox__hero">
-        <div className="reference-stories-hero__private"><Crown size={19}/><span>PRIVATE LIBRARY</span></div>
+        <div className="reference-stories-hero__private"><Crown size={19}/><span>ACTIVE CONVERSATIONS</span></div>
         <div className="reference-stories-title reference-inbox__title" aria-label="Your Chats">
           <span className="reference-stories-title__script">your</span>
           <span className="reference-stories-title__line reference-stories-title__line--left" />
@@ -131,6 +131,8 @@ function ChatInbox({ onOpenCharacter, onBrowseCharacters }) {
         </div>
         <button className="reference-stories-new reference-inbox__new-top" type="button" onClick={onBrowseCharacters} aria-label="Start a new chat"><Sparkles size={24}/></button>
       </header>
+
+      <div className="library-purpose-note library-purpose-note--chats"><strong>Chats are for jumping back in.</strong><span>Your active conversations live here; story management stays in Stories.</span></div>
 
       <div className="reference-search-wrap reference-inbox__search-wrap">
         <label className="reference-search">

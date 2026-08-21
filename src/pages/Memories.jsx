@@ -89,6 +89,8 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
   const [draftCharacterId, setDraftCharacterId] = useState("");
   const [saving, setSaving] = useState(false);
   const [workingId, setWorkingId] = useState(null);
+  const [importanceFilter, setImportanceFilter] = useState("all");
+  const [expandedCharacters, setExpandedCharacters] = useState(() => new Set());
 
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route");
@@ -130,6 +132,25 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
   function openCreate() {
     const characterId = selectedCharacterId !== "all" ? selectedCharacterId : characters[0]?.id || "";
     setEditingMemory(null); setDraft(emptyDraft); setDraftCharacterId(characterId); setError(""); setEditorOpen(true); setMenuId(null);
+  }
+
+  function openCreateFor(characterId) {
+    setSelectedCharacterId(characterId);
+    setEditingMemory(null);
+    setDraft(emptyDraft);
+    setDraftCharacterId(characterId);
+    setError("");
+    setEditorOpen(true);
+    setMenuId(null);
+  }
+
+  function toggleCharacterExpanded(characterId) {
+    setExpandedCharacters((current) => {
+      const next = new Set(current);
+      if (next.has(characterId)) next.delete(characterId);
+      else next.add(characterId);
+      return next;
+    });
   }
 
   function openEdit(memory) {
@@ -224,27 +245,27 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
   const activeMemories = useMemo(() => memories.filter((memory) => !memory.superseded_at), [memories]);
   const replacementCandidates = useMemo(() => activeMemories.filter((memory) => memory.character_id === draftCharacterId && !memory.is_canon && memory.id !== editingMemory?.id), [activeMemories, draftCharacterId, editingMemory?.id]);
 
-  const baseFiltered = useMemo(() => memories.filter((memory) => {
-    if (selectedCharacterId !== "all" && memory.character_id !== selectedCharacterId) return false;
-    if (view === "history") { if (!memory.superseded_at) return false; }
-    else if (memory.superseded_at) return false;
-    if (view === "canon" && !memory.is_canon) return false;
-    if (view === "relationship" && memory.category !== "relationship") return false;
-    if (view === "events" && !["event", "promise"].includes(memory.category)) return false;
-    if (view === "preferences" && !["preference", "boundary", "person"].includes(memory.category)) return false;
-    if (view === "conflicts" && memory.category !== "conflict") return false;
-    if (category !== "all" && memory.category !== category) return false;
-    return !search.trim() || `${memory.content} ${memory.character?.name || ""} ${memory.source_excerpt || ""}`.toLowerCase().includes(search.trim().toLowerCase());
-  }), [memories, selectedCharacterId, category, search, view]);
+  const characterMemoryGroups = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return characters.map((character) => {
+      const characterMatch = !needle || `${character.name || ""} ${character.role || ""}`.toLowerCase().includes(needle);
+      const rows = activeMemories
+        .filter((memory) => memory.character_id === character.id)
+        .filter((memory) => memoryMatchesImportance(memory, importanceFilter))
+        .filter((memory) => characterMatch || `${memory.content || ""} ${memory.category || ""} ${memory.source_excerpt || ""}`.toLowerCase().includes(needle))
+        .sort(sortMemoryRows);
+      return { character, rows, characterMatch };
+    }).filter(({ rows, characterMatch }) => {
+      if (!needle) return true;
+      return characterMatch || rows.length > 0;
+    });
+  }, [characters, activeMemories, importanceFilter, search]);
 
-  const groupCounts = useMemo(() => Object.fromEntries(groups.map((item) => [item.id, activeMemories.filter((memory) => memoryMatchesGroup(memory, item.id)).length])), [activeMemories]);
-  const filtered = useMemo(() => baseFiltered.filter((memory) => memoryMatchesGroup(memory, group)), [baseFiltered, group]);
-  const pinned = useMemo(() => filtered.filter((memory) => memory.is_pinned && !memory.superseded_at).slice(0, 8), [filtered]);
-  const recent = useMemo(() => filtered.filter((memory) => !pinned.some((pinnedMemory) => pinnedMemory.id === memory.id)).sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)), [filtered, pinned]);
+  const visibleMemoryCount = useMemo(() => characterMemoryGroups.reduce((sum, group) => sum + group.rows.length, 0), [characterMemoryGroups]);
 
-  return <section className="chats-page chats-page--reference memories-reference-page">
+  return <section className="chats-page chats-page--reference memories-reference-page memories-character-library">
     <header className="reference-stories-hero memories-reference__hero">
-      <button className="reference-stories-hero__private memories-reference__private" type="button" onClick={onBack} aria-label="Go back"><Crown size={19}/><span>PRIVATE LIBRARY</span></button>
+      <button className="reference-stories-hero__private memories-reference__private" type="button" onClick={onBack} aria-label="Go back"><Crown size={19}/><span>PRIVATE MEMORY BOOK</span></button>
       <div className="reference-stories-title memories-reference__title" aria-label="Your Memories">
         <span className="reference-stories-title__script">your</span>
         <span className="reference-stories-title__line reference-stories-title__line--left" />
@@ -255,54 +276,113 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
       <button className="reference-stories-new memories-reference__new" type="button" onClick={openCreate} disabled={!characters.length} aria-label="Add new memory"><Sparkles size={24}/></button>
     </header>
 
-    <div className="reference-search-wrap memories-reference__search-wrap">
+    <div className="reference-search-wrap memories-reference__search-wrap memories-character-library__toolbar">
       <label className="reference-search">
         <Search size={23}/>
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search memories..." />
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search a character or memory..." />
         {search && <button type="button" className="reference-search__clear" onClick={() => setSearch("")} aria-label="Clear search"><X size={16}/></button>}
       </label>
-      <button className={`reference-filter${filterOpen ? " is-open" : ""}`} type="button" onClick={() => setFilterOpen((value) => !value)} aria-label="Memory filters"><Filter size={21}/></button>
+      <label className="memories-character-library__importance">
+        <Star size={16}/>
+        <select value={importanceFilter} onChange={(event) => setImportanceFilter(event.target.value)} aria-label="Filter memories by importance">
+          <option value="all">All importance</option>
+          <option value="essential">Essential · 5</option>
+          <option value="high">High · 4+</option>
+          <option value="medium">Medium · 3+</option>
+          <option value="low">Low · 1–2</option>
+        </select>
+        <ChevronDown size={14}/>
+      </label>
     </div>
 
-    {filterOpen && <div className="memories-reference__filter-menu">
-      <label><span>Character</span><div><select value={selectedCharacterId} onChange={(event) => setSelectedCharacterId(event.target.value)}><option value="all">All characters</option>{characters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}</select><ChevronDown size={15}/></div></label>
-      <label><span>Memory view</span><div><select value={view} onChange={(event) => { setView(event.target.value); setCategory("all"); }}><option value="active">Active</option><option value="canon">Canon</option><option value="relationship">Relationship</option><option value="events">Events</option><option value="preferences">Preferences</option><option value="conflicts">Conflicts</option><option value="history">Replaced history</option></select><ChevronDown size={15}/></div></label>
-      <label><span>Exact type</span><div><select value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><ChevronDown size={15}/></div></label>
-    </div>}
-
-    <div className="memories-reference__category-heading">
-      <span>CATEGORIES</span>
-      <small>{group === "all" ? "Everything Velvet remembers" : groupDescription(group)}</small>
+    <div className="memories-character-library__summary">
+      <span>CHARACTER MEMORIES</span>
+      <small>{visibleMemoryCount} {visibleMemoryCount === 1 ? "thought" : "thoughts"} visible</small>
     </div>
-    <nav className="memories-reference__groups" aria-label="Memory categories">
-      {groups.map(({ id, label, icon: Icon }) => <button key={id} className={group === id ? "is-active" : ""} onClick={() => setGroup(id)} aria-pressed={group === id}>{Icon && <Icon size={15}/>}<span>{label}</span><b>{groupCounts[id] || 0}</b></button>)}
-    </nav>
 
     {error && !editorOpen && <div className="memories-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")}><X size={16}/></button></div>}
 
     {loading && <div className="page-state"><LoaderCircle className="spin" size={28}/><p>Opening memories...</p></div>}
     {!loading && characters.length === 0 && <div className="page-state page-state--empty"><span><UserRound size={28}/></span><h2>No characters yet</h2><p>Create someone before giving them long-term memories.</p><button onClick={onBrowseCharacters}>Create a character</button></div>}
-    {!loading && characters.length > 0 && activeMemories.length === 0 && view !== "history" && <div className="page-state page-state--empty"><span><Sparkles size={28}/></span><h2>Your memory book is empty</h2><p>Velvet will save meaningful details as stories grow, or you can add one yourself.</p><button onClick={openCreate}>Add the first memory</button></div>}
-    {!loading && memories.length > 0 && filtered.length === 0 && <div className="page-state"><Search size={27}/><p>No memories match this view.</p></div>}
+    {!loading && characters.length > 0 && characterMemoryGroups.length === 0 && <div className="page-state"><Search size={27}/><p>No characters or memories match this search.</p></div>}
 
-    {!loading && pinned.length > 0 && <section className="memories-reference__section memories-reference__pinned">
-      <div className="memories-reference__section-heading"><h2><Pin size={16}/> {groupSectionLabel(group, "PINNED")}</h2><span>{pinned.length}</span></div>
-      <div className="memories-reference__pinned-rail">
-        {pinned.map((memory) => <PinnedMemoryCard key={memory.id} memory={memory} onOpen={() => openEdit(memory)} onPin={() => togglePinned(memory)} />)}
-      </div>
-    </section>}
-
-    {!loading && filtered.length > 0 && <section className="memories-reference__section memories-reference__recent">
-      <div className="memories-reference__section-heading"><h2><Clock3 size={16}/> {view === "history" ? "REPLACED HISTORY" : groupSectionLabel(group, "RECENT")}</h2><span>{filtered.length}</span></div>
-      <div className="memories-reference__list">
-        {(recent.length ? recent : filtered).map((memory) => <MemoryRow key={memory.id} memory={memory} busy={workingId === memory.id} menuOpen={menuId === memory.id} onMenu={() => setMenuId((current) => current === memory.id ? null : memory.id)} onCanon={() => toggleCanon(memory)} onPin={() => togglePinned(memory)} onEdit={() => openEdit(memory)} onDelete={() => deleteMemory(memory)} onOpenCharacter={onOpenCharacter} />)}
-      </div>
-    </section>}
+    {!loading && characterMemoryGroups.length > 0 && <div className="memories-character-library__grid">
+      {characterMemoryGroups.map(({ character, rows }) => <CharacterMemoryCard
+        key={character.id}
+        character={character}
+        memories={rows}
+        expanded={expandedCharacters.has(character.id)}
+        busyId={workingId}
+        menuId={menuId}
+        onToggleExpanded={() => toggleCharacterExpanded(character.id)}
+        onMenu={(memoryId) => setMenuId((current) => current === memoryId ? null : memoryId)}
+        onCanon={toggleCanon}
+        onPin={togglePinned}
+        onEdit={openEdit}
+        onDelete={deleteMemory}
+        onAdd={() => openCreateFor(character.id)}
+        onOpenCharacter={() => onOpenCharacter(character)}
+      />)}
+    </div>}
 
     {!loading && characters.length > 0 && <button className="memories-reference__add-bottom" onClick={openCreate}><Plus size={22}/>Add new memory</button>}
 
     {editorOpen && <MemoryEditor editingMemory={editingMemory} draft={draft} setDraft={setDraft} draftCharacterId={draftCharacterId} setDraftCharacterId={setDraftCharacterId} characters={characters} replacementCandidates={replacementCandidates} saving={saving} error={error} setError={setError} onClose={() => setEditorOpen(false)} onSubmit={saveMemory} />}
   </section>;
+}
+
+function CharacterMemoryCard({ character, memories, expanded, busyId, menuId, onToggleExpanded, onMenu, onCanon, onPin, onEdit, onDelete, onAdd, onOpenCharacter }) {
+  const art = character.imageUrl || character.coverUrl;
+  const visible = expanded ? memories : memories.slice(0, 4);
+  return <article className="character-memory-card">
+    <div className="character-memory-card__hero">
+      {art ? <img src={art} alt="" loading="lazy" decoding="async"/> : <span className="character-memory-card__fallback" style={{ "--memory-color": character.color }}>{character.initials || "✦"}</span>}
+      <span className="character-memory-card__shade"/>
+      <button type="button" className="character-memory-card__identity" onClick={onOpenCharacter}>
+        <small>CHARACTER · {character.name}</small>
+        <strong>{memories.length} {memories.length === 1 ? "saved thought" : "saved thoughts"}</strong>
+      </button>
+      <button type="button" className="character-memory-card__add" onClick={onAdd} aria-label={`Add memory for ${character.name}`}><Plus size={18}/></button>
+    </div>
+
+    <div className="character-memory-card__thoughts">
+      {visible.length ? visible.map((memory) => <CharacterThoughtRow
+        key={memory.id}
+        memory={memory}
+        busy={busyId === memory.id}
+        menuOpen={menuId === memory.id}
+        onMenu={() => onMenu(memory.id)}
+        onCanon={() => onCanon(memory)}
+        onPin={() => onPin(memory)}
+        onEdit={() => onEdit(memory)}
+        onDelete={() => onDelete(memory)}
+      />) : <div className="character-memory-card__empty"><Sparkles size={16}/><span>No saved thoughts at this importance level.</span></div>}
+    </div>
+
+    {memories.length > 4 && <button type="button" className="character-memory-card__expand" onClick={onToggleExpanded}>{expanded ? "Show less" : `Show all ${memories.length}`}<ChevronDown size={15}/></button>}
+  </article>;
+}
+
+function CharacterThoughtRow({ memory, busy, menuOpen, onMenu, onCanon, onPin, onEdit, onDelete }) {
+  const importance = Number(memory.importance || 0);
+  return <div className={`character-memory-thought${memory.is_canon ? " is-canon" : ""}${memory.is_pinned ? " is-pinned" : ""}`}>
+    <div className="character-memory-thought__meta">
+      <span className={`character-memory-thought__importance importance-${Math.max(1, importance)}`}><Star size={12} fill={importance >= 4 ? "currentColor" : "none"}/>{importance || 1} · {importanceLabel(importance || 1)}</span>
+      {memory.is_canon && <span><ShieldCheck size={12}/>Canon</span>}
+      {memory.is_pinned && <span><Pin size={12}/>Pinned</span>}
+    </div>
+    <p>{memory.content}</p>
+    <div className="character-memory-thought__foot"><time>{formatMemoryDate(memory.updated_at || memory.created_at)}</time><div className="character-memory-thought__menu-wrap"><button type="button" onClick={onMenu} disabled={busy} aria-label="Memory actions">{busy ? <LoaderCircle className="spin" size={15}/> : <MoreHorizontal size={17}/>}</button>{menuOpen && <div className="memories-reference__actions character-memory-thought__actions"><button onClick={onPin}>{memory.is_pinned ? <PinOff size={15}/> : <Pin size={15}/>} {memory.is_pinned ? "Unpin" : "Pin"}</button><button onClick={onCanon}><ShieldCheck size={15}/> {memory.is_canon ? "Remove canon" : "Mark canon"}</button><button onClick={onEdit}><Pencil size={15}/>Edit</button><button className="danger" onClick={onDelete}><Trash2 size={15}/>Delete</button></div>}</div></div>
+  </div>;
+}
+
+function memoryMatchesImportance(memory, filter) {
+  const value = Number(memory.importance || 0);
+  if (filter === "essential") return value >= 5;
+  if (filter === "high") return value >= 4;
+  if (filter === "medium") return value >= 3;
+  if (filter === "low") return value <= 2;
+  return true;
 }
 
 function PinnedMemoryCard({ memory, onOpen, onPin }) {

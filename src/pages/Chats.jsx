@@ -412,7 +412,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   return (
     <section className="chats-page chats-page--reference">
       <header className="reference-stories-hero">
-        <div className="reference-stories-hero__private"><Crown size={19}/><span>PRIVATE LIBRARY</span></div>
+        <div className="reference-stories-hero__private"><Crown size={19}/><span>STORY LIBRARY</span></div>
         <div className="reference-stories-title" aria-label="Your Stories">
           <span className="reference-stories-title__script">your</span>
           <span className="reference-stories-title__line reference-stories-title__line--left" />
@@ -425,6 +425,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
           <button className="reference-stories-new" type="button" onClick={() => setPickerOpen(true)} aria-label="New story"><Sparkles size={26}/></button>
         </div>
       </header>
+
+      <div className="library-purpose-note"><strong>Stories are your archive.</strong><span>Organize, favorite, duplicate, export or restore complete story timelines here.</span></div>
 
       <div className="reference-search-wrap">
         <label className="reference-search">
