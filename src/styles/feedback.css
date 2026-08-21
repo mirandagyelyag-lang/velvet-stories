@@ -9,10 +9,12 @@
 .velvet-dialog footer button{min-height:42px;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:10px;font-size:.72rem}
 .velvet-dialog footer .danger{color:white;background:#8e2f49;border-color:#a84b65}
 
-.velvet-undo{position:fixed;left:50%;top:50%;right:auto;bottom:auto;z-index:5210;transform:translate(-50%,-50%);min-width:0;width:max-content;max-width:calc(100vw - 32px);overflow:hidden;display:flex;align-items:center;gap:6px;padding:6px 7px 6px 10px;color:var(--text-primary);background:color-mix(in srgb,var(--surface) 96%,transparent);border:1px solid var(--border);border-radius:999px;box-shadow:0 14px 38px rgba(0,0,0,.34);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.velvet-undo>span{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.6rem;line-height:1.15}
-.velvet-undo button{flex:0 0 auto;min-height:28px;display:flex;align-items:center;gap:4px;padding:3px 7px;color:var(--gold);background:transparent;border:1px solid var(--border);border-radius:999px;font-size:.6rem;font-weight:700}
-.velvet-undo i{position:absolute;right:0;bottom:0;left:0;height:1px;background:var(--gold);transform-origin:left;animation:undo-countdown 4s linear forwards}
+/* v2.9.7 · High-contrast centered undo card */
+.velvet-undo{position:fixed;left:50%;top:50%;right:auto;bottom:auto;z-index:5410;transform:translate(-50%,-50%);width:min(232px,calc(100vw - 56px));min-width:0;box-sizing:border-box;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:11px 11px 11px 14px;color:var(--text-primary);background:color-mix(in srgb,var(--surface) 76%,#090407 24%);border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border));border-radius:16px;box-shadow:0 22px 60px rgba(0,0,0,.58),0 0 0 1px color-mix(in srgb,var(--accent) 12%,transparent);backdrop-filter:none;-webkit-backdrop-filter:none;isolation:isolate}
+.velvet-undo>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72rem;font-weight:600;line-height:1.2;letter-spacing:.005em}
+.velvet-undo button{min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 10px;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 38%,var(--border));border-radius:10px;font-size:.74rem;font-weight:800;line-height:1;box-shadow:0 5px 16px rgba(0,0,0,.2)}
+.velvet-undo button:active{transform:scale(.97)}
+.velvet-undo i{position:absolute;right:10px;bottom:5px;left:10px;height:2px;border-radius:999px;background:color-mix(in srgb,var(--accent) 76%,transparent);transform-origin:left;animation:undo-countdown 4s linear forwards}
 @keyframes undo-countdown{to{transform:scaleX(0)}}
 
 /* v2.9.5 Centered Confirmation UI */
@@ -24,5 +26,5 @@
   .velvet-dialog p{font-size:.64rem;line-height:1.42}
   .velvet-dialog footer{margin-top:14px;gap:7px}
   .velvet-dialog footer button{min-height:40px;padding:7px 8px;font-size:.68rem}
-  .velvet-undo{left:50%;top:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);max-width:calc(100vw - 36px)}
+  .velvet-undo{left:50%;top:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);width:min(224px,calc(100vw - 52px));padding:10px 10px 10px 13px;gap:9px;border-radius:15px}
 }
