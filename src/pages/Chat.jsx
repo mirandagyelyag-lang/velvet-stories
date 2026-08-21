@@ -1218,6 +1218,12 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     setAlternatives([]);
   }
 
+  function openCharacterFromMessageActions() {
+    if (conversation?.groupMode || !onOpenCharacter) return;
+    closeActionsAfterAction();
+    onOpenCharacter(character);
+  }
+
   function rememberFeedback(kind, codes, messageId) {
     const accepted = recordStoryFeedback(kind, codes);
     if (!accepted.length) return;
@@ -1784,7 +1790,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
                 New conversation
               </button>
               <div className="chat__menu-quick">
-                {!conversation?.groupMode && <button type="button" onClick={() => { setMenuOpen(false); onOpenCharacter?.(character); }}><UserRound size={17}/><span>Open character<small>Cover & profile</small></span></button>}
                 <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Current story</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Activity size={17}/><span>AI Status<small>Velvet Doctor</small></span></button>
@@ -2264,6 +2269,12 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
             {actionMode === "menu" && (
               <div className="message-sheet__refine-menu">
+                {!conversation?.groupMode && (
+                  <button type="button" className="message-sheet__branch-feature message-sheet__open-character" onClick={openCharacterFromMessageActions}>
+                    <UserRound size={19} />
+                    <span><strong>Open character</strong><small>Cover, profile & character details</small></span>
+                  </button>
+                )}
                 {selectedMessage.sender === "character" ? (
                   <>
                     <p className="message-sheet__refine-note">
