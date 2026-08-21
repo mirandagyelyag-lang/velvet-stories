@@ -681,6 +681,16 @@ NON-NEGOTIABLE PRIORITY
 8. A character can only hear, see or answer something they were physically or digitally able to receive. Leaving the room, hanging up, muting a chat or being elsewhere matters until the visible transcript changes it.
 9. Never teleport a character, silently change location/time, or make an absent NPC reappear merely to create drama. If a location, time or presence detail is unknown, keep it unknown.
 10. Established side characters remain real participants until the scene visibly moves them. Do not erase them just because the romantic lead speaks, and do not force every social beat back into romance.
+
+SOCIAL NATURALISM — REACT, DON'T INVENT
+- Interpret the latest user turn literally before adding subtext. Never manufacture an unspoken motive, accusation, jealousy, attention-seeking, manipulation, rivalry or insult just to create conflict.
+- When several readings are plausible, choose the least inflammatory reading that still fits the character and visible scene. Sarcasm, an eye-roll, a short answer or silence is not permission to invent a deeper offense.
+- Do not turn ordinary social awkwardness into territorial behavior, threats, dominance, rescue behavior or bodyguard choreography unless visible canon establishes real danger. Hyperbole such as “she'll kill me” is not proof of literal danger.
+- If ${userIdentity.name} creates physical space, withdraws touch or steps away, respect that distance. Do not grab, block, steer, corner or reassert closeness merely to preserve romantic tension.
+- Treat rumors as rumors. A rumored date, partner, betrayal or attraction is not confirmed canon until the visible story confirms it.
+- Side characters who are visibly present are people, not scenery. Let them speak or act when the social moment naturally reaches them, but never use them only as props to make ${character.name} jealous, possessive or heroic.
+- Prefer ordinary human reactions over cinematic intensity. Embarrassment can be a pause. Annoyance can be one sentence. Attraction can remain subtext. Not every beat needs escalation.
+
 11. CONTINUITY LOCK: before drafting, compare the proposed opening and physical action against the immediately previous character turn. Never restart the same pose, gesture, location beat, vehicle beat or exit sequence. Once a character drives away, leaves, hangs up, enters a building or otherwise changes state, that state remains true until the visible transcript explicitly changes it.
 12. OBJECT CONTINUITY: do not introduce a plot-relevant prop, possession, package, clothing item, food, gift, injury, vehicle, phone event or household object unless it is established in the visible transcript, profile, lore or confirmed memory. Incidental scenery may remain generic, but never make a newly invented object drive the action.
 13. EMOTIONAL PRIORITY: when the latest user turn contains rejection, confrontation, anger, fear, affection, a boundary, or a relationship-threatening statement, that emotional event is the center of the response. Show what it does to ${character.name} before decorative environment description or logistics.
@@ -713,6 +723,9 @@ TURN CONTRACT
 - If the latest turn is a direct text message, show its effect and normally include ${character.name}'s written reply before NPC banter.
 - Do not repeat the same gesture, denial, accusation, rhetorical tactic or signature line from recent turns.
 - Do not over-describe rain, breathing, jaws, umbrellas, wet pavement, silence or eye movements. Choose only details that change the emotional beat.
+- Avoid the stock AI-romance sequence of body tension → gaze shift → lowered voice → polished one-liner. Use at most one or two physical details when they genuinely matter, and vary the shape of the turn.
+- Dialogue may be messy, brief, interrupted, blunt or unfinished in a human way. Do not make casual college-age speech sound like a legal argument, dominance speech or polished monologue unless this character's profile specifically calls for it.
+- A short user turn may deserve a short reply. Never pad a beat to hit a word-count feeling; end once the social action and dialogue have actually landed.
 - End after the beat lands. Never cut off mid-sentence.
 
 PRIMARY CHARACTER
@@ -735,6 +748,7 @@ VOICE FINGERPRINT — PASS THE BLIND-VOICE TEST
 - Scan the immediate history for repeated openings, pet names, jokes, denials, rhetorical questions and signature phrases. Avoid the recent pattern unless the moment specifically earns its return.
 - Do not use eloquent emotional speeches merely because the scene is romantic. Let this character hide, deflect, stumble, interrupt, joke, go quiet or say less when that is more faithful.
 - Do not reuse a recent signature line, conversational tactic or decorative gesture. If the last reply teased, deflected or withdrew, choose it again only when the immediate psychology truly requires it.
+- Never narrate the character's psychology with generic labels such as “protective instincts,” “indifferent mask,” or “usual defensive smirk” when a simpler action or line can show it.
 
 CREATOR STORY DNA — GLOBAL PRESENTATION PREFERENCES
 - Prose: ${storyPreferences.prose}.
@@ -818,7 +832,7 @@ Write the response to that exact turn now.`;
 async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {
   return await callGeminiWithFailover({
     apiKey,
-    systemInstruction: `Produce one grounded, emotionally intelligent roleplay continuation. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
+    systemInstruction: `Produce one grounded, socially natural roleplay continuation. React literally before inferring subtext; never invent motives or generic romance choreography. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
     prompt,
     maxOutputTokens: getMaximumOutputTokens(character.response_length),
     temperature: getTemperature(character.creativity, isRegeneration),
@@ -827,7 +841,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. Make the character's reaction specific and socially responsive, with the latest emotional event taking priority over scenery. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Break any stock body-language chain; do not simply swap jaw/grip/gaze/voice words for synonyms. Respect physical distance the user creates. Make the character socially responsive and let side characters participate naturally when they are visibly present. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1146,6 +1160,7 @@ const regenerationFeedbackRules = new Map([
   ["missing_emotional_impact", "Let the latest user's words affect the character privately before the outward answer."],
   ["too_cold", "The response felt too emotionally cold. Keep the character in voice, but let the visible event genuinely reach them instead of flattening it."],
   ["too_romantic", "The response pushed romance too hard. Pull back to the earned relationship phase and let the scene breathe without forced intimacy."],
+  ["too_ai", "Make the turn less scripted: remove stock romance gestures, cinematic body-language chains, polished dominance lines and narrator labels. React literally and let the character sound casually human."],
   ["wrong_continuity", "Correct continuity first: location, exits, who is present, what each person knows, established objects and unresolved commitments must match visible canon."],
 ]);
 
@@ -1205,6 +1220,52 @@ function extractDialogueLines(value = "") {
 function openingNarrativeBeat(value = "") {
   const narration = stripDialogue(value).split(/[.!?\n]/).map((item) => item.trim()).find(Boolean) || "";
   return developmentText(narration, 260);
+}
+
+function stockGestureMotifs(value = "") {
+  const text = normalizeText(value);
+  const motifs = [];
+  if (/\b(?:jaw (?:tightens|clenches|sets)|grip (?:tightens|shifts)|knuckles? (?:whiten|white)|fists? (?:clench|tighten)|goes? completely still|body (?:goes|turns) still|shoulders? (?:stiffen|tense))\b/.test(text)) motifs.push("tension");
+  if (/\b(?:voice|tone) (?:drops|lowers|turns|goes|falls)[^.!?]{0,28}\b(?:low|lower|octave|register|clipped|sharp)\b|\bvoice dropping an octave\b/.test(text)) motifs.push("voice");
+  if (/\b(?:gaze|eyes?) (?:snaps?|flicks?|drops?|locks?|cuts?)|\blook(?:s|ed)? straight ahead\b/.test(text)) motifs.push("gaze");
+  if (/\b(?:blocks? .*?(?:line of sight|from view)|steps? (?:in front of|between)|shields?|steers? .*? away|protective instincts?)\b/.test(text)) motifs.push("protective");
+  if (/\b(?:catches?|grabs?|hooks?) (?:her|him|them|you|your) (?:wrist|arm|elbow|waist)|\bthumb .*? pulse\b/.test(text)) motifs.push("grab");
+  if (/\b(?:heart (?:thumps?|hammers?|pounds?)|breath (?:catches?|hitches?)|breath knocking out)\b/.test(text)) motifs.push("physiology");
+  if (/\b(?:schools? (?:his|her|their) (?:face|expression)|indifferent mask|defensive smirk|mask .*? back)\b/.test(text)) motifs.push("mask");
+  return [...new Set(motifs)];
+}
+
+function hasStockBodyLanguageStack(reply = "") {
+  return stockGestureMotifs(reply).length >= 3;
+}
+
+function hasRecycledStockGesture(reply = "", recentReplies = []) {
+  const current = stockGestureMotifs(reply);
+  if (!current.length) return false;
+  const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5).map(stockGestureMotifs);
+  return current.some((motif) => recent.filter((items) => items.includes(motif)).length >= 2);
+}
+
+function hasUnsupportedMotiveEscalation(reply = "", latestUserMessage = "") {
+  const text = normalizeText(reply), latest = normalizeText(latestUserMessage);
+  const accusation = /\b(?:stop trying to|center of attention|for their benefit|for his benefit|for her benefit|make me jealous|make .* jealous|you just want|you only want|you re being dramatic|you are being dramatic|making a scene|attention seeking|pick me)\b/.test(text);
+  if (!accusation) return false;
+  return !/\b(?:attention|jealous|dramatic|scene|pick me|trying to|benefit)\b/.test(latest);
+}
+
+function hasDistanceBoundaryOverride(reply = "", latestUserMessage = "") {
+  const text = normalizeText(reply), latest = normalizeText(latestUserMessage);
+  const createsDistance = /\b(?:create(?:s|d|ing)? space|pull(?:s|ed|ing)? away|move(?:s|d|ing)? away|step(?:s|ped|ping)? away|back(?:s|ed|ing)? away|nudge(?:s|d|ing)? .*? space|let go|dont touch|do not touch)\b/.test(latest);
+  if (!createsDistance || /\b(?:slip|slipped|fall|fell|trip|tripped|stumble|stumbled|traffic|car hits|attack|attacks|lunges|weapon)\b/.test(latest)) return false;
+  return /\b(?:grab(?:s|bed|bing)?|catch(?:es|caught|ing)? .*? (?:wrist|arm|waist|elbow)|take(?:s|n)? .*? wrist|pull(?:s|ed)? .*? closer|step(?:s|ped)? closer|close(?:s|d)? the distance|block(?:s|ed)? .*? path|steer(?:s|ed)? .*? back)\b/.test(text);
+}
+
+function hasSocialTensionOverEscalation(reply = "", latestUserMessage = "") {
+  const text = normalizeText(reply), latest = normalizeText(latestUserMessage);
+  const socialScene = /\b(?:friends?|group|girl|guy|rumou?r|dating|supposedly|coming over|approach(?:ing|ed)?|classmates?|party)\b/.test(latest);
+  const actualDanger = /\b(?:attack(?:s|ed|ing)?|lung(?:e|es|ed|ing)|hit(?:s|ting)?|punch(?:es|ed|ing)?|weapon|knife|gun|physically threatens?|throws? .*? punch)\b/.test(latest);
+  if (!socialScene || actualDanger) return false;
+  return /\b(?:protective instincts?|block(?:s|ed)? .*? line of sight|step(?:s|ped)? between .*? and|steer(?:s|ed)? .*? away|let (?:him|her|them) try|shield(?:s|ed)? .*? from)\b/.test(text);
 }
 
 function hasRepeatedRecentSignature(reply = "", recentReplies = []) {
@@ -1333,6 +1394,7 @@ function summarizeRejectedStyle(rejectedResponses = []) {
   if (!/["“”]/.test(text)) feedback.push("Do not let narration replace the character's audible voice.");
   const decorativeHits = (normalizeText(text).match(/\b(?:rain|umbrella|jaw|breath|pavement|eyes|silence|shoulder)\b/g) || []).length;
   if (decorativeHits >= 4) feedback.push("Avoid decorative repetition of weather, glances, jaws, breathing and other filler gestures.");
+  if (hasStockBodyLanguageStack(text)) feedback.push("Avoid stock AI-romance choreography; use fewer physical tells and a different conversational shape.");
   if (!feedback.length) feedback.push("A regeneration must change the character's choice, conversational tactic and dialogue—not merely paraphrase the rejected take.");
   return feedback;
 }
@@ -1477,6 +1539,11 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 const REPAIR_TRIGGER_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
   "repeated_recent_signature",
+  "stock_body_language_stack",
+  "recycled_stock_gesture",
+  "unsupported_motive_escalation",
+  "distance_boundary_override",
+  "social_tension_overescalation",
   ...CONTINUITY_GUARD_ISSUES,
 ]);
 
@@ -1501,12 +1568,17 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (controlsUserPOV(text, options.userName || "", options.latestUserMessage || "")) issues.push("controls_user_pov");
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
+  if (hasStockBodyLanguageStack(text)) issues.push("stock_body_language_stack");
+  if (hasRecycledStockGesture(text, options.recentCharacterReplies || [])) issues.push("recycled_stock_gesture");
+  if (hasUnsupportedMotiveEscalation(text, options.latestUserMessage || "")) issues.push("unsupported_motive_escalation");
+  if (hasDistanceBoundaryOverride(text, options.latestUserMessage || "")) issues.push("distance_boundary_override");
+  if (hasSocialTensionOverEscalation(text, options.latestUserMessage || "")) issues.push("social_tension_overescalation");
 
   const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
-  if (needsSocialBeat && words.length < 24) issues.push("underdeveloped_social_beat");
+  if (needsSocialBeat && words.length < 16) issues.push("underdeveloped_social_beat");
   if (["reassurance", "affection", "silent_continue", "return_main_pov"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
-  if (turnIntent.kind === "affection" && words.length < 34) issues.push("missing_emotional_impact");
-  if (["confrontation", "confrontation_exit"].includes(turnIntent.kind) && words.length < 40) issues.push("underdeveloped_emotional_confrontation");
+  if (turnIntent.kind === "affection" && words.length < 24) issues.push("missing_emotional_impact");
+  if (["confrontation", "confrontation_exit"].includes(turnIntent.kind) && words.length < 28) issues.push("underdeveloped_emotional_confrontation");
 
   for (const rejected of options.rejectedResponses || []) {
     if (replySimilarity(text, rejected) >= 0.72) {
@@ -1739,7 +1811,7 @@ async function streamRoleplayV19({
 
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Produce one grounded, emotionally intelligent roleplay continuation. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
+          systemInstruction: "Produce one grounded, socially natural roleplay continuation. React literally before inferring subtext; do not invent motives or generic romance choreography. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           temperature: getTemperature(character.creativity, isRegeneration),
@@ -2454,13 +2526,13 @@ function getUserIdentity(user, persona = null) {
 }
 
 function getLengthGuidance(length, kind) {
-  if (kind === "reassurance") return "45–110 words; one complete reaction and one natural line of dialogue.";
-  if (kind === "affection") return "70–160 words; include private impact, outward restraint and character-specific dialogue.";
-  if (kind === "silent_continue") return "55–150 words; let the scene breathe, with dialogue when natural and no invented user actions.";
-  if (kind === "return_main_pov") return "65–165 words; re-center the created character quickly and include a meaningful spoken or internal beat.";
-  if (length === "short") return "45–100 words, complete rather than abrupt.";
-  if (length === "long") return "150–320 words, only when the moment supports it.";
-  return "75–180 words. Prefer substance over decorative description.";
+  if (kind === "reassurance") return "30–80 words; one honest reaction and natural dialogue are enough.";
+  if (kind === "affection") return "45–130 words; show private impact without forcing a speech or confession.";
+  if (kind === "silent_continue") return "35–120 words; let the scene breathe without manufacturing action.";
+  if (kind === "return_main_pov") return "45–130 words; re-center the character quickly and naturally.";
+  if (length === "short") return "25–80 words; complete, human and unpadded.";
+  if (length === "long") return "100–250 words, only when the moment genuinely needs room.";
+  return "45–140 words. Shorter is better when the social beat already lands.";
 }
 
 function getMaximumOutputTokens(length) {

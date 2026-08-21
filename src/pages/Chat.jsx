@@ -81,6 +81,7 @@ const REGENERATION_FEEDBACK = [
   ["missing_emotional_impact", "Missing emotional impact"],
   ["too_cold", "Too cold"],
   ["too_romantic", "Too romantic"],
+  ["too_ai", "Too AI / scripted"],
   ["wrong_continuity", "Wrong continuity"],
 ];
 const POSITIVE_FEEDBACK = [

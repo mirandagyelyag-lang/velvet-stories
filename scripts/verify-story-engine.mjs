@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -391,6 +391,21 @@ check("final validation rejects a repeated recent signature",
     turnIntent: { kind: "ordinary" },
     recentCharacterReplies: [oldDialogueReply],
   }).includes("repeated_recent_signature"));
+
+const aiRomanceStack = `Rowan's jaw tightens as his grip shifts on the umbrella. His gaze snaps toward the group, his voice dropping an octave. He steps between her and Chloe, protective instinct taking over. "Let her try."`;
+check("naturalism doctor catches stacked AI-romance body language", helpers?.hasStockBodyLanguageStack(aiRomanceStack));
+check("naturalism doctor catches unsupported attention-seeking accusations", helpers?.hasUnsupportedMotiveEscalation(`Rowan scoffed. "Stop trying to be the center of attention for their benefit."`, "Funny"));
+check("literal user motive does not trigger the unsupported-motive guard", !helpers?.hasUnsupportedMotiveEscalation(`"So you were trying to make me jealous?"`, "I was trying to make you jealous"));
+check("user-created physical distance cannot be overridden for tension", helpers?.hasDistanceBoundaryOverride(`Rowan catches her wrist and steps closer. "Don't."`, `*I nudge you, creating space between us*`));
+check("a genuine slip still permits a safety catch", !helpers?.hasDistanceBoundaryOverride(`Rowan catches her by the elbow before she hits the ground.`, `*I slip in the mud and pull away by accident*`));
+check("ordinary social tension cannot become bodyguard choreography", helpers?.hasSocialTensionOverEscalation(`He steps between her and the approaching group, blocking their line of sight. "Let her try."`, `Your friends are coming over with the girl you're supposedly dating.`));
+check("naturalism failures trigger one bounded repair", edge.includes('"stock_body_language_stack"') && edge.includes('"recycled_stock_gesture"') && edge.includes('"unsupported_motive_escalation"') && edge.includes('"distance_boundary_override"') && edge.includes('"social_tension_overescalation"'));
+check("prompt uses react-dont-invent social naturalism", edge.includes("SOCIAL NATURALISM — REACT, DON'T INVENT") && edge.includes("choose the least inflammatory reading") && edge.includes("respect that distance"));
+check("ordinary social tension is not promoted into bodyguard drama", edge.includes("bodyguard choreography") && edge.includes("Hyperbole such as “she'll kill me” is not proof of literal danger"));
+check("side characters are treated as people rather than jealousy props", edge.includes("Side characters who are visibly present are people, not scenery"));
+check("short roleplay beats are explicitly allowed", edge.includes("Shorter is better when the social beat already lands"));
+check("repeated stock gestures across turns trigger the naturalism doctor", helpers?.hasRecycledStockGesture(`Rowan's jaw tightens. "Fine."`, [`His jaw clenches before he answers. "Whatever."`, `Rowan's grip tightens and his jaw sets. "Sure."`]));
+check("Too AI feedback maps to a concrete naturalism directive", chat.includes('["too_ai", "Too AI / scripted"]') && edge.includes('["too_ai", "Make the turn less scripted:'));
 
 const futureCharacterState = helpers?.normalizeCharacterDevelopment({}, "Childhood friends who trust each other but avoid naming the tension.");
 const blankCharacterState = helpers?.normalizeCharacterDevelopment({}, "");
