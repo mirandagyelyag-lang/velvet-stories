@@ -590,23 +590,33 @@ export function ChatsProvider({
     const expectedUserMessageId = options.expectedUserMessageId ||
       [...anchorSearchSpace].reverse().find((item) => item.sender === "user")?.id ||
       null;
+    const openingRegeneration = Boolean(
+      options.regenerateMessageId &&
+      regenerationIndex === 0 &&
+      regenerationMessage?.sender === "character" &&
+      !canonicalMessages.slice(0, regenerationIndex).some((item) => item.sender === "user")
+    );
 
     if (options.regenerateMessageId) {
-      // Hide the rejected take before any network await. The replacement now
-      // feels immediate: only Velvet's generation state remains on screen.
-      setChats((currentChats) => {
-        const currentChat = currentChats[characterId];
-        if (!currentChat) return currentChats;
-        return {
-          ...currentChats,
-          [characterId]: {
-            ...currentChat,
-            messages: (currentChat.messages || []).filter((item) =>
-              item.id !== options.regenerateMessageId
-            ),
-          },
-        };
-      });
+      // Normal rewrites can hide the rejected take immediately. The very first
+      // opening is different: removing it leaves the chat with zero messages,
+      // which makes the character-introduction card flash inside the chat. Keep
+      // the old opening visible until the first replacement token actually arrives.
+      if (!openingRegeneration) {
+        setChats((currentChats) => {
+          const currentChat = currentChats[characterId];
+          if (!currentChat) return currentChats;
+          return {
+            ...currentChats,
+            [characterId]: {
+              ...currentChat,
+              messages: (currentChat.messages || []).filter((item) =>
+                item.id !== options.regenerateMessageId
+              ),
+            },
+          };
+        });
+      }
 
       // A regeneration changes the canonical visible response. Bump the story
       // revision so older background tasks cannot resurrect the rejected take.
@@ -647,7 +657,7 @@ export function ChatsProvider({
         [characterId]: {
           ...currentChat,
           messages: (currentChat.messages || []).filter((item) =>
-            !item.isStreaming && item.id !== options.regenerateMessageId
+            !item.isStreaming && (openingRegeneration || item.id !== options.regenerateMessageId)
           ),
         },
       };
@@ -869,6 +879,12 @@ export function ChatsProvider({
               streamStarted = true;
               pendingStreamContent = completeContent;
               lastStreamFlushAt = Date.now();
+              // Opening regeneration keeps the rejected opening until replacement
+              // text exists. Swap only now so the chat never falls into its empty
+              // introduction state while the model is thinking.
+              if (openingRegeneration && options.regenerateMessageId) {
+                removeMessageFromState(characterId, options.regenerateMessageId);
+              }
               appendMessageToState(characterId, {
                 id: streamMessageId,
                 conversationId: conversation.conversationId,
