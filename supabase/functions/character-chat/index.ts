@@ -482,7 +482,7 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
     supabase.from("messages")
       .select("id, conversation_id, user_id, sender, content, created_at, edited_at, reply_to_message_id, reply_preview, reply_sender")
       .eq("conversation_id", conversationId).eq("user_id", userId)
-      .order("created_at", { ascending: false }).limit(50),
+      .order("created_at", { ascending: false }).limit(36),
     supabase.from("memories")
       .select("id, conversation_id, content, importance, category, is_pinned, is_canon, why_remembered, source, scope, superseded_at, created_at, updated_at")
       .in("character_id", groupCharacterIds).eq("user_id", userId)
@@ -490,13 +490,13 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
       .is("superseded_at", null)
       .order("is_canon", { ascending: false })
       .order("is_pinned", { ascending: false }).order("importance", { ascending: false })
-      .order("created_at", { ascending: false }).limit(50),
+      .order("created_at", { ascending: false }).limit(32),
     conversation.lorebook_id
       ? supabase.from("lore_entries")
         .select("id, entry_type, name, content, keywords, event_date, always_include")
         .eq("lorebook_id", conversation.lorebook_id).eq("user_id", userId)
         .eq("is_active", true).order("always_include", { ascending: false })
-        .order("updated_at", { ascending: false }).limit(60)
+        .order("updated_at", { ascending: false }).limit(24)
       : Promise.resolve({ data: [], error: null }),
     groupCharacterIds.length > 1
       ? supabase.from("characters")
@@ -596,27 +596,27 @@ function buildNarrativePrompt({
   const profile = [
     `Name: ${character.name}`,
     `Role: ${character.role || "not specified"}`,
-    `Description: ${character.description || "not specified"}`,
-    `Personality: ${character.personality || "not specified"}`,
-    `Relationship to ${userIdentity.name}: ${character.relationship || "not specified"}`,
-    `Values: ${character.character_values || "not specified"}`,
-    `Fears: ${character.fears || "not specified"}`,
-    `Habits: ${character.habits || "not specified"}`,
-    `Contradictions: ${character.contradictions || "not specified"}`,
-    `Core motivation: ${character.core_motivation || "not specified"}`,
-    `Emotional defense: ${character.emotional_defense || "not specified"}`,
-    `What reaches them: ${character.softening_triggers || "not specified"}`,
-    `Possible growth direction: ${character.growth_direction || "not specified"}`,
-    `Speech style: ${character.speech_style || "not specified"}`,
-    `Word choice and rhythm: ${character.voice_vocabulary || "infer from the profile"}`,
-    `Humor style: ${character.humor_style || "infer from the profile"}`,
-    `Conflict style: ${character.conflict_style || "infer from the profile"}`,
-    `Affection style: ${character.affection_style || "infer from the profile"}`,
-    `Verbal tells: ${character.verbal_tells || "infer sparingly from the profile"}`,
-    `Voice avoidances: ${character.voice_avoidances || "generic archetype dialogue and therapeutic language"}`,
-    `Boundaries: ${character.boundaries || "not specified"}`,
-    `Scenario/world: ${character.scenario || character.world || "not specified"}`,
-    `Example dialogue (voice reference, never copy): ${character.example_dialogue || "none"}`,
+    `Description: ${cleanPromptValue(character.description || "not specified", 900)}`,
+    `Personality: ${cleanPromptValue(character.personality || "not specified", 1200)}`,
+    `Relationship to ${userIdentity.name}: ${cleanPromptValue(character.relationship || "not specified", 1000)}`,
+    `Values: ${cleanPromptValue(character.character_values || "not specified", 500)}`,
+    `Fears: ${cleanPromptValue(character.fears || "not specified", 500)}`,
+    `Habits: ${cleanPromptValue(character.habits || "not specified", 500)}`,
+    `Contradictions: ${cleanPromptValue(character.contradictions || "not specified", 500)}`,
+    `Core motivation: ${cleanPromptValue(character.core_motivation || "not specified", 500)}`,
+    `Emotional defense: ${cleanPromptValue(character.emotional_defense || "not specified", 500)}`,
+    `What reaches them: ${cleanPromptValue(character.softening_triggers || "not specified", 500)}`,
+    `Possible growth direction: ${cleanPromptValue(character.growth_direction || "not specified", 500)}`,
+    `Speech style: ${cleanPromptValue(character.speech_style || "not specified", 650)}`,
+    `Word choice and rhythm: ${cleanPromptValue(character.voice_vocabulary || "infer from the profile", 500)}`,
+    `Humor style: ${cleanPromptValue(character.humor_style || "infer from the profile", 420)}`,
+    `Conflict style: ${cleanPromptValue(character.conflict_style || "infer from the profile", 500)}`,
+    `Affection style: ${cleanPromptValue(character.affection_style || "infer from the profile", 500)}`,
+    `Verbal tells: ${cleanPromptValue(character.verbal_tells || "infer sparingly from the profile", 420)}`,
+    `Voice avoidances: ${cleanPromptValue(character.voice_avoidances || "generic archetype dialogue and therapeutic language", 500)}`,
+    `Boundaries: ${cleanPromptValue(character.boundaries || "not specified", 500)}`,
+    `Scenario/world: ${cleanPromptValue(character.scenario || character.world || "not specified", 900)}`,
+    `Example dialogue (voice reference, never copy): ${cleanPromptValue(character.example_dialogue || "none", 1000)}`,
   ].join("\n");
 
   const supportingCast = (Array.isArray(groupCharacters) ? groupCharacters : [])
@@ -648,26 +648,30 @@ function buildNarrativePrompt({
     `Notes: ${userIdentity.notes || "none"}`,
   ].join("\n");
 
-  const immediate = messages.slice(-12).map((message) => {
+
+  // VELVET_FAST_CONTEXT_V2111
+  // Keep the first-token path lean: recent visible beats + highest-value memories/lore
+  // are enough for generation because recap/derived continuity carry older state.
+  const immediate = messages.slice(-8).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
-    return `${speaker}: ${compactMessageForPrompt(message.content, 3200)}`;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 1800)}`;
   }).join("\n\n") || "none";
 
-  const older = messages.slice(-32, -12).map((message) => {
+  const older = messages.slice(-20, -8).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
-    return `${speaker}: ${compactMessageForPrompt(message.content, 900)}`;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 650)}`;
   }).join("\n") || "none";
 
   const memoryText = memories.length
     ? memories.map((memory) => {
       const authority = memory.is_canon || memory.is_pinned || memory.source === "manual" ? "confirmed" : "tentative";
       const label = memory.is_canon ? "CANON" : authority;
-      return `- [${label}] ${cleanPromptValue(memory.content, 900)}`;
+      return `- [${label}] ${cleanPromptValue(memory.content, 600)}`;
     }).join("\n")
     : "none";
 
   const loreText = loreEntries.length
-    ? loreEntries.map((entry) => `- ${cleanPromptValue(entry.name, 120)}: ${cleanPromptValue(entry.content, 1000)}`).join("\n")
+    ? loreEntries.map((entry) => `- ${cleanPromptValue(entry.name, 120)}: ${cleanPromptValue(entry.content, 700)}`).join("\n")
     : "none";
 
   const derivedContext = JSON.stringify({
@@ -677,7 +681,7 @@ function buildNarrativePrompt({
     open_threads: conversation.unresolved_threads || [],
     intelligence: conversation.intelligence_state || {},
     recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-10) : [],
-  }).slice(0, 9000);
+  }).slice(0, 6000);
 
   const latest = openingRegeneration ? "" : compactMessageForPrompt(latestUserRecord?.content || "", 5000);
   const latestStagedEvents = openingRegeneration ? "" : extractUserStagedEvents(latestUserRecord?.content || "");
@@ -854,7 +858,7 @@ ${derivedContext}
 - stakes = the immediate emotional or practical pressure, if any.
 
 ROLLING STORY RECAP—TENTATIVE IF IT CONFLICTS WITH THE TRANSCRIPT
-${cleanPromptValue(conversation.story_recap || conversation.summary || "none", 6000)}
+${cleanPromptValue(conversation.story_recap || conversation.summary || "none", 3000)}
 
 GENERATION MODE
 ${regeneration}
@@ -2635,7 +2639,7 @@ function selectRelevantMemories(memories, messages) {
     const leftRelevant = normalizeText(left.content).split(" ").some((word) => word.length > 4 && recent.includes(word)) ? 1 : 0;
     const rightRelevant = normalizeText(right.content).split(" ").some((word) => word.length > 4 && recent.includes(word)) ? 1 : 0;
     return rightRelevant - leftRelevant || Number(right.importance || 0) - Number(left.importance || 0);
-  }).slice(0, 24);
+  }).slice(0, 18);
 }
 
 function selectRelevantLore(entries, messages, groupCharacters = []) {
@@ -2672,7 +2676,7 @@ function selectRelevantLore(entries, messages, groupCharacters = []) {
   return scored
     .filter((item) => item.score >= 4)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 12)
+    .slice(0, 8)
     .map((item) => item.entry);
 }
 

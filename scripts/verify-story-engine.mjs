@@ -86,7 +86,7 @@ check("roleplay failover has one bounded interaction deadline",
 check("generation skips redundant cancellation read-back",
   edge.includes("VELVET_SPEED_V282") && !edge.includes("if (await isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)) {\n        return cancelledResponse();"));
 check("prompt context is capped for faster first token",
-  edge.includes(".limit(50)") && edge.includes("messages.slice(-12)") && edge.includes("messages.slice(-32, -12)"));
+  edge.includes(".limit(36)") && edge.includes(".limit(32)") && edge.includes("messages.slice(-8)") && edge.includes("messages.slice(-20, -8)"));
 check("model streams reply scene continuity development and memories in one request",
   edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
@@ -153,7 +153,7 @@ check("development state is returned and saved in the same live generation path"
   edge.includes("update.character_development = applyCharacterDevelopment({") &&
   !edge.includes("generateCharacterDevelopment"));
 check("development profile and state are present in the roleplay prompt",
-  edge.includes("Core motivation: ${character.core_motivation") &&
+  edge.includes("Core motivation: ${cleanPromptValue(character.core_motivation") &&
   edge.includes("PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND") &&
   edge.includes("characterDevelopmentPromptView(developmentState)") &&
   edge.includes("Relationship phases move gradually"));
@@ -786,7 +786,14 @@ check("v2.4 Group Stories persist a backwards-compatible ensemble cast", storycr
 check("Group Story branches preserve the full cast", chatsContext.includes("group_character_ids: conversation.groupCharacterIds") && chatsContext.includes("group_title: conversation.groupTitle"));
 check("group characters are loaded as independent profiles for generation", edge.includes("groupCharactersResult") && edge.includes("Every listed cast member remains an independent person") && edge.includes("Never merge personalities"));
 check("Personas are explicitly isolated per conversation", edge.includes("PERSONA ISOLATION") && edge.includes("Never import a name, background, appearance, job, wealth, family, preference or boundary from another saved persona"));
-check("smart lore retrieval ranks names keywords content overlap and cast relevance", edge.includes("function selectRelevantLore(entries, messages, groupCharacters = [])") && edge.includes("normalizedName") && edge.includes("overlap * 2") && edge.includes("slice(0, 12)"));
+
+check("fast context lane bounds prompt payload for lower first-token latency",
+  edge.includes("VELVET_FAST_CONTEXT_V2111") &&
+  edge.includes("messages.slice(-8)") &&
+  edge.includes("messages.slice(-20, -8)") &&
+  edge.includes("slice(0, 18)") &&
+  edge.includes("slice(0, 8)"));
+check("smart lore retrieval ranks names keywords content overlap and cast relevance", edge.includes("function selectRelevantLore(entries, messages, groupCharacters = [])") && edge.includes("normalizedName") && edge.includes("overlap * 2") && edge.includes("slice(0, 8)"));
 check("AI message edits preserve the rejected wording as an alternative", chatsContext.includes("async function editCharacterMessageInPlace") && chatsContext.includes('from("message_alternatives").insert') && chatsContext.includes("const updated = await updateMessage"));
 
 
