@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -464,6 +464,38 @@ check("naturalness doctor catches consecutive sarcastic comeback mode",
   helpers?.hasSarcasticComebackLoop(`"Right. Because that makes perfect sense."`, sarcasmHistory));
 check("plain short dialogue is not mistaken for sarcasm",
   !helpers?.hasSarcasticComebackLoop(`"Yeah. Give me a second."`, sarcasmHistory));
+check("interactive message threads are treated as real sub-scenes",
+  edge.includes("INTERACTIVE SUB-SCENES HAVE DURATION") &&
+  edge.includes("Do not compress “many messages” into one or two generic lines") &&
+  edge.includes("leave it open rather than artificially resolving it"));
+check("interactive thread intent receives a longer multi-exchange budget",
+  edge.includes('kind = "interactive_thread"') &&
+  edge.includes('kind === "interactive_thread"') &&
+  edge.includes("120–320 words"));
+check("collapsed message threads trigger one repair",
+  edge.includes('issues.push("interactive_thread_collapsed")') &&
+  edge.includes('"interactive_thread_collapsed"'));
+
+check("silent continues preserve an active message thread",
+  edge.includes("ACTIVE THREADS SURVIVE SILENCE") &&
+  edge.includes("recentInteractiveThreadIsOpen(messages)") &&
+  edge.includes('kind = "interactive_thread"'));
+check("incoming messages must progress beyond buzzing ambience",
+  edge.includes("INCOMING MESSAGES ARE EVENTS, NOT SOUND EFFECTS") &&
+  edge.includes("repeated buzzing"));
+check("atmospheric stalling loop triggers bounded repair",
+  edge.includes("NO ATMOSPHERIC STALLING") &&
+  edge.includes('issues.push("atmospheric_stalling_loop")') &&
+  edge.includes('"atmospheric_stalling_loop"'));
+const ceilingLoopHistory = [
+  `Rowan stared at the ceiling while the rain tapped the window. He let out a long exhale and rolled onto his side.`,
+  `The room stayed quiet. Rowan shifted beneath the blanket, eyes on the dark ceiling as rain moved across the glass.`
+];
+check("ceiling-rain filler loop is detected",
+  helpers?.hasAtmosphericStallingLoop(`Rowan stared at the ceiling again, letting out a slow exhale as the rain tapped the window. He shifted under the blanket and closed his eyes.`, ceilingLoopHistory, { kind: "silent_continue" }));
+check("concrete phone progression is not mistaken for atmospheric stalling",
+  !helpers?.hasAtmosphericStallingLoop(`Rowan picked up the phone. The newest message read, "Are you seriously ignoring me?" He unlocked the screen and typed back, "I'm tired. Tomorrow."`, ceilingLoopHistory, { kind: "interactive_thread" }));
+
 check("active NPC cues must be rendered instead of summarized away",
   edge.includes("ACTIVE NPC CUE IS BINDING") &&
   edge.includes("Give the cued side character concrete dialogue/action before shifting focus away") &&

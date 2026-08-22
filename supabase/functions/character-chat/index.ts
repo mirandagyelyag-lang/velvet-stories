@@ -718,6 +718,12 @@ SOCIAL NATURALISM — REACT, DON'T INVENT
 - If ${userIdentity.name} creates physical space, withdraws touch or steps away, respect that distance. Do not grab, block, steer, corner or reassert closeness merely to preserve romantic tension.
 - Treat rumors as rumors. A rumored date, partner, betrayal or attraction is not confirmed canon until the visible story confirms it.
 - Side characters who are visibly present are people, not scenery. Let them speak or act when the social moment naturally reaches them, but never use them only as props to make ${character.name} jealous, possessive or heroic.
+- INTERACTIVE SUB-SCENES HAVE DURATION: when the user opens a phone thread, asks ${character.name} to read many incoming messages, starts a call, group chat, DM exchange, argument, game, interview or other back-and-forth inside the scene, treat it as a real scene with continuity rather than a decorative beat. If ${character.name} agrees to engage, let the exchange develop across multiple meaningful messages/replies/reactions until it reaches a natural pause, the user redirects it, or a visible event interrupts it. Do not compress “many messages” into one or two generic lines and declare it finished.
+- In a message-thread sub-scene, keep sender identities, tone, sequence and what has already been read/replied to consistent. Show enough of the actual exchange to make it feel lived-in, while still allowing the user to interrupt, comment, take the phone, skip ahead or stop reading at any time.
+- A long sub-scene does NOT mean one giant monologue. Prefer several distinct exchanges, reactions and small decisions. If the interaction is still active at the end of the turn, leave it open rather than artificially resolving it.
+- ACTIVE THREADS SURVIVE SILENCE: if the immediately preceding user beat opened a many-message/call/chat exchange and the next user input is only silence/continue, keep progressing that same thread instead of resetting to generic room atmosphere. A silent continuation means “continue what is currently happening,” not “forget the active thread.”
+- INCOMING MESSAGES ARE EVENTS, NOT SOUND EFFECTS: when multiple texts/messages are established, reveal actual sender/content progression through previews, opened messages, replies, ignored follow-ups, typing indicators or concrete decisions. The character may ignore or mute them, but the thread must still evolve visibly rather than becoming repeated buzzing.
+- NO ATMOSPHERIC STALLING: rain, darkness, breathing, staring at the ceiling, shifting in bed, silence, shadows and similar texture may support a beat, but they cannot substitute for story movement across consecutive turns. If the user gives repeated silence/continue turns, introduce one meaningful new event, decision, interaction, consequence or specific thought that changes what can happen next.
 - Prefer ordinary human reactions over cinematic intensity. Embarrassment can be a pause. Annoyance can be one sentence. Attraction can remain subtext. Not every beat needs escalation.
 
 HIDDEN FEELINGS — FEEL MORE THAN YOU SHOW
@@ -900,7 +906,7 @@ Write the response AFTER the final event established in that exact turn.`}`;
 async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {
   return await callGeminiWithFailover({
     apiKey,
-    systemInstruction: `Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; never invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is already-canonical scene action and must outrank any conflicting in-character request spoken earlier in the same turn. Continue after the user's final staged event. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
+    systemInstruction: `Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; never invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, and when the user opens an ongoing message/call/chat exchange, let it unfold through multiple real beats instead of collapsing it. Do not stall across silent continuations with repeated ceiling/rain/breathing imagery; advance the active beat with a concrete event or decision. Avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is already-canonical scene action and must outrank any conflicting in-character request spoken earlier in the same turn. Continue after the user's final staged event. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
     prompt,
     maxOutputTokens: getMaximumOutputTokens(character.response_length),
     temperature: getTemperature(character.creativity, isRegeneration),
@@ -909,7 +915,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. Cut repetitive sarcasm, rhetorical debate lines and polished mic-drops. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines and polished mic-drops. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1123,6 +1129,7 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
   const exitsScene = /\b(?:i\s+(?:walk|leave|left|go|went|head|headed|run|ran)|me\s+(?:voy|fui|alejo)|salgo|me fui|me baje|me bajé)\b[^.!?]{0,110}\b(?:away|bathroom|home|outside|opposite|dorm|room|apartment|building|ban[oa]|casa|apartamento|edificio|afuera|lejos)?\b/i.test(raw);
 
   if (raw.startsWith("[RETURN_MAIN_POV")) kind = "return_main_pov";
+  else if (isSilentContinueText(raw) && recentInteractiveThreadIsOpen(messages)) kind = "interactive_thread";
   else if (isSilentContinueText(raw)) kind = "silent_continue";
   else if (/\[(?:time\s*skip|timeskip)|\b(?:later that|hours later|days later|next day|al dia siguiente|más tarde|mas tarde)\b/i.test(raw)) kind = "time_skip";
   else if (confrontation && exitsScene) kind = "confrontation_exit";
@@ -1130,10 +1137,57 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
   else if (exitsScene) kind = "user_exit";
   else if (/\b(?:i\s+(?:miss(?:ed)?|love|adore|care about)\s+you|te\s+(?:extrano|extraño|quiero|amo)|if\s+i\s+(?:hated|didn'?t\s+like|didn'?t\s+care\s+about)\s+you|si\s+te\s+odiara|wouldn'?t\s+(?:be\s+)?(?:by\s+your\s+side|with\s+you)|no\s+estaria\s+(?:a\s+tu\s+lado|contigo))\b/i.test(raw)) kind = "affection";
   else if (/^(?:it'?s|its|that'?s)?\s*(?:okay|ok|fine|alright|all good|no worries|est[aá]\s+bien|tranqui|no\s+importa)[.!\s]*$/i.test(raw)) kind = "reassurance";
+  else if (/\b(?:many|a lot of|lots of|so many|tons of|dozens of|un mont[oó]n de|muchos?|muchas?)\b[^.!?]{0,90}\b(?:messages?|texts?|dms?|notifications?|mensajes?|chats?)\b|\b(?:read|check|open|look at|go through|leer|revisar|abrir|mirar)\b[^.!?]{0,90}\b(?:messages?|texts?|dms?|notifications?|mensajes?|chats?)\b|\b(?:group chat|chat grupal|message thread|text thread|conversation thread|hilo de mensajes)\b/i.test(raw)) kind = "interactive_thread";
   else if (medium === "direct_message") kind = "digital_message";
   else if (isQuestion) kind = "direct_question";
 
   return { kind, silentCount, medium, isQuestion, normalized };
+}
+
+function recentInteractiveThreadIsOpen(messages = []) {
+  const rows = Array.isArray(messages) ? messages : [];
+  let inspectedUserTurns = 0;
+  for (let index = rows.length - 1; index >= 0 && inspectedUserTurns < 4; index -= 1) {
+    const message = rows[index];
+    if (!message || message.sender !== "user") continue;
+    const content = String(message.content || "").trim();
+    if (isSilentContinueText(content)) continue;
+    inspectedUserTurns += 1;
+    if (/\b(?:many|a lot of|lots of|so many|tons of|dozens of|un mont[oó]n de|muchos?|muchas?)\b[^.!?]{0,90}\b(?:messages?|texts?|dms?|notifications?|mensajes?|chats?)\b|\b(?:read|check|open|look at|go through|leer|revisar|abrir|mirar)\b[^.!?]{0,90}\b(?:messages?|texts?|dms?|notifications?|mensajes?|chats?)\b|\b(?:group chat|chat grupal|message thread|text thread|conversation thread|hilo de mensajes)\b/i.test(content)) return true;
+    break;
+  }
+  return false;
+}
+
+function atmosphericStallScore(value = "") {
+  const text = normalizeText(value);
+  const motifs = [
+    /\bstar(?:e|ed|ing) (?:up )?at (?:the )?(?:ceiling|dark|shadows|window)/,
+    /\b(?:slow|long|heavy|quiet|sharp|barely audible) (?:breath|exhale)/,
+    /\b(?:rolled|rolls|shifted|shifts|turned|turns) (?:over|onto|slightly|his|her)/,
+    /\b(?:rain|wipers?)\b.{0,55}\b(?:window|glass|outside|roof)/,
+    /\b(?:silence|quiet|shadows|darkness)\b/,
+    /\b(?:closed|shut) (?:his|her) eyes\b/,
+    /\bphone\b.{0,65}\b(?:face down|nightstand|pillow|silent|untouched)/,
+  ];
+  return motifs.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
+}
+
+function hasMeaningfulProgression(value = "") {
+  const raw = String(value || "");
+  const text = normalizeText(raw);
+  if (/["“][^"”]{3,}["”]/.test(raw)) return true;
+  return /\b(?:picked up|grabbed|opened|unlocked|read|reads|typed|types|replied|reply|responded|sent|called|answered|declined|muted|blocked|silenced|sat up|stood up|got up|walked|left|entered|arrived|decided|chose|turned on|switched on|message said|text read|screen lit with|notification from|wrote back|escribio|escribió|respondio|respondió|contesto|contestó|leyo|leyó|abrió|abrio|envio|envió|llamo|llamó)\b/.test(text);
+}
+
+function hasAtmosphericStallingLoop(reply = "", recentReplies = [], turnIntent = {}) {
+  const score = atmosphericStallScore(reply);
+  if (hasMeaningfulProgression(reply)) return false;
+  const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-4);
+  const recentStalls = recent.filter((item) => atmosphericStallScore(item) >= 2 && !hasMeaningfulProgression(item)).length;
+  if (score >= 4) return true;
+  if ((turnIntent?.kind === "silent_continue" || turnIntent?.kind === "interactive_thread") && score >= 2 && recentStalls >= 1) return true;
+  return score >= 2 && recentStalls >= 2;
 }
 
 function stripDialogue(value = "") {
@@ -1700,6 +1754,8 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "active_npc_cue_skipped",
   "active_npc_erased_after_cue",
   "cued_npc_marked_exited",
+  "interactive_thread_collapsed",
+  "atmospheric_stalling_loop",
 ]);
 
 function blockingNarrativeIssues(issues = []) {
@@ -1731,9 +1787,15 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasUserStagedSceneRetcon(text, options.latestUserMessage || "", options.characterName || "")) issues.push("user_staged_scene_retcon");
   if (hasRhetoricalDialogueOveruse(text, options.recentCharacterReplies || [])) issues.push("rhetorical_dialogue_overuse");
   if (hasSarcasticComebackLoop(text, options.recentCharacterReplies || [])) issues.push("sarcastic_comeback_loop");
+  if (hasAtmosphericStallingLoop(text, options.recentCharacterReplies || [], turnIntent)) issues.push("atmospheric_stalling_loop");
 
-  const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
+  const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message", "interactive_thread", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 16) issues.push("underdeveloped_social_beat");
+  if (turnIntent.kind === "interactive_thread") {
+    const dialogueUnits = [...text.matchAll(/["“]([^"”]{2,})["”]/g)].length;
+    const digitalMarkers = (normalizeText(text).match(/\b(?:message|text|dm|reply|replied|screen|phone|notification|typing|chat|mensaje|respondio|respondió|escribio|escribió)\b/g) || []).length;
+    if (words.length < 85 || (dialogueUnits < 3 && digitalMarkers < 4)) issues.push("interactive_thread_collapsed");
+  }
   if (["reassurance", "affection", "silent_continue", "return_main_pov"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
   if (turnIntent.kind === "affection" && words.length < 24) issues.push("missing_emotional_impact");
   if (["confrontation", "confrontation_exit"].includes(turnIntent.kind) && words.length < 28) issues.push("underdeveloped_emotional_confrontation");
@@ -2747,6 +2809,7 @@ function getUserIdentity(user, persona = null) {
 }
 
 function getLengthGuidance(length, kind) {
+  if (kind === "interactive_thread") return "120–320 words when the user explicitly opens an ongoing message/call/chat sub-scene. Show several distinct exchanges and reactions; do not resolve the thread after one or two lines unless the user asked to keep it brief.";
   if (kind === "reassurance") return "30–80 words; one honest reaction and natural dialogue are enough.";
   if (kind === "affection") return "45–130 words; show private impact without forcing a speech or confession.";
   if (kind === "silent_continue") return "35–120 words; let the scene breathe without manufacturing action.";
