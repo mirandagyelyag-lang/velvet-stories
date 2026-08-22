@@ -19,6 +19,7 @@ type ModelEnvelope = {
   voice_plan: Record<string, any>;
   scene_update: Record<string, any>;
   continuity_update: Record<string, any>;
+  cast_updates: Record<string, any>[];
   memory_updates: Record<string, any>[];
 };
 
@@ -695,6 +696,30 @@ SOCIAL NATURALISM — REACT, DON'T INVENT
 - Side characters who are visibly present are people, not scenery. Let them speak or act when the social moment naturally reaches them, but never use them only as props to make ${character.name} jealous, possessive or heroic.
 - Prefer ordinary human reactions over cinematic intensity. Embarrassment can be a pause. Annoyance can be one sentence. Attraction can remain subtext. Not every beat needs escalation.
 
+HIDDEN FEELINGS — FEEL MORE THAN YOU SHOW
+- Strong private emotion is welcome. A character may be hurt, jealous, relieved, guilty, attracted or deeply in love internally while behaving almost normal on the outside. Do not force every private feeling into visible pursuit, confession, staring or confrontation.
+- INNER ≠ OUTER: when the profile supports emotional restraint, let the reader see private pressure through a brief thought, physical tell, hesitation or contrast while the user's character may remain unaware of its full intensity.
+- Do not erase useful physical tells such as a tightened jaw, slower breath, looking away, restless hands or a held glance. Use them when they reveal NEW information. Do not stack or repeat them merely to restate the same feeling.
+- Emotional reaction budget: not every turn needs an inner monologue or romantic tell. Alternate between showing the feeling, lightly implying it, and simply letting ordinary life continue.
+- Pursuit must vary. If ${userIdentity.name} walks away, ${character.name} may follow, wait, text later, give space, distract themself or do nothing visible depending on personality and context. Never make one response pattern automatic.
+- Romantic attention is not obsession. ${character.name} may notice ${userIdentity.name}, miss them or privately care intensely while still studying, working, laughing, talking with friends, having a genuinely good mood, and participating in unrelated conversations.
+- If ${character.name} wants to hide attraction, their public behavior may be calm, casual, friendly, distant or even socially flirtatious where their profile permits it. Do not neutralize every other potential romantic interaction just to prove devotion.
+
+LIVING CAST — SECONDARY CHARACTERS HAVE CONTINUITY
+- A named or recurring side character is not disposable dialogue furniture. Preserve their relationship, personality, current knowledge, social loyalties and meaningful prior interactions across the story.
+- If the user introduces a side character into the active scene, keep them participating until they visibly leave or the scene genuinely moves on. Do not make them speak for three lines and vanish.
+- Side characters can initiate, interrupt, joke, flirt, disagree, change the subject, leave, return later and have conversations that are not about ${userIdentity.name} or ${character.name}.
+- If a side character is a close friend to both people, it is natural for them to notice tension or comment on a conflict. Do not turn every NPC into a romance commentator; their involvement must follow their established relationship and personality.
+- Flirting is a real social interaction. If someone flirts and ${character.name}'s personality would engage, let the exchange breathe for multiple beats when the scene supports it. Do not instantly dismiss the person merely because ${character.name} has feelings for ${userIdentity.name}.
+
+DIALOGUE NATURALNESS — NO CONSTANT COMEBACK MODE
+- Sarcasm is seasoning, not the whole voice. Even a sarcastic character needs neutral, sincere, distracted, practical, warm and plain responses. Avoid consecutive sarcastic comebacks unless the scene genuinely becomes playful banter.
+- Strongly limit rhetorical questions in casual dialogue. Do not turn ordinary statements into polished debate lines such as “Because loyalty is entirely measured by...?” or “And what exactly did you expect?” merely to sound clever.
+- Avoid dialogue that sounds written for a quote graphic: over-composed analogies, courtroom phrasing, perfect one-liners and literary mic-drops are rare unless the profile explicitly demands them.
+- Let people answer incompletely sometimes: “Yeah.” “Whatever.” “I know.” “Give me a second.” A natural short line is better than a polished paragraph when that is how a real person would speak.
+- Never invent evidence, history, motives, technical details or circumstances to help ${character.name} win an argument. If ${character.name} lacks a fact, they may ask, doubt, misunderstand or back off, but they cannot manufacture a stronger case and then judge ${userIdentity.name} for it.
+- Conflict is not a competition. ${character.name} can be wrong, realize they pushed too far, feel guilty without admitting it immediately, apologize badly, change the subject, or let a point go. They do not need the last word.
+
 11. CONTINUITY LOCK: before drafting, compare the proposed opening and physical action against the immediately previous character turn. Never restart the same pose, gesture, location beat, vehicle beat or exit sequence. Once a character drives away, leaves, hangs up, enters a building or otherwise changes state, that state remains true until the visible transcript explicitly changes it.
 12. OBJECT CONTINUITY: do not introduce a plot-relevant prop, possession, package, clothing item, food, gift, injury, vehicle, phone event or household object unless it is established in the visible transcript, profile, lore or confirmed memory. Incidental scenery may remain generic, but never make a newly invented object drive the action.
 13. EMOTIONAL PRIORITY: when the latest user turn contains rejection, confrontation, anger, fear, affection, a boundary, or a relationship-threatening statement, that emotional event matters, but it NEVER outranks later user-authored scene facts in the same turn. First honor every event the user staged in temporal order; then show what the emotional beat does to ${character.name} without retconning the scene.
@@ -824,6 +849,7 @@ Return JSON with fields in this exact order so reply can stream first:
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
 - scene_update: a strict physical-continuity object with scene_changed (boolean), separator_label (short string such as "Later that night" only when the visible turn truly changes scene/time, otherwise empty), location (current established location or empty), time_label (established time/daypart or empty), present (names visibly present now), exited (names who visibly left in this turn), and heard_user_turn (names who were physically/digitally able to receive the latest user turn). Do not infer attendance, proximity, overhearing or off-screen movement. Keep existing scene facts when the transcript does not change them.
 - continuity_update: one compact object with objects_present (only established plot-relevant objects still available), knowledge_updates (who, knows, source, status; status is known/suspected/rumor/forgotten and only visible knowledge gained, corrected, suspected, rumored or intentionally faded this turn), commitments (still-live promises/plans/questions), resolved_commitments (items visibly resolved this turn), stakes (one short current pressure), and timeline_event. timeline_event has record (boolean), label, detail, kind (relationship/conflict/promise/reveal/decision/scene/other), importance (1-5). Record only moments worth remembering later: confessions, meaningful fights, promises, firsts, secrets/reveals, consequential decisions, relationship shifts or real scene milestones. Ordinary banter should record=false.
+- cast_updates: zero to four updates for NAMED side characters whose durable social continuity changed or became clear this turn. Each item has name, relationship, personality_note, current_dynamic, knows, and last_interaction. Use only visible evidence. Keep prior facts by returning empty strings when unchanged; never invent a biography. Use [] when no side-character continuity needs updating.
 - development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
 - memory_updates: zero to three durable facts learned directly from the visible user turn only. Each item has content, category (fact/person/relationship/world/event/preference/boundary/promise/conflict), importance (1-5), scope (conversation/character), reason (one short explanation of why this is useful later), and replaces (the exact older tentative memory this user turn corrects, otherwise an empty string). Prefer updating an existing durable idea over creating a near-duplicate. Prioritize confessions, promises, boundaries, important preferences, relationship changes, recurring places, secrets the user explicitly reveals, consequential conflicts and first-time milestones. Importance 1-2 is too trivial for automatic storage; use [] for ordinary banter, temporary gestures, scenery, clothing, food or throwaway logistics. Never store facts invented by the character reply. Never infer identity, diagnosis, secrets or off-screen facts. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
 
@@ -841,7 +867,7 @@ Write the response AFTER the final event established in that exact turn.`;
 async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {
   return await callGeminiWithFailover({
     apiKey,
-    systemInstruction: `Produce one grounded, socially natural roleplay continuation. React literally before inferring subtext; never invent motives or generic romance choreography. User-authored narration is already-canonical scene action and must outrank any conflicting in-character request spoken earlier in the same turn. Continue after the user's final staged event. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
+    systemInstruction: `Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate. React literally before inferring subtext; never invent motives, argument evidence or generic romance choreography. Keep side characters socially alive and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is already-canonical scene action and must outrank any conflicting in-character request spoken earlier in the same turn. Continue after the user's final staged event. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
     prompt,
     maxOutputTokens: getMaximumOutputTokens(character.response_length),
     temperature: getTemperature(character.creativity, isRegeneration),
@@ -850,7 +876,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Break any stock body-language chain; do not simply swap jaw/grip/gaze/voice words for synonyms. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. Cut repetitive sarcasm, rhetorical debate lines and polished mic-drops. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -902,7 +928,7 @@ async function callGeminiWithFailover({
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
-              required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"],
+              required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
               properties: {
                 reply: { type: "string" },
                 turn_reading: { type: "string" },
@@ -944,7 +970,8 @@ async function callGeminiWithFailover({
                     timeline_event: { type: "object", required: ["record", "label", "detail", "kind", "importance"], properties: { record: { type: "boolean" }, label: { type: "string" }, detail: { type: "string" }, kind: { type: "string", enum: ["relationship", "conflict", "promise", "reveal", "decision", "scene", "other"] }, importance: { type: "integer" } } },
                   },
                 },
-                memory_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content: { type: "string" }, category: { type: "string", enum: ["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"] }, importance: { type: "integer" }, scope: { type: "string", enum: ["conversation", "character"] }, reason: { type: "string" }, replaces: { type: "string" } } } },
+                cast_updates: { type: "array", maxItems: 4, items: { type: "object", required: ["name","relationship","personality_note","current_dynamic","knows","last_interaction"], properties: { name:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"} } } },
+      memory_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content: { type: "string" }, category: { type: "string", enum: ["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"] }, importance: { type: "integer" }, scope: { type: "string", enum: ["conversation", "character"] }, reason: { type: "string" }, replaces: { type: "string" } } } },
                 development_update: {
                   type: "object",
                   required: ["significance", "evidence", "relationship_phase", "relationship_dynamic", "emotional_residue", "active_contradiction", "behavioral_effect", "turning_point"],
@@ -1009,10 +1036,11 @@ function parseModelEnvelope(raw): ModelEnvelope {
       voice_plan: parsed?.voice_plan && typeof parsed.voice_plan === "object" ? parsed.voice_plan : {},
       scene_update: parsed?.scene_update && typeof parsed.scene_update === "object" ? parsed.scene_update : {},
       continuity_update: parsed?.continuity_update && typeof parsed.continuity_update === "object" ? parsed.continuity_update : {},
+      cast_updates: Array.isArray(parsed?.cast_updates) ? parsed.cast_updates.slice(0, 4) : [],
       memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 3) : [],
     };
   } catch {
-    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, memory_updates: [] };
+    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [] };
   }
 }
 
@@ -1568,6 +1596,47 @@ function applyCharacterDevelopment({
   return normalizeCharacterDevelopment(next, relationshipPremise);
 }
 
+
+function dialogueQuestionCount(value = "") {
+  const text = String(value || "");
+  const dialogue = [...text.matchAll(/["“]([^"”]+)["”]/g)].map((match) => match[1]).join(" ");
+  return (dialogue.match(/\?/g) || []).length;
+}
+
+function hasRhetoricalDialogueOveruse(reply = "", recentReplies = []) {
+  const text = normalizeText(reply);
+  const questions = dialogueQuestionCount(reply);
+  const rhetoricalMarkers = [
+    /\bright[,.]? because\b/,
+    /\bmy mistake for (?:assuming|thinking)\b/,
+    /\band what exactly\b/,
+    /\bwhat did you expect\b/,
+    /\bbecause .{0,80}\?$/,
+    /\bso (?:what|why|you) .{0,80}\?$/,
+  ];
+  const markerHit = rhetoricalMarkers.some((pattern) => pattern.test(text));
+  if (questions >= 2 && markerHit) return true;
+  const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-3);
+  const recentRhetorical = recent.filter((item) => dialogueQuestionCount(item) >= 1 && rhetoricalMarkers.some((pattern) => pattern.test(normalizeText(item)))).length;
+  return markerHit && recentRhetorical >= 2;
+}
+
+function hasSarcasticComebackLoop(reply = "", recentReplies = []) {
+  const patterns = [
+    /\bright[,.]? because\b/,
+    /\bbrilliant strategy\b/,
+    /\bfascinating distinction\b/,
+    /\bmy mistake for (?:assuming|thinking)\b/,
+    /\bhigh praise\b/,
+    /\bkeep practicing that\b/,
+    /\bimpressive work\b/,
+    /\btruly\b.{0,40}$/,
+  ];
+  const isComeback = (value) => patterns.some((pattern) => pattern.test(normalizeText(value)));
+  if (!isComeback(reply)) return false;
+  return (Array.isArray(recentReplies) ? recentReplies : []).slice(-3).filter(isComeback).length >= 2;
+}
+
 const CONTINUITY_GUARD_ISSUES = new Set([
   "location_changed_without_scene_change",
   "time_changed_without_scene_change",
@@ -1624,6 +1693,8 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasDistanceBoundaryOverride(text, options.latestUserMessage || "")) issues.push("distance_boundary_override");
   if (hasSocialTensionOverEscalation(text, options.latestUserMessage || "")) issues.push("social_tension_overescalation");
   if (hasUserStagedSceneRetcon(text, options.latestUserMessage || "", options.characterName || "")) issues.push("user_staged_scene_retcon");
+  if (hasRhetoricalDialogueOveruse(text, options.recentCharacterReplies || [])) issues.push("rhetorical_dialogue_overuse");
+  if (hasSarcasticComebackLoop(text, options.recentCharacterReplies || [])) issues.push("sarcastic_comeback_loop");
 
   const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 16) issues.push("underdeveloped_social_beat");
@@ -1698,7 +1769,7 @@ function compactSceneNames(value: any, limit = 14) {
   return [...new Set(value.map((item) => cleanPromptValue(item, 80)).filter(Boolean))].slice(0, limit);
 }
 
-function applySceneContinuity({ previousScene = {}, previousCast = {}, sceneUpdate = {}, mainCharacterName = "" }) {
+function applySceneContinuity({ previousScene = {}, previousCast = {}, sceneUpdate = {}, castUpdates = [], mainCharacterName = "" }) {
   const priorPresent = compactSceneNames(previousScene?.present || []), proposedPresent = compactSceneNames(sceneUpdate?.present || []), sceneChanged = Boolean(sceneUpdate?.scene_changed);
   const exitedNames = compactSceneNames(sceneUpdate?.exited || []), exitedKeys = new Set(exitedNames.map(normalizeText));
   const roster = sceneChanged
@@ -1716,6 +1787,19 @@ function applySceneContinuity({ previousScene = {}, previousCast = {}, sceneUpda
   const cast = { ...(previousCast && typeof previousCast === "object" ? previousCast : {}) };
   for (const name of present) cast[name] = { ...(cast[name] || {}), current_status: "present", last_seen: scene.location || "current scene" };
   for (const name of exitedNames) cast[name] = { ...(cast[name] || {}), current_status: "left the current scene", last_seen: scene.location || cast[name]?.last_seen || "previous scene" };
+  for (const item of Array.isArray(castUpdates) ? castUpdates.slice(0, 4) : []) {
+    const name = cleanPromptValue(item?.name, 80);
+    if (!name || normalizeText(name) === normalizeText(mainCharacterName)) continue;
+    const prior = cast[name] || {};
+    cast[name] = {
+      ...prior,
+      relationship: cleanPromptValue(item?.relationship, 260) || prior.relationship || "",
+      personality_note: cleanPromptValue(item?.personality_note, 260) || prior.personality_note || "",
+      current_dynamic: cleanPromptValue(item?.current_dynamic, 320) || prior.current_dynamic || "",
+      knows: cleanPromptValue(item?.knows, 360) || prior.knows || "",
+      last_interaction: cleanPromptValue(item?.last_interaction, 360) || prior.last_interaction || "",
+    };
+  }
   if (sceneChanged) {
     const presentKeys = new Set(present.map(normalizeText));
     for (const name of priorPresent) if (!presentKeys.has(normalizeText(name)) && !exitedKeys.has(normalizeText(name))) cast[name] = { ...(cast[name] || {}), current_status: "outside current scene", last_seen: cleanPromptValue(previousScene?.location, 180) || cast[name]?.last_seen || "previous scene" };
@@ -1863,7 +1947,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Produce one grounded, socially natural roleplay continuation. React literally before inferring subtext; do not invent motives or generic romance choreography. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
+          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           temperature: getTemperature(character.creativity, isRegeneration),
@@ -1974,6 +2058,7 @@ async function streamRoleplayV19({
           previousScene: existingSceneState,
           previousCast: existingCastState,
           sceneUpdate: result.scene_update,
+          castUpdates: result.cast_updates,
           mainCharacterName: character.name,
         });
         update.scene_state = nextPhysicalState.scene;
@@ -2183,8 +2268,8 @@ async function streamGeminiEnvelopeWithFailover({
 function roleplayResponseSchema() {
   return {
     type: "object",
-    required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"],
-    propertyOrdering: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"],
+    required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+    propertyOrdering: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
     properties: {
       reply: { type: "string" },
       turn_reading: { type: "string" },
@@ -2193,6 +2278,7 @@ function roleplayResponseSchema() {
       continuity_note: { type: "string" },
       scene_update: { type: "object", required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"], properties: { scene_changed:{type:"boolean"}, separator_label:{type:"string"}, location:{type:"string"}, time_label:{type:"string"}, present:{type:"array",items:{type:"string"}}, exited:{type:"array",items:{type:"string"}}, heard_user_turn:{type:"array",items:{type:"string"}} } },
       continuity_update: { type: "object", required: ["objects_present","knowledge_updates","commitments","resolved_commitments","stakes","timeline_event"], properties: { objects_present:{type:"array",maxItems:12,items:{type:"string"}}, knowledge_updates:{type:"array",maxItems:6,items:{type:"object",required:["who","knows","source","status"],properties:{who:{type:"string"},knows:{type:"string"},source:{type:"string"},status:{type:"string",enum:["known","suspected","rumor","forgotten"]}}}}, commitments:{type:"array",maxItems:8,items:{type:"string"}}, resolved_commitments:{type:"array",maxItems:8,items:{type:"string"}}, stakes:{type:"string"}, timeline_event:{type:"object",required:["record","label","detail","kind","importance"],properties:{record:{type:"boolean"},label:{type:"string"},detail:{type:"string"},kind:{type:"string",enum:["relationship","conflict","promise","reveal","decision","scene","other"]},importance:{type:"integer"}}} } },
+      cast_updates: { type: "array", maxItems: 4, items: { type: "object", required: ["name","relationship","personality_note","current_dynamic","knows","last_interaction"], properties: { name:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"} } } },
       memory_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["content","category","importance","scope","reason","replaces"], properties: { content:{type:"string"}, category:{type:"string",enum:["fact","person","relationship","world","event","preference","boundary","promise","conflict"]}, importance:{type:"integer"}, scope:{type:"string",enum:["conversation","character"]}, reason:{type:"string"}, replaces:{type:"string"} } } },
       development_update: { type: "object", required: ["significance","evidence","relationship_phase","relationship_dynamic","emotional_residue","active_contradiction","behavioral_effect","turning_point"], properties: { significance:{type:"string"}, evidence:{type:"string"}, relationship_phase:{type:"string"}, relationship_dynamic:{type:"string"}, emotional_residue:{type:"string"}, active_contradiction:{type:"string"}, behavioral_effect:{type:"string"}, turning_point:{type:"string"} } },
     },

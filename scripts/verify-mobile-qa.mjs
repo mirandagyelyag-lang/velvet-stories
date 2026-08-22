@@ -63,7 +63,7 @@ let failed=0; for(const x of checks){console.log(`${x.p?"PASS":"FAIL"}  ${x.n}`)
 }
 
 
-// v2.10.7 memories safe-area regression checks
+// v2.10.8 memories safe-area regression checks
 {
   const memoriesSafe = read("src/styles/velvet-v2107-memories-safe-area.css");
   check("Memories detail clears the floating mobile dock", memoriesSafe.includes("padding-bottom: calc(188px + env(safe-area-inset-bottom))") && memoriesSafe.includes("scroll-padding-bottom: calc(164px + env(safe-area-inset-bottom))"));

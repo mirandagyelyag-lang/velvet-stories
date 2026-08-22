@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 2750);
+check("live-stream engine stays reasonably consolidated", edgeLines < 2850);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -88,7 +88,7 @@ check("generation skips redundant cancellation read-back",
 check("prompt context is capped for faster first token",
   edge.includes(".limit(50)") && edge.includes("messages.slice(-12)") && edge.includes("messages.slice(-32, -12)"));
 check("model streams reply scene continuity development and memories in one request",
-  edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"]') &&
+  edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
   edge.includes("streamGenerateContent?alt=sse") &&
   edge.includes("result.scene_update") && edge.includes("result.development_update") && edge.includes("result.memory_updates"));
@@ -428,6 +428,40 @@ check("side characters are treated as people rather than jealousy props", edge.i
 check("short roleplay beats are explicitly allowed", edge.includes("Shorter is better when the social beat already lands"));
 check("repeated stock gestures across turns trigger the naturalism doctor", helpers?.hasRecycledStockGesture(`Rowan's jaw tightens. "Fine."`, [`His jaw clenches before he answers. "Whatever."`, `Rowan's grip tightens and his jaw sets. "Sure."`]));
 check("Too AI feedback maps to a concrete naturalism directive", chat.includes('["too_ai", "Too AI / scripted"]') && edge.includes('["too_ai", "Make the turn less scripted:'));
+
+
+check("hidden feelings keeps strong inner emotion without forcing visible obsession",
+  edge.includes("HIDDEN FEELINGS — FEEL MORE THAN YOU SHOW") &&
+  edge.includes("Strong private emotion is welcome") &&
+  edge.includes("Romantic attention is not obsession") &&
+  edge.includes("Pursuit must vary"));
+check("meaningful physical tells remain allowed instead of being blanket-banned",
+  edge.includes("Do not erase useful physical tells such as a tightened jaw") &&
+  edge.includes("Use them when they reveal NEW information"));
+check("living cast persists named secondary characters",
+  edge.includes("LIVING CAST — SECONDARY CHARACTERS HAVE CONTINUITY") &&
+  edge.includes("keep them participating until they visibly leave") &&
+  edge.includes("Flirting is a real social interaction"));
+check("cast continuity has a durable structured update channel",
+  edge.includes("cast_updates") && edge.includes("personality_note") && edge.includes("last_interaction") && edge.includes("castUpdates: result.cast_updates"));
+check("dialogue naturalness limits sarcasm and rhetorical debate prose",
+  edge.includes("Sarcasm is seasoning, not the whole voice") &&
+  edge.includes("Strongly limit rhetorical questions") &&
+  edge.includes("They do not need the last word"));
+check("argument engine cannot invent evidence to win",
+  edge.includes("Never invent evidence, history, motives, technical details or circumstances") &&
+  edge.includes("cannot manufacture a stronger case"));
+
+const rhetoricalDamon = `"Right. Because loyalty is entirely measured by whether or not someone agrees to sit through your economics lectures? And what exactly did you expect?"`;
+check("naturalness doctor flags stacked rhetorical debate dialogue", helpers?.hasRhetoricalDialogueOveruse(rhetoricalDamon, []));
+const sarcasmHistory = [
+  `"Brilliant strategy," he said.`,
+  `"Fascinating distinction. My mistake for assuming you meant it."`,
+];
+check("naturalness doctor catches consecutive sarcastic comeback mode",
+  helpers?.hasSarcasticComebackLoop(`"Right. Because that makes perfect sense."`, sarcasmHistory));
+check("plain short dialogue is not mistaken for sarcasm",
+  !helpers?.hasSarcasticComebackLoop(`"Yeah. Give me a second."`, sarcasmHistory));
 
 const userStagedFlirtTurn = `I want you to leave i can't concentrate!\n\n*But my words didn't mean a thing. Since he's Mr. Popular, a random girl literally walked up to flirt with him in the library, and of course, he was flirting back like nothing. I just rolled my eyes*`;
 const retconnedStagedFlirt = `Alex stared at her for a long second, zipped his bag, didn't look back at the girl, and walked straight toward the library exit.`;
