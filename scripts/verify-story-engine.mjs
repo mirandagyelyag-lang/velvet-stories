@@ -870,3 +870,15 @@ check("opening regeneration resets stale derived scene continuity",
 // v2.10.14 timeout resilience: optional repair latency must not erase a usable first draft.
 check("optional repair failure falls back to a readable original draft", edge.includes("bounded repair failed; evaluating original draft fallback") && edge.includes("A slow optional") && edge.includes("repairUsed = false"));
 check("roleplay stream allows a realistic model startup window", edge.includes("Date.now() + 38000") && edge.includes("Math.min(24000, remainingMs)"));
+
+// v2.10.15 positive hidden-feelings anchor: caring should enrich ordinary life, not replace it.
+check("hidden-feelings prompt includes care-without-obsession positive anchor",
+  edge.includes("POSITIVE ANCHOR — CARE WITHOUT OBSESSION") &&
+  edge.includes("The private beat should enrich the scene, not hijack it") &&
+  edge.includes("NOT a mandatory template") &&
+  edge.includes("Inner thoughts should add information the reader could not already infer"));
+
+check("hidden-feelings anchor preserves ordinary-life continuation",
+  edge.includes("keeps driving / studying / talking normally") &&
+  edge.includes("a small glance, exhale or loosening grip shows relief") &&
+  edge.includes("then life continues"));
