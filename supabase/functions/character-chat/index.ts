@@ -139,15 +139,29 @@ Deno.serve(async (request) => {
     });
     const messages = branch.messages;
     const latestUserRecord = [...messages].reverse().find((message) => message.sender === "user") || null;
-    if (!latestUserRecord) throw new Error("Send a message before asking the character to reply");
+    // v2.10.9: the very first character opening may be regenerated before the
+    // user has sent anything. This is a real opening rewrite, not a fake user turn.
+    const openingRegeneration = Boolean(
+      regenerateMessageId &&
+      branch.replacementMessage &&
+      !latestUserRecord &&
+      !messages.some((message) => message.sender === "user")
+    );
+    if (!latestUserRecord && !openingRegeneration) {
+      throw new Error("Send a message before asking the character to reply");
+    }
 
-    if (expectedUserMessageId && String(latestUserRecord.id) !== expectedUserMessageId) {
+    if (expectedUserMessageId && (!latestUserRecord || String(latestUserRecord.id) !== expectedUserMessageId)) {
       return json({ error: "The conversation changed before Velvet could answer. Try again from the latest message." }, 409);
     }
 
-    const latestUserMessage = String(latestUserRecord.content || "");
-    const previousCharacterMessage = [...messages].reverse().find((message) => message.sender === "character")?.content || "";
-    const turnIntent = classifyTurnIntent(latestUserMessage, messages);
+    const latestUserMessage = openingRegeneration ? "" : String(latestUserRecord?.content || "");
+    const previousCharacterMessage = openingRegeneration
+      ? String(branch.replacementMessage?.content || configuredCharacter.first_message || "")
+      : ([...messages].reverse().find((message) => message.sender === "character")?.content || "");
+    const turnIntent = openingRegeneration
+      ? { kind: "opening", silentCount: 0, medium: "in_person", isQuestion: false, normalized: "" }
+      : classifyTurnIntent(latestUserMessage, messages);
     const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
     const selectedMemories = selectRelevantMemories(loaded.memories, messages);
     const selectedLore = selectRelevantLore(loaded.loreEntries, messages, loaded.groupCharacters);
@@ -174,6 +188,8 @@ Deno.serve(async (request) => {
       developmentState,
       regenerationFeedback,
       storyPreferences,
+      openingRegeneration,
+      openingSeed: branch.replacementMessage?.content || configuredCharacter.first_message || "",
     });
 
     const rawIsCancelled = () => generationId
@@ -218,15 +234,15 @@ Deno.serve(async (request) => {
       loreEntries: selectedLore,
       existingTimeline: loaded.conversation.story_timeline || [],
       previousDevelopment: developmentState,
-      latestUserMessageId: latestUserRecord.id,
-      existingSceneState: loaded.conversation.scene_state || {},
-      existingCastState: loaded.conversation.cast_state || {},
-      existingRelationshipState: loaded.conversation.relationship_state || {},
-      existingIntelligenceState: loaded.conversation.intelligence_state || {},
-      existingUnresolvedThreads: loaded.conversation.unresolved_threads || [],
-      existingStoryRecap: loaded.conversation.story_recap || loaded.conversation.summary || "",
-      existingStoryChapters: loaded.conversation.story_chapters || [],
-      existingActiveChapter: loaded.conversation.active_chapter || {},
+      latestUserMessageId: latestUserRecord?.id || null,
+      existingSceneState: openingRegeneration ? {} : (loaded.conversation.scene_state || {}),
+      existingCastState: openingRegeneration ? {} : (loaded.conversation.cast_state || {}),
+      existingRelationshipState: openingRegeneration ? {} : (loaded.conversation.relationship_state || {}),
+      existingIntelligenceState: openingRegeneration ? {} : (loaded.conversation.intelligence_state || {}),
+      existingUnresolvedThreads: openingRegeneration ? [] : (loaded.conversation.unresolved_threads || []),
+      existingStoryRecap: openingRegeneration ? "" : (loaded.conversation.story_recap || loaded.conversation.summary || ""),
+      existingStoryChapters: openingRegeneration ? [] : (loaded.conversation.story_chapters || []),
+      existingActiveChapter: openingRegeneration ? {} : (loaded.conversation.active_chapter || {}),
       regenerationInstruction,
       regenerationFeedback,
       isRegeneration: Boolean(regenerateMessageId),
@@ -574,6 +590,8 @@ function buildNarrativePrompt({
   developmentState,
   regenerationFeedback,
   storyPreferences,
+  openingRegeneration = false,
+  openingSeed = "",
 }) {
   const profile = [
     `Name: ${character.name}`,
@@ -661,19 +679,21 @@ function buildNarrativePrompt({
     recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-10) : [],
   }).slice(0, 9000);
 
-  const latest = compactMessageForPrompt(latestUserRecord.content, 5000);
-  const latestStagedEvents = extractUserStagedEvents(latestUserRecord.content);
+  const latest = openingRegeneration ? "" : compactMessageForPrompt(latestUserRecord?.content || "", 5000);
+  const latestStagedEvents = openingRegeneration ? "" : extractUserStagedEvents(latestUserRecord?.content || "");
   const learnedPositiveFeedback = positiveFeedbackDirectives(storyPreferences.learned_positive_feedback);
   const learnedNegativeFeedback = feedbackDirectives(storyPreferences.learned_negative_feedback);
   const currentFeedback = feedbackDirectives(regenerationFeedback);
-  const regeneration = isRegeneration
-    ? `This is a regeneration from the branch point. The rejected take is intentionally absent. Make a materially different choice, reaction, opening and dialogue—not a paraphrase. ${currentFeedback.length ? `Creator feedback that this rewrite MUST fix: ${currentFeedback.join(" ")}` : ""} ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
-    : "This is a new canonical turn.";
+  const regeneration = openingRegeneration
+    ? `This is an OPENING REGENERATION before the user has sent any message. Replace the existing opening with a materially different first scene. Do not answer or imply a user message. Preserve the character, relationship premise, persona, world and lore, but choose a fresh concrete opening beat. The rejected opening is reference-only and must not be paraphrased. ${currentFeedback.length ? `Creator feedback that this rewrite MUST fix: ${currentFeedback.join(" ")}` : ""} ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
+    : isRegeneration
+      ? `This is a regeneration from the branch point. The rejected take is intentionally absent. Make a materially different choice, reaction, opening and dialogue—not a paraphrase. ${currentFeedback.length ? `Creator feedback that this rewrite MUST fix: ${currentFeedback.join(" ")}` : ""} ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
+      : "This is a new canonical turn.";
 
-  return `You are Velvet's narrative engine. Write the next turn of an immersive private roleplay as polished contemporary fiction.
+  return `You are Velvet's narrative engine. ${openingRegeneration ? "Write a fresh opening scene for an immersive private roleplay as polished contemporary fiction." : "Write the next turn of an immersive private roleplay as polished contemporary fiction."}
 
 NON-NEGOTIABLE PRIORITY
-1. Respond to the latest user turn below, in the current scene, before anything else.
+1. ${openingRegeneration ? `This is the first character message. Open the scene immediately without inventing any dialogue, action, thought, feeling or decision for ${userIdentity.name}. There is no user turn to answer yet.` : "Respond to the latest user turn below, in the current scene, before anything else."}
 2. Preserve visible continuity and the character profile. Never invent off-screen messages, visits, habits, schedules, relatives' actions, debts, exact durations or shared history.
 3. The user exclusively controls ${userIdentity.name}. Never invent ${userIdentity.name}'s dialogue, thoughts, feelings, reactions, choices or movements.
 4. Write ${character.name} as a specific person. Guarded, proud, teasing or emotionally avoidant does not mean cruel, contemptuous, robotic or therapeutic.
@@ -843,7 +863,7 @@ ${directorInstruction ? `Director instruction: ${directorInstruction}` : ""}
 OUTPUT
 Return JSON with fields in this exact order so reply can stream first:
 - reply: only the finished roleplay prose.
-- turn_reading: one sentence stating the literal social meaning of the latest user turn and what ${character.name} must respond to now.
+- turn_reading: ${openingRegeneration ? `one sentence stating that this is a fresh opening and what concrete scene ${character.name} is establishing without controlling ${userIdentity.name}.` : `one sentence stating the literal social meaning of the latest user turn and what ${character.name} must respond to now.`}
 - canon_claims: a list of every off-screen or historical factual claim used in the reply; keep it empty unless that exact fact appears in the profile, lore, a confirmed memory or the visible transcript.
 - voice_plan: a private planning object with conversational_goal, outward_tactic, private_pressure, verbal_signature and avoided_pattern. Each value is one short string. Never place this analysis inside reply.
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
@@ -853,15 +873,19 @@ Return JSON with fields in this exact order so reply can stream first:
 - development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
 - memory_updates: zero to three durable facts learned directly from the visible user turn only. Each item has content, category (fact/person/relationship/world/event/preference/boundary/promise/conflict), importance (1-5), scope (conversation/character), reason (one short explanation of why this is useful later), and replaces (the exact older tentative memory this user turn corrects, otherwise an empty string). Prefer updating an existing durable idea over creating a near-duplicate. Prioritize confessions, promises, boundaries, important preferences, relationship changes, recurring places, secrets the user explicitly reveals, consequential conflicts and first-time milestones. Importance 1-2 is too trivial for automatic storage; use [] for ordinary banter, temporary gestures, scenery, clothing, food or throwaway logistics. Never store facts invented by the character reply. Never infer identity, diagnosis, secrets or off-screen facts. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
 
-USER-STAGED EVENTS IN THE LATEST TURN — ALREADY CANON, NEVER OPTIONAL
+${openingRegeneration ? `OPENING REGENERATION — NO USER TURN EXISTS YET
+Rejected opening for diversity reference only:
+${cleanPromptValue(openingSeed, 5000)}
+
+Write a NEW opening scene. Do not paraphrase the rejected opening, do not pretend ${userIdentity.name} already spoke or acted, and do not control ${userIdentity.name}. End on a natural hook that gives the user room to respond.` : `USER-STAGED EVENTS IN THE LATEST TURN — ALREADY CANON, NEVER OPTIONAL
 ${latestStagedEvents || "none explicitly marked with *...*; still read any plain-text narration in temporal order"}
 - These are not suggestions for what might happen. They are scene facts the user has already established.
 - Never respond from an earlier point in the message and erase a later staged event.
 
-AUTHORITATIVE LATEST USER TURN (message_id=${latestUserRecord.id})
+AUTHORITATIVE LATEST USER TURN (message_id=${latestUserRecord?.id || "unknown"})
 ${userIdentity.name}: ${latest}
 
-Write the response AFTER the final event established in that exact turn.`;
+Write the response AFTER the final event established in that exact turn.`}`;
 }
 
 async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {

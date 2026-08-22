@@ -92,8 +92,10 @@ check("model streams reply scene continuity development and memories in one requ
   edge.includes("responseMimeType: \"application/json\"") &&
   edge.includes("streamGenerateContent?alt=sse") &&
   edge.includes("result.scene_update") && edge.includes("result.development_update") && edge.includes("result.memory_updates"));
-check("the same request plans latest-turn meaning and audits canon",
-  edge.includes("turn_reading: one sentence stating the literal social meaning") &&
+check("the same request plans turn meaning or opening intent and audits canon",
+  edge.includes("turn_reading:") &&
+  edge.includes("literal social meaning of the latest user turn") &&
+  edge.includes("fresh opening") &&
   edge.includes("canon_claims: a list of every off-screen or historical factual claim") &&
   edge.includes('canon_claims: { type: "array", items: { type: "string" } }'));
 check("no background story-model calls consume extra quota",
@@ -828,3 +830,20 @@ if (failures) {
 }
 
 console.log(`\n${checks.length} story-engine checks passed.`);
+
+check("opening reply can regenerate before any user message",
+  edge.includes("const openingRegeneration = Boolean(") &&
+  edge.includes("!latestUserRecord &&") &&
+  edge.includes("if (!latestUserRecord && !openingRegeneration)") &&
+  edge.includes("OPENING REGENERATION — NO USER TURN EXISTS YET"));
+check("opening regeneration never fabricates a user turn",
+  edge.includes("This is a real opening rewrite, not a fake user turn") &&
+  edge.includes("There is no user turn to answer yet") &&
+  edge.includes("do not pretend ${userIdentity.name} already spoke or acted"));
+check("opening regeneration replaces the first character message in place",
+  edge.includes("branch.replacementMessage") &&
+  edge.includes("replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: result.reply })"));
+check("opening regeneration resets stale derived scene continuity",
+  edge.includes("existingSceneState: openingRegeneration ? {}") &&
+  edge.includes("existingCastState: openingRegeneration ? {}") &&
+  edge.includes('existingStoryRecap: openingRegeneration ? ""'));
