@@ -464,6 +464,18 @@ check("naturalness doctor catches consecutive sarcastic comeback mode",
   helpers?.hasSarcasticComebackLoop(`"Right. Because that makes perfect sense."`, sarcasmHistory));
 check("plain short dialogue is not mistaken for sarcasm",
   !helpers?.hasSarcasticComebackLoop(`"Yeah. Give me a second."`, sarcasmHistory));
+check("active NPC cues must be rendered instead of summarized away",
+  edge.includes("ACTIVE NPC CUE IS BINDING") &&
+  edge.includes("Give the cued side character concrete dialogue/action before shifting focus away") &&
+  edge.includes('issues.push("active_npc_cue_skipped")'));
+check("present side characters cannot be erased after a user cue",
+  edge.includes("PRESENCE LOCK") &&
+  edge.includes('issues.push("active_npc_erased_after_cue")') &&
+  edge.includes('issues.push("cued_npc_marked_exited")'));
+check("Rowan rain-scene regression protects Marcus and the girl",
+  edge.includes("walked away|headed (?:off|away|back)|drifted away") &&
+  edge.includes('"active_npc_cue_skipped"') &&
+  edge.includes('"active_npc_erased_after_cue"'));
 
 const userStagedFlirtTurn = `I want you to leave i can't concentrate!\n\n*But my words didn't mean a thing. Since he's Mr. Popular, a random girl literally walked up to flirt with him in the library, and of course, he was flirting back like nothing. I just rolled my eyes*`;
 const retconnedStagedFlirt = `Alex stared at her for a long second, zipped his bag, didn't look back at the girl, and walked straight toward the library exit.`;

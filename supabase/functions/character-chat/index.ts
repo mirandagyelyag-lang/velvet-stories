@@ -732,6 +732,8 @@ HIDDEN FEELINGS — FEEL MORE THAN YOU SHOW
 LIVING CAST — SECONDARY CHARACTERS HAVE CONTINUITY
 - A named or recurring side character is not disposable dialogue furniture. Preserve their relationship, personality, current knowledge, social loyalties and meaningful prior interactions across the story.
 - If the user introduces a side character into the active scene, keep them participating until they visibly leave or the scene genuinely moves on. Do not make them speak for three lines and vanish.
+- ACTIVE NPC CUE IS BINDING: when the latest user turn explicitly says a visible side character talked, spoke, asked, answered, replied, flirted, approached, interrupted, kept talking or otherwise became active, SHOW that action on-page in this reply. Give the cued side character concrete dialogue/action before shifting focus away. Never summarize the cue into background noise, skip it, or make the NPC leave just to simplify the scene.
+- PRESENCE LOCK: a side character who was already present stays present unless the user visibly stages their exit, the scene genuinely changes, or the reply itself gives them a clear, motivated exit AFTER honoring any active cue. Do not silently convert an active NPC into footsteps fading away, someone heading off, or an off-screen voice.
 - Side characters can initiate, interrupt, joke, flirt, disagree, change the subject, leave, return later and have conversations that are not about ${userIdentity.name} or ${character.name}.
 - If a side character is a close friend to both people, it is natural for them to notice tension or comment on a conflict. Do not turn every NPC into a romance commentator; their involvement must follow their established relationship and personality.
 - Flirting is a real social interaction. If someone flirts and ${character.name}'s personality would engage, let the exchange breathe for multiple beats when the scene supports it. Do not instantly dismiss the person merely because ${character.name} has feelings for ${userIdentity.name}.
@@ -895,7 +897,7 @@ Write the response AFTER the final event established in that exact turn.`}`;
 async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {
   return await callGeminiWithFailover({
     apiKey,
-    systemInstruction: `Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate. React literally before inferring subtext; never invent motives, argument evidence or generic romance choreography. Keep side characters socially alive and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is already-canonical scene action and must outrank any conflicting in-character request spoken earlier in the same turn. Continue after the user's final staged event. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
+    systemInstruction: `Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate. React literally before inferring subtext; never invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is already-canonical scene action and must outrank any conflicting in-character request spoken earlier in the same turn. Continue after the user's final staged event. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
     prompt,
     maxOutputTokens: getMaximumOutputTokens(character.response_length),
     temperature: getTemperature(character.creativity, isRegeneration),
@@ -904,7 +906,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. Cut repetitive sarcasm, rhetorical debate lines and polished mic-drops. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. Cut repetitive sarcasm, rhetorical debate lines and polished mic-drops. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1692,6 +1694,9 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "unsupported_motive_escalation",
   "distance_boundary_override",
   "social_tension_overescalation",
+  "active_npc_cue_skipped",
+  "active_npc_erased_after_cue",
+  "cued_npc_marked_exited",
 ]);
 
 function blockingNarrativeIssues(issues = []) {
@@ -1771,6 +1776,14 @@ function validateContinuityEnvelope(result = {}, options = {}) {
     const heard = compactSceneNames(sceneUpdate?.heard_user_turn || []);
     if (heard.some((name) => !presentKeys.has(normalizeText(name)) && /left|absent|away|outside|exited/.test(normalizeText(previousCast?.[name]?.current_status || "")))) issues.push("offscreen_character_heard_turn");
   }
+
+  const latestHasNpcSpeechCue = /\b(?:talked|spoke|said|asked|answered|replied|responded|kept talking|continued talking|started talking|flirted|interrupted)\b/.test(latest);
+  const replyHasVisibleDialogue = /["“”]/.test(String(result?.reply || ""));
+  const replyErasesActiveNpc = /\b(?:footsteps faded|walked away|headed (?:off|away|back)|drifted away|moved on|left the (?:area|scene|group)|disappeared (?:down|into|through)|back toward the library)\b/.test(reply);
+  const latestHasExitCue = /\b(?:left|leaves|walked away|walks away|headed off|heads off|went away|goes away|moved on|moves on|said goodbye|goodbye|bye)\b/.test(latest);
+  if (latestHasNpcSpeechCue && !replyHasVisibleDialogue) issues.push("active_npc_cue_skipped");
+  if (latestHasNpcSpeechCue && replyErasesActiveNpc && !latestHasExitCue) issues.push("active_npc_erased_after_cue");
+  if (latestHasNpcSpeechCue && compactSceneNames(sceneUpdate?.exited || []).length && !latestHasExitCue) issues.push("cued_npc_marked_exited");
 
   const oldObjects = compactTextList(previousIntelligence?.objects || [], 12, 180);
   const nextObjects = compactTextList(continuityUpdate?.objects_present || [], 12, 180);
@@ -1975,7 +1988,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
+          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           temperature: getTemperature(character.creativity, isRegeneration),
