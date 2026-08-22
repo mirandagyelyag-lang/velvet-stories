@@ -934,7 +934,7 @@ async function callGeminiWithFailover({
 
     const controller = new AbortController();
     let watching = true;
-    const timeoutId = setTimeout(() => controller.abort(), 26000);
+    const timeoutId = setTimeout(() => controller.abort(), 34000);
     const cancellationWatcher = (async () => {
       while (watching && !controller.signal.aborted) {
         await delay(180);
@@ -2034,14 +2034,44 @@ async function streamRoleplayV19({
           repairUsed = true;
           sendEvent(controller, { type: "reset", reason: "repair" });
           streamedReply = "";
-          const repaired = await repairRoleplayOnce({
-            apiKey,
-            originalPrompt: prompt,
-            rejectedReply: result.reply,
-            issues: validationIssues,
-            character,
-            isCancelled,
-          });
+          let repaired: ModelResult | null = null;
+          let repairFailure = "";
+          try {
+            repaired = await repairRoleplayOnce({
+              apiKey,
+              originalPrompt: prompt,
+              rejectedReply: result.reply,
+              issues: validationIssues,
+              character,
+              isCancelled,
+            });
+          } catch (repairError) {
+            if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
+            repairFailure = getErrorMessage(repairError);
+            console.warn("[character-chat] bounded repair failed; evaluating original draft fallback", {
+              issues: blocking,
+              error: repairFailure,
+            });
+          }
+
+          if (!repaired) {
+            const originalFatal = blockingNarrativeIssues(originalIssues);
+            if (!originalFatal.length) {
+              // The user already has a complete readable draft. A slow optional
+              // naturalism/continuity repair must never turn that success into a
+              // visible timeout error. Keep the first draft and finish normally.
+              result = originalResult;
+              validationIssues = originalIssues;
+              repairUsed = false;
+              for (const chunk of splitForStreaming(result.reply)) {
+                if (await isCancelled()) return;
+                sendEvent(controller, { type: "chunk", content: chunk });
+              }
+              streamedReply = result.reply;
+            } else {
+              throw new Error(repairFailure || "Velvet could not repair an incomplete reply. Try again.");
+            }
+          } else {
           const repairedIssues = validateNarrativeReply(repaired.reply, {
             characterName: character.name,
             userName: userIdentity.name,
@@ -2069,6 +2099,7 @@ async function streamRoleplayV19({
             sendEvent(controller, { type: "chunk", content: chunk });
           }
           streamedReply = result.reply;
+          }
         }
 
         if (blockingNarrativeIssues(validationIssues).length) {
@@ -2201,7 +2232,7 @@ async function streamGeminiEnvelopeWithFailover({
   let emittedAnyReply = false;
   // VELVET_ROLEPLAY_DEADLINE_V282: cap failover as one interaction budget
   // instead of allowing every fallback model to consume a full 26 seconds.
-  const deadlineAt = Date.now() + 24000;
+  const deadlineAt = Date.now() + 38000;
 
   for (const model of models) {
     if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
@@ -2209,7 +2240,7 @@ async function streamGeminiEnvelopeWithFailover({
     if (remainingMs <= 1200) break;
     const controller = new AbortController();
     let watching = true;
-    const timeoutId = setTimeout(() => controller.abort(), Math.min(16000, remainingMs));
+    const timeoutId = setTimeout(() => controller.abort(), Math.min(24000, remainingMs));
     const cancellationWatcher = (async () => {
       while (watching && !controller.signal.aborted) {
         await delay(360);

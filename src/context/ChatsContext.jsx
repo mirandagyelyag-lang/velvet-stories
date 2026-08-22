@@ -958,7 +958,7 @@ export function ChatsProvider({
           result = await new Promise((resolve, reject) => {
             const timeoutId = setTimeout(
               () => reject(new Error("The response stream stalled. Please try again.")),
-              30000
+              45000
             );
 
             reader.read().then(

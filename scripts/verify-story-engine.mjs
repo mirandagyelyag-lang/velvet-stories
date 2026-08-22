@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 2850);
+check("live-stream engine stays reasonably consolidated", edgeLines < 2950);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -61,7 +61,7 @@ check("no deterministic narrative fallback exists",
 check("one live generation one validation one optional repair",
   edge.includes("streamGeminiEnvelopeWithFailover({") &&
   edge.includes("let validationIssues = validateNarrativeReply(") &&
-  edge.includes("const repaired = await repairRoleplayOnce({") &&
+  edge.includes("repaired = await repairRoleplayOnce({") &&
   edge.includes("const blocking = repairTriggerIssues(validationIssues)") &&
   edge.includes("if (blocking.length)"));
 check("advisory quality issues do not force repeated user regeneration",
@@ -82,7 +82,7 @@ check("style-only naturalism warnings never spend a second model call",
   !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"recycled_stock_gesture"') &&
   edge.includes('"unsupported_motive_escalation"') && edge.includes('"distance_boundary_override"'));
 check("roleplay failover has one bounded interaction deadline",
-  edge.includes("VELVET_ROLEPLAY_DEADLINE_V282") && edge.includes("const deadlineAt = Date.now() + 24000") && edge.includes("Math.min(16000, remainingMs)"));
+  edge.includes("VELVET_ROLEPLAY_DEADLINE_V282") && edge.includes("const deadlineAt = Date.now() + 38000") && edge.includes("Math.min(24000, remainingMs)"));
 check("generation skips redundant cancellation read-back",
   edge.includes("VELVET_SPEED_V282") && !edge.includes("if (await isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)) {\n        return cancelledResponse();"));
 check("prompt context is capped for faster first token",
@@ -866,3 +866,7 @@ check("opening regeneration resets stale derived scene continuity",
   edge.includes("existingSceneState: openingRegeneration ? {}") &&
   edge.includes("existingCastState: openingRegeneration ? {}") &&
   edge.includes('existingStoryRecap: openingRegeneration ? ""'));
+
+// v2.10.14 timeout resilience: optional repair latency must not erase a usable first draft.
+check("optional repair failure falls back to a readable original draft", edge.includes("bounded repair failed; evaluating original draft fallback") && edge.includes("A slow optional") && edge.includes("repairUsed = false"));
+check("roleplay stream allows a realistic model startup window", edge.includes("Date.now() + 38000") && edge.includes("Math.min(24000, remainingMs)"));

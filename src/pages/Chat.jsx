@@ -156,6 +156,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const [rewindUndo, setRewindUndo] = useState(null);
   const [actionNotice, setActionNotice] = useState(null);
   const [aiPhaseOverride, setAiPhaseOverride] = useState("");
+  const [typingIndicatorVisible, setTypingIndicatorVisible] = useState(false);
   const [memoryCaptureNotice, setMemoryCaptureNotice] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [alternatives, setAlternatives] = useState([]);
@@ -401,6 +402,30 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       media.removeEventListener?.("change", measure);
     };
   }, [conversationReady, visibleMessages.length, latestMessageContent, readingMode, readingChromeVisible]);
+
+  // VELVET_TYPING_GLIMPSE_V1
+  // The inline “X is writing…” bubble is only a brief reassurance, not a
+  // progress screen. Delay it so fast replies never flash it, then hide it
+  // again even if the model is still thinking. Streaming text always wins.
+  useEffect(() => {
+    const eligible = (isTyping || generationState === "generating") && !characterStreaming;
+    if (!eligible) {
+      setTypingIndicatorVisible(false);
+      return undefined;
+    }
+
+    let hideTimer = null;
+    const showTimer = window.setTimeout(() => {
+      setTypingIndicatorVisible(true);
+      hideTimer = window.setTimeout(() => setTypingIndicatorVisible(false), 1250);
+    }, 700);
+
+    return () => {
+      window.clearTimeout(showTimer);
+      if (hideTimer) window.clearTimeout(hideTimer);
+      setTypingIndicatorVisible(false);
+    };
+  }, [isTyping, generationState, characterStreaming]);
 
   // VELVET_GENERATION_MANAGER_V1
   // Never lock sending merely because a stale temporary bubble exists.
@@ -1873,7 +1898,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
               </Fragment>
             ))}
 
-            {(isTyping || generationState === "generating") && !characterStreaming && (
+            {typingIndicatorVisible && (
               <article className="chat-message chat-message--character">
                 <span className="chat-message__avatar" style={{ "--character-color": character.color }}>
                   {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : character.initials}
