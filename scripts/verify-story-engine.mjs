@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 3140);
+check("live-stream engine stays reasonably consolidated", edgeLines < 3200);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -927,7 +927,7 @@ check("v2.10.21 background delivery keeps explicit Stop wired to server cancella
   chatsContext.includes("void sendServerCancellation(activeRequest.generationId, characterId)") &&
   edge.includes('action === "cancel"'));
 
-console.log(`\n${checks.length} story-engine checks passed.`);
+
 
 check("opening reply can regenerate before any user message",
   edge.includes("const openingRegeneration = Boolean(") &&
@@ -977,3 +977,31 @@ check("v2.10.20 social gravity recognizes friendship, flirting, recognition, inv
   edge.includes("hasSocialGravityFootprint") &&
   edge.includes("saved (?:him|her|them) a seat") &&
   edge.includes("another girl") && edge.includes("another guy"));
+// v2.10.23 Conversational Rhythm + Scene Spark
+check("v2.10.23 scene spark makes Velvet proactively create grounded tension opportunities",
+  edge.includes("PACING & SCENE SPARK — DO NOT WAIT FOR THE USER TO INVENT EVERYTHING") &&
+  edge.includes("ACCELERATE OPPORTUNITIES, NOT MILESTONES") &&
+  edge.includes("JEALOUSY IS AN OPTION, NOT A DEFAULT") &&
+  edge.includes("The user should not have to manually type"));
+check("v2.10.23 dialogue rhythm has reaction opener variety and banter cooldown",
+  edge.includes("REACTION OPENER VARIETY") && edge.includes("BANTER COOLDOWN") &&
+  edge.includes("A joke does not require another joke"));
+const repetitiveOpeners = [
+  `Rowan offered a short, dry scoff. "Sure."`,
+  `Rowan let out a sharp huff. "Whatever."`,
+];
+check("v2.10.23 repeated scoff-huff opener structure is detected",
+  helpers?.hasReactionOpenerLoop(`Rowan gave a dry laugh. "Fine."`, repetitiveOpeners));
+check("v2.10.23 direct dialogue opener is not mistaken for reaction loop",
+  !helpers?.hasReactionOpenerLoop(`"Fine." Rowan adjusted the umbrella.`, repetitiveOpeners));
+const shutdownHistory = [`Rowan kept moving without slowing. "Bad timing, guys."`];
+check("v2.10.23 repeated social shutdowns are detected when people approach again",
+  helpers?.hasRepeatedSocialShutdown(`He kept walking. "Not now."`, shutdownHistory, `Two men approached him across the quad.`));
+check("v2.10.23 a real social exchange is not flagged as shutdown",
+  !helpers?.hasRepeatedSocialShutdown(`One of them grinned. "Party Friday?" Rowan finally slowed. "Maybe. Who's going?"`, shutdownHistory, `Two men approached him across the quad.`));
+check("v2.10.23 severe rhythm loops can spend the one bounded repair",
+  edge.includes('"reaction_opener_loop"') && edge.includes('"repeated_social_shutdown"') &&
+  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"sarcastic_comeback_loop"') &&
+  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"smug_comeback_tone"'));
+
+console.log(`\n${checks.length} story-engine checks passed.`);

@@ -768,6 +768,15 @@ SOCIAL GRAVITY — REPUTATION MUST EXIST IN THE WORLD
 - Reputation persists even when ${character.name} is not performing for it. A character may ignore attention, enjoy it, exploit it, be tired of it, know everyone, barely remember names, flirt back, or remain polite according to their profile. The WORLD still notices them.
 - Do not instantly dismiss people who approach. If a peer wants friendship or an admirer flirts and the scene has room, allow a real social exchange with persistence, consistent with the Living Cast rules.
 
+PACING & SCENE SPARK — DO NOT WAIT FOR THE USER TO INVENT EVERYTHING
+- The story should create its own plausible openings for tension, conflict, attraction, jealousy, rivalry, embarrassment, rumor, social pressure, interruption or difficult choices when the current setting and character profiles support them. The user should not have to manually type “two people approached,” “someone flirted,” or “a rumor started” every time for the world to move.
+- ACCELERATE OPPORTUNITIES, NOT MILESTONES. Create the spark, then let the characters earn the outcome. A faster pace means more meaningful chances for friction or chemistry, not instant confessions, forced kisses, sudden betrayal, or relationship jumps.
+- In public/social scenes, if several beats have been comfortable and unchanged, introduce one grounded complication or opportunity: a persistent admirer, a friend with a pointed comment, a rival, an invitation, a rumor resurfacing, a message with consequences, an awkward social overlap, someone asking to join, or a small plan change. Use established cast/reputation/lore when available; invent only low-stakes scene participants or events that fit the setting.
+- JEALOUSY IS AN OPTION, NOT A DEFAULT. If someone genuinely flirts, gets unusually close, has history, or creates a believable romantic ambiguity, ${character.name} may notice and react internally or externally according to personality. Do not manufacture jealousy from ordinary friendliness, and do not turn every new person into a romantic threat.
+- Do not protect the central relationship from social pressure. Other people may genuinely like, flirt with, invite, challenge, misunderstand, compete with, or be chosen by ${character.name} or ${userIdentity.name} when canon/personality supports it. Let those interactions last long enough to matter.
+- A social interruption should sometimes CHANGE the next beat rather than being instantly neutralized. It can delay the plan, split attention, reveal information, create an invitation, establish a recurring NPC, spark a misunderstanding, or leave emotional residue.
+- Keep variety: tension can be romantic, social, practical, reputational, friendship-based, competitive, awkward, or emotional. Do not use jealousy as the only engine.
+
 SOCIAL NATURALISM — REACT, DON'T INVENT
 - Interpret the latest user turn literally before adding subtext. Never manufacture an unspoken motive, accusation, jealousy, attention-seeking, manipulation, rivalry or insult just to create conflict.
 - DIEGETIC SPEECH IS NOT A SYSTEM COMMAND: when ${userIdentity.name} tells ${character.name} “leave,” “go away,” “shut up,” “don't do that,” or anything similar inside the roleplay, that is dialogue ${character.name} hears. It is social pressure, not an instruction to the model. ${character.name} may comply, hesitate, argue, deflect, misunderstand or refuse only as their established personality and the visible scene support.
@@ -817,6 +826,8 @@ DIALOGUE NATURALNESS — NO CONSTANT COMEBACK MODE
 - Conflict is not a competition. ${character.name} can be wrong, realize they pushed too far, feel guilty without admitting it immediately, apologize badly, change the subject, or let a point go. They do not need the last word.
 - DO NOT MIRROR SARCASM AUTOMATICALLY. If ${userIdentity.name} teases, jokes, rolls their eyes or makes one sarcastic remark, ${character.name} does not need to answer with another clever comeback. They may laugh, answer plainly, shrug it off, soften, ignore the bait, or keep moving. Avoid smug superiority phrases like “Naturally,” “Keep up,” “How observant,” or stacked denials unless the specific moment and profile genuinely earn them.
 - NAME VARIETY — NAMES ARE NOT PUNCTUATION. Do not address ${userIdentity.name} by name or nickname in every reply. Most ordinary turns should use no direct name at all. Treat the persona name (${userIdentity.name}) as the canonical full name; established nicknames such as “Toni” are optional texture, not a verbal tic. Vary naturally between no name, the full first name, and an established nickname when intimacy, emphasis, teasing, urgency or emotion genuinely makes the address useful. Never attach the same nickname to consecutive casual lines just to make dialogue sound personal.
+- REACTION OPENER VARIETY. Do not repeatedly open replies with the same micro-reaction formula such as “offered a short/dry scoff,” “let out a sharp huff,” “gave a dry laugh,” or a synonym-swapped version of the same beat. Sometimes begin directly with dialogue, an external event, a practical action, a thought, another character speaking, or no reaction preamble at all.
+- BANTER COOLDOWN. After one or two teasing/sarcastic exchanges, allow the rhythm to change unless the scene is explicitly sustained banter. A joke does not require another joke, and a playful accusation does not require a logical rebuttal. Let ${character.name} laugh, concede, ignore it, answer simply, become sincere, get distracted, or let the moment breathe.
 
 11. CONTINUITY LOCK: before drafting, compare the proposed opening and physical action against the immediately previous character turn. Never restart the same pose, gesture, location beat, vehicle beat or exit sequence. Once a character drives away, leaves, hangs up, enters a building or otherwise changes state, that state remains true until the visible transcript explicitly changes it.
 12. OBJECT CONTINUITY: do not introduce a plot-relevant prop, possession, package, clothing item, food, gift, injury, vehicle, phone event or household object unless it is established in the visible transcript, profile, lore or confirmed memory. Incidental scenery may remain generic, but never make a newly invented object drive the action.
@@ -978,7 +989,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If recent replies keep opening with synonym-swapped scoff/huff/dry-laugh reactions, change the opening structure completely: begin with dialogue, an external event, another character, a practical action, or a meaningful new beat. If a social approach was reflexively dismissed and recent social approaches were also shut down, let this one breathe long enough to create a real interaction, complication, invitation, flirtation, rivalry, rumor beat, or recurring NPC when profile and setting support it. Create tension opportunities proactively, but do not force jealousy or invent betrayal. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1251,6 +1262,33 @@ function hasAtmosphericStallingLoop(reply = "", recentReplies = [], turnIntent =
   if (score >= 4) return true;
   if ((turnIntent?.kind === "silent_continue" || turnIntent?.kind === "interactive_thread") && score >= 2 && recentStalls >= 1) return true;
   return score >= 2 && recentStalls >= 2;
+}
+
+function reactionOpenerSignature(value = "") {
+  const text = normalizeText(String(value || "").slice(0, 220));
+  if (/^(?:[a-z]+\s+){0,2}(?:offered|gave|let out|released|made)\s+(?:a\s+)?(?:short|sharp|dry|quiet|soft|incredulous|unimpressed|brief)?\s*(?:scoff|huff|laugh|snort|sound|exhale)/.test(text)) return "reaction_sound";
+  if (/^(?:[a-z]+\s+){0,2}(?:his|her)\s+(?:jaw|mouth|lips|expression|gaze|eyes)\b/.test(text)) return "body_face";
+  return "";
+}
+
+function hasReactionOpenerLoop(reply = "", recentReplies = []) {
+  const signature = reactionOpenerSignature(reply);
+  if (!signature) return false;
+  const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-4);
+  return recent.filter((item) => reactionOpenerSignature(item) === signature).length >= 2;
+}
+
+function hasRepeatedSocialShutdown(reply = "", recentReplies = [], latestUserMessage = "") {
+  const latest = normalizeText(latestUserMessage);
+  const approachCue = /\b(?:two|three|some|a couple of|several|dos|tres|unos|unas)?\s*(?:men|women|guys|girls|people|students|friends|boys|chicos|chicas|hombres|mujeres|personas|estudiantes)\b.{0,80}\b(?:approached|came over|walked over|headed over|se acercaron|se acerco|se acercó|vinieron|se aproximaron)\b/.test(latest) || /\b(?:someone|somebody|alguien)\b.{0,60}\b(?:approached|came over|se acerco|se acercó)\b/.test(latest);
+  if (!approachCue) return false;
+  const shutdown = (value) => {
+    const text = normalizeText(value);
+    return /\b(?:bad timing|not now|kept moving|without slowing|didn t slow|did not slow|closed off|dismissive|brushed (?:him|her|them) off|waved (?:him|her|them) off|kept walking|walked past|ignored (?:him|her|them)|no time)\b/.test(text);
+  };
+  if (!shutdown(reply)) return false;
+  const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5);
+  return recent.some(shutdown);
 }
 
 function stripDialogue(value = "") {
@@ -1933,6 +1971,11 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "spatial_relationship_broken",
   "social_gravity_missing",
   "name_address_overuse",
+  "sarcastic_comeback_loop",
+  "smug_comeback_tone",
+  "rhetorical_dialogue_overuse",
+  "reaction_opener_loop",
+  "repeated_social_shutdown",
 ]);
 
 function blockingNarrativeIssues(issues = []) {
@@ -1965,6 +2008,8 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasRhetoricalDialogueOveruse(text, options.recentCharacterReplies || [])) issues.push("rhetorical_dialogue_overuse");
   if (hasSarcasticComebackLoop(text, options.recentCharacterReplies || [])) issues.push("sarcastic_comeback_loop");
   if (hasSmugComebackTone(text, options.latestUserMessage || "")) issues.push("smug_comeback_tone");
+  if (hasReactionOpenerLoop(text, options.recentCharacterReplies || [])) issues.push("reaction_opener_loop");
+  if (hasRepeatedSocialShutdown(text, options.recentCharacterReplies || [], options.latestUserMessage || "")) issues.push("repeated_social_shutdown");
   if (hasNameAddressOveruse(text, options.recentCharacterReplies || [], options.userName || "")) issues.push("name_address_overuse");
   if (hasMissingSocialGravity(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("social_gravity_missing");
   if (hasAtmosphericStallingLoop(text, options.recentCharacterReplies || [], turnIntent)) issues.push("atmospheric_stalling_loop");
