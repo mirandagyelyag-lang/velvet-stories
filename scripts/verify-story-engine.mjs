@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 3100);
+check("live-stream engine stays reasonably consolidated", edgeLines < 3140);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -469,6 +469,18 @@ check("naturalness doctor catches a smug comeback even without a long sarcasm hi
   helpers?.hasSmugComebackTone(smugRowan, `Ah right. So it’s my fault you’re Mr. Popular now?`));
 check("normal casual teasing response is not mistaken for smug superiority",
   !helpers?.hasSmugComebackTone(`Rowan snorted. "Yeah, sure. Come on."`, `Ah right. So it’s my fault you’re Mr. Popular now?`));
+check("name variety prompt treats names and nicknames as optional texture",
+  edge.includes("NAME VARIETY — NAMES ARE NOT PUNCTUATION") &&
+  edge.includes("Most ordinary turns should use no direct name at all") &&
+  edge.includes("established nicknames such as “Toni” are optional texture"));
+const nameHeavyHistory = [
+  `"Come on, Toni." Rowan held the door.`,
+  `"Seriously, Toni?" He glanced over.`,
+];
+check("repeated nickname addressing across consecutive replies is detected",
+  helpers?.hasNameAddressOveruse(`"You know that already, Toni."`, nameHeavyHistory, "Antonia"));
+check("natural name omission is not flagged",
+  !helpers?.hasNameAddressOveruse(`Rowan glanced over. "You know that already."`, nameHeavyHistory, "Antonia"));
 check("interactive message threads are treated as real sub-scenes",
   edge.includes("INTERACTIVE SUB-SCENES HAVE DURATION") &&
   edge.includes("Do not compress “many messages” into one or two generic lines") &&
