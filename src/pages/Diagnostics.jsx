@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { supabase } from "../services/supabase";
 import { VELVET_BUILD_TIME, VELVET_RELEASE, VELVET_VERSION } from "../config/version";
 import { formatBugReport } from "../utils/bugReporter";
-import { auditAmbienceTracks } from "../utils/ambienceQuality";
 import { isSafeModeEnabled, leaveVelvetSafeMode, startVelvetSafeMode } from "../utils/safeMode";
 import "../styles/diagnostics.css";
 
@@ -15,8 +14,6 @@ export default function Diagnostics({ onBack }) {
   const [includePrivate, setIncludePrivate] = useState(false);
   const [bugCopied, setBugCopied] = useState(false);
   const [safeMode, setSafeMode] = useState(() => isSafeModeEnabled());
-  const [audioAudit, setAudioAudit] = useState(null);
-  const [audioAuditRunning, setAudioAuditRunning] = useState(false);
   const sessionStats = useMemo(readSessionStats, [checks]);
   const device = useMemo(getDeviceSnapshot, []);
 
@@ -53,18 +50,6 @@ export default function Diagnostics({ onBack }) {
     next.durationMs = Date.now() - startedAt;
     setChecks(next);
     setRunning(false);
-  }
-
-  async function runAudioAudit() {
-    setAudioAuditRunning(true);
-    try {
-      const results = await auditAmbienceTracks();
-      setAudioAudit({ ok: results.every((item) => item.ok), results, error: "" });
-    } catch (error) {
-      setAudioAudit({ ok: false, results: [], error: error?.message || "Could not analyze ambience tracks." });
-    } finally {
-      setAudioAuditRunning(false);
-    }
   }
 
   async function copyDiagnostics() {
@@ -116,11 +101,6 @@ export default function Diagnostics({ onBack }) {
 
     <section className="diagnostics-card"><header><Cpu size={18}/><div><h2>Last AI activity</h2><p>Local session counters help separate a quota problem from a UI problem.</p></div></header><div className="diagnostics-grid"><Metric label="Last successful AI request" value={formatActivityTime(sessionStats.lastSuccessAt)}/><Metric label="Last model" value={sessionStats.lastModel || "None yet"}/><Metric label="Repairs" value={String(sessionStats.repairs)}/><Metric label="Last error" value={sessionStats.lastError || "None"}/><Metric label="Last error time" value={formatActivityTime(sessionStats.lastErrorAt)}/><Metric label="First reply text" value={sessionStats.firstTokenMs ? `${sessionStats.firstTokenMs} ms` : "—"}/><Metric label="Full response" value={sessionStats.lastDurationMs ? `${sessionStats.lastDurationMs} ms` : "—"}/></div></section>
 
-    <section className="diagnostics-card diagnostics-card--audio-quality"><header><Volume2 size={18}/><div><h2>Ambience quality check</h2><p>Checks all eight local tracks for quiet edges, clipping and obvious loop mismatches. It never uploads your audio.</p></div></header>
-      <div className="diagnostics-actions"><button onClick={runAudioAudit} disabled={audioAuditRunning}>{audioAuditRunning ? <LoaderCircle className="spin" size={16}/> : <RefreshCw size={16}/>}Check ambience audio</button></div>
-      {audioAudit && <div className="ambience-audit">{audioAudit.error ? <div className="ambience-audit__error"><XCircle size={16}/><span>{audioAudit.error}</span></div> : <>{audioAudit.results.map((item)=><div key={item.mode} className={`ambience-audit__row${item.ok ? " is-ok" : " is-warning"}`}><span>{item.ok ? <Check size={15}/> : <XCircle size={15}/>}<strong>{formatAmbienceMode(item.mode)}</strong></span><small>{item.ok ? `Clean · ${item.duration.toFixed(1)}s` : item.issues.join(" · ")}</small></div>)}<p className="ambience-audit__summary">{audioAudit.ok ? "All ambience tracks look healthy. Seamless Loop will still crossfade every repeat." : "One or more tracks may need a cleaner source or trim. Seamless Loop still masks small edge gaps."}</p></>}</div>}
-    </section>
-
 
     <section className="diagnostics-card diagnostics-card--bug"><header><Bug size={18}/><div><h2>Report a problem</h2><p>Creates a technical report you can paste into ChatGPT. Private chat text stays out unless you explicitly include it.</p></div></header>
       <label className="bug-report-note"><span>What went wrong?</span><textarea rows="4" maxLength="1200" value={bugNote} onChange={(event)=>setBugNote(event.target.value)} placeholder="Example: Party ambience stopped after I switched from Rain."/></label>
@@ -139,10 +119,6 @@ function Metric({ label, value }) { return <div className="diagnostics-metric"><
 function getDeviceSnapshot(){ return { width: window.innerWidth, height: window.innerHeight, touchPoints: navigator.maxTouchPoints || 0, coarsePointer: Boolean(window.matchMedia?.("(pointer: coarse)")?.matches), standalone: Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone), online: navigator.onLine, serviceWorker: "serviceWorker" in navigator, userAgent: navigator.userAgent }; }
 function readSessionStats(){ try { return { started:0, success:0, failed:0, repairs:0, lastModel:"", lastError:"", lastSuccessAt:"", lastErrorAt:"", lastDurationMs:0, firstTokenMs:0, ...JSON.parse(sessionStorage.getItem("velvet_ai_session_v19") || sessionStorage.getItem("velvet_ai_session_v18") || "{}") }; } catch { return { started:0, success:0, failed:0, repairs:0, lastModel:"", lastError:"", lastSuccessAt:"", lastErrorAt:"", lastDurationMs:0, firstTokenMs:0 }; } }
 function normalizeInvokeError(error){ return String(error?.message || "Edge Function request failed").replace(/^edge function returned a non-2xx status code$/i,"Edge Function returned an error"); }
-
-function formatAmbienceMode(mode) {
-  return ({ rain:"Rain", night_city:"Night", street_racing:"Street racing", cafe:"Café", campus:"Campus", fireplace:"Fireplace", home:"Home · TV", party:"Party" })[mode] || mode;
-}
 function formatBuildTime(value){ const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString([], { month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit" }); }
 
 function formatActivityTime(value){ if(!value) return "None yet"; const date=new Date(value); return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleString([], { month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit" }); }

@@ -23,25 +23,21 @@ import {
   Sun,
   LoaderCircle,
   MessageSquareQuote,
-  MapPin,
   MoreHorizontal,
   Pencil,
   RefreshCw,
   Reply,
   Rewind,
-  RotateCcw,
   Send,
   SlidersHorizontal,
   Sparkles,
   Square,
   SquarePen,
   Star,
-  ShieldCheck,
   ThumbsDown,
   ThumbsUp,
   Trash2,
   UserRound,
-  UsersRound,
   Volume2,
   X,
 } from "lucide-react";
@@ -65,7 +61,6 @@ import { supabase } from "../services/supabase";
 import { speakText, stopSpeech } from "../utils/speech";
 import { readAudioPreference, stopAllAudio } from "../utils/audioBus";
 import { clearBugReportPrivateContext, setBugReportPrivateContext } from "../utils/bugReporter";
-import { buildLivingSceneHeader, continuityGuardLabel, continuityGuardTitle } from "../utils/livingScenes";
 import "../styles/chat.css";
 
 const SILENT_CONTINUE_MESSAGE = "[SILENT_CONTINUE]";
@@ -81,7 +76,6 @@ const REGENERATION_FEEDBACK = [
   ["missing_emotional_impact", "Missing emotional impact"],
   ["too_cold", "Too cold"],
   ["too_romantic", "Too romantic"],
-  ["too_ai", "Too AI / scripted"],
   ["wrong_continuity", "Wrong continuity"],
 ];
 const POSITIVE_FEEDBACK = [
@@ -91,7 +85,7 @@ const POSITIVE_FEEDBACK = [
   ["pacing", "Pacing"],
 ];
 
-function Chat({ character, conversationId, focusMessageId = null, onBack, onDeleted, onOpenMemories, onOpenDiagnostics, onOpenCharacter }) {
+function Chat({ character, conversationId, focusMessageId = null, onBack, onDeleted, onOpenMemories, onOpenDiagnostics }) {
   const { settings, recordStoryFeedback, undoStoryFeedback } = useSettings();
   const { theme, setTheme } = useTheme();
   const { confirmAction, scheduleDeletion } = useFeedback();
@@ -126,9 +120,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     refreshStoryMetadata,
     toggleMessageBookmark,
     loadMessageIntoView,
-    createStorySnapshot,
-    restoreStorySnapshot,
-    deleteStorySnapshot,
     dismissCatchUp,
   } = useChats();
 
@@ -153,10 +144,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const [messageFeedback, setMessageFeedback] = useState({});
   const [feedbackNotice, setFeedbackNotice] = useState(null);
   const [replacementUndo, setReplacementUndo] = useState(null);
-  const [rewindUndo, setRewindUndo] = useState(null);
-  const [actionNotice, setActionNotice] = useState(null);
-  const [aiPhaseOverride, setAiPhaseOverride] = useState("");
-  const [typingIndicatorVisible, setTypingIndicatorVisible] = useState(false);
   const [memoryCaptureNotice, setMemoryCaptureNotice] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const [alternatives, setAlternatives] = useState([]);
@@ -198,10 +185,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const textareaRef = useRef(null);
   const stoppedRef = useRef(false);
   const generationRunRef = useRef(0);
-  const chatExitGuardUntilRef = useRef(0);
-  const actionNoticeTimerRef = useRef(null);
-  const aiPhaseTimerRef = useRef(null);
-  const rewindUndoTimerRef = useRef(null);
+  const stopBurstTimersRef = useRef([]);
   const loadingHistoryRef = useRef(false);
   const stickToBottomRef = useRef(true);
   const preserveScrollOnKeyboardRef = useRef(null);
@@ -209,99 +193,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const previousConversationRef = useRef("");
   const messages = getCharacterMessages(character.id);
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
-  const chatOverlayOpen = Boolean(
-    menuOpen || directorNoteOpen || selectedMessage || controlsOpen || characterProfileOpen ||
-    memoryBookOpen || relationshipOpen || timelineOpen || storyHubOpen || catchUpOpen
-  );
-
-  function armChatExitGuard(duration = 700) {
-    chatExitGuardUntilRef.current = Date.now() + duration;
-  }
-
-  function closeChatOverlaysForBack() {
-    armChatExitGuard();
-    setMenuOpen(false);
-    setDirectorNoteOpen(false);
-    setControlsOpen(false);
-    setCharacterProfileOpen(false);
-    setMemoryBookOpen(false);
-    setRelationshipOpen(false);
-    setTimelineOpen(false);
-    setStoryHubOpen(false);
-    setCatchUpOpen(false);
-    if (selectedMessage) closeActionsAfterAction();
-  }
-
-  function handleChatBack(event) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-    if (chatOverlayOpen) {
-      closeChatOverlaysForBack();
-      return;
-    }
-    if (Date.now() < chatExitGuardUntilRef.current) return;
-    onBack?.();
-  }
-
-  // VELVET_CHAT_POLISH_V280
-  // Tiny, deterministic feedback replaces silent button presses. These notices
-  // never navigate and never compete with the composer for focus.
-  function showActionNotice(text, tone = "success", duration = 1900) {
-    if (actionNoticeTimerRef.current) window.clearTimeout(actionNoticeTimerRef.current);
-    setActionNotice({ text, tone, id: Date.now() });
-    actionNoticeTimerRef.current = window.setTimeout(() => {
-      setActionNotice(null);
-      actionNoticeTimerRef.current = null;
-    }, duration);
-  }
-
-  function showAiPhase(label, duration = 850) {
-    if (aiPhaseTimerRef.current) window.clearTimeout(aiPhaseTimerRef.current);
-    setAiPhaseOverride(label);
-    aiPhaseTimerRef.current = window.setTimeout(() => {
-      setAiPhaseOverride("");
-      aiPhaseTimerRef.current = null;
-    }, duration);
-  }
-
-  async function clearRewindUndo({ removeSnapshot = true } = {}) {
-    const current = rewindUndo;
-    if (rewindUndoTimerRef.current) {
-      window.clearTimeout(rewindUndoTimerRef.current);
-      rewindUndoTimerRef.current = null;
-    }
-    setRewindUndo(null);
-    if (removeSnapshot && current?.snapshotId) {
-      try { await deleteStorySnapshot(current.snapshotId); }
-      catch (error) { console.debug("Could not remove temporary rewind snapshot:", error); }
-    }
-  }
-
-  function armRewindUndo(snapshotId) {
-    if (!snapshotId) return;
-    if (rewindUndoTimerRef.current) window.clearTimeout(rewindUndoTimerRef.current);
-    setRewindUndo({ snapshotId, label: "Rewind" });
-    rewindUndoTimerRef.current = window.setTimeout(() => {
-      setRewindUndo(null);
-      rewindUndoTimerRef.current = null;
-      deleteStorySnapshot(snapshotId).catch((error) => console.debug("Temporary rewind snapshot cleanup skipped:", error));
-    }, 10000);
-  }
-
-  async function undoRewind() {
-    if (!rewindUndo?.snapshotId || busy) return;
-    const snapshotId = rewindUndo.snapshotId;
-    try {
-      showActionNotice("Restoring story…", "working", 5000);
-      await restoreStorySnapshot(character.id, snapshotId, { safetySnapshot: false });
-      await clearRewindUndo({ removeSnapshot: true });
-      showActionNotice("Rewind undone ✓");
-      if (settings.haptics) navigator.vibrate?.(6);
-    } catch (error) {
-      setSendError(translateMessageError(error.message));
-      showActionNotice("Couldn’t undo rewind", "error", 2600);
-    }
-  }
   useEffect(() => {
     setBugReportPrivateContext({
       character: character.name,
@@ -312,18 +203,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   useEffect(() => {
     return () => stopSpeech();
   }, []);
-
-  useEffect(() => () => {
-    if (actionNoticeTimerRef.current) window.clearTimeout(actionNoticeTimerRef.current);
-    if (aiPhaseTimerRef.current) window.clearTimeout(aiPhaseTimerRef.current);
-    if (rewindUndoTimerRef.current) window.clearTimeout(rewindUndoTimerRef.current);
-  }, []);
-
-  useEffect(() => {
-    if (!replacementUndo) return undefined;
-    const timer = window.setTimeout(() => setReplacementUndo(null), 10000);
-    return () => window.clearTimeout(timer);
-  }, [replacementUndo?.messageId, replacementUndo?.content]);
 
   const conversation = getConversation(character.id);
   const conversationLoading = isConversationLoading(character.id);
@@ -403,39 +282,10 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     };
   }, [conversationReady, visibleMessages.length, latestMessageContent, readingMode, readingChromeVisible]);
 
-  // VELVET_TYPING_GLIMPSE_V1
-  // The inline “X is writing…” bubble is only a brief reassurance, not a
-  // progress screen. Delay it so fast replies never flash it, then hide it
-  // again even if the model is still thinking. Streaming text always wins.
-  useEffect(() => {
-    const eligible = (isTyping || generationState === "generating") && !characterStreaming;
-    if (!eligible) {
-      setTypingIndicatorVisible(false);
-      return undefined;
-    }
-
-    let hideTimer = null;
-    const showTimer = window.setTimeout(() => {
-      setTypingIndicatorVisible(true);
-      hideTimer = window.setTimeout(() => setTypingIndicatorVisible(false), 1250);
-    }, 700);
-
-    return () => {
-      window.clearTimeout(showTimer);
-      if (hideTimer) window.clearTimeout(hideTimer);
-      setTypingIndicatorVisible(false);
-    };
-  }, [isTyping, generationState, characterStreaming]);
-
   // VELVET_GENERATION_MANAGER_V1
   // Never lock sending merely because a stale temporary bubble exists.
   // The context generation manager is the authoritative busy state.
   const busy = sending || characterGenerating;
-  const aiStatusLabel = aiPhaseOverride || (
-    sending ? "Sending" :
-    characterStreaming ? "Writing" :
-    (isTyping || generationState === "generating") ? "Thinking" : ""
-  );
   const activeSceneImage = sceneImages[activeSceneImageIndex] || "";
   const sceneMarkers = useMemo(() => {
     const map = new Map();
@@ -445,12 +295,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     }
     return map;
   }, [conversation?.storyTimeline]);
-  const livingSceneHeader = useMemo(
-    () => buildLivingSceneHeader(conversation || {}, character.name),
-    [conversation?.sceneState, conversation?.ambientMode, character.name]
-  );
-  const continuityLabel = continuityGuardLabel(conversation?.continuityGuard || {});
-
 
   useEffect(() => {
     localStorage.setItem("velvet_reading_mode", readingMode ? "1" : "0");
@@ -766,9 +610,11 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   async function handleSubmit(event) {
     event.preventDefault();
 
-    // VELVET_STOP_V7_SINGLE_TAP
-    // There are no delayed Stop bursts anymore. A new send can never inherit
-    // a timer from an older generation and accidentally cancel itself.
+    // VELVET_STOP_V6_CLEAR_LATCH
+    // A deliberate new message cancels any delayed Stop attempts belonging
+    // to the previous generation.
+    stopBurstTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+    stopBurstTimersRef.current = [];
 
     const cleanMessage = message.trim();
     if (!conversationReady) return;
@@ -800,20 +646,20 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     // catch/finally finishes later.
     const runId = ++generationRunRef.current;
 
-    const replyForThisMessage = replyTo;
-    const noteForThisGeneration = directorNote.trim();
-    const submittedDraft = cleanMessage;
-    let userMessageSaved = false;
-
     try {
       stoppedRef.current = false;
       setSending(true);
-      setIsTyping(true);
       setSendError("");
+      const savedUserMessage = await addMessage(character.id, "user", messageToSend, replyTo ? {
+        replyToMessageId: replyTo.id,
+        replyPreview: replyTo.content,
+        replySender: replyTo.sender,
+      } : {});
 
-      // VELVET_FAST_SEND_V1
-      // The composer clears immediately. ChatsContext paints an optimistic user
-      // bubble while the database save finishes, so tapping Send feels instant.
+      // Stop may have happened while the user message was being saved.
+      if (generationRunRef.current !== runId || stoppedRef.current) return;
+
+      const noteForThisGeneration = directorNote.trim();
       setMessage("");
       setReplyTo(null);
       setDirectorNote("");
@@ -825,23 +671,12 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       }
       window.requestAnimationFrame(() => resizeComposer());
       if (settings.haptics) navigator.vibrate?.(6);
-
-      const savedUserMessage = await addMessage(character.id, "user", messageToSend, replyForThisMessage ? {
-        replyToMessageId: replyForThisMessage.id,
-        replyPreview: replyForThisMessage.content,
-        replySender: replyForThisMessage.sender,
-      } : {});
-      userMessageSaved = true;
-
-      // Stop may have happened while the user message was being saved.
-      if (generationRunRef.current !== runId || stoppedRef.current) return;
-
       setSending(false);
+      setIsTyping(true);
       const generationResult = await generateCharacterReply(character.id, {
         directorInstruction: noteForThisGeneration,
         expectedUserMessageId: savedUserMessage.id,
       });
-      showAiPhase("Finishing", 420);
       if (generationResult?.learnedMemoryCount) {
         setMemoryCaptureNotice(generationResult.learnedMemoryCount);
         window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
@@ -854,11 +689,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       ) return;
 
       console.error("Error generating character response:", error);
-      if (!userMessageSaved && submittedDraft) {
-        setMessage((current) => current.trim() ? current : submittedDraft);
-        if (replyForThisMessage) setReplyTo(replyForThisMessage);
-        window.requestAnimationFrame(() => resizeComposer());
-      }
       setSendError(translateMessageError(error.message));
     } finally {
       // Critical: an older stopped request must not turn off the Stop button
@@ -872,22 +702,33 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   function handleStop() {
-    // VELVET_STOP_V7_SINGLE_TAP
-    // One user action means exactly one local Stop. Older versions scheduled
-    // five more Stop calls for the next second; those timers could catch a new
-    // regeneration/send and kill it immediately.
+    // VELVET_STOP_V6_LATCH
+    // One physical tap becomes a short-lived Stop latch. The first tap can
+    // happen a few milliseconds before generateCharacterReply has installed
+    // its AbortController. Re-checking catches that late request automatically
+    // instead of making the user tap Stop repeatedly.
     generationRunRef.current += 1;
     stoppedRef.current = true;
     if (settings.haptics) navigator.vibrate?.(10);
 
-    stopGeneration(character.id);
+    stopBurstTimersRef.current.forEach((timerId) => clearTimeout(timerId));
+    stopBurstTimersRef.current = [];
+
+    const stopNow = () => {
+      stopGeneration(character.id);
+    };
+
+    stopNow();
+
+    for (const delayMs of [50, 150, 300, 600, 1000]) {
+      const timerId = setTimeout(stopNow, delayMs);
+      stopBurstTimersRef.current.push(timerId);
+    }
 
     setSending(false);
     setIsTyping(false);
     setSilentCue("");
     setSendError("");
-    showAiPhase("Stopped", 900);
-    showActionNotice("Generation stopped", "neutral", 1200);
     window.requestAnimationFrame(() => {
       try { textareaRef.current?.focus({ preventScroll: true }); } catch { textareaRef.current?.focus(); }
     });
@@ -901,10 +742,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       setSendError("");
       setSilentCue("");
       setIsTyping(true);
-      showAiPhase("Retrying", 900);
-      showActionNotice("Retrying…", "working", 1200);
       await generateCharacterReply(character.id);
-      showAiPhase("Finishing", 420);
     } catch (error) {
       if (
         generationRunRef.current === runId &&
@@ -1117,9 +955,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     });
   }
 
-  async function runAction(action, event) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
+  async function runAction(action) {
     if (!selectedMessage) return;
 
     try {
@@ -1161,41 +997,23 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       if (action === "memory") {
         await saveMessageAsMemory(character.id, selectedMessage.content);
         closeActionsAfterAction();
-        showActionNotice("Saved to Memories ✓");
       }
 
       if (action === "bookmark") {
-        const wasBookmarked = Boolean(selectedMessage.isBookmarked);
         await toggleMessageBookmark(character.id, selectedMessage.id);
         closeActionsAfterAction();
-        showActionNotice(wasBookmarked ? "Saved moment removed" : "Moment saved ✓");
       }
 
       if (action === "rewind") {
-        armChatExitGuard();
         const messageId = selectedMessage.id;
-        // Close the message sheet before showing the confirmation. On mobile the
-        // sheet is a high-z-index body portal, so keeping it open can visually
-        // swallow a confirmation even though the Rewind handler did run.
-        closeActionsAfterAction();
         const approved = await confirmAction({
           title: "Rewind story to this message?",
           message: "Everything after this message will be permanently removed from this conversation.",
           confirmLabel: "Rewind story",
         });
         if (!approved) return;
-        showActionNotice("Rewinding…", "working", 5000);
-        let safetySnapshot = null;
-        try {
-          safetySnapshot = await createStorySnapshot(character.id, "Temporary rewind undo");
-        } catch (snapshotError) {
-          console.warn("Rewind undo snapshot unavailable:", snapshotError);
-        }
         await rewindToMessage(character.id, messageId);
-        if (safetySnapshot?.id) armRewindUndo(safetySnapshot.id);
-        showActionNotice("Rewound ✓");
-        if (settings.haptics) navigator.vibrate?.(7);
-        return;
+        closeActionsAfterAction();
       }
 
       if (action === "delete") {
@@ -1224,7 +1042,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   function closeActionsAfterAction() {
-    armChatExitGuard();
     setSelectedMessage(null);
     setActionMode("menu");
     setActionDraft("");
@@ -1232,12 +1049,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     setPositiveFeedback([]);
     setFeedbackOnly(false);
     setAlternatives([]);
-  }
-
-  function openCharacterFromMessageActions() {
-    if (conversation?.groupMode || !onOpenCharacter) return;
-    closeActionsAfterAction();
-    onOpenCharacter(character);
   }
 
   function rememberFeedback(kind, codes, messageId) {
@@ -1252,12 +1063,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     try {
       setSendError("");
       await selectMessageAlternative(character.id, replacementUndo.messageId, replacementUndo.content);
-      const undoRows = await getMessageAlternatives(replacementUndo.messageId).catch(() => []);
-      const undoVersions = normalizeVersionRows(undoRows, replacementUndo.content);
-      undoVersions.index = Math.max(0, undoVersions.items.findIndex((item) => item.content === replacementUndo.content));
-      setResponseVersions((current) => ({ ...current, [replacementUndo.messageId]: undoVersions }));
       setReplacementUndo(null);
-      showActionNotice("Change undone ✓");
     } catch (error) {
       setSendError(translateMessageError(error.message));
     }
@@ -1327,7 +1133,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       await editCharacterMessageInPlace(character.id, editedId, actionDraft);
       setReplacementUndo({ messageId: editedId, content: previousContent, label: "Rewrite" });
       closeActionsAfterAction();
-      showActionNotice("Reply rewritten ✓");
     } catch (error) {
       setSendError(translateMessageError(error.message));
     } finally {
@@ -1353,17 +1158,8 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       setActionLoading(true);
       closeActionsAfterAction();
       setIsTyping(true);
-      showAiPhase("Rewriting", 1100);
-      showActionNotice("Generating another response…", "working", 5000);
       const regenerationResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
-      const regeneratedContent = regenerationResult?.message?.content || previousContent;
       setReplacementUndo({ messageId: regenerationResult?.message?.id || targetId, content: previousContent, label: "Regenerate" });
-      const regeneratedRows = await getMessageAlternatives(targetId).catch(() => []);
-      const regeneratedVersions = normalizeVersionRows(regeneratedRows, regeneratedContent);
-      regeneratedVersions.index = Math.max(0, regeneratedVersions.items.findIndex((item) => item.content === regeneratedContent));
-      setResponseVersions((current) => ({ ...current, [targetId]: regeneratedVersions }));
-      showAiPhase("Finishing", 420);
-      showActionNotice("New response ready ✓");
       if (regenerationResult?.learnedMemoryCount) {
         setMemoryCaptureNotice(regenerationResult.learnedMemoryCount);
         window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
@@ -1440,7 +1236,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           ...current,
           [chatMessage.id]: { ...state, index: nextIndex },
         }));
-        showActionNotice(`Response ${nextIndex + 1} / ${Math.max(1, state.items.length)}`, "neutral", 1000);
         return;
       }
 
@@ -1451,21 +1246,16 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           ...current,
           [chatMessage.id]: { ...state, index: nextIndex },
         }));
-        showActionNotice(`Response ${nextIndex + 1} / ${Math.max(1, state.items.length)}`, "neutral", 1000);
         return;
       }
 
       setIsTyping(true);
-      showAiPhase("Rewriting", 1100);
-      showActionNotice("Generating another response…", "working", 5000);
       const result = await regenerateCharacterReply(character.id, chatMessage.id, "");
       const currentContent = result?.message?.content || chatMessage.content;
       const rows = await getMessageAlternatives(chatMessage.id);
       const refreshed = normalizeVersionRows(rows, currentContent);
       refreshed.index = Math.max(0, refreshed.items.findIndex((item) => item.content === currentContent));
       setResponseVersions((current) => ({ ...current, [chatMessage.id]: refreshed }));
-      showAiPhase("Finishing", 420);
-      showActionNotice(`Response ${refreshed.index + 1} / ${Math.max(1, refreshed.items.length)} ✓`);
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Response version navigation failed:", error);
@@ -1498,17 +1288,8 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       setSendError("");
       closeActionsAfterAction();
       setIsTyping(true);
-      showAiPhase("Rewriting", 1100);
-      showActionNotice("Refining response…", "working", 5000);
       const refinementResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
       setReplacementUndo({ messageId: refinementResult?.message?.id || targetId, content: previousContent, label: "Refine" });
-      const refinedContent = refinementResult?.message?.content || previousContent;
-      const refinedRows = await getMessageAlternatives(targetId).catch(() => []);
-      const refinedVersions = normalizeVersionRows(refinedRows, refinedContent);
-      refinedVersions.index = Math.max(0, refinedVersions.items.findIndex((item) => item.content === refinedContent));
-      setResponseVersions((current) => ({ ...current, [targetId]: refinedVersions }));
-      showAiPhase("Finishing", 420);
-      showActionNotice("Refined ✓");
       if (refinementResult?.learnedMemoryCount) {
         setMemoryCaptureNotice(refinementResult.learnedMemoryCount);
         window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
@@ -1529,7 +1310,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       setActionLoading(true);
       await selectMessageAlternative(character.id, selectedMessage.id, alternative.content);
       closeActionsAfterAction();
-      showActionNotice("Response version selected ✓");
     } catch (error) {
       setSendError(error.message || "We couldn't select that response.");
     } finally {
@@ -1598,16 +1378,12 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     setDirectorNoteOpen(true);
   }
 
-  function queueDirectorForNextBeat(event) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-    armChatExitGuard();
+  function queueDirectorForNextBeat() {
     const instruction = directorNote.trim();
     if (!instruction || busy || actionLoading || !conversationReady) return;
     setDirectorMode("next");
     setDirectorNoteOpen(false);
     setSendError("");
-    showActionNotice("Next beat queued ✓");
     if (settings.haptics) navigator.vibrate?.(5);
   }
 
@@ -1618,17 +1394,13 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     }
   }
 
-
   function handleReadingSurfaceClick() {
     // v2.1.7: immersive mode never hides the story header. The character name,
     // navigation and three-dot menu stay available at all times.
     if (readingMode && !readingChromeVisible) setReadingChromeVisible(true);
   }
 
-  async function applyDirectorAndRegenerate(event) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-    armChatExitGuard();
+  async function applyDirectorAndRegenerate() {
     const instruction = directorNote.trim();
     if (!instruction || busy || actionLoading || !conversationReady) return;
 
@@ -1641,7 +1413,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     }
 
     const targetId = latestMessage.id;
-    const previousContent = latestMessage.content;
     try {
       setActionLoading(true);
       setSendError("");
@@ -1651,20 +1422,10 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         localStorage.removeItem(`velvet_director_note_${conversation.conversationId}`);
       }
       setIsTyping(true);
-      showAiPhase("Rewriting", 1100);
-      showActionNotice("Rewriting last reply…", "working", 5000);
 
       // Important: this is a regeneration of the same character message, not a
       // new turn. The previous response is replaced immediately in-place.
-      const rewriteResult = await regenerateCharacterReply(character.id, targetId, instruction, []);
-      const rewrittenContent = rewriteResult?.message?.content || previousContent;
-      setReplacementUndo({ messageId: rewriteResult?.message?.id || targetId, content: previousContent, label: "Rewrite" });
-      const rewrittenRows = await getMessageAlternatives(targetId).catch(() => []);
-      const rewrittenVersions = normalizeVersionRows(rewrittenRows, rewrittenContent);
-      rewrittenVersions.index = Math.max(0, rewrittenVersions.items.findIndex((item) => item.content === rewrittenContent));
-      setResponseVersions((current) => ({ ...current, [targetId]: rewrittenVersions }));
-      showAiPhase("Finishing", 420);
-      showActionNotice("Reply rewritten ✓");
+      await regenerateCharacterReply(character.id, targetId, instruction, []);
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Scene Director regeneration failed:", error);
@@ -1732,7 +1493,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
       >
-        <button className="chat__icon-button chat__back-button" onClick={handleChatBack} aria-label="Go back">
+        <button className="chat__icon-button chat__back-button" onClick={onBack} aria-label="Go back">
           <ArrowLeft size={20} />
         </button>
         <button className="chat__avatar chat__character-avatar-button" style={{ "--character-color": character.color }} onClick={() => setCharacterProfileOpen(true)} aria-label={`View ${character.name}'s profile`}>
@@ -1812,27 +1573,13 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         ), document.body)}
       </header>
 
-      {conversationReady && (livingSceneHeader.items.length > 0 || livingSceneHeader.present.length > 0) && (
-        <div className="chat__living-scene" aria-label="Current scene">
-          <div className="chat__living-scene-meta">
-            {livingSceneHeader.items.map((item, index) => (
-              <span key={`${item}-${index}`}><MapPin size={11}/>{item}</span>
-            ))}
-          </div>
-          <div className="chat__living-scene-status">
-            <span className="chat__presence-status" title={livingSceneHeader.presenceTitle}><UsersRound size={12}/>{livingSceneHeader.presenceLabel}</span>
-            <span className={`chat__continuity-status${conversation?.continuityGuard?.status === "repaired" ? " is-repaired" : ""}`} title={continuityGuardTitle(conversation?.continuityGuard || {})}><ShieldCheck size={12}/>{continuityLabel}</span>
-          </div>
-        </div>
-      )}
-
-      {!chatOverlayOpen && typeof document !== "undefined" && createPortal((
-        <button type="button" className="chat__mobile-exit" onClick={handleChatBack} aria-label="Leave chat"><ArrowLeft size={20}/></button>
+      {typeof document !== "undefined" && createPortal((
+        <button type="button" className="chat__mobile-exit" onClick={onBack} aria-label="Leave chat"><ArrowLeft size={20}/></button>
       ), document.body)}
 
       <div onClick={handleReadingSurfaceClick} className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
 
-        {visibleMessages.length === 0 && !busy && <div className={`chat__introduction${character.coverUrl ? " chat__introduction--covered" : ""}`} style={{ "--character-color": character.color }}>
+        {visibleMessages.length === 0 && <div className={`chat__introduction${character.coverUrl ? " chat__introduction--covered" : ""}`} style={{ "--character-color": character.color }}>
           {character.coverUrl && <div className="chat__profile-cover"><img src={character.coverUrl} alt="" decoding="async" /></div>}
           <div className="chat__large-avatar">
             {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : <span>{character.initials}</span>}
@@ -1898,7 +1645,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
               </Fragment>
             ))}
 
-            {typingIndicatorVisible && (
+            {(isTyping || generationState === "generating") && !characterStreaming && (
               <article className="chat-message chat-message--character">
                 <span className="chat-message__avatar" style={{ "--character-color": character.color }}>
                   {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : character.initials}
@@ -1935,25 +1682,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           <ChevronDown size={20}/>
         </button>
       )}
-
-      <div className="chat__polish-stack" aria-live="polite" aria-atomic="true">
-        {aiStatusLabel && (
-          <div className={`chat__ai-phase${aiStatusLabel === "Stopped" ? " is-stopped" : ""}`} role="status">
-            {aiStatusLabel !== "Stopped" && <span className="chat__ai-phase-dot" />}<span>{aiStatusLabel}</span>
-          </div>
-        )}
-        {actionNotice && (
-          <div className={`chat__action-notice chat__action-notice--${actionNotice.tone}`} role="status">
-            {actionNotice.tone === "working" ? <LoaderCircle className="spin" size={14}/> : actionNotice.tone === "error" ? <AlertCircle size={14}/> : <Check size={14}/>}
-            <span>{actionNotice.text}</span>
-          </div>
-        )}
-        {rewindUndo && (
-          <div className="chat__rewind-undo" role="status">
-            <Rewind size={14}/><span>Story rewound.</span><button type="button" onClick={undoRewind} disabled={busy}><RotateCcw size={13}/>Undo</button>
-          </div>
-        )}
-      </div>
 
       {silentCue && <div className="chat__silent-cue" role="status"><Sparkles size={13}/><span>{silentCue}</span></div>}
 
@@ -1996,7 +1724,10 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           <button
             type="button"
             className="chat__send-button chat__stop-button"
-            onClick={handleStop}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              handleStop();
+            }}
             aria-label="Stop generating"
             title="Stop generating"
           >
@@ -2017,7 +1748,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
       {directorNoteOpen && typeof document !== "undefined" && createPortal((
         <div className="director-sheet-backdrop" onClick={(event) => event.target === event.currentTarget && setDirectorNoteOpen(false)}>
-          <section className="director-sheet" role="dialog" aria-modal="true" aria-label="Scene Director" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+          <section className="director-sheet" role="dialog" aria-modal="true" aria-label="Scene Director">
             <div className="director-sheet__grab" />
             <header><div><span><Sparkles size={15}/> SCENE DIRECTOR</span><h2>Guide the story</h2><p>Write one direction, then choose whether it belongs to the next beat or should replace the latest reply.</p></div><button type="button" onClick={()=>setDirectorNoteOpen(false)} aria-label="Close Scene Director"><X size={19}/></button></header>
             <div className="director-sheet__presets">
@@ -2068,7 +1799,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         onOpenConversation={openStoryConversation}
         ambientSoundOn={ambientSoundOn}
         onAmbientSoundToggle={setAmbientSoundOn}
-        recentSceneText={visibleMessages.slice(-6).map((item)=>String(item.content || "")).join("\n")}
       />
 
       {catchUpOpen && conversation?.storyRecap && typeof document !== "undefined" && createPortal((
@@ -2253,7 +1983,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
       {selectedMessage && typeof document !== "undefined" && createPortal((
         <div className="message-sheet-backdrop" onMouseDown={(event) => event.target === event.currentTarget && closeActions()}>
-          <section className="message-sheet" role="dialog" aria-modal="true" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+          <section className="message-sheet" role="dialog" aria-modal="true">
             <header>
               <div>
                 <small>{selectedMessage.sender === "user" ? "YOUR MESSAGE" : character.name.toUpperCase()}</small>
@@ -2264,12 +1994,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
             {actionMode === "menu" && (
               <div className="message-sheet__refine-menu">
-                {!conversation?.groupMode && (
-                  <button type="button" className="message-sheet__branch-feature message-sheet__open-character" onClick={openCharacterFromMessageActions}>
-                    <UserRound size={19} />
-                    <span><strong>Open character</strong><small>Cover, profile & character details</small></span>
-                  </button>
-                )}
                 {selectedMessage.sender === "character" ? (
                   <>
                     <p className="message-sheet__refine-note">
@@ -2287,7 +2011,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
                     <button
                       className="message-sheet__branch-feature"
-                      onClick={(event) => runAction("rewind", event)}
+                      onClick={() => runAction("rewind")}
                     >
                       <Rewind size={19} />
                       <span><strong>Rewind to here</strong><small>Keep this message and remove everything that came after it.</small></span>
@@ -2312,7 +2036,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
                   </>
                 ) : (
                   <div className="message-sheet__user-menu">
-                    <button className="message-sheet__branch-feature" onClick={(event) => runAction("rewind", event)}>
+                    <button className="message-sheet__branch-feature" onClick={() => runAction("rewind")}>
                       <Rewind size={19} />
                       <span><strong>Rewind to here</strong><small>Keep this message and remove everything that came after it.</small></span>
                     </button>

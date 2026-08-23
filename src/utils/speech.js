@@ -192,12 +192,6 @@ export function speakText({
 
 registerAudioStopper("speech", stopSpeech);
 
-if (typeof document !== "undefined") {
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") stopSpeech();
-  });
-}
-
 export function getVoiceCapabilities() {
   const voices = getDeviceVoices();
   return { engine: "device", languages: [...new Set(voices.map((voice) => voice.lang).filter(Boolean))].sort(), exposesGender: voices.some((voice) => Boolean(voice.gender)), neuralReady: true };

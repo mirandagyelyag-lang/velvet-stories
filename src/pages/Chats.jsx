@@ -9,7 +9,6 @@ import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { useTheme } from "../context/ThemeContext";
 import GroupStoryModal from "../components/GroupStoryModal";
-import SwipeToTrash from "../components/SwipeToTrash";
 import "../styles/chats.css";
 
 function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
@@ -165,29 +164,23 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   }
 
   async function deleteConversation(event, conversationId) {
-    event?.stopPropagation?.();
+    event.stopPropagation();
     const conversation = conversations.find((item) => item.id === conversationId);
-    if (!conversation || conversation.trashed_at) return;
-    const trashedAt = new Date().toISOString();
-
-    // Remove the row itself immediately. Do not leave a visually identical story behind during Undo.
-    setConversations((current) => current.filter((item) => item.id !== conversationId));
-    const restoreSnapshot = () => setConversations((current) =>
-      current.some((item) => item.id === conversationId) ? current : [...current, conversation].sort(sortConversations)
-    );
+    const approved = !settings.confirmBeforeDelete || await confirmAction({ title: "Delete this conversation?", message: "Its messages and alternatives will also be removed after the Undo period.", confirmLabel: "Delete story" });
+    if (!approved) return;
+    setPendingDeletionIds((current) => [...current, conversationId]);
     scheduleDeletion({
-      batchKey: "story-cleanup",
-      message: (count) => `${count} ${count === 1 ? "story" : "stories"} removed`,
-      onUndo: restoreSnapshot,
+      message: `Deleting ${conversation?.title || conversation?.character?.name || "conversation"}`,
+      onUndo: () => setPendingDeletionIds((current) => current.filter((id) => id !== conversationId)),
       onCommit: async () => {
-        const { error: requestError } = await supabase.from("conversations").update({ trashed_at: trashedAt }).eq("id", conversationId);
+        setDeletingId(conversationId);
+        const { error: requestError } = await supabase.from("conversations").update({ trashed_at: new Date().toISOString() }).eq("id", conversationId);
         if (requestError) throw requestError;
+        setConversations((current) => current.filter((item) => item.id !== conversationId));
+        setPendingDeletionIds((current) => current.filter((id) => id !== conversationId));
+        setDeletingId(null);
       },
-      onError: (requestError) => {
-        console.error(requestError);
-        restoreSnapshot();
-        setError("We couldn't delete that conversation.");
-      },
+      onError: (requestError) => { console.error(requestError); setPendingDeletionIds((current) => current.filter((id) => id !== conversationId)); setError("We couldn't delete that conversation."); setDeletingId(null); },
     });
   }
 
@@ -353,16 +346,9 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     const art = conversation.cover_url || character.coverUrl || character.imageUrl;
     const preview = shelfPreview(conversation.latestMessage?.content || character.firstMessage || character.role || "Continue the story.");
     return (
-      <SwipeToTrash
-        key={conversation.id}
-        className="swipe-trash--story"
-        direction="right"
-        disabled={Boolean(conversation.trashed_at || deletingId === conversation.id || updatingId === conversation.id)}
-        onDelete={() => deleteConversation(null, conversation.id)}
-        label={`Delete ${title}`}
-      >
       <article
         className={`reference-story-row${conversation.is_pinned ? " reference-story-row--favorite" : ""}`}
+        key={conversation.id}
         onClick={() => !conversation.trashed_at && onOpenCharacter(character, conversation.id)}
       >
         <div className="reference-story-row__art">{art ? <img src={art} alt=""/> : <span>{character.initials}</span>}</div>
@@ -380,7 +366,6 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         </div>
         {renderStoryMenu(conversation, title, "reference")}
       </article>
-      </SwipeToTrash>
     );
   }
 
@@ -410,8 +395,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         <button
           type="button"
           className="story-action-menu__trigger"
-          onPointerDown={(event) => { event.stopPropagation(); }}
-          onClick={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId((current) => current === conversation.id ? null : conversation.id); }}
+          onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId((current) => current === conversation.id ? null : conversation.id); }}
+          onClick={(event) => { event.preventDefault(); event.stopPropagation(); }}
           aria-label={`Story actions for ${title}`}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
@@ -427,7 +412,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   return (
     <section className="chats-page chats-page--reference">
       <header className="reference-stories-hero">
-        <div className="reference-stories-hero__private"><Crown size={19}/><span>STORY LIBRARY</span></div>
+        <div className="reference-stories-hero__private"><Crown size={19}/><span>PRIVATE LIBRARY</span></div>
         <div className="reference-stories-title" aria-label="Your Stories">
           <span className="reference-stories-title__script">your</span>
           <span className="reference-stories-title__line reference-stories-title__line--left" />
@@ -440,8 +425,6 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
           <button className="reference-stories-new" type="button" onClick={() => setPickerOpen(true)} aria-label="New story"><Sparkles size={26}/></button>
         </div>
       </header>
-
-      <div className="library-purpose-note"><strong>Stories are your archive.</strong><span>Organize, favorite, duplicate, export or restore complete story timelines here.</span></div>
 
       <div className="reference-search-wrap">
         <label className="reference-search">

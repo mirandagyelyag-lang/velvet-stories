@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 3200);
+check("live-stream engine stays reasonably consolidated", edgeLines < 2500);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -61,41 +61,25 @@ check("no deterministic narrative fallback exists",
 check("one live generation one validation one optional repair",
   edge.includes("streamGeminiEnvelopeWithFailover({") &&
   edge.includes("let validationIssues = validateNarrativeReply(") &&
-  edge.includes("repaired = await repairRoleplayOnce({") &&
-  edge.includes("const blocking = repairTriggerIssues(validationIssues)") &&
+  edge.includes("const repaired = await repairRoleplayOnce({") &&
   edge.includes("if (blocking.length)"));
 check("advisory quality issues do not force repeated user regeneration",
   edge.includes("blockingNarrativeIssues") &&
   edge.includes("if (blocking.length)") &&
   !edge.includes("Velvet rejected a weak or incomplete response before showing it. Regenerate once more."));
-check("structural failures remain fatal after one bounded repair",
+check("only structurally unsafe failures trigger the one repair path",
   edge.includes("if (blocking.length)") &&
-  edge.includes("const repairedFatal = blockingNarrativeIssues(repairedIssues)") &&
-  edge.includes("Velvet could not get a complete safe reply after one repair. Retry once.") &&
+  edge.includes("blockingNarrativeIssues(repairedIssues)") &&
+  edge.includes("Gemini returned an incomplete or structurally invalid reply twice. Regenerate once.") &&
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
-check("continuity metadata never spends a second model call",
-  edge.includes("VELVET_SPEED_REPAIR_BUDGET_V282") &&
-  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes("...CONTINUITY_GUARD_ISSUES"));
-check("style-only naturalism warnings never spend a second model call",
-  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"stock_body_language_stack"') &&
-  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"recycled_stock_gesture"') &&
-  edge.includes('"unsupported_motive_escalation"') && edge.includes('"distance_boundary_override"'));
-check("roleplay failover has one bounded interaction deadline",
-  edge.includes("VELVET_ROLEPLAY_DEADLINE_V282") && edge.includes("const deadlineAt = Date.now() + 38000") && edge.includes("Math.min(24000, remainingMs)"));
-check("generation skips redundant cancellation read-back",
-  edge.includes("VELVET_SPEED_V282") && !edge.includes("if (await isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)) {\n        return cancelledResponse();"));
-check("prompt context is capped for faster first token",
-  edge.includes(".limit(36)") && edge.includes(".limit(32)") && edge.includes("messages.slice(-8)") && edge.includes("messages.slice(-20, -8)"));
 check("model streams reply scene continuity development and memories in one request",
-  edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"]') &&
+  edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "development_update", "memory_updates"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
   edge.includes("streamGenerateContent?alt=sse") &&
   edge.includes("result.scene_update") && edge.includes("result.development_update") && edge.includes("result.memory_updates"));
-check("the same request plans turn meaning or opening intent and audits canon",
-  edge.includes("turn_reading:") &&
-  edge.includes("literal social meaning of the latest user turn") &&
-  edge.includes("fresh opening") &&
+check("the same request plans latest-turn meaning and audits canon",
+  edge.includes("turn_reading: one sentence stating the literal social meaning") &&
   edge.includes("canon_claims: a list of every off-screen or historical factual claim") &&
   edge.includes('canon_claims: { type: "array", items: { type: "string" } }'));
 check("no background story-model calls consume extra quota",
@@ -103,7 +87,7 @@ check("no background story-model calls consume extra quota",
   !edge.includes("updateConversationSummaryInBackground") &&
   !edge.includes("extractMemoriesInBackground"));
 check("advisory style issues never spend a repair call",
-  edge.includes("const blocking = repairTriggerIssues(validationIssues)") &&
+  edge.includes("const blocking = blockingNarrativeIssues(validationIssues)") &&
   edge.includes("if (blocking.length)") &&
   !edge.includes("if (validationIssues.length) {\n      const repaired"));
 check("Gemini primary and two fallbacks are configurable",
@@ -153,7 +137,7 @@ check("development state is returned and saved in the same live generation path"
   edge.includes("update.character_development = applyCharacterDevelopment({") &&
   !edge.includes("generateCharacterDevelopment"));
 check("development profile and state are present in the roleplay prompt",
-  edge.includes("Core motivation: ${cleanPromptValue(character.core_motivation") &&
+  edge.includes("Core motivation: ${character.core_motivation") &&
   edge.includes("PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND") &&
   edge.includes("characterDevelopmentPromptView(developmentState)") &&
   edge.includes("Relationship phases move gradually"));
@@ -198,8 +182,8 @@ check("AI can create an entire reviewable character draft",
   edge.includes("required: Object.keys(characterDraftProperties)") &&
   charactersContext.includes("generateCharacterDraft") &&
   characterModal.includes("Create with AI") && characterModal.includes("Surprise me") &&
-  characterModal.includes("Complete draft created. Velvet filled the deep profile for you.") &&
-  characterModal.includes("nothing is saved until you choose Create or Start chatting."));
+  characterModal.includes("Complete draft created. Review anything you want before saving.") &&
+  characterModal.includes("Nothing becomes a character until you press Save."));
 check("complete character creation is fast bounded and has model failover",
   edge.includes("deadlineMs = 28000") &&
   edge.includes("deadlineMs: 22000") &&
@@ -212,24 +196,11 @@ check("character creation exposes actionable upstream errors",
   charactersContext.includes("response.clone().text()") &&
   edge.includes('[character-chat] character tool model failed') &&
   edge.includes('[character-chat] character tool attempt ended'));
-check("AI character drafts can be stopped or regenerated before save",
-  characterModal.includes("stopCharacterGeneration") &&
-  characterModal.includes("Regenerate") &&
+check("AI character drafts can be stopped or discarded before save",
+  characterModal.includes("Stop generation") &&
+  characterModal.includes("Discard draft") &&
   characterModal.includes("generationAbortRef.current?.abort()") &&
-  characterModal.includes("handleRegenerateQuickDraft"));
-check("Quick Create keeps advanced character depth while hiding field overload",
-  characterModal.includes("ONE IDEA IS ENOUGH") &&
-  characterModal.includes("Deep profile complete") &&
-  characterModal.includes("Fine-tune manually") &&
-  characterModal.includes("StudioSection step=\"depth\""));
-check("Duplicate and remix requests a new identity instead of cloning prose",
-  characterModal.includes("Create a NEW original character") &&
-  characterModal.includes("Do not copy the name, exact backstory, exact personality, dialogue, or relationship") &&
-  characterModal.includes("buildRemixSeed"));
-check("Quick variations produce a new character from a compact direction",
-  characterModal.includes("handleQuickVariation") &&
-  characterModal.includes("Variation direction") &&
-  characterModal.includes("Preserve the level of depth, not the identity"));
+  characterModal.includes("discardGeneratedDraft"));
 check("existing profiles can be organized without changing facts",
   charactersContext.includes("organizeCharacterDraft") &&
   edge.includes("Do not invent, delete or change facts") &&
@@ -329,7 +300,7 @@ check("generation telemetry exposes model and repair status in the same stream",
 check("Character Studio draft autosave never server-saves before explicit Save",
   characterModal.includes("velvet_character_draft_v18_") &&
   characterModal.includes("localStorage.setItem(draftStorageKey") &&
-  characterModal.includes("nothing is saved until you choose Create or Start chatting."));
+  characterModal.includes("Nothing becomes a character until you press Save."));
 check("pure narrative helper API loads", helpers);
 check("compact silence is recognized", helpers?.isSilentContinueText("...") && helpers?.isSilentContinueText("[SILENT_CONTINUE]"));
 check("ordinary text is not silence", helpers && !helpers.isSilentContinueText("Okay."));
@@ -416,125 +387,6 @@ check("final validation rejects a repeated recent signature",
     recentCharacterReplies: [oldDialogueReply],
   }).includes("repeated_recent_signature"));
 
-const aiRomanceStack = `Rowan's jaw tightens as his grip shifts on the umbrella. His gaze snaps toward the group, his voice dropping an octave. He steps between her and Chloe, protective instinct taking over. "Let her try."`;
-check("naturalism doctor catches stacked AI-romance body language", helpers?.hasStockBodyLanguageStack(aiRomanceStack));
-check("naturalism doctor catches unsupported attention-seeking accusations", helpers?.hasUnsupportedMotiveEscalation(`Rowan scoffed. "Stop trying to be the center of attention for their benefit."`, "Funny"));
-check("literal user motive does not trigger the unsupported-motive guard", !helpers?.hasUnsupportedMotiveEscalation(`"So you were trying to make me jealous?"`, "I was trying to make you jealous"));
-check("user-created physical distance cannot be overridden for tension", helpers?.hasDistanceBoundaryOverride(`Rowan catches her wrist and steps closer. "Don't."`, `*I nudge you, creating space between us*`));
-check("a genuine slip still permits a safety catch", !helpers?.hasDistanceBoundaryOverride(`Rowan catches her by the elbow before she hits the ground.`, `*I slip in the mud and pull away by accident*`));
-check("ordinary social tension cannot become bodyguard choreography", helpers?.hasSocialTensionOverEscalation(`He steps between her and the approaching group, blocking their line of sight. "Let her try."`, `Your friends are coming over with the girl you're supposedly dating.`));
-check("naturalism failures trigger one bounded repair", edge.includes('"stock_body_language_stack"') && edge.includes('"recycled_stock_gesture"') && edge.includes('"unsupported_motive_escalation"') && edge.includes('"distance_boundary_override"') && edge.includes('"social_tension_overescalation"'));
-check("prompt uses react-dont-invent social naturalism", edge.includes("SOCIAL NATURALISM — REACT, DON'T INVENT") && edge.includes("choose the least inflammatory reading") && edge.includes("respect that distance"));
-check("ordinary social tension is not promoted into bodyguard drama", edge.includes("bodyguard choreography") && edge.includes("Hyperbole such as “she'll kill me” is not proof of literal danger"));
-check("side characters are treated as people rather than jealousy props", edge.includes("Side characters who are visibly present are people, not scenery"));
-check("short roleplay beats are explicitly allowed", edge.includes("Shorter is better when the social beat already lands"));
-check("repeated stock gestures across turns trigger the naturalism doctor", helpers?.hasRecycledStockGesture(`Rowan's jaw tightens. "Fine."`, [`His jaw clenches before he answers. "Whatever."`, `Rowan's grip tightens and his jaw sets. "Sure."`]));
-check("Too AI feedback maps to a concrete naturalism directive", chat.includes('["too_ai", "Too AI / scripted"]') && edge.includes('["too_ai", "Make the turn less scripted:'));
-
-
-check("hidden feelings keeps strong inner emotion without forcing visible obsession",
-  edge.includes("HIDDEN FEELINGS — FEEL MORE THAN YOU SHOW") &&
-  edge.includes("Strong private emotion is welcome") &&
-  edge.includes("Romantic attention is not obsession") &&
-  edge.includes("Pursuit must vary"));
-check("meaningful physical tells remain allowed instead of being blanket-banned",
-  edge.includes("Do not erase useful physical tells such as a tightened jaw") &&
-  edge.includes("Use them when they reveal NEW information"));
-check("living cast persists named secondary characters",
-  edge.includes("LIVING CAST — SECONDARY CHARACTERS HAVE CONTINUITY") &&
-  edge.includes("keep them participating until they visibly leave") &&
-  edge.includes("Flirting is a real social interaction"));
-check("cast continuity has a durable structured update channel",
-  edge.includes("cast_updates") && edge.includes("personality_note") && edge.includes("last_interaction") && edge.includes("castUpdates: result.cast_updates"));
-check("dialogue naturalness limits sarcasm and rhetorical debate prose",
-  edge.includes("Sarcasm is seasoning, not the whole voice") &&
-  edge.includes("Strongly limit rhetorical questions") &&
-  edge.includes("They do not need the last word"));
-check("argument engine cannot invent evidence to win",
-  edge.includes("Never invent evidence, history, motives, technical details or circumstances") &&
-  edge.includes("cannot manufacture a stronger case"));
-
-const rhetoricalDamon = `"Right. Because loyalty is entirely measured by whether or not someone agrees to sit through your economics lectures? And what exactly did you expect?"`;
-check("naturalness doctor flags stacked rhetorical debate dialogue", helpers?.hasRhetoricalDialogueOveruse(rhetoricalDamon, []));
-const sarcasmHistory = [
-  `"Brilliant strategy," he said.`,
-  `"Fascinating distinction. My mistake for assuming you meant it."`,
-];
-check("naturalness doctor catches consecutive sarcastic comeback mode",
-  helpers?.hasSarcasticComebackLoop(`"Right. Because that makes perfect sense."`, sarcasmHistory));
-check("plain short dialogue is not mistaken for sarcasm",
-  !helpers?.hasSarcasticComebackLoop(`"Yeah. Give me a second."`, sarcasmHistory));
-const smugRowan = `"Naturally," Rowan said. "It has nothing to do with me just walking down the hall. Keep up, Toni."`;
-check("naturalness doctor catches a smug comeback even without a long sarcasm history",
-  helpers?.hasSmugComebackTone(smugRowan, `Ah right. So it’s my fault you’re Mr. Popular now?`));
-check("normal casual teasing response is not mistaken for smug superiority",
-  !helpers?.hasSmugComebackTone(`Rowan snorted. "Yeah, sure. Come on."`, `Ah right. So it’s my fault you’re Mr. Popular now?`));
-check("name variety prompt treats names and nicknames as optional texture",
-  edge.includes("NAME VARIETY — NAMES ARE NOT PUNCTUATION") &&
-  edge.includes("Most ordinary turns should use no direct name at all") &&
-  edge.includes("established nicknames such as “Toni” are optional texture"));
-const nameHeavyHistory = [
-  `"Come on, Toni." Rowan held the door.`,
-  `"Seriously, Toni?" He glanced over.`,
-];
-check("repeated nickname addressing across consecutive replies is detected",
-  helpers?.hasNameAddressOveruse(`"You know that already, Toni."`, nameHeavyHistory, "Antonia"));
-check("natural name omission is not flagged",
-  !helpers?.hasNameAddressOveruse(`Rowan glanced over. "You know that already."`, nameHeavyHistory, "Antonia"));
-check("interactive message threads are treated as real sub-scenes",
-  edge.includes("INTERACTIVE SUB-SCENES HAVE DURATION") &&
-  edge.includes("Do not compress “many messages” into one or two generic lines") &&
-  edge.includes("leave it open rather than artificially resolving it"));
-check("interactive thread intent receives a longer multi-exchange budget",
-  edge.includes('kind = "interactive_thread"') &&
-  edge.includes('kind === "interactive_thread"') &&
-  edge.includes("120–320 words"));
-check("collapsed message threads trigger one repair",
-  edge.includes('issues.push("interactive_thread_collapsed")') &&
-  edge.includes('"interactive_thread_collapsed"'));
-
-check("silent continues preserve an active message thread",
-  edge.includes("ACTIVE THREADS SURVIVE SILENCE") &&
-  edge.includes("recentInteractiveThreadIsOpen(messages)") &&
-  edge.includes('kind = "interactive_thread"'));
-check("incoming messages must progress beyond buzzing ambience",
-  edge.includes("INCOMING MESSAGES ARE EVENTS, NOT SOUND EFFECTS") &&
-  edge.includes("repeated buzzing"));
-check("atmospheric stalling loop triggers bounded repair",
-  edge.includes("NO ATMOSPHERIC STALLING") &&
-  edge.includes('issues.push("atmospheric_stalling_loop")') &&
-  edge.includes('"atmospheric_stalling_loop"'));
-const ceilingLoopHistory = [
-  `Rowan stared at the ceiling while the rain tapped the window. He let out a long exhale and rolled onto his side.`,
-  `The room stayed quiet. Rowan shifted beneath the blanket, eyes on the dark ceiling as rain moved across the glass.`
-];
-check("ceiling-rain filler loop is detected",
-  helpers?.hasAtmosphericStallingLoop(`Rowan stared at the ceiling again, letting out a slow exhale as the rain tapped the window. He shifted under the blanket and closed his eyes.`, ceilingLoopHistory, { kind: "silent_continue" }));
-check("concrete phone progression is not mistaken for atmospheric stalling",
-  !helpers?.hasAtmosphericStallingLoop(`Rowan picked up the phone. The newest message read, "Are you seriously ignoring me?" He unlocked the screen and typed back, "I'm tired. Tomorrow."`, ceilingLoopHistory, { kind: "interactive_thread" }));
-
-check("active NPC cues must be rendered instead of summarized away",
-  edge.includes("ACTIVE NPC CUE IS BINDING") &&
-  edge.includes("Give the cued side character concrete dialogue/action before shifting focus away") &&
-  edge.includes('issues.push("active_npc_cue_skipped")'));
-check("present side characters cannot be erased after a user cue",
-  edge.includes("PRESENCE LOCK") &&
-  edge.includes('issues.push("active_npc_erased_after_cue")') &&
-  edge.includes('issues.push("cued_npc_marked_exited")'));
-check("Rowan rain-scene regression protects Marcus and the girl",
-  edge.includes("walked away|headed (?:off|away|back)|drifted away") &&
-  edge.includes('"active_npc_cue_skipped"') &&
-  edge.includes('"active_npc_erased_after_cue"'));
-
-const userStagedFlirtTurn = `I want you to leave i can't concentrate!\n\n*But my words didn't mean a thing. Since he's Mr. Popular, a random girl literally walked up to flirt with him in the library, and of course, he was flirting back like nothing. I just rolled my eyes*`;
-const retconnedStagedFlirt = `Alex stared at her for a long second, zipped his bag, didn't look back at the girl, and walked straight toward the library exit.`;
-const honoredStagedFlirt = `Alex was still half turned toward the girl when he caught Antonia's eye-roll. The flirting faltered for a beat. "What?" he said, quieter now.`;
-check("user-staged scene canon catches a character retcon", helpers?.hasUserStagedSceneRetcon(retconnedStagedFlirt, userStagedFlirtTurn, "Alex"));
-check("user-staged scene canon accepts continuation after the staged event", !helpers?.hasUserStagedSceneRetcon(honoredStagedFlirt, userStagedFlirtTurn, "Alex"));
-check("latest-turn action blocks are surfaced as explicit canon", helpers?.extractUserStagedEvents(userStagedFlirtTurn).includes("he was flirting back like nothing"));
-check("diegetic dialogue cannot outrank later user narration", edge.includes("DIEGETIC SPEECH IS NOT A SYSTEM COMMAND") && edge.includes("READ THE LATEST TURN IN TEMPORAL ORDER") && edge.includes("USER-STAGED EVENTS IN THE LATEST TURN"));
-check("user-staged scene retcons are severe enough for one bounded repair", edge.includes('"user_staged_scene_retcon"') && edge.includes("VELVET_USER_STAGED_CANON_GUARD_V283"));
-
 const futureCharacterState = helpers?.normalizeCharacterDevelopment({}, "Childhood friends who trust each other but avoid naming the tension.");
 const blankCharacterState = helpers?.normalizeCharacterDevelopment({}, "");
 check("any future character initializes from its own relationship premise",
@@ -605,8 +457,7 @@ check("one strong beat records impact but cannot instantly change phase",
   firstEarnedBeat?.relationship_phase === "established" &&
   firstEarnedBeat?.phase_candidate === "warming" &&
   firstEarnedBeat?.phase_evidence_count === 2 &&
-  firstEarnedBeat?.emotional_residue[0]?.remaining_turns === 9 &&
-  firstEarnedBeat?.emotional_residue[0]?.intensity === 1 &&
+  firstEarnedBeat?.emotional_residue[0]?.remaining_turns === 6 &&
   firstEarnedBeat?.turning_points.length === 1);
 const restoredBeforeRegeneration = helpers?.resolveCharacterDevelopmentBranch(
   firstEarnedBeat,
@@ -655,7 +506,7 @@ const decayedDevelopment = helpers?.applyCharacterDevelopment({
 });
 check("emotional residue colors later turns and decays instead of becoming permanent",
   decayedDevelopment?.emotional_residue.length === repeatedEarnedBeat?.emotional_residue.length &&
-  decayedDevelopment?.emotional_residue.every((item, index) => item.remaining_turns === repeatedEarnedBeat.emotional_residue[index].remaining_turns - 1 && item.intensity < repeatedEarnedBeat.emotional_residue[index].intensity));
+  decayedDevelopment?.emotional_residue.every((item, index) => item.remaining_turns === repeatedEarnedBeat.emotional_residue[index].remaining_turns - 1));
 
 const regeneratedDevelopment = helpers?.applyCharacterDevelopment({
   previous: blankCharacterState,
@@ -769,7 +620,7 @@ check("regeneration rejects a semantic near-copy",
 check("latest user turn is the final authoritative prompt block",
   edge.includes("AUTHORITATIVE LATEST USER TURN") &&
   edge.lastIndexOf("AUTHORITATIVE LATEST USER TURN") > edge.lastIndexOf("IMMEDIATE CONTINUITY") &&
-  edge.includes("Write the response AFTER the final event established in that exact turn."));
+  edge.includes("Write the response to that exact turn now."));
 check("It's okay receives an explicit social instruction",
   edge.includes("show what that does to ${character.name}") &&
   edge.includes("Do not respond as a counselor acknowledging information"));
@@ -806,8 +657,8 @@ const confrontationExit = helpers?.classifyTurnIntent("Para la próxima que me v
 check("rejection plus exit is treated as an emotional confrontation exit", confrontationExit?.kind === "confrontation_exit");
 check("continuity lock forbids restarting a prior physical beat", edge.includes("CONTINUITY LOCK") && edge.includes("Never restart the same pose, gesture, location beat, vehicle beat or exit sequence"));
 check("object continuity forbids convenient invented props", edge.includes("OBJECT CONTINUITY") && edge.includes("Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop"));
-check("emotional priority never outranks later user-staged canon", edge.includes("EMOTIONAL PRIORITY") && edge.includes("it NEVER outranks later user-authored scene facts"));
-check("repeated recent openings are detected without forcing a second model call", edge.includes('issues.push("repeated_recent_signature")') && !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"repeated_recent_signature"'));
+check("emotional priority outranks decorative scenery", edge.includes("EMOTIONAL PRIORITY") && edge.includes("that emotional event is the center of the response"));
+check("repeated recent openings are blocking and repaired once", edge.includes('"repeated_recent_signature",') && edge.includes("Never restart a physical beat from the immediately previous character turn"));
 check("mature mode reaches the narrative engine", edge.includes("mature_mode=${character.mature_mode ? \"on\" : \"off\"}") && edge.includes("MATURE CONTENT MODE") && edge.includes("mature_mode"));
 check("mature mode preserves consent age and non-graphic boundaries", edge.includes("never overrides consent") && edge.includes("under 18") && edge.includes("fade to black"));
 check("v2.3 story intelligence migration persists recap and continuity ledger",
@@ -847,14 +698,7 @@ check("v2.4 Group Stories persist a backwards-compatible ensemble cast", storycr
 check("Group Story branches preserve the full cast", chatsContext.includes("group_character_ids: conversation.groupCharacterIds") && chatsContext.includes("group_title: conversation.groupTitle"));
 check("group characters are loaded as independent profiles for generation", edge.includes("groupCharactersResult") && edge.includes("Every listed cast member remains an independent person") && edge.includes("Never merge personalities"));
 check("Personas are explicitly isolated per conversation", edge.includes("PERSONA ISOLATION") && edge.includes("Never import a name, background, appearance, job, wealth, family, preference or boundary from another saved persona"));
-
-check("fast context lane bounds prompt payload for lower first-token latency",
-  edge.includes("VELVET_FAST_CONTEXT_V2111") &&
-  edge.includes("messages.slice(-8)") &&
-  edge.includes("messages.slice(-20, -8)") &&
-  edge.includes("slice(0, 18)") &&
-  edge.includes("slice(0, 8)"));
-check("smart lore retrieval ranks names keywords content overlap and cast relevance", edge.includes("function selectRelevantLore(entries, messages, groupCharacters = [])") && edge.includes("normalizedName") && edge.includes("overlap * 2") && edge.includes("slice(0, 8)"));
+check("smart lore retrieval ranks names keywords content overlap and cast relevance", edge.includes("function selectRelevantLore(entries, messages, groupCharacters = [])") && edge.includes("normalizedName") && edge.includes("overlap * 2") && edge.includes("slice(0, 12)"));
 check("AI message edits preserve the rejected wording as an alternative", chatsContext.includes("async function editCharacterMessageInPlace") && chatsContext.includes('from("message_alternatives").insert') && chatsContext.includes("const updated = await updateMessage"));
 
 
@@ -871,14 +715,14 @@ check("regression shield: repeated semantic openings remain blocking", edge.incl
 check("regression shield: convenient invented props remain forbidden", edge.includes("OBJECT CONTINUITY") && edge.includes("Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop"));
 check("regression shield: off-screen characters stay epistemically blind", edge.includes("OFF-SCREEN BLINDNESS") && edge.includes("EPISTEMIC STATUS"));
 check("regression shield: user POV control is still rejected", edge.includes("controlsUserPOV") && edge.includes("controls_user_pov") && chat.includes("pov_violation"));
-check("regression shield: Next Beat queues without generating immediately", chat.includes("function queueDirectorForNextBeat(event)") && !chat.slice(chat.indexOf("function queueDirectorForNextBeat(event)"), chat.indexOf("function clearQueuedDirector()")).includes("regenerateCharacterReply"));
+check("regression shield: Next Beat queues without generating immediately", chat.includes("function queueDirectorForNextBeat()") && !chat.slice(chat.indexOf("function queueDirectorForNextBeat()"), chat.indexOf("function clearQueuedDirector()")).includes("regenerateCharacterReply"));
 check("regression shield: Rewrite targets the latest character reply in place", chat.includes("const latestMessage = canonicalMessages.at(-1)") && chat.includes("const targetId = latestMessage.id") && chat.includes("await regenerateCharacterReply(character.id, targetId, instruction, [])"));
 check("regression shield: Mature Mode survives reload mapping", chatsContext.includes("matureMode: Boolean(conversation.mature_mode)") && chatsContext.includes("mature_mode: Boolean(conversation.matureMode)"));
 check("regression shield: Group Stories keep independent cast identities", edge.includes("Every listed cast member remains an independent person") && edge.includes("Never merge personalities") && chatsContext.includes("group_character_ids"));
 check("regression shield: rejected regeneration restores the prior canonical response on failure", chatsContext.includes("The old response remains canonical in the database") && chatsContext.includes("reloadConversationMessages(characterId)"));
 
 check("v2.6.8 continuity doctor blocks silent location teleports", edge.includes("validateContinuityEnvelope") && edge.includes('"location_changed_without_scene_change"') && edge.includes("scene_changed"));
-check("v2.6.8 continuity doctor blocks unexplained re-entry", edge.includes('"absent_character_reappeared"') && edge.includes('left|absent|away|outside|exited'));
+check("v2.6.8 continuity doctor blocks unexplained re-entry", edge.includes('"absent_character_reappeared"') && edge.includes('/left|absent|away|exited/'));
 check("v2.6.8 continuity doctor blocks convenient new plot objects", edge.includes('"invented_plot_object"') && edge.includes("previousIntelligence") && edge.includes("memorySimilarity"));
 check("continuity doctor also validates repaired model replies", edge.includes("repairedIssues.push(...validateContinuityEnvelope(repaired"));
 check("single dot can stop an active generation instead of being ignored", chat.includes('if (cleanMessage === ".")') && chat.includes("handleStop()"));
@@ -896,112 +740,5 @@ if (failures) {
   console.error(`\n${failures} story-engine verification check(s) failed.`);
   process.exit(1);
 }
-
-
-check("v2.10.19 prompt locks relative body positions until visible movement changes them",
-  edge.includes("the immediate relative positions between people") &&
-  edge.includes("PROXIMITY IS CANON TOO") &&
-  edge.includes("Removing a hand changes the touch, not automatically the walking formation"));
-check("v2.10.19 narrative doctor repairs side-by-side to following-behind teleports",
-  edge.includes("function hasSpatialContinuityBreak") &&
-  edge.includes('issues.push("spatial_relationship_broken")') &&
-  edge.includes('"spatial_relationship_broken"'));
-check("v2.10.19 regression: keep-up and following language are spatial separation markers",
-  edge.includes("keep up|catch up") &&
-  edge.includes("walked ahead|moved ahead|pushed ahead|strode ahead"));
-
-
-
-// v2.10.21 background reply delivery: generation must survive PWA suspension.
-check("v2.10.21 edge queues generation under waitUntil",
-  edge.includes('action === "enqueue_generate"') &&
-  edge.includes("EdgeRuntime") &&
-  edge.includes("waitUntil(workerPromise)") &&
-  edge.includes("Fully consume the SSE body here"));
-check("v2.10.21 client enqueues with keepalive before polling persisted reply",
-  chatsContext.includes('action: "enqueue_generate"') &&
-  chatsContext.includes("keepalive: true") &&
-  chatsContext.includes("const refreshedMessages = await reloadConversationMessages(characterId)") &&
-  chatsContext.includes("document.hidden ? 2200 : 750"));
-check("v2.10.21 background delivery keeps explicit Stop wired to server cancellation",
-  chatsContext.includes("void sendServerCancellation(activeRequest.generationId, characterId)") &&
-  edge.includes('action === "cancel"'));
-
-
-
-check("opening reply can regenerate before any user message",
-  edge.includes("const openingRegeneration = Boolean(") &&
-  edge.includes("!latestUserRecord &&") &&
-  edge.includes("if (!latestUserRecord && !openingRegeneration)") &&
-  edge.includes("OPENING REGENERATION — NO USER TURN EXISTS YET"));
-check("opening regeneration never fabricates a user turn",
-  edge.includes("This is a real opening rewrite, not a fake user turn") &&
-  edge.includes("There is no user turn to answer yet") &&
-  edge.includes("do not pretend ${userIdentity.name} already spoke or acted"));
-check("opening regeneration replaces the first character message in place",
-  edge.includes("branch.replacementMessage") &&
-  edge.includes("replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: result.reply })"));
-check("opening regeneration resets stale derived scene continuity",
-  edge.includes("existingSceneState: openingRegeneration ? {}") &&
-  edge.includes("existingCastState: openingRegeneration ? {}") &&
-  edge.includes('existingStoryRecap: openingRegeneration ? ""'));
-
-// v2.10.14 timeout resilience: optional repair latency must not erase a usable first draft.
-check("optional repair failure falls back to a readable original draft", edge.includes("bounded repair failed; evaluating original draft fallback") && edge.includes("A slow optional") && edge.includes("repairUsed = false"));
-check("roleplay stream allows a realistic model startup window", edge.includes("Date.now() + 38000") && edge.includes("Math.min(24000, remainingMs)"));
-
-// v2.10.15 positive hidden-feelings anchor: caring should enrich ordinary life, not replace it.
-check("hidden-feelings prompt includes care-without-obsession positive anchor",
-  edge.includes("POSITIVE ANCHOR — CARE WITHOUT OBSESSION") &&
-  edge.includes("The private beat should enrich the scene, not hijack it") &&
-  edge.includes("NOT a mandatory template") &&
-  edge.includes("Inner thoughts should add information the reader could not already infer"));
-
-check("hidden-feelings anchor preserves ordinary-life continuation",
-  edge.includes("keeps driving / studying / talking normally") &&
-  edge.includes("a small glance, exhale or loosening grip shows relief") &&
-  edge.includes("then life continues"));
-
-check("v2.10.20 prompt makes profile-established reputation world canon",
-  edge.includes("SOCIAL GRAVITY — REPUTATION MUST EXIST IN THE WORLD") &&
-  edge.includes("TREAT THAT AS WORLD CANON") &&
-  edge.includes("SOCIAL GRAVITY IS AMBIENT, NOT A PARADE"));
-check("v2.10.20 social gravity varies by the creator-established kind of status",
-  edge.includes("Match the exact profile") &&
-  edge.includes("Do not assume every popular character is flirted with by women"));
-check("v2.10.20 narrative doctor detects prolonged public anonymity",
-  edge.includes("function hasMissingSocialGravity") &&
-  edge.includes('issues.push("social_gravity_missing")') &&
-  edge.includes('"social_gravity_missing"'));
-check("v2.10.20 social gravity recognizes friendship, flirting, recognition, invitations and rumor footprints",
-  edge.includes("hasSocialGravityFootprint") &&
-  edge.includes("saved (?:him|her|them) a seat") &&
-  edge.includes("another girl") && edge.includes("another guy"));
-// v2.10.23 Conversational Rhythm + Scene Spark
-check("v2.10.23 scene spark makes Velvet proactively create grounded tension opportunities",
-  edge.includes("PACING & SCENE SPARK — DO NOT WAIT FOR THE USER TO INVENT EVERYTHING") &&
-  edge.includes("ACCELERATE OPPORTUNITIES, NOT MILESTONES") &&
-  edge.includes("JEALOUSY IS AN OPTION, NOT A DEFAULT") &&
-  edge.includes("The user should not have to manually type"));
-check("v2.10.23 dialogue rhythm has reaction opener variety and banter cooldown",
-  edge.includes("REACTION OPENER VARIETY") && edge.includes("BANTER COOLDOWN") &&
-  edge.includes("A joke does not require another joke"));
-const repetitiveOpeners = [
-  `Rowan offered a short, dry scoff. "Sure."`,
-  `Rowan let out a sharp huff. "Whatever."`,
-];
-check("v2.10.23 repeated scoff-huff opener structure is detected",
-  helpers?.hasReactionOpenerLoop(`Rowan gave a dry laugh. "Fine."`, repetitiveOpeners));
-check("v2.10.23 direct dialogue opener is not mistaken for reaction loop",
-  !helpers?.hasReactionOpenerLoop(`"Fine." Rowan adjusted the umbrella.`, repetitiveOpeners));
-const shutdownHistory = [`Rowan kept moving without slowing. "Bad timing, guys."`];
-check("v2.10.23 repeated social shutdowns are detected when people approach again",
-  helpers?.hasRepeatedSocialShutdown(`He kept walking. "Not now."`, shutdownHistory, `Two men approached him across the quad.`));
-check("v2.10.23 a real social exchange is not flagged as shutdown",
-  !helpers?.hasRepeatedSocialShutdown(`One of them grinned. "Party Friday?" Rowan finally slowed. "Maybe. Who's going?"`, shutdownHistory, `Two men approached him across the quad.`));
-check("v2.10.23 severe rhythm loops can spend the one bounded repair",
-  edge.includes('"reaction_opener_loop"') && edge.includes('"repeated_social_shutdown"') &&
-  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"sarcastic_comeback_loop"') &&
-  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"smug_comeback_tone"'));
 
 console.log(`\n${checks.length} story-engine checks passed.`);

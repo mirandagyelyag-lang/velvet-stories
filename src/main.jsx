@@ -32,16 +32,6 @@ import "./styles/velvet-v265-stability.css";
 import "./styles/velvet-v269-character-studio-mobile.css";
 import "./styles/velvet-v2610-character-studio-scroll.css";
 import "./styles/velvet-v2611-six-fixes.css";
-import "./styles/velvet-v2616-audio-center.css";
-import "./styles/velvet-v270-living-scenes.css";
-import "./styles/velvet-v274-in-chat-actions.css";
-import "./styles/velvet-v280-chat-experience.css";
-import "./styles/velvet-v290-character-studio-lite.css";
-import "./styles/velvet-v291-private-library-rework.css";
-import "./styles/velvet-v292-mobile-library-polish.css";
-import "./styles/velvet-v296-precision-actions.css";
-import "./styles/velvet-v298-characters-clean-mobile.css";
-import "./styles/velvet-v2100-chats-inbox-rework.css";
 
 applySafeModeClass();
 
@@ -99,7 +89,3 @@ window.requestAnimationFrame(() => {
   });
 });
 
-
-import "./styles/velvet-v2101-character-profile-actions.css";
-
-import "./styles/velvet-v2107-memories-safe-area.css";

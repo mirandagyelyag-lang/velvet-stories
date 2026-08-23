@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "2.10.23",
+  "version": "2.6.11",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,9 +11,7 @@
     "verify:ui": "node scripts/verify-ui.mjs",
     "preview": "vite preview",
     "verify:mobile": "node scripts/verify-mobile-qa.mjs",
-    "verify:stability": "npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:ambience && npm run verify:living-scenes",
-    "verify:ambience": "node scripts/verify-ambience.mjs",
-    "verify:living-scenes": "node scripts/verify-living-scenes.mjs"
+    "verify:stability": "npm run verify:ui && npm run verify:mobile && npm run verify:story"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

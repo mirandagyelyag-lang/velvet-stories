@@ -1,0 +1,300 @@
+/* =========================================================
+   Velvet Stories v2.1.12 · Exact Stories Shell
+   Discover now inherits the exact Stories route background,
+   sidebar palette and title language in Light / Comfort / Dark.
+   ========================================================= */
+
+/* Discover is now mounted on the exact same `chats-page--reference`
+   surface as Stories. It does not paint a second canvas on top. */
+html.velvet-discover-route,
+body.velvet-discover-route {
+  overflow-x: clip !important;
+}
+
+.discover-burgundy {
+  --discover-canvas: var(--stories-canvas, var(--background));
+  --discover-ink: var(--stories-ink, var(--text-primary));
+  --discover-ink-soft: var(--stories-ink-soft, var(--text-primary));
+  --discover-muted: var(--stories-muted, var(--text-secondary));
+  --discover-accent: var(--stories-accent, var(--accent));
+  --discover-accent-strong: var(--stories-accent-strong, var(--accent-dark));
+  --discover-line: var(--stories-line, var(--border));
+  --discover-line-strong: var(--stories-line-strong, var(--border));
+  --discover-panel: var(--stories-panel, var(--surface));
+  --discover-panel-strong: var(--stories-panel-strong, var(--surface-strong));
+  --discover-search: var(--stories-search, var(--surface));
+  --discover-shadow: var(--stories-shadow, rgba(0,0,0,.14));
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  min-height: 100dvh;
+  margin: 0;
+  color: var(--discover-ink);
+  overflow-x: clip;
+}
+
+/* No Discover-specific background or pseudo-layer is declared here.
+   Because this section also has `chats-page--reference`, the exact Stories
+   atmosphere and its fixed fabric layer render unchanged. */
+
+/* Keep the Discover content editorial on wide screens while the page canvas
+   itself remains edge-to-edge, exactly like Stories. */
+.discover-burgundy > * {
+  width: min(1040px, 100%);
+  max-width: 100%;
+  min-width: 0;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Same hero component, same geometry and same big word as Stories.
+   Only the script word changes from “your” to “discover”. */
+.discover-reference-hero {
+  margin-bottom: 18px;
+}
+
+.discover-reference-title {
+  /* Intentionally no custom width or H1 sizing here. */
+}
+
+.discover-reference-hero__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.discover-burgundy__back-link {
+  min-height:42px;
+  padding:0 14px;
+  color:var(--discover-accent);
+  background:var(--discover-panel);
+  border:1px solid var(--discover-line);
+  border-radius:999px;
+}
+
+.discover-burgundy__empty-hero small,
+.discover-burgundy__trash-copy small {
+  display:block;
+  margin-bottom:7px;
+  color:var(--discover-accent);
+  font-size:.66rem;
+  font-weight:750;
+  letter-spacing:.22em;
+}
+
+.discover-burgundy__empty-hero h2 {
+  margin: 0;
+  color: var(--discover-ink-soft);
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 500;
+}
+
+.discover-burgundy__controls { display:grid; gap:11px; margin-bottom:18px; }
+.discover-burgundy__search { min-height:54px; display:grid; grid-template-columns:25px minmax(0,1fr) auto; align-items:center; gap:9px; padding:5px 9px 5px 16px; color:var(--discover-muted); background:var(--discover-search); border:1px solid var(--discover-line); border-radius:20px; box-shadow:0 10px 28px var(--discover-shadow); backdrop-filter:blur(18px); }
+.discover-burgundy__search input { width:100%; min-width:0; height:42px; padding:0; color:var(--discover-ink); background:transparent; border:0; outline:0; font-size:.9rem; }
+.discover-burgundy__search input::placeholder { color:var(--discover-muted); opacity:.86; }
+.discover-burgundy__search button { width:40px; height:40px; min-height:40px; display:grid; place-items:center; color:var(--discover-accent); background:color-mix(in srgb,var(--discover-accent) 7%,var(--discover-panel)); border:1px solid var(--discover-line); border-radius:14px; }
+
+.discover-burgundy__chips,.discover-burgundy__more-filters { display:flex; gap:8px; overflow-x:auto; padding:1px 1px 4px; scrollbar-width:none; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
+.discover-burgundy__chips::-webkit-scrollbar,.discover-burgundy__more-filters::-webkit-scrollbar,.discover-burgundy__featured-rail::-webkit-scrollbar,.discover-burgundy__popular-rail::-webkit-scrollbar,.discover-burgundy__vibe-rail::-webkit-scrollbar { display:none; }
+.discover-burgundy__chips button,.discover-burgundy__more-filters button { min-height:38px; flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:0 15px; color:var(--discover-muted); background:color-mix(in srgb,var(--discover-panel) 76%,transparent); border:1px solid var(--discover-line); border-radius:999px; white-space:nowrap; font-size:.78rem; }
+.discover-burgundy__chips button.active,.discover-burgundy__more-filters button.active { color:var(--discover-ink); background:color-mix(in srgb,var(--discover-accent) 14%,var(--discover-panel-strong)); border-color:var(--discover-line-strong); }
+.discover-burgundy__more-filters { padding:2px 0 1px; }
+.discover-burgundy__more-filters .danger { color:#c8647b; }
+
+.discover-burgundy__section,.discover-burgundy__vibes { margin-top:22px; }
+.discover-burgundy__section>header,.discover-burgundy__vibes>header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:11px; }
+.discover-burgundy__section>header h3,.discover-burgundy__vibes>header h3 { margin:0; color:var(--discover-accent); font-family:inherit; font-size:.76rem; font-weight:750; line-height:1; letter-spacing:.14em; text-transform:uppercase; }
+
+.discover-burgundy__featured-rail { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.discover-burgundy__feature-card { position:relative; min-width:0; overflow:visible; }
+.discover-burgundy__feature-card-main { position:relative; width:100%; aspect-ratio:1.12/1; display:block; overflow:hidden; padding:0; color:#fff3f6; background:var(--discover-panel-strong); border:1px solid var(--discover-line-strong); border-radius:20px; box-shadow:0 13px 30px var(--discover-shadow); text-align:left; }
+.discover-burgundy__feature-card-main img,.discover-burgundy__popular-image img { width:100%; height:100%; display:block; object-fit:cover; filter:var(--stories-row-art-filter,saturate(.78) brightness(.82)); }
+.discover-burgundy__feature-card-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(10,5,8,.03) 20%,rgba(10,5,8,.2) 47%,rgba(10,5,8,.9) 100%); pointer-events:none; }
+.discover-burgundy__feature-card-copy { position:absolute; left:14px; right:36px; bottom:13px; z-index:2; display:grid; gap:3px; }
+.discover-burgundy__feature-card-copy strong { font-family:"Cormorant Garamond",serif; font-size:1.55rem; font-weight:500; line-height:.94; }
+.discover-burgundy__feature-card-copy small { overflow:hidden; color:#d6bdc5; font-size:.7rem; text-overflow:ellipsis; white-space:nowrap; }
+.discover-burgundy__feature-card-copy em { max-width:95%; overflow:hidden; color:#e5c9d1; font-size:.72rem; font-style:italic; line-height:1.3; text-overflow:ellipsis; white-space:nowrap; }
+
+.discover-burgundy__popular-rail { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.discover-burgundy__popular-card { position:relative; min-width:0; padding:9px 36px 9px 9px; background:color-mix(in srgb,var(--discover-panel) 88%,transparent); border:1px solid var(--discover-line); border-radius:18px; box-shadow:0 8px 22px color-mix(in srgb,var(--discover-shadow) 78%,transparent); }
+.discover-burgundy__popular-main { width:100%; min-width:0; display:grid; grid-template-columns:58px minmax(0,1fr); align-items:center; gap:10px; padding:0; color:inherit; background:transparent; border:0; text-align:left; }
+.discover-burgundy__popular-image { width:58px; height:58px; display:block; overflow:hidden; border:1px solid var(--discover-line-strong); border-radius:16px; }
+.discover-burgundy__popular-copy { min-width:0; display:grid; gap:2px; }
+.discover-burgundy__popular-copy strong { overflow:hidden; color:var(--discover-ink-soft); font-family:"Cormorant Garamond",serif; font-size:1.2rem; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
+.discover-burgundy__popular-copy small { overflow:hidden; color:var(--discover-muted); font-size:.67rem; text-overflow:ellipsis; white-space:nowrap; }
+.discover-burgundy__popular-copy em { display:inline-flex; align-items:center; gap:4px; margin-top:3px; color:var(--discover-accent); font-size:.6rem; font-style:normal; }
+
+.discover-burgundy__vibe-rail { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.discover-burgundy__vibe-rail button { min-height:74px; display:grid; align-content:center; gap:4px; padding:12px 14px; color:var(--discover-ink); background:linear-gradient(135deg,color-mix(in srgb,var(--discover-accent) 9%,var(--discover-panel)),var(--discover-panel)); border:1px solid var(--discover-line); border-radius:17px; text-align:left; }
+.discover-burgundy__vibe-rail strong { font-family:"Cormorant Garamond",serif; font-size:1.15rem; font-weight:500; }
+.discover-burgundy__vibe-rail span { color:var(--discover-muted); font-size:.65rem; }
+
+.discover-burgundy__image-fallback { width:100%; height:100%; display:grid; place-items:center; color:#fff1f5; font-family:"Cormorant Garamond",serif; font-size:clamp(1.7rem,4vw,3.6rem); background:radial-gradient(circle at 30% 24%,color-mix(in srgb,var(--character-color) 70%,white 5%),transparent 31%),linear-gradient(145deg,color-mix(in srgb,var(--character-color) 72%,black 40%),#12050a); }
+
+.discover-burgundy__menu-wrap { position:absolute; top:8px; right:8px; z-index:5; }
+.discover-burgundy__menu-wrap.compact { top:50%; right:7px; transform:translateY(-50%); }
+.discover-burgundy__more { width:32px; height:32px; min-height:32px; display:grid; place-items:center; padding:0; color:#fff0f4; background:rgba(15,7,11,.6); border:1px solid rgba(255,255,255,.15); border-radius:50%; backdrop-filter:blur(10px); }
+.discover-burgundy__menu-wrap.compact .discover-burgundy__more { color:var(--discover-accent); background:color-mix(in srgb,var(--discover-panel-strong) 92%,transparent); border-color:var(--discover-line); }
+.discover-burgundy__menu { position:absolute; top:38px; right:0; z-index:20; min-width:158px; display:grid; gap:2px; padding:6px; color:var(--discover-ink); background:var(--discover-panel-strong); border:1px solid var(--discover-line); border-radius:15px; box-shadow:0 20px 44px var(--discover-shadow); }
+.discover-burgundy__menu-wrap.compact .discover-burgundy__menu { top:24px; }
+.discover-burgundy__menu button { width:100%; min-height:38px; display:flex; align-items:center; gap:8px; padding:0 9px; color:var(--discover-muted); background:transparent; border:0; border-radius:9px; }
+.discover-burgundy__menu button:hover,.discover-burgundy__menu button:focus-visible { color:var(--discover-ink); background:color-mix(in srgb,var(--discover-accent) 8%,transparent); }
+.discover-burgundy__menu button.danger { color:#c8647b; }
+
+.discover-burgundy--empty-page { display:block; }
+.discover-burgundy__empty-hero { width:min(590px,100%); padding:36px 28px; border:1px solid var(--discover-line); border-radius:26px; text-align:center; background:var(--discover-panel); box-shadow:0 22px 58px var(--discover-shadow); }
+.discover-burgundy__empty-hero p { max-width:430px; margin:16px auto 0; color:var(--discover-muted); line-height:1.65; }
+.discover-burgundy__primary { min-height:46px; display:inline-flex; align-items:center; justify-content:center; gap:8px; margin-top:18px; padding:0 19px; color:#fff7f9; background:linear-gradient(135deg,#a94e6d,#6f2946); border:1px solid rgba(244,151,174,.35); border-radius:999px; }
+.discover-burgundy__empty { min-height:210px; display:grid; place-content:center; justify-items:center; gap:8px; padding:24px; color:var(--discover-muted); background:var(--discover-panel); border:1px solid var(--discover-line); border-radius:22px; text-align:center; }
+.discover-burgundy__empty h2 { margin:0; color:var(--discover-ink-soft); font-family:"Cormorant Garamond",serif; font-size:1.8rem; font-weight:500; }
+.discover-burgundy__empty p { max-width:400px; margin:0; line-height:1.55; }
+
+.discover-burgundy__trash-list { display:grid; gap:12px; }
+.discover-burgundy__trash-row { display:grid; grid-template-columns:94px minmax(0,1fr) auto; align-items:center; gap:14px; padding:13px; color:var(--discover-ink); background:var(--discover-panel); border:1px solid var(--discover-line); border-radius:20px; }
+.discover-burgundy__trash-media { height:94px; overflow:hidden; border-radius:15px; }
+.discover-burgundy__trash-media img { width:100%; height:100%; object-fit:cover; }
+.discover-burgundy__trash-copy h2 { margin:5px 0 6px; color:var(--discover-ink-soft); font-family:"Cormorant Garamond",serif; font-size:1.65rem; font-weight:500; }
+.discover-burgundy__trash-copy p { margin:0; color:var(--discover-muted); line-height:1.5; }
+.discover-burgundy__trash-actions { display:grid; gap:7px; }
+.discover-burgundy__trash-actions button { min-height:40px; display:inline-flex; align-items:center; gap:7px; padding:0 13px; color:var(--discover-ink); background:var(--discover-panel-strong); border:1px solid var(--discover-line); border-radius:999px; }
+.discover-burgundy__trash-actions .danger { color:#c8647b; }
+
+.tag-modal-backdrop { position:fixed; inset:0; z-index:150; display:grid; place-items:center; padding:20px; background:rgba(8,5,8,.5); }
+.tag-modal { width:min(500px,100%); padding:22px; color:var(--text-primary); background:var(--surface); border:1px solid var(--border); border-radius:24px; box-shadow:0 30px 70px rgba(0,0,0,.24); }
+.tag-modal header { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:13px; margin-bottom:18px; }
+.tag-modal header>span,.tag-modal header>button { width:40px; height:40px; min-height:40px; display:grid; place-items:center; color:var(--accent); background:color-mix(in srgb,var(--accent) 7%,transparent); border:1px solid color-mix(in srgb,var(--accent) 18%,var(--border)); border-radius:50%; }
+.tag-modal header small { display:block; color:var(--gold); font-size:.68rem; font-weight:700; letter-spacing:.17em; }
+.tag-modal header h2 { margin:4px 0 0; font-family:"Cormorant Garamond",serif; font-size:1.85rem; font-weight:500; }
+.tag-modal label { display:grid; gap:9px; color:var(--text-primary); font-weight:600; }
+.tag-modal input { min-height:52px; padding:0 14px; color:var(--text-primary); background:color-mix(in srgb,var(--background) 84%,white 3%); border:1px solid var(--border); border-radius:14px; }
+.tag-modal label small { color:var(--text-secondary); font-weight:500; }
+.tag-modal footer { display:flex; justify-content:flex-end; gap:9px; margin-top:18px; }
+.tag-modal footer button { min-height:44px; padding:0 16px; color:var(--text-primary); background:var(--surface-soft); border:1px solid var(--border); border-radius:999px; }
+.tag-modal footer button[type="submit"] { color:#fff8fa; background:var(--accent); }
+
+@media (max-width:980px) {
+  .discover-burgundy__featured-rail,.discover-burgundy__popular-rail,.discover-burgundy__vibe-rail { display:flex; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:none; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
+  .discover-burgundy__feature-card { flex:0 0 230px; scroll-snap-align:start; }
+  .discover-burgundy__popular-card { flex:0 0 240px; scroll-snap-align:start; }
+  .discover-burgundy__vibe-rail button { flex:0 0 180px; scroll-snap-align:start; }
+}
+
+@media (max-width:760px) {
+  .discover-reference-hero { margin-bottom:16px; }
+  .discover-reference-hero__actions .reference-stories-new { width:50px !important; height:50px !important; min-height:50px !important; }
+  .discover-burgundy__back-link { display:none; }
+  .discover-burgundy__search { min-height:50px; grid-template-columns:23px minmax(0,1fr) auto; padding-left:14px; border-radius:18px; }
+  .discover-burgundy__search input { height:40px; font-size:16px; }
+  .discover-burgundy__search button { width:38px; height:38px; min-height:38px; border-radius:13px; }
+  .discover-burgundy__chips,.discover-burgundy__more-filters { max-width:100%; padding-right:2px; }
+  .discover-burgundy__chips button,.discover-burgundy__more-filters button { min-height:36px; padding:0 13px; font-size:.72rem; }
+  .discover-burgundy__section,.discover-burgundy__vibes { margin-top:19px; }
+  .discover-burgundy__section>header,.discover-burgundy__vibes>header { margin-bottom:9px; }
+  .discover-burgundy__section>header h3,.discover-burgundy__vibes>header h3 { font-size:.7rem; }
+  .discover-burgundy__featured-rail,.discover-burgundy__popular-rail,.discover-burgundy__vibe-rail { max-width:100%; gap:9px; padding-right:2px; }
+  .discover-burgundy__feature-card { flex-basis:min(164px,44vw); }
+  .discover-burgundy__feature-card-main { aspect-ratio:.92/1; border-radius:18px; }
+  .discover-burgundy__feature-card-copy { left:11px; right:31px; bottom:10px; }
+  .discover-burgundy__feature-card-copy strong { font-size:1.27rem; }
+  .discover-burgundy__feature-card-copy small,.discover-burgundy__feature-card-copy em { font-size:.62rem; }
+  .discover-burgundy__popular-card { flex-basis:min(196px,56vw); padding:8px 32px 8px 8px; border-radius:16px; }
+  .discover-burgundy__popular-main { grid-template-columns:50px minmax(0,1fr); gap:8px; }
+  .discover-burgundy__popular-image { width:50px; height:50px; border-radius:14px; }
+  .discover-burgundy__popular-copy strong { font-size:1.08rem; }
+  .discover-burgundy__vibe-rail button { flex-basis:150px; min-height:66px; padding:10px 12px; border-radius:15px; }
+  .discover-burgundy__vibe-rail strong { font-size:1rem; }
+  .discover-burgundy__vibe-rail span { font-size:.6rem; }
+  .discover-burgundy__more { width:30px; height:30px; min-height:30px; }
+  .discover-burgundy__trash-row { grid-template-columns:78px minmax(0,1fr); }
+  .discover-burgundy__trash-media { height:78px; }
+  .discover-burgundy__trash-actions { grid-column:1/-1; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .discover-burgundy__trash-actions button { justify-content:center; }
+}
+
+@media (max-width:760px) {
+  body.velvet-discover-route .app__content,
+  body.velvet-discover-route .discover-burgundy,
+  body.velvet-discover-route .discover-burgundy > * {
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    overflow-x: clip;
+  }
+
+  .discover-burgundy__controls,
+  .discover-burgundy__section,
+  .discover-burgundy__vibes,
+  .discover-burgundy__trash-list {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) { .discover-burgundy *,.discover-burgundy *::before,.discover-burgundy *::after { animation:none!important; transition:none!important; } }
+
+/* =========================================================
+   Velvet Stories v2.1.13 · Compact Discover Header
+   Discover keeps the exact Stories shell, but the phone hero
+   is intentionally shorter so content starts sooner.
+   ========================================================= */
+@media (max-width:760px) {
+  body.velvet-discover-route .discover-reference-hero {
+    min-height: 124px !important;
+    margin-bottom: 8px !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title {
+    top: 27px !important;
+    width: min(250px, 62vw) !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title h1 {
+    margin: 24px 10px 0 !important;
+    font-size: clamp(2.75rem, 13vw, 3.65rem) !important;
+    line-height: .82 !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title .reference-stories-title__script {
+    top: -7px !important;
+    font-size: 2.42rem !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title .reference-stories-title__line {
+    margin-top: 27px !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title .reference-stories-title__spark {
+    top: 51px !important;
+  }
+
+  body.velvet-discover-route .discover-reference-hero__actions .reference-stories-new {
+    width: 46px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+  }
+
+  body.velvet-discover-route .discover-burgundy__controls {
+    gap: 9px !important;
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-width:390px) {
+  body.velvet-discover-route .discover-reference-hero {
+    min-height: 116px !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title {
+    top: 25px !important;
+    width: min(230px, 64vw) !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title h1 {
+    font-size: clamp(2.55rem, 12.5vw, 3.25rem) !important;
+  }
+
+  body.velvet-discover-route .discover-reference-title .reference-stories-title__script {
+    font-size: 2.22rem !important;
+  }
+}

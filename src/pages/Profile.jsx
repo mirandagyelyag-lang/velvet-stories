@@ -44,7 +44,7 @@ function Profile({
   const { theme } = useTheme();
   const [stats, setStats] = useState(EMPTY_STATS);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const [accessOpen, setAccessOpen] = useState(false);
+  const [privateOpen, setPrivateOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -148,7 +148,7 @@ function Profile({
   }
 
   const menuRows = [
-    { icon: BookOpen, label: "Characters", value: characters.length, action: onManageCharacters },
+    { icon: BookOpen, label: "My Characters", value: characters.length, action: onManageCharacters },
     { icon: UsersRound, label: "Roleplay Personas", value: personas.length, action: onManagePersonas },
     { icon: Globe2, label: "World & Lorebooks", value: lorebooks.length, action: onManageLorebooks },
     { icon: BookHeart, label: "Memories", value: stats.memories, action: onOpenMemories },
@@ -196,9 +196,15 @@ function Profile({
         <div className="profile-reference__private-banner">
           <span className="profile-reference__private-mark"><Crown size={20}/></span>
           <div><strong>VELVET PRIVATE</strong><p>Your stories, characters and memories stay inside your private account.</p></div>
-          <button type="button" onClick={() => setAccessOpen(true)}>Manage <ChevronRight size={17}/></button>
+          <button type="button" onClick={() => setPrivateOpen((value) => !value)}>Manage <ChevronRight size={17}/></button>
         </div>
 
+        {privateOpen && (
+          <div className="profile-reference__privacy-note">
+            <ShieldCheck size={19}/>
+            <div><strong>Private access</strong><p>Velvet keeps your signed-in session on this device until you log out. Your story data stays attached to your account.</p></div>
+          </div>
+        )}
 
         <div className="profile-reference__menu">
           {menuRows.map(({ icon: Icon, label, value, action }) => (
@@ -209,9 +215,9 @@ function Profile({
               <ChevronRight size={18}/>
             </button>
           ))}
-          <button type="button" onClick={() => setAccessOpen(true)}>
+          <button type="button" onClick={() => setPrivateOpen((value) => !value)}>
             <span className="profile-reference__menu-icon"><LockKeyhole size={22}/></span>
-            <span>Profile & Access</span>
+            <span>Privacy & Access</span>
             <ChevronRight size={18}/>
           </button>
           <button type="button" className="profile-reference__logout" onClick={handleSignOut} disabled={signingOut}>
@@ -223,22 +229,6 @@ function Profile({
 
         <div className="profile-reference__version"><span/>Version {VELVET_VERSION}<span/></div>
       </section>
-
-      {accessOpen && (
-        <div className="profile-access-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setAccessOpen(false)}>
-          <section className="profile-access-panel" role="dialog" aria-modal="true" aria-labelledby="profile-access-title">
-            <header><div><p>PROFILE & ACCESS</p><h2 id="profile-access-title">Your private account</h2></div><button type="button" onClick={() => setAccessOpen(false)} aria-label="Close Profile and Access"><X size={20}/></button></header>
-            <div className="profile-access-panel__identity"><div className="profile-access-panel__avatar">{avatarUrl ? <img src={avatarUrl} alt=""/> : <span>{initial}</span>}</div><div><strong>{displayName}</strong><small>{user?.email || "Signed in to Velvet"}</small></div></div>
-            <div className="profile-access-panel__status"><ShieldCheck size={18}/><div><strong>Private account</strong><p>Your stories, characters and memories are tied to this signed-in account. Velvet does not publish a public profile.</p></div></div>
-            <div className="profile-access-panel__rows">
-              <div><span>Account</span><strong>{user?.email || "Signed in"}</strong></div>
-              <div><span>Session</span><strong>Active on this device</strong></div>
-              <div><span>Library access</span><strong>Private</strong></div>
-            </div>
-            <footer><button type="button" onClick={() => { setAccessOpen(false); openProfileEditor(); }}><Pencil size={16}/>Edit profile</button><button type="button" className="danger" onClick={handleSignOut} disabled={signingOut}><LogOut size={16}/>{signingOut ? "Logging out…" : "Log out"}</button></footer>
-          </section>
-        </div>
-      )}
 
       {profileEditorOpen && (
         <div className="profile-editor-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !savingProfile && setProfileEditorOpen(false)}>

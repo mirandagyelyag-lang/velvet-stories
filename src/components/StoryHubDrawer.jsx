@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark, BookOpen, ChevronRight, Download, FileDown, GitBranch, HeartHandshake,
-  ImagePlus, ListTodo, MapPin, Music2, Pause, Play, RotateCcw, Search, Sparkles, Star, Trash2,
+  ImagePlus, ListTodo, MapPin, Music2, RotateCcw, Search, Sparkles, Star, Trash2,
   Upload, UserRound, Users, Volume2, Square, X,
 } from "lucide-react";
 import { useChats } from "../context/ChatsContext";
 import { useCharacters } from "../context/CharactersContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { exportStoryBook, downloadStoryBackup } from "../utils/storyExport";
-import { AMBIENT_MODES, normalizeAmbientMode, readAmbienceVolume, writeAmbienceVolume } from "./StoryAmbience";
-import { suggestAmbienceForScene } from "../utils/ambienceIntelligence";
+import { AMBIENT_MODES } from "./StoryAmbience";
 import { getDeviceVoices, getVoiceCapabilities, speakText, stopSpeech } from "../utils/speech";
 import { getAudioState, readAudioPreference, stopAllAudio, subscribeAudioState, writeAudioPreference } from "../utils/audioBus";
 
@@ -23,7 +22,7 @@ const TABS = [
 
 export default function StoryHubDrawer({
   open, onClose, character, characters = [], persona = null, lorebook = null,
-  onJumpToMessage, onOpenConversation, ambientSoundOn = false, onAmbientSoundToggle, recentSceneText = "",
+  onJumpToMessage, onOpenConversation, ambientSoundOn = false, onAmbientSoundToggle,
 }) {
   const {
     getStoryHubData, searchConversationMessages, getConversation,
@@ -36,9 +35,6 @@ export default function StoryHubDrawer({
   const conversation = getConversation(character.id);
   const [tab, setTab] = useState("dashboard");
   const [hub, setHub] = useState(null);
-  const currentAmbientMode = normalizeAmbientMode(conversation?.ambientMode || hub?.ambientMode || "none");
-  const currentAmbientVolume = Number(conversation?.ambientVolume ?? hub?.ambientVolume ?? 18);
-  const ambienceSuggestion = useMemo(() => suggestAmbienceForScene(recentSceneText), [recentSceneText]);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -224,23 +220,6 @@ export default function StoryHubDrawer({
     finally { setBusy(""); }
   }
 
-  function chooseAmbientMode(id) {
-    const normalized = normalizeAmbientMode(id);
-    if (normalized === "none") {
-      onAmbientSoundToggle?.(false);
-      void setAmbient({ ambientMode: "none" });
-      return;
-    }
-    const remembered = readAmbienceVolume(normalized, normalized === currentAmbientMode ? currentAmbientVolume : 18);
-    onAmbientSoundToggle?.(true);
-    void setAmbient({ ambientMode: normalized, ambientVolume: remembered });
-  }
-
-  function changeAmbientVolume(value) {
-    const next = writeAmbienceVolume(currentAmbientMode, value);
-    void setAmbient({ ambientVolume: next });
-  }
-
   async function exportBook(format) {
     try {
       setBusy(`export-${format}`);
@@ -346,7 +325,7 @@ export default function StoryHubDrawer({
 
           <div className="keepsake-card keepsake-card--audio-center">
             <div className="story-hub__mini-heading"><Music2 size={14}/> Audio Center</div>
-            <div className="audio-center__status"><span><small>{audioState.ambiencePaused && !audioState.voiceActive ? "PAUSED" : "NOW PLAYING"}</small><strong>{[audioState.voiceLabel,audioState.ambienceLabel && `${audioState.ambienceLabel}${audioState.ambiencePaused ? " · Paused" : ""}`].filter(Boolean).join(" · ") || "Nothing"}</strong></span><div className="audio-center__transport">{currentAmbientMode!=="none" && <button type="button" onClick={()=>onAmbientSoundToggle?.(!ambientSoundOn)}>{ambientSoundOn ? <Pause size={14}/> : <Play size={14}/>} {ambientSoundOn ? "Pause ambience" : "Resume ambience"}</button>}<button type="button" onClick={()=>{ stopAllAudio(); stopVoiceTest(); onAmbientSoundToggle?.(false); }} disabled={!audioState.voiceActive&&!audioState.ambienceActive&&!audioState.ambiencePaused}><Square size={14}/>Stop all</button></div></div>
+            <div className="audio-center__status"><span><small>NOW PLAYING</small><strong>{[audioState.voiceLabel,audioState.ambienceLabel].filter(Boolean).join(" · ") || "Nothing"}</strong></span><button type="button" onClick={()=>{ stopAllAudio(); stopVoiceTest(); onAmbientSoundToggle?.(false); }} disabled={!audioState.voiceActive&&!audioState.ambienceActive}><Square size={14}/>Stop all audio</button></div>
             <small>Voice and ambience have separate volume controls. Switching ambience crossfades instead of stacking two rooms on top of each other.</small>
           </div>
 
@@ -361,12 +340,12 @@ export default function StoryHubDrawer({
             <div className="keepsake-actions"><button onClick={voiceTesting ? stopVoiceTest : testVoice}>{voiceTesting ? <X size={15}/> : <Volume2 size={15}/>} {voiceTesting ? "Stop" : "Test"}</button><button onClick={saveVoice} disabled={busy==="voice"}>Save voice</button></div>
           </div>
 
-          <div className="keepsake-card keepsake-card--ambience-v2">
+          <div className="keepsake-card">
             <div className="story-hub__mini-heading"><Music2 size={14}/> Ambient story mode</div>
-            {ambienceSuggestion && <div className={`ambience-suggestion${ambienceSuggestion.mode===currentAmbientMode ? " is-active" : ""}`}><span><small>{ambienceSuggestion.mode===currentAmbientMode ? "SCENE MATCH" : "SUGGESTED FOR THIS SCENE"}</small><strong>{ambienceSuggestion.label}</strong>{ambienceSuggestion.reason && <em>{ambienceSuggestion.reason}</em>}</span>{ambienceSuggestion.mode!==currentAmbientMode && <button type="button" onClick={()=>chooseAmbientMode(ambienceSuggestion.mode)}>Use {ambienceSuggestion.label}</button>}</div>}
-            <div className="keepsake-ambience">{AMBIENT_MODES.map(([id,label])=><button key={id} className={currentAmbientMode===id?"active":""} onClick={()=>chooseAmbientMode(id)}>{label}</button>)}</div>
-            <label>Volume for {AMBIENT_MODES.find(([id])=>id===currentAmbientMode)?.[1] || "ambience"} <span>{currentAmbientVolume}%</span><input type="range" min="0" max="45" value={currentAmbientVolume} onChange={(e)=>changeAmbientVolume(Number(e.target.value))}/></label>
-            <div className="ambience-v2__footer"><button className={`keepsake-sound-toggle${ambientSoundOn?" active":""}`} onClick={()=>onAmbientSoundToggle?.(!ambientSoundOn)} disabled={currentAmbientMode==="none"}>{ambientSoundOn ? <Pause size={16}/> : <Play size={16}/>} {ambientSoundOn ? "Pause" : "Resume"}</button><small>Each room remembers its own volume. Switching rooms uses a soft crossfade and loops are blended automatically.</small></div>
+            <div className="keepsake-ambience">{AMBIENT_MODES.map(([id,label])=><button key={id} className={(conversation?.ambientMode || hub?.ambientMode || "none")===id?"active":""} onClick={()=>{ if(id!=="none") onAmbientSoundToggle?.(true); void setAmbient({ambientMode:id}); }}>{label}</button>)}</div>
+            <label>Volume <span>{conversation?.ambientVolume ?? hub?.ambientVolume ?? 18}%</span><input type="range" min="0" max="45" value={conversation?.ambientVolume ?? hub?.ambientVolume ?? 18} onChange={(e)=>setAmbient({ambientVolume:Number(e.target.value)})}/></label>
+            <button className={`keepsake-sound-toggle${ambientSoundOn?" active":""}`} onClick={()=>onAmbientSoundToggle?.(!ambientSoundOn)}><Volume2 size={16}/>{ambientSoundOn ? "Sound on" : "Sound off"}</button>
+            <small>Atmosphere is optional and subtle. Sound is generated on-device and never leaves Velvet.</small>
           </div>
 
           <div className="keepsake-card">

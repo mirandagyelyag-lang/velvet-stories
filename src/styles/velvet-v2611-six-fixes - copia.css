@@ -1,0 +1,112 @@
+/* Velvet Stories v2.6.11 · Six Fixes Pass
+   Audio cleanup · Stories menu portal · Character Studio tools · quieter Chats · Memory editor · Group Story */
+
+/* 1) Ambience visual split: Night City and Street Racing are no longer one mode. */
+.story-ambience--street_racing::before{
+  background:
+    radial-gradient(circle at 16% 74%,rgba(220,66,94,.13),transparent 22%),
+    radial-gradient(circle at 82% 26%,rgba(125,164,255,.12),transparent 24%),
+    linear-gradient(180deg,rgba(12,15,28,.28),transparent 62%);
+  filter:blur(.25px);
+}
+
+/* 2) Stories actions live in a body portal so cards/contain/scroll cannot swallow the sheet. */
+.story-action-menu__portal-backdrop{
+  position:fixed!important; inset:0!important; z-index:10000!important;
+  display:flex!important; align-items:flex-end!important; justify-content:center!important;
+  padding:18px!important; background:rgba(8,4,7,.46)!important; backdrop-filter:blur(6px)!important;
+}
+.story-action-menu__panel--portal{
+  position:relative!important; inset:auto!important; width:min(430px,100%)!important; max-height:min(72dvh,620px)!important;
+  overflow:auto!important; padding:10px!important; border-radius:24px!important;
+  background:color-mix(in srgb,var(--surface) 97%,#160b11)!important;
+  border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border))!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.42)!important; -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+}
+.story-action-menu__panel--portal button{min-height:48px!important;padding:0 13px!important;border-radius:13px!important;font-size:.78rem!important;touch-action:manipulation!important}
+.story-action-menu__sheet-handle{width:42px;height:4px;margin:2px auto 10px;border-radius:999px;background:color-mix(in srgb,var(--text-secondary) 36%,transparent)}
+.story-action-menu__sheet-title{display:block;overflow:hidden;margin:0 7px 8px;color:var(--text-primary);font-family:"Cormorant Garamond",serif;font-size:1.25rem;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+
+/* 3) Character Studio: top tools explain themselves; Depth/Voice are first-class sections. */
+.character-studio__tool-notice{display:flex;align-items:center;gap:8px;margin:0 18px 10px;padding:10px 12px;color:var(--text-primary);background:color-mix(in srgb,var(--accent) 8%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border));border-radius:12px;font-size:.68rem}
+.character-studio__tool-notice>svg{flex:0 0 auto;color:var(--accent)}
+.character-studio__tool-notice>span{flex:1;line-height:1.45}
+.character-studio__tool-notice>button{width:30px;height:30px;min-height:30px;display:grid;place-items:center;padding:0;color:var(--text-secondary);background:transparent;border:0;border-radius:50%}
+.studio-voice-preview{display:grid;gap:7px;padding:12px;border:1px solid var(--border);border-radius:15px;background:color-mix(in srgb,var(--accent) 4%,var(--surface))}
+.studio-voice-preview>button{width:max-content;max-width:100%;min-height:40px;display:inline-flex;align-items:center;gap:8px;padding:0 12px;color:var(--text-primary);background:color-mix(in srgb,var(--accent) 9%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 28%,var(--border));border-radius:999px}
+.studio-voice-preview>small{color:var(--text-secondary);font-size:.62rem}
+.studio-voice-preview blockquote{margin:2px 0 0;padding:11px 12px;color:var(--text-primary);background:var(--surface-soft);border-left:2px solid var(--accent);border-radius:0 10px 10px 0;font-family:"Cormorant Garamond",serif;font-size:1rem;line-height:1.5}
+
+/* 4) Chats: more air, less wall-of-text. */
+.reference-story-list{gap:14px!important}
+.reference-story-row{min-height:80px!important;grid-template-columns:66px minmax(0,1fr) 48px!important;gap:13px!important;padding-right:10px!important}
+.reference-story-row__art{width:66px!important;height:79px!important}
+.reference-story-row__copy p{max-width:72ch;margin-top:5px!important;font-family:inherit!important;font-size:.68rem!important;font-style:normal!important;opacity:.82}
+.chat__messages{gap:29px!important}
+.chat-message--character{max-width:min(88%,760px)!important}
+.chat-message--user{max-width:min(76%,640px)!important}
+.chat-message p{line-height:1.62!important}
+
+.reference-stories-hero__actions{display:flex;align-items:center;gap:8px}
+.reference-stories-group{min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 12px;color:var(--stories-accent,var(--accent));background:color-mix(in srgb,var(--stories-panel-strong,var(--surface)) 88%,transparent);border:1px solid var(--stories-line,var(--border));border-radius:999px;font-size:.64rem;font-weight:720;cursor:pointer}
+
+/* 5) Add something important: calm, task-oriented sheet instead of a long settings form. */
+.memory-editor{width:min(620px,100%)!important;padding:0!important;overflow:hidden!important;border-radius:28px!important;background:color-mix(in srgb,var(--stories-panel,#211018) 98%,transparent)!important}
+.memory-editor__header{display:grid!important;grid-template-columns:42px minmax(0,1fr) 40px!important;align-items:start!important;gap:12px!important;margin:0!important;padding:20px 20px 16px!important;border-bottom:1px solid var(--stories-border,rgba(225,112,141,.16))}
+.memory-editor__header-icon{width:42px;height:42px;display:grid;place-items:center;color:var(--ref-rose,#e28aa0);background:color-mix(in srgb,var(--ref-rose,#e28aa0) 10%,transparent);border:1px solid color-mix(in srgb,var(--ref-rose,#e28aa0) 20%,transparent);border-radius:14px}
+.memory-editor__header h2{font-size:2.15rem!important;line-height:.95!important}
+.memory-editor__header>div>small{display:block;margin-top:7px;color:var(--ref-muted,#a5868e);font-size:.66rem;line-height:1.4}
+.memory-editor__primary,.memory-editor__category-block,.memory-editor__details-grid,.memory-editor__switches,.memory-editor__advanced,.memory-editor__error,.memory-editor>footer{margin-left:20px!important;margin-right:20px!important}
+.memory-editor__primary{display:grid;gap:12px;padding-top:18px}
+.memory-editor__primary label,.memory-editor__details-grid label{display:grid!important;gap:7px!important;margin:0!important;color:var(--ref-muted,#a5868e)!important;font-size:.68rem!important}
+.memory-editor__primary label>span,.memory-editor__details-grid label>span{color:var(--ref-ink,#f8edf0);font-weight:650}
+.memory-editor__content{position:relative}
+.memory-editor__content textarea{min-height:132px!important;padding:15px 15px 30px!important;border-radius:16px!important;resize:none!important;font-size:.9rem!important;line-height:1.55!important}
+.memory-editor__content>small{position:absolute!important;right:12px!important;bottom:9px!important;margin:0!important;color:var(--ref-muted,#a5868e)!important;font-size:.58rem!important;pointer-events:none}
+.memory-editor__category-block{padding:16px 0 4px}
+.memory-editor__section-label{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px}.memory-editor__section-label>span{font-size:.7rem;font-weight:700}.memory-editor__section-label>small{color:var(--ref-muted,#a5868e);font-size:.58rem}
+.memory-editor__category-chips{display:flex;gap:7px;overflow-x:auto;padding:1px 0 5px;scrollbar-width:none}.memory-editor__category-chips::-webkit-scrollbar{display:none}.memory-editor__category-chips button{flex:0 0 auto;min-height:34px;padding:0 11px;color:var(--ref-muted,#a5868e);background:transparent;border:1px solid var(--stories-border,rgba(225,112,141,.16));border-radius:999px;font-size:.62rem}.memory-editor__category-chips button.is-active{color:#fff6f8;background:var(--accent);border-color:var(--accent)}
+.memory-editor__details-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 0}
+.memory-editor__details-grid select,.memory-editor__character select{min-height:44px!important;border-radius:13px!important}
+.memory-editor__switches{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 0 12px}
+.memory-editor__switches .memory-editor__pin{margin:0!important;min-height:88px;padding:11px!important;grid-template-columns:18px minmax(0,1fr)!important;border-radius:14px!important}
+.memory-editor__switches .memory-editor__pin span{display:block!important}.memory-editor__switches .memory-editor__pin svg{display:block;margin-bottom:5px}.memory-editor__switches .memory-editor__pin strong,.memory-editor__switches .memory-editor__pin small{display:block!important}.memory-editor__switches .memory-editor__pin small{margin:3px 0 0!important;line-height:1.3!important;font-size:.55rem!important}
+.memory-editor__advanced{margin-top:2px!important;margin-bottom:10px!important;border:1px solid var(--stories-border,rgba(225,112,141,.16));border-radius:13px;overflow:hidden}.memory-editor__advanced>summary{display:grid;grid-template-columns:20px minmax(0,1fr) auto 18px;align-items:center;gap:7px;min-height:44px;padding:0 11px;cursor:pointer;list-style:none;color:var(--ref-ink,#f8edf0);font-size:.66rem}.memory-editor__advanced>summary::-webkit-details-marker{display:none}.memory-editor__advanced>summary small{color:var(--ref-muted,#a5868e);font-size:.55rem}.memory-editor__advanced .memory-editor__replace{margin:0!important;border:0!important;border-top:1px solid var(--stories-border,rgba(225,112,141,.16))!important;border-radius:0!important}
+.memory-editor>footer{padding:12px 0 calc(16px + env(safe-area-inset-bottom));margin-top:0!important;border-top:1px solid var(--stories-border,rgba(225,112,141,.16))}
+
+/* 6) Group Story: make the selection/creation sheet feel actionable on phones. */
+.group-story-sheet{touch-action:pan-y!important;-webkit-overflow-scrolling:touch!important}
+.group-story-cast button{touch-action:manipulation!important}
+.group-story-error{white-space:normal!important;line-height:1.45!important}
+
+@media(max-width:760px){
+  .story-action-menu__portal-backdrop{padding:0!important;align-items:flex-end!important}
+  .story-action-menu__panel--portal{width:100%!important;max-height:78dvh!important;border-radius:26px 26px 0 0!important;padding:10px 12px calc(14px + env(safe-area-inset-bottom))!important}
+
+  .character-studio__top-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;overflow:visible!important}
+  .character-studio__top-actions .character-studio__ai{width:auto!important;height:42px!important;min-width:0!important;min-height:42px!important;flex:1 1 auto!important;padding:0 8px!important;gap:5px!important;border-radius:13px!important}
+  .character-studio__top-actions .character-studio__ai span{display:block!important;overflow:hidden!important;font-size:.54rem!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+  .character-studio__tool-notice{margin:0 14px 8px!important}
+  .studio-voice-preview>button{width:100%!important;justify-content:center!important}
+
+  .reference-stories-group{width:42px;height:42px;min-height:42px;padding:0;border-radius:50%}.reference-stories-group span{display:none}
+  .reference-story-list{gap:16px!important}
+  .reference-story-row{min-height:78px!important;grid-template-columns:62px minmax(0,1fr) 44px!important;gap:11px!important;border-radius:18px!important}
+  .reference-story-row__art{width:62px!important;height:77px!important}
+  .reference-story-row__copy p{display:none!important}
+  .reference-story-row__copy h3{font-size:1.18rem!important}.reference-story-row__copy time{margin-top:6px!important;font-size:.58rem!important}
+
+  .chat__messages{gap:30px!important}
+  .chat-message{max-width:90%!important}.chat-message--character{max-width:90%!important}.chat-message--user{max-width:78%!important}
+  .chat-message p{padding:12px 13px!important;font-size:.8rem!important;line-height:1.58!important}
+
+  .memory-editor-backdrop{align-items:flex-end!important;padding:0!important}
+  .memory-editor{width:100%!important;max-height:92dvh!important;overflow-y:auto!important;border-radius:26px 26px 0 0!important;touch-action:pan-y!important;-webkit-overflow-scrolling:touch!important}
+  .memory-editor__header{position:sticky;top:0;z-index:3;padding:16px 14px 13px!important;background:color-mix(in srgb,var(--stories-panel,#211018) 98%,transparent);backdrop-filter:blur(16px)}
+  .memory-editor__header-icon{width:38px;height:38px}.memory-editor__header h2{font-size:1.75rem!important}.memory-editor__header>div>small{display:none}
+  .memory-editor__primary,.memory-editor__category-block,.memory-editor__details-grid,.memory-editor__switches,.memory-editor__advanced,.memory-editor__error,.memory-editor>footer{margin-left:14px!important;margin-right:14px!important}
+  .memory-editor__details-grid{grid-template-columns:1fr!important}
+  .memory-editor__switches{grid-template-columns:1fr!important;gap:7px!important}.memory-editor__switches .memory-editor__pin{min-height:0!important;grid-template-columns:22px minmax(0,1fr)!important}.memory-editor__switches .memory-editor__pin span{display:grid!important;grid-template-columns:22px minmax(0,1fr)!important}.memory-editor__switches .memory-editor__pin svg{margin:0!important}.memory-editor__switches .memory-editor__pin strong{grid-column:2}.memory-editor__switches .memory-editor__pin small{grid-column:2!important}
+  .memory-editor>footer{position:sticky;bottom:0;z-index:3;background:color-mix(in srgb,var(--stories-panel,#211018) 98%,transparent);backdrop-filter:blur(16px)}
+}

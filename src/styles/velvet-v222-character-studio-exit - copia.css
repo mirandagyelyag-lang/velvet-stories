@@ -1,0 +1,172 @@
+/* Velvet Stories v2.2.2 · Character Studio escape hatch
+   Fixes Android/mobile trapping, header overflow and bottom-nav overlap. */
+
+.character-studio-backdrop {
+  z-index: 3200 !important;
+}
+
+.character-studio__mobile-exit {
+  display: none;
+}
+
+body.character-studio-open {
+  overflow: hidden !important;
+}
+
+body.character-studio-open .mobile-nav {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+@media (max-width: 760px) {
+  .character-studio-backdrop {
+    inset: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: var(--background) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .character-studio {
+    position: relative !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  /* Always reachable, even if the toolbar gets crowded. */
+  .character-studio__mobile-exit {
+    position: fixed !important;
+    top: calc(10px + env(safe-area-inset-top)) !important;
+    right: 11px !important;
+    z-index: 3240 !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    display: grid !important;
+    place-items: center !important;
+    padding: 0 !important;
+    color: var(--text-primary) !important;
+    background: color-mix(in srgb, var(--surface) 94%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border)) !important;
+    border-radius: 50% !important;
+    box-shadow: 0 10px 30px rgba(24, 7, 14, .18) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+    touch-action: manipulation !important;
+  }
+
+  .character-studio__topbar {
+    position: relative !important;
+    z-index: 10 !important;
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: start !important;
+    justify-items: stretch !important;
+    gap: 7px !important;
+    padding: calc(13px + env(safe-area-inset-top)) 64px 10px 16px !important;
+    background: color-mix(in srgb, var(--background) 97%, transparent) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+  }
+
+  .character-studio__topbar > div:first-child {
+    min-width: 0 !important;
+  }
+
+  .character-studio__eyebrow {
+    max-width: 210px !important;
+    margin-bottom: 4px !important;
+    font-size: .55rem !important;
+    line-height: 1.35 !important;
+    letter-spacing: .19em !important;
+  }
+
+  .character-studio__topbar h2 {
+    max-width: 245px !important;
+    font-size: clamp(1.55rem, 8vw, 1.95rem) !important;
+    line-height: .94 !important;
+  }
+
+  .character-studio__autosave {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 5px !important;
+    font-size: .55rem !important;
+  }
+
+  .character-studio__autosave button {
+    min-height: 28px !important;
+    padding: 0 7px !important;
+    font-size: .54rem !important;
+  }
+
+  .character-studio__top-actions {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain !important;
+    scrollbar-width: none !important;
+    padding: 1px 0 2px !important;
+  }
+  .character-studio__top-actions::-webkit-scrollbar { display: none !important; }
+
+  .character-studio__top-actions .character-studio__close {
+    display: none !important;
+  }
+
+  .character-studio__top-actions .character-studio__ai {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    flex: 0 0 40px !important;
+    padding: 0 !important;
+  }
+
+  /* Only this region scrolls. Header and escape button stay put. */
+  .character-studio__layout {
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    display: block !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain !important;
+    touch-action: pan-y pinch-zoom !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .character-studio__preview,
+  .character-studio__editor {
+    overflow: visible !important;
+  }
+
+  .character-studio__preview {
+    padding: 12px 14px 4px !important;
+  }
+
+  .character-studio__editor {
+    padding: 14px 14px calc(26px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .character-studio__footer {
+    bottom: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 13px 4px calc(13px + env(safe-area-inset-bottom)) !important;
+    background: linear-gradient(transparent, var(--surface) 18%, var(--surface)) !important;
+  }
+}

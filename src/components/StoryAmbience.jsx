@@ -5,7 +5,7 @@ import { isSafeModeEnabled } from "../utils/safeMode";
 export const AMBIENT_MODES = [
   ["none", "None"],
   ["rain", "Rain"],
-  ["night_city", "Night"],
+  ["night_city", "Night city"],
   ["street_racing", "Street racing"],
   ["cafe", "Café"],
   ["campus", "Campus"],
@@ -14,385 +14,405 @@ export const AMBIENT_MODES = [
   ["party", "Party"],
 ];
 
-// v2.6.16: every room uses a bundled recorded track. Playback is handled by a
-// two-deck HTMLAudio looper so MP3 encoder padding never becomes an audible pause.
-export const AMBIENCE_TRACKS = {
-  rain: "/audio/ambience/rain-reference-gentle.mp3",
-  night_city: "/audio/ambience/night-city-reference.mp3",
-  street_racing: "/audio/ambience/street-racing-reference.mp3",
-  cafe: "/audio/ambience/cafe-reference-warm.mp3",
-  campus: "/audio/ambience/campus-reference.mp3",
-  fireplace: "/audio/ambience/fireplace-reference-warm.mp3",
-  home: "/audio/ambience/home-tv-reference-distant.mp3",
-  party: "/audio/ambience/party-reference-next-room.mp3",
-};
-
-const LEGACY_AMBIENCE_ALIASES = {
-  night_city_racing: "night_city",
-};
-
-const AMBIENCE_PLAYBACK_GAIN = {
-  rain: 0.9,
-  night_city: 0.75,
-  street_racing: 0.78,
-  cafe: 0.86,
-  campus: 0.82,
-  fireplace: 0.92,
-  home: 0.9,
-  party: 0.72,
-};
-
-const LOOP_CROSSFADE_MS = 720;
-const SWITCH_CROSSFADE_MS = 520;
-
-export function normalizeAmbientMode(mode) {
-  const value = String(mode || "none");
-  const normalized = LEGACY_AMBIENCE_ALIASES[value] || value;
-  return normalized === "none" || AMBIENCE_TRACKS[normalized] ? normalized : "none";
-}
-
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const volumeGain = (volume, multiplier = 1) => clamp(Number(volume || 0) / 100, 0, 1) * multiplier;
 
-export function ambienceVolumeKey(mode) {
-  return `velvet_ambience_volume_${normalizeAmbientMode(mode)}`;
+function buildNoiseBuffer(context, seconds = 4, color = "white") {
+  const length = Math.max(1, Math.floor(context.sampleRate * seconds));
+  const buffer = context.createBuffer(1, length, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  let brown = 0;
+  let pink0 = 0;
+  let pink1 = 0;
+  let pink2 = 0;
+  for (let i = 0; i < length; i += 1) {
+    const white = Math.random() * 2 - 1;
+    if (color === "brown") {
+      brown = (brown + 0.02 * white) / 1.02;
+      data[i] = brown * 3.3;
+    } else if (color === "pink") {
+      pink0 = 0.99765 * pink0 + white * 0.099046;
+      pink1 = 0.963 * pink1 + white * 0.2965164;
+      pink2 = 0.57 * pink2 + white * 1.0526913;
+      data[i] = (pink0 + pink1 + pink2 + white * 0.1848) * 0.14;
+    } else {
+      data[i] = white;
+    }
+  }
+  return buffer;
 }
 
-export function readAmbienceVolume(mode, fallback = 18) {
-  try {
-    const value = Number(localStorage.getItem(ambienceVolumeKey(mode)));
-    return Number.isFinite(value) ? clamp(value, 0, 45) : fallback;
-  } catch { return fallback; }
+function addLoopedNoise(context, destination, {
+  color = "white",
+  seconds = 4,
+  gain = 0.05,
+  filterType = "bandpass",
+  frequency = 900,
+  q = 0.7,
+} = {}) {
+  const source = context.createBufferSource();
+  source.buffer = buildNoiseBuffer(context, seconds, color);
+  source.loop = true;
+
+  const filter = context.createBiquadFilter();
+  filter.type = filterType;
+  filter.frequency.value = frequency;
+  filter.Q.value = q;
+
+  const level = context.createGain();
+  level.gain.value = gain;
+
+  source.connect(filter);
+  filter.connect(level);
+  level.connect(destination);
+  source.start();
+
+  return () => {
+    try { source.stop(); } catch {}
+    try { source.disconnect(); filter.disconnect(); level.disconnect(); } catch {}
+  };
 }
 
-export function writeAmbienceVolume(mode, volume) {
-  const next = clamp(Math.round(Number(volume) || 0), 0, 45);
-  try { localStorage.setItem(ambienceVolumeKey(mode), String(next)); } catch {}
-  return next;
+function pulseTone(context, destination, {
+  frequency = 440,
+  endFrequency = null,
+  type = "sine",
+  gain = 0.02,
+  duration = 0.12,
+  attack = 0.01,
+  when = context.currentTime,
+} = {}) {
+  const osc = context.createOscillator();
+  const level = context.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, when);
+  if (endFrequency) osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), when + duration);
+  level.gain.setValueAtTime(0.0001, when);
+  level.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), when + attack);
+  level.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+  osc.connect(level);
+  level.connect(destination);
+  osc.start(when);
+  osc.stop(when + duration + 0.03);
+}
+
+function noisePop(context, destination, {
+  gain = 0.02,
+  duration = 0.05,
+  frequency = 1700,
+  q = 0.8,
+} = {}) {
+  const source = context.createBufferSource();
+  source.buffer = buildNoiseBuffer(context, Math.max(0.08, duration * 2), "white");
+  const filter = context.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = frequency;
+  filter.Q.value = q;
+  const level = context.createGain();
+  const now = context.currentTime;
+  level.gain.setValueAtTime(Math.max(0.0002, gain), now);
+  level.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  source.connect(filter);
+  filter.connect(level);
+  level.connect(destination);
+  source.start(now);
+  source.stop(now + duration + 0.03);
+}
+
+function every(ms, callback) {
+  const id = window.setInterval(callback, ms);
+  return () => window.clearInterval(id);
+}
+
+function startRain(context, master, base) {
+  const stops = [
+    addLoopedNoise(context, master, { color: "white", seconds: 5, gain: base * 0.45, filterType: "highpass", frequency: 1100, q: 0.25 }),
+    addLoopedNoise(context, master, { color: "pink", seconds: 7, gain: base * 0.28, filterType: "bandpass", frequency: 2400, q: 0.35 }),
+    every(1150, () => {
+      if (Math.random() > 0.42) noisePop(context, master, { gain: base * 0.12, duration: 0.035, frequency: 2600 + Math.random() * 1800 });
+    }),
+  ];
+  return () => stops.forEach((stop) => stop());
+}
+
+function startNightCity(context, master, base) {
+  const stops = [
+    // Night City should feel like a room with a window cracked open: distant road wash,
+    // HVAC-low city hum and rare soft pass-bys. No synth revs, alarms or tire squeals.
+    addLoopedNoise(context, master, { color: "brown", seconds: 11, gain: base * 0.085, filterType: "lowpass", frequency: 230, q: 0.25 }),
+    addLoopedNoise(context, master, { color: "pink", seconds: 13, gain: base * 0.035, filterType: "bandpass", frequency: 1050, q: 0.45 }),
+  ];
+  stops.push(every(7200, () => {
+    if (context.state === "closed" || Math.random() < 0.38) return;
+    const now = context.currentTime;
+    const source = context.createBufferSource();
+    source.buffer = buildNoiseBuffer(context, 2.8, "brown");
+    const filter = context.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(260, now);
+    filter.frequency.linearRampToValueAtTime(520 + Math.random() * 160, now + 1.3);
+    filter.frequency.linearRampToValueAtTime(220, now + 2.65);
+    filter.Q.value = 0.55;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(Math.max(0.0002, base * 0.055), now + 0.75);
+    gain.gain.linearRampToValueAtTime(0.0001, now + 2.65);
+    const panner = typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
+    source.connect(filter); filter.connect(gain);
+    if (panner) { gain.connect(panner); panner.connect(master); panner.pan.setValueAtTime(Math.random() > .5 ? -.8 : .8, now); panner.pan.linearRampToValueAtTime(Math.random() > .5 ? .75 : -.75, now + 2.6); }
+    else gain.connect(master);
+    source.start(now); source.stop(now + 2.75);
+  }));
+  return () => stops.forEach((stop) => stop());
+}
+
+function startStreetRacing(context, master, base) {
+  const stops = [
+    // Street Racing stays distant and cinematic. Filtered road/engine texture does the work;
+    // the old saw/square synth rev and tire-squeal loop was intentionally removed.
+    addLoopedNoise(context, master, { color: "brown", seconds: 9, gain: base * 0.075, filterType: "lowpass", frequency: 180, q: 0.3 }),
+    addLoopedNoise(context, master, { color: "pink", seconds: 12, gain: base * 0.024, filterType: "highpass", frequency: 1450, q: 0.2 }),
+  ];
+  stops.push(every(5200, () => {
+    if (context.state === "closed" || Math.random() < 0.22) return;
+    const now = context.currentTime;
+    const source = context.createBufferSource();
+    source.buffer = buildNoiseBuffer(context, 3.4, "brown");
+    const body = context.createBiquadFilter();
+    body.type = "bandpass"; body.Q.value = 0.8;
+    body.frequency.setValueAtTime(150 + Math.random() * 35, now);
+    body.frequency.exponentialRampToValueAtTime(430 + Math.random() * 180, now + 1.25);
+    body.frequency.exponentialRampToValueAtTime(125 + Math.random() * 25, now + 3.05);
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(Math.max(0.0002, base * 0.095), now + 1.0);
+    gain.gain.linearRampToValueAtTime(0.0001, now + 3.15);
+    const panner = typeof context.createStereoPanner === "function" ? context.createStereoPanner() : null;
+    source.connect(body); body.connect(gain);
+    if (panner) { gain.connect(panner); panner.connect(master); const from = Math.random() > .5 ? -.95 : .95; panner.pan.setValueAtTime(from, now); panner.pan.linearRampToValueAtTime(-from, now + 3.1); }
+    else gain.connect(master);
+    source.start(now); source.stop(now + 3.25);
+  }));
+  return () => stops.forEach((stop) => stop());
+}
+
+function startCafe(context, master, base) {
+  const stops = [
+    // Café is deliberately intimate and mid-range: soft room chatter, ceramic clinks and espresso steam.
+    addLoopedNoise(context, master, { color: "pink", seconds: 8, gain: base * 0.22, filterType: "bandpass", frequency: 720, q: 1.15 }),
+    addLoopedNoise(context, master, { color: "brown", seconds: 10, gain: base * 0.055, filterType: "lowpass", frequency: 135, q: 0.25 }),
+    every(4200, () => {
+      if (Math.random() > 0.22) {
+        const f = 2850 + Math.random() * 1500;
+        pulseTone(context, master, { frequency: f, type: "sine", gain: base * 0.105, duration: 0.055, attack: 0.004 });
+        pulseTone(context, master, { frequency: f * 1.42, type: "sine", gain: base * 0.04, duration: 0.04, attack: 0.003, when: context.currentTime + 0.022 });
+      }
+    }),
+    every(9100, () => {
+      if (Math.random() > 0.3) {
+        const steam = context.createBufferSource();
+        steam.buffer = buildNoiseBuffer(context, 1.7, "white");
+        const filter = context.createBiquadFilter();
+        filter.type = "highpass"; filter.frequency.value = 3100; filter.Q.value = 0.35;
+        const gain = context.createGain();
+        const now = context.currentTime;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, base * 0.07), now + 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.25);
+        steam.connect(filter); filter.connect(gain); gain.connect(master);
+        steam.start(now); steam.stop(now + 1.35);
+      }
+    }),
+  ];
+  return () => stops.forEach((stop) => stop());
+}
+
+function startCampus(context, master, base) {
+  const stops = [
+    // Outdoor air is bright and sparse, with bird/bell cues that separate it from Café.
+    addLoopedNoise(context, master, { color: "pink", seconds: 9, gain: base * 0.19, filterType: "highpass", frequency: 720, q: 0.25 }),
+    every(4300, () => {
+      if (Math.random() > 0.25) {
+        const start = 1450 + Math.random() * 800;
+        pulseTone(context, master, { frequency: start, endFrequency: start * 1.75, type: "sine", gain: base * 0.08, duration: 0.16, attack: 0.018 });
+        pulseTone(context, master, { frequency: start * 1.22, endFrequency: start * 1.88, type: "sine", gain: base * 0.055, duration: 0.13, attack: 0.015, when: context.currentTime + 0.19 });
+      }
+    }),
+    every(13500, () => {
+      if (Math.random() > 0.28) {
+        pulseTone(context, master, { frequency: 740, type: "sine", gain: base * 0.075, duration: 0.85, attack: 0.05 });
+        pulseTone(context, master, { frequency: 1110, type: "sine", gain: base * 0.04, duration: 0.72, attack: 0.06, when: context.currentTime + 0.04 });
+      }
+    }),
+  ];
+  return () => stops.forEach((stop) => stop());
+}
+
+function startFireplace(context, master, base) {
+  const stops = [
+    // Fire gets a dark rumble plus irregular crackles rather than the generic ambience bed.
+    addLoopedNoise(context, master, { color: "brown", seconds: 3, gain: base * 0.26, filterType: "lowpass", frequency: 420, q: 0.45 }),
+    addLoopedNoise(context, master, { color: "pink", seconds: 2, gain: base * 0.08, filterType: "bandpass", frequency: 1450, q: 0.8 }),
+    every(210, () => {
+      if (Math.random() > 0.56) noisePop(context, master, {
+        gain: base * (0.055 + Math.random() * 0.11),
+        duration: 0.018 + Math.random() * 0.055,
+        frequency: 950 + Math.random() * 2500,
+        q: 0.6 + Math.random() * 1.2,
+      });
+    }),
+    every(1700, () => {
+      if (Math.random() > 0.46) pulseTone(context, master, { frequency: 72 + Math.random() * 40, type: "triangle", gain: base * 0.09, duration: 0.17, attack: 0.01 });
+    }),
+  ];
+  return () => stops.forEach((stop) => stop());
+}
+
+function startHome(context, master, base) {
+  const stops = [];
+  // Audible distant TV: speech-like formants that drift between "people talking" and quiet room tone.
+  stops.push(addLoopedNoise(context, master, { color: "brown", seconds: 9, gain: base * 0.10, filterType: "lowpass", frequency: 150, q: 0.25 }));
+  const tvBed = context.createBufferSource();
+  tvBed.buffer = buildNoiseBuffer(context, 8, "pink");
+  tvBed.loop = true;
+  const formantA = context.createBiquadFilter();
+  const formantB = context.createBiquadFilter();
+  formantA.type = "bandpass"; formantA.frequency.value = 690; formantA.Q.value = 1.6;
+  formantB.type = "bandpass"; formantB.frequency.value = 1450; formantB.Q.value = 2.1;
+  const gainA = context.createGain(); const gainB = context.createGain();
+  gainA.gain.value = base * 0.24; gainB.gain.value = base * 0.11;
+  tvBed.connect(formantA); tvBed.connect(formantB);
+  formantA.connect(gainA); formantB.connect(gainB);
+  gainA.connect(master); gainB.connect(master);
+  tvBed.start();
+  stops.push(() => { try { tvBed.stop(); } catch {} try { tvBed.disconnect(); formantA.disconnect(); formantB.disconnect(); gainA.disconnect(); gainB.disconnect(); } catch {} });
+  stops.push(every(690, () => {
+    if (context.state === "closed") return;
+    const now = context.currentTime;
+    const a = 560 + Math.random() * 420;
+    const b = 1150 + Math.random() * 900;
+    try {
+      formantA.frequency.linearRampToValueAtTime(a, now + 0.42);
+      formantB.frequency.linearRampToValueAtTime(b, now + 0.48);
+      gainA.gain.linearRampToValueAtTime(base * (0.12 + Math.random() * 0.23), now + 0.35);
+      gainB.gain.linearRampToValueAtTime(base * (0.05 + Math.random() * 0.12), now + 0.4);
+    } catch {}
+  }));
+  stops.push(every(12500, () => {
+    if (Math.random() > 0.35) {
+      pulseTone(context, master, { frequency: 520, endFrequency: 760, type: "triangle", gain: base * 0.045, duration: 0.22, attack: 0.03 });
+      pulseTone(context, master, { frequency: 1040, endFrequency: 1320, type: "sine", gain: base * 0.022, duration: 0.18, attack: 0.02, when: context.currentTime + 0.08 });
+    }
+  }));
+  return () => stops.forEach((stop) => stop());
+}
+
+function startParty(context, master, base) {
+  const stops = [
+    // Party is intentionally obvious: dense room chatter plus a real four-on-the-floor pulse.
+    addLoopedNoise(context, master, { color: "pink", seconds: 8, gain: base * 0.27, filterType: "bandpass", frequency: 760, q: 0.9 }),
+    addLoopedNoise(context, master, { color: "brown", seconds: 5, gain: base * 0.10, filterType: "lowpass", frequency: 130, q: 0.4 }),
+  ];
+  let beat = 0;
+  stops.push(every(510, () => {
+    if (context.state === "closed") return;
+    const now = context.currentTime;
+    const kick = context.createOscillator();
+    const kickGain = context.createGain();
+    kick.type = "sine";
+    kick.frequency.setValueAtTime(125, now);
+    kick.frequency.exponentialRampToValueAtTime(44, now + 0.18);
+    kickGain.gain.setValueAtTime(Math.max(0.0002, base * 0.25), now);
+    kickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    kick.connect(kickGain); kickGain.connect(master);
+    kick.start(now); kick.stop(now + 0.24);
+    if (beat % 2 === 1) noisePop(context, master, { gain: base * 0.085, duration: 0.04, frequency: 6600, q: 0.5 });
+    if (beat % 4 === 2) noisePop(context, master, { gain: base * 0.07, duration: 0.09, frequency: 1900, q: 1.1 });
+    if (beat % 8 === 7) pulseTone(context, master, { frequency: 220, endFrequency: 330, type: "sawtooth", gain: base * 0.055, duration: 0.18, attack: 0.01 });
+    beat = (beat + 1) % 8;
+  }));
+  stops.push(every(6400, () => {
+    if (Math.random() > 0.35) pulseTone(context, master, { frequency: 880 + Math.random() * 240, endFrequency: 660, type: "triangle", gain: base * 0.035, duration: 0.34, attack: 0.04 });
+  }));
+  return () => stops.forEach((stop) => stop());
 }
 
 function ambientLabel(mode) {
-  const normalized = normalizeAmbientMode(mode);
-  return AMBIENT_MODES.find(([id]) => id === normalized)?.[1] || "Ambience";
+  return AMBIENT_MODES.find(([id]) => id === mode)?.[1] || "Ambience";
 }
 
-function animateScalar({ from, to, duration, onFrame }) {
-  const safeDuration = Math.max(0, Number(duration) || 0);
-  if (!safeDuration) {
-    onFrame(to);
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    const started = performance.now();
-    let frame = 0;
-    const tick = (now) => {
-      const progress = Math.min(1, (now - started) / safeDuration);
-      const eased = progress * progress * (3 - 2 * progress);
-      onFrame(from + (to - from) * eased);
-      if (progress >= 1) return resolve();
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
+function startAmbience(context, mode, volume) {
+  const master = context.createGain();
+  const now = context.currentTime;
+  master.gain.setValueAtTime(0.0001, now);
+  master.connect(context.destination);
+  const starters = { rain: startRain, night_city: startNightCity, street_racing: startStreetRacing, cafe: startCafe, campus: startCampus, fireplace: startFireplace, home: startHome, party: startParty };
+  const stopMode = (starters[mode] || startRain)(context, master, 1);
+  const setVolume = (nextVolume, fadeMs = 260) => {
+    const target = Math.max(0.0001, volumeGain(nextVolume, 0.92));
+    const at = context.currentTime;
+    try {
+      master.gain.cancelScheduledValues(at);
+      master.gain.setValueAtTime(Math.max(0.0001, master.gain.value), at);
+      master.gain.linearRampToValueAtTime(target, at + Math.max(0.04, fadeMs / 1000));
+    } catch { master.gain.value = target; }
+  };
+  const stop = (fadeMs = 420) => new Promise((resolve) => {
+    const at = context.currentTime;
+    try {
+      master.gain.cancelScheduledValues(at);
+      master.gain.setValueAtTime(Math.max(0.0001, master.gain.value), at);
+      master.gain.linearRampToValueAtTime(0.0001, at + Math.max(0.04, fadeMs / 1000));
+    } catch {}
     window.setTimeout(() => {
-      if (frame) cancelAnimationFrame(frame);
-      onFrame(to);
+      try { stopMode?.(); } catch {}
+      try { master.disconnect(); } catch {}
+      try { context.close(); } catch {}
       resolve();
-    }, safeDuration + 120);
+    }, Math.max(60, fadeMs + 40));
   });
-}
-
-function makeDeck(sourceUrl) {
-  const audio = new Audio(sourceUrl);
-  audio.loop = false;
-  audio.preload = "auto";
-  audio.playsInline = true;
-  audio.volume = 0;
-  return audio;
-}
-
-function createSeamlessAmbience(mode, volume) {
-  const normalizedMode = normalizeAmbientMode(mode);
-  const sourceUrl = AMBIENCE_TRACKS[normalizedMode];
-  if (!sourceUrl) return null;
-
-  const decks = [makeDeck(sourceUrl), makeDeck(sourceUrl)];
-  let activeIndex = 0;
-  let deckMix = [1, 0];
-  let desiredVolume = Number(volume) || 0;
-  let roomGain = volumeGain(desiredVolume, AMBIENCE_PLAYBACK_GAIN[normalizedMode] || 0.82);
-  let sessionGain = 0;
-  let stopped = false;
-  let paused = false;
-  let looping = false;
-  let scheduler = 0;
-  let loopToken = 0;
-
-  const applyVolumes = () => {
-    const master = clamp(roomGain * sessionGain, 0, 1);
-    decks.forEach((deck, index) => {
-      try { deck.volume = clamp(master * deckMix[index], 0, 1); } catch {}
-    });
-  };
-
-  const clearScheduler = () => {
-    if (scheduler) window.clearInterval(scheduler);
-    scheduler = 0;
-  };
-
-  const resetStandby = (index) => {
-    try { decks[index].pause(); } catch {}
-    try { decks[index].currentTime = 0; } catch {}
-  };
-
-  const finishLoopImmediately = async () => {
-    if (stopped || paused || looping) return;
-    const token = ++loopToken;
-    const fromIndex = activeIndex;
-    const toIndex = 1 - fromIndex;
-    looping = true;
-    resetStandby(toIndex);
-    deckMix = fromIndex === 0 ? [1, 0] : [0, 1];
-    applyVolumes();
-    try { await decks[toIndex].play(); } catch { looping = false; return; }
-    if (token !== loopToken || stopped || paused) return;
-    deckMix = toIndex === 0 ? [1, 0] : [0, 1];
-    applyVolumes();
-    resetStandby(fromIndex);
-    activeIndex = toIndex;
-    looping = false;
-  };
-
-  const crossfadeLoop = async (durationMs) => {
-    if (stopped || paused || looping) return;
-    const token = ++loopToken;
-    const fromIndex = activeIndex;
-    const toIndex = 1 - fromIndex;
-    looping = true;
-    resetStandby(toIndex);
-    try { await decks[toIndex].play(); } catch { looping = false; return; }
-    if (token !== loopToken || stopped || paused) return;
-
-    await animateScalar({
-      from: 0,
-      to: 1,
-      duration: durationMs,
-      onFrame: (progress) => {
-        if (token !== loopToken || stopped || paused) return;
-        // Constant-sum crossfade prevents the overlap from becoming louder than the source.
-        deckMix[fromIndex] = 1 - progress;
-        deckMix[toIndex] = progress;
-        applyVolumes();
-      },
-    });
-
-    if (token !== loopToken || stopped || paused) return;
-    resetStandby(fromIndex);
-    deckMix[fromIndex] = 0;
-    deckMix[toIndex] = 1;
-    activeIndex = toIndex;
-    looping = false;
-    applyVolumes();
-  };
-
-  const checkLoop = () => {
-    if (stopped || paused || looping) return;
-    const deck = decks[activeIndex];
-    const duration = Number(deck.duration || 0);
-    const currentTime = Number(deck.currentTime || 0);
-    if (!Number.isFinite(duration) || duration <= 1 || currentTime <= 0) return;
-    const overlapSeconds = Math.min(LOOP_CROSSFADE_MS / 1000, Math.max(0.28, duration * 0.08));
-    const remaining = duration - currentTime;
-    if (remaining <= overlapSeconds + 0.11) void crossfadeLoop(overlapSeconds * 1000);
-  };
-
-  decks.forEach((deck, index) => {
-    deck.addEventListener("ended", () => {
-      if (!stopped && !paused && index === activeIndex && !looping) void finishLoopImmediately();
-    });
-  });
-
-  const startScheduler = () => {
-    clearScheduler();
-    scheduler = window.setInterval(checkLoop, 90);
-  };
-
-  const start = async () => {
-    if (stopped) return false;
-    try {
-      await decks[activeIndex].play();
-      startScheduler();
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const setVolume = async (nextVolume, fadeMs = 220) => {
-    desiredVolume = Number(nextVolume) || 0;
-    const nextGain = volumeGain(desiredVolume, AMBIENCE_PLAYBACK_GAIN[normalizedMode] || 0.82);
-    const startGain = roomGain;
-    await animateScalar({ from: startGain, to: nextGain, duration: fadeMs, onFrame: (value) => { roomGain = value; applyVolumes(); } });
-  };
-
-  const fadeSessionTo = async (nextGain, fadeMs = SWITCH_CROSSFADE_MS) => {
-    const startGain = sessionGain;
-    await animateScalar({ from: startGain, to: clamp(nextGain, 0, 1), duration: fadeMs, onFrame: (value) => { sessionGain = value; applyVolumes(); } });
-  };
-
-  const pause = () => {
-    if (stopped || paused) return;
-    paused = true;
-    loopToken += 1;
-    looping = false;
-    clearScheduler();
-    decks.forEach((deck) => { try { deck.pause(); } catch {} });
-    const strongerIndex = deckMix[1] > deckMix[0] ? 1 : 0;
-    activeIndex = strongerIndex;
-    deckMix = strongerIndex === 0 ? [1, 0] : [0, 1];
-    resetStandby(1 - strongerIndex);
-    applyVolumes();
-  };
-
-  const resume = async () => {
-    if (stopped) return false;
-    paused = false;
-    try {
-      await decks[activeIndex].play();
-      startScheduler();
-      applyVolumes();
-      return true;
-    } catch {
-      paused = true;
-      return false;
-    }
-  };
-
-  const stop = async (fadeMs = 180) => {
-    if (stopped) return;
-    stopped = true;
-    loopToken += 1;
-    clearScheduler();
-    await fadeSessionTo(0, fadeMs);
-    decks.forEach((deck) => {
-      try { deck.pause(); } catch {}
-      try { deck.removeAttribute("src"); deck.load(); } catch {}
-    });
-  };
-
-  return {
-    mode: normalizedMode,
-    get paused() { return paused; },
-    start,
-    setVolume,
-    fadeSessionTo,
-    pause,
-    resume,
-    stop,
-  };
+  setVolume(volume, 520);
+  return { context, master, mode, setVolume, stop };
 }
 
 let activeAmbience = null;
-let ambienceSwitchToken = 0;
-
-export function pauseActiveAmbience() {
-  if (!activeAmbience) return;
-  activeAmbience.pause();
-  setAmbienceAudioState(false, ambientLabel(activeAmbience.mode), true);
-}
-
-export async function resumeActiveAmbience() {
-  if (!activeAmbience || isSafeModeEnabled()) return false;
-  const resumed = await activeAmbience.resume();
-  if (resumed) setAmbienceAudioState(true, ambientLabel(activeAmbience.mode), false);
-  return resumed;
-}
-
-function stopActiveAmbience(fadeMs = 160) {
-  ambienceSwitchToken += 1;
+function stopActiveAmbience(fadeMs = 240) {
   const current = activeAmbience;
   activeAmbience = null;
   if (current) void current.stop(fadeMs);
   setAmbienceAudioState(false);
 }
-
 async function switchAmbience(mode, volume) {
-  const normalizedMode = normalizeAmbientMode(mode);
-  if (typeof window === "undefined" || normalizedMode === "none" || isSafeModeEnabled()) {
-    stopActiveAmbience();
-    return;
-  }
-
-  if (activeAmbience?.mode === normalizedMode) {
-    await activeAmbience.setVolume(volume, 180);
-    if (activeAmbience.paused) await resumeActiveAmbience();
-    else setAmbienceAudioState(true, ambientLabel(normalizedMode), false);
-    return;
-  }
-
-  const token = ++ambienceSwitchToken;
+  if (typeof window === "undefined" || !mode || mode === "none" || isSafeModeEnabled()) { stopActiveAmbience(); return; }
+  if (activeAmbience?.mode === mode && activeAmbience.context?.state !== "closed") { activeAmbience.setVolume(volume, 220); setAmbienceAudioState(true, ambientLabel(mode)); return; }
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) return;
   const previous = activeAmbience;
-  const next = createSeamlessAmbience(normalizedMode, volume);
-  if (!next) return;
+  const context = new AudioContextCtor();
+  try { await context.resume(); } catch {}
+  const next = startAmbience(context, mode, volume);
   activeAmbience = next;
-
-  const started = await next.start();
-  if (!started || token !== ambienceSwitchToken || isSafeModeEnabled()) {
-    if (activeAmbience === next) activeAmbience = previous || null;
-    await next.stop(0);
-    return;
-  }
-
-  setAmbienceAudioState(true, ambientLabel(normalizedMode), false);
-  // True room crossfade: old ambience fades down while the new one fades in.
-  await Promise.all([
-    next.fadeSessionTo(1, SWITCH_CROSSFADE_MS),
-    previous?.fadeSessionTo(0, SWITCH_CROSSFADE_MS),
-  ]);
-  if (previous) await previous.stop(0);
+  setAmbienceAudioState(true, ambientLabel(mode));
+  if (previous) void previous.stop(620);
 }
-
-registerAudioStopper("ambience", () => stopActiveAmbience(100));
+registerAudioStopper("ambience", () => stopActiveAmbience(160));
 
 export default function StoryAmbience({ mode = "none", volume = 18, soundOn = false }) {
-  const normalizedMode = normalizeAmbientMode(mode);
-  const latestRef = useRef({ mode: normalizedMode, volume, soundOn });
-  const visibilityPausedRef = useRef(false);
-  latestRef.current = { mode: normalizedMode, volume, soundOn };
-
+  const latestRef = useRef({ mode, volume, soundOn });
+  latestRef.current = { mode, volume, soundOn };
   useEffect(() => {
-    if (normalizedMode === "none" || isSafeModeEnabled()) {
-      stopActiveAmbience(150);
-      return;
-    }
-    if (!soundOn) {
-      pauseActiveAmbience();
-      return;
-    }
-    if (document.visibilityState === "hidden") return;
-    void switchAmbience(normalizedMode, volume);
-  }, [normalizedMode, volume, soundOn]);
-
+    if (!soundOn || mode === "none" || isSafeModeEnabled() || document.visibilityState === "hidden") { stopActiveAmbience(260); return; }
+    void switchAmbience(mode, volume);
+  }, [mode, volume, soundOn]);
   useEffect(() => {
     const onVisibility = () => {
       const latest = latestRef.current;
-      if (document.visibilityState === "hidden") {
-        if (latest.soundOn && activeAmbience) {
-          visibilityPausedRef.current = true;
-          pauseActiveAmbience();
-        }
-        return;
-      }
-      if (!visibilityPausedRef.current) return;
-      visibilityPausedRef.current = false;
-      if (latest.soundOn && latest.mode !== "none" && !isSafeModeEnabled()) void switchAmbience(latest.mode, latest.volume);
+      if (document.visibilityState === "hidden") stopActiveAmbience(120);
+      else if (latest.soundOn && latest.mode !== "none" && !isSafeModeEnabled()) void switchAmbience(latest.mode, latest.volume);
     };
     document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      stopActiveAmbience(100);
-    };
+    return () => { document.removeEventListener("visibilitychange", onVisibility); stopActiveAmbience(180); };
   }, []);
-
-  if (normalizedMode === "none") return null;
-  return <div className={`story-ambience story-ambience--${normalizedMode}`} aria-hidden="true" />;
+  if (mode === "none") return null;
+  return <div className={`story-ambience story-ambience--${mode}`} aria-hidden="true" />;
 }

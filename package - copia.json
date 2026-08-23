@@ -1,0 +1,34 @@
+{
+  "name": "velvet-stories",
+  "private": true,
+  "version": "2.10.23",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "oxlint",
+    "verify:story": "node scripts/verify-story-engine.mjs",
+    "verify:ui": "node scripts/verify-ui.mjs",
+    "preview": "vite preview",
+    "verify:mobile": "node scripts/verify-mobile-qa.mjs",
+    "verify:stability": "npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:ambience && npm run verify:living-scenes",
+    "verify:ambience": "node scripts/verify-ambience.mjs",
+    "verify:living-scenes": "node scripts/verify-living-scenes.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.0",
+    "lucide-react": "^1.28.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vite-pwa/assets-generator": "^1.0.2",
+    "@vitejs/plugin-react": "^6.0.4",
+    "oxlint": "^1.75.0",
+    "supabase": "^2.113.0",
+    "vite": "^8.2.0",
+    "vite-plugin-pwa": "^1.3.0"
+  }
+}
