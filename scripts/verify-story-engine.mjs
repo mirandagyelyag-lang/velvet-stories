@@ -885,6 +885,19 @@ if (failures) {
   process.exit(1);
 }
 
+
+check("v2.10.19 prompt locks relative body positions until visible movement changes them",
+  edge.includes("the immediate relative positions between people") &&
+  edge.includes("PROXIMITY IS CANON TOO") &&
+  edge.includes("Removing a hand changes the touch, not automatically the walking formation"));
+check("v2.10.19 narrative doctor repairs side-by-side to following-behind teleports",
+  edge.includes("function hasSpatialContinuityBreak") &&
+  edge.includes('issues.push("spatial_relationship_broken")') &&
+  edge.includes('"spatial_relationship_broken"'));
+check("v2.10.19 regression: keep-up and following language are spatial separation markers",
+  edge.includes("keep up|catch up") &&
+  edge.includes("walked ahead|moved ahead|pushed ahead|strode ahead"));
+
 console.log(`\n${checks.length} story-engine checks passed.`);
 
 check("opening reply can regenerate before any user message",

@@ -703,7 +703,7 @@ NON-NEGOTIABLE PRIORITY
 4. Write ${character.name} as a specific person. Guarded, proud, teasing or emotionally avoidant does not mean cruel, contemptuous, robotic or therapeutic.
 5. Dialogue must sound like something this character would actually say. Never use customer-service phrases such as “I'm listening,” “I understand,” “go on,” “tell me more,” or a bare “okay” as the substance of the turn.
 6. Distinct voice outranks archetype. Never make this character borrow the same teasing cadence, pet names, emotional speeches, body-language habits or flirt tactics used by another generic romantic lead.
-7. Physical continuity is binding. Bodies obey space: track who is present, who has exited, where the active scene is, and which communication channel is being used.
+7. Physical continuity is binding. Bodies obey space: track who is present, who has exited, where the active scene is, which communication channel is being used, and the immediate relative positions between people. If two characters are walking side by side, shoulder-to-shoulder, touching, seated together, or one is guiding the other through a crowd, preserve that spatial relationship until a visible action changes it.
 8. A character can only hear, see or answer something they were physically or digitally able to receive. Leaving the room, hanging up, muting a chat or being elsewhere matters until the visible transcript changes it.
 9. Never teleport a character, silently change location/time, or make an absent NPC reappear merely to create drama. If a location, time or presence detail is unknown, keep it unknown.
 10. Established side characters remain real participants until the scene visibly moves them. Do not erase them just because the romantic lead speaks, and do not force every social beat back into romance.
@@ -716,6 +716,7 @@ SOCIAL NATURALISM — REACT, DON'T INVENT
 - When several readings are plausible, choose the least inflammatory reading that still fits the character and visible scene. Sarcasm, an eye-roll, a short answer or silence is not permission to invent a deeper offense.
 - Do not turn ordinary social awkwardness into territorial behavior, threats, dominance, rescue behavior or bodyguard choreography unless visible canon establishes real danger. Hyperbole such as “she'll kill me” is not proof of literal danger.
 - If ${userIdentity.name} creates physical space, withdraws touch or steps away, respect that distance. Do not grab, block, steer, corner or reassert closeness merely to preserve romantic tension.
+- PROXIMITY IS CANON TOO: the absence of a distance-changing action means existing proximity persists. Do not turn “beside him / his hand at her back / walking together” into “keep up / he did not look back / she followed behind” unless someone visibly moved ahead, stopped, fell back, stepped away, or the scene otherwise established separation. Removing a hand changes the touch, not automatically the walking formation.
 - Treat rumors as rumors. A rumored date, partner, betrayal or attraction is not confirmed canon until the visible story confirms it.
 - Side characters who are visibly present are people, not scenery. Let them speak or act when the social moment naturally reaches them, but never use them only as props to make ${character.name} jealous, possessive or heroic.
 - INTERACTIVE SUB-SCENES HAVE DURATION: when the user opens a phone thread, asks ${character.name} to read many incoming messages, starts a call, group chat, DM exchange, argument, game, interview or other back-and-forth inside the scene, treat it as a real scene with continuity rather than a decorative beat. If ${character.name} agrees to engage, let the exchange develop across multiple meaningful messages/replies/reactions until it reaches a natural pause, the user redirects it, or a visible event interrupts it. Do not compress “many messages” into one or two generic lines and declare it finished.
@@ -916,7 +917,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1756,6 +1757,23 @@ function hasSmugComebackTone(reply = "", latestUserMessage = "") {
   return lightUserTurn && hits >= 1 && /\b(?:keep up|how observant|congratulations|what a surprise)\b/.test(dialogue || text);
 }
 
+function hasSpatialContinuityBreak(reply = "", latestUserMessage = "") {
+  const text = normalizeText(reply);
+  const user = normalizeText(latestUserMessage);
+  if (!text || !user) return false;
+
+  // The latest user turn can itself reaffirm the current formation even when the user
+  // says they were unaware of the touch. That does not authorize a silent separation.
+  const proximityCue = /\b(?:hand (?:near|on|at) (?:my|her|their) back|hand on (?:my|her|their) (?:back|waist|shoulder)|beside (?:me|her|him|them)|next to (?:me|her|him|them)|side by side|shoulders? (?:brushed|touching)|walking together|walked together|under the same umbrella|guiding (?:me|her|him|them)|steer(?:ing|ed)? (?:me|her|him|them) through)\b/.test(user);
+  if (!proximityCue) return false;
+
+  const explicitSeparation = /\b(?:i|she|he|they|we) (?:step|steps|stepped|walk|walks|walked|move|moves|moved|fall|falls|fell|lag|lags|lagged|stop|stops|stopped|hang|hangs|hung) (?:away|back|behind|ahead|aside|apart|farther|further)|\b(?:i|she|he|they|we) (?:let|lets|allowed) (?:him|her|them|me) (?:go|walk) ahead|\b(?:distance|space) (?:opened|grew|formed)\b/.test(user);
+  if (explicitSeparation) return false;
+
+  const silentSeparation = /\b(?:keep up|catch up|if (?:she|he|they|you) (?:was|were) following|didn'?t look back (?:to|and) (?:see|check)|without looking back|walked ahead|moved ahead|pushed ahead|strode ahead|left (?:her|him|them|you) behind|followed (?:him|her|them) behind|trailed behind|a few (?:steps|paces) behind)\b/.test(text);
+  return silentSeparation;
+}
+
 const CONTINUITY_GUARD_ISSUES = new Set([
   "location_changed_without_scene_change",
   "time_changed_without_scene_change",
@@ -1788,6 +1806,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "cued_npc_marked_exited",
   "interactive_thread_collapsed",
   "atmospheric_stalling_loop",
+  "spatial_relationship_broken",
 ]);
 
 function blockingNarrativeIssues(issues = []) {
@@ -1821,6 +1840,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasSarcasticComebackLoop(text, options.recentCharacterReplies || [])) issues.push("sarcastic_comeback_loop");
   if (hasSmugComebackTone(text, options.latestUserMessage || "")) issues.push("smug_comeback_tone");
   if (hasAtmosphericStallingLoop(text, options.recentCharacterReplies || [], turnIntent)) issues.push("atmospheric_stalling_loop");
+  if (hasSpatialContinuityBreak(text, options.latestUserMessage || "")) issues.push("spatial_relationship_broken");
 
   const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message", "interactive_thread", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 16) issues.push("underdeveloped_social_beat");
@@ -2086,7 +2106,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
+          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, preserve immediate relative body positions until visible movement changes them, and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           temperature: getTemperature(character.creativity, isRegeneration),
