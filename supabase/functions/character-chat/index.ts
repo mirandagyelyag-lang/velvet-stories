@@ -68,6 +68,57 @@ Deno.serve(async (request) => {
     const action = String(body?.action || "generate");
     const generationId = cleanId(body?.generationId);
 
+    // v2.10.21 BACKGROUND DELIVERY
+    // The phone only needs to enqueue the turn. The actual roleplay request is
+    // consumed server-to-server under EdgeRuntime.waitUntil, so Android can
+    // suspend or close the PWA without killing generation before persistence.
+    if (action === "enqueue_generate") {
+      const queuedConversationId = cleanId(body?.conversationId);
+      if (!queuedConversationId) return json({ error: "conversationId is required" }, 400);
+      if (!generationId) return json({ error: "generationId is required" }, 400);
+
+      const workerUrl = `${supabaseUrl}/functions/v1/character-chat`;
+      const workerBody = { ...body, action: "generate" };
+      const workerPromise = fetch(workerUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authorization,
+          apikey: publishableKey,
+        },
+        body: JSON.stringify(workerBody),
+      }).then(async (workerResponse) => {
+        // Fully consume the SSE body here. This keeps the inner generation alive
+        // until character-chat has saved the final reply and continuity state.
+        const workerText = await workerResponse.text();
+        if (!workerResponse.ok) {
+          console.error("[character-chat] background worker failed", {
+            generationId,
+            conversationId: queuedConversationId,
+            status: workerResponse.status,
+            detail: workerText.slice(0, 320),
+          });
+        } else {
+          console.log("[character-chat] background worker completed", {
+            generationId,
+            conversationId: queuedConversationId,
+          });
+        }
+      }).catch((workerError) => {
+        console.error("[character-chat] background worker crashed", {
+          generationId,
+          conversationId: queuedConversationId,
+          message: getErrorMessage(workerError),
+        });
+      });
+
+      const edgeRuntime = (globalThis as any).EdgeRuntime;
+      if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(workerPromise);
+      else void workerPromise;
+
+      return json({ accepted: true, generationId, conversationId: queuedConversationId }, 202);
+    }
+
     if (action === "cancel") {
       if (!generationId) return json({ error: "generationId is required" }, 400);
       const { error } = await cancellationAdmin.from("generation_requests").upsert({

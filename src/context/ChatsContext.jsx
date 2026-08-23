@@ -769,6 +769,102 @@ export function ChatsProvider({
 
       let response;
 
+      // v2.10.21 BACKGROUND DELIVERY
+      // Prefer a durable server-side job. The Edge Function immediately accepts
+      // the turn, then continues generation under waitUntil even if Android
+      // suspends Velvet. While the app is open we poll the canonical messages;
+      // if it is backgrounded, polling simply resumes when the app wakes up.
+      let backgroundAccepted = false;
+      try {
+        const enqueueResponse = await fetch(functionUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+            ...(publishableKey ? { apikey: publishableKey } : {}),
+          },
+          body: JSON.stringify({
+            action: "enqueue_generate",
+            conversationId: conversation.conversationId,
+            regenerateMessageId: options.regenerateMessageId || null,
+            expectedUserMessageId,
+            regenerationInstruction: options.instruction?.trim() || "",
+            regenerationFeedback: Array.isArray(options.feedbackCodes) ? options.feedbackCodes : [],
+            directorInstruction: options.directorInstruction?.trim() || "",
+            storyPreferences: buildStoryPreferencesPayload(settings),
+            generationId,
+          }),
+          signal: requestController.signal,
+          keepalive: true,
+        });
+
+        if (enqueueResponse.ok) {
+          backgroundAccepted = true;
+          setGenerationStates((current) => ({
+            ...current,
+            [characterId]: "writing",
+          }));
+
+          const previousContent = String(regenerationMessage?.content || "");
+          const deadline = Date.now() + 125000;
+
+          while (true) {
+            if (requestWasCancelled()) throw cancellationError();
+
+            // Always check the database before evaluating the deadline. If the
+            // PWA slept for minutes, the finished reply can be recovered the
+            // instant the user returns instead of being mislabeled as a timeout.
+            const refreshedMessages = await reloadConversationMessages(characterId);
+            let completedMessage = null;
+
+            if (options.regenerateMessageId) {
+              completedMessage = refreshedMessages.find((item) =>
+                item.id === options.regenerateMessageId &&
+                String(item.content || "") !== previousContent
+              ) || null;
+            } else {
+              completedMessage = [...refreshedMessages].reverse().find((item) =>
+                item.sender === "character" &&
+                new Date(item.createdAt || 0).getTime() >= requestStartedAt - 1500
+              ) || null;
+            }
+
+            if (completedMessage) {
+              finalMessage = completedMessage;
+              recordAiSession({
+                success: 1,
+                lastSuccessAt: new Date().toISOString(),
+                lastDurationMs: Date.now() - requestStartedAt,
+                lastError: "",
+              });
+              return {
+                message: finalMessage,
+                learnedMemoryCount: 0,
+              };
+            }
+
+            if (Date.now() >= deadline) {
+              throw new Error("Velvet is still finishing this reply in the background. Reopen this chat in a moment.");
+            }
+
+            await new Promise((resolve) =>
+              setTimeout(resolve, typeof document !== "undefined" && document.hidden ? 2200 : 750)
+            );
+          }
+        }
+      } catch (error) {
+        if (requestWasCancelled() || error?.name === "AbortError") {
+          throw cancellationError();
+        }
+        // If enqueue itself failed before the server accepted the job, keep the
+        // old foreground SSE route as a compatibility fallback.
+        console.warn("Background delivery unavailable; falling back to live stream:", error);
+      }
+
+      if (backgroundAccepted) {
+        throw new Error("Background generation ended unexpectedly.");
+      }
+
       try {
         response = await fetch(functionUrl, {
           method: "POST",

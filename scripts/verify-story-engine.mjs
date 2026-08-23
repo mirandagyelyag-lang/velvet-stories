@@ -898,6 +898,23 @@ check("v2.10.19 regression: keep-up and following language are spatial separatio
   edge.includes("keep up|catch up") &&
   edge.includes("walked ahead|moved ahead|pushed ahead|strode ahead"));
 
+
+
+// v2.10.21 background reply delivery: generation must survive PWA suspension.
+check("v2.10.21 edge queues generation under waitUntil",
+  edge.includes('action === "enqueue_generate"') &&
+  edge.includes("EdgeRuntime") &&
+  edge.includes("waitUntil(workerPromise)") &&
+  edge.includes("Fully consume the SSE body here"));
+check("v2.10.21 client enqueues with keepalive before polling persisted reply",
+  chatsContext.includes('action: "enqueue_generate"') &&
+  chatsContext.includes("keepalive: true") &&
+  chatsContext.includes("const refreshedMessages = await reloadConversationMessages(characterId)") &&
+  chatsContext.includes("document.hidden ? 2200 : 750"));
+check("v2.10.21 background delivery keeps explicit Stop wired to server cancellation",
+  chatsContext.includes("void sendServerCancellation(activeRequest.generationId, characterId)") &&
+  edge.includes('action === "cancel"'));
+
 console.log(`\n${checks.length} story-engine checks passed.`);
 
 check("opening reply can regenerate before any user message",
