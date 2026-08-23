@@ -16,7 +16,7 @@ import "../styles/sidebar.css";
 
 const navigation = [
   { id: "chats", label: "Stories", icon: BookOpen },
-  { id: "characters", label: "Discover", icon: Compass },
+  { id: "characters", label: "Characters", icon: Compass },
   { id: "inbox", label: "Chats", icon: MessageCircle },
   { id: "memories", label: "Memories", icon: BookMarked },
   { id: "profile", label: "Profile", icon: UserRound },

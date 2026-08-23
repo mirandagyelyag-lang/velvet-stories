@@ -116,6 +116,7 @@ function App() {
   const [activePage, setActivePage] = useState(() => initialNavigation.current.page);
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
+  const [remixSource, setRemixSource] = useState(null);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
@@ -420,6 +421,7 @@ function App() {
           onDeleted={() => navigate("chats", { replace: true })}
           onOpenMemories={() => navigate("memories")}
           onOpenDiagnostics={() => navigate("diagnostics")}
+          onOpenCharacter={openCharacterProfile}
         />
       );
     }
@@ -429,11 +431,18 @@ function App() {
         <MyCharacters
           onCreateCharacter={() => {
             setEditingCharacter(null);
+            setRemixSource(null);
             setCreatorOpen(true);
           }}
           onOpenCharacter={openCharacterProfile}
           onEditCharacter={(character) => {
             setEditingCharacter(character);
+            setRemixSource(null);
+            setCreatorOpen(true);
+          }}
+          onRemixCharacter={(character) => {
+            setEditingCharacter(null);
+            setRemixSource(character);
             setCreatorOpen(true);
           }}
         />
@@ -499,14 +508,22 @@ function App() {
         <Suspense fallback={<VelvetRouteLoading overlay />}>
         <CreateCharacterModal
           character={editingCharacter}
+          remixSource={remixSource}
           onClose={() => {
             setCreatorOpen(false);
             setEditingCharacter(null);
+            setRemixSource(null);
           }}
-          onCreated={(character) => {
+          onCreated={async (character, options = {}) => {
             setCreatorOpen(false);
             setEditingCharacter(null);
-            if (!editingCharacter) openCharacter(character);
+            setRemixSource(null);
+            if (!editingCharacter && options.startChat) {
+              const created = await createNewConversation(character);
+              openCharacter(character, created.conversationId);
+              return;
+            }
+            if (!editingCharacter) openCharacterProfile(character);
           }}
         />
         </Suspense>

@@ -33,7 +33,7 @@ export function PWAProvider({ children }) {
     },
   });
 
-  const serverUpdateAvailable = Boolean(serverVersion && serverVersion !== VELVET_VERSION);
+  const serverUpdateAvailable = Boolean(serverVersion && compareVersions(serverVersion, VELVET_VERSION) > 0);
 
   async function checkForUpdate({ silent = true } = {}) {
     if (!navigator.onLine) return { available: false, version: serverVersion || "" };
@@ -46,14 +46,21 @@ export function PWAProvider({ children }) {
       if (!response.ok) throw new Error(`Version check returned ${response.status}`);
       const payload = await response.json();
       const remote = String(payload?.version || "").trim();
-      if (remote) setServerVersion(remote);
+      if (remote) {
+        setServerVersion(remote);
+        if (compareVersions(remote, VELVET_VERSION) <= 0) {
+          setNeedRefresh(false);
+          setUpdateProblem("");
+          clearSatisfiedPendingUpdate(remote);
+        }
+      }
       if ("serviceWorker" in navigator) {
         try {
           const registration = await navigator.serviceWorker.ready;
           await registration.update();
         } catch {}
       }
-      return { available: Boolean(remote && remote !== VELVET_VERSION), version: remote };
+      return { available: Boolean(remote && compareVersions(remote, VELVET_VERSION) > 0), version: remote };
     } catch (error) {
       if (!silent) setUpdateProblem(error?.message || "Could not check for updates.");
       return { available: false, version: serverVersion || "", error };
@@ -84,6 +91,7 @@ export function PWAProvider({ children }) {
       }
       await clearOldShellCaches();
       await updateServiceWorker(true);
+      setNeedRefresh(false);
       window.setTimeout(() => window.location.reload(), 1200);
     } catch (error) {
       setUpdateProblem(error?.message || "The update was interrupted before Velvet could reopen.");
@@ -114,13 +122,19 @@ export function PWAProvider({ children }) {
   useEffect(() => {
     try {
       const pending = JSON.parse(localStorage.getItem(UPDATE_PENDING_KEY) || "null");
-      if (pending?.target === VELVET_VERSION || (pending?.target === "latest" && Date.now() - Number(pending?.at || 0) > 120000)) {
+      const target = String(pending?.target || "");
+      const age = Date.now() - Number(pending?.at || 0);
+      if (pending && target !== "latest" && compareVersions(VELVET_VERSION, target) >= 0) {
         localStorage.removeItem(UPDATE_PENDING_KEY);
-      } else if (pending && pending.target !== VELVET_VERSION && Date.now() - Number(pending.at || 0) > 8000) {
+        setNeedRefresh(false);
+        setUpdateProblem("");
+      } else if (target === "latest" && age > 120000) {
+        localStorage.removeItem(UPDATE_PENDING_KEY);
+      } else if (pending && age > 8000) {
         setUpdateProblem(`An update started from v${pending.from || "?"} but this tab is still on v${VELVET_VERSION}.`);
       }
     } catch {}
-  }, []);
+  }, [setNeedRefresh]);
 
   useEffect(() => {
     let timer = 0;
@@ -198,6 +212,39 @@ export function PWAProvider({ children }) {
   }), [installPrompt, installed, installDismissed, showIOSInstructions, online, offlineReady, needRefresh, serverVersion, serverUpdateAvailable, checkingForUpdate, updating, updateProblem]);
 
   return <PWAContext.Provider value={value}>{children}</PWAContext.Provider>;
+}
+
+function versionParts(value) {
+  return String(value || "")
+    .replace(/^v/i, "")
+    .split(".")
+    .slice(0, 3)
+    .map((part) => Number.parseInt(part, 10) || 0);
+}
+
+function compareVersions(left, right) {
+  const a = versionParts(left);
+  const b = versionParts(right);
+  for (let index = 0; index < 3; index += 1) {
+    if ((a[index] || 0) > (b[index] || 0)) return 1;
+    if ((a[index] || 0) < (b[index] || 0)) return -1;
+  }
+  return 0;
+}
+
+function clearSatisfiedPendingUpdate(remoteVersion = VELVET_VERSION) {
+  try {
+    const pending = JSON.parse(localStorage.getItem(UPDATE_PENDING_KEY) || "null");
+    if (!pending) return;
+    const target = String(pending.target || "");
+    if (target !== "latest" && compareVersions(VELVET_VERSION, target) >= 0) {
+      localStorage.removeItem(UPDATE_PENDING_KEY);
+      return;
+    }
+    if (target === "latest" && compareVersions(remoteVersion, VELVET_VERSION) <= 0) {
+      localStorage.removeItem(UPDATE_PENDING_KEY);
+    }
+  } catch {}
 }
 
 function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }

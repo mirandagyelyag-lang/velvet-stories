@@ -253,6 +253,7 @@ export function ChatsProvider({
         storyTimeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline : [],
         relationshipState: conversation.relationship_state || {},
         castState: conversation.cast_state || {},
+        continuityGuard: { status: "stable", protected: [] },
         storyChapters: Array.isArray(conversation.story_chapters) ? conversation.story_chapters : [],
         activeChapter: conversation.active_chapter || {},
         unfinishedThreads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads : [],
@@ -485,70 +486,85 @@ export function ChatsProvider({
     content,
     options = {}
   ) {
-    const conversation =
-      chats[characterId];
+    const conversation = chats[characterId];
 
-    if (
-      !conversation
-        ?.conversationId
-    ) {
-      throw new Error(
-        "The conversation is not ready yet."
-      );
+    if (!conversation?.conversationId) {
+      throw new Error("The conversation is not ready yet.");
     }
 
-    const {
-      data,
-      error,
-    } = await supabase
-      .from("messages")
-      .insert({
-        conversation_id:
-          conversation
-            .conversationId,
-
-        user_id:
-          user.id,
-
+    // VELVET_FAST_SEND_V1
+    // Paint the user's message immediately instead of making the phone wait for
+    // the insert + story-revision round trip before anything appears to happen.
+    const optimisticId = sender === "user" ? `pending-${crypto.randomUUID()}` : null;
+    if (optimisticId) {
+      appendMessageToState(characterId, {
+        id: optimisticId,
+        conversationId: conversation.conversationId,
+        userId: user.id,
         sender,
+        content: content.trim(),
+        createdAt: new Date().toISOString(),
+        editedAt: null,
+        isBookmarked: false,
+        bookmarkLabel: "",
+        chapterNumber: null,
+        replyToMessageId: options.replyToMessageId || null,
+        replyPreview: options.replyPreview ? String(options.replyPreview).slice(0, 280) : "",
+        replySender: options.replySender || "",
+        isStreaming: false,
+        isPending: true,
+      });
+    }
 
-        content:
-          content.trim(),
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: conversation.conversationId,
+          user_id: user.id,
+          sender,
+          content: content.trim(),
+          reply_to_message_id: options.replyToMessageId || null,
+          reply_preview: options.replyPreview ? String(options.replyPreview).slice(0, 280) : null,
+          reply_sender: options.replySender || null,
+        })
+        .select()
+        .single();
 
-        reply_to_message_id: options.replyToMessageId || null,
-        reply_preview: options.replyPreview ? String(options.replyPreview).slice(0, 280) : null,
-        reply_sender: options.replySender || null,
-      })
-      .select()
-      .single();
+      if (error) throw error;
 
-    if (error) {
+      const newMessage = convertDatabaseMessage(data);
+
+      if (optimisticId) {
+        setChats((currentChats) => ({
+          ...currentChats,
+          [characterId]: {
+            ...currentChats[characterId],
+            messages: (currentChats[characterId]?.messages || []).map((item) =>
+              item.id === optimisticId ? newMessage : item
+            ),
+          },
+        }));
+      } else {
+        appendMessageToState(characterId, newMessage);
+      }
+
+      if (sender === "user") {
+        // Keep revision safety authoritative before AI generation begins.
+        await bumpStoryRevision(characterId);
+      } else {
+        await supabase
+          .from("conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", conversation.conversationId)
+          .eq("user_id", user.id);
+      }
+
+      return newMessage;
+    } catch (error) {
+      if (optimisticId) removeMessageFromState(characterId, optimisticId);
       throw error;
     }
-
-    const newMessage =
-      convertDatabaseMessage(
-        data
-      );
-
-    appendMessageToState(
-      characterId,
-      newMessage
-    );
-
-    if (sender === "user") {
-      // Every new canonical user turn gets a fresh revision token. Background
-      // state writers from an older turn are then unable to overwrite it.
-      await bumpStoryRevision(characterId);
-    } else {
-      await supabase
-        .from("conversations")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", conversation.conversationId)
-        .eq("user_id", user.id);
-    }
-
-    return newMessage;
   }
 
   async function generateCharacterReply(
@@ -574,23 +590,33 @@ export function ChatsProvider({
     const expectedUserMessageId = options.expectedUserMessageId ||
       [...anchorSearchSpace].reverse().find((item) => item.sender === "user")?.id ||
       null;
+    const openingRegeneration = Boolean(
+      options.regenerateMessageId &&
+      regenerationIndex === 0 &&
+      regenerationMessage?.sender === "character" &&
+      !canonicalMessages.slice(0, regenerationIndex).some((item) => item.sender === "user")
+    );
 
     if (options.regenerateMessageId) {
-      // Hide the rejected take before any network await. The replacement now
-      // feels immediate: only Velvet's generation state remains on screen.
-      setChats((currentChats) => {
-        const currentChat = currentChats[characterId];
-        if (!currentChat) return currentChats;
-        return {
-          ...currentChats,
-          [characterId]: {
-            ...currentChat,
-            messages: (currentChat.messages || []).filter((item) =>
-              item.id !== options.regenerateMessageId
-            ),
-          },
-        };
-      });
+      // Normal rewrites can hide the rejected take immediately. The very first
+      // opening is different: removing it leaves the chat with zero messages,
+      // which makes the character-introduction card flash inside the chat. Keep
+      // the old opening visible until the first replacement token actually arrives.
+      if (!openingRegeneration) {
+        setChats((currentChats) => {
+          const currentChat = currentChats[characterId];
+          if (!currentChat) return currentChats;
+          return {
+            ...currentChats,
+            [characterId]: {
+              ...currentChat,
+              messages: (currentChat.messages || []).filter((item) =>
+                item.id !== options.regenerateMessageId
+              ),
+            },
+          };
+        });
+      }
 
       // A regeneration changes the canonical visible response. Bump the story
       // revision so older background tasks cannot resurrect the rejected take.
@@ -616,6 +642,9 @@ export function ChatsProvider({
     let learnedMemoryCount = 0;
     let streamError = "";
     let reader = null;
+    let streamFlushTimer = null;
+    let pendingStreamContent = "";
+    let lastStreamFlushAt = 0;
 
     // A stale UI-only stream from an interrupted request must never block
     // future sends. The rejected response was already removed above, before
@@ -628,7 +657,7 @@ export function ChatsProvider({
         [characterId]: {
           ...currentChat,
           messages: (currentChat.messages || []).filter((item) =>
-            !item.isStreaming && item.id !== options.regenerateMessageId
+            !item.isStreaming && (openingRegeneration || item.id !== options.regenerateMessageId)
           ),
         },
       };
@@ -666,7 +695,36 @@ export function ChatsProvider({
       );
     }
 
+    function clearStreamFlushTimer() {
+      if (streamFlushTimer) {
+        clearTimeout(streamFlushTimer);
+        streamFlushTimer = null;
+      }
+    }
+
+    function scheduleStreamingFlush(content) {
+      pendingStreamContent = content;
+      if (!streamStarted || streamFlushTimer) return;
+
+      // VELVET_STREAM_BATCH_V1
+      // Gemini can emit tiny deltas. Updating the whole React chat for every
+      // syllable makes mobile scroll jump and can delay subsequent chunks.
+      const elapsed = Date.now() - lastStreamFlushAt;
+      // VELVET_STREAM_POLISH_V2: slightly slower paint cadence on touch devices
+      // keeps long replies fluid without making the stream feel delayed.
+      const targetCadence = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 88 : 60;
+      const waitMs = Math.max(0, targetCadence - elapsed);
+      streamFlushTimer = setTimeout(() => {
+        streamFlushTimer = null;
+        if (!streamStarted || requestWasCancelled()) return;
+        updateStreamingMessage(characterId, streamMessageId, pendingStreamContent);
+        lastStreamFlushAt = Date.now();
+      }, waitMs);
+    }
+
     function cleanupStreamingBubble() {
+      clearStreamFlushTimer();
+      pendingStreamContent = "";
       if (!streamStarted) return;
       removeMessageFromState(characterId, streamMessageId);
       streamStarted = false;
@@ -710,6 +768,102 @@ export function ChatsProvider({
       const publishableKey = getBrowserPublishableKey();
 
       let response;
+
+      // v2.10.21 BACKGROUND DELIVERY
+      // Prefer a durable server-side job. The Edge Function immediately accepts
+      // the turn, then continues generation under waitUntil even if Android
+      // suspends Velvet. While the app is open we poll the canonical messages;
+      // if it is backgrounded, polling simply resumes when the app wakes up.
+      let backgroundAccepted = false;
+      try {
+        const enqueueResponse = await fetch(functionUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+            ...(publishableKey ? { apikey: publishableKey } : {}),
+          },
+          body: JSON.stringify({
+            action: "enqueue_generate",
+            conversationId: conversation.conversationId,
+            regenerateMessageId: options.regenerateMessageId || null,
+            expectedUserMessageId,
+            regenerationInstruction: options.instruction?.trim() || "",
+            regenerationFeedback: Array.isArray(options.feedbackCodes) ? options.feedbackCodes : [],
+            directorInstruction: options.directorInstruction?.trim() || "",
+            storyPreferences: buildStoryPreferencesPayload(settings),
+            generationId,
+          }),
+          signal: requestController.signal,
+          keepalive: true,
+        });
+
+        if (enqueueResponse.ok) {
+          backgroundAccepted = true;
+          setGenerationStates((current) => ({
+            ...current,
+            [characterId]: "writing",
+          }));
+
+          const previousContent = String(regenerationMessage?.content || "");
+          const deadline = Date.now() + 125000;
+
+          while (true) {
+            if (requestWasCancelled()) throw cancellationError();
+
+            // Always check the database before evaluating the deadline. If the
+            // PWA slept for minutes, the finished reply can be recovered the
+            // instant the user returns instead of being mislabeled as a timeout.
+            const refreshedMessages = await reloadConversationMessages(characterId);
+            let completedMessage = null;
+
+            if (options.regenerateMessageId) {
+              completedMessage = refreshedMessages.find((item) =>
+                item.id === options.regenerateMessageId &&
+                String(item.content || "") !== previousContent
+              ) || null;
+            } else {
+              completedMessage = [...refreshedMessages].reverse().find((item) =>
+                item.sender === "character" &&
+                new Date(item.createdAt || 0).getTime() >= requestStartedAt - 1500
+              ) || null;
+            }
+
+            if (completedMessage) {
+              finalMessage = completedMessage;
+              recordAiSession({
+                success: 1,
+                lastSuccessAt: new Date().toISOString(),
+                lastDurationMs: Date.now() - requestStartedAt,
+                lastError: "",
+              });
+              return {
+                message: finalMessage,
+                learnedMemoryCount: 0,
+              };
+            }
+
+            if (Date.now() >= deadline) {
+              throw new Error("Velvet is still finishing this reply in the background. Reopen this chat in a moment.");
+            }
+
+            await new Promise((resolve) =>
+              setTimeout(resolve, typeof document !== "undefined" && document.hidden ? 2200 : 750)
+            );
+          }
+        }
+      } catch (error) {
+        if (requestWasCancelled() || error?.name === "AbortError") {
+          throw cancellationError();
+        }
+        // If enqueue itself failed before the server accepted the job, keep the
+        // old foreground SSE route as a compatibility fallback.
+        console.warn("Background delivery unavailable; falling back to live stream:", error);
+      }
+
+      if (backgroundAccepted) {
+        throw new Error("Background generation ended unexpectedly.");
+      }
 
       try {
         response = await fetch(functionUrl, {
@@ -801,7 +955,10 @@ export function ChatsProvider({
 
           if (eventData.type === "reset") {
             completeContent = "";
+            pendingStreamContent = "";
+            clearStreamFlushTimer();
             if (streamStarted) updateStreamingMessage(characterId, streamMessageId, "");
+            lastStreamFlushAt = Date.now();
             continue;
           }
 
@@ -816,6 +973,14 @@ export function ChatsProvider({
             if (!streamStarted) {
               recordAiSession({ firstTokenMs: Date.now() - requestStartedAt });
               streamStarted = true;
+              pendingStreamContent = completeContent;
+              lastStreamFlushAt = Date.now();
+              // Opening regeneration keeps the rejected opening until replacement
+              // text exists. Swap only now so the chat never falls into its empty
+              // introduction state while the model is thinking.
+              if (openingRegeneration && options.regenerateMessageId) {
+                removeMessageFromState(characterId, options.regenerateMessageId);
+              }
               appendMessageToState(characterId, {
                 id: streamMessageId,
                 conversationId: conversation.conversationId,
@@ -826,7 +991,7 @@ export function ChatsProvider({
                 isStreaming: true,
               });
             } else {
-              updateStreamingMessage(characterId, streamMessageId, completeContent);
+              scheduleStreamingFlush(completeContent);
             }
 
             continue;
@@ -838,6 +1003,8 @@ export function ChatsProvider({
             finalMessage = convertDatabaseMessage(eventData.message);
 
             if (streamStarted) {
+              clearStreamFlushTimer();
+              pendingStreamContent = "";
               replaceStreamingMessage(characterId, streamMessageId, finalMessage);
               streamStarted = false;
             } else {
@@ -850,6 +1017,10 @@ export function ChatsProvider({
               [characterId]: {
                 ...currentChats[characterId],
                 sceneState: eventData.sceneState || currentChats[characterId]?.sceneState || {},
+                castState: eventData.castState || currentChats[characterId]?.castState || {},
+                characterDevelopment: eventData.characterDevelopment || currentChats[characterId]?.characterDevelopment || {},
+                relationshipState: eventData.relationshipState || currentChats[characterId]?.relationshipState || {},
+                continuityGuard: eventData.continuityGuard || currentChats[characterId]?.continuityGuard || { status: "stable", protected: [] },
                 intelligenceState: eventData.intelligenceState || currentChats[characterId]?.intelligenceState || {},
                 storyTimeline: Array.isArray(eventData.storyTimeline) ? eventData.storyTimeline : (currentChats[characterId]?.storyTimeline || []),
                 storyRecap: eventData.storyRecap || currentChats[characterId]?.storyRecap || "",
@@ -883,7 +1054,7 @@ export function ChatsProvider({
           result = await new Promise((resolve, reject) => {
             const timeoutId = setTimeout(
               () => reject(new Error("The response stream stalled. Please try again.")),
-              30000
+              45000
             );
 
             reader.read().then(
@@ -982,6 +1153,7 @@ export function ChatsProvider({
       recordAiSession({ failed: 1, lastErrorAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: Date.now() - requestStartedAt, lastError: String(error?.message || "Generation failed").slice(0, 220) });
       throw error;
     } finally {
+      clearStreamFlushTimer();
       if (reader && requestWasCancelled()) {
         try {
           await reader.cancel();
@@ -2187,7 +2359,7 @@ export function ChatsProvider({
     return true;
   }
 
-  async function restoreStorySnapshot(characterId, snapshotId) {
+  async function restoreStorySnapshot(characterId, snapshotId, { safetySnapshot = true } = {}) {
     const { data, error } = await supabase
       .from("story_snapshots")
       .select("payload")
@@ -2195,7 +2367,7 @@ export function ChatsProvider({
       .eq("user_id", user.id)
       .single();
     if (error) throw error;
-    return applyStorySnapshot(characterId, data.payload, { safetySnapshot: true });
+    return applyStorySnapshot(characterId, data.payload, { safetySnapshot });
   }
 
   async function exportStoryBackupData(characterId) {
