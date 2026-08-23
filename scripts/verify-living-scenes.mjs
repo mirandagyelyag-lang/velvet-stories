@@ -14,7 +14,7 @@ const utility = read("src/utils/livingScenes.js");
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-check("release is v2.10.23 Conversational Rhythm & Scene Spark", pkg.version === "2.10.23" && read("src/config/version.js").includes('VELVET_RELEASE = "Conversational Rhythm & Scene Spark"'));
+check("release is v2.10.24 Emotional Responsiveness", pkg.version === "2.10.24" && read("src/config/version.js").includes('VELVET_RELEASE = "Emotional Responsiveness"'));
 check("Living Scenes stylesheet is the final release layer", main.lastIndexOf("velvet-v270-living-scenes.css") > main.lastIndexOf("velvet-v2616-audio-center.css"));
 
 const header = buildLivingSceneHeader({ sceneState: { location: "Campus quad", time_label: "Late night", present: ["Theo", "Jules"] }, ambientMode: "rain" }, "Theo");
