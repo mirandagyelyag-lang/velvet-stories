@@ -754,6 +754,7 @@ DIALOGUE NATURALNESS — NO CONSTANT COMEBACK MODE
 - Let people answer incompletely sometimes: “Yeah.” “Whatever.” “I know.” “Give me a second.” A natural short line is better than a polished paragraph when that is how a real person would speak.
 - Never invent evidence, history, motives, technical details or circumstances to help ${character.name} win an argument. If ${character.name} lacks a fact, they may ask, doubt, misunderstand or back off, but they cannot manufacture a stronger case and then judge ${userIdentity.name} for it.
 - Conflict is not a competition. ${character.name} can be wrong, realize they pushed too far, feel guilty without admitting it immediately, apologize badly, change the subject, or let a point go. They do not need the last word.
+- DO NOT MIRROR SARCASM AUTOMATICALLY. If ${userIdentity.name} teases, jokes, rolls their eyes or makes one sarcastic remark, ${character.name} does not need to answer with another clever comeback. They may laugh, answer plainly, shrug it off, soften, ignore the bait, or keep moving. Avoid smug superiority phrases like “Naturally,” “Keep up,” “How observant,” or stacked denials unless the specific moment and profile genuinely earn them.
 
 11. CONTINUITY LOCK: before drafting, compare the proposed opening and physical action against the immediately previous character turn. Never restart the same pose, gesture, location beat, vehicle beat or exit sequence. Once a character drives away, leaves, hangs up, enters a building or otherwise changes state, that state remains true until the visible transcript explicitly changes it.
 12. OBJECT CONTINUITY: do not introduce a plot-relevant prop, possession, package, clothing item, food, gift, injury, vehicle, phone event or household object unless it is established in the visible transcript, profile, lore or confirmed memory. Incidental scenery may remain generic, but never make a newly invented object drive the action.
@@ -915,7 +916,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines and polished mic-drops. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1724,6 +1725,37 @@ function hasSarcasticComebackLoop(reply = "", recentReplies = []) {
   return (Array.isArray(recentReplies) ? recentReplies : []).slice(-3).filter(isComeback).length >= 2;
 }
 
+function hasSmugComebackTone(reply = "", latestUserMessage = "") {
+  const text = normalizeText(reply);
+  const dialogue = [...String(reply || "").matchAll(/["“]([^"”]+)["”]/g)].map((m) => normalizeText(m[1])).join(" ");
+  const user = normalizeText(latestUserMessage);
+
+  const smugMarkers = [
+    /\bnaturally\b/,
+    /\bof course it (?:is|was)\b/,
+    /\bkeep up(?:,|\b)/,
+    /\btry to keep up\b/,
+    /\bclearly you\b/,
+    /\bhow observant\b/,
+    /\bcongratulations\b.{0,45}\b(?:figured|noticed|realized)\b/,
+    /\bwhat a surprise\b/,
+    /\bshocking\b.{0,35}$/,
+    /\bit has nothing to do with me\b/,
+    /\bnot my problem\b/,
+    /\bif you say so\b/,
+  ];
+  const hits = smugMarkers.filter((pattern) => pattern.test(dialogue || text)).length;
+
+  // A single mild phrase can be natural. Two or more in one casual reply is the smug-comeback voice
+  // the user explicitly wants limited, even if recent history is clean.
+  if (hits >= 2) return true;
+
+  // If the user's turn is light teasing / casual banter rather than a confrontation, do not auto-escalate
+  // it into a superiority comeback just because the character profile permits sarcasm.
+  const lightUserTurn = user.length > 0 && user.length < 220 && !/\b(?:hate|angry|mad|furious|leave me|stop|don't|do not|fight|argue|serious)\b/.test(user);
+  return lightUserTurn && hits >= 1 && /\b(?:keep up|how observant|congratulations|what a surprise)\b/.test(dialogue || text);
+}
+
 const CONTINUITY_GUARD_ISSUES = new Set([
   "location_changed_without_scene_change",
   "time_changed_without_scene_change",
@@ -1787,6 +1819,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasUserStagedSceneRetcon(text, options.latestUserMessage || "", options.characterName || "")) issues.push("user_staged_scene_retcon");
   if (hasRhetoricalDialogueOveruse(text, options.recentCharacterReplies || [])) issues.push("rhetorical_dialogue_overuse");
   if (hasSarcasticComebackLoop(text, options.recentCharacterReplies || [])) issues.push("sarcastic_comeback_loop");
+  if (hasSmugComebackTone(text, options.latestUserMessage || "")) issues.push("smug_comeback_tone");
   if (hasAtmosphericStallingLoop(text, options.recentCharacterReplies || [], turnIntent)) issues.push("atmospheric_stalling_loop");
 
   const needsSocialBeat = ["reassurance", "affection", "direct_question", "silent_continue", "return_main_pov", "digital_message", "interactive_thread", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
