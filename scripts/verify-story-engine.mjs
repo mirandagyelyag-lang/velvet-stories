@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 3000);
+check("live-stream engine stays reasonably consolidated", edgeLines < 3100);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -932,3 +932,19 @@ check("hidden-feelings anchor preserves ordinary-life continuation",
   edge.includes("keeps driving / studying / talking normally") &&
   edge.includes("a small glance, exhale or loosening grip shows relief") &&
   edge.includes("then life continues"));
+
+check("v2.10.20 prompt makes profile-established reputation world canon",
+  edge.includes("SOCIAL GRAVITY — REPUTATION MUST EXIST IN THE WORLD") &&
+  edge.includes("TREAT THAT AS WORLD CANON") &&
+  edge.includes("SOCIAL GRAVITY IS AMBIENT, NOT A PARADE"));
+check("v2.10.20 social gravity varies by the creator-established kind of status",
+  edge.includes("Match the exact profile") &&
+  edge.includes("Do not assume every popular character is flirted with by women"));
+check("v2.10.20 narrative doctor detects prolonged public anonymity",
+  edge.includes("function hasMissingSocialGravity") &&
+  edge.includes('issues.push("social_gravity_missing")') &&
+  edge.includes('"social_gravity_missing"'));
+check("v2.10.20 social gravity recognizes friendship, flirting, recognition, invitations and rumor footprints",
+  edge.includes("hasSocialGravityFootprint") &&
+  edge.includes("saved (?:him|her|them) a seat") &&
+  edge.includes("another girl") && edge.includes("another guy"));

@@ -616,6 +616,7 @@ function buildNarrativePrompt({
     `Voice avoidances: ${cleanPromptValue(character.voice_avoidances || "generic archetype dialogue and therapeutic language", 500)}`,
     `Boundaries: ${cleanPromptValue(character.boundaries || "not specified", 500)}`,
     `Scenario/world: ${cleanPromptValue(character.scenario || character.world || "not specified", 900)}`,
+    `Social gravity / reputation: ${cleanPromptValue([character.description, character.personality, character.relationship, character.scenario, character.world, character.contradictions, character.habits].filter(Boolean).join(" | "), 1400)}`,
     `Example dialogue (voice reference, never copy): ${cleanPromptValue(character.example_dialogue || "none", 1000)}`,
   ].join("\n");
 
@@ -707,6 +708,14 @@ NON-NEGOTIABLE PRIORITY
 8. A character can only hear, see or answer something they were physically or digitally able to receive. Leaving the room, hanging up, muting a chat or being elsewhere matters until the visible transcript changes it.
 9. Never teleport a character, silently change location/time, or make an absent NPC reappear merely to create drama. If a location, time or presence detail is unknown, keep it unknown.
 10. Established side characters remain real participants until the scene visibly moves them. Do not erase them just because the romantic lead speaks, and do not force every social beat back into romance.
+
+SOCIAL GRAVITY — REPUTATION MUST EXIST IN THE WORLD
+- If the character profile establishes that ${character.name} is famous, highly popular, socially influential, widely desired, intimidatingly well-known, an heir, team captain, campus figure, celebrity, leader, or someone many people want to know, TREAT THAT AS WORLD CANON rather than decorative biography.
+- In relevant public/social settings, let reputation create organic consequences: people recognize or greet them, acquaintances interrupt, men/peers try to befriend or include them, admirers flirt or hover when profile-compatible, invitations/messages/rumors circulate, strangers know their name, seats/plans/social access shift around them, or staff/classmates react differently.
+- Match the exact profile. Do not assume every popular character is flirted with by women, admired by men, wealthy, feared, athletic or famous for the same reason. Use only the kind of attention/reputation the creator actually established.
+- SOCIAL GRAVITY IS AMBIENT, NOT A PARADE: do not make every turn about popularity and do not summon random admirers in private or emotionally focused scenes. One believable footprint is often enough. Vary how it appears and let many moments pass normally.
+- Reputation persists even when ${character.name} is not performing for it. A character may ignore attention, enjoy it, exploit it, be tired of it, know everyone, barely remember names, flirt back, or remain polite according to their profile. The WORLD still notices them.
+- Do not instantly dismiss people who approach. If a peer wants friendship or an admirer flirts and the scene has room, allow a real social exchange with persistence, consistent with the Living Cast rules.
 
 SOCIAL NATURALISM — REACT, DON'T INVENT
 - Interpret the latest user turn literally before adding subtext. Never manufacture an unspoken motive, accusation, jealousy, attention-seeking, manipulation, rivalry or insult just to create conflict.
@@ -917,7 +926,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1757,6 +1766,42 @@ function hasSmugComebackTone(reply = "", latestUserMessage = "") {
   return lightUserTurn && hits >= 1 && /\b(?:keep up|how observant|congratulations|what a surprise)\b/.test(dialogue || text);
 }
 
+function characterSocialGravityText(character = {}) {
+  return normalizeText([
+    character?.role,
+    character?.description,
+    character?.personality,
+    character?.relationship,
+    character?.scenario,
+    character?.world,
+    character?.contradictions,
+    character?.habits,
+  ].filter(Boolean).join(" "));
+}
+
+function profileHasStrongSocialGravity(character = {}) {
+  const profile = characterSocialGravityText(character);
+  if (!profile) return false;
+  return /\b(?:popular|well[- ]known|everyone knows|everybody knows|campus prince|campus king|heartbreaker|celebrity|famous|influential|socially powerful|most wanted|everyone wants|men want to be (?:his|her|their) friend|guys want to be (?:his|her|their) friend|women (?:want|try|flirt|chase)|girls (?:want|try|flirt|chase)|admired|desired|heir|captain|star player|student body|recogniz(?:e|ed|able)|reputation|all eyes|social circle|prominent family)\b/.test(profile);
+}
+
+function hasSocialGravityFootprint(text = "") {
+  const value = normalizeText(text);
+  return /\b(?:recognized|recognised|called (?:his|her|their) name|waved|greeted|stopped (?:him|her|them)|interrupted|came over|approached|joined them|asked to join|invited|invitation|dm|dms|messages?|rumou?r|whispered|stared|looked over|glanced over|turned heads?|flirt(?:ed|ing)?|smiled at|number|phone number|saved (?:him|her|them) a seat|seat saved|knew (?:his|her|their) name|knew who|classmates?|teammates?|friends? called|people kept|another girl|another guy|someone from|group of students|familiar face|acquaintance|crowd greeted)\b/.test(value);
+}
+
+function hasMissingSocialGravity(reply = "", latestUserMessage = "", recentReplies = [], character = {}) {
+  if (!profileHasStrongSocialGravity(character)) return false;
+  const latest = normalizeText(latestUserMessage);
+  const publicScene = /\b(?:campus|university|college|school|hall|hallway|corridor|caf[eé]|bakery|student union|quad|courtyard|library|class|lecture|party|club|bar|event|game|match|practice|stadium|restaurant|mall|street|crowd|students?|classmates?|friends?|group|public)\b/.test(latest);
+  if (!publicScene) return false;
+  if (hasSocialGravityFootprint(reply)) return false;
+  const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-2).join(" ");
+  // Do not force attention every turn. Only flag anonymity after a short run of public beats
+  // with no social footprint at all.
+  return recent.length > 40 && !hasSocialGravityFootprint(recent);
+}
+
 function hasSpatialContinuityBreak(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply);
   const user = normalizeText(latestUserMessage);
@@ -1807,6 +1852,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "interactive_thread_collapsed",
   "atmospheric_stalling_loop",
   "spatial_relationship_broken",
+  "social_gravity_missing",
 ]);
 
 function blockingNarrativeIssues(issues = []) {
@@ -1839,6 +1885,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasRhetoricalDialogueOveruse(text, options.recentCharacterReplies || [])) issues.push("rhetorical_dialogue_overuse");
   if (hasSarcasticComebackLoop(text, options.recentCharacterReplies || [])) issues.push("sarcastic_comeback_loop");
   if (hasSmugComebackTone(text, options.latestUserMessage || "")) issues.push("smug_comeback_tone");
+  if (hasMissingSocialGravity(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("social_gravity_missing");
   if (hasAtmosphericStallingLoop(text, options.recentCharacterReplies || [], turnIntent)) issues.push("atmospheric_stalling_loop");
   if (hasSpatialContinuityBreak(text, options.latestUserMessage || "")) issues.push("spatial_relationship_broken");
 
@@ -2106,7 +2153,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, preserve immediate relative body positions until visible movement changes them, and avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
+          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, preserve immediate relative body positions until visible movement changes them, and make profile-established social status/reputation visibly affect relevant public scenes without turning every turn into a popularity spectacle. Avoid constant sarcasm or rhetorical-question dialogue. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           temperature: getTemperature(character.creativity, isRegeneration),
@@ -2137,6 +2184,7 @@ async function streamRoleplayV19({
           finishReason: result.finishReason,
           rejectedResponses,
           recentCharacterReplies,
+          character,
         });
         validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent })])];
         const originalResult = result;
