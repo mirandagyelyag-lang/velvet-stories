@@ -574,7 +574,6 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
     loreEntries: loreResult.data || [],
   };
 }
-
 function applyConversationControls(character, conversation) {
   return {
     ...character,
@@ -624,7 +623,6 @@ async function resolveGenerationBranch({ supabase, messages, regenerateMessageId
     rejectedResponses,
   };
 }
-
 function buildNarrativePrompt({
   conversation,
   character,
@@ -808,6 +806,7 @@ KINETIC ROMANTIC TENSION — DO SOMETHING WITH THE CHARGE
 - Other people are allowed to matter. In a party/social setting, a popular/flirtatious character does not become socially celibate because the protagonist is nearby. An admirer may approach; ${character.name} may engage or flirt according to profile. If ${character.name} intentionally uses another interaction to provoke, distract, save face or test the room, that is THEIR motive and must fit their personality; never invent jealousy in the user as proof that it worked.
 - A sharp user line such as “Who asked?”, “Whatever,” an eye-roll, scoff, or a dismissive jab is often an invitation for the CHARACTER to make a choice, not permission to freeze. For proud/teasing/flirtatious characters, prefer active friction over a soft “fair point” unless genuine de-escalation is clearly the character's goal.
 - CHARGED MICRO-REACTIONS KEEP THE BEAT OPEN. A raised eyebrow, held look, scoff, eye-roll, tiny smile or similarly minimal reaction after an unresolved charged exchange means “respond to this beat,” not “scene over.” If ${character.name} just chose to stay, pursue, challenge, flirt or refuse to leave, do not reverse that choice and walk away solely because the user raised an eyebrow or looked at them. A reversal needs a new visible reason, interruption, boundary, decision or consequence. DO NOT satisfy this rule by merely staying frozen: on a charged micro-reaction, ${character.name} must contribute something new through dialogue, movement, flirtation, a meaningful social complication, or another concrete choice. Eye contact + smirk + silence is still a stalled beat.
+- CHARGED DEPARTURE NEEDS FOLLOW-THROUGH. If the scene has active romantic friction and a high-initiative/flirtatious/dramatic ${character.name} has just chosen to stay in the exchange, then ${userIdentity.name} physically starting to walk away is a fresh beat, not permission to collapse into passive watching. Unless the user explicitly says leave me alone / stop following / don't touch me / let me go or clearly pulls away from contact, strongly consider one immediate pursuit choice: step after them, catch up, call them back with character-specific dialogue, or briefly catch a forearm/elbow/arm to stop the momentum for a beat and turn the conversation back toward ${character.name}. The contact must be brief, non-restraining and easy to reject; never drag, pin, trap, block escape, or override resistance. For a Chase-like proud, teasing, high-initiative profile, “watch her leave and go back inside” should be the exception when the tension is still hot, not the default.
 - Vary the engine. Do not use arm-grabbing every time, do not summon an admirer every time, and do not make every active beat sexual. The point is motion, consequence and chemistry, not one repeated trick.
 
 PACING & SCENE SPARK — DO NOT WAIT FOR THE USER TO INVENT EVERYTHING
@@ -1038,7 +1037,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If recent replies keep opening with synonym-swapped scoff/huff/dry-laugh reactions, change the opening structure completely: begin with dialogue, an external event, another character, a practical action, or a meaningful new beat. If a social approach was reflexively dismissed and recent social approaches were also shut down, let this one breathe long enough to create a real interaction, complication, invitation, flirtation, rivalry, rumor beat, or recurring NPC when profile and setting support it. Create tension opportunities proactively, but do not force jealousy or invent betrayal. If recent replies repeatedly tracked the user across the room with glances, peripheral vision, or “one eye on them” language, let the character genuinely focus elsewhere for this beat and remove the surveillance-like attention. If the user only SAID they would leave, might leave, or “leave you with...” but did not narrate physical movement, keep the user physically present and remove any invented “heading away/departing/watched her go/didn't follow/let her go/looked toward the door where she had gone” action. A silent continuation after that line does NOT authorize an off-screen exit. Do not let a new NPC hijack an unresolved relational beat; let the primary character react first. If the character caused the rupture and attachment is established, consider one character-specific repair or pursuit beat instead of instantly switching to unrelated activity. If the user DID physically leave after the character was rude, dismissive, or hurtful, do not default to passive watching plus a reset back to the party/game/work. In that situation, prefer one immediate follow-through attempt—call after them, step after them, catch up, soften, or apologize badly—before any unrelated activity resumes. Make that follow-through unmistakably character-specific: preserve the profile's pride, humor, awkwardness, warmth, restraint or bluntness instead of a generic “wait.” The pursuit must create one new beat or piece of information before the turn ends; do not spend the whole rewrite on footsteps, breathing or trailing behind. If the failure is kinetic_tension_deflated, the rewrite MUST make an active character choice instead of leaning/staring/smirking/conceding: close conversational distance, sharpen or redirect the flirt, create a brief non-restraining touch if no no-touch boundary exists, let a believable social interruption/admirer matter, or choose another concrete action with consequence. If the failure is charged_beat_abandoned, preserve the character’s immediately previous active choice unless the latest turn actually changes it: a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside. Continue the charged beat through dialogue, proximity, flirtation, social complication or another character-specific choice instead of silently ending the scene. If the failure is charged_beat_stalled, the character technically stayed but did nothing with the charge. The rewrite MUST add at least one consequential beat: spoken dialogue, a deliberate change in proximity, a brief non-restraining touch when allowed, a sharper flirt/challenge, a social interruption that matters, or another concrete decision. Merely holding eye contact, twitching a mouth corner, breathing, shifting weight, or silently refusing to look away does NOT count as progress. “I didn't ask for a bodyguard” rejects protection framing, not automatically all chemistry or all proximity. But explicit “leave me alone,” “stop following me,” “don't touch me,” or a pull-away must be respected. Never restrain, drag, corner, block escape or coerce the user just to make pursuit feel intense. If side characters have repeatedly acted as a romance jury or awarded conversational points, give them independent goals, opinions, or unrelated behavior instead. If the draft claims the user watched, followed, waited, stared, checked, LOOKED FOR, searched for, came for, went outside for, or wanted the character's attention without visible transcript evidence, remove that claim. Do NOT preserve it as teasing or an uncertain question when the latest user turn actively contradicts it. A user-stated practical reason such as fresh air, space, or walking away is binding and may not become “you were looking for me,” “you came out here for me,” jealousy, or attention-seeking. If the latest user turn rejects pursuit or protection with language such as “I didn't ask for a bodyguard,” “stop following me,” or “leave me alone,” do not defend the same pursuit as guarding, watching, keeping tabs, or making sure the user does not wander off. The character may still want to continue the conversation, but must own THEIR reason instead of inventing the user's motive or a protection duty. If the latest user turn clearly shows tears, crying, shaking, fear, hurt, anger or visible distress, do not leave the character merely watching or sitting nearby: add at least one character-specific question, decision, practical gesture, or behavior change that advances the emotional beat, while respecting boundaries and avoiding generic therapy language. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If recent replies keep opening with synonym-swapped scoff/huff/dry-laugh reactions, change the opening structure completely: begin with dialogue, an external event, another character, a practical action, or a meaningful new beat. If a social approach was reflexively dismissed and recent social approaches were also shut down, let this one breathe long enough to create a real interaction, complication, invitation, flirtation, rivalry, rumor beat, or recurring NPC when profile and setting support it. Create tension opportunities proactively, but do not force jealousy or invent betrayal. If recent replies repeatedly tracked the user across the room with glances, peripheral vision, or “one eye on them” language, let the character genuinely focus elsewhere for this beat and remove the surveillance-like attention. If the user only SAID they would leave, might leave, or “leave you with...” but did not narrate physical movement, keep the user physically present and remove any invented “heading away/departing/watched her go/didn't follow/let her go/looked toward the door where she had gone” action. A silent continuation after that line does NOT authorize an off-screen exit. Do not let a new NPC hijack an unresolved relational beat; let the primary character react first. If the character caused the rupture and attachment is established, consider one character-specific repair or pursuit beat instead of instantly switching to unrelated activity. If the user DID physically leave after the character was rude, dismissive, or hurtful, do not default to passive watching plus a reset back to the party/game/work. In that situation, prefer one immediate follow-through attempt—call after them, step after them, catch up, soften, or apologize badly—before any unrelated activity resumes. Make that follow-through unmistakably character-specific: preserve the profile's pride, humor, awkwardness, warmth, restraint or bluntness instead of a generic “wait.” The pursuit must create one new beat or piece of information before the turn ends; do not spend the whole rewrite on footsteps, breathing or trailing behind. If the failure is kinetic_tension_deflated, the rewrite MUST make an active character choice instead of leaning/staring/smirking/conceding: close conversational distance, sharpen or redirect the flirt, create a brief non-restraining touch if no no-touch boundary exists, let a believable social interruption/admirer matter, or choose another concrete action with consequence. If the failure is charged_beat_abandoned, preserve the character’s immediately previous active choice unless the latest turn actually changes it: a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside. Continue the charged beat through dialogue, proximity, flirtation, social complication or another character-specific choice instead of silently ending the scene. If the failure is charged_beat_stalled, the character technically stayed but did nothing with the charge. The rewrite MUST add at least one consequential beat: spoken dialogue, a deliberate change in proximity, a brief non-restraining touch when allowed, a sharper flirt/challenge, a social interruption that matters, or another concrete decision. Merely holding eye contact, twitching a mouth corner, breathing, shifting weight, or silently refusing to look away does NOT count as progress. If the failure is charged_departure_dropped, the user physically started to leave during an already charged exchange and the draft passively watched them go. For a high-initiative character, rewrite with immediate follow-through unless an explicit boundary forbids it: step after them, catch up, call them back, or when touch is allowed briefly catch a forearm/elbow/arm and stop or turn the movement back toward the conversation for one beat. Keep it easy to reject and release on resistance; never drag, restrain, trap or block escape. “I didn't ask for a bodyguard” rejects protection framing, not automatically all chemistry or all proximity. But explicit “leave me alone,” “stop following me,” “don't touch me,” or a pull-away must be respected. Never restrain, drag, corner, block escape or coerce the user just to make pursuit feel intense. If side characters have repeatedly acted as a romance jury or awarded conversational points, give them independent goals, opinions, or unrelated behavior instead. If the draft claims the user watched, followed, waited, stared, checked, LOOKED FOR, searched for, came for, went outside for, or wanted the character's attention without visible transcript evidence, remove that claim. Do NOT preserve it as teasing or an uncertain question when the latest user turn actively contradicts it. A user-stated practical reason such as fresh air, space, or walking away is binding and may not become “you were looking for me,” “you came out here for me,” jealousy, or attention-seeking. If the latest user turn rejects pursuit or protection with language such as “I didn't ask for a bodyguard,” “stop following me,” or “leave me alone,” do not defend the same pursuit as guarding, watching, keeping tabs, or making sure the user does not wander off. The character may still want to continue the conversation, but must own THEIR reason instead of inventing the user's motive or a protection duty. If the latest user turn clearly shows tears, crying, shaking, fear, hurt, anger or visible distress, do not leave the character merely watching or sitting nearby: add at least one character-specific question, decision, practical gesture, or behavior change that advances the emotional beat, while respecting boundaries and avoiding generic therapy language. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1184,7 +1183,6 @@ async function callGeminiWithFailover({
   if (quotaReached) throw new Error("Gemini is rate-limited right now. This can be a per-minute, token, or daily project limit. Wait a little and try again.");
   throw new Error(lastError);
 }
-
 function parseModelEnvelope(raw): ModelEnvelope {
   const clean = stripJsonFence(raw);
   try {
@@ -1215,7 +1213,6 @@ function normalizeText(value = "") {
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
-
 function isSilentContinueText(value = "") {
   const text = String(value || "").trim();
   return text.startsWith("[SILENT_CONTINUE") ||
@@ -1223,14 +1220,12 @@ function isSilentContinueText(value = "") {
     text.includes("Treat this as silence from the user") ||
     /^[.…。]+$/u.test(text);
 }
-
 function looksLikeQuestion(value = "") {
   const text = String(value || "").trim();
   if (/\?\s*$/.test(text)) return true;
   return /\b(?:what|why|where|when|who|whose|which|how|do|does|did|are|is|was|were|can|could|would|will|have|has)\b[^.!?]{0,110}$/i.test(text) ||
     /\b(?:que|qué|por que|por qué|donde|dónde|cuando|cuándo|quien|quién|como|cómo|acaso|puedes|podrias|podrías|quieres)\b[^.!?]{0,110}$/i.test(text);
 }
-
 function classifyTurnIntent(latestUserMessage = "", messages = []) {
   const raw = String(latestUserMessage || "").trim();
   const normalized = normalizeText(raw);
@@ -1268,7 +1263,6 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
 
   return { kind, silentCount, medium, isQuestion, normalized };
 }
-
 function recentInteractiveThreadIsOpen(messages = []) {
   const rows = Array.isArray(messages) ? messages : [];
   let inspectedUserTurns = 0;
@@ -1283,7 +1277,6 @@ function recentInteractiveThreadIsOpen(messages = []) {
   }
   return false;
 }
-
 function atmosphericStallScore(value = "") {
   const text = normalizeText(value);
   const motifs = [
@@ -1297,14 +1290,12 @@ function atmosphericStallScore(value = "") {
   ];
   return motifs.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
 }
-
 function hasMeaningfulProgression(value = "") {
   const raw = String(value || "");
   const text = normalizeText(raw);
   if (/["“][^"”]{3,}["”]/.test(raw)) return true;
   return /\b(?:picked up|grabbed|opened|unlocked|read|reads|typed|types|replied|reply|responded|sent|called|answered|declined|muted|blocked|silenced|sat up|stood up|got up|walked|left|entered|arrived|decided|chose|turned on|switched on|message said|text read|screen lit with|notification from|wrote back|escribio|escribió|respondio|respondió|contesto|contestó|leyo|leyó|abrió|abrio|envio|envió|llamo|llamó)\b/.test(text);
 }
-
 function hasAtmosphericStallingLoop(reply = "", recentReplies = [], turnIntent = {}) {
   const score = atmosphericStallScore(reply);
   if (hasMeaningfulProgression(reply)) return false;
@@ -1314,7 +1305,6 @@ function hasAtmosphericStallingLoop(reply = "", recentReplies = [], turnIntent =
   if ((turnIntent?.kind === "silent_continue" || turnIntent?.kind === "interactive_thread") && score >= 2 && recentStalls >= 1) return true;
   return score >= 2 && recentStalls >= 2;
 }
-
 function hasPassiveEmotionalCueResponse(reply = "", latestUserMessage = "") {
   const latest = normalizeText(latestUserMessage);
   const strongCue = /\b(?:tearing up|teared up|eyes (?:were )?(?:wet|watery|glassy)|crying|cried|cry|sobbing|sobbed|shaking|trembling|terrified|scared|panicking|panic attack|visibly upset|hurt badly|furious|angry enough to cry|llorando|llore|lloré|lagrimas|lágrimas|temblando|asustada|asustado|aterrada|aterrado|furiosa|furioso)\b/.test(latest);
@@ -1327,7 +1317,6 @@ function hasPassiveEmotionalCueResponse(reply = "", latestUserMessage = "") {
   if (hasDialogue || activeResponse) return false;
   return passiveOnly || text.split(/\s+/).filter(Boolean).length < 55;
 }
-
 function hasPassiveExitAfterRupture(reply = "", latestUserMessage = "", recentReplies = [], turnIntent = {}) {
   const kind = String(turnIntent?.kind || "");
   if (!["user_exit", "confrontation_exit"].includes(kind)) return false;
@@ -1350,7 +1339,6 @@ function hasPassiveExitAfterRupture(reply = "", latestUserMessage = "", recentRe
   const passiveWatch = /\b(?:watched the space where she had been|watched the space where he had been|watched the empty space|empty space where|didn t move to follow|did not move to follow|let the distance stretch|let (?:her|him|them) go|remained by the side table|stayed where he was|stayed where she was|party noise filled the gap|turned back toward|turned back to(?:ward)? the game|picked (?:his|her) cup back up|stepped back into the game|attention didn t quite stick|without a word he .* stepped away from the screen|went back to the party|returned to (?:miller|the game|the couch|the table|work))\b/.test(text);
   return passiveWatch;
 }
-
 function hasKineticTensionDeflation(reply = "", latestUserMessage = "", recentUserMessages = [], recentReplies = [], character = {}) {
   const latest = normalizeText(latestUserMessage);
   const userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 5).map(normalizeText).join(" ");
@@ -1387,7 +1375,6 @@ function hasKineticTensionDeflation(reply = "", latestUserMessage = "", recentUs
   const confrontationalChoice = /\b(?:dared|challenged|called (?:her|him|them) back|cut in front without blocking|asked (?:her|him|them) to stay|told (?:her|him|them) to stay|changed the subject deliberately|stopped joking|dropped the joke)\b/.test(text);
   return !kineticAction && !socialAction && !confrontationalChoice;
 }
-
 function hasChargedBeatAbandonment(reply = "", latestUserMessage = "", recentReplies = [], character = {}) {
   const latest = String(latestUserMessage || "").trim(), text = normalizeText(reply), previous = normalizeText((Array.isArray(recentReplies) ? recentReplies : []).slice(-1)[0] || "");
   const micro = /(?:raise|raised|lift|lifted|arch|arched|cock|cocked|quirk|quirked)[^\n]{0,28}eyebrow|(?:look|looked|glance|glanced|stare|stared)\s+at\s+(?:you|him|her)/i.test(latest);
@@ -1397,8 +1384,6 @@ function hasChargedBeatAbandonment(reply = "", latestUserMessage = "", recentRep
   const newReason = /\b(?:because|phone (?:buzzed|rang)|someone called|called his name|called her name|friend called|asked him to|asked her to|interrupted|approached|came over|needed to|had to)\b/.test(text);
   return justStayed && abruptExit && !newReason;
 }
-
-
 function hasChargedBeatStall(reply = "", latestUserMessage = "", recentReplies = [], character = {}) {
   const latest = String(latestUserMessage || "").trim();
   const text = normalizeText(reply);
@@ -1430,6 +1415,14 @@ function hasChargedBeatStall(reply = "", latestUserMessage = "", recentReplies =
   return stallScore >= 2 || (text.split(/\s+/).filter(Boolean).length >= 20 && !hasDialogue && !activeChoice && !socialComplication);
 }
 
+
+function hasChargedDepartureDrop(reply = "", latestUserMessage = "", recentUserMessages = [], recentReplies = [], character = {}) {
+  const latestRaw = String(latestUserMessage || "").trim(), userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 6).map(normalizeText).join(" "), characterContext = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5).map(normalizeText).join(" "), initiative = Number(character?.initiative ?? 65), flirting = Number(character?.flirting ?? 30), drama = Number(character?.drama ?? 45), romance = Number(character?.romance_intensity ?? 35);
+  if (!(initiative >= 60 && (flirting >= 35 || drama >= 50 || romance >= 45)) || !( /\bi\b[^.!?\n]{0,45}\b(?:walk|walked|walking|leave|left|head|headed|move|moved|step|stepped)\b/i.test(latestRaw) || /\b(?:me voy|me fui|me alejo|me alej[eé]|salgo|camino|empiezo a caminar)\b/i.test(latestRaw)) || /\b(?:leave me alone|stop following me|don t follow me|do not follow me|don t touch me|do not touch me|let me go|back off|go away|dejame sola|déjame sola|dejame solo|déjame solo|no me sigas|no me toques|sueltame|suéltame)\b/.test(userContext)) return false;
+  if (!(/\b(?:who asked|did i ask|finally you re leaving|finally youre leaving|what are you talking about|whatever|bodyguard|fresh air|raise an eyebrow|raised an eyebrow|keep walking|walk away|rude|clown|bother|annoying)\b/.test(userContext) || /\b(?:not going anywhere|wasn t going anywhere|was not going anywhere|stayed right where|keep trying|you re still standing here|youre still standing here|far less entertaining|refused to leave|stepped closer|closed the distance|challenged|flirted|teased)\b/.test(characterContext))) return false;
+  const text = normalizeText(reply), activePursuit = /\b(?:called after|called her back|called him back|stepped after|moved after|went after|followed|caught up|closed the distance|caught (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand)|reached (?:for|after) (?:her|him|them|you)|touched (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand|shoulder)|brushed (?:her|him|their|your)?\s*(?:arm|hand|shoulder)|stopped (?:her|him|them) with a word|asked (?:her|him|them) to stop|told (?:her|him|them) to wait|walked after|jogged after)\b/.test(text), releaseMarkers = [/\bwatched (?:her|him|them|you) (?:move|walk|leave|go)\b/, /\bwatched (?:her|him|them|you) move away\b/, /\b(?:didn t|did not) call out\b/, /\b(?:didn t|did not) follow\b/, /\b(?:didn t|did not) go after\b/, /\blet (?:the )?(?:space|distance) (?:between them )?(?:stretch|grow|widen)\b/, /\blet (?:her|him|them|you) go\b/, /\bgaze (?:tracing|followed|tracking) (?:the )?path\b/, /\banother shadow moving away\b/, /\bturned (?:his|her|their) back to (?:the )?(?:lawn|door|party|room)\b/, /\b(?:headed|went|walked|turned) back inside\b/, /\breturned to (?:the )?(?:party|room|game|friends|work)\b/, /\bleaned back against\b/];
+  return !activePursuit && releaseMarkers.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0) >= 2;
+}
 function hasGenericPursuitWithoutProgress(reply = "", turnIntent = {}) {
   const kind = String(turnIntent?.kind || "");
   if (!["user_exit", "confrontation_exit"].includes(kind)) return false;
@@ -1443,21 +1436,18 @@ function hasGenericPursuitWithoutProgress(reply = "", turnIntent = {}) {
   if (bareCall) return true;
   return pursuit && concreteDialogue.trim().split(/\s+/).filter(Boolean).length < 4 && !meaningfulAction && text.split(/\s+/).filter(Boolean).length < 70;
 }
-
 function reactionOpenerSignature(value = "") {
   const text = normalizeText(String(value || "").slice(0, 220));
   if (/^(?:[a-z]+\s+){0,2}(?:offered|gave|let out|released|made)\s+(?:a\s+)?(?:(?:short|sharp|dry|quiet|soft|incredulous|unimpressed|brief)\s+){0,2}(?:scoff|huff|laugh|snort|sound|exhale)/.test(text)) return "reaction_sound";
   if (/^(?:[a-z]+\s+){0,2}(?:his|her)\s+(?:jaw|mouth|lips|expression|gaze|eyes)\b/.test(text)) return "body_face";
   return "";
 }
-
 function hasReactionOpenerLoop(reply = "", recentReplies = []) {
   const signature = reactionOpenerSignature(reply);
   if (!signature) return false;
   const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-4);
   return recent.filter((item) => reactionOpenerSignature(item) === signature).length >= 2;
 }
-
 function hasRepeatedSocialShutdown(reply = "", recentReplies = [], latestUserMessage = "") {
   const latest = normalizeText(latestUserMessage);
   const approachCue = /\b(?:two|three|some|a couple of|several|dos|tres|unos|unas)?\s*(?:men|women|guys|girls|people|students|friends|boys|chicos|chicas|hombres|mujeres|personas|estudiantes)\b.{0,80}\b(?:approached|came over|walked over|headed over|se acercaron|se acerco|se acercó|vinieron|se aproximaron)\b/.test(latest) || /\b(?:someone|somebody|alguien)\b.{0,60}\b(?:approached|came over|se acerco|se acercó)\b/.test(latest);
@@ -1470,7 +1460,6 @@ function hasRepeatedSocialShutdown(reply = "", recentReplies = [], latestUserMes
   const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5);
   return recent.some(shutdown);
 }
-
 function attentionTrackingScore(value = "") {
   const text = normalizeText(value);
   const motifs = [
@@ -1484,13 +1473,11 @@ function attentionTrackingScore(value = "") {
   ];
   return motifs.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
 }
-
 function hasAttentionFixationLoop(reply = "", recentReplies = []) {
   if (attentionTrackingScore(reply) < 1) return false;
   const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5);
   return recent.filter((item) => attentionTrackingScore(item) >= 1).length >= 2;
 }
-
 function npcCommentatorScore(value = "") {
   const text = normalizeText(value);
   const markers = [
@@ -1505,13 +1492,11 @@ function npcCommentatorScore(value = "") {
   ];
   return markers.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
 }
-
 function hasNpcCommentatorLoop(reply = "", recentReplies = []) {
   if (npcCommentatorScore(reply) < 1) return false;
   const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-6);
   return recent.some((item) => npcCommentatorScore(item) >= 1);
 }
-
 function hasInventedDebateEvidence(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply);
   const latest = normalizeText(latestUserMessage);
@@ -1527,7 +1512,6 @@ function hasInventedDebateEvidence(reply = "", latestUserMessage = "") {
   ];
   return claims.some(({ claim, support }) => claim.test(text) && !support.test(latest));
 }
-
 function hasUserMotiveOverride(reply = "", latestUserMessage = "", recentUserMessages = []) {
   const text = normalizeText(reply), latest = normalizeText(latestUserMessage), recent = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].map(normalizeText).filter(Boolean).join(" ");
   const userSeeking = /\bi (?:was|am|have been|ve been)?\s*(?:looking|searching) for you\b|\bi (?:was|am)?\s*trying to find you\b|\bi (?:came|went|walked|stepped|headed) (?:out|outside|here|there).{0,45}\b(?:for you|to see you)\b|\bi (?:wanted|needed|was trying|am trying) to (?:get|have) your attention\b|\bi wanted your attention\b/.test(recent);
@@ -1544,7 +1528,6 @@ function stripDialogue(value = "") {
     .replace(/“[^”]*”/gs, " ")
     .replace(/"[^"]*"/gs, " ");
 }
-
 function controlsUserPOV(reply = "", userName = "", latestUserMessage = "") {
   const narration = stripDialogue(reply);
   const latest = normalizeText(latestUserMessage);
@@ -1593,7 +1576,6 @@ function controlsUserPOV(reply = "", userName = "", latestUserMessage = "") {
   }
   return false;
 }
-
 function hasUnclosedDialogue(value = "") {
   const text = String(value || "").trim();
   const straightQuotes = (text.match(/"/g) || []).length;
@@ -1602,7 +1584,6 @@ function hasUnclosedDialogue(value = "") {
   if (straightQuotes % 2 !== 0 || curlyOpen !== curlyClose) return true;
   return /(?:\b(?:and|but|because|so|if|when|that|to)|[,;:\-–—])\s*$/i.test(text);
 }
-
 function isLowInformationGenericReply(value = "") {
   const text = String(value || "").trim();
   const normalized = normalizeText(stripDialogue(text) + " " + text);
@@ -1611,7 +1592,6 @@ function isLowInformationGenericReply(value = "") {
   const bareAcknowledgment = /^(?:(?:[a-z]+)\s+(?:said|murmured|muttered)\s+)?(?:yeah|okay|ok|fine|alright|sure|vale|bueno|esta bien)[.!\s]*$/i.test(normalized);
   return (servicePhrase && words.length < 34) || bareAcknowledgment || words.length < 7;
 }
-
 function replySimilarity(left = "", right = "") {
   const tokens = (value) => new Set(normalizeText(value).split(/\s+/).filter((token) => token.length > 3));
   const a = tokens(left);
@@ -1643,7 +1623,6 @@ function normalizeRegenerationFeedback(value = []) {
     .filter((item) => regenerationFeedbackRules.has(item))
     .slice(0, 8);
 }
-
 function feedbackDirectives(value = []) {
   return normalizeRegenerationFeedback(value).map((code) => regenerationFeedbackRules.get(code));
 }
@@ -1662,7 +1641,6 @@ function positiveFeedbackDirectives(value = []) {
     .slice(0, 4)
     .map((code) => positiveFeedbackRules.get(code));
 }
-
 function normalizeStoryPreferences(value = {}) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const choose = (candidate, allowed, fallback) => allowed.includes(String(candidate || "")) ? String(candidate) : fallback;
@@ -1678,7 +1656,6 @@ function normalizeStoryPreferences(value = {}) {
     learned_negative_feedback: normalizeRegenerationFeedback(source.learnedNegativeFeedback || source.learnedFeedback),
   };
 }
-
 function extractDialogueLines(value = "") {
   const lines = [];
   const pattern = /“([^”]+)”|"([^"]+)"/g;
@@ -1689,12 +1666,10 @@ function extractDialogueLines(value = "") {
   }
   return lines.slice(0, 8);
 }
-
 function openingNarrativeBeat(value = "") {
   const narration = stripDialogue(value).split(/[.!?\n]/).map((item) => item.trim()).find(Boolean) || "";
   return developmentText(narration, 260);
 }
-
 function stockGestureMotifs(value = "") {
   const text = normalizeText(value);
   const motifs = [];
@@ -1707,18 +1682,15 @@ function stockGestureMotifs(value = "") {
   if (/\b(?:schools? (?:his|her|their) (?:face|expression)|indifferent mask|defensive smirk|mask .*? back)\b/.test(text)) motifs.push("mask");
   return [...new Set(motifs)];
 }
-
 function hasStockBodyLanguageStack(reply = "") {
   return stockGestureMotifs(reply).length >= 3;
 }
-
 function hasRecycledStockGesture(reply = "", recentReplies = []) {
   const current = stockGestureMotifs(reply);
   if (!current.length) return false;
   const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5).map(stockGestureMotifs);
   return current.some((motif) => recent.filter((items) => items.includes(motif)).length >= 2);
 }
-
 function extractUserStagedEvents(value = "") {
   const raw = String(value || "");
   return [...raw.matchAll(/\*([^*]+)\*/gs)]
@@ -1728,7 +1700,6 @@ function extractUserStagedEvents(value = "") {
     .join("\n- ")
     .replace(/^/, "- ");
 }
-
 function hasUserStagedSceneRetcon(reply = "", latestUserMessage = "", characterName = "") {
   const rawLatest = String(latestUserMessage || "");
   const stagedRaw = [...rawLatest.matchAll(/\*([^*]+)\*/gs)].map((match) => match[1]).join(" ");
@@ -1756,7 +1727,6 @@ function hasUserStagedSceneRetcon(reply = "", latestUserMessage = "", characterN
 
   return false;
 }
-
 function userExplicitlyStagesDeparture(latestUserMessage = "") {
   const raw = String(latestUserMessage || "");
   const staged = [...raw.matchAll(/\*([^*]+)\*/gs)].map((match) => normalizeText(match[1])).join(" ");
@@ -1769,7 +1739,6 @@ function userExplicitlyStagesDeparture(latestUserMessage = "") {
   const idiomaticLeaveYouWith = /\b(?:i(?:'|’)ll|i will|im going to|i am going to)\s+leave\s+you\s+(?:with|to)\b/i.test(stripped);
   return literalAction && !idiomaticLeaveYouWith;
 }
-
 function latestDepartureCueWithoutAction(latestUserMessage = "", recentUserMessages = []) {
   const candidates = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages.slice().reverse() : [])]
     .map((value) => String(value || "").trim())
@@ -1782,7 +1751,6 @@ function latestDepartureCueWithoutAction(latestUserMessage = "", recentUserMessa
   }
   return "";
 }
-
 function hasUnstagedUserDepartureInference(reply = "", latestUserMessage = "", userName = "", recentUserMessages = []) {
   const departureCue = latestDepartureCueWithoutAction(latestUserMessage, recentUserMessages);
   if (!departureCue) return false;
@@ -1799,21 +1767,18 @@ function hasUnstagedUserDepartureInference(reply = "", latestUserMessage = "", u
   const vanishedUser = new RegExp(`\\b(?:door|doorway|exit|hall|crowd)\\b.{0,90}\\b${subject}\\b.{0,70}\\b(?:gone|left|walked|headed|disappeared)\\b|\\b${subject}\\b.{0,90}\\b(?:gone|out of sight|no longer there)\\b`).test(text);
   return movement.test(text) || doorway || pursuitAssumption || vanishedUser;
 }
-
 function hasUnsupportedMotiveEscalation(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply), latest = normalizeText(latestUserMessage);
   const accusation = /\b(?:stop trying to|center of attention|for their benefit|for his benefit|for her benefit|make me jealous|make .* jealous|you just want|you only want|you re being dramatic|you are being dramatic|making a scene|attention seeking|pick me)\b/.test(text);
   if (!accusation) return false;
   return !/\b(?:attention|jealous|dramatic|scene|pick me|trying to|benefit)\b/.test(latest);
 }
-
 function hasDistanceBoundaryOverride(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply), latest = normalizeText(latestUserMessage);
   const createsDistance = /\b(?:create(?:s|d|ing)? space|pull(?:s|ed|ing)? away|move(?:s|d|ing)? away|step(?:s|ped|ping)? away|back(?:s|ed|ing)? away|nudge(?:s|d|ing)? .*? space|let go|dont touch|do not touch)\b/.test(latest);
   if (!createsDistance || /\b(?:slip|slipped|fall|fell|trip|tripped|stumble|stumbled|traffic|car hits|attack|attacks|lunges|weapon)\b/.test(latest)) return false;
   return /\b(?:grab(?:s|bed|bing)?|catch(?:es|caught|ing)? .*? (?:wrist|arm|waist|elbow)|take(?:s|n)? .*? wrist|pull(?:s|ed)? .*? closer|step(?:s|ped)? closer|close(?:s|d)? the distance|block(?:s|ed)? .*? path|steer(?:s|ed)? .*? back)\b/.test(text);
 }
-
 function hasSocialTensionOverEscalation(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply), latest = normalizeText(latestUserMessage);
   const socialScene = /\b(?:friends?|group|girl|guy|rumou?r|dating|supposedly|coming over|approach(?:ing|ed)?|classmates?|party)\b/.test(latest);
@@ -1821,7 +1786,6 @@ function hasSocialTensionOverEscalation(reply = "", latestUserMessage = "") {
   if (!socialScene || actualDanger) return false;
   return /\b(?:protective instincts?|block(?:s|ed)? .*? line of sight|step(?:s|ped)? between .*? and|steer(?:s|ed)? .*? away|let (?:him|her|them) try|shield(?:s|ed)? .*? from)\b/.test(text);
 }
-
 function hasRepeatedRecentSignature(reply = "", recentReplies = []) {
   const currentDialogue = extractDialogueLines(reply);
   const currentOpening = openingNarrativeBeat(reply);
@@ -1835,16 +1799,13 @@ function hasRepeatedRecentSignature(reply = "", recentReplies = []) {
   }
   return false;
 }
-
 function developmentText(value = "", maximum = 600) {
   return String(value || "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, maximum);
 }
-
 function developmentList(value, maximumItems = 8, maximumLength = 280) {
   const items = Array.isArray(value) ? value : [];
   return [...new Set(items.map((item) => developmentText(item, maximumLength)).filter(Boolean))].slice(-maximumItems);
 }
-
 function normalizeCharacterDevelopment(value = {}, relationshipPremise = "", includeUndoSnapshot = true) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const allowedPhases = new Set(["baseline", "established", "warming", "strained", "repairing", "deepening", "romantic_shift", "committed"]);
@@ -1899,12 +1860,10 @@ function normalizeCharacterDevelopment(value = {}, relationshipPremise = "", inc
       : null,
   };
 }
-
 function characterDevelopmentPromptView(value = {}, relationshipPremise = "") {
   const { undo_snapshot: _undoSnapshot, ...visible } = normalizeCharacterDevelopment(value, relationshipPremise);
   return visible;
 }
-
 function resolveCharacterDevelopmentBranch(value = {}, relationshipPremise = "", replacementMessageId = "") {
   const state = normalizeCharacterDevelopment(value, relationshipPremise);
   const replacementId = developmentText(replacementMessageId, 100);
@@ -1914,7 +1873,6 @@ function resolveCharacterDevelopmentBranch(value = {}, relationshipPremise = "",
   }
   return normalizeCharacterDevelopment({}, relationshipPremise);
 }
-
 function canTransitionCharacterPhase(currentPhase = "baseline", proposedPhase = "") {
   const transitions = new Map([
     ["baseline", ["established", "warming", "strained"]],
@@ -1928,7 +1886,6 @@ function canTransitionCharacterPhase(currentPhase = "baseline", proposedPhase = 
   ]);
   return (transitions.get(currentPhase) || []).includes(proposedPhase);
 }
-
 function isGroundedDevelopmentEvidence(evidence = "", latestUserMessage = "", reply = "") {
   const evidenceTokens = normalizeText(evidence).split(/\s+/).filter((token) => token.length > 2);
   if (!evidenceTokens.length) return false;
@@ -1937,7 +1894,6 @@ function isGroundedDevelopmentEvidence(evidence = "", latestUserMessage = "", re
   const required = Math.min(3, Math.max(1, Math.ceil(evidenceTokens.length * 0.35)));
   return matches >= required;
 }
-
 function summarizeRejectedStyle(rejectedResponses = []) {
   const text = rejectedResponses.map((item) => String(item || "").trim()).filter(Boolean).join("\n");
   if (!text) return [];
@@ -1952,7 +1908,6 @@ function summarizeRejectedStyle(rejectedResponses = []) {
   if (!feedback.length) feedback.push("A regeneration must change the character's choice, conversational tactic and dialogue—not merely paraphrase the rejected take.");
   return feedback;
 }
-
 function applyCharacterDevelopment({
   previous = {},
   update = {},
@@ -2081,7 +2036,6 @@ function dialogueQuestionCount(value = "") {
   const dialogue = [...text.matchAll(/["“]([^"”]+)["”]/g)].map((match) => match[1]).join(" ");
   return (dialogue.match(/\?/g) || []).length;
 }
-
 function hasRhetoricalDialogueOveruse(reply = "", recentReplies = []) {
   const text = normalizeText(reply);
   const questions = dialogueQuestionCount(reply);
@@ -2099,7 +2053,6 @@ function hasRhetoricalDialogueOveruse(reply = "", recentReplies = []) {
   const recentRhetorical = recent.filter((item) => dialogueQuestionCount(item) >= 1 && rhetoricalMarkers.some((pattern) => pattern.test(normalizeText(item)))).length;
   return markerHit && recentRhetorical >= 2;
 }
-
 function hasSarcasticComebackLoop(reply = "", recentReplies = []) {
   const patterns = [
     /\bright[,.]? because\b/,
@@ -2115,7 +2068,6 @@ function hasSarcasticComebackLoop(reply = "", recentReplies = []) {
   if (!isComeback(reply)) return false;
   return (Array.isArray(recentReplies) ? recentReplies : []).slice(-3).filter(isComeback).length >= 2;
 }
-
 function hasSmugComebackTone(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply);
   const dialogue = [...String(reply || "").matchAll(/["“]([^"”]+)["”]/g)].map((m) => normalizeText(m[1])).join(" ");
@@ -2156,7 +2108,6 @@ function userAddressAliases(userName = "") {
   if (first.length >= 6) aliases.push(first.slice(2, 6));
   return [...new Set(aliases.map((item) => normalizeText(item)).filter((item) => item.length >= 3))];
 }
-
 function hasNameAddressOveruse(reply = "", recentReplies = [], userName = "") {
   const aliases = userAddressAliases(userName);
   if (!aliases.length) return false;
@@ -2173,7 +2124,6 @@ function hasNameAddressOveruse(reply = "", recentReplies = [], userName = "") {
   const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-3);
   return recent.filter((item) => hitCount(item) > 0).length >= 2;
 }
-
 function characterSocialGravityText(character = {}) {
   return normalizeText([
     character?.role,
@@ -2186,18 +2136,15 @@ function characterSocialGravityText(character = {}) {
     character?.habits,
   ].filter(Boolean).join(" "));
 }
-
 function profileHasStrongSocialGravity(character = {}) {
   const profile = characterSocialGravityText(character);
   if (!profile) return false;
   return /\b(?:popular|well[- ]known|everyone knows|everybody knows|campus prince|campus king|heartbreaker|celebrity|famous|influential|socially powerful|most wanted|everyone wants|men want to be (?:his|her|their) friend|guys want to be (?:his|her|their) friend|women (?:want|try|flirt|chase)|girls (?:want|try|flirt|chase)|admired|desired|heir|captain|star player|student body|recogniz(?:e|ed|able)|reputation|all eyes|social circle|prominent family)\b/.test(profile);
 }
-
 function hasSocialGravityFootprint(text = "") {
   const value = normalizeText(text);
   return /\b(?:recognized|recognised|called (?:his|her|their) name|waved|greeted|stopped (?:him|her|them)|interrupted|came over|approached|joined them|asked to join|invited|invitation|dm|dms|messages?|rumou?r|whispered|stared|looked over|glanced over|turned heads?|flirt(?:ed|ing)?|smiled at|number|phone number|saved (?:him|her|them) a seat|seat saved|knew (?:his|her|their) name|knew who|classmates?|teammates?|friends? called|people kept|another girl|another guy|someone from|group of students|familiar face|acquaintance|crowd greeted)\b/.test(value);
 }
-
 function hasMissingSocialGravity(reply = "", latestUserMessage = "", recentReplies = [], character = {}) {
   if (!profileHasStrongSocialGravity(character)) return false;
   const latest = normalizeText(latestUserMessage);
@@ -2209,7 +2156,6 @@ function hasMissingSocialGravity(reply = "", latestUserMessage = "", recentRepli
   // with no social footprint at all.
   return recent.length > 40 && !hasSocialGravityFootprint(recent);
 }
-
 function hasSpatialContinuityBreak(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply);
   const user = normalizeText(latestUserMessage);
@@ -2226,7 +2172,6 @@ function hasSpatialContinuityBreak(reply = "", latestUserMessage = "") {
   const silentSeparation = /\b(?:keep up|catch up|if (?:she|he|they|you) (?:was|were) following|didn'?t look back (?:to|and) (?:see|check)|without looking back|walked ahead|moved ahead|pushed ahead|strode ahead|left (?:her|him|them|you) behind|followed (?:him|her|them) behind|trailed behind|a few (?:steps|paces) behind)\b/.test(text);
   return silentSeparation;
 }
-
 function sanitizeHardUserIntentContradictions(reply = "", latestUserMessage = "") {
   const original = String(reply || "").trim(), motiveConflict = hasUserMotiveOverride(original, latestUserMessage, []), pursuitConflict = hasRejectedPursuitFramingPersistence(original, latestUserMessage);
   if (!original || (!motiveConflict && !pursuitConflict)) return original;
@@ -2284,6 +2229,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "kinetic_tension_deflated",
   "charged_beat_abandoned",
   "charged_beat_stalled",
+  "charged_departure_dropped",
   "invented_debate_evidence",
   "user_motive_overwritten",
   "rejected_pursuit_framing_persisted",
@@ -2293,11 +2239,9 @@ const REPAIR_TRIGGER_ISSUES = new Set([
 function blockingNarrativeIssues(issues = []) {
   return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => BLOCKING_NARRATIVE_ISSUES.has(issue));
 }
-
 function repairTriggerIssues(issues = []) {
   return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => REPAIR_TRIGGER_ISSUES.has(issue));
 }
-
 function validateNarrativeReply(reply = "", options = {}) {
   const issues = [];
   const text = String(reply || "").trim();
@@ -2327,6 +2271,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasKineticTensionDeflation(text, options.latestUserMessage || "", options.recentUserMessages || [], options.recentCharacterReplies || [], options.character || {})) issues.push("kinetic_tension_deflated");
   if (hasChargedBeatAbandonment(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("charged_beat_abandoned");
   if (hasChargedBeatStall(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("charged_beat_stalled");
+  if (hasChargedDepartureDrop(text, options.latestUserMessage || "", options.recentUserMessages || [], options.recentCharacterReplies || [], options.character || {})) issues.push("charged_departure_dropped");
   if (hasGenericPursuitWithoutProgress(text, turnIntent)) issues.push("generic_pursuit_without_progress");
   if (hasAttentionFixationLoop(text, options.recentCharacterReplies || [])) issues.push("attention_fixation_loop");
   if (hasNpcCommentatorLoop(text, options.recentCharacterReplies || [])) issues.push("npc_commentator_loop");
@@ -2359,7 +2304,6 @@ function validateNarrativeReply(reply = "", options = {}) {
   }
   return [...new Set(issues)];
 }
-
 function validateContinuityEnvelope(result = {}, options = {}) {
   const issues = [];
   const previousScene = options.previousScene && typeof options.previousScene === "object" ? options.previousScene : {}, previousCast = options.previousCast && typeof options.previousCast === "object" ? options.previousCast : {}, previousIntelligence = options.previousIntelligence && typeof options.previousIntelligence === "object" ? options.previousIntelligence : {};
@@ -2407,7 +2351,6 @@ function validateContinuityEnvelope(result = {}, options = {}) {
 
   return [...new Set(issues)];
 }
-
 function detectResponseLanguage(latestUserMessage = "", previousCharacterMessage = "") {
   const latest = String(latestUserMessage || "").trim();
   const raw = isSilentContinueText(latest)
@@ -2425,7 +2368,6 @@ function compactSceneNames(value: any, limit = 14) {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.map((item) => cleanPromptValue(item, 80)).filter(Boolean))].slice(0, limit);
 }
-
 function applySceneContinuity({ previousScene = {}, previousCast = {}, sceneUpdate = {}, castUpdates = [], mainCharacterName = "" }) {
   const priorPresent = compactSceneNames(previousScene?.present || []), proposedPresent = compactSceneNames(sceneUpdate?.present || []), sceneChanged = Boolean(sceneUpdate?.scene_changed);
   const exitedNames = compactSceneNames(sceneUpdate?.exited || []), exitedKeys = new Set(exitedNames.map(normalizeText));
@@ -2464,7 +2406,6 @@ function applySceneContinuity({ previousScene = {}, previousCast = {}, sceneUpda
   if (mainCharacterName && present.some((name) => normalizeText(name) === normalizeText(mainCharacterName))) cast[mainCharacterName] = { ...(cast[mainCharacterName] || {}), current_status: "present", last_seen: scene.location || "current scene" };
   return { scene, cast };
 }
-
 function buildSceneSeparatorLabel(previousScene: any = {}, sceneUpdate: any = {}) {
   const explicit = cleanPromptValue(sceneUpdate?.separator_label, 100);
   if (explicit || !sceneUpdate?.scene_changed) return explicit;
@@ -2481,12 +2422,10 @@ function buildSceneSeparatorLabel(previousScene: any = {}, sceneUpdate: any = {}
   if (location && normalizeText(location) !== normalizeText(previousScene?.location || "")) return location;
   return "A little later";
 }
-
 function compactTextList(value: any, limit = 12, itemLimit = 260) {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.map((item) => cleanPromptValue(item, itemLimit)).filter(Boolean))].slice(0, limit);
 }
-
 function applyIntelligenceContinuity(previous: any = {}, update: any = {}) {
   const prior = previous && typeof previous === "object" ? previous : {};
   const resolved = compactTextList(update?.resolved_commitments, 8, 260);
@@ -2505,13 +2444,11 @@ function applyIntelligenceContinuity(previous: any = {}, update: any = {}) {
     updated_at: new Date().toISOString(),
   };
 }
-
 function buildStoryRecap(timeline: any[] = [], previous = "") {
   const meaningful = (Array.isArray(timeline) ? timeline : []).filter((item) => Number(item?.importance || 0) >= 3 || item?.scene_changed).slice(-8);
   if (!meaningful.length) return cleanPromptValue(previous, 2200);
   return meaningful.map((item) => cleanPromptValue(item?.detail || item?.note || item?.label, 320)).filter(Boolean).join(" • ").slice(0, 2200);
 }
-
 function evolveStoryChapters({ chapters = [], activeChapter = {}, latestUserMessage = "", sceneUpdate = {}, timelineEvent = {}, savedMessage = {}, recap = "" }) {
   const closed = Array.isArray(chapters) ? [...chapters] : [];
   let active = activeChapter && typeof activeChapter === "object" ? { ...activeChapter } : {};
@@ -2528,7 +2465,6 @@ function evolveStoryChapters({ chapters = [], activeChapter = {}, latestUserMess
   }
   return { chapters: closed.slice(-20), activeChapter: active, chapterNumber: Number(active.number || closed.length + 1) };
 }
-
 function relationshipStateFromDevelopment(development = {}, previous = {}) {
   const turningPoints = Array.isArray(development?.turning_points) ? development.turning_points.slice(-12) : [];
   const contradictions = Array.isArray(development?.active_contradictions) ? development.active_contradictions.slice(-4) : [];
@@ -2959,7 +2895,6 @@ async function streamGeminiEnvelopeWithFailover({
   if (quotaReached) throw new Error("Gemini is rate-limited right now. This can be a per-minute, token, or daily project limit. Wait a little and try again.");
   throw new Error(lastError);
 }
-
 function roleplayResponseSchema() {
   return {
     type: "object",
@@ -2979,11 +2914,9 @@ function roleplayResponseSchema() {
     },
   };
 }
-
 function extractCandidateTextRaw(data) {
   return String(data?.candidates?.[0]?.content?.parts?.filter((part) => !part.thought).map((part) => part.text || "").join("") || "");
 }
-
 function extractPartialJsonStringField(source = "", field = "reply") {
   const pattern = new RegExp(`"${field.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"\\s*:\\s*"`);
   const match = pattern.exec(source);
@@ -3003,7 +2936,6 @@ function extractPartialJsonStringField(source = "", field = "reply") {
   safe = safe.replace(/\\u[0-9a-fA-F]{0,3}$/u, "");
   try { return JSON.parse(`"${safe}"`); } catch { return ""; }
 }
-
 function extractGeminiHttpError(text = "") {
   try { return String(JSON.parse(text)?.error?.message || ""); } catch { return String(text || "").slice(0, 260); }
 }
@@ -3144,11 +3076,9 @@ async function streamAndPersist({
     },
   });
 }
-
 function memoryTokenSet(value = "") {
   return new Set(normalizeText(value).split(/\s+/).filter((token) => token.length > 3));
 }
-
 function memorySimilarity(left = "", right = "") {
   const a = memoryTokenSet(left);
   const b = memoryTokenSet(right);
@@ -3251,7 +3181,6 @@ async function replaceCharacterReply({ supabase, conversationId, userId, message
   if (error || !data) throw new Error(error?.message || "The regenerated response couldn't be saved");
   return data;
 }
-
 function createThrottledCancellationProbe(check, intervalMs = 420) {
   let lastCheckedAt = 0;
   let lastValue = false;
@@ -3293,7 +3222,6 @@ async function isStoryRevisionCurrent(supabase, conversationId, userId, expected
   if (error || !data) return false;
   return String(data.story_revision || "") === String(expectedRevision);
 }
-
 function selectRelevantMemories(memories, messages) {
   const recent = normalizeText(messages.slice(-20).map((message) => message.content).join(" "));
   return [...memories].sort((left, right) => {
@@ -3308,7 +3236,6 @@ function selectRelevantMemories(memories, messages) {
     return rightRelevant - leftRelevant || Number(right.importance || 0) - Number(left.importance || 0);
   }).slice(0, 18);
 }
-
 function selectRelevantLore(entries, messages, groupCharacters = []) {
   const recentRaw = messages.slice(-28).map((message) => message.content).join(" ");
   const recent = normalizeText(recentRaw);
@@ -3346,7 +3273,6 @@ function selectRelevantLore(entries, messages, groupCharacters = []) {
     .slice(0, 8)
     .map((item) => item.entry);
 }
-
 function getUserIdentity(user, persona = null) {
   const metadata = user?.user_metadata || {};
   const name = persona?.name || metadata.display_name || metadata.full_name || metadata.name || String(user?.email || "").split("@")[0] || "the user";
@@ -3365,7 +3291,6 @@ function getUserIdentity(user, persona = null) {
     notes: cleanPromptValue(persona?.notes, 1200),
   };
 }
-
 function getLengthGuidance(length, kind) {
   if (kind === "interactive_thread") return "120–320 words when the user explicitly opens an ongoing message/call/chat sub-scene. Show several distinct exchanges and reactions; do not resolve the thread after one or two lines unless the user asked to keep it brief.";
   if (kind === "reassurance") return "30–80 words; one honest reaction and natural dialogue are enough.";
@@ -3377,61 +3302,49 @@ function getLengthGuidance(length, kind) {
   if (length === "long") return "100–250 words, only when the moment genuinely needs room.";
   return "45–140 words. Shorter is better when the social beat already lands.";
 }
-
 function getMaximumOutputTokens(length) {
   if (length === "short") return 1100;
   if (length === "long") return 2800;
   return 1900;
 }
-
 function getTemperature(creativity, regeneration) {
   const value = clampNumber(creativity, 0.2, 1.2, 0.84);
   const temperature = 0.62 + ((value - 0.2) / 1.0) * 0.26 + (regeneration ? 0.08 : 0);
   return Number(Math.min(1.02, temperature).toFixed(2));
 }
-
 function extractCandidateText(data) {
   return String(data?.candidates?.[0]?.content?.parts
     ?.filter((part) => !part.thought)
     .map((part) => part.text || "")
     .join("") || "").trim();
 }
-
 function modelEndpoint(model) {
   return `${GEMINI_API_ROOT}/${encodeURIComponent(model)}:generateContent`;
 }
-
 function modelStreamEndpoint(model) {
   return `${GEMINI_API_ROOT}/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`;
 }
-
 function geminiHeaders(apiKey) {
   return { "Content-Type": "application/json", "x-goog-api-key": apiKey };
 }
-
 function stripJsonFence(value) {
   return String(value || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
 }
-
 function compactMessageForPrompt(value, maximum = 3200) {
   const text = String(value || "").trim();
   if (text.startsWith("[RETURN_MAIN_POV")) return "[RETURN_MAIN_POV]";
   if (isSilentContinueText(text)) return "[SILENT_CONTINUE]";
   return cleanPromptValue(text, maximum);
 }
-
 function cleanPromptValue(value, maximum = 1500) {
   return String(value || "").replace(/[<>]/g, "").trim().slice(0, maximum);
 }
-
 function cleanInstruction(value) {
   return cleanPromptValue(value, 1500);
 }
-
 function cleanId(value) {
   return String(value || "").trim().slice(0, 100);
 }
-
 function getSupabasePublishableKey() {
   const legacy = Deno.env.get("SUPABASE_ANON_KEY");
   if (legacy) return legacy;
@@ -3444,7 +3357,6 @@ function getSupabasePublishableKey() {
     return raw;
   }
 }
-
 function splitForStreaming(text) {
   const chunks = [];
   let cursor = 0;
@@ -3462,33 +3374,26 @@ function splitForStreaming(text) {
   }
   return chunks;
 }
-
 function clampNumber(value, minimum, maximum, fallback) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(maximum, Math.max(minimum, number));
 }
-
 function sendEvent(controller, data) {
   controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 }
-
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
-
 function cancelledResponse() {
   return new Response(null, { status: 499, headers: corsHeaders });
 }
-
 function getErrorName(error) {
   return error instanceof Error ? error.name : "";
 }
-
 function getErrorMessage(error) {
   return error instanceof Error ? error.message : String(error || "Unexpected server error");
 }
-
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,

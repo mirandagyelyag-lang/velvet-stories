@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -1156,6 +1156,37 @@ check("v2.10.35 fixed charged eyebrow dialogue advances the beat", !helpers?.has
 check("v2.10.35 fixed charged eyebrow social complication advances the beat", !helpers?.hasChargedBeatStall(`A girl from inside pushed through the door and called Chase's name. He glanced over, answered her, then looked back at you instead of ending the moment.`, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
 check("v2.10.35 fixed charged stall can spend the one repair", /REPAIR_TRIGGER_ISSUES[\s\S]{0,1600}"charged_beat_stalled"/.test(edge));
 check("v2.10.35 fixed prompt forbids eye-contact-only stalling", edge.includes("Eye contact + smirk + silence is still a stalled beat") && edge.includes("If the failure is charged_beat_stalled"));
+
+
+// v2.10.35 Fixed3 — charged departure pursuit continuity
+const chasePreDepartureUsers = [
+  `*i raise an eyebrow*`,
+  `Oh thank you, finally you're leaving`,
+  `I use whatever when i don't feel like talking with you, like always`,
+  `I didn't ask for a bodyguard *i keep walking but outside i needed some fresh air*`,
+];
+const chasePreDepartureReplies = [
+  `Chase stayed right where he was, making it clear he wasn't going anywhere just because she asked.`,
+  `"Keep trying," he said. "You might convince yourself eventually."`,
+  `"You're still standing here," he pointed out softly. "That's usually a strong indicator."`,
+];
+const chasePassiveWalkAway = `Chase watched her move, his hands still loosely at his sides as he let the space between them stretch. He didn't call out, and he didn't follow. Instead, he leaned back against the brick, his gaze tracing the path she took across the damp pavement until she was another shadow moving away from the light. He finally turned his back to the lawn and headed back inside.`;
+check("v2.10.35 fixed3 exact silent walk-away passivity is detected",
+  helpers?.hasChargedDepartureDrop(chasePassiveWalkAway, `*i stay quiet but i walk*`, chasePreDepartureUsers, chasePreDepartureReplies, chaseTensionControls));
+check("v2.10.35 fixed3 immediate forearm pursuit is accepted",
+  !helpers?.hasChargedDepartureDrop(`Chase pushed off the brick the second you started moving. Two quick steps closed the gap. He caught your forearm lightly, stopping the momentum for half a beat. "No. Not like that." His grip loosened immediately, leaving you room to pull free.`, `*i stay quiet but i walk*`, chasePreDepartureUsers, chasePreDepartureReplies, chaseTensionControls));
+check("v2.10.35 fixed3 verbal chase is accepted without forced touch",
+  !helpers?.hasChargedDepartureDrop(`Chase stepped after you instead of letting the distance open. "Hey. Don't turn this into me letting you win." He caught up beside you, matching your pace without blocking it.`, `*i stay quiet but i walk*`, chasePreDepartureUsers, chasePreDepartureReplies, chaseTensionControls));
+check("v2.10.35 fixed3 explicit leave-alone boundary suppresses pursuit requirement",
+  !helpers?.hasChargedDepartureDrop(chasePassiveWalkAway, `Leave me alone. *i walk away*`, chasePreDepartureUsers, chasePreDepartureReplies, chaseTensionControls));
+check("v2.10.35 fixed3 gentle low-initiative character may let the departure land",
+  !helpers?.hasChargedDepartureDrop(chasePassiveWalkAway, `*i stay quiet but i walk*`, chasePreDepartureUsers, chasePreDepartureReplies, { initiative: 25, flirting: 10, drama: 20, romance_intensity: 20 }));
+check("v2.10.35 fixed3 charged departure can spend the one repair",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,1800}"charged_departure_dropped"/.test(edge));
+check("v2.10.35 fixed3 prompt prioritizes active pursuit on hot walk-away",
+  edge.includes("CHARGED DEPARTURE NEEDS FOLLOW-THROUGH") && edge.includes("briefly catch a forearm/elbow/arm") && edge.includes("watch her leave and go back inside"));
+check("v2.10.35 fixed3 repair explicitly fixes passive hot departure",
+  edge.includes("If the failure is charged_departure_dropped") && edge.includes("step after them, catch up, call them back"));
 
 
 
