@@ -823,10 +823,31 @@ export function ChatsProvider({
                 String(item.content || "") !== previousContent
               ) || null;
             } else {
-              completedMessage = [...refreshedMessages].reverse().find((item) =>
-                item.sender === "character" &&
-                new Date(item.createdAt || 0).getTime() >= requestStartedAt - 1500
-              ) || null;
+              // VELVET_BACKGROUND_COMPLETION_V2
+              // Never decide whether the server finished by comparing the phone
+              // clock with Supabase created_at. Mobile clocks can drift enough to
+              // make a reply visibly arrive while the local request stays stuck
+              // in WRITING/STOP forever. The user's saved message is the durable
+              // ordering anchor: any canonical character message after it is the
+              // completion of this turn.
+              const expectedIndex = expectedUserMessageId
+                ? refreshedMessages.findIndex((item) => item.id === expectedUserMessageId)
+                : -1;
+
+              if (expectedIndex >= 0) {
+                completedMessage = refreshedMessages
+                  .slice(expectedIndex + 1)
+                  .find((item) => item.sender === "character" && !item.isStreaming) || null;
+              }
+
+              // Compatibility fallback for conversations created by an older
+              // client where the expected user id is unavailable.
+              if (!completedMessage) {
+                completedMessage = [...refreshedMessages].reverse().find((item) =>
+                  item.sender === "character" &&
+                  new Date(item.createdAt || 0).getTime() >= requestStartedAt - 1500
+                ) || null;
+              }
             }
 
             if (completedMessage) {
