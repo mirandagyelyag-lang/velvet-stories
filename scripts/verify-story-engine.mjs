@@ -1073,3 +1073,10 @@ check("v2.10.28 prompt forbids pursuit assumptions after spoken-only departure",
   edge.includes("SILENCE DOES NOT COMPLETE A THREAT"));
 
 console.log(`\n${checks.length} story-engine checks passed.`);
+
+check("v2.10.29 quick reply lane keeps style issues advisory",
+  edge.includes("VELVET_QUICK_REPLY_LANE_V21029") &&
+  !/REPAIR_TRIGGER_ISSUES[\s\S]{0,1200}\"sarcastic_comeback_loop\"/.test(edge) &&
+  !/REPAIR_TRIGGER_ISSUES[\s\S]{0,1200}\"reaction_opener_loop\"/.test(edge));
+check("v2.10.29 departure continuity can still trigger repair",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,1200}\"unstaged_user_departure_inference\"/.test(edge));

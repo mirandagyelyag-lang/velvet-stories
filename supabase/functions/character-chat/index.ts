@@ -2095,6 +2095,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "user_staged_scene_retcon",
 ]);
 // VELVET_SPEED_REPAIR_BUDGET_V282
+// VELVET_QUICK_REPLY_LANE_V21029: style-only issues never spend the second model call.
 // VELVET_USER_STAGED_CANON_GUARD_V283
 // A second model call is expensive. Style repetition and continuity metadata are
 // advisory after the first draft: the prompt discourages them and deterministic
@@ -2102,6 +2103,9 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
+  // QUICK REPLY LANE: spend a second model call only on continuity/canon failures
+  // that materially change what happened. Style issues remain visible to the
+  // prompt/telemetry but do not double generation latency on ordinary turns.
   "unsupported_motive_escalation",
   "distance_boundary_override",
   "social_tension_overescalation",
@@ -2109,18 +2113,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "active_npc_erased_after_cue",
   "cued_npc_marked_exited",
   "interactive_thread_collapsed",
-  "atmospheric_stalling_loop",
   "spatial_relationship_broken",
-  "social_gravity_missing",
-  "name_address_overuse",
-  "sarcastic_comeback_loop",
-  "smug_comeback_tone",
-  "rhetorical_dialogue_overuse",
-  "reaction_opener_loop",
-  "repeated_social_shutdown",
-  "emotional_cue_passivity",
-  "attention_fixation_loop",
-  "npc_commentator_loop",
   "invented_debate_evidence",
   "unstaged_user_departure_inference",
 ]);
