@@ -1139,26 +1139,26 @@ check("v2.10.34 repair prompt actively fixes frozen chemistry",
 check("v2.10.34 repaired validation receives character controls",
   /recentUserMessages,\s*character,\s*\}\);\s*repairedIssues\.push/.test(edge));
 
-// v2.10.35 Charged Beat Continuity
+// v2.10.37 Charged Beat Continuity
 const chaseStayedReply = `Chase let out a short, dry breath, his weight shifting back onto his heels as he stayed right where he was. He didn't make a move to close the distance, making it clear he wasn't going anywhere just because she asked.`;
 const chaseBadEyebrowExit = `Chase held her gaze for another beat, the corner of his mouth ticking upward before he finally turned away, his hands slipping into his pockets as he walked back toward the sliding glass door and the noise inside.`;
-check("v2.10.35 raised eyebrow becomes a charged nonverbal cue", helpers?.classifyTurnIntent(`*i raise an eyebrow*`, []).kind === "charged_nonverbal");
-check("v2.10.35 held look can keep a charged beat open", helpers?.classifyTurnIntent(`*i look at you*`, []).kind === "charged_nonverbal");
-check("v2.10.35 exact Chase eyebrow walk-away is detected", helpers?.hasChargedBeatAbandonment(chaseBadEyebrowExit, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
-check("v2.10.35 staying active after eyebrow is accepted", !helpers?.hasChargedBeatAbandonment(`Chase stayed exactly where he was. "That eyebrow isn't getting rid of me." He stepped closer by half a pace, amusement sharpening instead of fading.`, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
-check("v2.10.35 a genuinely motivated exit remains possible", !helpers?.hasChargedBeatAbandonment(`His phone buzzed. Chase glanced at the screen, swore under his breath, then walked back inside because Miller needed him at the door.`, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
-check("v2.10.35 charged abandonment can spend the one repair", /REPAIR_TRIGGER_ISSUES[\s\S]{0,1400}"charged_beat_abandoned"/.test(edge));
-check("v2.10.35 prompt protects micro-reaction continuity", edge.includes("CHARGED MICRO-REACTIONS KEEP THE BEAT OPEN") && edge.includes("do not reverse that choice and walk away solely because the user raised an eyebrow"));
-check("v2.10.35 repair preserves the immediately previous active choice", edge.includes("If the failure is charged_beat_abandoned") && edge.includes("a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside"));
+check("v2.10.37 raised eyebrow becomes a charged nonverbal cue", helpers?.classifyTurnIntent(`*i raise an eyebrow*`, []).kind === "charged_nonverbal");
+check("v2.10.37 held look can keep a charged beat open", helpers?.classifyTurnIntent(`*i look at you*`, []).kind === "charged_nonverbal");
+check("v2.10.37 exact Chase eyebrow walk-away is detected", helpers?.hasChargedBeatAbandonment(chaseBadEyebrowExit, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
+check("v2.10.37 staying active after eyebrow is accepted", !helpers?.hasChargedBeatAbandonment(`Chase stayed exactly where he was. "That eyebrow isn't getting rid of me." He stepped closer by half a pace, amusement sharpening instead of fading.`, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
+check("v2.10.37 a genuinely motivated exit remains possible", !helpers?.hasChargedBeatAbandonment(`His phone buzzed. Chase glanced at the screen, swore under his breath, then walked back inside because Miller needed him at the door.`, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
+check("v2.10.37 charged abandonment can spend the one repair", /REPAIR_TRIGGER_ISSUES[\s\S]{0,1400}"charged_beat_abandoned"/.test(edge));
+check("v2.10.37 prompt protects micro-reaction continuity", edge.includes("CHARGED MICRO-REACTIONS KEEP THE BEAT OPEN") && edge.includes("do not reverse that choice and walk away solely because the user raised an eyebrow"));
+check("v2.10.37 repair preserves the immediately previous active choice", edge.includes("If the failure is charged_beat_abandoned") && edge.includes("a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside"));
 const chaseFrozenEyebrow = `Chase held her gaze through the silent challenge, the corner of his mouth twitching with a slow, deliberate reluctance that refused to look away. He didn't offer another line or try to outlast the raised eyebrow, his weight still resting back on his heels as the bass thudded from the open doorway behind them.`;
-check("v2.10.35 fixed charged eyebrow freeze is detected as stalled", helpers?.hasChargedBeatStall(chaseFrozenEyebrow, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
-check("v2.10.35 fixed charged eyebrow dialogue advances the beat", !helpers?.hasChargedBeatStall(`Chase's mouth twitched. "Still waiting for me to leave?" He pushed off the pillar and took one unhurried step closer.`, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
-check("v2.10.35 fixed charged eyebrow social complication advances the beat", !helpers?.hasChargedBeatStall(`A girl from inside pushed through the door and called Chase's name. He glanced over, answered her, then looked back at you instead of ending the moment.`, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
-check("v2.10.35 fixed charged stall can spend the one repair", /REPAIR_TRIGGER_ISSUES[\s\S]{0,1600}"charged_beat_stalled"/.test(edge));
-check("v2.10.35 fixed prompt forbids eye-contact-only stalling", edge.includes("Eye contact + smirk + silence is still a stalled beat") && edge.includes("If the failure is charged_beat_stalled"));
+check("v2.10.37 fixed charged eyebrow freeze is detected as stalled", helpers?.hasChargedBeatStall(chaseFrozenEyebrow, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
+check("v2.10.37 fixed charged eyebrow dialogue advances the beat", !helpers?.hasChargedBeatStall(`Chase's mouth twitched. "Still waiting for me to leave?" He pushed off the pillar and took one unhurried step closer.`, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
+check("v2.10.37 fixed charged eyebrow social complication advances the beat", !helpers?.hasChargedBeatStall(`A girl from inside pushed through the door and called Chase's name. He glanced over, answered her, then looked back at you instead of ending the moment.`, `*i raise an eyebrow*`, [chaseStayedReply], chaseTensionControls));
+check("v2.10.37 fixed charged stall can spend the one repair", /REPAIR_TRIGGER_ISSUES[\s\S]{0,1600}"charged_beat_stalled"/.test(edge));
+check("v2.10.37 fixed prompt forbids eye-contact-only stalling", edge.includes("Eye contact + smirk + silence is still a stalled beat") && edge.includes("If the failure is charged_beat_stalled"));
 
 
-// v2.10.35 Fixed3 — charged departure pursuit continuity
+// v2.10.37 Fixed3 — charged departure pursuit continuity
 const chasePreDepartureUsers = [
   `*i raise an eyebrow*`,
   `Oh thank you, finally you're leaving`,
@@ -1171,21 +1171,21 @@ const chasePreDepartureReplies = [
   `"You're still standing here," he pointed out softly. "That's usually a strong indicator."`,
 ];
 const chasePassiveWalkAway = `Chase watched her move, his hands still loosely at his sides as he let the space between them stretch. He didn't call out, and he didn't follow. Instead, he leaned back against the brick, his gaze tracing the path she took across the damp pavement until she was another shadow moving away from the light. He finally turned his back to the lawn and headed back inside.`;
-check("v2.10.35 fixed3 exact silent walk-away passivity is detected",
+check("v2.10.37 fixed3 exact silent walk-away passivity is detected",
   helpers?.hasChargedDepartureDrop(chasePassiveWalkAway, `*i stay quiet but i walk*`, chasePreDepartureUsers, chasePreDepartureReplies, chaseTensionControls));
-check("v2.10.35 fixed3 immediate forearm pursuit is accepted",
+check("v2.10.37 fixed3 immediate forearm pursuit is accepted",
   !helpers?.hasChargedDepartureDrop(`Chase pushed off the brick the second you started moving. Two quick steps closed the gap. He caught your forearm lightly, stopping the momentum for half a beat. "No. Not like that." His grip loosened immediately, leaving you room to pull free.`, `*i stay quiet but i walk*`, chasePreDepartureUsers, chasePreDepartureReplies, chaseTensionControls));
-check("v2.10.35 fixed3 verbal chase is accepted without forced touch",
+check("v2.10.37 fixed3 verbal chase is accepted without forced touch",
   !helpers?.hasChargedDepartureDrop(`Chase stepped after you instead of letting the distance open. "Hey. Don't turn this into me letting you win." He caught up beside you, matching your pace without blocking it.`, `*i stay quiet but i walk*`, chasePreDepartureUsers, chasePreDepartureReplies, chaseTensionControls));
-check("v2.10.35 fixed3 explicit leave-alone boundary suppresses pursuit requirement",
+check("v2.10.37 fixed3 explicit leave-alone boundary suppresses pursuit requirement",
   !helpers?.hasChargedDepartureDrop(chasePassiveWalkAway, `Leave me alone. *i walk away*`, chasePreDepartureUsers, chasePreDepartureReplies, chaseTensionControls));
-check("v2.10.35 fixed3 gentle low-initiative character may let the departure land",
+check("v2.10.37 fixed3 gentle low-initiative character may let the departure land",
   !helpers?.hasChargedDepartureDrop(chasePassiveWalkAway, `*i stay quiet but i walk*`, chasePreDepartureUsers, chasePreDepartureReplies, { initiative: 25, flirting: 10, drama: 20, romance_intensity: 20 }));
-check("v2.10.35 fixed3 charged departure can spend the one repair",
+check("v2.10.37 fixed3 charged departure can spend the one repair",
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,1800}"charged_departure_dropped"/.test(edge));
-check("v2.10.35 fixed3 prompt prioritizes active pursuit on hot walk-away",
+check("v2.10.37 fixed3 prompt prioritizes active pursuit on hot walk-away",
   edge.includes("CHARGED DEPARTURE NEEDS FOLLOW-THROUGH") && edge.includes("briefly catch a forearm/elbow/arm") && edge.includes("watch her leave and go back inside"));
-check("v2.10.35 fixed3 repair explicitly fixes passive hot departure",
+check("v2.10.37 fixed3 repair explicitly fixes passive hot departure",
   edge.includes("If the failure is charged_departure_dropped") && edge.includes("step after them, catch up, call them back"));
 
 
