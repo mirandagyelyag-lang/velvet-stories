@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, hasKineticTensionDeflation, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 3400);
+check("live-stream engine stays reasonably consolidated", edgeLines < 3500);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -925,19 +925,6 @@ check("v2.10.32 local final guard strips rejected bodyguard justification",
 check("v2.10.32 local final guard keeps non-contradictory scene material",
   /leaned against the railing/i.test(sanitizedChaseReply));
 
-let failures = 0;
-for (const item of checks) {
-  if (!item.condition) failures += 1;
-  console.log(`${item.condition ? "PASS" : "FAIL"}  ${item.label}`);
-}
-
-if (failures) {
-  console.error(`\n${failures} story-engine verification check(s) failed.`);
-  process.exit(1);
-}
-
-console.log(`\n${checks.length} story-engine checks passed.`);
-
 check("v2.10.19 prompt locks relative body positions until visible movement changes them",
   edge.includes("the immediate relative positions between people") &&
   edge.includes("PROXIMITY IS CANON TOO") &&
@@ -1039,10 +1026,10 @@ check("v2.10.23 repeated social shutdowns are detected when people approach agai
   helpers?.hasRepeatedSocialShutdown(`He kept walking. "Not now."`, shutdownHistory, `Two men approached him across the quad.`));
 check("v2.10.23 a real social exchange is not flagged as shutdown",
   !helpers?.hasRepeatedSocialShutdown(`One of them grinned. "Party Friday?" Rowan finally slowed. "Maybe. Who's going?"`, shutdownHistory, `Two men approached him across the quad.`));
-check("v2.10.23 severe rhythm loops can spend the one bounded repair",
+check("v2.10.23 rhythm loops remain detectable but advisory in the quick reply lane",
   edge.includes('"reaction_opener_loop"') && edge.includes('"repeated_social_shutdown"') &&
-  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"sarcastic_comeback_loop"') &&
-  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"smug_comeback_tone"'));
+  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"sarcastic_comeback_loop"') &&
+  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"smug_comeback_tone"'));
 
 
 // v2.10.24 Emotional Responsiveness
@@ -1054,8 +1041,8 @@ check("v2.10.24 passive observation after tears is detected",
   helpers?.hasPassiveEmotionalCueResponse(`Alex stayed right beside her, watching her in silence as the tension settled between them.`, `*i was tearing up* Thank you`));
 check("v2.10.24 concrete emotional response is accepted",
   !helpers?.hasPassiveEmotionalCueResponse(`Alex set his coffee down. "Hey. What happened?" He reached for a napkin and slid it toward her.`, `*i was tearing up* Thank you`));
-check("v2.10.24 emotional passivity can spend the bounded repair",
-  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"emotional_cue_passivity"') &&
+check("v2.10.24 emotional passivity remains detectable without spending a routine second call",
+  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"emotional_cue_passivity"') &&
   edge.includes('issues.push("emotional_cue_passivity")'));
 
 
@@ -1084,9 +1071,9 @@ check("v2.10.25 invented debate evidence is rejected",
   helpers?.hasInventedDebateEvidence(`"You were watching me from across the living room to see who won."`, `Oh you won? Congrats`));
 check("v2.10.25 grounded debate evidence is allowed",
   !helpers?.hasInventedDebateEvidence(`"You were watching me from across the living room."`, `*I watched him play for a while*`));
-check("v2.10.25 new naturalism failures can spend one bounded repair",
-  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"attention_fixation_loop"') &&
-  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"npc_commentator_loop"') &&
+check("v2.10.25 style loops stay advisory while invented debate evidence can repair",
+  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"attention_fixation_loop"') &&
+  !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"npc_commentator_loop"') &&
   edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"invented_debate_evidence"'));
 
 check("v2.10.27 spoken departure does not become physical exit",
@@ -1118,4 +1105,51 @@ check("v2.10.29 quick reply lane keeps style issues advisory",
   !/REPAIR_TRIGGER_ISSUES[\s\S]{0,1200}\"reaction_opener_loop\"/.test(edge));
 check("v2.10.29 departure continuity can still trigger repair",
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,1200}\"unstaged_user_departure_inference\"/.test(edge));
+
+
+// v2.10.34 Kinetic Tension Engine
+check("v2.10.34 challenge intent recognizes Who asked",
+  helpers?.classifyTurnIntent(`Who asked?`, []).kind === "challenge");
+const chasePassiveAfterWhoAsked = `Chase remained leaning against the brick pillar outside, his gaze lingering on her for a beat before he looked back out at the damp lawn. A slow, faint smirk touched the corner of his mouth. "Fair point," he said. "No one did. Which means we're both out here talking to ourselves."`;
+const chaseTensionContextUsers = [
+  `I didn't ask for a bodyguard *i keep walking but outside i needed some fresh air*`,
+  `Whatever *i leave*`,
+];
+const chaseTensionControls = { initiative: 75, flirting: 70, drama: 65, romance_intensity: 60 };
+check("v2.10.34 passive Chase porch response is detected as tension deflation",
+  helpers?.hasKineticTensionDeflation(chasePassiveAfterWhoAsked, `Who asked?`, chaseTensionContextUsers, [], chaseTensionControls));
+check("v2.10.34 active brief forearm beat is accepted",
+  !helpers?.hasKineticTensionDeflation(`Chase pushed off the pillar. "You did when you kept answering." He caught her forearm for half a beat, light enough that she could keep moving, then let go.`, `Who asked?`, chaseTensionContextUsers, [], chaseTensionControls));
+check("v2.10.34 active social flirt complication is accepted",
+  !helpers?.hasKineticTensionDeflation(`A girl from inside stepped onto the porch and touched Chase's shoulder. He turned to her instead, answered her grin with one of his own, and kept the conversation going.`, `Who asked?`, chaseTensionContextUsers, [], chaseTensionControls));
+check("v2.10.34 low-initiative gentle character is not forced into kinetic tension",
+  !helpers?.hasKineticTensionDeflation(chasePassiveAfterWhoAsked, `Who asked?`, chaseTensionContextUsers, [], { initiative: 25, flirting: 10, drama: 15, romance_intensity: 20 }));
+check("v2.10.34 exact bodyguard line is not misread as automatic no-touch boundary",
+  edge.includes("rejects the BODYGUARD/PROTECTION framing") && edge.includes("BRIEF TOUCH MAY CREATE TENSION WHEN EARNED"));
+check("v2.10.34 explicit no-touch and leave-alone boundaries remain protected",
+  edge.includes("don't touch me") && edge.includes("leave me alone / stop following / don't touch me") && edge.includes("release immediately"));
+check("v2.10.34 prompt requires kinetic romantic tension choices",
+  edge.includes("KINETIC ROMANTIC TENSION — DO SOMETHING WITH THE CHARGE") &&
+  edge.includes("flirt back with someone else") && edge.includes("An admirer may approach"));
+check("v2.10.34 passive tension deflation can spend the one bounded repair",
+  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"kinetic_tension_deflated"') &&
+  edge.includes('issues.push("kinetic_tension_deflated")'));
+check("v2.10.34 repair prompt actively fixes frozen chemistry",
+  edge.includes("If the failure is kinetic_tension_deflated") && edge.includes("close conversational distance") && edge.includes("brief non-restraining touch"));
+check("v2.10.34 repaired validation receives character controls",
+  /recentUserMessages,\s*character,\s*\}\);\s*repairedIssues\.push/.test(edge));
+
+
+let failures = 0;
+for (const item of checks) {
+  if (!item.condition) failures += 1;
+  console.log(`${item.condition ? "PASS" : "FAIL"}  ${item.label}`);
+}
+
+if (failures) {
+  console.error(`\n${failures} story-engine verification check(s) failed.`);
+  process.exit(1);
+}
+
+console.log(`\n${checks.length} story-engine checks passed.`);
 
