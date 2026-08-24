@@ -14,7 +14,7 @@ const utility = read("src/utils/livingScenes.js");
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-check("release is v2.10.35 Charged Beat Continuity", pkg.version === "2.10.35" && read("src/config/version.js").includes('VELVET_RELEASE = "Charged Beat Continuity"'));
+check("release is v2.10.36 Build Export Hotfix", pkg.version === "2.10.36" && read("src/config/version.js").includes('VELVET_RELEASE = "Build Export Hotfix"'));
 check("Living Scenes stylesheet is the final release layer", main.lastIndexOf("velvet-v270-living-scenes.css") > main.lastIndexOf("velvet-v2616-audio-center.css"));
 
 const header = buildLivingSceneHeader({ sceneState: { location: "Campus quad", time_label: "Late night", present: ["Theo", "Jules"] }, ambientMode: "rain" }, "Theo");
