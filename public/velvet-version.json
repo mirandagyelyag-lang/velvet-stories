@@ -1,6 +1,6 @@
 {
-  "version": "2.10.27",
-  "release": "Relational Follow-through",
-  "buildTime": "2026-08-24T17:56:00.000Z",
-  "label": "Relational Follow-through"
+  "version": "2.10.28",
+  "release": "Departure Intent Lock",
+  "buildTime": "2026-08-24T18:28:00.000Z",
+  "label": "Departure Intent Lock"
 }

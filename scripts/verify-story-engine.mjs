@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, userExplicitlyStagesDeparture, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -1061,5 +1061,15 @@ check("v2.10.27 unresolved withdrawal beat is prompt-protected",
   edge.includes("DEPARTURE INTENT LOCK — DIALOGUE IS NOT MOVEMENT") &&
   edge.includes("RELATIONAL FOLLOW-THROUGH") &&
   edge.includes('"unstaged_user_departure_inference"'));
+
+check("v2.10.28 follow-language cannot invent an unstaged exit",
+  helpers?.hasUnstagedUserDepartureInference(`Chase didn't move to follow, his gaze lingering on her.`, `Rude. Then I'll leave you with your low bar`, `Antonia`, [`Rude. Then I'll leave you with your low bar`]));
+check("v2.10.28 silent continuation preserves prior spoken departure as non-action",
+  helpers?.hasUnstagedUserDepartureInference(`Chase glanced toward the door where Antonia had walked off.`, `.`, `Antonia`, [`Rude. Then I'll leave you with your low bar`, `.`]));
+check("v2.10.28 explicit movement still authorizes pursuit language",
+  !helpers?.hasUnstagedUserDepartureInference(`Chase moved to follow her toward the door.`, `*I turn and walk away toward the door*`, `Antonia`, [`*I turn and walk away toward the door*`]));
+check("v2.10.28 prompt forbids pursuit assumptions after spoken-only departure",
+  edge.includes("FOLLOW/PURSUIT LANGUAGE ALSO PRESUPPOSES MOVEMENT") &&
+  edge.includes("SILENCE DOES NOT COMPLETE A THREAT"));
 
 console.log(`\n${checks.length} story-engine checks passed.`);
