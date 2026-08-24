@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -71,7 +71,7 @@ check("advisory quality issues do not force repeated user regeneration",
 check("structural failures remain fatal after one bounded repair",
   edge.includes("if (blocking.length)") &&
   edge.includes("const repairedFatal = blockingNarrativeIssues(repairedIssues)") &&
-  edge.includes("Velvet could not get a complete safe reply after one repair. Retry once.") &&
+  edge.includes("Velvet could not get a valid protected reply after one repair") &&
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
 check("continuity metadata never spends a second model call",
@@ -991,7 +991,7 @@ check("opening regeneration resets stale derived scene continuity",
   edge.includes('existingStoryRecap: openingRegeneration ? ""'));
 
 // v2.10.14 timeout resilience: optional repair latency must not erase a usable first draft.
-check("optional repair failure falls back to a readable original draft", edge.includes("bounded repair failed; evaluating original draft fallback") && edge.includes("A slow optional") && edge.includes("repairUsed = false"));
+check("optional soft repair failure can still fall back to a readable original draft", edge.includes("bounded repair failed; evaluating original draft fallback") && edge.includes("Soft style repair may fall back to a readable original") && edge.includes("repairUsed = false"));
 check("roleplay stream allows a realistic model startup window", edge.includes("Date.now() + 38000") && edge.includes("Math.min(24000, remainingMs)"));
 
 // v2.10.15 positive hidden-feelings anchor: caring should enrich ordinary life, not replace it.
@@ -1204,6 +1204,28 @@ check("v2.10.37 fixed3 prompt prioritizes active pursuit on hot walk-away",
   edge.includes("CHARGED DEPARTURE NEEDS FOLLOW-THROUGH") && edge.includes("briefly catch a forearm/elbow/arm") && edge.includes("watch her leave and go back inside"));
 check("v2.10.37 fixed3 repair explicitly fixes passive hot departure",
   edge.includes("If the failure is charged_departure_dropped") && edge.includes("step after them, catch up, call them back"));
+
+
+// v2.10.39 Guarded Stream Commit — never show/save a draft that protected interaction guards reject.
+const chaseExactLatestBadDraft = `Chase watched her turn and walk away, his gaze following the deliberate line of her movement across the gravel without any sudden attempt to block her path or call her back. The bass from inside the house pulsed against the brickwork, a low, steady rhythm filling the space she left behind. He stayed by the pillar for another quiet beat, his hands resting easily in his pockets as the damp night air settled over the empty spot where she had been.`;
+check("v2.10.39 exact latest passive walk-away wording is detected",
+  helpers?.hasChargedDepartureDrop(chaseExactLatestBadDraft, `*i stay quiet but i walk*`, chasePreDepartureUsers, chasePreDepartureReplies, chaseTensionControls));
+check("v2.10.39 hot departure turn is quarantined before visible streaming",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `*i stay quiet but i walk*`, turnIntent: { kind: "user_exit" }, recentUserMessages: chasePreDepartureUsers, recentCharacterReplies: chasePreDepartureReplies, character: chaseTensionControls }));
+check("v2.10.39 ordinary low-risk turn keeps fast foreground streaming",
+  !helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `What class do you have next?`, turnIntent: { kind: "direct_question" }, recentUserMessages: [], recentCharacterReplies: [], character: chaseTensionControls }));
+check("v2.10.39 guarded drafts are not emitted before validation",
+  edge.includes("const guardedDraft = shouldBufferDraftUntilValidated") &&
+  edge.includes("if (!guardedDraft && delta)") &&
+  edge.includes("if (guardedDraft && !blocking.length)"));
+check("v2.10.39 hard interaction repair cannot fall back to rejected original",
+  edge.includes("const originalHard = hardRepairRequiredIssues(originalIssues)") &&
+  edge.includes("if (!originalFatal.length && !originalHard.length)") &&
+  edge.includes("Hard") && edge.includes("interaction/canon violations never fall back to the rejected draft"));
+check("v2.10.39 repaired protected beat must clear hard violation",
+  edge.includes("const repairedHard = hardRepairRequiredIssues(repairedIssues)") &&
+  edge.includes("repair still violated a protected interaction beat") &&
+  edge.includes("const remainingHard = hardRepairRequiredIssues(validationIssues)"));
 
 
 

@@ -1420,7 +1420,20 @@ function hasChargedDepartureDrop(reply = "", latestUserMessage = "", recentUserM
   const latestRaw = String(latestUserMessage || "").trim(), userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 6).map(normalizeText).join(" "), characterContext = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5).map(normalizeText).join(" "), initiative = Number(character?.initiative ?? 65), flirting = Number(character?.flirting ?? 30), drama = Number(character?.drama ?? 45), romance = Number(character?.romance_intensity ?? 35);
   if (!(initiative >= 60 && (flirting >= 35 || drama >= 50 || romance >= 45)) || !( /\bi\b[^.!?\n]{0,45}\b(?:walk|walked|walking|leave|left|head|headed|move|moved|step|stepped)\b/i.test(latestRaw) || /\b(?:me voy|me fui|me alejo|me alej[eé]|salgo|camino|empiezo a caminar)\b/i.test(latestRaw)) || /\b(?:leave me alone|stop following me|don t follow me|do not follow me|don t touch me|do not touch me|let me go|back off|go away|dejame sola|déjame sola|dejame solo|déjame solo|no me sigas|no me toques|sueltame|suéltame)\b/.test(userContext)) return false;
   if (!(/\b(?:who asked|did i ask|finally you re leaving|finally youre leaving|what are you talking about|whatever|bodyguard|fresh air|raise an eyebrow|raised an eyebrow|keep walking|walk away|rude|clown|bother|annoying)\b/.test(userContext) || /\b(?:not going anywhere|wasn t going anywhere|was not going anywhere|stayed right where|keep trying|you re still standing here|youre still standing here|far less entertaining|refused to leave|stepped closer|closed the distance|challenged|flirted|teased)\b/.test(characterContext))) return false;
-  const text = normalizeText(reply), activePursuit = /\b(?:called after|called her back|called him back|stepped after|moved after|went after|followed|caught up|closed the distance|caught (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand)|reached (?:for|after) (?:her|him|them|you)|touched (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand|shoulder)|brushed (?:her|him|their|your)?\s*(?:arm|hand|shoulder)|stopped (?:her|him|them) with a word|asked (?:her|him|them) to stop|told (?:her|him|them) to wait|walked after|jogged after)\b/.test(text), releaseMarkers = [/\bwatched (?:her|him|them|you) (?:move|walk|leave|go)\b/, /\bwatched (?:her|him|them|you) move away\b/, /\b(?:didn t|did not) call out\b/, /\b(?:didn t|did not) follow\b/, /\b(?:didn t|did not) go after\b/, /\blet (?:the )?(?:space|distance) (?:between them )?(?:stretch|grow|widen)\b/, /\blet (?:her|him|them|you) go\b/, /\bgaze (?:tracing|followed|tracking) (?:the )?path\b/, /\banother shadow moving away\b/, /\bturned (?:his|her|their) back to (?:the )?(?:lawn|door|party|room)\b/, /\b(?:headed|went|walked|turned) back inside\b/, /\breturned to (?:the )?(?:party|room|game|friends|work)\b/, /\bleaned back against\b/];
+  const text = normalizeText(reply), activePursuit = /\b(?:called after|called her back|called him back|stepped after|moved after|went after|followed|caught up|closed the distance|caught (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand)|reached (?:for|after) (?:her|him|them|you)|touched (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand|shoulder)|brushed (?:her|him|their|your)?\s*(?:arm|hand|shoulder)|stopped (?:her|him|them) with a word|asked (?:her|him|them) to stop|told (?:her|him|them) to wait|walked after|jogged after)\b/.test(text), releaseMarkers = [
+    /\bwatched (?:her|him|them|you)[^.!?]{0,90}\b(?:move|walk|walking|turn|leave|go|head|across|away)\b/,
+    /\b(?:gaze|eyes?) (?:followed|following|tracked|tracking|traced|tracing)[^.!?]{0,80}\b(?:movement|path|her|him|them|you)\b/,
+    /\b(?:didn t|did not|made no|without (?:any )?(?:sudden )?)\s*(?:attempt|move)?[^.!?]{0,40}\b(?:call|follow|go after|stop|catch|block)\b/,
+    /\b(?:stayed|remained) (?:by|at|against|beside|near) (?:the )?(?:pillar|wall|door|brick|porch|spot)\b/,
+    /\b(?:space|spot|place) (?:she|he|they|you) (?:left|had left) behind\b/,
+    /\blet (?:the )?(?:space|distance) (?:between them )?(?:stretch|grow|widen)\b/,
+    /\blet (?:her|him|them|you) go\b/,
+    /\banother shadow moving away\b/,
+    /\bturned (?:his|her|their) back to (?:the )?(?:lawn|door|party|room)\b/,
+    /\b(?:head(?:ed|ing)?|went|walked|turned|pushed off[^.!?]{0,45}head) back inside\b/,
+    /\breturned to (?:the )?(?:party|room|game|friends|work)\b/,
+    /\bleaned back against\b/,
+  ];
   return !activePursuit && releaseMarkers.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0) >= 2;
 }
 function hasGenericPursuitWithoutProgress(reply = "", turnIntent = {}) {
@@ -2236,6 +2249,49 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "unstaged_user_departure_inference",
 ]);
 
+// v2.10.39 GUARDED STREAM COMMIT
+// These are not cosmetic preferences. If a draft violates one of these, never
+// surface/save the rejected draft merely because the one repair call timed out.
+const HARD_REPAIR_REQUIRED_ISSUES = new Set([
+  ...BLOCKING_NARRATIVE_ISSUES,
+  "user_staged_scene_retcon",
+  "distance_boundary_override",
+  "spatial_relationship_broken",
+  "passive_exit_after_rupture",
+  "kinetic_tension_deflated",
+  "charged_beat_abandoned",
+  "charged_beat_stalled",
+  "charged_departure_dropped",
+  "user_motive_overwritten",
+  "rejected_pursuit_framing_persisted",
+  "unstaged_user_departure_inference",
+]);
+
+function hardRepairRequiredIssues(issues = []) {
+  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => HARD_REPAIR_REQUIRED_ISSUES.has(issue));
+}
+
+function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = {}, recentUserMessages = [], recentCharacterReplies = [], character = {} } = {}) {
+  const kind = String(turnIntent?.kind || "ordinary");
+  const latest = normalizeText(latestUserMessage);
+  const userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 6).map(normalizeText).join(" ");
+  const characterContext = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-5).map(normalizeText).join(" ");
+  const initiative = Number(character?.initiative ?? 65), flirting = Number(character?.flirting ?? 30), drama = Number(character?.drama ?? 45), romance = Number(character?.romance_intensity ?? 35);
+  const chargedCharacter = initiative >= 55 && (flirting >= 28 || drama >= 42 || romance >= 38);
+
+  // Explicit boundary/motive turns are cheap to get wrong and expensive to show wrong.
+  if (/\b(?:fresh air|bodyguard|leave me alone|stop following me|don t follow me|do not follow me|don t touch me|do not touch me|let me go|back off|go away|no me sigas|no me toques|dejame sola|déjame sola|sueltame|suéltame)\b/.test(userContext)) return true;
+
+  // High-tension micro beats and departures are the exact places where an optimistic
+  // raw stream can expose a draft that the validator is about to reject.
+  if (chargedCharacter && ["challenge", "charged_nonverbal", "confrontation", "confrontation_exit", "user_exit"].includes(kind)) return true;
+
+  // Catch terse narrated movement even when intent classification is conservative.
+  const narratedDeparture = /\bi\b[^.!?\n]{0,45}\b(?:walk|walked|walking|leave|left|head|headed|move|moved|step|stepped)\b/i.test(String(latestUserMessage || ""));
+  const activeCharge = /\b(?:who asked|whatever|finally you re leaving|finally youre leaving|raise an eyebrow|raised an eyebrow|bodyguard|fresh air|keep trying|still standing here|not going anywhere)\b/.test(`${userContext} ${characterContext}`);
+  return chargedCharacter && narratedDeparture && activeCharge;
+}
+
 function blockingNarrativeIssues(issues = []) {
   return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => BLOCKING_NARRATIVE_ISSUES.has(issue));
 }
@@ -2523,6 +2579,8 @@ async function streamRoleplayV19({
     async start(controller) {
       let repairUsed = false;
       let streamedReply = "";
+      let modelDraftReply = "";
+      const guardedDraft = shouldBufferDraftUntilValidated({ latestUserMessage, turnIntent, recentUserMessages, recentCharacterReplies, character });
       try {
         // Flush headers/UI state before the model has finished its first token.
         sendEvent(controller, {
@@ -2550,14 +2608,22 @@ async function streamRoleplayV19({
             sendEvent(controller, { type: "model", model });
           },
           onReset() {
-            streamedReply = "";
-            sendEvent(controller, { type: "reset" });
+            modelDraftReply = "";
+            if (!guardedDraft) {
+              streamedReply = "";
+              sendEvent(controller, { type: "reset" });
+            }
           },
           onReply(reply) {
-            if (!reply || reply.length <= streamedReply.length) return;
-            const delta = reply.slice(streamedReply.length);
-            streamedReply = reply;
-            if (delta) sendEvent(controller, { type: "chunk", content: delta });
+            if (!reply || reply.length <= modelDraftReply.length) return;
+            const delta = reply.slice(modelDraftReply.length);
+            modelDraftReply = reply;
+            // Ordinary turns keep the fast optimistic stream. Guarded tension/
+            // boundary turns stay quarantined until validation has accepted them.
+            if (!guardedDraft && delta) {
+              streamedReply = reply;
+              sendEvent(controller, { type: "chunk", content: delta });
+            }
           },
         });
 
@@ -2587,7 +2653,7 @@ async function streamRoleplayV19({
         if (blocking.length) {
           console.log("[character-chat] bounded repair started", { issues: blocking, firstDraftDurationMs });
           repairUsed = true;
-          sendEvent(controller, { type: "reset", reason: "repair" });
+          if (!guardedDraft) sendEvent(controller, { type: "reset", reason: "repair" });
           streamedReply = "";
           let repaired: ModelResult | null = null;
           let repairFailure = "";
@@ -2611,10 +2677,10 @@ async function streamRoleplayV19({
 
           if (!repaired) {
             const originalFatal = blockingNarrativeIssues(originalIssues);
-            if (!originalFatal.length) {
-              // The user already has a complete readable draft. A slow optional
-              // naturalism/continuity repair must never turn that success into a
-              // visible timeout error. Keep the first draft and finish normally.
+            const originalHard = hardRepairRequiredIssues(originalIssues);
+            if (!originalFatal.length && !originalHard.length) {
+              // Soft style repair may fall back to a readable original. Hard
+              // interaction/canon violations never fall back to the rejected draft.
               result = originalResult;
               validationIssues = originalIssues;
               repairUsed = false;
@@ -2642,10 +2708,15 @@ async function streamRoleplayV19({
           repairedIssues.push(...validateContinuityEnvelope(repaired, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent }));
           const repairedFatal = blockingNarrativeIssues(repairedIssues);
           const originalFatal = blockingNarrativeIssues(originalIssues);
-          if (!repairedFatal.length && (originalFatal.length || repairTriggerIssues(repairedIssues).length <= repairTriggerIssues(originalIssues).length)) {
+          const originalHard = hardRepairRequiredIssues(originalIssues);
+          const repairedHard = hardRepairRequiredIssues(repairedIssues);
+          if (originalHard.length && repairedHard.length) {
+            throw new Error(`Velvet repair still violated a protected interaction beat: ${repairedHard.join(", ")}`);
+          }
+          if (!repairedFatal.length && !repairedHard.length && (originalFatal.length || originalHard.length || repairTriggerIssues(repairedIssues).length <= repairTriggerIssues(originalIssues).length)) {
             result = repaired;
             validationIssues = repairedIssues;
-          } else if (!originalFatal.length) {
+          } else if (!originalFatal.length && !originalHard.length) {
             result = originalResult;
             validationIssues = originalIssues;
           } else {
@@ -2661,8 +2732,18 @@ async function streamRoleplayV19({
           }
         }
 
-        if (blockingNarrativeIssues(validationIssues).length) {
-          throw new Error("Velvet could not get a complete safe reply after one repair. Retry once.");
+        if (guardedDraft && !blocking.length) {
+          // The first draft stayed invisible until validation accepted it.
+          for (const chunk of splitForStreaming(result.reply)) {
+            if (await isCancelled()) return;
+            sendEvent(controller, { type: "chunk", content: chunk });
+          }
+          streamedReply = result.reply;
+        }
+
+        const remainingHard = hardRepairRequiredIssues(validationIssues);
+        if (blockingNarrativeIssues(validationIssues).length || remainingHard.length) {
+          throw new Error(`Velvet could not get a valid protected reply after one repair${remainingHard.length ? `: ${remainingHard.join(", ")}` : "."}`);
         }
         if (await isCancelled()) return;
         if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
