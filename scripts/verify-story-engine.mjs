@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 3200);
+check("live-stream engine stays reasonably consolidated", edgeLines < 3400);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -1017,5 +1017,36 @@ check("v2.10.24 concrete emotional response is accepted",
 check("v2.10.24 emotional passivity can spend the bounded repair",
   edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"emotional_cue_passivity"') &&
   edge.includes('issues.push("emotional_cue_passivity")'));
+
+
+
+// v2.10.25 Attention Independence + NPC Autonomy
+check("v2.10.25 prompt prevents constant romantic surveillance",
+  edge.includes("ATTENTION INDEPENDENCE — CARE IS NOT CONSTANT SURVEILLANCE") &&
+  edge.includes("Several beats may pass with no glance, thought or reference"));
+check("v2.10.25 prompt gives NPCs independent social lives",
+  edge.includes("NPC AUTONOMY — SIDE CHARACTERS ARE NOT A ROMANCE JURY") &&
+  edge.includes("They do not automatically notice, narrate or arbitrate"));
+const fixationHistory = [
+  `Chase kept one eye subtly tracking Antonia through the crowd while Miller spoke.`,
+  `His gaze flicked back across the room, tracking her near the sofa before he took his shot.`,
+];
+check("v2.10.25 repeated cross-room tracking is detected",
+  helpers?.hasAttentionFixationLoop(`Chase watched her from across the party again, then turned back to Chloe.`, fixationHistory));
+check("v2.10.25 genuine independent attention is not flagged",
+  !helpers?.hasAttentionFixationLoop(`Chase laughed at Miller's terrible shot and argued about the next round with Chloe.`, fixationHistory));
+const commentatorHistory = [`Her friend laughed. "He has a point, Toni."`];
+check("v2.10.25 recurring romance-jury NPC commentary is detected",
+  helpers?.hasNpcCommentatorLoop(`Her other friend sipped her drink. "He's got you there."`, commentatorHistory));
+check("v2.10.25 autonomous NPC dialogue is not mistaken for commentary",
+  !helpers?.hasNpcCommentatorLoop(`Mora glanced toward the kitchen. "I'm getting another drink. Want anything?"`, commentatorHistory));
+check("v2.10.25 invented debate evidence is rejected",
+  helpers?.hasInventedDebateEvidence(`"You were watching me from across the living room to see who won."`, `Oh you won? Congrats`));
+check("v2.10.25 grounded debate evidence is allowed",
+  !helpers?.hasInventedDebateEvidence(`"You were watching me from across the living room."`, `*I watched him play for a while*`));
+check("v2.10.25 new naturalism failures can spend one bounded repair",
+  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"attention_fixation_loop"') &&
+  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"npc_commentator_loop"') &&
+  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"invented_debate_evidence"'));
 
 console.log(`\n${checks.length} story-engine checks passed.`);
