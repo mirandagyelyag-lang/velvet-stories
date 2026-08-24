@@ -2758,7 +2758,7 @@ async function streamRoleplayV19({
           sendEvent(controller, { type: "error", error: getErrorMessage(error) });
         }
       } finally {
-        controller.close();
+        try { controller.close(); } catch { /* client may have disconnected; persistence already continues */ }
       }
     },
   });
@@ -3062,7 +3062,7 @@ async function streamAndPersist({
           sendEvent(controller, { type: "error", error: getErrorMessage(error) });
         }
       } finally {
-        controller.close();
+        try { controller.close(); } catch { /* client may have disconnected; persistence already continues */ }
       }
     },
   });
@@ -3380,7 +3380,15 @@ function clampNumber(value, minimum, maximum, fallback) {
   return Math.min(maximum, Math.max(minimum, number));
 }
 function sendEvent(controller, data) {
-  controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+  try {
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+    return true;
+  } catch {
+    // v2.10.38 FOREGROUND STREAM DURABILITY: if Android/backgrounding closes
+    // the browser side of SSE, keep generating and persist the canonical reply.
+    // The chat can recover it from Supabase when the user returns.
+    return false;
+  }
 }
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));

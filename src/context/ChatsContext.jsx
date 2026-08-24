@@ -712,7 +712,7 @@ export function ChatsProvider({
       const elapsed = Date.now() - lastStreamFlushAt;
       // VELVET_STREAM_POLISH_V2: slightly slower paint cadence on touch devices
       // keeps long replies fluid without making the stream feel delayed.
-      const targetCadence = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 88 : 60;
+      const targetCadence = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 52 : 40;
       const waitMs = Math.max(0, targetCadence - elapsed);
       streamFlushTimer = setTimeout(() => {
         streamFlushTimer = null;
@@ -769,13 +769,16 @@ export function ChatsProvider({
 
       let response;
 
-      // v2.10.21 BACKGROUND DELIVERY
-      // Prefer a durable server-side job. The Edge Function immediately accepts
-      // the turn, then continues generation under waitUntil even if Android
-      // suspends Velvet. While the app is open we poll the canonical messages;
-      // if it is backgrounded, polling simply resumes when the app wakes up.
+      // v2.10.38 FAST FOREGROUND STREAM
+      // When the chat is visible, prefer the real SSE route so the first model
+      // tokens paint immediately. Background delivery remains the durability
+      // lane only when the PWA is already hidden/suspended at send time.
+      // This avoids waiting for the entire generation + validation + persistence
+      // cycle before the user sees a single word.
+      const shouldUseBackgroundDelivery =
+        typeof document !== "undefined" && document.hidden === true;
       let backgroundAccepted = false;
-      try {
+      if (shouldUseBackgroundDelivery) try {
         const enqueueResponse = await fetch(functionUrl, {
           method: "POST",
           headers: {
@@ -884,6 +887,13 @@ export function ChatsProvider({
 
       if (backgroundAccepted) {
         throw new Error("Background generation ended unexpectedly.");
+      }
+
+      if (!shouldUseBackgroundDelivery) {
+        setGenerationStates((current) => ({
+          ...current,
+          [characterId]: "writing",
+        }));
       }
 
       try {

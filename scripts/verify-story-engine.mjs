@@ -954,6 +954,23 @@ check("v2.10.21 background delivery keeps explicit Stop wired to server cancella
   chatsContext.includes("void sendServerCancellation(activeRequest.generationId, characterId)") &&
   edge.includes('action === "cancel"'));
 
+// v2.10.38 foreground latency: visible chats must stream immediately instead of polling for a full saved reply.
+check("v2.10.38 visible chat prefers direct foreground SSE",
+  chatsContext.includes("const shouldUseBackgroundDelivery") &&
+  chatsContext.includes('document.hidden === true') &&
+  chatsContext.includes('if (shouldUseBackgroundDelivery) try') &&
+  chatsContext.includes('response = await fetch(functionUrl'));
+check("v2.10.38 background durability lane is still available",
+  chatsContext.includes('action: "enqueue_generate"') &&
+  chatsContext.includes("keepalive: true") &&
+  edge.includes('action === "enqueue_generate"'));
+check("v2.10.38 disconnected foreground stream does not kill persistence",
+  edge.includes("FOREGROUND STREAM DURABILITY") &&
+  edge.includes("return false") &&
+  edge.includes("try { controller.close(); } catch"));
+check("v2.10.38 touch streaming paints at a fast cadence",
+  chatsContext.includes('? 52 : 40'));
+
 
 
 check("opening reply can regenerate before any user message",
