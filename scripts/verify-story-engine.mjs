@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -886,6 +886,45 @@ check("regenerate rewrite and refine all keep an undo target", chat.includes('la
 
 check("v2.6.11 Group Story cast survives the startConversation boundary", chatsContext.includes("{ ...options, requestedConversationId, forceNew }") && chatsContext.includes("groupCharacterIds: uniqueCharacters.map((item) => item.id)") && chatsContext.includes("group_character_ids: groupMode ? groupIds : []"));
 
+// v2.10.32 User Intent Continuity Lock
+const chaseFreshAirUser = `I didn't ask for a bodyguard *i keep walking but outside i needed some fresh air*`;
+const chaseBrokenReply = `He leaned against the railing, giving her space. "Bodyguard implies I'm getting paid." "I'm just making sure you don't wander off before admitting you were looking for me."`;
+check("v2.10.32 looking-for-me motive contradiction is detected",
+  helpers?.hasInventedDebateEvidence(chaseBrokenReply, chaseFreshAirUser));
+check("v2.10.32 explicit fresh-air motive cannot be overwritten",
+  helpers?.hasUserMotiveOverride(chaseBrokenReply, chaseFreshAirUser, [`Whatever *i leave*`, chaseFreshAirUser]));
+check("v2.10.32 rejected bodyguard framing cannot be immediately re-justified",
+  helpers?.hasRejectedPursuitFramingPersistence(chaseBrokenReply, chaseFreshAirUser));
+const chaseIssues = helpers?.validateNarrativeReply(chaseBrokenReply, {
+  characterName: "Chase",
+  userName: "Antonia",
+  latestUserMessage: chaseFreshAirUser,
+  recentUserMessages: [`Whatever *i leave*`, chaseFreshAirUser],
+  recentCharacterReplies: [],
+  turnIntent: { kind: "ordinary", silentCount: 0, medium: "physical" },
+  character: { name: "Chase" },
+}) || [];
+check("v2.10.32 validator forces repair for motive override",
+  chaseIssues.includes("user_motive_overwritten"));
+check("v2.10.32 validator forces repair for rejected pursuit framing",
+  chaseIssues.includes("rejected_pursuit_framing_persisted"));
+check("v2.10.32 explicit looking-for-you canon remains allowed",
+  !helpers?.hasInventedDebateEvidence(`"So you were looking for me."`, `I was looking for you`));
+check("v2.10.32 fresh-air canon is prompt-protected",
+  edge.includes("“You were looking for me” is NOT acceptable") &&
+  edge.includes("went outside for fresh air") &&
+  edge.includes("I didn't ask for a bodyguard"));
+check("v2.10.32 both hard contradictions can spend the one bounded repair",
+  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"user_motive_overwritten"') &&
+  edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"rejected_pursuit_framing_persisted"'));
+const sanitizedChaseReply = helpers?.sanitizeHardUserIntentContradictions(chaseBrokenReply, chaseFreshAirUser) || "";
+check("v2.10.32 local final guard strips unsupported looking-for-me claim",
+  !/looking for me/i.test(sanitizedChaseReply));
+check("v2.10.32 local final guard strips rejected bodyguard justification",
+  !/bodyguard implies|making sure you don'?t wander off/i.test(sanitizedChaseReply));
+check("v2.10.32 local final guard keeps non-contradictory scene material",
+  /leaned against the railing/i.test(sanitizedChaseReply));
+
 let failures = 0;
 for (const item of checks) {
   if (!item.condition) failures += 1;
@@ -897,6 +936,7 @@ if (failures) {
   process.exit(1);
 }
 
+console.log(`\n${checks.length} story-engine checks passed.`);
 
 check("v2.10.19 prompt locks relative body positions until visible movement changes them",
   edge.includes("the immediate relative positions between people") &&
@@ -1072,11 +1112,10 @@ check("v2.10.28 prompt forbids pursuit assumptions after spoken-only departure",
   edge.includes("FOLLOW/PURSUIT LANGUAGE ALSO PRESUPPOSES MOVEMENT") &&
   edge.includes("SILENCE DOES NOT COMPLETE A THREAT"));
 
-console.log(`\n${checks.length} story-engine checks passed.`);
-
 check("v2.10.29 quick reply lane keeps style issues advisory",
   edge.includes("VELVET_QUICK_REPLY_LANE_V21029") &&
   !/REPAIR_TRIGGER_ISSUES[\s\S]{0,1200}\"sarcastic_comeback_loop\"/.test(edge) &&
   !/REPAIR_TRIGGER_ISSUES[\s\S]{0,1200}\"reaction_opener_loop\"/.test(edge));
 check("v2.10.29 departure continuity can still trigger repair",
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,1200}\"unstaged_user_departure_inference\"/.test(edge));
+
