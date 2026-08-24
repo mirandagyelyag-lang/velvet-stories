@@ -146,7 +146,7 @@ body.character-studio-open .mobile-nav {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     overscroll-behavior: contain !important;
-    touch-action: pan-y pinch-zoom !important;
+    touch-action: pan-y !important;
     -webkit-overflow-scrolling: touch !important;
   }
 

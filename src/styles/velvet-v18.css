@@ -2,7 +2,7 @@
 
 /* Native one-finger scrolling remains non-negotiable. */
 @media (pointer: coarse), (max-width:760px){
-  html,body,#root,.app--chat,.app--chat .app__content,.app--chat .chat,.app--chat .chat__content{touch-action:pan-y pinch-zoom!important;-webkit-overflow-scrolling:touch!important}
+  html,body,#root,.app--chat,.app--chat .app__content,.app--chat .chat,.app--chat .chat__content{touch-action:pan-y!important;-webkit-overflow-scrolling:touch!important}
   .chat-message,.chat-message__body,.chat-message__swipe-content,.roleplay-text{touch-action:pan-y!important}
   .chat-message__actions,.chat-message__version-arrow,.chat__icon-button,.chat__send-button,.chat__director-trigger{touch-action:manipulation!important}
   .chat-message__swipe-action{display:none!important;pointer-events:none!important}

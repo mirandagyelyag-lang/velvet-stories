@@ -15,6 +15,7 @@ import App from "./App";
 import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
 import { markVelvetHealthy, recordVelvetRuntimeError } from "./utils/runtimeRecovery";
 import { applySafeModeClass } from "./utils/safeMode";
+import { installMobileViewportLock } from "./utils/mobileViewportLock";
 import "./index.css";
 import "./styles/velvet-ui.css";
 import "./styles/velvet-v18.css";
@@ -43,6 +44,7 @@ import "./styles/velvet-v296-precision-actions.css";
 import "./styles/velvet-v298-characters-clean-mobile.css";
 import "./styles/velvet-v2100-chats-inbox-rework.css";
 
+installMobileViewportLock();
 applySafeModeClass();
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
@@ -103,3 +105,5 @@ window.requestAnimationFrame(() => {
 import "./styles/velvet-v2101-character-profile-actions.css";
 
 import "./styles/velvet-v2107-memories-safe-area.css";
+
+import "./styles/velvet-v21033-native-viewport-lock.css";

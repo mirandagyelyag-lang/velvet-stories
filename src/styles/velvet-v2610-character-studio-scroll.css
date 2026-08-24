@@ -20,7 +20,7 @@
     overscroll-behavior-x: none !important;
     overscroll-behavior-y: contain !important;
     -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-y pinch-zoom !important;
+    touch-action: pan-y !important;
     scroll-behavior: smooth !important;
     scrollbar-gutter: auto !important;
   }
@@ -41,7 +41,7 @@
   .studio-section,
   .studio-section__body,
   .character-studio__journey {
-    touch-action: pan-y pinch-zoom !important;
+    touch-action: pan-y !important;
   }
 
   /* Starting a swipe on a wizard tab should still move the page vertically. */

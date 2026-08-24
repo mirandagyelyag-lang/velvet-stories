@@ -78,7 +78,7 @@
 .character-studio:has(.character-studio-lite) .character-studio__autosave{font-size:.55rem}
 
 @media(max-width:720px){
-  .character-studio-lite{height:0;flex:1;overflow-y:auto;touch-action:pan-y pinch-zoom;-webkit-overflow-scrolling:touch}
+  .character-studio-lite{height:0;flex:1;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch}
   .character-studio-lite__canvas{width:100%;min-height:100%;gap:14px;padding:26px 16px max(22px,env(safe-area-inset-bottom))}
   .character-studio-lite__intro{gap:10px;padding-right:28px}.character-studio-lite__spark{width:36px;height:36px;border-radius:12px}.character-studio-lite__intro h3{font-size:1.8rem}.character-studio-lite__intro p{font-size:.7rem}
   .character-studio-lite__idea textarea{min-height:128px;padding:14px 15px;font-size:16px;border-radius:15px}
