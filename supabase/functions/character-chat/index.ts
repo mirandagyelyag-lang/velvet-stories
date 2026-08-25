@@ -1265,7 +1265,12 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
 
   let kind = "ordinary";
   const confrontation = /\b(?:olvidate de mi|no me vuelvas a|no vuelvas a|no me invites otra vez|para la proxima|me trat(?:as|es) asi|forget about me|forget me|don'?t invite me again|do not invite me again|never invite me again|treat me like that again|we are done|leave me alone)\b/i.test(normalized);
-  const exitsScene = /\b(?:i\s+(?:walk|walked|walking|leave|left|go|went|head|headed|run|ran|move|moved|step|stepped|pass|passed|past)|me\s+(?:voy|fui|alejo)|salgo|me fui|me baje|me bajé)\b[^.!?]{0,110}\b(?:away|by|past|bathroom|home|outside|opposite|dorm|room|apartment|building|ban[oa]|casa|apartamento|edificio|afuera|lejos)?\b/i.test(raw);
+  const stagedActionText = [...raw.matchAll(/\*([^*]+)\*/gs)].map((match) => match[1]).join(" ");
+  const movementVerb = /\b(?:walk(?:s|ed|ing)?|leave|left|go|went|head(?:ed|ing)?|run|ran|move(?:d|ing)?|step(?:ped|ping)?|pass(?:es|ed|ing)?|past|brush(?:es|ed|ing)?\s+past)\b/i;
+  const stagedMovement = stagedActionText && /\bi\b[^.!?\n]{0,70}/i.test(stagedActionText) && movementVerb.test(stagedActionText);
+  const directMovement = /\bi\s+(?:walk(?:s|ed|ing)?|leave|left|go|went|head(?:ed|ing)?|run|ran|move(?:d|ing)?|step(?:ped|ping)?|pass(?:es|ed|ing)?|past|brush(?:es|ed|ing)?\s+past)\b/i.test(raw);
+  const spanishMovement = /\b(?:me\s+(?:voy|fui|alejo)|salgo|me fui|me baje|me bajé)\b/i.test(raw);
+  const exitsScene = Boolean(stagedMovement || directMovement || spanishMovement);
 
   if (raw.startsWith("[RETURN_MAIN_POV")) kind = "return_main_pov";
   else if (isSilentContinueText(raw) && recentInteractiveThreadIsOpen(messages)) kind = "interactive_thread";
@@ -1661,6 +1666,9 @@ function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMes
       base.push("- The user asked the character to stop bothering them. Do not force physical contact. The character may answer once, call after from a respectful distance, or pivot into a concrete independent/social action; never reduce the turn to watching them leave.");
     } else if (charged || recentCharge) {
       base.push("- Hot departure: active follow-through is favored for this profile. Step after, catch up, call back, match pace, or when no no-touch boundary exists use one brief non-restraining touch. If the character deliberately chooses not to pursue, the alternative must itself be active and consequential, not a camera shot of the user leaving.");
+      if ((Array.isArray(messages) ? messages.filter((m) => m?.sender === "character").length : 0) <= 1 && /\b(?:pass(?:es|ed|ing)?\s+(?:by|past)|brush(?:es|ed|ing)?\s+past|walk(?:s|ed|ing)?\s+past)\b/i.test(String(latestUserMessage || ""))) {
+        base.push("- FIRST CHARGED PASS-BY LOCK: this is the opening pursuit test. Do not merely watch the user cross the room, murmur to empty space, or pick up a drink. This character must actively keep the interaction alive: follow, step after, call them back, match pace, or otherwise move WITH the departure while respecting explicit boundaries.");
+      }
     } else {
       base.push("- Departure: respect the movement. Choose a concrete reaction or independent action; passive watching is not a substitute for character behavior.");
     }
@@ -1879,10 +1887,12 @@ function hasChargedDepartureDrop(reply = "", latestUserMessage = "", recentUserM
   const latestRaw = String(latestUserMessage || "").trim(), userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 6).map(normalizeText).join(" "), characterContext = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5).map(normalizeText).join(" ");
   const dynamics = characterProfileDynamics(character);
   const initiative = dynamics.initiative, flirting = dynamics.flirting, drama = dynamics.drama, romance = dynamics.romance;
-  const moved = /\bi\b[^.!?\n]{0,55}\b(?:walk|walked|walking|leave|left|head|headed|move|moved|step|stepped|pass|passed)\b/i.test(latestRaw) || /\bi\s+past\s+by\b/i.test(latestRaw) || /\b(?:me voy|me fui|me alejo|me alej[eé]|salgo|camino|empiezo a caminar)\b/i.test(latestRaw);
+  const moved = /\bi\b[^.!?\n]{0,65}\b(?:walk(?:s|ed|ing)?|leave|left|head(?:ed|ing)?|move(?:d|ing)?|step(?:ped|ping)?|pass(?:es|ed|ing)?|brush(?:es|ed|ing)?\s+past)\b/i.test(latestRaw) || /\bi\s+past\s+by\b/i.test(latestRaw) || /\b(?:me voy|me fui|me alejo|me alej[eé]|salgo|camino|empiezo a caminar)\b/i.test(latestRaw);
+  const firstChargedPassBy = (Array.isArray(recentReplies) ? recentReplies.length : 0) <= 1 && /\b(?:pass(?:es|ed|ing)?\s+(?:by|past)|brush(?:es|ed|ing)?\s+past|walk(?:s|ed|ing)?\s+past)\b/i.test(latestRaw);
   if (!supportsChargedTension(character) || !moved || hasExplicitNoPursuitBoundary(latestRaw)) return false;
-  if (!(/\b(?:who asked|did i ask|finally you re leaving|finally youre leaving|what are you talking about|whatever|bodyguard|fresh air|raise an eyebrow|raised an eyebrow|keep walking|walk away|rude|clown|bother|annoying)\b/.test(userContext) || /\b(?:not going anywhere|wasn t going anywhere|was not going anywhere|stayed right where|keep trying|you re still standing here|youre still standing here|far less entertaining|refused to leave|stepped closer|closed the distance|challenged|flirted|teased)\b/.test(characterContext))) return false;
-  const text = normalizeText(reply), activePursuit = /\b(?:called after|called her back|called him back|stepped after|moved after|went after|followed|caught up|closed the distance|caught (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand)|reached (?:for|after) (?:her|him|them|you)|touched (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand|shoulder)|brushed (?:her|him|their|your)?\s*(?:arm|hand|shoulder)|stopped (?:her|him|them) with a word|asked (?:her|him|them) to stop|told (?:her|him|them) to wait|walked after|jogged after)\b/.test(text), releaseMarkers = [
+  const frictionPresent = /\b(?:who asked|did i ask|finally you re leaving|finally youre leaving|what are you talking about|whatever|bodyguard|fresh air|raise an eyebrow|raised an eyebrow|keep walking|walk away|rude|clown|bother|annoying|sarcastic|sarcasm)\b/.test(userContext) || /\b(?:not going anywhere|wasn t going anywhere|was not going anywhere|stayed right where|keep trying|you re still standing here|youre still standing here|far less entertaining|refused to leave|stepped closer|closed the distance|challenged|flirted|teased|smirk|smirked|provoked|provoking)\b/.test(characterContext);
+  if (!frictionPresent && !firstChargedPassBy) return false;
+  const text = normalizeText(reply), activePursuit = /\b(?:called after|called her back|called him back|stepped after|moved after|went after|followed|caught up|closed the distance|matched (?:her|his|their|your) pace|fell into step beside|came after|caught (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand)|reached (?:for|after) (?:her|him|them|you)|touched (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand|shoulder)|brushed (?:her|him|their|your)?\s*(?:arm|hand|shoulder)|stopped (?:her|him|them) with a word|asked (?:her|him|them) to stop|told (?:her|him|them) to wait|walked after|jogged after)\b/.test(text), releaseMarkers = [
     /\bwatched (?:her|him|them|you)[^.!?]{0,90}\b(?:move|walk|walking|turn|leave|go|head|across|away)\b/,
     /\b(?:gaze|eyes?) (?:followed|following|tracked|tracking|traced|tracing)[^.!?]{0,80}\b(?:movement|path|her|him|them|you)\b/,
     /\b(?:didn t|did not|made no|without (?:any )?(?:sudden )?)\s*(?:attempt|move)?[^.!?]{0,40}\b(?:call|follow|go after|stop|catch|block)\b/,
@@ -1895,11 +1905,16 @@ function hasChargedDepartureDrop(reply = "", latestUserMessage = "", recentUserM
     /\b(?:head(?:ed|ing)?|went|walked|turned|pushed off[^.!?]{0,45}head) back inside\b/,
     /\breturned to (?:the )?(?:party|room|game|friends|work)\b/,
     /\bleaned back against\b/,
+    /\b(?:murmured|muttered|said) (?:quietly )?(?:to|into) (?:the )?(?:empty space|space .* left behind)\b/,
+    /\b(?:reached for|picked up|grabbed) (?:a|the|his|her)?\s*(?:fresh )?(?:glass|drink|cup)\b/,
   ];
-  const activeAlternative = /\b(?:turned to (?:a|the|another|his|her)|joined (?:his|her|their)|flirted back|started talking to|kept talking to|answered (?:the|a|another)|invited|laughed with|walked over to|headed toward (?:his|her|their) friends|picked up the conversation|rejoined|asked .* to|told .* that)\b/.test(text) || /["“][^"”]{6,}["”]/.test(String(reply || ""));
+  const activeAlternative = /\b(?:turned to (?:a|the|another|his|her)|joined (?:his|her|their)|flirted back|started talking to|kept talking to|answered (?:the|a|another)|invited|laughed with|walked over to|headed toward (?:his|her|their) friends|picked up the conversation|rejoined|asked .* to|told .* that)\b/.test(text);
   const passiveRelease = releaseMarkers.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0) >= 2;
-  if (!passiveRelease) return false;
   if (activePursuit) return false;
+  // First charged pass-by in a new chat is a pursuit test, not a cinematic-release test.
+  // A muttered quip to empty air, a tracked gaze, or reaching for a drink cannot satisfy it.
+  if (firstChargedPassBy) return true;
+  if (!passiveRelease) return false;
   if (hasSoftSocialStop([latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages.slice(-2) : [])].join(" ")) && activeAlternative) return false;
   return !activeAlternative;
 }
@@ -2941,8 +2956,8 @@ function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = 
   if (chargedCharacter && (Array.isArray(recentCharacterReplies) ? recentCharacterReplies.length : 0) <= 1 && /\b(?:sarcast|scoff|eye roll|whatever|annoy|teas|flirt|smirk)\b/.test(`${latest} ${characterContext}`)) return true;
 
   // Catch terse narrated movement even when intent classification is conservative.
-  const narratedDeparture = /\bi\b[^.!?\n]{0,45}\b(?:walk|walked|walking|leave|left|head|headed|move|moved|step|stepped|pass|passed|past)\b/i.test(String(latestUserMessage || ""));
-  const activeCharge = /\b(?:who asked|whatever|finally you re leaving|finally youre leaving|raise an eyebrow|raised an eyebrow|bodyguard|fresh air|keep trying|still standing here|not going anywhere)\b/.test(`${userContext} ${characterContext}`);
+  const narratedDeparture = /\bi\b[^.!?\n]{0,55}\b(?:walk(?:s|ed|ing)?|leave|left|head(?:ed|ing)?|move(?:d|ing)?|step(?:ped|ping)?|pass(?:es|ed|ing)?|past|brush(?:es|ed|ing)?\s+past)\b/i.test(String(latestUserMessage || ""));
+  const activeCharge = /\b(?:who asked|whatever|finally you re leaving|finally youre leaving|raise an eyebrow|raised an eyebrow|bodyguard|fresh air|keep trying|still standing here|not going anywhere|sarcastic|sarcasm|smirk|smirked|teas|flirt)\b/.test(`${userContext} ${characterContext}`);
   return chargedCharacter && narratedDeparture && activeCharge;
 }
 

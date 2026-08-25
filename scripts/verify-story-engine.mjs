@@ -1548,6 +1548,30 @@ check("v2.11.11 unsupported plan expansion is hard-protected and repaired before
   /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3500}"unsupported_social_plan_expansion"/.test(edge) &&
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,5200}"unsupported_social_plan_expansion"/.test(edge));
 
+
+
+// v2.11.12 Opening Pursuit Lock — first-turn sarcastic pass-bys must keep Chase in motion.
+const v21112Opening = `Music pulsed through the crowded university party. Chase left the girls at the counter, crossed the room, and stopped right in front of her. "Didn't think you'd come... Or were you just here to see me?"`;
+const v21112User = `Oh yeah, i missed you that bad *i say sarcastic passing by your side*`;
+const v21112Bad = `Chase shifted his weight from the counter, his eyes following her as she brushed past. A quiet laugh escaped him before he turned his head to track her movement across the room. "Devastating," he murmured to the empty space she left behind, before reaching for a fresh glass from the table.`;
+const v21112Good = `Chase pushed off immediately and stepped after her, matching her pace through the crowd. "That sounded almost convincing," he called, falling into step beside her.`;
+check("v2.11.12 passing-by sarcasm is classified as a physical departure before affection",
+  helpers?.classifyTurnIntent(v21112User, [{ sender: "character", content: v21112Opening }]).kind === "user_exit");
+check("v2.11.12 exact new-chat watch-mutter-drink response is rejected",
+  helpers?.hasChargedDepartureDrop(v21112Bad, v21112User, [v21112User], [v21112Opening], chaseProfileDriven));
+check("v2.11.12 immediate follow and matched pace clears the opening pursuit guard",
+  !helpers?.hasChargedDepartureDrop(v21112Good, v21112User, [v21112User], [v21112Opening], chaseProfileDriven));
+check("v2.11.12 opening sarcastic pass-by is buffered before any draft is shown",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: v21112User, turnIntent: { kind: "user_exit" }, recentUserMessages: [v21112User], recentCharacterReplies: [v21112Opening], character: chaseProfileDriven }));
+const v21112Policy = helpers?.buildCurrentBeatPolicy({
+  turnIntent: { kind: "user_exit" }, character: chaseProfileDriven, latestUserMessage: v21112User,
+  messages: [{ sender: "character", content: v21112Opening }, { sender: "user", content: v21112User }],
+});
+check("v2.11.12 prompt explicitly makes first charged pass-by a pursuit test",
+  v21112Policy?.includes("FIRST CHARGED PASS-BY LOCK") && v21112Policy?.includes("murmur to empty space") && v21112Policy?.includes("pick up a drink"));
+check("v2.11.12 arbitrary quoted quip no longer counts as charged-departure follow-through",
+  edge.includes("A muttered quip to empty air") && !/activeAlternative[^\n]+\|\| \/\[\"“\]/.test(edge.slice(edge.indexOf("function hasChargedDepartureDrop"), edge.indexOf("function hasGenericPursuitWithoutProgress"))));
+
 let failures = 0;
 for (const item of checks) {
   if (!item.condition) failures += 1;
