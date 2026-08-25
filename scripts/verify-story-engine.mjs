@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -86,7 +86,7 @@ check("roleplay failover has one bounded interaction deadline",
 check("generation skips redundant cancellation read-back",
   edge.includes("VELVET_SPEED_V282") && !edge.includes("if (await isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)) {\n        return cancelledResponse();"));
 check("prompt context is capped for faster first token",
-  edge.includes(".limit(36)") && edge.includes(".limit(32)") && edge.includes("messages.slice(-8)") && edge.includes("messages.slice(-20, -8)"));
+  edge.includes(".limit(36)") && edge.includes(".limit(80)") && edge.includes(".slice(0, 32)") && edge.includes("messages.slice(-8)") && edge.includes("messages.slice(-20, -8)"));
 check("model streams reply scene continuity development and memories in one request",
   edge.includes('required: ["reply", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
@@ -1303,6 +1303,45 @@ check("v2.11.0 new and branched stories use the latest existing engine version",
   (chatsContext.match(/story_engine_version: 13/g) || []).length >= 2 && livingStoryMigration.includes("story_engine_version set default 13"));
 check("v2.11.0 no nested legacy full-project copy remains",
   !existsSync(resolve(root, "velvet-stories-v216")) && !existsSync(resolve(root, "velvet-stories")));
+
+
+// v2.11.5 Story Memory & Dialogue Grounding — no cross-story ghosts, no AI-corporate banter.
+const chaseNaturalProfile = {
+  name: "Chase Beaumont",
+  personality: "Confident, cocky, teasing, competitive, popular and socially sharp.",
+  relationship: "Enemies to lovers with fast banter and attraction.",
+  speech_style: "casual, dry, concise",
+  initiative: 65, flirting: 45, drama: 50, romance_intensity: 40,
+};
+const statisticalChase = `Chase looked down at her. "Every other conversation tonight is completely insufferable, so yes. Statistically speaking, it's guaranteed."`;
+check("v2.11.5 statistically-speaking banter is rejected for a casual Chase-like voice",
+  helpers?.hasOverwrittenBanter(statisticalChase, `Why are you gonna miss me?`, chaseNaturalProfile));
+check("v2.11.5 ornate dialogue remains available to explicitly formal characters",
+  !helpers?.hasOverwrittenBanter(`"Statistically speaking, the odds are poor," he said.`, `What do you think?`, { speech_style: "formal academic", personality: "professor" }));
+const circularHalfAnswer = `Chase held her gaze. "The rest of it," he murmured. "The part where you didn't actually come here to look at the view."`;
+check("v2.11.5 half-of-what cannot receive a circular the-rest-of-it answer",
+  helpers?.hasClarificationEvasion(circularHalfAnswer, `Half of what?`));
+check("v2.11.5 a concrete clarification remains valid",
+  !helpers?.hasClarificationEvasion(`"The part where I said I'd miss you," Chase said. "Don't make me repeat it."`, `Half of what?`));
+const staleFreshAir = `"Or are you going to keep pretending you came out here for the fresh air?"`;
+check("v2.11.5 fresh-air rationale from another story is rejected without current-story evidence",
+  helpers?.hasUnsupportedUserReasonClaim(staleFreshAir, [`Have you seen my friends?`, `I'm actually leaving. If you find her, tell her I left.`]));
+check("v2.11.5 current-story fresh-air rationale is allowed when the user actually said it",
+  !helpers?.hasUnsupportedUserReasonClaim(staleFreshAir, [`I came outside because I needed some fresh air.`]));
+check("v2.11.5 clarification and vulnerable flirt questions are buffered before display",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `Half of what?`, turnIntent: { kind: "direct_question" }, character: chaseNaturalProfile }) &&
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `Why are you gonna miss me?`, turnIntent: { kind: "direct_question" }, character: chaseNaturalProfile }));
+check("v2.11.5 automatic cross-story character memories are excluded at load time",
+  edge.includes("Automatic character-scoped memories from another story must never leak into this one") &&
+  edge.includes('memory.source === "manual" || Boolean(memory.is_canon) || Boolean(memory.is_pinned)'));
+check("v2.11.5 automatic learning is forced to conversation scope",
+  edge.includes('const scope = "conversation";') && edge.includes("AUTOMATIC MEMORY SCOPE MUST BE conversation"));
+check("v2.11.5 prompt explicitly isolates story memory and demands spoken dialogue",
+  edge.includes("STORY MEMORY ISOLATION") && edge.includes("DIALOGUE REALISM — SOUND SPOKEN, NOT WRITTEN") && edge.includes("CLARIFICATION QUESTIONS REQUIRE A REAL REFERENT"));
+check("v2.11.5 dialogue and stale-reason failures can spend the bounded repair",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,2200}"overwritten_banter"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,2400}"clarification_evasion"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,2600}"unsupported_user_reason_claim"/.test(edge));
 
 
 let failures = 0;
