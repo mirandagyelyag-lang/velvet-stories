@@ -17,7 +17,7 @@ check("baseline-browser-mapping is explicitly overridden to a published fixed ve
 check("lockfile pins baseline-browser-mapping 2.11.12", baseline?.version === "2.11.12");
 check("lockfile tarball resolves to baseline-browser-mapping 2.11.12", baseline?.resolved === "https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.11.12.tgz");
 check("nonexistent baseline-browser-mapping 2.11.22 is absent from install metadata", !rawLock.includes("2.11.22") && !JSON.stringify(pkg).includes("2.11.22"));
-check("package and lock root versions agree", pkg.version === "2.11.9" && lock.version === "2.11.9" && lock?.packages?.[""]?.version === "2.11.9");
+check("package and lock root versions agree", pkg.version === "2.11.10" && lock.version === "2.11.10" && lock?.packages?.[""]?.version === "2.11.10");
 
 if (failures) {
   console.error(`\n${failures} install-lock verification check(s) failed.`);

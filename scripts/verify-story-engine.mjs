@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, extractContactHandoffState, hasContactHandoffRoleConfusion, hasUnsupportedSocialEpithet, sanitizeContactHandoffResult, hasLatestUserSceneIgnored, userEstablishedRemoteContact, containsExplicitRemoteLeadContact, hasUnsolicitedOffscreenLeadContact, sanitizeUnsolicitedOffscreenLeadContactResult, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, extractContactHandoffState, hasContactHandoffRoleConfusion, hasUnsupportedSocialEpithet, sanitizeContactHandoffResult, hasLatestUserSceneIgnored, userEstablishedRemoteContact, containsExplicitRemoteLeadContact, hasUnsolicitedOffscreenLeadContact, sanitizeUnsolicitedOffscreenLeadContactResult, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, hasDuplicatePreviousReply, hasDuplicateReplyPrefix, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -1218,7 +1218,7 @@ check("v2.10.39 ordinary low-risk turn keeps fast foreground streaming",
   !helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `What class do you have next?`, turnIntent: { kind: "direct_question" }, recentUserMessages: [], recentCharacterReplies: [], character: chaseTensionControls }));
 check("v2.10.39 guarded drafts are not emitted before validation",
   edge.includes("const guardedDraft = shouldBufferDraftUntilValidated") &&
-  edge.includes("if (!guardedDraft && delta)") &&
+  edge.includes("if (!guardedDraft && duplicatePrefixPending)") &&
   edge.includes("if (guardedDraft && !blocking.length)"));
 check("v2.10.39 hard interaction repair cannot fall back to rejected original",
   edge.includes("const originalHard = hardRepairRequiredIssues(originalIssues)") &&
@@ -1450,6 +1450,29 @@ check("v2.11.9 contact-role confusion spends protected repair",
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,4500}"contact_handoff_role_confusion"/.test(edge) && /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3200}"contact_handoff_role_confusion"/.test(edge));
 check("v2.11.9 repair path has deterministic referent grounding shield",
   edge.includes("local referent grounding corrected contact handoff roles") && edge.includes("sanitizeContactHandoffResult"));
+
+
+// v2.11.10 Turn Freshness Lock — a new user action can never receive the previous assistant reply again.
+const repeatedJulesReply = `Jules didn't even look up from her screen, tapping out another reply with absolute indifference. "Bragging rights, darling. Now hush, Marcus is typing."`;
+const movedToRoomTurn = `*i roll my eyes and i went to my room to change my clothes*`;
+check("v2.11.10 exact previous assistant reply is a hard duplicate",
+  helpers?.hasDuplicatePreviousReply(repeatedJulesReply, [repeatedJulesReply]));
+check("v2.11.10 near-full previous reply is also rejected",
+  helpers?.hasDuplicatePreviousReply(`Jules didn't even look up from her screen, tapping another reply with complete indifference. "Bragging rights, darling. Now hush, Marcus is typing."`, [repeatedJulesReply]));
+check("v2.11.10 genuinely fresh Jules continuation is accepted",
+  !helpers?.hasDuplicatePreviousReply(`Jules glanced toward the hallway after Antonia disappeared upstairs, then set her phone down when Marcus finally replied. "Okay, that's actually promising."`, [repeatedJulesReply]));
+check("v2.11.10 went-to-my-room is recognized as a scene anchor",
+  helpers?.extractUserSceneAnchor(movedToRoomTurn)?.location === "room");
+check("v2.11.10 room-changing action is buffered before display",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: movedToRoomTurn, turnIntent: { kind: "ordinary" }, recentCharacterReplies: [repeatedJulesReply], character: chaseNaturalProfile }));
+check("v2.11.10 duplicate previous reply requires bounded protected repair",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,5000}"duplicate_previous_reply"/.test(edge) && /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3800}"duplicate_previous_reply"/.test(edge));
+check("v2.11.10 optimistic stream has a duplicate-prefix quarantine",
+  edge.includes("TURN FRESHNESS LOCK") && edge.includes("hasDuplicateReplyPrefix(reply, recentCharacterReplies, 52)") && edge.includes("duplicateDraftSuspected"));
+check("v2.11.10 final save refuses a duplicated previous reply",
+  edge.includes("Velvet almost repeated the previous reply") && edge.includes("hasDuplicatePreviousReply(result.reply, recentCharacterReplies)"));
+check("v2.11.10 repair prompt explicitly continues after the latest user action",
+  edge.includes("If the failure is duplicate_previous_reply") && edge.includes("genuinely NEW continuation") && edge.includes("AFTER the latest user action"));
 
 let failures = 0;
 for (const item of checks) {
