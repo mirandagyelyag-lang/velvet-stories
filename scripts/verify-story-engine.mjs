@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -1494,8 +1494,8 @@ check("v2.11.10 hard-role rescue can safely repair second-person pronoun drift",
 check("v2.11.10 role-sensitive follow-up is buffered before display",
   helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: v21110Users.at(-1), turnIntent: { kind: "ordinary" }, recentUserMessages: v21110Users, recentCharacterReplies: [], character: chaseNaturalProfile }));
 check("v2.11.10 validator keeps enough user turns to preserve social role assignments",
-  edge.includes('recentUserMessages: messages.filter((message) => message.sender === "user").slice(-12)') &&
-  edge.includes('recentCharacterReplies: messages.filter((message) => message.sender === "character").slice(-10)'));
+  edge.includes('recentUserMessages: messages.filter((message) => message.sender === "user").slice(-20)') &&
+  edge.includes('recentCharacterReplies: messages.filter((message) => message.sender === "character").slice(-16)'));
 check("v2.11.10 prompt explicitly locks social roles and direct comparisons",
   edge.includes("SOCIAL ROLE GROUNDING — KEEP WHO-WANTS-WHOM STRAIGHT") &&
   edge.includes("One person doing the legwork does not make them the romantic target") &&
@@ -1503,6 +1503,50 @@ check("v2.11.10 prompt explicitly locks social roles and direct comparisons",
 check("v2.11.10 social role swap is hard protected but comparison evasion can fail soft",
   /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3200}"social_role_assignment_broken"/.test(edge) &&
   !/HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3200}"direct_comparison_evasion"/.test(edge));
+
+
+// v2.11.11 Social Arc Grounding — dates/plans keep their actual participants and NPCs speak like people.
+const v21111RecentChars = [
+  `Jules tapped Marcus's number into her phone. "Okay, I texted him."`,
+  `Jules glanced toward the hallway. "Marcus says he's free tonight."`,
+  `Jules shrugged. "Okay, fair. I barely know him. It's just dinner."`,
+];
+const v21111PlanUsers = [
+  ...v21110Users,
+  `Why would I go? Is your date not mine, and i'm already on pijamas`,
+];
+check("v2.11.11 exact grab-your-coat retroactive invitation is rejected",
+  helpers?.hasUnsupportedSocialPlanExpansion(`Jules smirked. "Go grab your coat if you're coming with me. Marcus isn't going to wait."`, v21110Users.at(-1), v21110Users, v21111RecentChars));
+check("v2.11.11 exact invented group thing and extra friends are rejected",
+  helpers?.hasUnsupportedSocialPlanExpansion(`Jules blinked. "It's a group thing, obviously. Marcus is bringing a friend. Or three."`, v21111PlanUsers.at(-1), v21111PlanUsers, v21111RecentChars));
+check("v2.11.11 user correction your-date-not-mine cannot be explained away with a group plan",
+  helpers?.hasUnsupportedSocialPlanExpansion(`"You're coming with us. It's a group outing."`, `Why would I go? It's your date not mine.`, v21110Users, v21111RecentChars));
+check("v2.11.11 a visibly established group invitation remains allowed",
+  !helpers?.hasUnsupportedSocialPlanExpansion(`Jules nodded. "Yeah, come with us if you still want to."`, `Marcus invited both of us earlier. It's a group thing and I said I'd bring you.`, [...v21110Users, `Marcus invited both of us earlier. It's a group thing and I said I'd bring you.`], v21111RecentChars));
+check("v2.11.11 Jules cannot drift into an unnamed third romantic friend",
+  helpers?.hasUnsupportedSocialPlanExpansion(`Jules glanced at the screen. "You might want to brief your friend on the basics of conversation before her date."`, v21110Users.at(-1), v21110Users, v21111RecentChars));
+check("v2.11.11 correct one-to-one date acknowledgment is accepted",
+  !helpers?.hasUnsupportedSocialPlanExpansion(`Jules finally looked up. "Yeah, it's my date. You don't have to come."`, `Why would I go? It's your date not mine.`, v21110Users, v21111RecentChars));
+check("v2.11.11 sitcom-Jules lines are explicitly rejected",
+  helpers?.hasOverwrittenBanter(`Jules grinned. "Efficiency, darling. Why spend three days overthinking an emoji when you can skip straight to appetizers?"`, `You wrote him for the first time and you are already planning to go out with him?`, chaseNaturalProfile) &&
+  helpers?.hasOverwrittenBanter(`Jules shrugged. "Quit pacing like you're about to testify. Throw on a trench coat and call it high fashion."`, `Why would I go?`, chaseNaturalProfile));
+check("v2.11.11 repeated unbothered phone choreography is detected",
+  helpers?.hasNpcDialogueTicLoop(`Jules didn't even look up from her screen, tapping out another reply with absolute indifference. "Darling, relax."`, [
+    `Jules didn't even look up from her phone. "Okay."`,
+    `Jules kept her eyes locked on her screen, entirely unbothered. "Fine."`,
+  ]));
+const v21111SanitizedPlan = helpers?.sanitizeUnsupportedSocialPlanExpansion(`Jules looked up. "It's my date." "Go grab your coat if you're coming with me."`) || "";
+check("v2.11.11 local rescue removes only invented participation while preserving valid canon",
+  /it.s my date/i.test(v21111SanitizedPlan) && !/grab your coat/i.test(v21111SanitizedPlan));
+check("v2.11.11 prompt keeps a longer social-contract window without widening boundary memory",
+  edge.includes('allRecentUserTurns') && edge.includes('.slice(-16)') && edge.includes('const recentUserTurns = allRecentUserTurns.slice(-2)'));
+check("v2.11.11 prompt locks plan participants and removes the old incoming-event contradiction",
+  edge.includes("PARTICIPANTS ARE LOCKED BY VISIBLE CANON") &&
+  edge.includes("SOCIAL PLANS ARE CANON, NOT IMPROV PROMPTS") &&
+  !edge.includes("use a present side character or an incoming remote event that reaches this scene"));
+check("v2.11.11 unsupported plan expansion is hard-protected and repaired before display",
+  /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3500}"unsupported_social_plan_expansion"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,5200}"unsupported_social_plan_expansion"/.test(edge));
 
 let failures = 0;
 for (const item of checks) {
