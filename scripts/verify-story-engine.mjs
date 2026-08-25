@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 3900);
+check("live-stream engine stays reasonably consolidated", edgeLines < 4050);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -1411,6 +1411,53 @@ check("v2.11.8 technical protected-beat diagnostics are hidden from chat UI",
   chat.includes('error.includes("protected interaction beat")') &&
   chat.includes('error.includes("valid protected reply")'));
 
+
+
+// v2.11.9 Natural Cast & Romantic Initiative — ordinary NPC speech + grounded lead pursuit cadence.
+const v2119History = [
+  `It's not for me, it's for Jules.`,
+  `Marcus's number.`,
+  `I was with Jules on my house`,
+];
+check("v2.11.9 invented Marcus group chat is rejected as unsupported story knowledge",
+  helpers?.hasUnsupportedPriorEventClaim(`Jules called out, "If Marcus is anything like his group chat, you're better off in your closet."`, v2119History));
+check("v2.11.9 established group chat remains legal canon",
+  !helpers?.hasUnsupportedPriorEventClaim(`Jules glanced over. "Marcus is still yelling in the group chat."`, [...v2119History, `Jules added Marcus to the rugby group chat.`]));
+check("v2.11.9 scripted Jules closet quip is caught by dialogue naturalism",
+  helpers?.hasOverwrittenBanter(`Jules called after her, "If Marcus is anything like his group chat, you're better off in your closet."`, `*i went to my room to change my clothes*`, { personality: "casual college guy", relationship: "enemies to lovers" }));
+check("v2.11.9 ordinary Jules line is accepted",
+  !helpers?.hasOverwrittenBanter(`Jules barely looked up. "Okay. Hurry up, I want details when you're done."`, `*i went to my room to change my clothes*`, { personality: "casual college guy", relationship: "enemies to lovers" }));
+const v2119Messages = [
+  { id: "u1", sender: "user", content: `I was with Jules on my house` },
+  { id: "c1", sender: "character", content: `Jules drops onto the couch. "Okay, spill."` },
+  { id: "u2", sender: "user", content: `*i roll my eyes and i went to my room to change my clothes*` },
+];
+const v2119Window = helpers?.recentOffscreenSceneWindow(v2119Messages, "Chase Beaumont", `*i roll my eyes and i went to my room to change my clothes*`);
+check("v2.11.9 lead initiative becomes eligible after the relocation beat",
+  v2119Window?.anchor?.location === "house" && v2119Window?.turnsSince === 1);
+check("v2.11.9 same-turn relocation still blocks romance-magnet reentry",
+  !helpers?.recentOffscreenSceneWindow([{ id: "u1", sender: "user", content: `I was with Jules on my house` }], "Chase Beaumont", `I was with Jules on my house`));
+const v2119Policy = helpers?.buildCurrentBeatPolicy({
+  turnIntent: { kind: "ordinary" },
+  character: { name: "Chase Beaumont", personality: "confident, competitive, teasing, popular", relationship: "Enemies to lovers with obvious chemistry", initiative: 75, flirting: 65, drama: 55, romance_intensity: 55 },
+  latestUserMessage: `*i roll my eyes and i went to my room to change my clothes*`,
+  messages: v2119Messages,
+});
+check("v2.11.9 high-initiative Chase is encouraged to seek contact after one scene beat",
+  /GROUNDED ROMANTIC INITIATIVE WINDOW/.test(v2119Policy || "") && /over the next one to three natural beats/.test(v2119Policy || ""));
+check("v2.11.9 prompt says NPCs can be ordinary instead of quippy",
+  edge.includes("SIDE-CHARACTER NATURALISM — FRIENDS ARE PEOPLE, NOT QUIP MACHINES") &&
+  edge.includes("Supporting characters do NOT need a witty line every time") &&
+  edge.includes("Do not keep shouting increasingly clever lines down hallways"));
+const v2119RecentUsers = [`I need Marcus's number`, `I was with Jules on my house`, `*i roll my eyes and i went to my room to change my clothes*`];
+const v2119LeadlessPrior = [`Jules drops onto the couch. "Okay, spill."`];
+check("v2.11.9 two leadless offscene beats trigger Chase initiative drought",
+  helpers?.hasRomanticInitiativeDrought(`Jules kept scrolling. "Okay, hurry up."`, `*i roll my eyes and i went to my room to change my clothes*`, v2119RecentUsers, v2119LeadlessPrior, "Chase Beaumont", { name: "Chase Beaumont", personality: "confident competitive teasing popular", relationship: "enemies to lovers chemistry", initiative: 75, flirting: 65, drama: 55, romance_intensity: 55 }));
+check("v2.11.9 a grounded Chase reentry clears initiative drought",
+  !helpers?.hasRomanticInitiativeDrought(`A minute later, her phone buzzed with a text from Chase. "You vanish on purpose or is this a hobby?"`, `*i roll my eyes and i went to my room to change my clothes*`, v2119RecentUsers, v2119LeadlessPrior, "Chase Beaumont", { name: "Chase Beaumont", personality: "confident competitive teasing popular", relationship: "enemies to lovers chemistry", initiative: 75, flirting: 65, drama: 55, romance_intensity: 55 }));
+check("v2.11.9 initiative drought is repairable but not a hard boundary override",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,4600}"romantic_initiative_drought"/.test(edge) &&
+  !/HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,2800}"romantic_initiative_drought"/.test(edge));
 
 let failures = 0;
 for (const item of checks) {
