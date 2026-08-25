@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, extractContactHandoffState, hasContactHandoffRoleConfusion, hasUnsupportedSocialEpithet, sanitizeContactHandoffResult, hasLatestUserSceneIgnored, userEstablishedRemoteContact, containsExplicitRemoteLeadContact, hasUnsolicitedOffscreenLeadContact, sanitizeUnsolicitedOffscreenLeadContactResult, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, hasDuplicatePreviousReply, hasDuplicateReplyPrefix, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 4150);
+check("live-stream engine stays reasonably consolidated", edgeLines < 3900);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -70,7 +70,7 @@ check("advisory quality issues do not force repeated user regeneration",
   !edge.includes("Velvet rejected a weak or incomplete response before showing it. Regenerate once more."));
 check("structural failures remain fatal after one bounded repair",
   edge.includes("if (blocking.length)") &&
-  edge.includes("let repairedFatal = blockingNarrativeIssues(repairedIssues)") &&
+  edge.includes("const repairedFatal = blockingNarrativeIssues(repairedIssues)") &&
   edge.includes("Velvet could not get a valid protected reply after one repair") &&
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
@@ -1218,7 +1218,7 @@ check("v2.10.39 ordinary low-risk turn keeps fast foreground streaming",
   !helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `What class do you have next?`, turnIntent: { kind: "direct_question" }, recentUserMessages: [], recentCharacterReplies: [], character: chaseTensionControls }));
 check("v2.10.39 guarded drafts are not emitted before validation",
   edge.includes("const guardedDraft = shouldBufferDraftUntilValidated") &&
-  edge.includes("if (!guardedDraft && duplicatePrefixPending)") &&
+  edge.includes("if (!guardedDraft && delta)") &&
   edge.includes("if (guardedDraft && !blocking.length)"));
 check("v2.10.39 hard interaction repair cannot fall back to rejected original",
   edge.includes("const originalHard = hardRepairRequiredIssues(originalIssues)") &&
@@ -1226,8 +1226,8 @@ check("v2.10.39 hard interaction repair cannot fall back to rejected original",
   edge.includes("Hard") && edge.includes("interaction/canon violations never fall back to the rejected draft"));
 check("v2.10.39 repaired protected beat must clear hard violation",
   edge.includes("let repairedHard = hardRepairRequiredIssues(repairedIssues)") &&
-  edge.includes("sanitizeUnsolicitedOffscreenLeadContactResult(repaired, character.name)") &&
-  edge.includes("const remainingHard = hardRepairRequiredIssues(validationIssues)"));
+  edge.includes("sanitizeValidatedHardIntentResult(repaired, repairedIssues") &&
+  edge.includes("let remainingHard = hardRepairRequiredIssues(validationIssues)"));
 
 
 
@@ -1394,85 +1394,23 @@ check("v2.11.7 unsolicited offscreen lead contact is hard-repair protected",
   /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,2600}"unsolicited_offscreen_lead_contact"/.test(edge));
 
 
-// v2.11.8 Repair Shield — no false-positive phone/name collisions and no internal guard leakage.
-const julesPhoneMention = `Jules didn’t even look up from her phone as Antonia dropped onto the sofa. "Did you actually get Marcus’s number from Chase, or did you two just argue again?"`;
-check("v2.11.8 Jules using her own phone while mentioning Chase is not remote lead contact",
-  !helpers?.hasUnsolicitedOffscreenLeadContact(julesPhoneMention, `I was with Jules on my house`, { location: "Science Annex", present: ["Chase"] }, "Chase Beaumont", [], []));
-const realUnwantedContact = `Jules drops onto the couch. "Okay, spill."\n\nBefore Antonia can answer, her phone lights up with a notification.\n\n*Chase:* You home?`;
-check("v2.11.8 explicit Chase sender label still counts as remote lead contact",
-  helpers?.hasUnsolicitedOffscreenLeadContact(realUnwantedContact, `I was with Jules on my house`, { location: "Science Annex", present: ["Chase"] }, "Chase Beaumont", [], []));
-const locallyCleanedContact = helpers?.sanitizeUnsolicitedOffscreenLeadContactResult({ reply: realUnwantedContact, memory_updates: [{ detail: "Chase texted Antonia at home" }], continuity_note: "Chase texted Antonia", continuity_update: { timeline_event: { record: true, label: "Chase text", detail: "Chase texted Antonia" } } }, "Chase Beaumont");
-check("v2.11.8 local shield preserves Jules scene while removing unsolicited Chase bridge",
-  locallyCleanedContact?.reply?.includes(`Jules drops onto the couch`) && !/Chase\s*:/i.test(locallyCleanedContact?.reply || "") && !/phone lights up/i.test(locallyCleanedContact?.reply || ""));
-check("v2.11.8 local shield drops memory and timeline residue from removed contact",
-  Array.isArray(locallyCleanedContact?.memory_updates) && locallyCleanedContact.memory_updates.length === 0 && locallyCleanedContact?.continuity_update?.timeline_event?.record === false);
-check("v2.11.8 repair branch tries deterministic offscreen-contact cleanup before failing",
-  edge.includes("sanitizeUnsolicitedOffscreenLeadContactResult(repaired, character.name)") && edge.includes("local repair shield removed unsolicited off-screen lead contact"));
-check("v2.11.8 protected validator diagnostics are translated before reaching chat UI",
-  chat.includes(`error.includes("protected interaction beat")`) && chat.includes(`Velvet couldn't finish that reply cleanly. Try again.`) && !edge.includes("Velvet repair still violated a protected interaction beat:"));
 
+// v2.11.8 Repair Rescue Guard — salvage valid on-scene content instead of aborting the turn.
+const rescueMixedReply = `Jules didn't even look up from her screen, tapping out another reply with absolute indifference. "Bragging rights, darling. Now hush, Marcus is typing."\n\nBefore Antonia can answer, her phone lights up.\n\nChase: Still hiding at home?`;
+const rescueSanitized = helpers?.sanitizeUnsolicitedOffscreenLeadContact(rescueMixedReply, "Chase Beaumont") || "";
+check("v2.11.8 off-scene rescue removes Chase contact tail",
+  !/chase\s*:/i.test(rescueSanitized) && !/phone lights up/i.test(rescueSanitized) && /Marcus is typing/i.test(rescueSanitized));
+check("v2.11.8 repaired hard violation is sanitized before aborting the turn",
+  edge.includes("const sanitizedRepair = sanitizeValidatedHardIntentResult(repaired, repairedIssues") &&
+  edge.includes("repaired = sanitizedRepair.result") &&
+  edge.includes("repairedIssues.splice(0, repairedIssues.length, ...sanitizedRepair.issues)"));
+check("v2.11.8 final hard guard gets a sanitizer pass before error",
+  edge.includes("if (remainingHard.length) {") &&
+  edge.includes("sanitizeValidatedHardIntentResult(result, validationIssues"));
+check("v2.11.8 technical protected-beat diagnostics are hidden from chat UI",
+  chat.includes('error.includes("protected interaction beat")') &&
+  chat.includes('error.includes("valid protected reply")'));
 
-
-
-// v2.11.9 Referent Grounding — contact owner, intermediary and recipient never collapse into one "him".
-const handoffRecentUsers = [
-  `I do need something, you know that guy from your rugby team, i need his number`,
-  `It's not for me, it's for Jules *i roll my eyes*`,
-  `No, and yeah, he gave it to me *i hand you my phone*`,
-];
-const handoffRecentReplies = [
-  `"Marcus?" Chase asked.`,
-  `"Marcus's number." Chase slid the device across the table.`,
-  `Jules asked, "Did Beaumont actually hand it over?"`,
-];
-const handoffState = helpers?.extractContactHandoffState(handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont");
-check("v2.11.9 contact handoff identifies Marcus as owner and Chase as intermediary",
-  handoffState?.owner === "Marcus" && handoffState?.recipient === "Jules" && handoffState?.intermediary === "Chase");
-const exactBullshitHandoff = `Jules glanced at the screen, letting out a short, triumphant whistle. "Look at that. The campus saint actually cooperated. I'm texting him right now before he changes his mind."`;
-check("v2.11.9 exact Jules handoff bullshit is rejected",
-  helpers?.hasContactHandoffRoleConfusion(exactBullshitHandoff, handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont"));
-check("v2.11.9 explicit Marcus target is accepted",
-  !helpers?.hasContactHandoffRoleConfusion(`Jules takes the phone. "Perfect. I'm texting Marcus now."`, handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont"));
-check("v2.11.9 completed handoff cannot invent revocation",
-  helpers?.hasContactHandoffRoleConfusion(`Jules grins. "I'm texting Marcus now before he changes his mind."`, handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont"));
-check("v2.11.9 unestablished campus-saint epithet is rejected",
-  helpers?.hasUnsupportedSocialEpithet(`"The campus saint actually cooperated," Jules said.`, handoffRecentUsers, handoffRecentReplies, { role: "popular rugby player", personality: "cocky" }));
-check("v2.11.9 established campus-prince epithet remains allowed",
-  !helpers?.hasUnsupportedSocialEpithet(`"Campus prince finally showed up," Jules said.`, handoffRecentUsers, handoffRecentReplies, { role: "Campus Prince", personality: "popular" }));
-const cleanedHandoff = helpers?.sanitizeContactHandoffResult({ reply: exactBullshitHandoff }, handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont");
-check("v2.11.9 local grounding names Marcus and removes impossible mind-change clause",
-  /texting Marcus right now/i.test(cleanedHandoff?.reply || "") && !/changes his mind/i.test(cleanedHandoff?.reply || "") && !/campus saint/i.test(cleanedHandoff?.reply || ""));
-check("v2.11.9 phone/contact handoff is buffered before display",
-  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `No, and yeah, he gave it to me *i hand you my phone*`, turnIntent: { kind: "ordinary" }, character: chaseNaturalProfile }));
-check("v2.11.9 prompt explicitly locks contact ownership and recipient roles",
-  edge.includes("CONTACT & HANDOFF ROLE GROUNDING") && edge.includes("OWNER/SUBJECT, INTERMEDIARY, CURRENT HOLDER, and INTENDED RECIPIENT") && edge.includes("I'm texting Marcus now"));
-check("v2.11.9 contact-role confusion spends protected repair",
-  /REPAIR_TRIGGER_ISSUES[\s\S]{0,4500}"contact_handoff_role_confusion"/.test(edge) && /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3200}"contact_handoff_role_confusion"/.test(edge));
-check("v2.11.9 repair path has deterministic referent grounding shield",
-  edge.includes("local referent grounding corrected contact handoff roles") && edge.includes("sanitizeContactHandoffResult"));
-
-
-// v2.11.10 Turn Freshness Lock — a new user action can never receive the previous assistant reply again.
-const repeatedJulesReply = `Jules didn't even look up from her screen, tapping out another reply with absolute indifference. "Bragging rights, darling. Now hush, Marcus is typing."`;
-const movedToRoomTurn = `*i roll my eyes and i went to my room to change my clothes*`;
-check("v2.11.10 exact previous assistant reply is a hard duplicate",
-  helpers?.hasDuplicatePreviousReply(repeatedJulesReply, [repeatedJulesReply]));
-check("v2.11.10 near-full previous reply is also rejected",
-  helpers?.hasDuplicatePreviousReply(`Jules didn't even look up from her screen, tapping another reply with complete indifference. "Bragging rights, darling. Now hush, Marcus is typing."`, [repeatedJulesReply]));
-check("v2.11.10 genuinely fresh Jules continuation is accepted",
-  !helpers?.hasDuplicatePreviousReply(`Jules glanced toward the hallway after Antonia disappeared upstairs, then set her phone down when Marcus finally replied. "Okay, that's actually promising."`, [repeatedJulesReply]));
-check("v2.11.10 went-to-my-room is recognized as a scene anchor",
-  helpers?.extractUserSceneAnchor(movedToRoomTurn)?.location === "room");
-check("v2.11.10 room-changing action is buffered before display",
-  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: movedToRoomTurn, turnIntent: { kind: "ordinary" }, recentCharacterReplies: [repeatedJulesReply], character: chaseNaturalProfile }));
-check("v2.11.10 duplicate previous reply requires bounded protected repair",
-  /REPAIR_TRIGGER_ISSUES[\s\S]{0,5000}"duplicate_previous_reply"/.test(edge) && /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3800}"duplicate_previous_reply"/.test(edge));
-check("v2.11.10 optimistic stream has a duplicate-prefix quarantine",
-  edge.includes("TURN FRESHNESS LOCK") && edge.includes("hasDuplicateReplyPrefix(reply, recentCharacterReplies, 52)") && edge.includes("duplicateDraftSuspected"));
-check("v2.11.10 final save refuses a duplicated previous reply",
-  edge.includes("Velvet almost repeated the previous reply") && edge.includes("hasDuplicatePreviousReply(result.reply, recentCharacterReplies)"));
-check("v2.11.10 repair prompt explicitly continues after the latest user action",
-  edge.includes("If the failure is duplicate_previous_reply") && edge.includes("genuinely NEW continuation") && edge.includes("AFTER the latest user action"));
 
 let failures = 0;
 for (const item of checks) {

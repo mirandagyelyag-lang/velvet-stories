@@ -311,7 +311,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "2.11.10",
+    version: "2.11.1",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -776,13 +776,6 @@ DIALOGUE REALISM — SOUND SPOKEN, NOT WRITTEN
 - Do not use vague dramatic abstractions like “they wouldn’t understand half of it anyway” unless “it” has an explicit concrete referent already visible in this story.
 - Do not turn every tease into an accusation that the user secretly came for the character, wants attention, is jealous, or is pretending. Visible evidence first.
 
-CONTACT & HANDOFF ROLE GROUNDING — WHO OWNS WHAT MATTERS
-- When a phone number, contact, message, object, invitation, key, document or other transferable item passes through multiple people, keep the roles distinct: OWNER/SUBJECT, INTERMEDIARY, CURRENT HOLDER, and INTENDED RECIPIENT are not interchangeable.
-- Example: if ${character.name} gives ${userIdentity.name} MARCUS'S number for JULES, Marcus owns the number, ${character.name} is only the intermediary, ${userIdentity.name} temporarily holds it, and Jules is the intended recipient. A later handoff of the phone to Jules does not turn it into ${character.name}'s number or make ${character.name} the person Jules should text.
-- On the first action after a multi-person contact handoff, prefer the actual person's NAME over an ambiguous “him/her/them” when two plausible referents exist. “I'm texting Marcus now” is grounded; “I'm texting him” is not if Chase and Marcus are both live referents.
-- Do not invent revocability after a completed handoff. Once a number/contact has already been copied or handed over, nobody can meaningfully “change their mind” and retroactively un-give it unless visible canon established permission was conditional.
-- Do not invent cute social titles or epithets such as “campus saint,” “campus king,” “golden boy,” etc. unless that exact label or a clear equivalent is established by the character profile or visible story. Use the person's actual name or an established nickname instead.
-
 SOCIAL GRAVITY — REPUTATION MUST EXIST IN THE WORLD
 - If the character profile establishes that ${character.name} is famous, highly popular, socially influential, widely desired, intimidatingly well-known, an heir, team captain, campus figure, celebrity, leader, or someone many people want to know, TREAT THAT AS WORLD CANON rather than decorative biography.
 - In relevant public/social settings, let reputation create organic consequences: people recognize or greet them, acquaintances interrupt, men/peers try to befriend or include them, admirers flirt or hover when profile-compatible, invitations/messages/rumors circulate, strangers know their name, seats/plans/social access shift around them, or staff/classmates react differently.
@@ -1064,7 +1057,7 @@ async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isC
 }
 
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If the failure is duplicate_previous_reply, discard the previous assistant turn completely and write a genuinely NEW continuation that begins AFTER the latest user action. Do not reuse the prior reply's dialogue, opening, object choreography, or closing line. If the user just moved rooms/locations, respond from the new location instead of replaying the old beat. If the failure is overwritten_banter, rewrite the spoken line in plain character-specific English: fewer clever constructions, no mock-formal “statistically speaking / fascinating / indicator” language, and make the line respond to the actual previous sentence. If the failure is clarification_evasion, answer the user's clarification with a concrete referent in the first sentence; teasing may come second, but “the rest of it / you know / figure it out” alone is not an answer. If the failure is unsupported_user_reason_claim, remove the invented reason completely and use only motives/reasons stated in THIS conversation; never resurrect “fresh air,” jealousy, looking-for-me, the view, or another story's rationale without current-story evidence. If the failure is unsupported_prior_event_claim, delete the invented prior event entirely. Never claim a contact card, message, promise, handoff, photo, number, invitation or other event was “already” sent/shared/forwarded/given unless the visible transcript or confirmed memory actually contains that event. If the failure is contact_handoff_role_confusion, reconstruct the handoff roles from visible canon before rewriting: identify whose contact/number it is, who merely passed it along, who currently holds the phone/object, and who is supposed to receive/use it. Name the actual contact owner on the first outbound action instead of using an ambiguous pronoun, and remove any invented “before he changes his mind” revocation after a completed handoff. If the failure is unsupported_social_epithet, remove the invented title/nickname and use the person’s actual name or an established nickname. If the failure is latest_user_scene_not_applied or latest_user_scene_ignored, move the camera to the location the user's latest turn established and continue THERE. Do not use “Meanwhile, back on...” to stay with the previous off-screen character. If the main character is absent, stay with the present NPCs/events already in the user's scene. Do NOT manufacture an incoming message/call/DM/notification from the absent lead as a default bridge. If the failure is unsolicited_offscreen_lead_contact, remove that contact entirely and let the newly established scene breathe without the romantic lead unless the user initiated remote contact, an active digital thread is already open, or visible canon explicitly promised that contact. If the failure is silent_continue_prop_loop, compress the rewrite to one meaningful beat and stop recycling props like pens, keys, cups, pages or phones as filler. If recent replies keep opening with synonym-swapped scoff/huff/dry-laugh reactions, change the opening structure completely: begin with dialogue, an external event, another character, a practical action, or a meaningful new beat. If a social approach was reflexively dismissed and recent social approaches were also shut down, let this one breathe long enough to create a real interaction, complication, invitation, flirtation, rivalry, rumor beat, or recurring NPC when profile and setting support it. Create tension opportunities proactively, but do not force jealousy or invent betrayal. If recent replies repeatedly tracked the user across the room with glances, peripheral vision, or “one eye on them” language, let the character genuinely focus elsewhere for this beat and remove the surveillance-like attention. If the user only SAID they would leave, might leave, or “leave you with...” but did not narrate physical movement, keep the user physically present and remove any invented “heading away/departing/watched her go/didn't follow/let her go/looked toward the door where she had gone” action. A silent continuation after that line does NOT authorize an off-screen exit. Do not let a new NPC hijack an unresolved relational beat; let the primary character react first. If the character caused the rupture and attachment is established, consider one character-specific repair or pursuit beat instead of instantly switching to unrelated activity. If the user DID physically leave after the character was rude, dismissive, or hurtful, do not default to passive watching plus a reset back to the party/game/work. In that situation, prefer one immediate follow-through attempt—call after them, step after them, catch up, soften, or apologize badly—before any unrelated activity resumes. Make that follow-through unmistakably character-specific: preserve the profile's pride, humor, awkwardness, warmth, restraint or bluntness instead of a generic “wait.” The pursuit must create one new beat or piece of information before the turn ends; do not spend the whole rewrite on footsteps, breathing or trailing behind. If the failure is kinetic_tension_deflated, the rewrite MUST make an active character choice instead of leaning/staring/smirking/conceding: close conversational distance, sharpen or redirect the flirt, create a brief non-restraining touch if no no-touch boundary exists, let a believable social interruption/admirer matter, or choose another concrete action with consequence. If the failure is charged_beat_abandoned, preserve the character’s immediately previous active choice unless the latest turn actually changes it: a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside. Continue the charged beat through dialogue, proximity, flirtation, social complication or another character-specific choice instead of silently ending the scene. If the failure is charged_beat_stalled, the character technically stayed but did nothing with the charge. The rewrite MUST add at least one consequential beat: spoken dialogue, a deliberate change in proximity, a brief non-restraining touch when allowed, a sharper flirt/challenge, a social interruption that matters, or another concrete decision. Merely holding eye contact, twitching a mouth corner, breathing, shifting weight, or silently refusing to look away does NOT count as progress. If the failure is silent_continue_stalled, the user yielded the turn and the draft wasted it on atmosphere/static observation. Rewrite with one concrete new beat now: real dialogue, a decision, purposeful movement, an actual social exchange, or an external event with consequence. If the user is off-scene, follow the character's own active life instead of watching the place the user left or repeatedly saying they are not looking for them. If the failure is time_skip_stalled, land the requested time jump in a changed active situation; carry old tension as residue, not doorway/corridor surveillance. If the failure is immediate_pose_regression, preserve the FINAL physical state from the previous character turn. A character who crossed the room or stopped in front of the user cannot suddenly be “still leaning against” the old counter/pillar unless a visible action returned them there. If the failure is charged_departure_dropped, the user physically started to leave during an already charged exchange and the draft passively watched them go. For a high-initiative character, rewrite with immediate follow-through unless an explicit boundary forbids it: step after them, catch up, call them back, or when touch is allowed briefly catch a forearm/elbow/arm and stop or turn the movement back toward the conversation for one beat. Keep it easy to reject and release on resistance; never drag, restrain, trap or block escape. “I didn't ask for a bodyguard” rejects protection framing, not automatically all chemistry or all proximity. But explicit “leave me alone,” “stop following me,” “don't touch me,” or a pull-away must be respected. Never restrain, drag, corner, block escape or coerce the user just to make pursuit feel intense. If side characters have repeatedly acted as a romance jury or awarded conversational points, give them independent goals, opinions, or unrelated behavior instead. If the draft claims the user watched, followed, waited, stared, checked, LOOKED FOR, searched for, came for, went outside for, or wanted the character's attention without visible transcript evidence, remove that claim. Do NOT preserve it as teasing or an uncertain question when the latest user turn actively contradicts it. A user-stated practical reason such as fresh air, space, or walking away is binding and may not become “you were looking for me,” “you came out here for me,” jealousy, or attention-seeking. If the latest user turn rejects pursuit or protection with language such as “I didn't ask for a bodyguard,” “stop following me,” or “leave me alone,” do not defend the same pursuit as guarding, watching, keeping tabs, or making sure the user does not wander off. The character may still want to continue the conversation, but must own THEIR reason instead of inventing the user's motive or a protection duty. If the latest user turn clearly shows tears, crying, shaking, fear, hurt, anger or visible distress, do not leave the character merely watching or sitting nearby: add at least one character-specific question, decision, practical gesture, or behavior change that advances the emotional beat, while respecting boundaries and avoiding generic therapy language. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect explicit no-follow/no-touch boundaries; ordinary movement changes position but does not automatically prohibit a brief profile-consistent follow-through. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If the failure is overwritten_banter, rewrite the spoken line in plain character-specific English: fewer clever constructions, no mock-formal “statistically speaking / fascinating / indicator” language, and make the line respond to the actual previous sentence. If the failure is clarification_evasion, answer the user's clarification with a concrete referent in the first sentence; teasing may come second, but “the rest of it / you know / figure it out” alone is not an answer. If the failure is unsupported_user_reason_claim, remove the invented reason completely and use only motives/reasons stated in THIS conversation; never resurrect “fresh air,” jealousy, looking-for-me, the view, or another story's rationale without current-story evidence. If the failure is unsupported_prior_event_claim, delete the invented prior event entirely. Never claim a contact card, message, promise, handoff, photo, number, invitation or other event was “already” sent/shared/forwarded/given unless the visible transcript or confirmed memory actually contains that event. If the failure is latest_user_scene_not_applied or latest_user_scene_ignored, move the camera to the location the user's latest turn established and continue THERE. Do not use “Meanwhile, back on...” to stay with the previous off-screen character. If the main character is absent, stay with the present NPCs/events already in the user's scene. Do NOT manufacture an incoming message/call/DM/notification from the absent lead as a default bridge. If the failure is unsolicited_offscreen_lead_contact, remove that contact entirely and let the newly established scene breathe without the romantic lead unless the user initiated remote contact, an active digital thread is already open, or visible canon explicitly promised that contact. If the failure is silent_continue_prop_loop, compress the rewrite to one meaningful beat and stop recycling props like pens, keys, cups, pages or phones as filler. If recent replies keep opening with synonym-swapped scoff/huff/dry-laugh reactions, change the opening structure completely: begin with dialogue, an external event, another character, a practical action, or a meaningful new beat. If a social approach was reflexively dismissed and recent social approaches were also shut down, let this one breathe long enough to create a real interaction, complication, invitation, flirtation, rivalry, rumor beat, or recurring NPC when profile and setting support it. Create tension opportunities proactively, but do not force jealousy or invent betrayal. If recent replies repeatedly tracked the user across the room with glances, peripheral vision, or “one eye on them” language, let the character genuinely focus elsewhere for this beat and remove the surveillance-like attention. If the user only SAID they would leave, might leave, or “leave you with...” but did not narrate physical movement, keep the user physically present and remove any invented “heading away/departing/watched her go/didn't follow/let her go/looked toward the door where she had gone” action. A silent continuation after that line does NOT authorize an off-screen exit. Do not let a new NPC hijack an unresolved relational beat; let the primary character react first. If the character caused the rupture and attachment is established, consider one character-specific repair or pursuit beat instead of instantly switching to unrelated activity. If the user DID physically leave after the character was rude, dismissive, or hurtful, do not default to passive watching plus a reset back to the party/game/work. In that situation, prefer one immediate follow-through attempt—call after them, step after them, catch up, soften, or apologize badly—before any unrelated activity resumes. Make that follow-through unmistakably character-specific: preserve the profile's pride, humor, awkwardness, warmth, restraint or bluntness instead of a generic “wait.” The pursuit must create one new beat or piece of information before the turn ends; do not spend the whole rewrite on footsteps, breathing or trailing behind. If the failure is kinetic_tension_deflated, the rewrite MUST make an active character choice instead of leaning/staring/smirking/conceding: close conversational distance, sharpen or redirect the flirt, create a brief non-restraining touch if no no-touch boundary exists, let a believable social interruption/admirer matter, or choose another concrete action with consequence. If the failure is charged_beat_abandoned, preserve the character’s immediately previous active choice unless the latest turn actually changes it: a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside. Continue the charged beat through dialogue, proximity, flirtation, social complication or another character-specific choice instead of silently ending the scene. If the failure is charged_beat_stalled, the character technically stayed but did nothing with the charge. The rewrite MUST add at least one consequential beat: spoken dialogue, a deliberate change in proximity, a brief non-restraining touch when allowed, a sharper flirt/challenge, a social interruption that matters, or another concrete decision. Merely holding eye contact, twitching a mouth corner, breathing, shifting weight, or silently refusing to look away does NOT count as progress. If the failure is silent_continue_stalled, the user yielded the turn and the draft wasted it on atmosphere/static observation. Rewrite with one concrete new beat now: real dialogue, a decision, purposeful movement, an actual social exchange, or an external event with consequence. If the user is off-scene, follow the character's own active life instead of watching the place the user left or repeatedly saying they are not looking for them. If the failure is time_skip_stalled, land the requested time jump in a changed active situation; carry old tension as residue, not doorway/corridor surveillance. If the failure is immediate_pose_regression, preserve the FINAL physical state from the previous character turn. A character who crossed the room or stopped in front of the user cannot suddenly be “still leaning against” the old counter/pillar unless a visible action returned them there. If the failure is charged_departure_dropped, the user physically started to leave during an already charged exchange and the draft passively watched them go. For a high-initiative character, rewrite with immediate follow-through unless an explicit boundary forbids it: step after them, catch up, call them back, or when touch is allowed briefly catch a forearm/elbow/arm and stop or turn the movement back toward the conversation for one beat. Keep it easy to reject and release on resistance; never drag, restrain, trap or block escape. “I didn't ask for a bodyguard” rejects protection framing, not automatically all chemistry or all proximity. But explicit “leave me alone,” “stop following me,” “don't touch me,” or a pull-away must be respected. Never restrain, drag, corner, block escape or coerce the user just to make pursuit feel intense. If side characters have repeatedly acted as a romance jury or awarded conversational points, give them independent goals, opinions, or unrelated behavior instead. If the draft claims the user watched, followed, waited, stared, checked, LOOKED FOR, searched for, came for, went outside for, or wanted the character's attention without visible transcript evidence, remove that claim. Do NOT preserve it as teasing or an uncertain question when the latest user turn actively contradicts it. A user-stated practical reason such as fresh air, space, or walking away is binding and may not become “you were looking for me,” “you came out here for me,” jealousy, or attention-seeking. If the latest user turn rejects pursuit or protection with language such as “I didn't ask for a bodyguard,” “stop following me,” or “leave me alone,” do not defend the same pursuit as guarding, watching, keeping tabs, or making sure the user does not wander off. The character may still want to continue the conversation, but must own THEIR reason instead of inventing the user's motive or a protection duty. If the latest user turn clearly shows tears, crying, shaking, fear, hurt, anger or visible distress, do not leave the character merely watching or sitting nearby: add at least one character-specific question, decision, practical gesture, or behavior change that advances the emotional beat, while respecting boundaries and avoiding generic therapy language. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect explicit no-follow/no-touch boundaries; ordinary movement changes position but does not automatically prohibit a brief profile-consistent follow-through. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1324,10 +1317,9 @@ function extractUserSceneAnchor(value = "") {
   if (!text) return null;
 
   const homeLike = text.match(/\b(?:i|we)\b.{0,90}\b(?:am|m|are|was|were|stay|stayed|live|lived)?\s*(?:with\s+[a-z0-9]+(?:\s+[a-z0-9]+)?\s+)?(?:at|in|on|inside)\s+(?:my|our|the|a|an)?\s*(house|home|apartment|flat|dorm|bedroom|room|kitchen|living room)\b/);
-  const movementHome = text.match(/\b(?:i|we)\b.{0,45}\b(?:go|went|walk|walked|head|headed|move|moved|step|stepped|run|ran)\b.{0,35}\b(?:to|into|inside)\s+(?:my|our|the|a|an)?\s*(house|home|apartment|flat|dorm|bedroom|room|kitchen|living room)\b/);
   const directHome = text.match(/\b(?:i|we)\s+(?:am|m|are|was|were)\s+(home|at home)\b/);
   const namedHouse = text.match(/\b(?:i|we)\b.{0,90}\b(?:at|in|on)\s+([a-z0-9]+(?:\s+[a-z0-9]+)?\s+s\s+(?:house|apartment|dorm|room))\b/);
-  const location = homeLike?.[1] || movementHome?.[1] || (directHome ? "home" : "") || namedHouse?.[1] || "";
+  const location = homeLike?.[1] || (directHome ? "home" : "") || namedHouse?.[1] || "";
   if (!location) return null;
 
   const withMatch = text.match(/\bwith\s+([a-z][a-z0-9'-]{1,30})(?:\s+and\s+([a-z][a-z0-9'-]{1,30}))?/);
@@ -1353,85 +1345,6 @@ function hasUnsupportedPriorEventClaim(reply = "", visibleHistory = []) {
   const asserted = evidencePairs.filter(({ claim }) => claim.test(text));
   if (!asserted.length) return false;
   return asserted.some(({ support }) => !support.test(history));
-}
-
-function extractContactHandoffState(latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], characterName = "") {
-  const latestRaw = String(latestUserMessage || "");
-  const latest = normalizeText(latestRaw);
-  const handoffNow = /\b(?:hand|handed|give|gave|pass|passed|show|showed)\b.{0,70}\b(?:phone|number|contact|screen)\b|\b(?:phone|number|contact|screen)\b.{0,55}\b(?:hand|handed|give|gave|pass|passed|show|showed)\b/i.test(latestRaw);
-  if (!handoffNow) return null;
-
-  const historyParts = [
-    ...(Array.isArray(recentUserMessages) ? recentUserMessages : []),
-    ...(Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []),
-    latestUserMessage,
-  ].map((item) => String(item || "")).filter(Boolean);
-  const history = historyParts.join("\n");
-
-  const ownerMatches = [...history.matchAll(/\b([A-Z][A-Za-z'’-]{1,30})['’]s\s+(?:phone\s+)?number\b/g)];
-  const owner = ownerMatches.at(-1)?.[1] || "";
-  const recipientMatches = [...history.matchAll(/\b(?:it['’]?s|its|that['’]?s)?\s*(?:not\s+for\s+me[,;:]?\s*)?(?:it['’]?s\s+)?for\s+([A-Z][A-Za-z'’-]{1,30})\b/gi)];
-  const recipient = recipientMatches.at(-1)?.[1] || "";
-  const intermediary = String(characterName || "").trim().split(/\s+/).filter(Boolean)[0] || "";
-  if (!owner) return null;
-  return { owner, recipient, intermediary, handoffNow: true };
-}
-
-function hasContactHandoffRoleConfusion(reply = "", latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], characterName = "") {
-  const state = extractContactHandoffState(latestUserMessage, recentUserMessages, recentCharacterReplies, characterName);
-  if (!state) return false;
-  const raw = String(reply || "");
-  const text = normalizeText(raw);
-  if (!text) return false;
-
-  // After a multi-person contact handoff, pronoun-only outbound contact is too
-  // ambiguous when the actual contact owner is known. Make the draft name them.
-  const ambiguousOutbound = /\b(?:i['’]?m|i am|she['’]?s|she is|he['’]?s|he is|they['’]?re|they are)\s+(?:texting|messaging|calling|dm(?:ing)?)\s+(?:him|her|them)\b/i.test(raw);
-  const ownerEscaped = state.owner.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const namedOutbound = new RegExp(String.raw`\b(?:texting|messaging|calling|dm(?:ing)?)\s+${ownerEscaped}\b|\b${ownerEscaped}\b.{0,28}\b(?:text|message|call|dm)`, "i").test(raw);
-  if (ambiguousOutbound && !namedOutbound) return true;
-
-  // A completed number/contact handoff cannot be retroactively undone by the
-  // intermediary simply "changing his mind". Permission must be visibly conditional.
-  const revocation = /\b(?:before|in case)\s+(?:he|she|they|[A-Z][A-Za-z'’-]{1,30})\s+changes?\s+(?:his|her|their)\s+mind\b/i.test(raw);
-  const history = [...(Array.isArray(recentUserMessages) ? recentUserMessages : []), ...(Array.isArray(recentCharacterReplies) ? recentCharacterReplies : [])].map(normalizeText).join(" ");
-  const conditionalPermission = /\b(?:ask(?:ed)? permission|if (?:he|she|they) (?:say|says|said) yes|with (?:his|her|their) permission|only if|dont give|do not give|not allowed to share|permission to share)\b/.test(history);
-  if (revocation && !conditionalPermission) return true;
-
-  // Do not silently relabel the contact as the intermediary's number.
-  if (state.intermediary && normalizeText(state.intermediary) !== normalizeText(state.owner)) {
-    const wrongOwner = new RegExp(String.raw`\b${state.intermediary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}['’]?s\s+(?:phone\s+)?(?:number|contact)\b`, "i");
-    if (wrongOwner.test(raw)) return true;
-  }
-  return false;
-}
-
-function hasUnsupportedSocialEpithet(reply = "", recentUserMessages = [], recentCharacterReplies = [], character = {}) {
-  const text = normalizeText(reply);
-  if (!text) return false;
-  const epithets = text.match(/\b(?:campus|resident|local|golden)\s+(?:saint|prince|princess|king|queen|legend|hero|heartbreaker|golden boy)\b/g) || [];
-  if (!epithets.length) return false;
-  const support = normalizeText([
-    ...(Array.isArray(recentUserMessages) ? recentUserMessages : []),
-    ...(Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []),
-    character?.role, character?.description, character?.personality, character?.relationship, character?.scenario, character?.world,
-  ].filter(Boolean).join(" "));
-  return epithets.some((epithet) => !support.includes(epithet));
-}
-
-function sanitizeContactHandoffResult(result = {}, latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], characterName = "") {
-  const state = extractContactHandoffState(latestUserMessage, recentUserMessages, recentCharacterReplies, characterName);
-  if (!state || !result?.reply) return result;
-  let reply = String(result.reply || "");
-  const owner = state.owner;
-  const intermediary = state.intermediary;
-  if (intermediary) {
-    reply = reply.replace(/\b(?:the\s+)?campus\s+saint\b/gi, intermediary);
-  }
-  reply = reply.replace(/\b(I['’]?m|I am)\s+(texting|messaging|calling|DMing)\s+(?:him|her|them)\b/gi, (_m, lead, verb) => `${lead} ${verb} ${owner}`);
-  reply = reply.replace(/\s*(?:,|—|-)?\s*\b(?:before|in case)\s+(?:he|she|they|[A-Z][A-Za-z'’-]{1,30})\s+changes?\s+(?:his|her|their)\s+mind\b/gi, "");
-  reply = reply.replace(/\s+([,.!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
-  return { ...result, reply };
 }
 
 function hasLatestUserSceneIgnored(reply = "", latestUserMessage = "", previousScene = {}) {
@@ -1464,21 +1377,6 @@ function userEstablishedRemoteContact(latestUserMessage = "", characterName = ""
   return pendingContact || activeDigital;
 }
 
-function containsExplicitRemoteLeadContact(value = "", characterName = "") {
-  const raw = String(value || "");
-  const characterKey = String(characterName || "").trim().split(/\s+/).filter(Boolean)[0] || "";
-  if (!raw || !characterKey) return false;
-  const escaped = characterKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // v2.11.8: require evidence of an actual communication event. Merely mentioning a
-  // phone in one sentence and the lead's name later in the paragraph is NOT contact.
-  const directLabel = new RegExp(String.raw`(?:^|[\n.!?])\s*[>*_\-\s]*${escaped}\s*:`, "im");
-  const inboundFrom = new RegExp(String.raw`\b(?:text|message|dm|notification|call|facetime|voicemail)\s+(?:from|by)\s+${escaped}\b`, "i");
-  const leadVerb = new RegExp(String.raw`\b${escaped}\b.{0,28}\b(?:texted|texts|messaged|messages|called|calls|dmed|dm'd|sent\s+(?:her|him|them|you|me)\s+(?:a\s+)?(?:text|message|dm))\b`, "i");
-  const namedDeviceEvent = new RegExp(String.raw`\b(?:phone|screen|notification)\b.{0,90}\b(?:showed|displayed|flashed|lit up with|lights up with|read|said)\b.{0,55}\b${escaped}(?:'s)?\b`, "i");
-  const leadOnDevice = new RegExp(String.raw`\b(?:phone|screen)\b.{0,90}\b${escaped}(?:'s)?\b.{0,35}\b(?:name|text|message|call|dm)\b`, "i");
-  return directLabel.test(raw) || inboundFrom.test(raw) || leadVerb.test(raw) || namedDeviceEvent.test(raw) || leadOnDevice.test(raw);
-}
-
 function hasUnsolicitedOffscreenLeadContact(reply = "", latestUserMessage = "", previousScene = {}, characterName = "", recentUserMessages = [], recentCharacterReplies = []) {
   const anchor = extractUserSceneAnchor(latestUserMessage);
   if (!anchor || !characterName) return false;
@@ -1486,34 +1384,13 @@ function hasUnsolicitedOffscreenLeadContact(reply = "", latestUserMessage = "", 
   if (!characterKey) return false;
   if (anchor.companions.some((name) => normalizeText(name) === characterKey || normalizeText(name) === normalizeText(characterName))) return false;
   if (userEstablishedRemoteContact(latestUserMessage, characterName, recentUserMessages, recentCharacterReplies)) return false;
-  return containsExplicitRemoteLeadContact(reply, characterName);
-}
 
-function sanitizeUnsolicitedOffscreenLeadContactResult(result = {}, characterName = "") {
-  const reply = String(result?.reply || "").trim();
-  if (!reply || !characterName || !containsExplicitRemoteLeadContact(reply, characterName)) return result;
-  const parts = reply.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
-  const remove = new Set();
-  for (let index = 0; index < parts.length; index += 1) {
-    if (containsExplicitRemoteLeadContact(parts[index], characterName)) {
-      remove.add(index);
-      // Remove a dangling notification bridge only when it directly introduces the
-      // rejected contact paragraph. Do not remove ordinary NPC phone use.
-      const previous = String(parts[index - 1] || "");
-      if (previous && /\b(?:phone|screen|notification)\b.{0,100}\b(?:lights? up|lit up|buzz(?:es|ed)?|vibrat(?:es|ed)?|notification|incoming)\b/i.test(previous)) remove.add(index - 1);
-    }
-  }
-  const cleanedReply = parts.filter((_, index) => !remove.has(index)).join("\n\n").trim();
-  if (!cleanedReply) return result;
-  const memoryUpdates = Array.isArray(result?.memory_updates)
-    ? result.memory_updates.filter((item) => !containsExplicitRemoteLeadContact(JSON.stringify(item || {}), characterName))
-    : result?.memory_updates;
-  const continuityNote = containsExplicitRemoteLeadContact(result?.continuity_note || "", characterName) ? "" : result?.continuity_note;
-  const continuityUpdate = result?.continuity_update && typeof result.continuity_update === "object" ? { ...result.continuity_update } : result?.continuity_update;
-  if (continuityUpdate?.timeline_event && containsExplicitRemoteLeadContact(JSON.stringify(continuityUpdate.timeline_event), characterName)) {
-    continuityUpdate.timeline_event = { ...continuityUpdate.timeline_event, record: false, detail: "", label: "" };
-  }
-  return { ...result, reply: cleanedReply, memory_updates: memoryUpdates, continuity_note: continuityNote, continuity_update: continuityUpdate };
+  const text = normalizeText(reply);
+  const escaped = characterKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const directLabel = new RegExp(`\\b${escaped}\\b\\s*:`);
+  const namedContact = new RegExp(`(?:\\b(?:text|message|dm|notification|call|phone|screen)\\b.{0,140}\\b${escaped}\\b|\\b${escaped}\\b.{0,90}\\b(?:text|message|dm|notification|call|called|calls|texted|texts|messaged|messages|buzzed|rang)\\b)`);
+  const deviceBridge = new RegExp(`\\b(?:phone|screen)\\b.{0,180}\\b${escaped}\\b`);
+  return directLabel.test(String(reply || "")) || namedContact.test(text) || deviceBridge.test(text);
 }
 
 function hasSilentContinuationPropLoop(reply = "", turnIntent = {}, recentReplies = []) {
@@ -1981,33 +1858,6 @@ function replySimilarity(left = "", right = "") {
   let overlap = 0;
   for (const token of a) if (b.has(token)) overlap += 1;
   return overlap / Math.min(a.size, b.size);
-}
-
-function hasDuplicatePreviousReply(reply = "", recentReplies = []) {
-  const current = normalizeText(reply);
-  if (!current) return false;
-  const currentWords = current.split(/\s+/).filter(Boolean);
-  for (const recent of (Array.isArray(recentReplies) ? recentReplies : []).slice(-4)) {
-    const previous = normalizeText(recent);
-    if (!previous) continue;
-    if (current === previous) return true;
-    const previousWords = previous.split(/\s+/).filter(Boolean);
-    if (Math.min(currentWords.length, previousWords.length) >= 16 && replySimilarity(current, previous) >= 0.92) return true;
-  }
-  return false;
-}
-function hasDuplicateReplyPrefix(reply = "", recentReplies = [], minimumChars = 52) {
-  const raw = String(reply || "");
-  if (raw.length < minimumChars) return false;
-  const current = normalizeText(raw.slice(0, 180));
-  if (current.length < 36) return false;
-  return (Array.isArray(recentReplies) ? recentReplies : []).slice(-4).some((recent) => {
-    const previous = normalizeText(String(recent || "").slice(0, 180));
-    if (previous.length < 36) return false;
-    const short = current.length <= previous.length ? current : previous;
-    const long = current.length <= previous.length ? previous : current;
-    return long.startsWith(short.slice(0, Math.min(short.length, 72))) || replySimilarity(current, previous) >= 0.90;
-  });
 }
 
 const regenerationFeedbackRules = new Map([
@@ -2642,9 +2492,54 @@ function sanitizeHardUserIntentContradictions(reply = "", latestUserMessage = ""
     return !(motiveConflict && hardMotive.test(normalized)) && !(pursuitConflict && hardGuarding.test(normalized));
   }).join(" ").replace(/\s+/g, " ").trim()).filter(Boolean).join("\n\n").trim();
 }
+function sanitizeUnsolicitedOffscreenLeadContact(reply = "", characterName = "") {
+  const original = String(reply || "").trim();
+  const characterKey = normalizeText(characterName).split(/\s+/).filter(Boolean)[0] || "";
+  if (!original || !characterKey) return original;
+  const escaped = characterKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const directLabel = new RegExp(`\\b${escaped}\\b\\s*:`,'i');
+  const contactCue = new RegExp(`(?:\\b(?:text|message|dm|notification|call|phone|screen|buzz|buzzed|rang|ringing)\\b.{0,180}\\b${escaped}\\b|\\b${escaped}\\b.{0,120}\\b(?:text|message|dm|notification|call|called|calls|texted|texts|messaged|messages|buzzed|rang)\\b)`,'i');
+
+  // Prefer paragraph-level removal so valid on-scene dialogue/narration remains intact.
+  // A device-notification paragraph immediately before a named lead message belongs
+  // to the same remote interruption and must disappear with it.
+  const paragraphs = original.split(/\n{2,}/);
+  const drop = new Set();
+  paragraphs.forEach((paragraph, index) => {
+    const normalized = normalizeText(paragraph);
+    if (directLabel.test(paragraph) || contactCue.test(normalized)) {
+      drop.add(index);
+      const previous = normalizeText(paragraphs[index - 1] || "");
+      if (/\b(?:phone|screen|notification|buzz|buzzed|rang|ringing|lights? up)\b/.test(previous)) drop.add(index - 1);
+    }
+  });
+  let kept = paragraphs.filter((_, index) => !drop.has(index));
+
+  // If a remote-contact tail shares a paragraph with valid scene material, trim only
+  // the sentence(s) that introduce the off-scene lead instead of discarding everything.
+  kept = kept.map((paragraph) => (paragraph.match(/[^.!?]+[.!?]+(?:["”']+)?|[^.!?]+$/g) || [paragraph])
+    .filter((sentence) => {
+      const normalized = normalizeText(sentence);
+      return !(directLabel.test(sentence) || contactCue.test(normalized));
+    })
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+  ).filter(Boolean);
+
+  return kept.join("\n\n").trim();
+}
 function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
-  if (!issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted"].includes(issue))) return { result, issues };
-  const nextResult = { ...result, reply: sanitizeHardUserIntentContradictions(result?.reply || "", options.latestUserMessage || "") };
+  const canSanitize = issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted", "unsolicited_offscreen_lead_contact"].includes(issue));
+  if (!canSanitize) return { result, issues };
+  let reply = String(result?.reply || "");
+  if (issues.includes("user_motive_overwritten") || issues.includes("rejected_pursuit_framing_persisted")) {
+    reply = sanitizeHardUserIntentContradictions(reply, options.latestUserMessage || "");
+  }
+  if (issues.includes("unsolicited_offscreen_lead_contact")) {
+    reply = sanitizeUnsolicitedOffscreenLeadContact(reply, options.characterName || "");
+  }
+  const nextResult = { ...result, reply };
   let nextIssues = validateNarrativeReply(nextResult.reply, options);
   if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];
   return { result: nextResult, issues: nextIssues };
@@ -2704,13 +2599,10 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "clarification_evasion",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
-  "contact_handoff_role_confusion",
-  "unsupported_social_epithet",
   "latest_user_scene_not_applied",
   "latest_user_scene_ignored",
   "unsolicited_offscreen_lead_contact",
   "silent_continue_prop_loop",
-  "duplicate_previous_reply",
 ]);
 
 // v2.11.0 NARRATIVE CORE REBUILD
@@ -2735,12 +2627,10 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "clarification_evasion",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
-  "contact_handoff_role_confusion",
   "latest_user_scene_not_applied",
   "latest_user_scene_ignored",
   "unsolicited_offscreen_lead_contact",
   "silent_continue_prop_loop",
-  "duplicate_previous_reply",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -2761,10 +2651,6 @@ function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = 
 
   // Explicit latest-user scene placement is canon-sensitive; validate before display.
   if (extractUserSceneAnchor(latestUserMessage)) return true;
-
-  // Phone/contact handoffs are referent-sensitive. Validate before display so an
-  // ambiguous pronoun cannot swap the contact owner and intermediary on screen.
-  if (/\b(?:hand|handed|give|gave|pass|passed|show|showed)\b.{0,70}\b(?:phone|number|contact|screen)\b|\b(?:phone|number|contact|screen)\b.{0,55}\b(?:hand|handed|give|gave|pass|passed|show|showed)\b/i.test(String(latestUserMessage || ""))) return true;
 
   // Silent continuations and time skips are director-style turns. Their first draft
   // must be checked for real progression before anything becomes visible.
@@ -2807,7 +2693,6 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (controlsUserPOV(text, options.userName || "", options.latestUserMessage || "")) issues.push("controls_user_pov");
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
-  if (hasDuplicatePreviousReply(text, options.recentCharacterReplies || [])) issues.push("duplicate_previous_reply");
   if (hasStockBodyLanguageStack(text)) issues.push("stock_body_language_stack");
   if (hasRecycledStockGesture(text, options.recentCharacterReplies || [])) issues.push("recycled_stock_gesture");
   if (hasUnsupportedMotiveEscalation(text, options.latestUserMessage || "")) issues.push("unsupported_motive_escalation");
@@ -2821,8 +2706,6 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasClarificationEvasion(text, options.latestUserMessage || "")) issues.push("clarification_evasion");
   if (hasUnsupportedUserReasonClaim(text, [options.latestUserMessage || "", ...(options.recentUserMessages || [])])) issues.push("unsupported_user_reason_claim");
   if (hasUnsupportedPriorEventClaim(text, [...(options.recentUserMessages || []), ...(options.recentCharacterReplies || [])])) issues.push("unsupported_prior_event_claim");
-  if (hasContactHandoffRoleConfusion(text, options.latestUserMessage || "", options.recentUserMessages || [], options.recentCharacterReplies || [], options.characterName || "")) issues.push("contact_handoff_role_confusion");
-  if (hasUnsupportedSocialEpithet(text, options.recentUserMessages || [], options.recentCharacterReplies || [], options.character || {})) issues.push("unsupported_social_epithet");
   if (hasSilentContinuationPropLoop(text, turnIntent, options.recentCharacterReplies || [])) issues.push("silent_continue_prop_loop");
   if (hasReactionOpenerLoop(text, options.recentCharacterReplies || [])) issues.push("reaction_opener_loop");
   if (hasRepeatedSocialShutdown(text, options.recentCharacterReplies || [], options.latestUserMessage || "")) issues.push("repeated_social_shutdown");
@@ -3096,8 +2979,6 @@ async function streamRoleplayV19({
       let repairUsed = false;
       let streamedReply = "";
       let modelDraftReply = "";
-      let duplicatePrefixPending = true;
-      let duplicateDraftSuspected = false;
       const guardedDraft = shouldBufferDraftUntilValidated({ latestUserMessage, turnIntent, recentUserMessages, recentCharacterReplies, character });
       try {
         // Flush headers/UI state before the model has finished its first token.
@@ -3117,7 +2998,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, preserve immediate relative body positions until visible movement changes them, and make profile-established social status/reputation visibly affect relevant public scenes without turning every turn into a popularity spectacle. Avoid constant sarcasm or rhetorical-question dialogue, do not use the user’s name or nickname as punctuation in every reply, do not continuously track the user with glances/thoughts while the character is socially occupied, and never invent user behavior as evidence in banter. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. If the latest user turn establishes a new place or companion, move the narrative camera there immediately instead of continuing the previous off-screen location. Do not pull an absent romantic lead back into that scene by inventing a text, call, DM, notification or coincidence unless the user/current digital thread/visible prior promise actually licenses the contact. Never fabricate a retrospective “already sent/shared/forwarded/given” event. Keep handoff roles explicit: the owner of a number/contact, the intermediary who passed it along, the current holder, and the intended recipient are different roles; do not swap them through pronouns. Do not invent social epithets such as “campus saint” unless established. Continue after the user's final staged event. NEVER return the previous assistant reply again after a new user turn; every new user action must produce a fresh continuation after that action. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
+          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, preserve immediate relative body positions until visible movement changes them, and make profile-established social status/reputation visibly affect relevant public scenes without turning every turn into a popularity spectacle. Avoid constant sarcasm or rhetorical-question dialogue, do not use the user’s name or nickname as punctuation in every reply, do not continuously track the user with glances/thoughts while the character is socially occupied, and never invent user behavior as evidence in banter. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. If the latest user turn establishes a new place or companion, move the narrative camera there immediately instead of continuing the previous off-screen location. Do not pull an absent romantic lead back into that scene by inventing a text, call, DM, notification or coincidence unless the user/current digital thread/visible prior promise actually licenses the contact. Never fabricate a retrospective “already sent/shared/forwarded/given” event. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           temperature: getTemperature(character.creativity, isRegeneration),
@@ -3127,32 +3008,20 @@ async function streamRoleplayV19({
           },
           onReset() {
             modelDraftReply = "";
-            duplicatePrefixPending = true;
-            duplicateDraftSuspected = false;
-            if (!guardedDraft && streamedReply) {
+            if (!guardedDraft) {
               streamedReply = "";
               sendEvent(controller, { type: "reset" });
             }
           },
           onReply(reply) {
             if (!reply || reply.length <= modelDraftReply.length) return;
+            const delta = reply.slice(modelDraftReply.length);
             modelDraftReply = reply;
-            // v2.11.10 TURN FRESHNESS LOCK: every ordinary draft buffers only its
-            // tiny opening prefix. If it starts by replaying a recent assistant turn,
-            // quarantine the whole draft before the user sees a duplicated bubble.
-            if (!guardedDraft && duplicatePrefixPending) {
-              if (reply.length < 52) return;
-              duplicateDraftSuspected = hasDuplicateReplyPrefix(reply, recentCharacterReplies, 52);
-              duplicatePrefixPending = false;
-              if (duplicateDraftSuspected) return;
+            // Ordinary turns keep the fast optimistic stream. Guarded tension/
+            // boundary turns stay quarantined until validation has accepted them.
+            if (!guardedDraft && delta) {
               streamedReply = reply;
-              sendEvent(controller, { type: "chunk", content: reply });
-              return;
-            }
-            if (!guardedDraft && !duplicateDraftSuspected && reply.length > streamedReply.length) {
-              const delta = reply.slice(streamedReply.length);
-              streamedReply = reply;
-              if (delta) sendEvent(controller, { type: "chunk", content: delta });
+              sendEvent(controller, { type: "chunk", content: delta });
             }
           },
         });
@@ -3224,7 +3093,7 @@ async function streamRoleplayV19({
               throw new Error(repairFailure || "Velvet could not repair an incomplete reply. Try again.");
             }
           } else {
-          let repairedIssues = validateNarrativeReply(repaired.reply, {
+          const repairedIssues = validateNarrativeReply(repaired.reply, {
             characterName: character.name,
             userName: userIdentity.name,
             latestUserMessage,
@@ -3236,76 +3105,15 @@ async function streamRoleplayV19({
             character,
           });
           repairedIssues.push(...validateContinuityEnvelope(repaired, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies }));
+          const repairedFatal = blockingNarrativeIssues(repairedIssues);
           const originalFatal = blockingNarrativeIssues(originalIssues);
           const originalHard = hardRepairRequiredIssues(originalIssues);
-          let repairedFatal = blockingNarrativeIssues(repairedIssues);
           let repairedHard = hardRepairRequiredIssues(repairedIssues);
-
-          // v2.11.9 REFERENT GROUNDING: if the one repair still confuses a
-          // multi-person phone/contact handoff, apply a tiny deterministic cleanup
-          // before failing. This only names the established contact owner and removes
-          // impossible post-handoff revocation language; it does not invent new plot.
-          if (repairedHard.includes("contact_handoff_role_confusion")) {
-            const locallyGrounded = sanitizeContactHandoffResult(repaired, latestUserMessage, recentUserMessages, recentCharacterReplies, character.name);
-            if (String(locallyGrounded?.reply || "").trim() && locallyGrounded.reply !== repaired.reply) {
-              let localIssues = validateNarrativeReply(locallyGrounded.reply, {
-                characterName: character.name,
-                userName: userIdentity.name,
-                latestUserMessage,
-                turnIntent,
-                finishReason: locallyGrounded.finishReason,
-                rejectedResponses,
-                recentCharacterReplies,
-                recentUserMessages,
-                character,
-              });
-              localIssues.push(...validateContinuityEnvelope(locallyGrounded, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies }));
-              const localHard = hardRepairRequiredIssues(localIssues);
-              const localFatal = blockingNarrativeIssues(localIssues);
-              if (!localHard.length && !localFatal.length) {
-                repaired = locallyGrounded;
-                repairedIssues = localIssues;
-                repairedHard = localHard;
-                repairedFatal = localFatal;
-                console.log("[character-chat] local referent grounding corrected contact handoff roles");
-              }
-            }
-          }
-
-          // v2.11.8 REPAIR SHIELD: an otherwise-good scene should not fail because the
-          // repaired draft appended one forbidden off-screen lead text/call. Remove that
-          // local bridge, keep the valid scene beat, then validate again without spending
-          // a third model call. This also prevents a false-positive guard from becoming a
-          // user-facing technical error.
-          if (repairedHard.includes("unsolicited_offscreen_lead_contact")) {
-            const locallySanitized = sanitizeUnsolicitedOffscreenLeadContactResult(repaired, character.name);
-            if (String(locallySanitized?.reply || "").trim() && locallySanitized.reply !== repaired.reply) {
-              let localIssues = validateNarrativeReply(locallySanitized.reply, {
-                characterName: character.name,
-                userName: userIdentity.name,
-                latestUserMessage,
-                turnIntent,
-                finishReason: locallySanitized.finishReason,
-                rejectedResponses,
-                recentCharacterReplies,
-                recentUserMessages,
-                character,
-              });
-              localIssues.push(...validateContinuityEnvelope(locallySanitized, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies }));
-              const localHard = hardRepairRequiredIssues(localIssues);
-              const localFatal = blockingNarrativeIssues(localIssues);
-              if (!localHard.length && !localFatal.length) {
-                repaired = locallySanitized;
-                repairedIssues = localIssues;
-                repairedHard = localHard;
-                repairedFatal = localFatal;
-                console.log("[character-chat] local repair shield removed unsolicited off-screen lead contact");
-              }
-            }
-          }
-
           if (originalHard.length && repairedHard.length) {
-            throw new Error("Velvet could not finish a continuity-safe reply. Please retry.");
+            const sanitizedRepair = sanitizeValidatedHardIntentResult(repaired, repairedIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: repaired.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } });
+            repaired = sanitizedRepair.result;
+            repairedIssues.splice(0, repairedIssues.length, ...sanitizedRepair.issues);
+            repairedHard = hardRepairRequiredIssues(repairedIssues);
           }
           if (!repairedFatal.length && !repairedHard.length && (originalFatal.length || originalHard.length || repairTriggerIssues(repairedIssues).length <= repairTriggerIssues(originalIssues).length)) {
             result = repaired;
@@ -3335,15 +3143,16 @@ async function streamRoleplayV19({
           streamedReply = result.reply;
         }
 
-        const remainingHard = hardRepairRequiredIssues(validationIssues);
+        let remainingHard = hardRepairRequiredIssues(validationIssues);
+        if (remainingHard.length) {
+          ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
+          remainingHard = hardRepairRequiredIssues(validationIssues);
+        }
         if (blockingNarrativeIssues(validationIssues).length || remainingHard.length) {
           throw new Error(`Velvet could not get a valid protected reply after one repair${remainingHard.length ? `: ${remainingHard.join(", ")}` : "."}`);
         }
         if (await isCancelled()) return;
         if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
-        if (!replacementMessage && hasDuplicatePreviousReply(result.reply, recentCharacterReplies)) {
-          throw new Error("Velvet almost repeated the previous reply. Please retry this turn.");
-        }
 
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: result.reply })
