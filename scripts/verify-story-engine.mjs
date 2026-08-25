@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasDirectPreferenceEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -1571,6 +1571,31 @@ check("v2.11.12 prompt explicitly makes first charged pass-by a pursuit test",
   v21112Policy?.includes("FIRST CHARGED PASS-BY LOCK") && v21112Policy?.includes("murmur to empty space") && v21112Policy?.includes("pick up a drink"));
 check("v2.11.12 arbitrary quoted quip no longer counts as charged-departure follow-through",
   edge.includes("A muttered quip to empty air") && !/activeAlternative[^\n]+\|\| \/\[\"“\]/.test(edge.slice(edge.indexOf("function hasChargedDepartureDrop"), edge.indexOf("function hasGenericPursuitWithoutProgress"))));
+
+
+// v2.11.13 Direct Banter Grounding — direct personal questions must get a real stance.
+const v21113User = `Oh do you like attention`;
+const v21113Bad = `Chase let out a brief laugh. "From you? Unavoidable."`;
+const v21113GoodA = `Chase's mouth tilted. "Depends who's giving it."`;
+const v21113GoodB = `Chase glanced at her. "Yours? Maybe."`;
+const v21113GoodC = `"I don't hate yours," Chase said.`;
+check("v2.11.13 exact From-you-Unavoidable line is rejected as preference evasion",
+  helpers?.hasDirectPreferenceEvasion(v21113Bad, v21113User, chaseNaturalProfile));
+check("v2.11.13 exact From-you-Unavoidable line is also caught as overwritten banter",
+  helpers?.hasOverwrittenBanter(v21113Bad, v21113User, chaseNaturalProfile));
+check("v2.11.13 natural direct flirt answers remain allowed",
+  !helpers?.hasDirectPreferenceEvasion(v21113GoodA, v21113User, chaseNaturalProfile) &&
+  !helpers?.hasDirectPreferenceEvasion(v21113GoodB, v21113User, chaseNaturalProfile) &&
+  !helpers?.hasDirectPreferenceEvasion(v21113GoodC, v21113User, chaseNaturalProfile));
+check("v2.11.13 direct attention question is buffered before display",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: v21113User, turnIntent: { kind: "direct_question" }, recentUserMessages: [v21113User], recentCharacterReplies: [v21112Good], character: chaseProfileDriven }));
+check("v2.11.13 preference evasion spends the one repair call without becoming a fatal hard guard",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,5200}"direct_preference_evasion"/.test(edge) &&
+  !/HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,2600}"direct_preference_evasion"/.test(edge));
+check("v2.11.13 prompt distinguishes preference from inevitability",
+  edge.includes("DIRECT PREFERENCE QUESTIONS REQUIRE A STANCE") &&
+  edge.includes("From you? Unavoidable.") &&
+  edge.includes("inevitability describes whether attention happens, not whether the character likes it"));
 
 let failures = 0;
 for (const item of checks) {
