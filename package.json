@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "2.11.2",
+  "version": "2.11.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,10 +11,11 @@
     "verify:ui": "node scripts/verify-ui.mjs",
     "preview": "vite preview",
     "verify:mobile": "node scripts/verify-mobile-qa.mjs",
-    "verify:stability": "npm run verify:edge-boot && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:ambience && npm run verify:living-scenes",
+    "verify:stability": "npm run verify:install-lock && npm run verify:edge-boot && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:ambience && npm run verify:living-scenes",
     "verify:ambience": "node scripts/verify-ambience.mjs",
     "verify:living-scenes": "node scripts/verify-living-scenes.mjs",
-    "verify:edge-boot": "node scripts/verify-edge-boot.mjs"
+    "verify:edge-boot": "node scripts/verify-edge-boot.mjs",
+    "verify:install-lock": "node scripts/verify-install-lock.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",
@@ -31,5 +32,8 @@
     "supabase": "^2.113.0",
     "vite": "^8.2.0",
     "vite-plugin-pwa": "^1.3.0"
+  },
+  "overrides": {
+    "baseline-browser-mapping": "2.11.12"
   }
 }
