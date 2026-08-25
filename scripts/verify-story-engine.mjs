@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -88,16 +88,17 @@ check("generation skips redundant cancellation read-back",
 check("prompt context is capped for faster first token",
   edge.includes(".limit(36)") && edge.includes(".limit(32)") && edge.includes("messages.slice(-8)") && edge.includes("messages.slice(-20, -8)"));
 check("model streams reply scene continuity development and memories in one request",
-  edge.includes('required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"]') &&
+  edge.includes('required: ["reply", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"]') &&
   edge.includes("responseMimeType: \"application/json\"") &&
   edge.includes("streamGenerateContent?alt=sse") &&
-  edge.includes("result.scene_update") && edge.includes("result.development_update") && edge.includes("result.memory_updates"));
-check("the same request plans turn meaning or opening intent and audits canon",
-  edge.includes("turn_reading:") &&
-  edge.includes("literal social meaning of the latest user turn") &&
-  edge.includes("fresh opening") &&
-  edge.includes("canon_claims: a list of every off-screen or historical factual claim") &&
-  edge.includes('canon_claims: { type: "array", items: { type: "string" } }'));
+  edge.includes("result.scene_update") && edge.includes("result.development_update") && edge.includes("result.memory_updates") &&
+  !edge.includes("turn_reading:") && !edge.includes("canon_claims:") && !edge.includes("voice_plan:"));
+check("the same request uses literal turn policy and visible-canon rules without redundant hidden planning payload",
+  edge.includes("CURRENT BEAT POLICY — APPLY THIS BEFORE GENERIC STYLE ADVICE") &&
+  edge.includes("Interpret the latest user turn literally before adding subtext") &&
+  edge.includes("The visible transcript always wins") &&
+  edge.includes("Opening: establish one concrete active situation") &&
+  !edge.includes("turn_reading:") && !edge.includes("canon_claims:"));
 check("no background story-model calls consume extra quota",
   !edge.includes("updateStoryStateInBackground") &&
   !edge.includes("updateConversationSummaryInBackground") &&
@@ -131,7 +132,7 @@ check("v1.2 voice migration covers every existing and future character",
   storyDnaMigration.includes("story_engine_version set default 9"));
 check("every newly created conversation starts an independent development state",
   chatsContext.includes("character_development: {}") &&
-  chatsContext.includes("story_engine_version: 12"));
+  chatsContext.includes("story_engine_version: 13"));
 check("character creator exposes all optional development anchors",
   ["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"].every((field) => characterModal.includes(`name="${field}"`)));
 check("character development anchors persist and reload",
@@ -157,10 +158,10 @@ check("development profile and state are present in the roleplay prompt",
   edge.includes("PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND") &&
   edge.includes("characterDevelopmentPromptView(developmentState)") &&
   edge.includes("Relationship phases move gradually"));
-check("character voice is planned separately from reader-facing prose",
+check("character voice is planned internally without bloating the model response schema",
   edge.includes("VOICE FINGERPRINT — PASS THE BLIND-VOICE TEST") &&
-  edge.includes("voice_plan: a private planning object") &&
-  edge.includes('required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"]'));
+  edge.includes("Internally decide ${character.name}'s conversational goal, outward tactic and private pressure before writing") &&
+  !edge.includes("voice_plan:") && !edge.includes('required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"]'));
 check("global story DNA has Antonia's preferred defaults",
   settingsContext.includes('storyProse: "contemporary"') &&
   settingsContext.includes('storyDialogue: "dialogue_forward"') &&
@@ -420,11 +421,12 @@ const aiRomanceStack = `Rowan's jaw tightens as his grip shifts on the umbrella.
 check("naturalism doctor catches stacked AI-romance body language", helpers?.hasStockBodyLanguageStack(aiRomanceStack));
 check("naturalism doctor catches unsupported attention-seeking accusations", helpers?.hasUnsupportedMotiveEscalation(`Rowan scoffed. "Stop trying to be the center of attention for their benefit."`, "Funny"));
 check("literal user motive does not trigger the unsupported-motive guard", !helpers?.hasUnsupportedMotiveEscalation(`"So you were trying to make me jealous?"`, "I was trying to make you jealous"));
-check("user-created physical distance cannot be overridden for tension", helpers?.hasDistanceBoundaryOverride(`Rowan catches her wrist and steps closer. "Don't."`, `*I nudge you, creating space between us*`));
+check("explicit contact withdrawal cannot be overridden for tension", helpers?.hasDistanceBoundaryOverride(`Rowan catches her wrist and steps closer. "Don't."`, `Don't touch me. *I pull my arm away*`));
+check("ordinary movement alone is not misread as a no-touch boundary", !helpers?.hasDistanceBoundaryOverride(`Rowan catches her forearm lightly to get her attention.`, `*I step away and start walking*`));
 check("a genuine slip still permits a safety catch", !helpers?.hasDistanceBoundaryOverride(`Rowan catches her by the elbow before she hits the ground.`, `*I slip in the mud and pull away by accident*`));
 check("ordinary social tension cannot become bodyguard choreography", helpers?.hasSocialTensionOverEscalation(`He steps between her and the approaching group, blocking their line of sight. "Let her try."`, `Your friends are coming over with the girl you're supposedly dating.`));
 check("naturalism failures trigger one bounded repair", edge.includes('"stock_body_language_stack"') && edge.includes('"recycled_stock_gesture"') && edge.includes('"unsupported_motive_escalation"') && edge.includes('"distance_boundary_override"') && edge.includes('"social_tension_overescalation"'));
-check("prompt uses react-dont-invent social naturalism", edge.includes("SOCIAL NATURALISM — REACT, DON'T INVENT") && edge.includes("choose the least inflammatory reading") && edge.includes("respect that distance"));
+check("prompt uses react-dont-invent social naturalism with explicit-boundary semantics", edge.includes("SOCIAL NATURALISM — REACT, DON'T INVENT") && edge.includes("choose the least inflammatory reading") && edge.includes("MOVEMENT IS NOT AUTOMATIC NO-TOUCH") && edge.includes("Respect a hard boundary immediately"));
 check("ordinary social tension is not promoted into bodyguard drama", edge.includes("bodyguard choreography") && edge.includes("Hyperbole such as “she'll kill me” is not proof of literal danger"));
 check("side characters are treated as people rather than jealousy props", edge.includes("Side characters who are visibly present are people, not scenery"));
 check("short roleplay beats are explicitly allowed", edge.includes("Shorter is better when the social beat already lands"));
@@ -1227,6 +1229,80 @@ check("v2.10.39 repaired protected beat must clear hard violation",
   edge.includes("repair still violated a protected interaction beat") &&
   edge.includes("const remainingHard = hardRepairRequiredIssues(validationIssues)"));
 
+
+
+// v2.11.0 Narrative Core Rebuild — regressions from the user's full live project.
+const chaseProfileDriven = {
+  name: "Chase Beaumont",
+  role: "popular university rival",
+  personality: "Confident, cocky, provocative, competitive and teasing. Charming, socially confident and popular with girls.",
+  relationship: "Enemies to lovers with strong chemistry and banter.",
+  initiative: 65,
+  flirting: 30,
+  drama: 45,
+  romance_intensity: 35,
+};
+check("v2.11.0 written profile can activate charged dynamics even when default sliders are modest",
+  helpers?.supportsChargedTension(chaseProfileDriven) && helpers?.characterProfileDynamics(chaseProfileDriven)?.flirting >= 35 && helpers?.characterProfileDynamics(chaseProfileDriven)?.drama >= 50);
+check("v2.11.0 common RP typo past by is classified as physical departure",
+  helpers?.classifyTurnIntent(`Sarcasm doesn't suit you *i past by your side*`, []).kind === "user_exit");
+check("v2.11.0 past-by departure is quarantined before optimistic streaming",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `Sarcasm doesn't suit you *i past by your side*`, turnIntent: { kind: "user_exit" }, recentUserMessages: [`Could you stop? I just got here and i'm already tired of you`], recentCharacterReplies: [`Hard to stop when the welcome is so warm.`], character: chaseProfileDriven }));
+check("v2.11.0 could-you-stop is a soft social stop, not a hard no-touch boundary",
+  helpers?.hasSoftSocialStop(`Could you stop? I just got here and i'm already tired of you`) && !helpers?.hasExplicitNoPursuitBoundary(`Could you stop? I just got here and i'm already tired of you`));
+check("v2.11.0 explicit leave-alone remains a hard pursuit boundary",
+  helpers?.hasExplicitNoPursuitBoundary(`Leave me alone. Stop following me.`));
+const softStopPolicy = helpers?.buildCurrentBeatPolicy({
+  turnIntent: { kind: "user_exit" }, character: chaseProfileDriven, latestUserMessage: `Sarcasm doesn't suit you *i past by your side*`,
+  messages: [{ sender: "user", content: `Could you stop? I just got here and i'm already tired of you` }, { sender: "character", content: `Hard to stop when the welcome is so warm.` }, { sender: "user", content: `Sarcasm doesn't suit you *i past by your side*` }],
+});
+check("v2.11.0 immediate soft stop suppresses forced contact but not active follow-through",
+  softStopPolicy?.includes("Do not force physical contact") && softStopPolicy?.includes("concrete independent/social action"));
+const hotDeparturePolicy = helpers?.buildCurrentBeatPolicy({
+  turnIntent: { kind: "user_exit" }, character: chaseProfileDriven, latestUserMessage: `*i stay quiet but i walk*`,
+  messages: [{ sender: "character", content: `"You're still standing here," Chase said. "That's usually a strong indicator."` }, { sender: "user", content: `*i stay quiet but i walk*` }],
+});
+check("v2.11.0 hot departure without boundary favors immediate character-specific follow-through",
+  hotDeparturePolicy?.includes("Hot departure") && hotDeparturePolicy?.includes("brief non-restraining touch"));
+
+const chaseOpeningMoved = `Chase said something to the girls, making them laugh again, before casually making his way through the crowd until he stopped right in front of you. "Didn't think you'd come."`;
+const chasePoseRegression = `Chase let out a short, dry laugh, his weight still leaning against the counter. "Fascinating dedication."`;
+check("v2.11.0 real new-chat counter regression is detected",
+  helpers?.hasImmediatePoseRegression(chasePoseRegression, `Oh yeah, i missed you that bad that i couldn't skip this party *i said sarcastic*`, [chaseOpeningMoved]));
+check("v2.11.0 corrected new-chat pose is accepted",
+  !helpers?.hasImmediatePoseRegression(`Chase gave a short laugh from where he'd stopped in front of you. "Glad to know I'm worth the trip."`, `Oh yeah, i missed you that bad that i couldn't skip this party *i said sarcastic*`, [chaseOpeningMoved]));
+
+const passiveSilentPillar = `Chase remained by the pillar where the corridor opened toward the main hall, his shoulder resting against the polished wood as the bass thudded through the floorboards. He let out a slow breath, watching the shifting crowd filter past without searching for her.`;
+check("v2.11.0 blank continuation cannot be pillar-and-crowd filler",
+  helpers?.hasSilentContinuationStall(passiveSilentPillar, { kind: "silent_continue" }, []));
+check("v2.11.0 blank continuation with an actual social exchange is accepted",
+  !helpers?.hasSilentContinuationStall(`A teammate caught Chase by the elbow. "You coming Friday?" Chase pushed off the pillar. "Depends who's asking." He took the phone the guy held out and read the group message.`, { kind: "silent_continue" }, []));
+
+const passiveTimeSkip = `The ambient noise of the party hummed around the kitchen island where Chase stood nursing a drink, his gaze sliding across the room toward the corridor she had vanished down earlier. A couple of acquaintances tried catching his attention, but he offered a brief, absent nod.`;
+check("v2.11.0 user-authored time skip cannot land in old-doorway surveillance",
+  helpers?.hasTimeSkipDrift(passiveTimeSkip, { kind: "time_skip" }));
+check("v2.11.0 time skip landing in a changed active situation is accepted",
+  !helpers?.hasTimeSkipDrift(`Later that night, Chase was halfway through a beer-pong argument with two teammates when Chloe stole the ball from his hand. "Your turn." He laughed, shoved her shoulder lightly, and took the shot anyway.`, { kind: "time_skip" }));
+
+check("v2.11.0 silent and time-skip turns are always validated before display",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `[SILENT_CONTINUE]`, turnIntent: { kind: "silent_continue" }, character: chaseProfileDriven }) &&
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `Time skip`, turnIntent: { kind: "time_skip" }, character: chaseProfileDriven }));
+check("v2.11.0 repair set treats director stalls and pose regressions as hard protected failures",
+  edge.includes('"silent_continue_stalled"') && edge.includes('"time_skip_stalled"') && edge.includes('"immediate_pose_regression"') && edge.includes("HARD_REPAIR_REQUIRED_ISSUES"));
+check("v2.11.0 current beat policy explicitly forbids empty off-scene surveillance",
+  edge.includes("If the user is currently off-scene, follow the character's OWN life") && edge.includes("Independent activity must actually happen on-page"));
+check("v2.11.0 silent continuation guidance requires a concrete beat",
+  edge.includes("user yielded the turn") && edge.includes("one concrete action, decision, dialogue exchange, social interaction, or consequence"));
+check("v2.11.0 movement/touch rules are unified around explicit boundaries",
+  edge.includes("MOVEMENT IS NOT AUTOMATIC NO-TOUCH") && edge.includes("ordinary movement changes position but does not automatically prohibit a brief profile-consistent follow-through"));
+check("v2.11.0 redundant hidden planning fields are gone from the live response contract",
+  !edge.includes("turn_reading:") && !edge.includes("canon_claims:") && !edge.includes("voice_plan:"));
+check("v2.11.0 stale duplicate narrative generators are removed",
+  !edge.includes("function generateRoleplay(") && !edge.includes("function streamAndPersist("));
+check("v2.11.0 new and branched stories use the latest existing engine version",
+  (chatsContext.match(/story_engine_version: 13/g) || []).length >= 2 && livingStoryMigration.includes("story_engine_version set default 13"));
+check("v2.11.0 no nested legacy full-project copy remains",
+  !existsSync(resolve(root, "velvet-stories-v216")) && !existsSync(resolve(root, "velvet-stories")));
 
 
 let failures = 0;

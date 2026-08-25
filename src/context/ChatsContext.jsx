@@ -382,7 +382,7 @@ export function ChatsProvider({
         group_character_ids: groupMode ? groupIds : [],
         group_title: groupMode ? (options.groupTitle?.trim() || groupIds.length + " character story") : null,
         character_development: {},
-        story_engine_version: 12,
+        story_engine_version: 13,
       })
       .select()
       .single();
@@ -1675,7 +1675,7 @@ export function ChatsProvider({
         unresolved_threads: [],
         intelligence_state: {},
         story_recap: null,
-        story_engine_version: 12,
+        story_engine_version: 13,
         branch_parent_id: conversation.conversationId,
         branch_from_message_id: sourceMessage.id,
         branch_label: branchTitle.slice(0, 80),

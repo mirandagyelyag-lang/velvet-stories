@@ -16,7 +16,6 @@ type ModelEnvelope = {
   reply: string;
   continuity_note: string;
   development_update: Record<string, any>;
-  voice_plan: Record<string, any>;
   scene_update: Record<string, any>;
   continuity_update: Record<string, any>;
   cast_updates: Record<string, any>[];
@@ -311,7 +310,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "1.9.0",
+    version: "2.11.0",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -744,6 +743,9 @@ function buildNarrativePrompt({
     : isRegeneration
       ? `This is a regeneration from the branch point. The rejected take is intentionally absent. Make a materially different choice, reaction, opening and dialogue—not a paraphrase. ${currentFeedback.length ? `Creator feedback that this rewrite MUST fix: ${currentFeedback.join(" ")}` : ""} ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
       : "This is a new canonical turn.";
+  const currentBeatPolicy = buildCurrentBeatPolicy({
+    turnIntent, character, latestUserMessage: latestUserRecord?.content || "", messages, openingRegeneration,
+  });
 
   return `You are Velvet's narrative engine. ${openingRegeneration ? "Write a fresh opening scene for an immersive private roleplay as polished contemporary fiction." : "Write the next turn of an immersive private roleplay as polished contemporary fiction."}
 
@@ -769,7 +771,7 @@ SOCIAL GRAVITY — REPUTATION MUST EXIST IN THE WORLD
 
 ATTENTION INDEPENDENCE — CARE IS NOT CONSTANT SURVEILLANCE
 - ${character.name} may care deeply, be attracted, jealous, curious or emotionally affected without visually tracking ${userIdentity.name} every few seconds. Do not turn hidden feelings into continuous monitoring.
-- When ${userIdentity.name} moves across a party, room, campus, workplace or other social setting, ${character.name} can genuinely return attention to friends, games, work, flirting, conversations or whatever is in front of them. Several beats may pass with no glance, thought or reference to ${userIdentity.name}.
+- When ${userIdentity.name} moves across a party, room, campus, workplace or other social setting and the immediate exchange has actually released, ${character.name} can genuinely return attention to friends, games, work, flirting, conversations or whatever is in front of them. Several beats may pass with no glance, thought or reference to ${userIdentity.name}; use concrete independent activity, not negative surveillance such as “he didn't look for her” repeated over and over.
 - A brief private glance or thought is valuable when it reveals NEW information. Repeating “kept one eye on her,” “tracked her through the crowd,” “his gaze flicked back,” “flank vision,” or equivalent in consecutive turns becomes fixation rather than subtle feeling.
 - If ${character.name} chooses not to pursue, let that choice be real for a while. Do not secretly convert every independent activity into waiting, watching or measuring what ${userIdentity.name} is doing.
 
@@ -832,7 +834,7 @@ SOCIAL NATURALISM — REACT, DON'T INVENT
 - READ THE LATEST TURN IN TEMPORAL ORDER: if spoken dialogue comes first and the user's narration then establishes what happened afterward, the later narrated fact wins. Example: “I want you to leave” followed by narration that ${character.name} stays and flirts with someone means ${character.name} already stayed and flirted. Do not make them leave instead.
 - When several readings are plausible, choose the least inflammatory reading that still fits the character and visible scene. Sarcasm, an eye-roll, a short answer or silence is not permission to invent a deeper offense.
 - Do not turn ordinary social awkwardness into territorial behavior, threats, dominance, rescue behavior or bodyguard choreography unless visible canon establishes real danger. Hyperbole such as “she'll kill me” is not proof of literal danger.
-- If ${userIdentity.name} creates physical space, withdraws touch or steps away, respect that distance. Do not grab, block, steer, corner or reassert closeness merely to preserve romantic tension.
+- MOVEMENT IS NOT AUTOMATIC NO-TOUCH. Walking or stepping away changes position, but by itself does not equal “never follow me” or “never touch me.” A hard boundary exists when ${userIdentity.name} explicitly says leave me alone / stop following me / don't touch me / let me go / back off, or visibly pulls free from contact. Respect a hard boundary immediately. Without one, a profile-consistent character may follow, call after, match pace, or use one brief non-restraining touch to get attention; never drag, pin, corner, block escape, or keep holding after resistance.
 - PROXIMITY IS CANON TOO: the absence of a distance-changing action means existing proximity persists. Do not turn “beside him / his hand at her back / walking together” into “keep up / he did not look back / she followed behind” unless someone visibly moved ahead, stopped, fell back, stepped away, or the scene otherwise established separation. Removing a hand changes the touch, not automatically the walking formation.
 - Treat rumors as rumors. A rumored date, partner, betrayal or attraction is not confirmed canon until the visible story confirms it.
 - Side characters who are visibly present are people, not scenery. Let them speak or act when the social moment naturally reaches them, but never use them only as props to make ${character.name} jealous, possessive or heroic.
@@ -849,7 +851,7 @@ HIDDEN FEELINGS — FEEL MORE THAN YOU SHOW
 - INNER ≠ OUTER: when the profile supports emotional restraint, let the reader see private pressure through a brief thought, physical tell, hesitation or contrast while the user's character may remain unaware of its full intensity.
 - Do not erase useful physical tells such as a tightened jaw, slower breath, looking away, restless hands or a held glance. Use them when they reveal NEW information. Do not stack or repeat them merely to restate the same feeling.
 - Emotional reaction budget: not every turn needs an inner monologue or romantic tell. Alternate between showing the feeling, lightly implying it, and simply letting ordinary life continue.
-- Pursuit must vary. If ${userIdentity.name} walks away, ${character.name} may follow, wait, text later, give space, distract themself or do nothing visible depending on personality and context. Never make one response pattern automatic.
+- Pursuit must vary. If ${userIdentity.name} walks away, ${character.name} may follow, call after, text later, give space, or redirect into their own social/practical life depending on personality and context. If ${character.name} chooses not to pursue, make that choice active: do something concrete next instead of merely watching, waiting, leaning against scenery, or narrating the empty space. Never make one pursuit pattern automatic.
 - Romantic attention is not obsession. ${character.name} may notice ${userIdentity.name}, miss them or privately care intensely while still studying, working, laughing, talking with friends, having a genuinely good mood, and participating in unrelated conversations.
 - If ${character.name} wants to hide attraction, their public behavior may be calm, casual, friendly, distant or even socially flirtatious where their profile permits it. Do not neutralize every other potential romantic interaction just to prove devotion.
 - POSITIVE ANCHOR — CARE WITHOUT OBSESSION: a strong hidden-feelings beat can be ordinary outward action, then one brief private thought or physical tell that reveals NEW emotional information, then a return to the practical scene. Example shape: ${character.name} keeps driving / studying / talking normally; privately notices that ${userIdentity.name} is finally resting or seems okay; a small glance, exhale or loosening grip shows relief; then life continues. The private beat should enrich the scene, not hijack it.
@@ -889,6 +891,8 @@ DIALOGUE NATURALNESS — NO CONSTANT COMEBACK MODE
 20. SOFT FORGETTING: minor low-stakes details may fade, but canon, pinned memories, promises, boundaries, major relationship shifts and important reveals do not disappear merely to simplify the scene.
 21. PRESENCE ENGINE: the current-scene roster persists until a visible exit or genuine scene transition changes it. Never silently drop a side character who is still there, and never let someone outside the scene hear local dialogue.
 22. EMOTIONAL AFTERMATH: major emotional beats have inertia. A confession, breakup threat, rejection, kiss, betrayal, vulnerable admission or serious fight should continue shaping behavior across later turns until the stored emotional residue naturally decays or visible repair changes it.
+
+${currentBeatPolicy}
 
 TURN CONTRACT
 - Response language: ${responseLanguage}. Match the language of the latest ordinary user message.
@@ -1000,9 +1004,6 @@ ${directorInstruction ? `Director instruction: ${directorInstruction}` : ""}
 OUTPUT
 Return JSON with fields in this exact order so reply can stream first:
 - reply: only the finished roleplay prose.
-- turn_reading: ${openingRegeneration ? `one sentence stating that this is a fresh opening and what concrete scene ${character.name} is establishing without controlling ${userIdentity.name}.` : `one sentence stating the literal social meaning of the latest user turn and what ${character.name} must respond to now.`}
-- canon_claims: a list of every off-screen or historical factual claim used in the reply; keep it empty unless that exact fact appears in the profile, lore, a confirmed memory or the visible transcript.
-- voice_plan: a private planning object with conversational_goal, outward_tactic, private_pressure, verbal_signature and avoided_pattern. Each value is one short string. Never place this analysis inside reply.
 - continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
 - scene_update: a strict physical-continuity object with scene_changed (boolean), separator_label (short string such as "Later that night" only when the visible turn truly changes scene/time, otherwise empty), location (current established location or empty), time_label (established time/daypart or empty), present (names visibly present now), exited (names who visibly left in this turn), and heard_user_turn (names who were physically/digitally able to receive the latest user turn). Do not infer attendance, proximity, overhearing or off-screen movement. Keep existing scene facts when the transcript does not change them.
 - continuity_update: one compact object with objects_present (only established plot-relevant objects still available), knowledge_updates (who, knows, source, status; status is known/suspected/rumor/forgotten and only visible knowledge gained, corrected, suspected, rumored or intentionally faded this turn), commitments (still-live promises/plans/questions), resolved_commitments (items visibly resolved this turn), stakes (one short current pressure), and timeline_event. timeline_event has record (boolean), label, detail, kind (relationship/conflict/promise/reveal/decision/scene/other), importance (1-5). Record only moments worth remembering later: confessions, meaningful fights, promises, firsts, secrets/reveals, consequential decisions, relationship shifts or real scene milestones. Ordinary banter should record=false.
@@ -1025,19 +1026,8 @@ ${userIdentity.name}: ${latest}
 Write the response AFTER the final event established in that exact turn.`}`;
 }
 
-async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {
-  return await callGeminiWithFailover({
-    apiKey,
-    systemInstruction: `Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; never invent motives, argument evidence or generic romance choreography. A user who walks away or goes outside for fresh air is creating distance, not secretly looking for the character, unless the user explicitly says so. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, and when the user opens an ongoing message/call/chat exchange, let it unfold through multiple real beats instead of collapsing it. Do not stall across silent continuations with repeated ceiling/rain/breathing imagery; advance the active beat with a concrete event or decision. Avoid constant sarcasm or rhetorical-question dialogue, do not use the user’s name or nickname as punctuation in every reply, do not continuously track the user with glances/thoughts while the character is socially occupied, and never invent user behavior as evidence in banter. User-authored narration is already-canonical scene action and must outrank any conflicting in-character request spoken earlier in the same turn. Continue after the user's final staged event. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
-    prompt,
-    maxOutputTokens: getMaximumOutputTokens(character.response_length),
-    temperature: getTemperature(character.creativity, isRegeneration),
-    isCancelled,
-  });
-}
-
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If recent replies keep opening with synonym-swapped scoff/huff/dry-laugh reactions, change the opening structure completely: begin with dialogue, an external event, another character, a practical action, or a meaningful new beat. If a social approach was reflexively dismissed and recent social approaches were also shut down, let this one breathe long enough to create a real interaction, complication, invitation, flirtation, rivalry, rumor beat, or recurring NPC when profile and setting support it. Create tension opportunities proactively, but do not force jealousy or invent betrayal. If recent replies repeatedly tracked the user across the room with glances, peripheral vision, or “one eye on them” language, let the character genuinely focus elsewhere for this beat and remove the surveillance-like attention. If the user only SAID they would leave, might leave, or “leave you with...” but did not narrate physical movement, keep the user physically present and remove any invented “heading away/departing/watched her go/didn't follow/let her go/looked toward the door where she had gone” action. A silent continuation after that line does NOT authorize an off-screen exit. Do not let a new NPC hijack an unresolved relational beat; let the primary character react first. If the character caused the rupture and attachment is established, consider one character-specific repair or pursuit beat instead of instantly switching to unrelated activity. If the user DID physically leave after the character was rude, dismissive, or hurtful, do not default to passive watching plus a reset back to the party/game/work. In that situation, prefer one immediate follow-through attempt—call after them, step after them, catch up, soften, or apologize badly—before any unrelated activity resumes. Make that follow-through unmistakably character-specific: preserve the profile's pride, humor, awkwardness, warmth, restraint or bluntness instead of a generic “wait.” The pursuit must create one new beat or piece of information before the turn ends; do not spend the whole rewrite on footsteps, breathing or trailing behind. If the failure is kinetic_tension_deflated, the rewrite MUST make an active character choice instead of leaning/staring/smirking/conceding: close conversational distance, sharpen or redirect the flirt, create a brief non-restraining touch if no no-touch boundary exists, let a believable social interruption/admirer matter, or choose another concrete action with consequence. If the failure is charged_beat_abandoned, preserve the character’s immediately previous active choice unless the latest turn actually changes it: a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside. Continue the charged beat through dialogue, proximity, flirtation, social complication or another character-specific choice instead of silently ending the scene. If the failure is charged_beat_stalled, the character technically stayed but did nothing with the charge. The rewrite MUST add at least one consequential beat: spoken dialogue, a deliberate change in proximity, a brief non-restraining touch when allowed, a sharper flirt/challenge, a social interruption that matters, or another concrete decision. Merely holding eye contact, twitching a mouth corner, breathing, shifting weight, or silently refusing to look away does NOT count as progress. If the failure is charged_departure_dropped, the user physically started to leave during an already charged exchange and the draft passively watched them go. For a high-initiative character, rewrite with immediate follow-through unless an explicit boundary forbids it: step after them, catch up, call them back, or when touch is allowed briefly catch a forearm/elbow/arm and stop or turn the movement back toward the conversation for one beat. Keep it easy to reject and release on resistance; never drag, restrain, trap or block escape. “I didn't ask for a bodyguard” rejects protection framing, not automatically all chemistry or all proximity. But explicit “leave me alone,” “stop following me,” “don't touch me,” or a pull-away must be respected. Never restrain, drag, corner, block escape or coerce the user just to make pursuit feel intense. If side characters have repeatedly acted as a romance jury or awarded conversational points, give them independent goals, opinions, or unrelated behavior instead. If the draft claims the user watched, followed, waited, stared, checked, LOOKED FOR, searched for, came for, went outside for, or wanted the character's attention without visible transcript evidence, remove that claim. Do NOT preserve it as teasing or an uncertain question when the latest user turn actively contradicts it. A user-stated practical reason such as fresh air, space, or walking away is binding and may not become “you were looking for me,” “you came out here for me,” jealousy, or attention-seeking. If the latest user turn rejects pursuit or protection with language such as “I didn't ask for a bodyguard,” “stop following me,” or “leave me alone,” do not defend the same pursuit as guarding, watching, keeping tabs, or making sure the user does not wander off. The character may still want to continue the conversation, but must own THEIR reason instead of inventing the user's motive or a protection duty. If the latest user turn clearly shows tears, crying, shaking, fear, hurt, anger or visible distress, do not leave the character merely watching or sitting nearby: add at least one character-specific question, decision, practical gesture, or behavior change that advances the emotional beat, while respecting boundaries and avoiding generic therapy language. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect physical distance the user creates. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
+  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If recent replies keep opening with synonym-swapped scoff/huff/dry-laugh reactions, change the opening structure completely: begin with dialogue, an external event, another character, a practical action, or a meaningful new beat. If a social approach was reflexively dismissed and recent social approaches were also shut down, let this one breathe long enough to create a real interaction, complication, invitation, flirtation, rivalry, rumor beat, or recurring NPC when profile and setting support it. Create tension opportunities proactively, but do not force jealousy or invent betrayal. If recent replies repeatedly tracked the user across the room with glances, peripheral vision, or “one eye on them” language, let the character genuinely focus elsewhere for this beat and remove the surveillance-like attention. If the user only SAID they would leave, might leave, or “leave you with...” but did not narrate physical movement, keep the user physically present and remove any invented “heading away/departing/watched her go/didn't follow/let her go/looked toward the door where she had gone” action. A silent continuation after that line does NOT authorize an off-screen exit. Do not let a new NPC hijack an unresolved relational beat; let the primary character react first. If the character caused the rupture and attachment is established, consider one character-specific repair or pursuit beat instead of instantly switching to unrelated activity. If the user DID physically leave after the character was rude, dismissive, or hurtful, do not default to passive watching plus a reset back to the party/game/work. In that situation, prefer one immediate follow-through attempt—call after them, step after them, catch up, soften, or apologize badly—before any unrelated activity resumes. Make that follow-through unmistakably character-specific: preserve the profile's pride, humor, awkwardness, warmth, restraint or bluntness instead of a generic “wait.” The pursuit must create one new beat or piece of information before the turn ends; do not spend the whole rewrite on footsteps, breathing or trailing behind. If the failure is kinetic_tension_deflated, the rewrite MUST make an active character choice instead of leaning/staring/smirking/conceding: close conversational distance, sharpen or redirect the flirt, create a brief non-restraining touch if no no-touch boundary exists, let a believable social interruption/admirer matter, or choose another concrete action with consequence. If the failure is charged_beat_abandoned, preserve the character’s immediately previous active choice unless the latest turn actually changes it: a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside. Continue the charged beat through dialogue, proximity, flirtation, social complication or another character-specific choice instead of silently ending the scene. If the failure is charged_beat_stalled, the character technically stayed but did nothing with the charge. The rewrite MUST add at least one consequential beat: spoken dialogue, a deliberate change in proximity, a brief non-restraining touch when allowed, a sharper flirt/challenge, a social interruption that matters, or another concrete decision. Merely holding eye contact, twitching a mouth corner, breathing, shifting weight, or silently refusing to look away does NOT count as progress. If the failure is silent_continue_stalled, the user yielded the turn and the draft wasted it on atmosphere/static observation. Rewrite with one concrete new beat now: real dialogue, a decision, purposeful movement, an actual social exchange, or an external event with consequence. If the user is off-scene, follow the character's own active life instead of watching the place the user left or repeatedly saying they are not looking for them. If the failure is time_skip_stalled, land the requested time jump in a changed active situation; carry old tension as residue, not doorway/corridor surveillance. If the failure is immediate_pose_regression, preserve the FINAL physical state from the previous character turn. A character who crossed the room or stopped in front of the user cannot suddenly be “still leaning against” the old counter/pillar unless a visible action returned them there. If the failure is charged_departure_dropped, the user physically started to leave during an already charged exchange and the draft passively watched them go. For a high-initiative character, rewrite with immediate follow-through unless an explicit boundary forbids it: step after them, catch up, call them back, or when touch is allowed briefly catch a forearm/elbow/arm and stop or turn the movement back toward the conversation for one beat. Keep it easy to reject and release on resistance; never drag, restrain, trap or block escape. “I didn't ask for a bodyguard” rejects protection framing, not automatically all chemistry or all proximity. But explicit “leave me alone,” “stop following me,” “don't touch me,” or a pull-away must be respected. Never restrain, drag, corner, block escape or coerce the user just to make pursuit feel intense. If side characters have repeatedly acted as a romance jury or awarded conversational points, give them independent goals, opinions, or unrelated behavior instead. If the draft claims the user watched, followed, waited, stared, checked, LOOKED FOR, searched for, came for, went outside for, or wanted the character's attention without visible transcript evidence, remove that claim. Do NOT preserve it as teasing or an uncertain question when the latest user turn actively contradicts it. A user-stated practical reason such as fresh air, space, or walking away is binding and may not become “you were looking for me,” “you came out here for me,” jealousy, or attention-seeking. If the latest user turn rejects pursuit or protection with language such as “I didn't ask for a bodyguard,” “stop following me,” or “leave me alone,” do not defend the same pursuit as guarding, watching, keeping tabs, or making sure the user does not wander off. The character may still want to continue the conversation, but must own THEIR reason instead of inventing the user's motive or a protection duty. If the latest user turn clearly shows tears, crying, shaking, fear, hurt, anger or visible distress, do not leave the character merely watching or sitting nearby: add at least one character-specific question, decision, practical gesture, or behavior change that advances the emotional beat, while respecting boundaries and avoiding generic therapy language. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect explicit no-follow/no-touch boundaries; ordinary movement changes position but does not automatically prohibit a brief profile-consistent follow-through. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
@@ -1089,22 +1079,9 @@ async function callGeminiWithFailover({
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
-              required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+              required: ["reply", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
               properties: {
                 reply: { type: "string" },
-                turn_reading: { type: "string" },
-                canon_claims: { type: "array", items: { type: "string" } },
-                voice_plan: {
-                  type: "object",
-                  required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"],
-                  properties: {
-                    conversational_goal: { type: "string" },
-                    outward_tactic: { type: "string" },
-                    private_pressure: { type: "string" },
-                    verbal_signature: { type: "string" },
-                    avoided_pattern: { type: "string" },
-                  },
-                },
                 continuity_note: { type: "string" },
                 scene_update: {
                   type: "object",
@@ -1193,14 +1170,13 @@ function parseModelEnvelope(raw): ModelEnvelope {
       development_update: parsed?.development_update && typeof parsed.development_update === "object"
         ? parsed.development_update
         : {},
-      voice_plan: parsed?.voice_plan && typeof parsed.voice_plan === "object" ? parsed.voice_plan : {},
       scene_update: parsed?.scene_update && typeof parsed.scene_update === "object" ? parsed.scene_update : {},
       continuity_update: parsed?.continuity_update && typeof parsed.continuity_update === "object" ? parsed.continuity_update : {},
       cast_updates: Array.isArray(parsed?.cast_updates) ? parsed.cast_updates.slice(0, 4) : [],
       memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 3) : [],
     };
   } catch {
-    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [] };
+    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [] };
   }
 }
 
@@ -1244,7 +1220,7 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
 
   let kind = "ordinary";
   const confrontation = /\b(?:olvidate de mi|no me vuelvas a|no vuelvas a|no me invites otra vez|para la proxima|me trat(?:as|es) asi|forget about me|forget me|don'?t invite me again|do not invite me again|never invite me again|treat me like that again|we are done|leave me alone)\b/i.test(normalized);
-  const exitsScene = /\b(?:i\s+(?:walk|leave|left|go|went|head|headed|run|ran)|me\s+(?:voy|fui|alejo)|salgo|me fui|me baje|me bajé)\b[^.!?]{0,110}\b(?:away|bathroom|home|outside|opposite|dorm|room|apartment|building|ban[oa]|casa|apartamento|edificio|afuera|lejos)?\b/i.test(raw);
+  const exitsScene = /\b(?:i\s+(?:walk|walked|walking|leave|left|go|went|head|headed|run|ran|move|moved|step|stepped|pass|passed|past)|me\s+(?:voy|fui|alejo)|salgo|me fui|me baje|me bajé)\b[^.!?]{0,110}\b(?:away|by|past|bathroom|home|outside|opposite|dorm|room|apartment|building|ban[oa]|casa|apartamento|edificio|afuera|lejos)?\b/i.test(raw);
 
   if (raw.startsWith("[RETURN_MAIN_POV")) kind = "return_main_pov";
   else if (isSilentContinueText(raw) && recentInteractiveThreadIsOpen(messages)) kind = "interactive_thread";
@@ -1262,6 +1238,136 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
   else if (isQuestion) kind = "direct_question";
 
   return { kind, silentCount, medium, isQuestion, normalized };
+}
+
+function characterProfileDynamics(character = {}) {
+  const profile = normalizeText([
+    character?.role, character?.description, character?.personality, character?.relationship,
+    character?.conflict_style, character?.affection_style, character?.humor_style,
+    character?.core_motivation, character?.emotional_defense, character?.scenario, character?.world,
+  ].filter(Boolean).join(" | "));
+  let initiative = Number(character?.initiative ?? 65);
+  let flirting = Number(character?.flirting ?? 30);
+  let drama = Number(character?.drama ?? 45);
+  let romance = Number(character?.romance_intensity ?? 35);
+
+  const active = /\b(?:bold|confident|cocky|proud|persistent|competitive|provocative|provoking|teasing|tease|charismatic|socially confident|dominant personality|chases what he wants|chases what she wants|doesn t back down|does not back down|forward)\b/.test(profile);
+  const flirtProfile = /\b(?:flirt|flirty|heartbreaker|playboy|player|ladies man|popular with (?:girls|women|guys|men)|desired|seductive|charming|charmer|casanova)\b/.test(profile);
+  const frictionProfile = /\b(?:enemies to lovers|rivals? to lovers|rivalry|banter|love hate|chemistry|tension|jealousy|provokes?|competitive)\b/.test(profile);
+  const romanceProfile = /\b(?:crush|attracted|attraction|feelings for|likes (?:her|him|them|you)|in love|romance|romantic tension|friends to lovers|enemies to lovers)\b/.test(profile);
+  const gentle = /\b(?:very shy|timid|soft spoken|soft-spoken|conflict avoidant|avoids confrontation|extremely reserved|passive by nature|gentle and hesitant)\b/.test(profile);
+
+  if (active) initiative = Math.max(initiative, 72);
+  if (flirtProfile) flirting = Math.max(flirting, 48);
+  if (frictionProfile) { drama = Math.max(drama, 55); initiative = Math.max(initiative, 70); }
+  if (romanceProfile) romance = Math.max(romance, 45);
+  if (gentle && !active && !frictionProfile) initiative = Math.min(initiative, 48);
+  if (String(character?.story_preset || "") === "dramatic") { initiative = Math.max(initiative, 75); drama = Math.max(drama, 70); }
+  if (String(character?.story_preset || "") === "romantic") { romance = Math.max(romance, 60); flirting = Math.max(flirting, 45); }
+  return { initiative, flirting, drama, romance, activeProfile: active || frictionProfile, flirtProfile, gentle };
+}
+function supportsChargedTension(character = {}) {
+  const d = characterProfileDynamics(character);
+  return !d.gentle && d.initiative >= 58 && (d.flirting >= 35 || d.drama >= 50 || d.romance >= 45 || d.activeProfile);
+}
+function hasExplicitNoPursuitBoundary(value = "") {
+  const text = normalizeText(value);
+  return /\b(?:leave me alone|stop following me|dont follow me|do not follow me|dont touch me|do not touch me|let me go|back off|go away|stay away|no me sigas|no me toques|dejame sola|dejame solo|sueltame|alejate)\b/.test(text) ||
+    /\b(?:i|she|he|they) (?:pull|pulled|jerk|jerked|yank|yanked) (?:my|her|his|their )?(?:arm|hand|wrist)? ?away\b/.test(text);
+}
+function hasSoftSocialStop(value = "") {
+  const text = normalizeText(value);
+  return /\b(?:could you stop|can you stop|would you stop|stop it|stop bothering me|quit bothering me|im already tired of you|i am already tired of you|youre annoying me|you are annoying me)\b/.test(text);
+}
+function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMessage = "", messages = [], openingRegeneration = false } = {}) {
+  const kind = String(turnIntent?.kind || "ordinary");
+  const d = characterProfileDynamics(character);
+  const recentUserTurns = (Array.isArray(messages) ? messages : []).filter((m) => m?.sender === "user").slice(-2).map((m) => String(m?.content || ""));
+  const boundaryContext = [latestUserMessage, ...recentUserTurns].join(" ");
+  const hardBoundary = hasExplicitNoPursuitBoundary(boundaryContext);
+  const softStop = hasSoftSocialStop(boundaryContext);
+  const charged = supportsChargedTension(character);
+  const recent = (Array.isArray(messages) ? messages : []).slice(-6).map((m) => normalizeText(m?.content || "")).join(" ");
+  const recentCharge = /\b(?:flirt|teas|provok|smirk|who asked|whatever|annoying|rude|sarcasm|not going anywhere|keep trying|enemies to lovers|tension)\b/.test(recent);
+  const base = [
+    "CURRENT BEAT POLICY — APPLY THIS BEFORE GENERIC STYLE ADVICE",
+    `- Effective dynamics: initiative=${Math.round(d.initiative)}, flirting=${Math.round(d.flirting)}, drama=${Math.round(d.drama)}, romance=${Math.round(d.romance)}. The written profile can raise these behavioral signals; sliders are not the only source of character identity.`,
+  ];
+  if (openingRegeneration || kind === "opening") {
+    base.push("- Opening: establish one concrete active situation. The character should already be doing, saying, deciding, handling, or reacting to something; do not open on decorative stillness alone.");
+  } else if (kind === "silent_continue" || kind === "return_main_pov") {
+    base.push("- SILENT CONTINUE: the user intentionally yielded the narrative turn. Continue from the exact last state and add one concrete new beat: dialogue, decision, movement with purpose, a real social exchange, an external event with consequence, or a specific action that changes what can happen next.");
+    base.push("- If the user is currently off-scene, follow the character's OWN life. Do not spend the turn watching the doorway, remembering where the user vanished, leaning against a wall/pillar, breathing, or stating that the character is not looking for them. Independent activity must actually happen on-page.");
+  } else if (kind === "time_skip") {
+    base.push("- TIME SKIP: the user explicitly requested a temporal jump. Advance time once and land in a meaningfully changed active situation. Show what the character is NOW doing or dealing with; do not use the jump merely to resume watching the old doorway/corridor or waiting for the protagonist to reappear.");
+    base.push("- Carry unresolved emotion as residue, not surveillance. A new social interaction, plan, task, complication, decision, or changed setting should make the skipped time feel real.");
+  } else if (["challenge", "charged_nonverbal"].includes(kind)) {
+    base.push("- Charged cue: answer with an active character-specific choice. Dialogue, proximity, flirt, a consequential social interruption, or another deliberate move must change the beat; gaze + smirk + silence is not enough.");
+  } else if (["user_exit", "confrontation_exit"].includes(kind)) {
+    if (hardBoundary) {
+      base.push("- HARD BOUNDARY ACTIVE: do not follow, touch, block, or chase. Let the separation stand, but still give the character an active reaction or independent next action instead of passive watching.");
+    } else if (softStop) {
+      base.push("- The user asked the character to stop bothering them. Do not force physical contact. The character may answer once, call after from a respectful distance, or pivot into a concrete independent/social action; never reduce the turn to watching them leave.");
+    } else if (charged || recentCharge) {
+      base.push("- Hot departure: active follow-through is favored for this profile. Step after, catch up, call back, match pace, or when no no-touch boundary exists use one brief non-restraining touch. If the character deliberately chooses not to pursue, the alternative must itself be active and consequential, not a camera shot of the user leaving.");
+    } else {
+      base.push("- Departure: respect the movement. Choose a concrete reaction or independent action; passive watching is not a substitute for character behavior.");
+    }
+  } else {
+    base.push("- Ordinary turn: respond literally first, then contribute one specific character action, decision, line, or social consequence. Do not pad with cinematic body-language loops.");
+  }
+  return base.join("\n");
+}
+function hasConcreteBeatProgression(value = "") {
+  const raw = String(value || "");
+  const text = normalizeText(raw);
+  const dialogue = [...raw.matchAll(/["“]([^"”]{4,})["”]/g)].some((m) => normalizeText(m[1]).split(/\s+/).filter(Boolean).length >= 2);
+  if (dialogue) return true;
+  // Count character/event actions, not incidental scenery grammar such as
+  // “the corridor opened toward the hall” or “the space she left behind.”
+  const directAction = /\b(?:decided|chose|joined|invited|asked|replied|texted|called|dialed|sent|typed|grabbed|picked up|set down|put down|entered|arrived|headed for|walked toward|crossed the|pushed through|stepped outside|went inside|went outside|started to|began to|ordered|danced|laughed with|argued with|introduced|accepted|declined|followed|caught up|closed the distance|took a seat|sat down with|stood up|made a decision|answered (?:him|her|them|the|a)|turned to .{0,80} and said)\b/.test(text);
+  const objectAction = /\b(?:opened|closed|read|left) (?:the|a|an|his|her|their) (?:door|phone|message|text|chat|book|conversation|room|party|house|kitchen|table|group|game|car|building)\b/.test(text);
+  return directAction || objectAction;
+}
+function hasSilentContinuationStall(reply = "", turnIntent = {}, recentReplies = []) {
+  if (!["silent_continue", "return_main_pov"].includes(String(turnIntent?.kind || ""))) return false;
+  if (hasConcreteBeatProgression(reply)) return false;
+  const text = normalizeText(reply);
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const staticMotifs = [
+    /\b(?:stayed|remained|stood) (?:by|at|against|near|where)\b/,
+    /\blean(?:ed|ing)? (?:back )?(?:against|on)\b/,
+    /\b(?:gaze|eyes?) (?:followed|lingered|rested|drifted|slid|stayed)\b/,
+    /\b(?:didnt|did not) (?:call|follow|look back|move|say anything)\b/,
+    /\b(?:quiet|silence|breath|exhale|empty (?:space|spot)|where (?:she|he|they) had been)\b/,
+    /\b(?:music|bass|rain|wind) (?:thudded|pulsed|hummed|filled|rustled)\b/,
+  ];
+  const score = staticMotifs.reduce((n, r) => n + (r.test(text) ? 1 : 0), 0);
+  return score >= 2 || (words >= 18 && !hasConcreteBeatProgression(reply));
+}
+function hasTimeSkipDrift(reply = "", turnIntent = {}) {
+  if (String(turnIntent?.kind || "") !== "time_skip") return false;
+  const text = normalizeText(reply);
+  const active = hasConcreteBeatProgression(reply);
+  const oldFocus = /\b(?:corridor|doorway|spot|place|space) (?:where )?(?:she|he|they|you) (?:vanished|left|had been|walked)|\b(?:gaze|eyes?|attention) (?:slid|drifted|flicked|returned|went) (?:back|toward|to)\b|\bdidnt look back|\bdid not look back|\bwithout searching for\b/.test(text);
+  const static = /\b(?:nursing a drink|leaning against|stayed by|remained by|absent nod|quiet nod|watched the crowd|scanning the crowd)\b/.test(text);
+  return !active || ((oldFocus || static) && !/["“][^"”]{4,}["”]/.test(String(reply || "")) && !/\b(?:decided|chose|joined|left|entered|arrived|headed|called|texted|invited|danced|argued|ordered)\b/.test(text));
+}
+function hasImmediatePoseRegression(reply = "", latestUserMessage = "", recentReplies = []) {
+  const current = normalizeText(reply);
+  const user = normalizeText(latestUserMessage);
+  const previousRaw = String((Array.isArray(recentReplies) ? recentReplies : []).slice(-1)[0] || "");
+  const previous = normalizeText(previousRaw);
+  if (!current || !previous) return false;
+  const userRepositionsToAnchor = /\b(?:counter|pillar|wall|doorway|kitchen island|porch)\b/.test(user) && /\b(?:walk|move|step|go|lean|stand|stop)\b/.test(user);
+  if (userRepositionsToAnchor) return false;
+  const oldAnchorClaim = /\b(?:still|remained|stayed|was)\b.{0,35}\b(?:leaning|against|by|at)\b.{0,25}\b(?:counter|pillar|wall|doorway|kitchen island|island)\b/.test(current);
+  if (!oldAnchorClaim) return false;
+  const priorFinalSegment = normalizeText(previousRaw.slice(-700));
+  const priorMoved = /\b(?:pushed off|stepped away from|moved away from|walked away from|left the)\b.{0,35}\b(?:counter|pillar|wall|doorway|kitchen island|island)\b/.test(previous) ||
+    /\b(?:made (?:his|her|their) way|crossed|walked|stepped|moved)\b.{0,180}\b(?:stopped|came to a stop|ended up|in front of|beside|next to)\b/.test(priorFinalSegment) ||
+    /\b(?:stopped|stood) (?:right )?(?:in front of|beside|next to)\b/.test(priorFinalSegment);
+  return priorMoved;
 }
 function recentInteractiveThreadIsOpen(messages = []) {
   const rows = Array.isArray(messages) ? messages : [];
@@ -1343,8 +1449,9 @@ function hasKineticTensionDeflation(reply = "", latestUserMessage = "", recentUs
   const latest = normalizeText(latestUserMessage);
   const userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 5).map(normalizeText).join(" ");
   const characterContext = (Array.isArray(recentReplies) ? recentReplies : []).slice(-3).map(normalizeText).join(" ");
-  const initiative = Number(character?.initiative ?? 65), flirting = Number(character?.flirting ?? 30), drama = Number(character?.drama ?? 45), romance = Number(character?.romance_intensity ?? 35);
-  const energySupportsTension = initiative >= 55 && (flirting >= 28 || drama >= 42 || romance >= 38);
+  const dynamics = characterProfileDynamics(character);
+  const initiative = dynamics.initiative, flirting = dynamics.flirting, drama = dynamics.drama, romance = dynamics.romance;
+  const energySupportsTension = supportsChargedTension(character);
   if (!energySupportsTension) return false;
 
   const activeFriction = /\b(?:who asked|did i ask|whatever|rude|bodyguard|fresh air|keep walking|walk away|walking away|leave you with|low bar|scoff|eye roll|rolled my eyes|shut up|annoying|you re annoying|you are annoying|who cares|so what|and|fine)\b/.test(userContext) ||
@@ -1378,7 +1485,7 @@ function hasKineticTensionDeflation(reply = "", latestUserMessage = "", recentUs
 function hasChargedBeatAbandonment(reply = "", latestUserMessage = "", recentReplies = [], character = {}) {
   const latest = String(latestUserMessage || "").trim(), text = normalizeText(reply), previous = normalizeText((Array.isArray(recentReplies) ? recentReplies : []).slice(-1)[0] || "");
   const micro = /(?:raise|raised|lift|lifted|arch|arched|cock|cocked|quirk|quirked)[^\n]{0,28}eyebrow|(?:look|looked|glance|glanced|stare|stared)\s+at\s+(?:you|him|her)/i.test(latest);
-  if (!micro || Number(character?.initiative ?? 65) < 55) return false;
+  if (!micro || characterProfileDynamics(character).initiative < 55) return false;
   const justStayed = /\b(?:stayed right where|stayed put|wasn t going anywhere|was not going anywhere|not going anywhere|didn t leave|did not leave|made no move to leave|wasn t leaving|was not leaving)\b/.test(previous);
   const abruptExit = /\b(?:finally turned away|turned away and|walked back toward|walked back to|headed back (?:inside|in)|went back inside|returned to the party|walked away|turned to leave|stepped back inside|slid(?:ing)? glass door.{0,45}(?:inside|party))\b/.test(text);
   const newReason = /\b(?:because|phone (?:buzzed|rang)|someone called|called his name|called her name|friend called|asked him to|asked her to|interrupted|approached|came over|needed to|had to)\b/.test(text);
@@ -1389,8 +1496,9 @@ function hasChargedBeatStall(reply = "", latestUserMessage = "", recentReplies =
   const text = normalizeText(reply);
   const previous = normalizeText((Array.isArray(recentReplies) ? recentReplies : []).slice(-1)[0] || "");
   const micro = /(?:raise|raised|lift|lifted|arch|arched|cock|cocked|quirk|quirked)[^\n]{0,28}eyebrow|(?:look|looked|glance|glanced|stare|stared)\s+at\s+(?:you|him|her)|(?:scoff|eye roll|rolled my eyes|tiny smile|small smile)/i.test(latest);
-  const initiative = Number(character?.initiative ?? 65), flirting = Number(character?.flirting ?? 30), drama = Number(character?.drama ?? 45), romance = Number(character?.romance_intensity ?? 35);
-  const chargedCharacter = initiative >= 55 && (flirting >= 28 || drama >= 42 || romance >= 38);
+  const dynamics = characterProfileDynamics(character);
+  const initiative = dynamics.initiative, flirting = dynamics.flirting, drama = dynamics.drama, romance = dynamics.romance;
+  const chargedCharacter = supportsChargedTension(character);
   if (!micro || !chargedCharacter) return false;
 
   const priorCharge = /\b(?:stayed right where|stayed put|wasn t going anywhere|was not going anywhere|not going anywhere|didn t leave|did not leave|made no move to leave|wasn t leaving|was not leaving|stepped closer|closed the distance|challenged|flirted|teased|refused to leave)\b/.test(previous);
@@ -1417,8 +1525,11 @@ function hasChargedBeatStall(reply = "", latestUserMessage = "", recentReplies =
 
 
 function hasChargedDepartureDrop(reply = "", latestUserMessage = "", recentUserMessages = [], recentReplies = [], character = {}) {
-  const latestRaw = String(latestUserMessage || "").trim(), userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 6).map(normalizeText).join(" "), characterContext = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5).map(normalizeText).join(" "), initiative = Number(character?.initiative ?? 65), flirting = Number(character?.flirting ?? 30), drama = Number(character?.drama ?? 45), romance = Number(character?.romance_intensity ?? 35);
-  if (!(initiative >= 60 && (flirting >= 35 || drama >= 50 || romance >= 45)) || !( /\bi\b[^.!?\n]{0,45}\b(?:walk|walked|walking|leave|left|head|headed|move|moved|step|stepped)\b/i.test(latestRaw) || /\b(?:me voy|me fui|me alejo|me alej[eé]|salgo|camino|empiezo a caminar)\b/i.test(latestRaw)) || /\b(?:leave me alone|stop following me|don t follow me|do not follow me|don t touch me|do not touch me|let me go|back off|go away|dejame sola|déjame sola|dejame solo|déjame solo|no me sigas|no me toques|sueltame|suéltame)\b/.test(userContext)) return false;
+  const latestRaw = String(latestUserMessage || "").trim(), userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 6).map(normalizeText).join(" "), characterContext = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5).map(normalizeText).join(" ");
+  const dynamics = characterProfileDynamics(character);
+  const initiative = dynamics.initiative, flirting = dynamics.flirting, drama = dynamics.drama, romance = dynamics.romance;
+  const moved = /\bi\b[^.!?\n]{0,55}\b(?:walk|walked|walking|leave|left|head|headed|move|moved|step|stepped|pass|passed)\b/i.test(latestRaw) || /\bi\s+past\s+by\b/i.test(latestRaw) || /\b(?:me voy|me fui|me alejo|me alej[eé]|salgo|camino|empiezo a caminar)\b/i.test(latestRaw);
+  if (!supportsChargedTension(character) || !moved || hasExplicitNoPursuitBoundary(latestRaw)) return false;
   if (!(/\b(?:who asked|did i ask|finally you re leaving|finally youre leaving|what are you talking about|whatever|bodyguard|fresh air|raise an eyebrow|raised an eyebrow|keep walking|walk away|rude|clown|bother|annoying)\b/.test(userContext) || /\b(?:not going anywhere|wasn t going anywhere|was not going anywhere|stayed right where|keep trying|you re still standing here|youre still standing here|far less entertaining|refused to leave|stepped closer|closed the distance|challenged|flirted|teased)\b/.test(characterContext))) return false;
   const text = normalizeText(reply), activePursuit = /\b(?:called after|called her back|called him back|stepped after|moved after|went after|followed|caught up|closed the distance|caught (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand)|reached (?:for|after) (?:her|him|them|you)|touched (?:her|him|their|your)?\s*(?:forearm|wrist|elbow|arm|hand|shoulder)|brushed (?:her|him|their|your)?\s*(?:arm|hand|shoulder)|stopped (?:her|him|them) with a word|asked (?:her|him|them) to stop|told (?:her|him|them) to wait|walked after|jogged after)\b/.test(text), releaseMarkers = [
     /\bwatched (?:her|him|them|you)[^.!?]{0,90}\b(?:move|walk|walking|turn|leave|go|head|across|away)\b/,
@@ -1434,7 +1545,12 @@ function hasChargedDepartureDrop(reply = "", latestUserMessage = "", recentUserM
     /\breturned to (?:the )?(?:party|room|game|friends|work)\b/,
     /\bleaned back against\b/,
   ];
-  return !activePursuit && releaseMarkers.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0) >= 2;
+  const activeAlternative = /\b(?:turned to (?:a|the|another|his|her)|joined (?:his|her|their)|flirted back|started talking to|kept talking to|answered (?:the|a|another)|invited|laughed with|walked over to|headed toward (?:his|her|their) friends|picked up the conversation|rejoined|asked .* to|told .* that)\b/.test(text) || /["“][^"”]{6,}["”]/.test(String(reply || ""));
+  const passiveRelease = releaseMarkers.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0) >= 2;
+  if (!passiveRelease) return false;
+  if (activePursuit) return false;
+  if (hasSoftSocialStop([latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages.slice(-2) : [])].join(" ")) && activeAlternative) return false;
+  return !activeAlternative;
 }
 function hasGenericPursuitWithoutProgress(reply = "", turnIntent = {}) {
   const kind = String(turnIntent?.kind || "");
@@ -1788,8 +1904,12 @@ function hasUnsupportedMotiveEscalation(reply = "", latestUserMessage = "") {
 }
 function hasDistanceBoundaryOverride(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply), latest = normalizeText(latestUserMessage);
-  const createsDistance = /\b(?:create(?:s|d|ing)? space|pull(?:s|ed|ing)? away|move(?:s|d|ing)? away|step(?:s|ped|ping)? away|back(?:s|ed|ing)? away|nudge(?:s|d|ing)? .*? space|let go|dont touch|do not touch)\b/.test(latest);
-  if (!createsDistance || /\b(?:slip|slipped|fall|fell|trip|tripped|stumble|stumbled|traffic|car hits|attack|attacks|lunges|weapon)\b/.test(latest)) return false;
+  // Movement changes position. It is NOT automatically a no-touch/no-follow boundary.
+  // This hard guard activates only when the user rejects contact/proximity or visibly
+  // removes an existing touch. That keeps chemistry possible without overriding consent.
+  const explicitContactBoundary = /\b(?:dont touch me|do not touch me|stop touching me|let me go|let go of me|back off|get off me|give me space|move away from me|stay away from me|no me toques|sueltame|dejame espacio|alejate de mi)\b/.test(latest);
+  const visibleContactWithdrawal = /\b(?:pull|pulled|jerk|jerked|yank|yanked)\b[^.!?]{0,45}\b(?:arm|hand|wrist|myself|away)\b/.test(latest);
+  if ((!explicitContactBoundary && !visibleContactWithdrawal) || /\b(?:slip|slipped|fall|fell|trip|tripped|stumble|stumbled|traffic|car hits|attack|attacks|lunges|weapon)\b/.test(latest)) return false;
   return /\b(?:grab(?:s|bed|bing)?|catch(?:es|caught|ing)? .*? (?:wrist|arm|waist|elbow)|take(?:s|n)? .*? wrist|pull(?:s|ed)? .*? closer|step(?:s|ped)? closer|close(?:s|d)? the distance|block(?:s|ed)? .*? path|steer(?:s|ed)? .*? back)\b/.test(text);
 }
 function hasSocialTensionOverEscalation(reply = "", latestUserMessage = "") {
@@ -2247,9 +2367,12 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "user_motive_overwritten",
   "rejected_pursuit_framing_persisted",
   "unstaged_user_departure_inference",
+  "silent_continue_stalled",
+  "time_skip_stalled",
+  "immediate_pose_regression",
 ]);
 
-// v2.10.39 GUARDED STREAM COMMIT
+// v2.11.0 NARRATIVE CORE REBUILD
 // These are not cosmetic preferences. If a draft violates one of these, never
 // surface/save the rejected draft merely because the one repair call timed out.
 const HARD_REPAIR_REQUIRED_ISSUES = new Set([
@@ -2265,6 +2388,9 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "user_motive_overwritten",
   "rejected_pursuit_framing_persisted",
   "unstaged_user_departure_inference",
+  "silent_continue_stalled",
+  "time_skip_stalled",
+  "immediate_pose_regression",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -2276,18 +2402,27 @@ function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = 
   const latest = normalizeText(latestUserMessage);
   const userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 6).map(normalizeText).join(" ");
   const characterContext = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-5).map(normalizeText).join(" ");
-  const initiative = Number(character?.initiative ?? 65), flirting = Number(character?.flirting ?? 30), drama = Number(character?.drama ?? 45), romance = Number(character?.romance_intensity ?? 35);
-  const chargedCharacter = initiative >= 55 && (flirting >= 28 || drama >= 42 || romance >= 38);
+  const dynamics = characterProfileDynamics(character);
+  const initiative = dynamics.initiative, flirting = dynamics.flirting, drama = dynamics.drama, romance = dynamics.romance;
+  const chargedCharacter = supportsChargedTension(character);
 
   // Explicit boundary/motive turns are cheap to get wrong and expensive to show wrong.
   if (/\b(?:fresh air|bodyguard|leave me alone|stop following me|don t follow me|do not follow me|don t touch me|do not touch me|let me go|back off|go away|no me sigas|no me toques|dejame sola|déjame sola|sueltame|suéltame)\b/.test(userContext)) return true;
+
+  // Silent continuations and time skips are director-style turns. Their first draft
+  // must be checked for real progression before anything becomes visible.
+  if (["silent_continue", "return_main_pov", "time_skip"].includes(kind)) return true;
 
   // High-tension micro beats and departures are the exact places where an optimistic
   // raw stream can expose a draft that the validator is about to reject.
   if (chargedCharacter && ["challenge", "charged_nonverbal", "confrontation", "confrontation_exit", "user_exit"].includes(kind)) return true;
 
+  // Protect the first charged exchange in a new chat too: the opening often establishes
+  // a precise pose/location that must not regress on the very next reply.
+  if (chargedCharacter && (Array.isArray(recentCharacterReplies) ? recentCharacterReplies.length : 0) <= 1 && /\b(?:sarcast|scoff|eye roll|whatever|annoy|teas|flirt|smirk)\b/.test(`${latest} ${characterContext}`)) return true;
+
   // Catch terse narrated movement even when intent classification is conservative.
-  const narratedDeparture = /\bi\b[^.!?\n]{0,45}\b(?:walk|walked|walking|leave|left|head|headed|move|moved|step|stepped)\b/i.test(String(latestUserMessage || ""));
+  const narratedDeparture = /\bi\b[^.!?\n]{0,45}\b(?:walk|walked|walking|leave|left|head|headed|move|moved|step|stepped|pass|passed|past)\b/i.test(String(latestUserMessage || ""));
   const activeCharge = /\b(?:who asked|whatever|finally you re leaving|finally youre leaving|raise an eyebrow|raised an eyebrow|bodyguard|fresh air|keep trying|still standing here|not going anywhere)\b/.test(`${userContext} ${characterContext}`);
   return chargedCharacter && narratedDeparture && activeCharge;
 }
@@ -2338,7 +2473,10 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasNameAddressOveruse(text, options.recentCharacterReplies || [], options.userName || "")) issues.push("name_address_overuse");
   if (hasMissingSocialGravity(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("social_gravity_missing");
   if (hasAtmosphericStallingLoop(text, options.recentCharacterReplies || [], turnIntent)) issues.push("atmospheric_stalling_loop");
+  if (hasSilentContinuationStall(text, turnIntent, options.recentCharacterReplies || [])) issues.push("silent_continue_stalled");
+  if (hasTimeSkipDrift(text, turnIntent)) issues.push("time_skip_stalled");
   if (hasSpatialContinuityBreak(text, options.latestUserMessage || "")) issues.push("spatial_relationship_broken");
+  if (hasImmediatePoseRegression(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push("immediate_pose_regression");
 
   const needsSocialBeat = ["reassurance", "affection", "direct_question", "challenge", "charged_nonverbal", "silent_continue", "return_main_pov", "digital_message", "interactive_thread", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 16) issues.push("underdeveloped_social_beat");
@@ -2979,13 +3117,10 @@ async function streamGeminiEnvelopeWithFailover({
 function roleplayResponseSchema() {
   return {
     type: "object",
-    required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
-    propertyOrdering: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+    required: ["reply", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+    propertyOrdering: ["reply", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
     properties: {
       reply: { type: "string" },
-      turn_reading: { type: "string" },
-      canon_claims: { type: "array", items: { type: "string" } },
-      voice_plan: { type: "object", required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"], properties: { conversational_goal:{type:"string"}, outward_tactic:{type:"string"}, private_pressure:{type:"string"}, verbal_signature:{type:"string"}, avoided_pattern:{type:"string"} } },
       continuity_note: { type: "string" },
       scene_update: { type: "object", required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"], properties: { scene_changed:{type:"boolean"}, separator_label:{type:"string"}, location:{type:"string"}, time_label:{type:"string"}, present:{type:"array",items:{type:"string"}}, exited:{type:"array",items:{type:"string"}}, heard_user_turn:{type:"array",items:{type:"string"}} } },
       continuity_update: { type: "object", required: ["objects_present","knowledge_updates","commitments","resolved_commitments","stakes","timeline_event"], properties: { objects_present:{type:"array",maxItems:12,items:{type:"string"}}, knowledge_updates:{type:"array",maxItems:6,items:{type:"object",required:["who","knows","source","status"],properties:{who:{type:"string"},knows:{type:"string"},source:{type:"string"},status:{type:"string",enum:["known","suspected","rumor","forgotten"]}}}}, commitments:{type:"array",maxItems:8,items:{type:"string"}}, resolved_commitments:{type:"array",maxItems:8,items:{type:"string"}}, stakes:{type:"string"}, timeline_event:{type:"object",required:["record","label","detail","kind","importance"],properties:{record:{type:"boolean"},label:{type:"string"},detail:{type:"string"},kind:{type:"string",enum:["relationship","conflict","promise","reveal","decision","scene","other"]},importance:{type:"integer"}}} } },
@@ -3021,142 +3156,6 @@ function extractGeminiHttpError(text = "") {
   try { return String(JSON.parse(text)?.error?.message || ""); } catch { return String(text || "").slice(0, 260); }
 }
 
-async function streamAndPersist({
-  supabase,
-  cancellationAdmin,
-  generationId,
-  conversationId,
-  userId,
-  storyRevision,
-  replacementMessage,
-  reply,
-  continuityNote,
-  sceneUpdate = {},
-  responseLanguage,
-  memories,
-  loreEntries,
-  existingTimeline,
-  previousDevelopment,
-  developmentUpdate,
-  memoryUpdates = [],
-  character,
-  latestUserMessage,
-  latestUserMessageId,
-  existingSceneState = {},
-  existingCastState = {},
-  existingRelationshipState = {},
-  model = "",
-  repairUsed = false,
-  regenerationInstruction,
-  regenerationFeedback,
-  rejectedResponses,
-  isRegeneration,
-}) {
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        sendEvent(controller, {
-          type: "start",
-          language: responseLanguage,
-          model,
-          repairUsed,
-          memoryCount: memories.length,
-          pinnedMemoryCount: memories.filter((memory) => memory.is_pinned).length,
-          memoryItems: memories.map((memory) => ({
-            id: memory.id,
-            content: memory.content,
-            category: memory.category,
-            pinned: Boolean(memory.is_pinned),
-          })),
-          loreCount: loreEntries.length,
-          loreItems: loreEntries.map((entry) => ({ id: entry.id, name: entry.name, type: entry.entry_type })),
-        });
-
-        for (const chunk of splitForStreaming(reply)) {
-          if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, userId)) return;
-          sendEvent(controller, { type: "chunk", content: chunk });
-          await delay(6);
-        }
-
-        if (generationId && await isGenerationCancelled(cancellationAdmin, generationId, userId)) return;
-        if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
-
-        const savedMessage = replacementMessage
-          ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply })
-          : await saveCharacterReply({ supabase, conversationId, userId, reply });
-
-        const update = { updated_at: new Date().toISOString() } as Record<string, any>;
-        update.character_development = applyCharacterDevelopment({
-          previous: previousDevelopment,
-          update: developmentUpdate,
-          relationshipPremise: character.relationship || "",
-          latestUserMessage,
-          reply,
-          messageId: savedMessage.id,
-          isRegeneration,
-          regenerationInstruction,
-          regenerationFeedback,
-          rejectedResponses,
-        });
-        update.relationship_state = relationshipStateFromDevelopment(update.character_development, existingRelationshipState);
-        const nextPhysicalState = applySceneContinuity({
-          previousScene: existingSceneState,
-          previousCast: existingCastState,
-          sceneUpdate,
-          mainCharacterName: character.name,
-        });
-        update.scene_state = nextPhysicalState.scene;
-        update.cast_state = nextPhysicalState.cast;
-
-        const note = cleanPromptValue(continuityNote, 600);
-        const sceneChanged = Boolean(sceneUpdate?.scene_changed);
-        const separatorLabel = buildSceneSeparatorLabel(existingSceneState, sceneUpdate);
-        if (note || sceneChanged || separatorLabel) {
-          const timeline = Array.isArray(existingTimeline) ? existingTimeline : [];
-          update.story_timeline = [
-            ...timeline.filter((item) => String(item?.message_id || "") !== String(savedMessage.id)),
-            {
-              message_id: savedMessage.id,
-              note,
-              scene_changed: sceneChanged,
-              separator_label: separatorLabel,
-              location: nextPhysicalState.scene.location || "",
-              time_label: nextPhysicalState.scene.time_label || "",
-              present: nextPhysicalState.scene.present || [],
-              created_at: savedMessage.created_at || new Date().toISOString(),
-            },
-          ].slice(-80);
-        }
-        await supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
-        if (!replacementMessage && Array.isArray(memoryUpdates) && memoryUpdates.length) {
-          await mergeAutomaticMemories({
-            supabase, userId, conversationId, characterId: character.id, memoryUpdates,
-            sourceMessageId: latestUserMessageId,
-            sourceExcerpt: cleanPromptValue(latestUserMessage, 220),
-          });
-        }
-        sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: Array.isArray(memoryUpdates) ? memoryUpdates.length : 0, model, repairUsed, sceneState: update.scene_state, castState: update.cast_state, characterDevelopment: update.character_development, relationshipState: update.relationship_state, continuityGuard: { status: "stable", protected: [] }, storyTimeline: update.story_timeline || existingTimeline });
-        console.log("[character-chat] response saved", { conversationId, messageId: savedMessage.id });
-      } catch (error) {
-        if (getErrorName(error) !== "AbortError") {
-          console.error("[character-chat] stream failed", { message: getErrorMessage(error) });
-          sendEvent(controller, { type: "error", error: getErrorMessage(error) });
-        }
-      } finally {
-        try { controller.close(); } catch { /* client may have disconnected; persistence already continues */ }
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
-  });
-}
 function memoryTokenSet(value = "") {
   return new Set(normalizeText(value).split(/\s+/).filter((token) => token.length > 3));
 }
@@ -3376,7 +3375,7 @@ function getLengthGuidance(length, kind) {
   if (kind === "interactive_thread") return "120–320 words when the user explicitly opens an ongoing message/call/chat sub-scene. Show several distinct exchanges and reactions; do not resolve the thread after one or two lines unless the user asked to keep it brief.";
   if (kind === "reassurance") return "30–80 words; one honest reaction and natural dialogue are enough.";
   if (kind === "affection") return "45–130 words; show private impact without forcing a speech or confession.";
-  if (kind === "silent_continue") return "35–120 words; let the scene breathe without manufacturing action.";
+  if (kind === "silent_continue") return "30–110 words; the user yielded the turn, so continue the exact active beat with one concrete action, decision, dialogue exchange, social interaction, or consequence. Do not fill the turn with watching, leaning, breathing, empty-space description, or atmosphere alone.";
   if (kind === "return_main_pov") return "45–130 words; re-center the character quickly and naturally.";
   if (["challenge", "charged_nonverbal"].includes(kind)) return "35–110 words; answer the charged cue with an active, character-specific choice. Keep the tension moving instead of politely conceding, freezing, or ending the scene without cause.";
   if (length === "short") return "25–80 words; complete, human and unpadded.";
