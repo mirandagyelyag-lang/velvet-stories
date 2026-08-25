@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -1349,7 +1349,7 @@ check("v2.11.6 malformed at-home scene still becomes authoritative",
   homeAnchor?.location === "house" && homeAnchor?.companions?.includes("jules"));
 check("v2.11.6 old-campus meanwhile framing is rejected after user moves home",
   helpers?.hasLatestUserSceneIgnored(`Meanwhile, back on the quad, Chase reached the dining hall entrance with Miller.`, `I was with Jules on my house`, { location: "Science Annex Study Alcove" }));
-check("v2.11.6 an incoming message may bridge into the user's new scene",
+check("v2.11.6 remote bridge no longer counts as old-scene framing",
   !helpers?.hasLatestUserSceneIgnored(`A message from Chase lit the phone screen: "Tell Jules Marcus owes me one."`, `I was with Jules on my house`, { location: "Science Annex Study Alcove" }));
 check("v2.11.6 invented Jules contact-card history is rejected",
   helpers?.hasUnsupportedPriorEventClaim(`He saw Jules's contact card had already been forwarded.`, [`Marcus's number.`, `It's for Jules.`]));
@@ -1376,6 +1376,22 @@ check("v2.11.6 new scene and continuity hallucinations require bounded repair",
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,3400}"latest_user_scene_not_applied"/.test(edge) &&
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,3600}"latest_user_scene_ignored"/.test(edge) &&
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,3800}"silent_continue_prop_loop"/.test(edge));
+
+// v2.11.7 Scene Focus Lock — a new user scene must not magnetize the absent romantic lead back in.
+const exactUnwantedHomeBridge = `Across town, Jules flops onto the couch in Antonia's living room. "Okay, spill," Jules says. Before Antonia can answer, her phone lights up on the coffee table with a fresh text notification. *Chase:* Next time you use my rugby teammates as an excuse to stop by, pick someone who actually checks his texts.`;
+check("v2.11.7 exact Jules-at-home unwanted Chase text is rejected",
+  helpers?.hasUnsolicitedOffscreenLeadContact(exactUnwantedHomeBridge, `I was with Jules on my house`, { location: "Science Annex Study Alcove", present: ["Chase"] }, "Chase Beaumont", [], []));
+check("v2.11.7 Jules-only home continuation is allowed without Chase intrusion",
+  !helpers?.hasUnsolicitedOffscreenLeadContact(`Jules drops onto the couch and looks over. "Okay, spill. What happened?"`, `I was with Jules on my house`, { location: "Science Annex Study Alcove", present: ["Chase"] }, "Chase Beaumont", [], []));
+check("v2.11.7 user-invited Chase text remains allowed",
+  !helpers?.hasUnsolicitedOffscreenLeadContact(`The phone buzzes. *Chase:* You home?`, `I was with Jules at my house when Chase texted me`, { location: "Science Annex Study Alcove", present: ["Chase"] }, "Chase Beaumont", [], []));
+check("v2.11.7 visibly promised later contact remains allowed",
+  !helpers?.hasUnsolicitedOffscreenLeadContact(`Her phone lights up with a message from Chase. *Chase:* Practice is over.`, `I was with Jules on my house`, { location: "Science Annex Study Alcove", present: ["Chase"] }, "Chase Beaumont", [], [`"I'll text you when practice ends."`]));
+check("v2.11.7 scene policy forbids romance-magnet remote contact",
+  edge.includes("Do NOT summon") && edge.includes("Remote contact is allowed only when") && edge.includes("unsolicited_offscreen_lead_contact"));
+check("v2.11.7 unsolicited offscreen lead contact is hard-repair protected",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,4200}"unsolicited_offscreen_lead_contact"/.test(edge) &&
+  /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,2600}"unsolicited_offscreen_lead_contact"/.test(edge));
 
 
 let failures = 0;

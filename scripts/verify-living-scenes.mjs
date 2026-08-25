@@ -14,7 +14,7 @@ const utility = read("src/utils/livingScenes.js");
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-check("release is v2.11.6 Scene Canon & Continuity Lock", pkg.version === "2.11.6" && read("src/config/version.js").includes('VELVET_RELEASE = "Scene Canon & Continuity Lock"'));
+check("release is v2.11.7 Scene Focus Lock", pkg.version === "2.11.7" && read("src/config/version.js").includes('VELVET_RELEASE = "Scene Focus Lock"'));
 check("Living Scenes stylesheet is the final release layer", main.lastIndexOf("velvet-v270-living-scenes.css") > main.lastIndexOf("velvet-v2616-audio-center.css"));
 
 const header = buildLivingSceneHeader({ sceneState: { location: "Campus quad", time_label: "Late night", present: ["Theo", "Jules"] }, ambientMode: "rain" }, "Theo");
