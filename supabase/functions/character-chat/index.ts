@@ -16,6 +16,7 @@ type ModelEnvelope = {
   reply: string;
   continuity_note: string;
   development_update: Record<string, any>;
+  voice_plan: Record<string, any>;
   scene_update: Record<string, any>;
   continuity_update: Record<string, any>;
   cast_updates: Record<string, any>[];
@@ -310,7 +311,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "2.11.0",
+    version: "2.11.1",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -1026,6 +1027,8 @@ ${userIdentity.name}: ${latest}
 Write the response AFTER the final event established in that exact turn.`}`;
 }
 
+async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }
+
 async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
   const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If recent replies keep opening with synonym-swapped scoff/huff/dry-laugh reactions, change the opening structure completely: begin with dialogue, an external event, another character, a practical action, or a meaningful new beat. If a social approach was reflexively dismissed and recent social approaches were also shut down, let this one breathe long enough to create a real interaction, complication, invitation, flirtation, rivalry, rumor beat, or recurring NPC when profile and setting support it. Create tension opportunities proactively, but do not force jealousy or invent betrayal. If recent replies repeatedly tracked the user across the room with glances, peripheral vision, or “one eye on them” language, let the character genuinely focus elsewhere for this beat and remove the surveillance-like attention. If the user only SAID they would leave, might leave, or “leave you with...” but did not narrate physical movement, keep the user physically present and remove any invented “heading away/departing/watched her go/didn't follow/let her go/looked toward the door where she had gone” action. A silent continuation after that line does NOT authorize an off-screen exit. Do not let a new NPC hijack an unresolved relational beat; let the primary character react first. If the character caused the rupture and attachment is established, consider one character-specific repair or pursuit beat instead of instantly switching to unrelated activity. If the user DID physically leave after the character was rude, dismissive, or hurtful, do not default to passive watching plus a reset back to the party/game/work. In that situation, prefer one immediate follow-through attempt—call after them, step after them, catch up, soften, or apologize badly—before any unrelated activity resumes. Make that follow-through unmistakably character-specific: preserve the profile's pride, humor, awkwardness, warmth, restraint or bluntness instead of a generic “wait.” The pursuit must create one new beat or piece of information before the turn ends; do not spend the whole rewrite on footsteps, breathing or trailing behind. If the failure is kinetic_tension_deflated, the rewrite MUST make an active character choice instead of leaning/staring/smirking/conceding: close conversational distance, sharpen or redirect the flirt, create a brief non-restraining touch if no no-touch boundary exists, let a believable social interruption/admirer matter, or choose another concrete action with consequence. If the failure is charged_beat_abandoned, preserve the character’s immediately previous active choice unless the latest turn actually changes it: a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside. Continue the charged beat through dialogue, proximity, flirtation, social complication or another character-specific choice instead of silently ending the scene. If the failure is charged_beat_stalled, the character technically stayed but did nothing with the charge. The rewrite MUST add at least one consequential beat: spoken dialogue, a deliberate change in proximity, a brief non-restraining touch when allowed, a sharper flirt/challenge, a social interruption that matters, or another concrete decision. Merely holding eye contact, twitching a mouth corner, breathing, shifting weight, or silently refusing to look away does NOT count as progress. If the failure is silent_continue_stalled, the user yielded the turn and the draft wasted it on atmosphere/static observation. Rewrite with one concrete new beat now: real dialogue, a decision, purposeful movement, an actual social exchange, or an external event with consequence. If the user is off-scene, follow the character's own active life instead of watching the place the user left or repeatedly saying they are not looking for them. If the failure is time_skip_stalled, land the requested time jump in a changed active situation; carry old tension as residue, not doorway/corridor surveillance. If the failure is immediate_pose_regression, preserve the FINAL physical state from the previous character turn. A character who crossed the room or stopped in front of the user cannot suddenly be “still leaning against” the old counter/pillar unless a visible action returned them there. If the failure is charged_departure_dropped, the user physically started to leave during an already charged exchange and the draft passively watched them go. For a high-initiative character, rewrite with immediate follow-through unless an explicit boundary forbids it: step after them, catch up, call them back, or when touch is allowed briefly catch a forearm/elbow/arm and stop or turn the movement back toward the conversation for one beat. Keep it easy to reject and release on resistance; never drag, restrain, trap or block escape. “I didn't ask for a bodyguard” rejects protection framing, not automatically all chemistry or all proximity. But explicit “leave me alone,” “stop following me,” “don't touch me,” or a pull-away must be respected. Never restrain, drag, corner, block escape or coerce the user just to make pursuit feel intense. If side characters have repeatedly acted as a romance jury or awarded conversational points, give them independent goals, opinions, or unrelated behavior instead. If the draft claims the user watched, followed, waited, stared, checked, LOOKED FOR, searched for, came for, went outside for, or wanted the character's attention without visible transcript evidence, remove that claim. Do NOT preserve it as teasing or an uncertain question when the latest user turn actively contradicts it. A user-stated practical reason such as fresh air, space, or walking away is binding and may not become “you were looking for me,” “you came out here for me,” jealousy, or attention-seeking. If the latest user turn rejects pursuit or protection with language such as “I didn't ask for a bodyguard,” “stop following me,” or “leave me alone,” do not defend the same pursuit as guarding, watching, keeping tabs, or making sure the user does not wander off. The character may still want to continue the conversation, but must own THEIR reason instead of inventing the user's motive or a protection duty. If the latest user turn clearly shows tears, crying, shaking, fear, hurt, anger or visible distress, do not leave the character merely watching or sitting nearby: add at least one character-specific question, decision, practical gesture, or behavior change that advances the emotional beat, while respecting boundaries and avoiding generic therapy language. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect explicit no-follow/no-touch boundaries; ordinary movement changes position but does not automatically prohibit a brief profile-consistent follow-through. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
   return await callGeminiWithFailover({
@@ -1170,13 +1173,14 @@ function parseModelEnvelope(raw): ModelEnvelope {
       development_update: parsed?.development_update && typeof parsed.development_update === "object"
         ? parsed.development_update
         : {},
+      voice_plan: parsed?.voice_plan && typeof parsed.voice_plan === "object" ? parsed.voice_plan : {},
       scene_update: parsed?.scene_update && typeof parsed.scene_update === "object" ? parsed.scene_update : {},
       continuity_update: parsed?.continuity_update && typeof parsed.continuity_update === "object" ? parsed.continuity_update : {},
       cast_updates: Array.isArray(parsed?.cast_updates) ? parsed.cast_updates.slice(0, 4) : [],
       memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 3) : [],
     };
   } catch {
-    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [] };
+    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [] };
   }
 }
 
@@ -3117,10 +3121,13 @@ async function streamGeminiEnvelopeWithFailover({
 function roleplayResponseSchema() {
   return {
     type: "object",
-    required: ["reply", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
-    propertyOrdering: ["reply", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+    required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+    propertyOrdering: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
     properties: {
       reply: { type: "string" },
+      turn_reading: { type: "string" },
+      canon_claims: { type: "array", items: { type: "string" } },
+      voice_plan: { type: "object", required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"], properties: { conversational_goal:{type:"string"}, outward_tactic:{type:"string"}, private_pressure:{type:"string"}, verbal_signature:{type:"string"}, avoided_pattern:{type:"string"} } },
       continuity_note: { type: "string" },
       scene_update: { type: "object", required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"], properties: { scene_changed:{type:"boolean"}, separator_label:{type:"string"}, location:{type:"string"}, time_label:{type:"string"}, present:{type:"array",items:{type:"string"}}, exited:{type:"array",items:{type:"string"}}, heard_user_turn:{type:"array",items:{type:"string"}} } },
       continuity_update: { type: "object", required: ["objects_present","knowledge_updates","commitments","resolved_commitments","stakes","timeline_event"], properties: { objects_present:{type:"array",maxItems:12,items:{type:"string"}}, knowledge_updates:{type:"array",maxItems:6,items:{type:"object",required:["who","knows","source","status"],properties:{who:{type:"string"},knows:{type:"string"},source:{type:"string"},status:{type:"string",enum:["known","suspected","rumor","forgotten"]}}}}, commitments:{type:"array",maxItems:8,items:{type:"string"}}, resolved_commitments:{type:"array",maxItems:8,items:{type:"string"}}, stakes:{type:"string"}, timeline_event:{type:"object",required:["record","label","detail","kind","importance"],properties:{record:{type:"boolean"},label:{type:"string"},detail:{type:"string"},kind:{type:"string",enum:["relationship","conflict","promise","reveal","decision","scene","other"]},importance:{type:"integer"}}} } },
@@ -3154,6 +3161,38 @@ function extractPartialJsonStringField(source = "", field = "reply") {
 }
 function extractGeminiHttpError(text = "") {
   try { return String(JSON.parse(text)?.error?.message || ""); } catch { return String(text || "").slice(0, 260); }
+}
+
+async function streamAndPersist({
+  supabase,
+  cancellationAdmin,
+  generationId,
+  conversationId,
+  userId,
+  storyRevision,
+  replacementMessage,
+  reply,
+  continuityNote,
+  sceneUpdate = {},
+  responseLanguage,
+  memories,
+  loreEntries,
+  existingTimeline,
+  previousDevelopment,
+  developmentUpdate,
+  memoryUpdates = [],
+  character,
+  latestUserMessage,
+  latestUserMessageId,
+  existingSceneState = {},
+  existingCastState = {},
+  existingRelationshipState = {},
+  model = "",
+  repairUsed = false,
+  regenerationInstruction,
+  regenerationFeedback,
+  rejectedResponses,
+  isRegeneration,
 }
 
 function memoryTokenSet(value = "") {

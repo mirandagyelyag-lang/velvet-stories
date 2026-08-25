@@ -26,7 +26,7 @@ const expected = {
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-check("Living Scenes keeps the Audio Center 2.0 ambience contract", pkg.version === "2.11.0");
+check("Living Scenes keeps the Audio Center 2.0 ambience contract", pkg.version === "2.11.1");
 check("all eight ambience modes are visible", Object.keys(expected).every((id) => ambience.includes(`["${id}",`)));
 check("Night and Street Racing remain separate modes", ambience.includes('["night_city", "Night"]') && ambience.includes('["street_racing", "Street racing"]'));
 check("all eight modes map to bundled tracks", Object.entries(expected).every(([id, file]) => ambience.includes(`${id}: "/audio/ambience/${file}"`)));
