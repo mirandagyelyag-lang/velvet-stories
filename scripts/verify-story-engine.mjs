@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -1292,7 +1292,7 @@ check("v2.11.0 repair set treats director stalls and pose regressions as hard pr
 check("v2.11.0 current beat policy explicitly forbids empty off-scene surveillance",
   edge.includes("If the user is currently off-scene, follow the character's OWN life") && edge.includes("Independent activity must actually happen on-page"));
 check("v2.11.0 silent continuation guidance requires a concrete beat",
-  edge.includes("user yielded the turn") && edge.includes("one concrete action, decision, dialogue exchange, social interaction, or consequence"));
+  edge.includes("user yielded the turn") && edge.includes("add ONE meaningful beat only"));
 check("v2.11.0 movement/touch rules are unified around explicit boundaries",
   edge.includes("MOVEMENT IS NOT AUTOMATIC NO-TOUCH") && edge.includes("ordinary movement changes position but does not automatically prohibit a brief profile-consistent follow-through"));
 check("v2.11.0 redundant hidden planning fields are gone from the live response contract",
@@ -1342,6 +1342,40 @@ check("v2.11.5 dialogue and stale-reason failures can spend the bounded repair",
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,2200}"overwritten_banter"/.test(edge) &&
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,2400}"clarification_evasion"/.test(edge) &&
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,2600}"unsupported_user_reason_claim"/.test(edge));
+
+// v2.11.6 Scene Canon & Continuity Lock — latest user scene wins, no invented prior events, no prop treadmill.
+const homeAnchor = helpers?.extractUserSceneAnchor(`I was with Jules on my house`);
+check("v2.11.6 malformed at-home scene still becomes authoritative",
+  homeAnchor?.location === "house" && homeAnchor?.companions?.includes("jules"));
+check("v2.11.6 old-campus meanwhile framing is rejected after user moves home",
+  helpers?.hasLatestUserSceneIgnored(`Meanwhile, back on the quad, Chase reached the dining hall entrance with Miller.`, `I was with Jules on my house`, { location: "Science Annex Study Alcove" }));
+check("v2.11.6 an incoming message may bridge into the user's new scene",
+  !helpers?.hasLatestUserSceneIgnored(`A message from Chase lit the phone screen: "Tell Jules Marcus owes me one."`, `I was with Jules on my house`, { location: "Science Annex Study Alcove" }));
+check("v2.11.6 invented Jules contact-card history is rejected",
+  helpers?.hasUnsupportedPriorEventClaim(`He saw Jules's contact card had already been forwarded.`, [`Marcus's number.`, `It's for Jules.`]));
+check("v2.11.6 actually established forwarded contact is allowed",
+  !helpers?.hasUnsupportedPriorEventClaim(`He saw Jules's contact card had already been forwarded.`, [`Jules's contact card was forwarded to Chase earlier.`]));
+const penLoopRecent = [
+  `Chase spun the silver pen between his fingers and looked back at chapter four.`,
+  `He tapped the silver pen against the margin before turning the page.`,
+  `Chase clicked the pen once and returned to the textbook.`
+];
+check("v2.11.6 silent continuation rejects recycled pen choreography",
+  helpers?.hasSilentContinuationPropLoop(`He twirled the silver pen again, tapped the page twice, and flipped to the next section.`, { kind: "silent_continue" }, penLoopRecent));
+check("v2.11.6 concise silent continuation with a real new beat is allowed",
+  !helpers?.hasSilentContinuationPropLoop(`Marcus appeared in the doorway. "Practice got moved to six." Chase shut the book. "Of course it did."`, { kind: "silent_continue" }, penLoopRecent));
+check("v2.11.6 new scene turns are quarantined before display",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `I was with Jules on my house`, turnIntent: { kind: "ordinary" }, character: chaseNaturalProfile }));
+check("v2.11.6 plain-English dialogue guard catches the remaining polished Chase lines",
+  helpers?.hasOverwrittenBanter(`"The sheer warmth in your voice almost made me forget it," Chase said.`, `I missed you`, chaseNaturalProfile) &&
+  helpers?.hasOverwrittenBanter(`"Did you come all this way just to deliver that heartfelt sentiment?"`, `I missed you`, chaseNaturalProfile));
+check("v2.11.6 prompt makes latest user location the narrative camera",
+  edge.includes("LATEST USER SCENE LOCK") && edge.includes("move the narrative camera there immediately") && edge.includes("Never fabricate a retrospective"));
+check("v2.11.6 new scene and continuity hallucinations require bounded repair",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,3200}"unsupported_prior_event_claim"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,3400}"latest_user_scene_not_applied"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,3600}"latest_user_scene_ignored"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,3800}"silent_continue_prop_loop"/.test(edge));
 
 
 let failures = 0;
