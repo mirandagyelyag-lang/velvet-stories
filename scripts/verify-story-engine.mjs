@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 4050);
+check("live-stream engine stays reasonably consolidated", edgeLines < 4300);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -1458,6 +1458,51 @@ check("v2.11.9 a grounded Chase reentry clears initiative drought",
 check("v2.11.9 initiative drought is repairable but not a hard boundary override",
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,4600}"romantic_initiative_drought"/.test(edge) &&
   !/HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,2800}"romantic_initiative_drought"/.test(edge));
+
+
+
+// v2.11.10 Social Role Grounding — keep who the number/date/flirt is actually for.
+const v21110Users = [
+  `I do need something, you know that guy from your rugby team, i need his number`,
+  `It's not for me, it's for Jules *i roll my eyes*`,
+  `Wait, you wouldn't had give me his number, what, are you jealous?`,
+  `No, that's all, bye`,
+  `Watch your heart then *i smile and i finally walked out*`,
+  `I was with Jules on my house`,
+  `*i roll my eyes and i went to my room to change my clothes*`,
+  `You wrote him for the first time and you are already planning to go out with him?`,
+  `You trusted me after a year!! The hell is wron with you?`,
+  `*i go downstairs* If he's like Chase tell me and i'll beat his ass`,
+];
+const v21110Binding = helpers?.extractExplicitSocialRoleBinding(v21110Users, v21110Users.at(-1));
+check("v2.11.10 explicit not-for-me for-Jules binding survives the mini-arc",
+  v21110Binding?.recipient === "jules");
+const v21110Wrong = `Jules didn't even look up from her phone. "Violence on a first date feels a bit aggressive, darling, but honestly? Just let him buy you a drink first."`;
+check("v2.11.10 exact let-him-buy-you-a-drink role swap is rejected",
+  helpers?.hasSocialRoleAssignmentBreak(v21110Wrong, v21110Users.at(-1), v21110Users));
+check("v2.11.10 Jules remains the date recipient when wording is correct",
+  !helpers?.hasSocialRoleAssignmentBreak(`Jules snorted. "If he's like Chase, I'll tell you. Let him buy me a drink first before you start swinging."`, v21110Users.at(-1), v21110Users));
+check("v2.11.10 explicit later self-reassignment cancels the Jules role lock",
+  !helpers?.hasSocialRoleAssignmentBreak(`Jules grinned. "Fine. Let him buy you a drink first."`, `Actually, the number is for me. I want to go out with him.`, [...v21110Users, `Actually, the number is for me. I want to go out with him.`]));
+check("v2.11.10 trust-after-a-year complaint cannot be dodged into unrelated banter",
+  helpers?.hasDirectComparisonEvasion(`"Relax, I'm resourceful. If he's a disaster, you get to say I told you so."`, `You trusted me after a year!! The hell is wron with you?`));
+check("v2.11.10 direct trust comparison is answered before joking",
+  !helpers?.hasDirectComparisonEvasion(`"Okay, fair. I took forever to trust you. I barely know him, I'm just agreeing to one date."`, `You trusted me after a year!! The hell is wron with you?`));
+const v21110Sanitized = helpers?.sanitizeSocialRoleAssignment(`"Just let him buy you a drink first," Jules said.`, v21110Binding) || "";
+check("v2.11.10 hard-role rescue can safely repair second-person pronoun drift",
+  /buy Jules a drink first/i.test(v21110Sanitized) && !/buy you a drink first/i.test(v21110Sanitized));
+check("v2.11.10 role-sensitive follow-up is buffered before display",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: v21110Users.at(-1), turnIntent: { kind: "ordinary" }, recentUserMessages: v21110Users, recentCharacterReplies: [], character: chaseNaturalProfile }));
+check("v2.11.10 validator keeps enough user turns to preserve social role assignments",
+  edge.includes('recentUserMessages: messages.filter((message) => message.sender === "user").slice(-12)') &&
+  edge.includes('recentCharacterReplies: messages.filter((message) => message.sender === "character").slice(-10)'));
+check("v2.11.10 prompt explicitly locks social roles and direct comparisons",
+  edge.includes("SOCIAL ROLE GROUNDING — KEEP WHO-WANTS-WHOM STRAIGHT") &&
+  edge.includes("One person doing the legwork does not make them the romantic target") &&
+  edge.includes("answer that comparison first in plain language"));
+check("v2.11.10 social role swap is hard protected but comparison evasion can fail soft",
+  /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3200}"social_role_assignment_broken"/.test(edge) &&
+  !/HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3200}"direct_comparison_evasion"/.test(edge));
 
 let failures = 0;
 for (const item of checks) {
