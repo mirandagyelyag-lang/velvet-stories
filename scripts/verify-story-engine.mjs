@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, containsExplicitRemoteLeadContact, hasUnsolicitedOffscreenLeadContact, sanitizeUnsolicitedOffscreenLeadContactResult, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, extractContactHandoffState, hasContactHandoffRoleConfusion, hasUnsupportedSocialEpithet, sanitizeContactHandoffResult, hasLatestUserSceneIgnored, userEstablishedRemoteContact, containsExplicitRemoteLeadContact, hasUnsolicitedOffscreenLeadContact, sanitizeUnsolicitedOffscreenLeadContactResult, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 3950);
+check("live-stream engine stays reasonably consolidated", edgeLines < 4150);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -1411,6 +1411,45 @@ check("v2.11.8 repair branch tries deterministic offscreen-contact cleanup befor
 check("v2.11.8 protected validator diagnostics are translated before reaching chat UI",
   chat.includes(`error.includes("protected interaction beat")`) && chat.includes(`Velvet couldn't finish that reply cleanly. Try again.`) && !edge.includes("Velvet repair still violated a protected interaction beat:"));
 
+
+
+
+// v2.11.9 Referent Grounding — contact owner, intermediary and recipient never collapse into one "him".
+const handoffRecentUsers = [
+  `I do need something, you know that guy from your rugby team, i need his number`,
+  `It's not for me, it's for Jules *i roll my eyes*`,
+  `No, and yeah, he gave it to me *i hand you my phone*`,
+];
+const handoffRecentReplies = [
+  `"Marcus?" Chase asked.`,
+  `"Marcus's number." Chase slid the device across the table.`,
+  `Jules asked, "Did Beaumont actually hand it over?"`,
+];
+const handoffState = helpers?.extractContactHandoffState(handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont");
+check("v2.11.9 contact handoff identifies Marcus as owner and Chase as intermediary",
+  handoffState?.owner === "Marcus" && handoffState?.recipient === "Jules" && handoffState?.intermediary === "Chase");
+const exactBullshitHandoff = `Jules glanced at the screen, letting out a short, triumphant whistle. "Look at that. The campus saint actually cooperated. I'm texting him right now before he changes his mind."`;
+check("v2.11.9 exact Jules handoff bullshit is rejected",
+  helpers?.hasContactHandoffRoleConfusion(exactBullshitHandoff, handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont"));
+check("v2.11.9 explicit Marcus target is accepted",
+  !helpers?.hasContactHandoffRoleConfusion(`Jules takes the phone. "Perfect. I'm texting Marcus now."`, handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont"));
+check("v2.11.9 completed handoff cannot invent revocation",
+  helpers?.hasContactHandoffRoleConfusion(`Jules grins. "I'm texting Marcus now before he changes his mind."`, handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont"));
+check("v2.11.9 unestablished campus-saint epithet is rejected",
+  helpers?.hasUnsupportedSocialEpithet(`"The campus saint actually cooperated," Jules said.`, handoffRecentUsers, handoffRecentReplies, { role: "popular rugby player", personality: "cocky" }));
+check("v2.11.9 established campus-prince epithet remains allowed",
+  !helpers?.hasUnsupportedSocialEpithet(`"Campus prince finally showed up," Jules said.`, handoffRecentUsers, handoffRecentReplies, { role: "Campus Prince", personality: "popular" }));
+const cleanedHandoff = helpers?.sanitizeContactHandoffResult({ reply: exactBullshitHandoff }, handoffRecentUsers.at(-1), handoffRecentUsers.slice(0, -1), handoffRecentReplies, "Chase Beaumont");
+check("v2.11.9 local grounding names Marcus and removes impossible mind-change clause",
+  /texting Marcus right now/i.test(cleanedHandoff?.reply || "") && !/changes his mind/i.test(cleanedHandoff?.reply || "") && !/campus saint/i.test(cleanedHandoff?.reply || ""));
+check("v2.11.9 phone/contact handoff is buffered before display",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `No, and yeah, he gave it to me *i hand you my phone*`, turnIntent: { kind: "ordinary" }, character: chaseNaturalProfile }));
+check("v2.11.9 prompt explicitly locks contact ownership and recipient roles",
+  edge.includes("CONTACT & HANDOFF ROLE GROUNDING") && edge.includes("OWNER/SUBJECT, INTERMEDIARY, CURRENT HOLDER, and INTENDED RECIPIENT") && edge.includes("I'm texting Marcus now"));
+check("v2.11.9 contact-role confusion spends protected repair",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,4500}"contact_handoff_role_confusion"/.test(edge) && /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3200}"contact_handoff_role_confusion"/.test(edge));
+check("v2.11.9 repair path has deterministic referent grounding shield",
+  edge.includes("local referent grounding corrected contact handoff roles") && edge.includes("sanitizeContactHandoffResult"));
 
 let failures = 0;
 for (const item of checks) {
