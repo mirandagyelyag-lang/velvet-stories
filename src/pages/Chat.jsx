@@ -2731,6 +2731,7 @@ function translateMessageError(message = "") {
   if (error.includes("authentication") || error.includes("invalid session") || error.includes("jwt")) return "Your session expired. Sign in again.";
   if (error.includes("quota") || error.includes("rate limit") || error.includes("rate-limited") || error.includes("resource_exhausted")) return "Gemini is rate-limited right now. It may be a per-minute, token, or daily project limit. Wait a little and try again.";
   if (error.includes("network") || error.includes("failed to fetch")) return "We couldn't connect to the AI service.";
+  if (error.includes("protected interaction beat") || error.includes("unsolicited_offscreen_lead_contact") || error.includes("continuity-safe reply") || error.includes("repair still violated")) return "Velvet couldn't finish that reply cleanly. Try again.";
   return message || "The character couldn't respond.";
 }
 

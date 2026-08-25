@@ -1377,6 +1377,21 @@ function userEstablishedRemoteContact(latestUserMessage = "", characterName = ""
   return pendingContact || activeDigital;
 }
 
+function containsExplicitRemoteLeadContact(value = "", characterName = "") {
+  const raw = String(value || "");
+  const characterKey = String(characterName || "").trim().split(/\s+/).filter(Boolean)[0] || "";
+  if (!raw || !characterKey) return false;
+  const escaped = characterKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // v2.11.8: require evidence of an actual communication event. Merely mentioning a
+  // phone in one sentence and the lead's name later in the paragraph is NOT contact.
+  const directLabel = new RegExp(String.raw`(?:^|[\n.!?])\s*[>*_\-\s]*${escaped}\s*:`, "im");
+  const inboundFrom = new RegExp(String.raw`\b(?:text|message|dm|notification|call|facetime|voicemail)\s+(?:from|by)\s+${escaped}\b`, "i");
+  const leadVerb = new RegExp(String.raw`\b${escaped}\b.{0,28}\b(?:texted|texts|messaged|messages|called|calls|dmed|dm'd|sent\s+(?:her|him|them|you|me)\s+(?:a\s+)?(?:text|message|dm))\b`, "i");
+  const namedDeviceEvent = new RegExp(String.raw`\b(?:phone|screen|notification)\b.{0,90}\b(?:showed|displayed|flashed|lit up with|lights up with|read|said)\b.{0,55}\b${escaped}(?:'s)?\b`, "i");
+  const leadOnDevice = new RegExp(String.raw`\b(?:phone|screen)\b.{0,90}\b${escaped}(?:'s)?\b.{0,35}\b(?:name|text|message|call|dm)\b`, "i");
+  return directLabel.test(raw) || inboundFrom.test(raw) || leadVerb.test(raw) || namedDeviceEvent.test(raw) || leadOnDevice.test(raw);
+}
+
 function hasUnsolicitedOffscreenLeadContact(reply = "", latestUserMessage = "", previousScene = {}, characterName = "", recentUserMessages = [], recentCharacterReplies = []) {
   const anchor = extractUserSceneAnchor(latestUserMessage);
   if (!anchor || !characterName) return false;
@@ -1384,13 +1399,34 @@ function hasUnsolicitedOffscreenLeadContact(reply = "", latestUserMessage = "", 
   if (!characterKey) return false;
   if (anchor.companions.some((name) => normalizeText(name) === characterKey || normalizeText(name) === normalizeText(characterName))) return false;
   if (userEstablishedRemoteContact(latestUserMessage, characterName, recentUserMessages, recentCharacterReplies)) return false;
+  return containsExplicitRemoteLeadContact(reply, characterName);
+}
 
-  const text = normalizeText(reply);
-  const escaped = characterKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const directLabel = new RegExp(`\\b${escaped}\\b\\s*:`);
-  const namedContact = new RegExp(`(?:\\b(?:text|message|dm|notification|call|phone|screen)\\b.{0,140}\\b${escaped}\\b|\\b${escaped}\\b.{0,90}\\b(?:text|message|dm|notification|call|called|calls|texted|texts|messaged|messages|buzzed|rang)\\b)`);
-  const deviceBridge = new RegExp(`\\b(?:phone|screen)\\b.{0,180}\\b${escaped}\\b`);
-  return directLabel.test(text) || namedContact.test(text) || deviceBridge.test(text);
+function sanitizeUnsolicitedOffscreenLeadContactResult(result = {}, characterName = "") {
+  const reply = String(result?.reply || "").trim();
+  if (!reply || !characterName || !containsExplicitRemoteLeadContact(reply, characterName)) return result;
+  const parts = reply.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+  const remove = new Set();
+  for (let index = 0; index < parts.length; index += 1) {
+    if (containsExplicitRemoteLeadContact(parts[index], characterName)) {
+      remove.add(index);
+      // Remove a dangling notification bridge only when it directly introduces the
+      // rejected contact paragraph. Do not remove ordinary NPC phone use.
+      const previous = String(parts[index - 1] || "");
+      if (previous && /\b(?:phone|screen|notification)\b.{0,100}\b(?:lights? up|lit up|buzz(?:es|ed)?|vibrat(?:es|ed)?|notification|incoming)\b/i.test(previous)) remove.add(index - 1);
+    }
+  }
+  const cleanedReply = parts.filter((_, index) => !remove.has(index)).join("\n\n").trim();
+  if (!cleanedReply) return result;
+  const memoryUpdates = Array.isArray(result?.memory_updates)
+    ? result.memory_updates.filter((item) => !containsExplicitRemoteLeadContact(JSON.stringify(item || {}), characterName))
+    : result?.memory_updates;
+  const continuityNote = containsExplicitRemoteLeadContact(result?.continuity_note || "", characterName) ? "" : result?.continuity_note;
+  const continuityUpdate = result?.continuity_update && typeof result.continuity_update === "object" ? { ...result.continuity_update } : result?.continuity_update;
+  if (continuityUpdate?.timeline_event && containsExplicitRemoteLeadContact(JSON.stringify(continuityUpdate.timeline_event), characterName)) {
+    continuityUpdate.timeline_event = { ...continuityUpdate.timeline_event, record: false, detail: "", label: "" };
+  }
+  return { ...result, reply: cleanedReply, memory_updates: memoryUpdates, continuity_note: continuityNote, continuity_update: continuityUpdate };
 }
 
 function hasSilentContinuationPropLoop(reply = "", turnIntent = {}, recentReplies = []) {
@@ -3048,7 +3084,7 @@ async function streamRoleplayV19({
               throw new Error(repairFailure || "Velvet could not repair an incomplete reply. Try again.");
             }
           } else {
-          const repairedIssues = validateNarrativeReply(repaired.reply, {
+          let repairedIssues = validateNarrativeReply(repaired.reply, {
             characterName: character.name,
             userName: userIdentity.name,
             latestUserMessage,
@@ -3060,12 +3096,45 @@ async function streamRoleplayV19({
             character,
           });
           repairedIssues.push(...validateContinuityEnvelope(repaired, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies }));
-          const repairedFatal = blockingNarrativeIssues(repairedIssues);
           const originalFatal = blockingNarrativeIssues(originalIssues);
           const originalHard = hardRepairRequiredIssues(originalIssues);
-          const repairedHard = hardRepairRequiredIssues(repairedIssues);
+          let repairedFatal = blockingNarrativeIssues(repairedIssues);
+          let repairedHard = hardRepairRequiredIssues(repairedIssues);
+
+          // v2.11.8 REPAIR SHIELD: an otherwise-good scene should not fail because the
+          // repaired draft appended one forbidden off-screen lead text/call. Remove that
+          // local bridge, keep the valid scene beat, then validate again without spending
+          // a third model call. This also prevents a false-positive guard from becoming a
+          // user-facing technical error.
+          if (repairedHard.includes("unsolicited_offscreen_lead_contact")) {
+            const locallySanitized = sanitizeUnsolicitedOffscreenLeadContactResult(repaired, character.name);
+            if (String(locallySanitized?.reply || "").trim() && locallySanitized.reply !== repaired.reply) {
+              let localIssues = validateNarrativeReply(locallySanitized.reply, {
+                characterName: character.name,
+                userName: userIdentity.name,
+                latestUserMessage,
+                turnIntent,
+                finishReason: locallySanitized.finishReason,
+                rejectedResponses,
+                recentCharacterReplies,
+                recentUserMessages,
+                character,
+              });
+              localIssues.push(...validateContinuityEnvelope(locallySanitized, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies }));
+              const localHard = hardRepairRequiredIssues(localIssues);
+              const localFatal = blockingNarrativeIssues(localIssues);
+              if (!localHard.length && !localFatal.length) {
+                repaired = locallySanitized;
+                repairedIssues = localIssues;
+                repairedHard = localHard;
+                repairedFatal = localFatal;
+                console.log("[character-chat] local repair shield removed unsolicited off-screen lead contact");
+              }
+            }
+          }
+
           if (originalHard.length && repairedHard.length) {
-            throw new Error(`Velvet repair still violated a protected interaction beat: ${repairedHard.join(", ")}`);
+            throw new Error("Velvet could not finish a continuity-safe reply. Please retry.");
           }
           if (!repairedFatal.length && !repairedHard.length && (originalFatal.length || originalHard.length || repairTriggerIssues(repairedIssues).length <= repairTriggerIssues(originalIssues).length)) {
             result = repaired;

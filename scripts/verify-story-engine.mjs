@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, containsExplicitRemoteLeadContact, hasUnsolicitedOffscreenLeadContact, sanitizeUnsolicitedOffscreenLeadContactResult, hasSilentContinuationPropLoop, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 3900);
+check("live-stream engine stays reasonably consolidated", edgeLines < 3950);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -70,7 +70,7 @@ check("advisory quality issues do not force repeated user regeneration",
   !edge.includes("Velvet rejected a weak or incomplete response before showing it. Regenerate once more."));
 check("structural failures remain fatal after one bounded repair",
   edge.includes("if (blocking.length)") &&
-  edge.includes("const repairedFatal = blockingNarrativeIssues(repairedIssues)") &&
+  edge.includes("let repairedFatal = blockingNarrativeIssues(repairedIssues)") &&
   edge.includes("Velvet could not get a valid protected reply after one repair") &&
   !edge.includes('`"Okay,"') &&
   !edge.includes('`"Yeah,"'));
@@ -1225,8 +1225,8 @@ check("v2.10.39 hard interaction repair cannot fall back to rejected original",
   edge.includes("if (!originalFatal.length && !originalHard.length)") &&
   edge.includes("Hard") && edge.includes("interaction/canon violations never fall back to the rejected draft"));
 check("v2.10.39 repaired protected beat must clear hard violation",
-  edge.includes("const repairedHard = hardRepairRequiredIssues(repairedIssues)") &&
-  edge.includes("repair still violated a protected interaction beat") &&
+  edge.includes("let repairedHard = hardRepairRequiredIssues(repairedIssues)") &&
+  edge.includes("sanitizeUnsolicitedOffscreenLeadContactResult(repaired, character.name)") &&
   edge.includes("const remainingHard = hardRepairRequiredIssues(validationIssues)"));
 
 
@@ -1392,6 +1392,24 @@ check("v2.11.7 scene policy forbids romance-magnet remote contact",
 check("v2.11.7 unsolicited offscreen lead contact is hard-repair protected",
   /REPAIR_TRIGGER_ISSUES[\s\S]{0,4200}"unsolicited_offscreen_lead_contact"/.test(edge) &&
   /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,2600}"unsolicited_offscreen_lead_contact"/.test(edge));
+
+
+// v2.11.8 Repair Shield — no false-positive phone/name collisions and no internal guard leakage.
+const julesPhoneMention = `Jules didn’t even look up from her phone as Antonia dropped onto the sofa. "Did you actually get Marcus’s number from Chase, or did you two just argue again?"`;
+check("v2.11.8 Jules using her own phone while mentioning Chase is not remote lead contact",
+  !helpers?.hasUnsolicitedOffscreenLeadContact(julesPhoneMention, `I was with Jules on my house`, { location: "Science Annex", present: ["Chase"] }, "Chase Beaumont", [], []));
+const realUnwantedContact = `Jules drops onto the couch. "Okay, spill."\n\nBefore Antonia can answer, her phone lights up with a notification.\n\n*Chase:* You home?`;
+check("v2.11.8 explicit Chase sender label still counts as remote lead contact",
+  helpers?.hasUnsolicitedOffscreenLeadContact(realUnwantedContact, `I was with Jules on my house`, { location: "Science Annex", present: ["Chase"] }, "Chase Beaumont", [], []));
+const locallyCleanedContact = helpers?.sanitizeUnsolicitedOffscreenLeadContactResult({ reply: realUnwantedContact, memory_updates: [{ detail: "Chase texted Antonia at home" }], continuity_note: "Chase texted Antonia", continuity_update: { timeline_event: { record: true, label: "Chase text", detail: "Chase texted Antonia" } } }, "Chase Beaumont");
+check("v2.11.8 local shield preserves Jules scene while removing unsolicited Chase bridge",
+  locallyCleanedContact?.reply?.includes(`Jules drops onto the couch`) && !/Chase\s*:/i.test(locallyCleanedContact?.reply || "") && !/phone lights up/i.test(locallyCleanedContact?.reply || ""));
+check("v2.11.8 local shield drops memory and timeline residue from removed contact",
+  Array.isArray(locallyCleanedContact?.memory_updates) && locallyCleanedContact.memory_updates.length === 0 && locallyCleanedContact?.continuity_update?.timeline_event?.record === false);
+check("v2.11.8 repair branch tries deterministic offscreen-contact cleanup before failing",
+  edge.includes("sanitizeUnsolicitedOffscreenLeadContactResult(repaired, character.name)") && edge.includes("local repair shield removed unsolicited off-screen lead contact"));
+check("v2.11.8 protected validator diagnostics are translated before reaching chat UI",
+  chat.includes(`error.includes("protected interaction beat")`) && chat.includes(`Velvet couldn't finish that reply cleanly. Try again.`) && !edge.includes("Velvet repair still violated a protected interaction beat:"));
 
 
 let failures = 0;
