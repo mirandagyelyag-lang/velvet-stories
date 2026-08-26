@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasDirectPreferenceEvasion, hasBanterReciprocityDrop, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasDirectPreferenceEvasion, hasBanterReciprocityDrop, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasSpatialProximityTeleport, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -1627,6 +1627,29 @@ check("v2.11.14 prompt bans self-management pseudo-banter",
   edge.includes("SHORT BANTER CHALLENGES REQUIRE RECIPROCITY") &&
   edge.includes("Give it a minute. I’m pacing myself") &&
   edge.includes("The line should move the exchange"));
+
+
+
+// v2.11.15 Spatial Geometry Lock — preserve pursuit, forbid unstaged intimate teleports.
+const v21115Prev = `Chase's gaze lingered on her before he stepped just close enough to narrow the space between them. "From you? Maybe."`;
+const v21115User = `*i roll my eyes and i turn to leave*`;
+const v21115Bad = `Chase didn't let her get a full step before his hand shot out, catching her wrist with just enough firm weight to halt her momentum without a pull. His thumb brushed the inner curve of her arm as he leaned in, his voice dropping into a quiet, raspy drawl right near her ear. "Running off already?"`;
+const v21115Good = `Chase caught her wrist before she got farther, then stepped after her and came up beside her instead of letting the distance open. "Running off already?"`;
+const v21115GoodIntimate = `Chase caught her wrist before she got farther, took a step after her, and came up beside her, closing the remaining gap before lowering his voice near her ear. "Running off already?"`;
+check("v2.11.15 exact wrist-to-ear teleport after turn-to-leave is rejected",
+  helpers?.hasSpatialProximityTeleport(v21115Bad, v21115User, [v21115Prev]));
+check("v2.11.15 pursuit at conversational distance remains fully allowed",
+  !helpers?.hasSpatialProximityTeleport(v21115Good, v21115User, [v21115Prev]));
+check("v2.11.15 staged step-after plus gap closure can earn intimate proximity",
+  !helpers?.hasSpatialProximityTeleport(v21115GoodIntimate, v21115User, [v21115Prev]));
+check("v2.11.15 spatial repair is hard-protected without disabling pursuit",
+  /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3000}"spatial_proximity_teleport"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,5600}"spatial_proximity_teleport"/.test(edge) &&
+  edge.includes("PURSUIT MUST SURVIVE SPATIAL CORRECTION"));
+check("v2.11.15 prompt requires staged geometry and rejects lean-only ear jumps",
+  edge.includes("SPATIAL GEOMETRY MUST BE STAGED, NOT IMPLIED") &&
+  edge.includes("A bare “leaned in” after the user turned away is not enough by itself") &&
+  edge.includes("Teleporting directly to her ear is not"));
 
 let failures = 0;
 for (const item of checks) {
