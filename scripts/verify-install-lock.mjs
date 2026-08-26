@@ -16,7 +16,7 @@ check("Vercel installs with npm ci instead of npm install", vercel.installComman
 check("baseline-browser-mapping is explicitly overridden to a published fixed version", pkg?.overrides?.["baseline-browser-mapping"] === "2.11.12");
 check("lockfile pins baseline-browser-mapping 2.11.12", baseline?.version === "2.11.12");
 check("lockfile tarball resolves to baseline-browser-mapping 2.11.12", baseline?.resolved === "https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.11.12.tgz");
-check("nonexistent baseline-browser-mapping 2.11.22 is absent from install metadata", !rawLock.includes("2.11.22") && !JSON.stringify(pkg).includes("2.11.22"));
+check("nonexistent baseline-browser-mapping 2.11.22 is absent from install metadata", baseline?.version !== "2.11.22" && pkg?.overrides?.["baseline-browser-mapping"] !== "2.11.22" && !rawLock.includes("baseline-browser-mapping-2.11.22.tgz"));
 check("package and lock root versions agree", pkg.version === lock.version && pkg.version === lock?.packages?.[""]?.version);
 
 if (failures) {
