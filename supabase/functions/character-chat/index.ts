@@ -3835,47 +3835,86 @@ async function streamGeminiEnvelopeWithFailover({
   onReset,
 }): Promise<ModelResult> {
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  let lastError = "Gemini could not generate a response";
-  let quotaReached = false;
-  // v2.11.18: optimize for time-to-first-visible-word, not time-to-perfect-envelope.
-  const deadlineAt = Date.now() + 26000;
+  if (!models.length) throw new Error("No Gemini model is configured.");
 
-  for (const model of models) {
-    if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
-    const remainingMs = deadlineAt - Date.now();
-    if (remainingMs <= 900) break;
+  // v2.11.19 NO-RETRY HEDGED START:
+  // Start the quality model first. If it stays silent, quietly launch a faster
+  // fallback in parallel. The first model that produces actual reply prose wins;
+  // slower requests are cancelled. A slow first token is never itself a user-facing
+  // failure and never clears an already visible bubble.
+  const hedgeDelays = [0, 4500, 8000];
+  const overallDeadlineMs = 36000;
+  const deadlineAt = Date.now() + overallDeadlineMs;
+  const controllers = new Map<string, AbortController>();
+  const launched = new Set<string>();
+  const finished = new Set<string>();
+  const errors: string[] = [];
+  let quotaReached = false;
+  let winnerModel = "";
+  let settled = false;
+  let launchCursor = 0;
+  let resolveResult: (result: ModelResult) => void;
+  let rejectResult: (error: Error) => void;
+
+  const resultPromise = new Promise<ModelResult>((resolve, reject) => {
+    resolveResult = resolve;
+    rejectResult = reject;
+  });
+
+  const cancelLosers = (winner: string) => {
+    for (const [model, controller] of controllers.entries()) {
+      if (model !== winner && !controller.signal.aborted) controller.abort();
+    }
+  };
+
+  const chooseWinner = (model: string) => {
+    if (winnerModel || settled) return winnerModel === model;
+    winnerModel = model;
+    onModel?.(model);
+    cancelLosers(model);
+    return true;
+  };
+
+  const maybeFinishWithoutWinner = () => {
+    if (settled || winnerModel) return;
+    const allConfiguredLaunched = launched.size >= models.length;
+    const allLaunchedFinished = [...launched].every((model) => finished.has(model));
+    if (allConfiguredLaunched && allLaunchedFinished) {
+      settled = true;
+      if (quotaReached) {
+        rejectResult(new Error("Gemini is rate-limited right now. This can be a per-minute, token, or daily project limit. Wait a little and try again."));
+      } else {
+        rejectResult(new Error(errors.at(-1) || "The AI service could not begin a reply."));
+      }
+    }
+  };
+
+  const launchNextUnstarted = () => {
+    while (launchCursor < models.length && launched.has(models[launchCursor])) launchCursor += 1;
+    if (launchCursor >= models.length) return;
+    const model = models[launchCursor++];
+    void launchAttempt(model);
+  };
+
+  const launchAttempt = async (model: string) => {
+    if (settled || winnerModel || launched.has(model)) return;
+    launched.add(model);
 
     const controller = new AbortController();
+    controllers.set(model, controller);
     let watching = true;
-    let firstReplySeen = false;
     let latestReply = "";
     let structured = "";
     let finishReason = "";
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const clearModelTimer = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = null;
-    };
-    const armFirstTokenTimer = () => {
-      clearModelTimer();
-      timeoutId = setTimeout(() => controller.abort(), Math.min(8500, Math.max(900, deadlineAt - Date.now())));
-    };
-    const armCompletionTimer = () => {
-      clearModelTimer();
-      timeoutId = setTimeout(() => controller.abort(), Math.min(20000, Math.max(1200, deadlineAt - Date.now())));
-    };
-    armFirstTokenTimer();
 
     const cancellationWatcher = (async () => {
-      while (watching && !controller.signal.aborted) {
-        await delay(300);
+      while (watching && !controller.signal.aborted && !settled) {
+        await delay(250);
         if (watching && await isCancelled()) controller.abort();
       }
     })();
 
     try {
-      onModel?.(model);
       const response = await fetch(modelStreamEndpoint(model), {
         method: "POST",
         headers: geminiHeaders(apiKey),
@@ -3896,10 +3935,9 @@ async function streamGeminiEnvelopeWithFailover({
 
       if (!response.ok || !response.body) {
         const errorText = await response.text().catch(() => "");
-        lastError = extractGeminiHttpError(errorText) || `Gemini returned ${response.status}`;
+        const message = extractGeminiHttpError(errorText) || `Gemini returned ${response.status}`;
         quotaReached ||= response.status === 429;
-        if ([429, 500, 502, 503, 504].includes(response.status)) continue;
-        throw new Error(lastError);
+        throw new Error(message);
       }
 
       const reader = response.body.getReader();
@@ -3917,14 +3955,9 @@ async function streamGeminiEnvelopeWithFailover({
           if (piece) structured += piece;
           finishReason = String(data?.candidates?.[0]?.finishReason || finishReason || "");
           const partialReply = extractPartialJsonStringField(structured, "reply");
-          if (partialReply.length > latestReply.length) {
-            latestReply = partialReply;
-            if (!firstReplySeen) {
-              firstReplySeen = true;
-              armCompletionTimer();
-            }
-            onReply?.(latestReply);
-          }
+          if (partialReply.length <= latestReply.length) continue;
+          latestReply = partialReply;
+          if (chooseWinner(model)) onReply?.(latestReply);
         }
       };
 
@@ -3943,35 +3976,82 @@ async function streamGeminiEnvelopeWithFailover({
       const envelope = parseModelEnvelope(structured);
       if (!envelope.reply && latestReply) envelope.reply = latestReply;
       if (!envelope.reply) throw new Error("Gemini returned an empty reply");
-      return { ...envelope, finishReason, model };
-    } catch (error) {
-      if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
 
-      // If real roleplay prose already reached the UI, preserve it rather than
-      // resetting the bubble and eventually surfacing a timeout Retry card.
-      if (latestReply.trim()) {
-        console.warn("[character-chat] stream ended after visible reply; salvaging live prose", {
+      if (!winnerModel) chooseWinner(model);
+      if (winnerModel === model && !settled) {
+        settled = true;
+        resolveResult({ ...envelope, finishReason, model });
+      }
+    } catch (error) {
+      if (await isCancelled()) {
+        if (!settled) {
+          settled = true;
+          rejectResult(new DOMException("Generation cancelled", "AbortError") as unknown as Error);
+        }
+        return;
+      }
+
+      const abortedBecauseAnotherModelWon = getErrorName(error) === "AbortError" && winnerModel && winnerModel !== model;
+      if (abortedBecauseAnotherModelWon) return;
+
+      // Once prose is visible, never erase it because metadata/completion was slow.
+      if (winnerModel === model && latestReply.trim() && !settled) {
+        console.warn("[character-chat] winning stream ended after visible reply; salvaging live prose", {
           model,
           reason: getErrorName(error) === "AbortError" ? "timeout" : getErrorMessage(error),
           chars: latestReply.length,
         });
         const envelope = parseModelEnvelope(JSON.stringify({ reply: latestReply.trim() }));
-        return { ...envelope, finishReason: finishReason || "LIVE_PARTIAL", model };
+        settled = true;
+        resolveResult({ ...envelope, finishReason: finishReason || "LIVE_PARTIAL", model });
+        return;
       }
 
-      if (getErrorName(error) === "AbortError") lastError = "The AI did not start quickly enough.";
-      else lastError = getErrorMessage(error);
-      // Nothing visible was emitted, so fail over quickly to the next configured model.
-      onReset?.();
+      errors.push(getErrorMessage(error));
+      // A model that fails before speaking should silently accelerate the next hedge.
+      if (!winnerModel) launchNextUnstarted();
     } finally {
-      clearModelTimer();
       watching = false;
+      finished.add(model);
       void cancellationWatcher;
+      maybeFinishWithoutWinner();
     }
-  }
+  };
 
-  if (quotaReached) throw new Error("Gemini is rate-limited right now. This can be a per-minute, token, or daily project limit. Wait a little and try again.");
-  throw new Error(lastError);
+  // Primary starts immediately. Fallbacks are hedged only when no visible prose
+  // has arrived, avoiding duplicate model usage on normal fast turns.
+  launchNextUnstarted();
+  const hedgeTimers = hedgeDelays.slice(1, models.length).map((delayMs) =>
+    setTimeout(() => {
+      if (!settled && !winnerModel) launchNextUnstarted();
+    }, delayMs)
+  );
+
+  const deadlineTimer = setTimeout(() => {
+    if (settled) return;
+    // No special "start quickly enough" failure. Cancel outstanding work and
+    // report only a genuine service timeout after every automatic hedge was tried.
+    for (const controller of controllers.values()) {
+      if (!controller.signal.aborted) controller.abort();
+    }
+    if (!winnerModel) {
+      settled = true;
+      rejectResult(new Error(errors.at(-1) || "The AI service is temporarily unavailable after automatic retries."));
+    }
+  }, Math.max(1000, deadlineAt - Date.now()));
+
+  try {
+    return await resultPromise;
+  } finally {
+    clearTimeout(deadlineTimer);
+    hedgeTimers.forEach((timer) => clearTimeout(timer));
+    for (const controller of controllers.values()) {
+      if (!controller.signal.aborted) controller.abort();
+    }
+    // This callback remains for compatibility with older callers, but a hedge
+    // never resets visible prose because only the winning model is ever streamed.
+    void onReset;
+  }
 }
 function roleplayResponseSchema() {
   return {

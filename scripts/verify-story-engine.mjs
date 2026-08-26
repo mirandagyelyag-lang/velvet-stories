@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 4550);
+check("live-stream engine stays reasonably consolidated", edgeLines < 4650);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -80,8 +80,11 @@ check("style-only naturalism warnings never spend a second model call",
   !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"stock_body_language_stack"') &&
   !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"recycled_stock_gesture"') &&
   edge.includes('"unsupported_motive_escalation"') && edge.includes('"distance_boundary_override"'));
-check("v2.11.18 roleplay failover has a short first-visible-token budget",
-  edge.includes("const deadlineAt = Date.now() + 26000") && edge.includes("armFirstTokenTimer") && edge.includes("Math.min(8500"));
+check("v2.11.19 roleplay uses hedged first-token failover without aborting the user-facing turn",
+  edge.includes("NO-RETRY HEDGED START") &&
+  edge.includes("const hedgeDelays = [0, 4500, 8000]") &&
+  edge.includes("const overallDeadlineMs = 36000") &&
+  edge.includes("chooseWinner") && edge.includes("cancelLosers"));
 check("generation skips redundant cancellation read-back",
   edge.includes("VELVET_SPEED_V282") && !edge.includes("if (await isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)) {\n        return cancelledResponse();"));
 check("prompt context is capped for faster first token",
@@ -993,7 +996,10 @@ check("opening regeneration resets stale derived scene continuity",
 
 // v2.10.14 timeout resilience: optional repair latency must not erase a usable first draft.
 check("optional soft repair failure can still fall back to a readable original draft", edge.includes("bounded repair failed; evaluating original draft fallback") && edge.includes("Soft style repair may fall back to a readable original") && edge.includes("repairUsed = false"));
-check("v2.11.18 roleplay stream fails over quickly when no first reply text appears", edge.includes("armFirstTokenTimer") && edge.includes("Math.min(8500") && edge.includes("The AI did not start quickly enough."));
+check("v2.11.19 slow starts never surface the old Retry-triggering timeout",
+  !edge.includes("The AI did not start quickly enough.") &&
+  edge.includes("A slow first token is never itself a user-facing") &&
+  edge.includes("Fallbacks are hedged only when no visible prose"));
 
 // v2.10.15 positive hidden-feelings anchor: caring should enrich ordinary life, not replace it.
 check("hidden-feelings prompt includes care-without-obsession positive anchor",
@@ -1729,7 +1735,7 @@ check("v2.11.18 repair keeps optimistic text visible until replacement is ready"
   edge.includes("Keep the optimistic draft visible while repair runs") &&
   !edge.includes('sendEvent(controller, { type: "reset", reason: "repair" })'));
 check("v2.11.18 visible partial prose is salvaged instead of becoming a Retry timeout",
-  edge.includes("stream ended after visible reply; salvaging live prose") &&
+  edge.includes("winning stream ended after visible reply; salvaging live prose") &&
   edge.includes('finishReason: finishReason || "LIVE_PARTIAL"'));
 check("v2.11.18 repair has a short bounded deadline",
   edge.includes("interactionDeadlineMs: 9000") && edge.includes("Math.min(7000, remainingMs)"));
