@@ -68,12 +68,11 @@ check("advisory quality issues do not force repeated user regeneration",
   edge.includes("blockingNarrativeIssues") &&
   edge.includes("if (blocking.length)") &&
   !edge.includes("Velvet rejected a weak or incomplete response before showing it. Regenerate once more."));
-check("structural failures remain fatal after one bounded repair",
+check("v2.11.18 structural validation keeps one repair but fails soft after readable prose",
   edge.includes("if (blocking.length)") &&
   edge.includes("const repairedFatal = blockingNarrativeIssues(repairedIssues)") &&
-  edge.includes("Velvet could not get a valid protected reply after one repair") &&
-  !edge.includes('`"Okay,"') &&
-  !edge.includes('`"Yeah,"'));
+  edge.includes("protected reply remained imperfect; keeping readable live reply") &&
+  !edge.includes("Velvet could not get a valid protected reply after one repair"));
 check("continuity metadata never spends a second model call",
   edge.includes("VELVET_SPEED_REPAIR_BUDGET_V282") &&
   !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes("...CONTINUITY_GUARD_ISSUES"));
@@ -81,8 +80,8 @@ check("style-only naturalism warnings never spend a second model call",
   !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"stock_body_language_stack"') &&
   !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes('"recycled_stock_gesture"') &&
   edge.includes('"unsupported_motive_escalation"') && edge.includes('"distance_boundary_override"'));
-check("roleplay failover has one bounded interaction deadline",
-  edge.includes("VELVET_ROLEPLAY_DEADLINE_V282") && edge.includes("const deadlineAt = Date.now() + 38000") && edge.includes("Math.min(24000, remainingMs)"));
+check("v2.11.18 roleplay failover has a short first-visible-token budget",
+  edge.includes("const deadlineAt = Date.now() + 26000") && edge.includes("armFirstTokenTimer") && edge.includes("Math.min(8500"));
 check("generation skips redundant cancellation read-back",
   edge.includes("VELVET_SPEED_V282") && !edge.includes("if (await isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)) {\n        return cancelledResponse();"));
 check("prompt context is capped for faster first token",
@@ -994,7 +993,7 @@ check("opening regeneration resets stale derived scene continuity",
 
 // v2.10.14 timeout resilience: optional repair latency must not erase a usable first draft.
 check("optional soft repair failure can still fall back to a readable original draft", edge.includes("bounded repair failed; evaluating original draft fallback") && edge.includes("Soft style repair may fall back to a readable original") && edge.includes("repairUsed = false"));
-check("roleplay stream allows a realistic model startup window", edge.includes("Date.now() + 38000") && edge.includes("Math.min(24000, remainingMs)"));
+check("v2.11.18 roleplay stream fails over quickly when no first reply text appears", edge.includes("armFirstTokenTimer") && edge.includes("Math.min(8500") && edge.includes("The AI did not start quickly enough."));
 
 // v2.10.15 positive hidden-feelings anchor: caring should enrich ordinary life, not replace it.
 check("hidden-feelings prompt includes care-without-obsession positive anchor",
@@ -1216,10 +1215,10 @@ check("v2.10.39 hot departure turn is quarantined before visible streaming",
   helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `*i stay quiet but i walk*`, turnIntent: { kind: "user_exit" }, recentUserMessages: chasePreDepartureUsers, recentCharacterReplies: chasePreDepartureReplies, character: chaseTensionControls }));
 check("v2.10.39 ordinary low-risk turn keeps fast foreground streaming",
   !helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: `What class do you have next?`, turnIntent: { kind: "direct_question" }, recentUserMessages: [], recentCharacterReplies: [], character: chaseTensionControls }));
-check("v2.10.39 guarded drafts are not emitted before validation",
-  edge.includes("const guardedDraft = shouldBufferDraftUntilValidated") &&
+check("v2.11.18 visible drafts are never quarantined before validation",
+  edge.includes("const guardedDraft = false") &&
   edge.includes("if (!guardedDraft && delta)") &&
-  edge.includes("if (guardedDraft && !blocking.length)"));
+  edge.includes("INSTANT LIVE REPLY"));
 check("v2.10.39 hard interaction repair cannot fall back to rejected original",
   edge.includes("const originalHard = hardRepairRequiredIssues(originalIssues)") &&
   edge.includes("if (!originalFatal.length && !originalHard.length)") &&
@@ -1723,6 +1722,20 @@ check("v2.11.17 prompt treats corrections as retroactive canon and preserves sta
   edge.includes("BODY STATE MUST EXIST BEFORE IT CHANGES") &&
   edge.includes("PERSONALITY STANCE SURVIVES SMALL CORRECTIONS") &&
   edge.includes("CANON CORRECTION TURN"));
+
+
+// v2.11.18 Instant Live Reply — latency must never erase readable prose.
+check("v2.11.18 repair keeps optimistic text visible until replacement is ready",
+  edge.includes("Keep the optimistic draft visible while repair runs") &&
+  !edge.includes('sendEvent(controller, { type: "reset", reason: "repair" })'));
+check("v2.11.18 visible partial prose is salvaged instead of becoming a Retry timeout",
+  edge.includes("stream ended after visible reply; salvaging live prose") &&
+  edge.includes('finishReason: finishReason || "LIVE_PARTIAL"'));
+check("v2.11.18 repair has a short bounded deadline",
+  edge.includes("interactionDeadlineMs: 9000") && edge.includes("Math.min(7000, remainingMs)"));
+check("v2.11.18 failed repair keeps the best live draft instead of aborting",
+  edge.includes("A repair timeout must never erase prose the user is already reading") &&
+  edge.includes("repair-timeout-fallback"));
 
 let failures = 0;
 for (const item of checks) {

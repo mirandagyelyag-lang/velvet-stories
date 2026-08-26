@@ -1089,6 +1089,7 @@ async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issue
     maxOutputTokens: getMaximumOutputTokens(character.response_length),
     temperature: Math.min(1.05, getTemperature(character.creativity, true) + 0.06),
     isCancelled,
+    interactionDeadlineMs: 9000,
   });
 }
 
@@ -1099,17 +1100,21 @@ async function callGeminiWithFailover({
   maxOutputTokens,
   temperature,
   isCancelled,
+  interactionDeadlineMs = 26000,
 }): Promise<ModelResult> {
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
   let lastError = "Gemini could not generate a response";
   let quotaReached = false;
+  const deadlineAt = Date.now() + Math.max(6000, Number(interactionDeadlineMs) || 26000);
 
   for (const model of models) {
     if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs <= 900) break;
 
     const controller = new AbortController();
     let watching = true;
-    const timeoutId = setTimeout(() => controller.abort(), 34000);
+    const timeoutId = setTimeout(() => controller.abort(), Math.min(7000, remainingMs));
     const cancellationWatcher = (async () => {
       while (watching && !controller.signal.aborted) {
         await delay(180);
@@ -3526,7 +3531,20 @@ async function streamRoleplayV19({
       let repairUsed = false;
       let streamedReply = "";
       let modelDraftReply = "";
-      const guardedDraft = shouldBufferDraftUntilValidated({ latestUserMessage, turnIntent, recentUserMessages, recentCharacterReplies, character });
+      const streamFinalReply = async (reply = "", reason = "finalize") => {
+        const clean = String(reply || "");
+        if (!clean || streamedReply === clean) return;
+        if (streamedReply) sendEvent(controller, { type: "reset", reason });
+        streamedReply = "";
+        for (const chunk of splitForStreaming(clean)) {
+          if (await isCancelled()) return;
+          streamedReply += chunk;
+          sendEvent(controller, { type: "chunk", content: chunk });
+        }
+      };
+      // v2.11.18 INSTANT LIVE REPLY: foreground prose always paints optimistically.
+      // Guards still validate and may replace the draft, but never quarantine first text.
+      const guardedDraft = false;
       try {
         // Flush headers/UI state before the model has finished its first token.
         sendEvent(controller, {
@@ -3599,8 +3617,8 @@ async function streamRoleplayV19({
         if (blocking.length) {
           console.log("[character-chat] bounded repair started", { issues: blocking, firstDraftDurationMs });
           repairUsed = true;
-          if (!guardedDraft) sendEvent(controller, { type: "reset", reason: "repair" });
-          streamedReply = "";
+          // Keep the optimistic draft visible while repair runs. Swap only once the
+          // replacement is ready, so repair latency never becomes an empty wait state.
           let repaired: ModelResult | null = null;
           let repairFailure = "";
           try {
@@ -3631,13 +3649,13 @@ async function streamRoleplayV19({
               validationIssues = originalIssues;
               repairUsed = false;
               ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
-              for (const chunk of splitForStreaming(result.reply)) {
-                if (await isCancelled()) return;
-                sendEvent(controller, { type: "chunk", content: chunk });
-              }
-              streamedReply = result.reply;
+              await streamFinalReply(result.reply, "soft-repair-fallback");
             } else {
-              throw new Error(repairFailure || "Velvet could not repair an incomplete reply. Try again.");
+              // A repair timeout must never erase prose the user is already reading.
+              result = originalResult;
+              validationIssues = originalIssues;
+              ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
+              await streamFinalReply(result.reply, "repair-timeout-fallback");
             }
           } else {
           const repairedIssues = validateNarrativeReply(repaired.reply, {
@@ -3673,21 +3691,13 @@ async function streamRoleplayV19({
             validationIssues = repairedIssues;
           }
           ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
-          for (const chunk of splitForStreaming(result.reply)) {
-            if (await isCancelled()) return;
-            sendEvent(controller, { type: "chunk", content: chunk });
-          }
-          streamedReply = result.reply;
+          await streamFinalReply(result.reply, "repair-ready");
           }
         }
 
         if (guardedDraft && !blocking.length) {
-          // The first draft stayed invisible until validation accepted it.
-          for (const chunk of splitForStreaming(result.reply)) {
-            if (await isCancelled()) return;
-            sendEvent(controller, { type: "chunk", content: chunk });
-          }
-          streamedReply = result.reply;
+          // Legacy diagnostic path only. Runtime foreground streaming is never quarantined.
+          await streamFinalReply(result.reply, "legacy-guard-finalize");
         }
 
         let remainingHard = hardRepairRequiredIssues(validationIssues);
@@ -3696,7 +3706,12 @@ async function streamRoleplayV19({
           remainingHard = hardRepairRequiredIssues(validationIssues);
         }
         if (blockingNarrativeIssues(validationIssues).length || remainingHard.length) {
-          throw new Error(`Velvet could not get a valid protected reply after one repair${remainingHard.length ? `: ${remainingHard.join(", ")}` : "."}`);
+          // Once readable prose exists, validators fail soft instead of turning the
+          // interaction into a Retry card. Keep the best sanitized live result.
+          console.warn("[character-chat] protected reply remained imperfect; keeping readable live reply", {
+            blocking: blockingNarrativeIssues(validationIssues),
+            hard: remainingHard,
+          });
         }
         if (await isCancelled()) return;
         if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
@@ -3822,21 +3837,39 @@ async function streamGeminiEnvelopeWithFailover({
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
   let lastError = "Gemini could not generate a response";
   let quotaReached = false;
-  let emittedAnyReply = false;
-  // VELVET_ROLEPLAY_DEADLINE_V282: cap failover as one interaction budget
-  // instead of allowing every fallback model to consume a full 26 seconds.
-  const deadlineAt = Date.now() + 38000;
+  // v2.11.18: optimize for time-to-first-visible-word, not time-to-perfect-envelope.
+  const deadlineAt = Date.now() + 26000;
 
   for (const model of models) {
     if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
     const remainingMs = deadlineAt - Date.now();
-    if (remainingMs <= 1200) break;
+    if (remainingMs <= 900) break;
+
     const controller = new AbortController();
     let watching = true;
-    const timeoutId = setTimeout(() => controller.abort(), Math.min(24000, remainingMs));
+    let firstReplySeen = false;
+    let latestReply = "";
+    let structured = "";
+    let finishReason = "";
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const clearModelTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = null;
+    };
+    const armFirstTokenTimer = () => {
+      clearModelTimer();
+      timeoutId = setTimeout(() => controller.abort(), Math.min(8500, Math.max(900, deadlineAt - Date.now())));
+    };
+    const armCompletionTimer = () => {
+      clearModelTimer();
+      timeoutId = setTimeout(() => controller.abort(), Math.min(20000, Math.max(1200, deadlineAt - Date.now())));
+    };
+    armFirstTokenTimer();
+
     const cancellationWatcher = (async () => {
       while (watching && !controller.signal.aborted) {
-        await delay(360);
+        await delay(300);
         if (watching && await isCancelled()) controller.abort();
       }
     })();
@@ -3872,9 +3905,6 @@ async function streamGeminiEnvelopeWithFailover({
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let sseBuffer = "";
-      let structured = "";
-      let latestReply = "";
-      let finishReason = "";
 
       const consumeEvent = (rawEvent) => {
         const lines = rawEvent.split("\n").filter((line) => line.startsWith("data:"));
@@ -3889,7 +3919,10 @@ async function streamGeminiEnvelopeWithFailover({
           const partialReply = extractPartialJsonStringField(structured, "reply");
           if (partialReply.length > latestReply.length) {
             latestReply = partialReply;
-            emittedAnyReply = true;
+            if (!firstReplySeen) {
+              firstReplySeen = true;
+              armCompletionTimer();
+            }
             onReply?.(latestReply);
           }
         }
@@ -3913,14 +3946,25 @@ async function streamGeminiEnvelopeWithFailover({
       return { ...envelope, finishReason, model };
     } catch (error) {
       if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
-      if (emittedAnyReply) {
-        emittedAnyReply = false;
-        onReset?.();
+
+      // If real roleplay prose already reached the UI, preserve it rather than
+      // resetting the bubble and eventually surfacing a timeout Retry card.
+      if (latestReply.trim()) {
+        console.warn("[character-chat] stream ended after visible reply; salvaging live prose", {
+          model,
+          reason: getErrorName(error) === "AbortError" ? "timeout" : getErrorMessage(error),
+          chars: latestReply.length,
+        });
+        const envelope = parseModelEnvelope(JSON.stringify({ reply: latestReply.trim() }));
+        return { ...envelope, finishReason: finishReason || "LIVE_PARTIAL", model };
       }
-      if (getErrorName(error) === "AbortError") lastError = "The AI took too long to answer. Please try again.";
+
+      if (getErrorName(error) === "AbortError") lastError = "The AI did not start quickly enough.";
       else lastError = getErrorMessage(error);
+      // Nothing visible was emitted, so fail over quickly to the next configured model.
+      onReset?.();
     } finally {
-      clearTimeout(timeoutId);
+      clearModelTimer();
       watching = false;
       void cancellationWatcher;
     }
