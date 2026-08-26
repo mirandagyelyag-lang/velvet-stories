@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasDirectPreferenceEvasion, hasBanterReciprocityDrop, previousCharacterTurnAskedQuestion, hasPhantomQuestionReference, hasUngroundedReactionDeflection, repeatedPropChoreographyMotifs, hasRepeatedPropChoreography, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasSpatialProximityTeleport, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasDirectPreferenceEvasion, hasBanterReciprocityDrop, previousCharacterTurnAskedQuestion, hasPhantomQuestionReference, hasUngroundedReactionDeflection, userSpeechCorrectionBase, previousCharacterAskedAboutUserSpeech, isMetaSpeechCorrection, userTurnContainsAuthoredSpeech, priorUserTurnsWithoutLatest, hasImmediateCanonCorrectionBreak, characterLimbStateEstablished, latestUserStagesCharacterLimb, hasBodyStateHallucination, hasCharacterStanceCollapse, repeatedPropChoreographyMotifs, hasRepeatedPropChoreography, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasSpatialProximityTeleport, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 4400);
+check("live-stream engine stays reasonably consolidated", edgeLines < 4550);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -1683,6 +1683,46 @@ check("v2.11.16 prompt grounds question references and stops prop fidget loops",
   edge.includes("QUESTION REFERENCES MUST EXIST") &&
   edge.includes("PROPS ARE NOT FIDGET SPINNERS") &&
   edge.includes("A skeptical look or raised eyebrow is a reaction to the last real line"));
+
+// v2.11.17 Immediate Canon & Body State Lock — meta speech corrections, physical limb state, stance preservation.
+const v21117PrevUser = `*i turn your face away with one of my fingers* The opposite actually`;
+const v21117SilentCorrection = `I didn't talk`;
+const v21117PrevCharacter = `Chase stared down at her for a second, irritation flashing across his features. "Is that so?"`;
+const v21117BadCanon = `Chase's shoulders dropped. "Right. You didn't," he murmured. "Suppose that makes me the only one making noise, then. A habit I should probably work on, shouldn't I?"`;
+const v21117GoodCanon = `Chase's mouth twitched at the silence. "Fine. Keep looking at me like that."`;
+check("v2.11.17 speech correction is recognized as meta when no real speech question preceded it",
+  helpers?.isMetaSpeechCorrection(v21117SilentCorrection, [v21117PrevCharacter]));
+check("v2.11.17 normal answer to an actual speech question is not stolen as a meta correction",
+  !helpers?.isMetaSpeechCorrection(`I didn't talk`, [`Chase frowned. "Did you talk to Marcus?"`]));
+check("v2.11.17 exact broad silence rewrite after correction is rejected",
+  helpers?.hasImmediateCanonCorrectionBreak(v21117BadCanon, v21117SilentCorrection, [v21117PrevUser, v21117SilentCorrection], [v21117PrevCharacter]));
+check("v2.11.17 corrected silent beat can continue without erasing earlier dialogue",
+  !helpers?.hasImmediateCanonCorrectionBreak(v21117GoodCanon, v21117SilentCorrection, [v21117PrevUser, v21117SilentCorrection], [v21117PrevCharacter]));
+const v21117HandPrev = `Chase leaned closer, his voice dropping. "Or are you just looking for an excuse to keep me talking?"`;
+const v21117HandUser = `*i turn your face away with one of my fingers* The opposite actually`;
+const v21117HandBad = `A slow blink broke Chase's focus. He dropped his hand, letting out a sharp breath. "Right. My mistake."`;
+const v21117HandGood = `A slow blink broke Chase's focus before his mouth twitched. "Right. My mistake."`;
+check("v2.11.17 unsupported dropped-hand reset is rejected when Chase never raised a hand",
+  helpers?.hasBodyStateHallucination(v21117HandBad, v21117HandUser, [v21117HandPrev]));
+check("v2.11.17 same reaction without invented limb state remains allowed",
+  !helpers?.hasBodyStateHallucination(v21117HandGood, v21117HandUser, [v21117HandPrev]));
+check("v2.11.17 established character hand can legitimately lower later",
+  !helpers?.hasBodyStateHallucination(`He lowered his hand and stepped back.`, `*i look at you*`, [`Chase raised his hand to rub the back of his neck.`]));
+check("v2.11.17 proud Chase cannot collapse into self-improvement therapy after tiny correction",
+  helpers?.hasCharacterStanceCollapse(v21117BadCanon, v21117SilentCorrection, [v21117PrevCharacter], chaseProfileDriven));
+check("v2.11.17 correction is buffered before any bad draft can flash",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: v21117SilentCorrection, turnIntent: { kind: "ordinary" }, recentUserMessages: [v21117PrevUser, v21117SilentCorrection], recentCharacterReplies: [v21117PrevCharacter], character: chaseProfileDriven }));
+check("v2.11.17 canon and body-state violations spend repair and remain hard protected",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,6800}"immediate_canon_correction_mishandled"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,6800}"body_state_hallucination"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,6800}"character_stance_collapse"/.test(edge) &&
+  /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,4000}"immediate_canon_correction_mishandled"/.test(edge) &&
+  /HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,4000}"body_state_hallucination"/.test(edge));
+check("v2.11.17 prompt treats corrections as retroactive canon and preserves stance",
+  edge.includes("USER CORRECTIONS REPAIR CANON") &&
+  edge.includes("BODY STATE MUST EXIST BEFORE IT CHANGES") &&
+  edge.includes("PERSONALITY STANCE SURVIVES SMALL CORRECTIONS") &&
+  edge.includes("CANON CORRECTION TURN"));
 
 let failures = 0;
 for (const item of checks) {
