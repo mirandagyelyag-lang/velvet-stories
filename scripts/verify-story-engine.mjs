@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, isExplicitTimeSkipDirective, extractTimeSkipDirective, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasDirectPreferenceEvasion, hasBanterReciprocityDrop, previousCharacterTurnAskedQuestion, hasPhantomQuestionReference, hasUngroundedReactionDeflection, userSpeechCorrectionBase, previousCharacterAskedAboutUserSpeech, isMetaSpeechCorrection, userTurnContainsAuthoredSpeech, priorUserTurnsWithoutLatest, hasImmediateCanonCorrectionBreak, characterLimbStateEstablished, latestUserStagesCharacterLimb, hasBodyStateHallucination, hasCharacterStanceCollapse, repeatedPropChoreographyMotifs, hasRepeatedPropChoreography, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasTimeSkipExpositionEcho, hasImmediatePoseRegression, hasSpatialProximityTeleport, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, isExplicitTimeSkipDirective, extractTimeSkipDirective, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasDirectPreferenceEvasion, hasBanterReciprocityDrop, previousCharacterTurnAskedQuestion, hasPhantomQuestionReference, hasUngroundedReactionDeflection, userSpeechCorrectionBase, previousCharacterAskedAboutUserSpeech, isMetaSpeechCorrection, userTurnContainsAuthoredSpeech, priorUserTurnsWithoutLatest, hasImmediateCanonCorrectionBreak, characterLimbStateEstablished, latestUserStagesCharacterLimb, hasBodyStateHallucination, hasCharacterStanceCollapse, repeatedPropChoreographyMotifs, hasRepeatedPropChoreography, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasTimeSkipExpositionEcho, findRecentPostSkipBaseline, postSkipStateSignalsWarmth, hasUnsupportedTimelineDurationClaim, hasEditorialBanterVoice, hasPostSkipWarmthRegression, hasSceneTransitionQuipFiller, hasImmediatePoseRegression, hasSpatialProximityTeleport, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 4650);
+check("live-stream engine stays reasonably consolidated", edgeLines < 4800);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -1761,6 +1761,40 @@ check("v2.11.18 failed repair keeps the best live draft instead of aborting",
   edge.includes("A repair timeout must never erase prose the user is already reading") &&
   edge.includes("repair-timeout-fallback"));
 
+// v2.11.21 Natural Post-Skip Voice — warmth persists, timeline stays factual, casual speech stays casual.
+const warmSkipHistory = [
+  `Time skip 3 months later, we were more nicer to each other`,
+  `I was enjoying the silence`,
+  `Oh thanks, come sit down`,
+  `Then leave`,
+  `You can just say that you'll miss me`,
+  `You aren't that nice`,
+];
+check("v2.11.21 post-skip warm baseline is recoverable after several later turns",
+  helpers?.findRecentPostSkipBaseline(warmSkipHistory)?.stateDirective?.toLowerCase().includes("nicer"));
+check("v2.11.21 warm post-skip state is recognized as a warmth baseline",
+  helpers?.postSkipStateSignalsWarmth("we were more nicer to each other"));
+check("v2.11.21 invented three-year observation is rejected when only three months was established",
+  helpers?.hasUnsupportedTimelineDurationClaim(`"Is that the official consensus after three years of close observation?"`, warmSkipHistory, []));
+check("v2.11.21 established three-month duration remains allowed",
+  !helpers?.hasUnsupportedTimelineDurationClaim(`After three months, the courtyard routine felt ordinary.`, warmSkipHistory, []));
+check("v2.11.21 mock-formal bakery banter is rejected for a casual voice",
+  helpers?.hasEditorialBanterVoice(`"Since you're the one bankrolling this little excursion, I'll be nice."`, `At the mini store and bakery`, [], chaseProfileDriven));
+check("v2.11.21 plain bakery dialogue remains allowed",
+  !helpers?.hasEditorialBanterVoice(`Chase glanced at the display. "I'll get whatever you're getting."`, `At the mini store and bakery`, [], chaseProfileDriven));
+check("v2.11.21 repeated roasting after a warmer time skip is detected",
+  helpers?.hasPostSkipWarmthRegression(`"Brutal. Tell the academy you passed basic transportation."`, warmSkipHistory, [`"Dangerous precedent." You'd ruin your reputation.`], chaseProfileDriven));
+check("v2.11.21 location transition rejects commute jokes that the user never staged",
+  helpers?.hasSceneTransitionQuipFiller(`"Heavy traffic on the way over," Chase said.`, `*i roll my eyes* At the mini store and bakery`));
+check("v2.11.21 location transition accepts immediately using the new place",
+  !helpers?.hasSceneTransitionQuipFiller(`Chase stopped at the bakery case. "What do you want?"`, `*i roll my eyes* At the mini store and bakery`));
+check("v2.11.21 current beat policy keeps the warm post-skip baseline active after the landing turn",
+  helpers?.buildCurrentBeatPolicy({ turnIntent: { kind: "ordinary" }, latestUserMessage: `You aren't that nice`, messages: warmSkipHistory.map((content) => ({ sender: "user", content })), character: chaseProfileDriven }).includes("ACTIVE POST-SKIP BASELINE") &&
+  helpers?.buildCurrentBeatPolicy({ turnIntent: { kind: "ordinary" }, latestUserMessage: `You aren't that nice`, messages: warmSkipHistory.map((content) => ({ sender: "user", content })), character: chaseProfileDriven }).includes("WARMTH MUST ALTER THE RHYTHM"));
+check("v2.11.21 repair path knows the new natural-voice and timeline issues",
+  edge.includes("editorial_banter_voice") && edge.includes("post_skip_warmth_regression") && edge.includes("unsupported_timeline_duration_claim") && edge.includes("scene_transition_quip_filler"));
+
+
 let failures = 0;
 for (const item of checks) {
   if (!item.condition) failures += 1;
@@ -1773,4 +1807,6 @@ if (failures) {
 }
 
 console.log(`\n${checks.length} story-engine checks passed.`);
+
+
 

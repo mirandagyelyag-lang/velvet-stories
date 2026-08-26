@@ -1,3 +1,3 @@
-export const VELVET_VERSION = "2.11.20";
-export const VELVET_RELEASE = "Implicit Time Skip";
-export const VELVET_BUILD_TIME = "2026-08-26T07:25:00.000-04:00";
+export const VELVET_VERSION = "2.11.21";
+export const VELVET_RELEASE = "Natural Post-Skip Voice";
+export const VELVET_BUILD_TIME = "2026-08-26T11:20:00.000-04:00";
