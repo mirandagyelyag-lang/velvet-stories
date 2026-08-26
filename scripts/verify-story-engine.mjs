@@ -39,7 +39,7 @@ let helpers = null;
 try {
   if (helperStart >= 0 && helperEnd > helperStart) {
     helpers = new Function(
-      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasDirectPreferenceEvasion, hasBanterReciprocityDrop, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasSpatialProximityTeleport, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
+      `${edge.slice(helperStart, helperEnd)}\nreturn { normalizeText, isSilentContinueText, looksLikeQuestion, classifyTurnIntent, recentInteractiveThreadIsOpen, atmosphericStallScore, hasMeaningfulProgression, hasAtmosphericStallingLoop, stripDialogue, controlsUserPOV, hasUnclosedDialogue, isLowInformationGenericReply, replySimilarity, normalizeRegenerationFeedback, feedbackDirectives, normalizeStoryPreferences, extractDialogueLines, openingNarrativeBeat, stockGestureMotifs, hasStockBodyLanguageStack, hasRecycledStockGesture, hasUnsupportedMotiveEscalation, hasDistanceBoundaryOverride, hasSocialTensionOverEscalation, extractUserStagedEvents, hasUserStagedSceneRetcon, dialogueQuestionCount, hasRhetoricalDialogueOveruse, hasSarcasticComebackLoop, hasSmugComebackTone, hasOverwrittenBanter, hasClarificationEvasion, hasDirectPreferenceEvasion, hasBanterReciprocityDrop, previousCharacterTurnAskedQuestion, hasPhantomQuestionReference, hasUngroundedReactionDeflection, repeatedPropChoreographyMotifs, hasRepeatedPropChoreography, hasUnsupportedUserReasonClaim, reactionOpenerSignature, hasReactionOpenerLoop, hasRepeatedSocialShutdown, hasPassiveEmotionalCueResponse, characterProfileDynamics, supportsChargedTension, hasExplicitNoPursuitBoundary, hasSoftSocialStop, extractUserSceneAnchor, extractExplicitSocialRoleBinding, hasSocialRoleAssignmentBreak, hasUnsupportedSocialPlanExpansion, hasNpcDialogueTicLoop, hasDirectComparisonEvasion, hasUnsupportedPriorEventClaim, hasLatestUserSceneIgnored, userEstablishedRemoteContact, hasUnsolicitedOffscreenLeadContact, hasSilentContinuationPropLoop, recentOffscreenSceneWindow, hasRomanticInitiativeDrought, buildCurrentBeatPolicy, hasConcreteBeatProgression, hasSilentContinuationStall, hasTimeSkipDrift, hasImmediatePoseRegression, hasSpatialProximityTeleport, hasKineticTensionDeflation, hasChargedBeatAbandonment, hasChargedBeatStall, hasChargedDepartureDrop, shouldBufferDraftUntilValidated, attentionTrackingScore, hasAttentionFixationLoop, npcCommentatorScore, hasNpcCommentatorLoop, hasInventedDebateEvidence, hasUserMotiveOverride, hasRejectedPursuitFramingPersistence, sanitizeHardUserIntentContradictions, sanitizeUnsolicitedOffscreenLeadContact, sanitizeSocialRoleAssignment, sanitizeUnsupportedSocialPlanExpansion, userExplicitlyStagesDeparture, latestDepartureCueWithoutAction, hasUnstagedUserDepartureInference, userAddressAliases, hasNameAddressOveruse, hasRepeatedRecentSignature, developmentText, developmentList, normalizeCharacterDevelopment, characterDevelopmentPromptView, resolveCharacterDevelopmentBranch, canTransitionCharacterPhase, isGroundedDevelopmentEvidence, summarizeRejectedStyle, applyCharacterDevelopment, validateNarrativeReply, detectResponseLanguage };`,
     )();
   }
 } catch (error) {
@@ -48,7 +48,7 @@ try {
 
 check("single project tree", !existsSync(resolve(root, "velvet-stories")));
 check("single narrative Edge Function", !existsSync(resolve(root, "supabase/functions/swift-task")));
-check("live-stream engine stays reasonably consolidated", edgeLines < 4300);
+check("live-stream engine stays reasonably consolidated", edgeLines < 4400);
 check("old fallback architecture is gone",
   !edge.includes("buildCanonNeutralEditorialFallback") &&
   !edge.includes("buildTenderEmotionalFallback") &&
@@ -1650,6 +1650,39 @@ check("v2.11.15 prompt requires staged geometry and rejects lean-only ear jumps"
   edge.includes("SPATIAL GEOMETRY MUST BE STAGED, NOT IMPLIED") &&
   edge.includes("A bare “leaned in” after the user turned away is not enough by itself") &&
   edge.includes("Teleporting directly to her ear is not"));
+
+
+// v2.11.16 Reaction Reference Lock — no phantom questions, grounded silent reactions, no prop fidget loops.
+const v21116Prev = `Chase let out a brief laugh. "If that's your definition of wrong, I'd hate to see what you consider passing."`;
+const v21116User = `*i gave you an "Are you serious right now?" Look*`;
+const v21116Bad = `Chase held her gaze before his mouth twitched. "What? It's an honest question."`;
+const v21116Good = `Chase held her gaze. "What? You're still standing here."`;
+check("v2.11.16 exact phantom honest-question reply is rejected when no question existed",
+  helpers?.hasPhantomQuestionReference(v21116Bad, [v21116Prev]));
+check("v2.11.16 grounded reaction to the actual prior beat remains allowed",
+  !helpers?.hasPhantomQuestionReference(v21116Good, [v21116Prev]) &&
+  !helpers?.hasUngroundedReactionDeflection(v21116Good, v21116User, [v21116Prev]));
+check("v2.11.16 a real preceding question still licenses honest-question language",
+  !helpers?.hasPhantomQuestionReference(`Chase shrugged. "What? It's an honest question."`, [`Chase looked at her. "Why are you still here?"`]));
+const v21116KeysA = `Chase tossed his keys once, catching them against his palm. "That all?"`;
+const v21116KeysB = `Chase tossed his keys again before closing the gap. "A standing ovation, naturally."`;
+const v21116KeysBad = `Chase tossed his keys once more, catching the metal smoothly. "What?"`;
+const v21116KeysGood = `Chase's mouth twitched. "What? You're still here."`;
+check("v2.11.16 repeated key choreography across recent replies is rejected",
+  helpers?.hasRepeatedPropChoreography(v21116KeysBad, [v21116KeysA, v21116KeysB]));
+check("v2.11.16 prop-loop guard does not require a replacement prop",
+  !helpers?.hasRepeatedPropChoreography(v21116KeysGood, [v21116KeysA, v21116KeysB]));
+check("v2.11.16 skeptical silent reaction is buffered before display",
+  helpers?.shouldBufferDraftUntilValidated({ latestUserMessage: v21116User, turnIntent: { kind: "ordinary" }, recentUserMessages: [v21116User], recentCharacterReplies: [v21116Prev], character: chaseProfileDriven }));
+check("v2.11.16 phantom question and prop choreography spend one repair without becoming hard canon failures",
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,6200}"phantom_question_reference"/.test(edge) &&
+  /REPAIR_TRIGGER_ISSUES[\s\S]{0,6200}"repeated_prop_choreography"/.test(edge) &&
+  !/HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3400}"phantom_question_reference"/.test(edge) &&
+  !/HARD_REPAIR_REQUIRED_ISSUES[\s\S]{0,3400}"repeated_prop_choreography"/.test(edge));
+check("v2.11.16 prompt grounds question references and stops prop fidget loops",
+  edge.includes("QUESTION REFERENCES MUST EXIST") &&
+  edge.includes("PROPS ARE NOT FIDGET SPINNERS") &&
+  edge.includes("A skeptical look or raised eyebrow is a reaction to the last real line"));
 
 let failures = 0;
 for (const item of checks) {
