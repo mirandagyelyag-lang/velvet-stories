@@ -433,18 +433,6 @@
   border-radius: 17px 17px 7px 17px !important;
 }
 
-/* ---------- Auth ---------- */
-.auth__card--first-choice {
-  border-radius: 32px 32px 12px 32px;
-  border-color: rgba(158, 104, 88, .22);
-  background: rgba(250, 244, 238, .92);
-  box-shadow: 0 30px 80px rgba(88, 45, 42, .17);
-  backdrop-filter: blur(15px);
-}
-.auth__input--first-choice,
-.auth__remembered--first-choice { border-radius: 16px 16px 7px 16px; }
-.auth__submit--first-choice { border-radius: 999px !important; }
-
 /* ---------- Floating system UI ---------- */
 .pwa-toast,
 .pwa-guide,
@@ -544,12 +532,6 @@
   .memory-book,
   .chat-controls {
     border-radius: 25px 25px 0 0 !important;
-  }
-
-  .auth__card--first-choice {
-    width: min(94vw, 500px);
-    padding: 27px 20px;
-    border-radius: 27px 27px 10px 27px;
   }
 }
 
