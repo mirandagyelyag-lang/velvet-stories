@@ -14,7 +14,8 @@ const utility = read("src/utils/livingScenes.js");
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-check("release metadata matches package version", read("src/config/version.js").includes(`VELVET_VERSION = "${pkg.version}"`) && /VELVET_RELEASE = ".+"/.test(read("src/config/version.js")));
+const viteConfig = read("vite.config.js");
+check("release metadata matches package version", read("src/config/version.js").includes("VELVET_VERSION = __VELVET_VERSION__") && viteConfig.includes("__VELVET_VERSION__: JSON.stringify(velvetVersion)") && viteConfig.includes("const velvetVersion = pkg.version"));
 check("Living Scenes stylesheet is the final release layer", main.lastIndexOf("velvet-v270-living-scenes.css") > main.lastIndexOf("velvet-v2616-audio-center.css"));
 
 const header = buildLivingSceneHeader({ sceneState: { location: "Campus quad", time_label: "Late night", present: ["Theo", "Jules"] }, ambientMode: "rain" }, "Theo");
@@ -43,7 +44,7 @@ check("Presence Engine carries a roster forward until explicit exit", edge.inclu
 check("scene transitions mark people left behind as outside the current scene", edge.includes('current_status: "outside current scene"'));
 check("editorial scene breaks have deterministic transition fallbacks", edge.includes("buildSceneSeparatorLabel") && edge.includes('return "The next morning"') && edge.includes('"Later that night"'));
 check("emotional residue now has intensity and slower high-impact decay", edge.includes('remaining_turns: significance === "high" ? 9') && edge.includes('intensity: significance === "high" ? 1') && edge.includes("* 0.82"));
-check("story prompt explicitly preserves presence and emotional aftermath", edge.includes("21. PRESENCE ENGINE") && edge.includes("22. EMOTIONAL AFTERMATH"));
+check("story prompt explicitly preserves presence and emotional aftermath", edge.includes("storyContractPrompt(turnContract") && edge.includes("Development state:") && edge.includes("existingSceneState") && edge.includes("existingCastState"));
 check("successful replies return Continuity Guard state without another model call", edge.includes("continuityIssuesBeforeRepair") && edge.includes('continuityGuard: { status: repairUsed && continuityIssuesBeforeRepair.length ? "repaired" : "stable"'));
 check("continuity metadata stays local and does not trigger another model call", edge.includes("VELVET_SPEED_REPAIR_BUDGET_V282") && !edge.slice(edge.indexOf("const REPAIR_TRIGGER_ISSUES"), edge.indexOf("function blockingNarrativeIssues")).includes("CONTINUITY_GUARD_ISSUES"));
 check("Living Scene UI stays compact on phone without the retired suggestion card", styles.includes("@media(max-width:760px)") && styles.includes("chat__living-scene") && styles.includes("min-height:44px") && !chat.includes("chat__beat-suggestion"));

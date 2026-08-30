@@ -1,12 +1,33 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { readFileSync } from "node:fs";
+
+const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
+const velvetVersion = pkg.version;
+const velvetRelease = "Pulse Redesign · Auto Diagnostics";
+const velvetBuildTime = new Date().toISOString();
 
 export default defineConfig({
   define: {
-    __VELVET_BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __VELVET_VERSION__: JSON.stringify(velvetVersion),
+    __VELVET_RELEASE__: JSON.stringify(velvetRelease),
+    __VELVET_BUILD_TIME__: JSON.stringify(velvetBuildTime),
   },
   plugins: [
+    {
+      name: "velvet-build-metadata",
+      transformIndexHtml(html) {
+        return html.replace(/<meta name="velvet-version" content="[^"]*" \/>/, `<meta name="velvet-version" content="${velvetVersion}" />`);
+      },
+      generateBundle() {
+        this.emitFile({
+          type: "asset",
+          fileName: "velvet-version.json",
+          source: JSON.stringify({ version: velvetVersion, release: velvetRelease, build: velvetBuildTime }, null, 2),
+        });
+      },
+    },
     react(),
     VitePWA({
       registerType: "autoUpdate",

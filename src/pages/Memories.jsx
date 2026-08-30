@@ -116,14 +116,16 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
       setLoading(true); setError("");
       const [{ data: memoryRows, error: memoryError }, { data: conversations, error: conversationError }] = await Promise.all([
         supabase.from("memories").select("*").order("is_canon", { ascending: false }).order("is_pinned", { ascending: false }).order("importance", { ascending: false }).order("updated_at", { ascending: false }),
-        supabase.from("conversations").select("id, character_id, updated_at").order("updated_at", { ascending: false }),
+        supabase.from("conversations").select("id, character_id, updated_at").is("trashed_at", null).is("archived_at", null).order("updated_at", { ascending: false }),
       ]);
       if (memoryError) throw memoryError;
       if (conversationError) throw conversationError;
+      const activeConversationIds = new Set((conversations || []).map((conversation) => conversation.id));
+      const visibleMemories = (memoryRows || []).filter((memory) => !memory.conversation_id || activeConversationIds.has(memory.conversation_id));
       const map = new Map();
       (conversations || []).forEach((conversation) => { if (!map.has(conversation.character_id)) map.set(conversation.character_id, conversation.id); });
       setConversationByCharacter(map);
-      setMemories((memoryRows || []).map((memory) => ({ ...memory, character: characters.find((item) => item.id === memory.character_id) })));
+      setMemories(visibleMemories.map((memory) => ({ ...memory, character: characters.find((item) => item.id === memory.character_id) })));
     } catch (requestError) {
       console.error("Error loading memories:", requestError);
       setError("We couldn't load your memories.");

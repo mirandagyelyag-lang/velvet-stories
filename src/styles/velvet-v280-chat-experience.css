@@ -16,5 +16,5 @@
 .chat-message--streaming .chat-message__cursor{display:inline-block;opacity:.72;animation:velvetStreamCursor .9s steps(1,end) infinite}
 @keyframes velvetAiPhasePulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 28%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
 @keyframes velvetStreamCursor{0%,55%{opacity:.75}56%,100%{opacity:.18}}
-@media(max-width:760px),(pointer:coarse){.chat__polish-stack{bottom:calc(84px + env(safe-area-inset-bottom) + var(--velvet-keyboard-offset,0px));z-index:1095}.chat--compact-mobile .chat__polish-stack{bottom:calc(76px + env(safe-area-inset-bottom))}.chat__action-notice,.chat__rewind-undo{font-size:.66rem}.chat__ai-phase{font-size:.59rem}}
+@media(max-width:760px){.chat__polish-stack{bottom:calc(84px + env(safe-area-inset-bottom) + var(--velvet-keyboard-offset,0px));z-index:1095}.chat--compact-mobile .chat__polish-stack{bottom:calc(76px + env(safe-area-inset-bottom))}.chat__action-notice,.chat__rewind-undo{font-size:.66rem}.chat__ai-phase{font-size:.59rem}}
 @media(prefers-reduced-motion:reduce){.chat__ai-phase-dot,.chat-message--streaming .chat-message__cursor{animation:none}}

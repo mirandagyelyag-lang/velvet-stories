@@ -76,10 +76,11 @@ function Profile({
     let cancelled = false;
     async function loadCounts() {
       if (!user) return;
-      const [storiesResult, memoriesResult] = await Promise.all([
-        supabase.from("conversations").select("*", { count: "exact", head: true }),
-        supabase.from("memories").select("*", { count: "exact", head: true }),
-      ]);
+      const storiesResult = await supabase.from("conversations").select("id", { count: "exact" }).is("trashed_at", null).is("archived_at", null);
+      const activeIds = (storiesResult.data || []).map((story) => story.id);
+      const memoriesResult = activeIds.length
+        ? await supabase.from("memories").select("*", { count: "exact", head: true }).in("conversation_id", activeIds)
+        : { count: 0, error: null };
       if (cancelled) return;
       setStats({
         stories: storiesResult.error ? 0 : storiesResult.count || 0,

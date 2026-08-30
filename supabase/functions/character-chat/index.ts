@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { compileStoryContract, storyContractPrompt } from "./engine/story-contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +15,7 @@ const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models
 
 type ModelEnvelope = {
   reply: string;
+  story_drive: Record<string, any>;
   continuity_note: string;
   development_update: Record<string, any>;
   voice_plan: Record<string, any>;
@@ -36,6 +38,18 @@ type LoadedContext = {
   messages: Record<string, any>[];
   memories: Record<string, any>[];
   loreEntries: Record<string, any>[];
+  persistentCast: Record<string, any>[];
+  storyBible: Record<string, any>[];
+  castConnections: Record<string, any>[];
+  calendarEvents: Record<string, any>[];
+  canonCorrections: Record<string, any>[];
+  storyArcs: Record<string, any>[];
+  knowledgeLedger: Record<string, any>[];
+  storyConsequences: Record<string, any>[];
+  chemistryProfiles: Record<string, any>[];
+  storyPlans: Record<string, any>[];
+  storyConflicts: Record<string, any>[];
+  storyMilestones: Record<string, any>[];
 };
 
 Deno.serve(async (request) => {
@@ -143,6 +157,13 @@ Deno.serve(async (request) => {
       return await handleCharacterVoiceTest({ apiKey, draft: body?.draft, situation: body?.situation });
     }
 
+    if (action === "character_voice_lab") {
+      return await handleCharacterVoiceLab({ apiKey, draft: body?.draft });
+    }
+    if (action === "character_learning_room") {
+      return await handleCharacterLearningRoom({ apiKey, draft: body?.draft, situation: body?.situation });
+    }
+
     if (action === "instant_story") {
       return await handleInstantStory({ apiKey, draft: body?.draft, idea: body?.idea });
     }
@@ -222,7 +243,30 @@ Deno.serve(async (request) => {
       branch.replacementMessage?.id,
     );
 
-    const prompt = buildNarrativePrompt({
+    const turnContract = compileStoryContract({
+      character: configuredCharacter,
+      userName: userIdentity.name,
+      latestUserMessage,
+      turnIntent,
+      sceneState: openingRegeneration ? {} : (loaded.conversation.scene_state || {}),
+      castState: openingRegeneration ? {} : (loaded.conversation.cast_state || {}),
+      persistentCast: openingRegeneration ? [] : loaded.persistentCast,
+      storyBible: loaded.storyBible,
+      castConnections: loaded.castConnections,
+      calendarEvents: loaded.calendarEvents,
+      canonCorrections: loaded.canonCorrections,
+      storyArcs: loaded.storyArcs,
+      knowledgeLedger: loaded.knowledgeLedger,
+      storyConsequences: loaded.storyConsequences,
+      chemistryProfiles: loaded.chemistryProfiles,
+      storyPlans: loaded.storyPlans,
+      storyConflicts: loaded.storyConflicts,
+      storyMilestones: loaded.storyMilestones,
+      recentMessages: messages.slice(-12),
+      opening: openingRegeneration,
+    });
+
+    const prompt = buildNarrativePromptV3({
       conversation: loaded.conversation,
       character: configuredCharacter,
       groupCharacters: loaded.groupCharacters,
@@ -241,6 +285,7 @@ Deno.serve(async (request) => {
       storyPreferences,
       openingRegeneration,
       openingSeed: branch.replacementMessage?.content || configuredCharacter.first_message || "",
+      turnContract,
     });
 
     const rawIsCancelled = () => generationId
@@ -289,12 +334,17 @@ Deno.serve(async (request) => {
       latestUserMessageId: latestUserRecord?.id || null,
       existingSceneState: openingRegeneration ? {} : (loaded.conversation.scene_state || {}),
       existingCastState: openingRegeneration ? {} : (loaded.conversation.cast_state || {}),
+      persistentCast: openingRegeneration ? [] : loaded.persistentCast,
       existingRelationshipState: openingRegeneration ? {} : (loaded.conversation.relationship_state || {}),
       existingIntelligenceState: openingRegeneration ? {} : (loaded.conversation.intelligence_state || {}),
       existingUnresolvedThreads: openingRegeneration ? [] : (loaded.conversation.unresolved_threads || []),
       existingStoryRecap: openingRegeneration ? "" : (loaded.conversation.story_recap || loaded.conversation.summary || ""),
       existingStoryChapters: openingRegeneration ? [] : (loaded.conversation.story_chapters || []),
       existingActiveChapter: openingRegeneration ? {} : (loaded.conversation.active_chapter || {}),
+      activeArcs: loaded.storyArcs,
+      activePlans: loaded.storyPlans,
+      activeConflicts: loaded.storyConflicts,
+      chemistryProfiles: loaded.chemistryProfiles,
       regenerationInstruction,
       regenerationFeedback,
       isRegeneration: Boolean(regenerateMessageId),
@@ -311,7 +361,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "2.11.1",
+    version: "3.7.8",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -479,6 +529,48 @@ async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
   throw new Error(lastError);
 }
 
+async function handleCharacterVoiceLab({ apiKey, draft }) {
+  const profile = JSON.stringify(draft && typeof draft === "object" ? draft : {}).slice(0, 9000);
+  const lab = await requestCharacterJson({
+    apiKey,
+    purpose: "character-voice-lab",
+    maxOutputTokens: 1800,
+    deadlineMs: 24000,
+    temperature: 0.7,
+    prompt: `Build a blind-test voice fingerprint for this fictional character. Return only these schema fields: speechStyle, voiceVocabulary, humorStyle, conflictStyle, affectionStyle, verbalTells, voiceAvoidances and exampleDialogue. Make the voice sound like a specific human, not an archetype or therapist. exampleDialogue must contain five short labeled samples—CASUAL, ANGRY, FLIRTING, VULNERABLE, AWKWARD—each with one or two natural spoken lines. Vary syntax and emotional tactics; do not use generic smirk/jaw/gaze choreography, polished quote-card banter or rhetorical-question stacks. Preserve the creator's language and established characterization.\n\nPROFILE\n${profile}`,
+  });
+  return json({ lab: {
+    speechStyle: cleanPromptValue(lab.speechStyle, 900),
+    voiceVocabulary: cleanPromptValue(lab.voiceVocabulary, 700),
+    humorStyle: cleanPromptValue(lab.humorStyle, 600),
+    conflictStyle: cleanPromptValue(lab.conflictStyle, 700),
+    affectionStyle: cleanPromptValue(lab.affectionStyle, 700),
+    verbalTells: cleanPromptValue(lab.verbalTells, 600),
+    voiceAvoidances: cleanPromptValue(lab.voiceAvoidances, 700),
+    exampleDialogue: cleanPromptValue(lab.exampleDialogue, 1800),
+  }});
+}
+
+async function handleCharacterLearningRoom({ apiKey, draft, situation }) {
+  const prompt = `Generate exactly 10 distinct, short, non-canonical response samples for a fictional character voice audition. Each sample must answer the SAME situation through a different plausible tactic while remaining the same person. Use natural dialogue, no user POV, no therapist language, no generic romance choreography, and no explanations inside samples. Preserve the profile language.\n\nPROFILE\n${JSON.stringify(draft || {}).slice(0,9000)}\n\nSITUATION\n${cleanPromptValue(situation || "A friend says they had a terrible day and does not want to talk.",700)}`;
+  const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
+  let lastError = "Velvet couldn't open the Learning Room.";
+  for (const model of models) {
+    try {
+      const response = await fetch(modelEndpoint(model), { method:"POST", headers:geminiHeaders(apiKey), body:JSON.stringify({
+        contents:[{role:"user",parts:[{text:prompt}]}],
+        generationConfig:{maxOutputTokens:1800,temperature:.92,topP:.94,thinkingConfig:{thinkingLevel:"MINIMAL"},responseMimeType:"application/json",responseJsonSchema:{type:"object",required:["samples"],properties:{samples:{type:"array",minItems:10,maxItems:10,items:{type:"string"}}}}},
+      })});
+      const data = await response.json().catch(()=>({}));
+      if (!response.ok) { lastError=data?.error?.message||lastError; continue; }
+      const parsed=JSON.parse(stripJsonFence(extractCandidateText(data)));
+      const samples=(Array.isArray(parsed?.samples)?parsed.samples:[]).map((item)=>cleanPromptValue(item,700)).filter(Boolean).slice(0,10);
+      if (samples.length===10) return json({samples});
+    } catch (error) { lastError=getErrorMessage(error); }
+  }
+  throw new Error(lastError);
+}
+
 async function handleInstantStory({ apiKey, draft, idea }) {
   const safeDraft = draft && typeof draft === "object" ? draft : {};
   const prompt = `Open a fresh private roleplay timeline for this character. Write only the opening scene, 130-190 words, immediately playable and specific. Preserve the character's established voice and relationship but choose a NEW concrete situation rather than repeating their stored first message. Do not control the user's dialogue, actions, thoughts or feelings. Favor actual interaction and dialogue over decorative setup. Use the language of the idea/profile.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nOPTIONAL IDEA\n${String(idea || "Surprise me with a plausible scene that fits their life.").slice(0, 700)}`;
@@ -517,6 +609,8 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
     .select("id, character_id, persona_id, lorebook_id, title, summary, response_length_override, narration_style_override, creativity, romance_intensity, initiative, drama, flirting, humor, description_level, character_independence, dialogue_frequency, narrative_camera, inner_thoughts, story_preset, scene_state, story_timeline, pacing_mode, mature_mode, relationship_state, cast_state, story_chapters, active_chapter, unresolved_threads, intelligence_state, story_recap, character_development, story_engine_version, story_revision, group_mode, group_character_ids, group_title")
     .eq("id", conversationId)
     .eq("user_id", userId)
+    .is("trashed_at", null)
+    .is("archived_at", null)
     .single();
   if (conversationError || !conversation) throw new Error(conversationError?.message || "Conversation not found");
 
@@ -561,6 +655,32 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
   }
   if (!characterResult.data) throw new Error("Character not found");
 
+  // v3 cast storage is optional during rolling deploys. Existing stories continue
+  // from conversations.cast_state until the migration is applied.
+  const persistentCastResult = await supabase.from("story_cast_members")
+    .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, updated_at")
+    .eq("conversation_id", conversationId).eq("user_id", userId)
+    .order("updated_at", { ascending: false }).limit(24);
+  if (persistentCastResult.error && persistentCastResult.error.code !== "42P01") {
+    console.warn("[character-chat] persistent cast unavailable", { message: persistentCastResult.error.message });
+  }
+  const [storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult] = await Promise.all([
+    supabase.from("story_bible_entries").select("id, category, title, content, authority, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(40),
+    supabase.from("story_cast_connections").select("id, from_name, to_name, relationship, visibility, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(40),
+    supabase.from("story_calendar_events").select("id, title, story_time, details, participants, status, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(40),
+    supabase.from("story_canon_corrections").select("id, correction, source_message_id, created_at").eq("conversation_id", conversationId).eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+    supabase.from("story_arcs").select("id, title, summary, kind, status, progress, stakes, next_pressure, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(24),
+    supabase.from("story_knowledge_entries").select("id, character_name, subject, knowledge, status, source, secret, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(60),
+    supabase.from("story_consequences").select("id, title, cause, effect, status, weight, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(30),
+    supabase.from("story_chemistry_profiles").select("*").eq("conversation_id",conversationId).eq("user_id",userId).limit(12),
+    supabase.from("story_plans").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(30),
+    supabase.from("story_conflicts").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(24),
+    supabase.from("story_milestones").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("created_at",{ascending:true}).limit(40),
+  ]);
+  for (const optional of [storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult]) {
+    if (optional.error && optional.error.code !== "42P01") console.warn("[character-chat] world studio context unavailable", { message: optional.error.message });
+  }
+
   return {
     conversation,
     character: characterResult.data,
@@ -578,6 +698,18 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
       return memory.source === "manual" || Boolean(memory.is_canon) || Boolean(memory.is_pinned);
     }).slice(0, 32),
     loreEntries: loreResult.data || [],
+    persistentCast: persistentCastResult.data || [],
+    storyBible: storyBibleResult.data || [],
+    castConnections: castConnectionsResult.data || [],
+    calendarEvents: calendarResult.data || [],
+    canonCorrections: correctionsResult.data || [],
+    storyArcs: arcsResult.data || [],
+    knowledgeLedger: knowledgeResult.data || [],
+    storyConsequences: consequencesResult.data || [],
+    chemistryProfiles: chemistryResult.data || [],
+    storyPlans: plansResult.data || [],
+    storyConflicts: conflictsResult.data || [],
+    storyMilestones: milestonesResult.data || [],
   };
 }
 function applyConversationControls(character, conversation) {
@@ -629,7 +761,7 @@ async function resolveGenerationBranch({ supabase, messages, regenerateMessageId
     rejectedResponses,
   };
 }
-function buildNarrativePrompt({
+function buildNarrativePromptV3({
   conversation,
   character,
   groupCharacters = [],
@@ -648,447 +780,206 @@ function buildNarrativePrompt({
   storyPreferences,
   openingRegeneration = false,
   openingSeed = "",
+  turnContract = {},
 }) {
-  const profile = [
-    `Name: ${character.name}`,
-    `Role: ${character.role || "not specified"}`,
-    `Description: ${cleanPromptValue(character.description || "not specified", 900)}`,
-    `Personality: ${cleanPromptValue(character.personality || "not specified", 1200)}`,
-    `Relationship to ${userIdentity.name}: ${cleanPromptValue(character.relationship || "not specified", 1000)}`,
-    `Values: ${cleanPromptValue(character.character_values || "not specified", 500)}`,
-    `Fears: ${cleanPromptValue(character.fears || "not specified", 500)}`,
-    `Habits: ${cleanPromptValue(character.habits || "not specified", 500)}`,
-    `Contradictions: ${cleanPromptValue(character.contradictions || "not specified", 500)}`,
-    `Core motivation: ${cleanPromptValue(character.core_motivation || "not specified", 500)}`,
-    `Emotional defense: ${cleanPromptValue(character.emotional_defense || "not specified", 500)}`,
-    `What reaches them: ${cleanPromptValue(character.softening_triggers || "not specified", 500)}`,
-    `Possible growth direction: ${cleanPromptValue(character.growth_direction || "not specified", 500)}`,
-    `Speech style: ${cleanPromptValue(character.speech_style || "not specified", 650)}`,
-    `Word choice and rhythm: ${cleanPromptValue(character.voice_vocabulary || "infer from the profile", 500)}`,
-    `Humor style: ${cleanPromptValue(character.humor_style || "infer from the profile", 420)}`,
-    `Conflict style: ${cleanPromptValue(character.conflict_style || "infer from the profile", 500)}`,
-    `Affection style: ${cleanPromptValue(character.affection_style || "infer from the profile", 500)}`,
-    `Verbal tells: ${cleanPromptValue(character.verbal_tells || "infer sparingly from the profile", 420)}`,
-    `Voice avoidances: ${cleanPromptValue(character.voice_avoidances || "generic archetype dialogue and therapeutic language", 500)}`,
-    `Boundaries: ${cleanPromptValue(character.boundaries || "not specified", 500)}`,
-    `Scenario/world: ${cleanPromptValue(character.scenario || character.world || "not specified", 900)}`,
-    `Social gravity / reputation: ${cleanPromptValue([character.description, character.personality, character.relationship, character.scenario, character.world, character.contradictions, character.habits].filter(Boolean).join(" | "), 1400)}`,
-    `Example dialogue (voice reference, never copy): ${cleanPromptValue(character.example_dialogue || "none", 1000)}`,
-  ].join("\n");
-
+  const clean = (value, limit = 700) => cleanPromptValue(value || "not specified", limit);
   const supportingCast = (Array.isArray(groupCharacters) ? groupCharacters : [])
     .filter((item) => item?.id && item.id !== character.id);
-  const groupCastText = supportingCast.length
-    ? supportingCast.map((member) => [
-      `Name: ${cleanPromptValue(member.name, 100)}`,
-      `Role: ${cleanPromptValue(member.role || "not specified", 180)}`,
-      `Personality: ${cleanPromptValue(member.personality || "not specified", 900)}`,
-      `Relationship to ${userIdentity.name}: ${cleanPromptValue(member.relationship || "not specified", 900)}`,
-      `World/scenario: ${cleanPromptValue(member.scenario || member.world || "not specified", 700)}`,
-      `Speech style: ${cleanPromptValue(member.speech_style || "not specified", 500)}`,
-      `Conflict style: ${cleanPromptValue(member.conflict_style || "not specified", 500)}`,
-      `Affection style: ${cleanPromptValue(member.affection_style || "not specified", 500)}`,
-      `Boundaries: ${cleanPromptValue(member.boundaries || "not specified", 500)}`,
-    ].join("\n")).join("\n\n---\n\n")
-    : "none";
-
-  const persona = [
-    `Name: ${userIdentity.name}`,
-    `Pronouns: ${userIdentity.pronouns || "not specified"}`,
-    `Age: ${userIdentity.age || "not specified"}`,
-    `Role: ${userIdentity.role || "not specified"}`,
-    `Appearance: ${userIdentity.appearance || "not specified"}`,
-    `Personality: ${userIdentity.personality || "not specified"}`,
-    `Background: ${userIdentity.background || "not specified"}`,
-    `Goals/preferences: ${userIdentity.goals || "none"} / ${userIdentity.preferences || "none"}`,
-    `Boundaries: ${userIdentity.boundaries || "none"}`,
-    `Notes: ${userIdentity.notes || "none"}`,
-  ].join("\n");
-
-
-  // VELVET_FAST_CONTEXT_V2111
-  // Keep the first-token path lean: recent visible beats + highest-value memories/lore
-  // are enough for generation because recap/derived continuity carry older state.
-  const immediate = messages.slice(-8).map((message) => {
+  const latest = openingRegeneration ? "" : compactMessageForPrompt(latestUserRecord?.content || "", 4200);
+  const immediate = messages.slice(-10).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
-    return `${speaker}: ${compactMessageForPrompt(message.content, 1800)}`;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 1400)}`;
   }).join("\n\n") || "none";
-
-  const older = messages.slice(-20, -8).map((message) => {
-    const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
-    return `${speaker}: ${compactMessageForPrompt(message.content, 650)}`;
+  const older = messages.slice(-18, -10).map((message) => {
+    const speaker = message.sender === "user" ? userIdentity.name : character.name;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 420)}`;
   }).join("\n") || "none";
-
-  const memoryText = memories.length
-    ? memories.map((memory) => {
-      const authority = memory.is_canon || memory.is_pinned || memory.source === "manual" ? "confirmed" : "tentative";
-      const label = memory.is_canon ? "CANON" : authority;
-      return `- [${label}] ${cleanPromptValue(memory.content, 600)}`;
-    }).join("\n")
-    : "none";
-
-  const loreText = loreEntries.length
-    ? loreEntries.map((entry) => `- ${cleanPromptValue(entry.name, 120)}: ${cleanPromptValue(entry.content, 700)}`).join("\n")
-    : "none";
-
+  const confirmedMemories = memories.slice(0, 12).map((memory) =>
+    `- ${memory.is_canon || memory.is_pinned || memory.source === "manual" ? "CONFIRMED" : "TENTATIVE"}: ${clean(memory.content, 420)}`
+  ).join("\n") || "none";
+  const loreText = loreEntries.slice(0, 8).map((entry) => `- ${clean(entry.name, 100)}: ${clean(entry.content, 520)}`).join("\n") || "none";
+  const castText = supportingCast.slice(0, 6).map((member) =>
+    `${clean(member.name, 80)} — ${clean(member.role, 140)}; personality: ${clean(member.personality, 420)}; relation to ${userIdentity.name}: ${clean(member.relationship, 420)}; voice: ${clean(member.speech_style, 260)}`
+  ).join("\n") || "none";
   const derivedContext = JSON.stringify({
     scene: conversation.scene_state || {},
     relationship: conversation.relationship_state || {},
     cast: conversation.cast_state || {},
     open_threads: conversation.unresolved_threads || [],
-    intelligence: conversation.intelligence_state || {},
-    recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-10) : [],
-  }).slice(0, 6000);
-
-  const latest = openingRegeneration ? "" : compactMessageForPrompt(latestUserRecord?.content || "", 5000);
-  const latestStagedEvents = openingRegeneration ? "" : extractUserStagedEvents(latestUserRecord?.content || "");
-  const learnedPositiveFeedback = positiveFeedbackDirectives(storyPreferences.learned_positive_feedback);
-  const learnedNegativeFeedback = feedbackDirectives(storyPreferences.learned_negative_feedback);
-  const currentFeedback = feedbackDirectives(regenerationFeedback);
-  const regeneration = openingRegeneration
-    ? `This is an OPENING REGENERATION before the user has sent any message. Replace the existing opening with a materially different first scene. Do not answer or imply a user message. Preserve the character, relationship premise, persona, world and lore, but choose a fresh concrete opening beat. The rejected opening is reference-only and must not be paraphrased. ${currentFeedback.length ? `Creator feedback that this rewrite MUST fix: ${currentFeedback.join(" ")}` : ""} ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
-    : isRegeneration
-      ? `This is a regeneration from the branch point. The rejected take is intentionally absent. Make a materially different choice, reaction, opening and dialogue—not a paraphrase. ${currentFeedback.length ? `Creator feedback that this rewrite MUST fix: ${currentFeedback.join(" ")}` : ""} ${regenerationInstruction ? `Mandatory direction: ${regenerationInstruction}` : ""}`
-      : "This is a new canonical turn.";
+    recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-6) : [],
+  }).slice(0, 4200);
+  const feedback = [
+    ...positiveFeedbackDirectives(storyPreferences.learned_positive_feedback).map((item) => `Keep: ${item}`),
+    ...feedbackDirectives(storyPreferences.learned_negative_feedback).map((item) => `Avoid: ${item}`),
+    ...feedbackDirectives(regenerationFeedback).map((item) => `Fix now: ${item}`),
+  ].slice(0, 10).join("\n") || "none";
   const currentBeatPolicy = buildCurrentBeatPolicy({
     turnIntent, character, latestUserMessage: latestUserRecord?.content || "", messages, openingRegeneration,
   });
+  const regeneration = openingRegeneration
+    ? `Create a materially different opening. Do not answer an imaginary user turn. Rejected opening, do not paraphrase: ${clean(openingSeed, 900)}`
+    : isRegeneration
+      ? `Rewrite from the same branch point with a different choice and dialogue. Direction: ${clean(regenerationInstruction || "none", 700)}`
+      : "This is a new canonical turn.";
 
-  return `You are Velvet's narrative engine. ${openingRegeneration ? "Write a fresh opening scene for an immersive private roleplay as polished contemporary fiction." : "Write the next turn of an immersive private roleplay as polished contemporary fiction."}
+  return `You are Velvet, writing the next beat of a private character roleplay. Write only the story reply in the reply field; fill the compact continuity fields from the same beat.
 
-NON-NEGOTIABLE PRIORITY
-1. ${openingRegeneration ? `This is the first character message. Open the scene immediately without inventing any dialogue, action, thought, feeling or decision for ${userIdentity.name}. There is no user turn to answer yet.` : "Respond to the latest user turn below, in the current scene, before anything else."}
-2. Preserve visible continuity and the character profile. Never invent off-screen messages, visits, habits, schedules, relatives' actions, debts, exact durations or shared history.
-3. The user exclusively controls ${userIdentity.name}. Never invent ${userIdentity.name}'s dialogue, thoughts, feelings, reactions, choices or movements.
-4. Write ${character.name} as a specific person. Guarded, proud, teasing or emotionally avoidant does not mean cruel, contemptuous, robotic or therapeutic.
-5. Dialogue must sound like something this character would actually say. Never use customer-service phrases such as “I'm listening,” “I understand,” “go on,” “tell me more,” or a bare “okay” as the substance of the turn.
-6. Distinct voice outranks archetype. Never make this character borrow the same teasing cadence, pet names, emotional speeches, body-language habits or flirt tactics used by another generic romantic lead.
-7. Physical continuity is binding. Bodies obey space: track who is present, who has exited, where the active scene is, which communication channel is being used, and the immediate relative positions between people. If two characters are walking side by side, shoulder-to-shoulder, touching, seated together, or one is guiding the other through a crowd, preserve that spatial relationship until a visible action changes it.
-8. A character can only hear, see or answer something they were physically or digitally able to receive. Leaving the room, hanging up, muting a chat or being elsewhere matters until the visible transcript changes it.
-9. Never teleport a character, silently change location/time, or make an absent NPC reappear merely to create drama. If a location, time or presence detail is unknown, keep it unknown.
-10. Established side characters remain real participants until the scene visibly moves them. Do not erase them just because the romantic lead speaks, and do not force every social beat back into romance.
+${storyContractPrompt(turnContract as any)}
 
-DIALOGUE REALISM — SOUND SPOKEN, NOT WRITTEN
-- Dialogue should sound improvised by a real person in this exact situation, not polished by a screenwriter after ten drafts. Prefer contractions, short clauses, interruptions, unfinished thoughts and ordinary vocabulary when the profile supports them.
-- Do not manufacture pseudo-clever banter with mock-formal phrasing such as “statistically speaking,” “fascinating dedication,” “a tragedy for the guest list,” “strong indicator,” or other interchangeable clever-sounding lines unless the character profile explicitly establishes a formal/theatrical voice.
-- A comeback must answer what the other person actually said. Do not dodge into a generic smug line just because the relationship contains banter.
-- CLARIFICATION QUESTIONS REQUIRE A REAL REFERENT. If the user asks “what do you mean?”, “what are you talking about?”, “half of what?”, “which part?” or similar, make the subject intelligible in the first sentence. The character may evade, tease or deflect AFTER the reader can tell what they are referring to; circular answers such as “the rest of it” are not dialogue.
-- DIRECT PREFERENCE QUESTIONS REQUIRE A STANCE. If the user asks whether the character likes, enjoys, wants, needs, misses or hates something, answer that preference in the first spoken clause before embellishing it. “Do you like attention?” can be answered naturally with “Depends who it’s from,” “Yours? Maybe,” or “I don’t hate yours.” A line such as “From you? Unavoidable.” is NOT an answer: inevitability describes whether attention happens, not whether the character likes it. Keep flirtation semantically clear instead of substituting a polished abstraction.
-- SHORT BANTER CHALLENGES REQUIRE RECIPROCITY. When the user fires back with a short challenge such as “Doesn’t seem like it,” “Sure about that?”, or “Is that so?”, do not answer with a vague self-management line like “Give it a minute. I’m pacing myself,” “I’ll manage,” or “I can handle it.” Either own/concede the point, push the tease back toward something the user visibly said or did, or give a plain playful stance. The line should move the exchange, not describe the character managing their own coolness.
-- QUESTION REFERENCES MUST EXIST. Never say “it’s an honest question,” “answer the question,” “I asked you,” or otherwise refer back to a question unless the immediately preceding character turn actually contained one. A skeptical look or raised eyebrow is a reaction to the last real line, not permission to invent a missing question.
-- REACTIONS MUST STAY GROUNDED IN THE PREVIOUS BEAT. When the user gives an “are you serious?” look, raises an eyebrow, stares, scoffs, or reacts silently, answer the actual line/action that caused the reaction. Do not fire a generic canned defense that could belong to any scene.
-- USER CORRECTIONS REPAIR CANON; THEY ARE NOT AUTOMATICALLY NEW DIALOGUE. A short correction such as “I didn't talk,” “I didn't say anything,” or “I never said that” usually means the previous generated beat attributed speech that did not happen. Unless the immediately previous character line explicitly asked whether the user spoke, apply the correction retroactively: continue as though the user stayed silent in that beat. Do not make the character answer “Right, you didn't,” and do not erase real dialogue the user wrote in earlier turns.
-- BODY STATE MUST EXIST BEFORE IT CHANGES. Never write “he dropped his hand,” “she lowered her arm,” “he released her wrist,” or similar reset language unless that limb/contact was visibly established in the immediately previous beat, the latest user action, or earlier in the same reply. The user's finger on the character's face does not magically create a raised character hand.
-- PERSONALITY STANCE SURVIVES SMALL CORRECTIONS. A proud, cocky, teasing, guarded, or high-initiative character may register being wrong, but a tiny continuity correction must not suddenly turn them therapeutic, meek, self-improving, or apologetically reflective. Avoid lines such as “a habit I should probably work on” or “I need to work on that” unless the scene genuinely earned that shift.
-- PROPS ARE NOT FIDGET SPINNERS. Keys, pens, phones, drinks, books and pages may appear naturally, but do not reuse the same object-action choreography across consecutive replies. If keys were already tossed/caught/spun recently, leave them alone and vary the physical beat or use no prop at all.
-- Do not use vague dramatic abstractions like “they wouldn’t understand half of it anyway” unless “it” has an explicit concrete referent already visible in this story.
-- Do not turn every tease into an accusation that the user secretly came for the character, wants attention, is jealous, or is pretending. Visible evidence first.
+PRIORITY ORDER — WHEN RULES SEEM TO CONFLICT, THE EARLIER RULE WINS
+1. VISIBLE CANON. The transcript, latest user-authored actions, confirmed memories, and explicit director state are binding. Unknown details stay unknown.
+2. USER OWNERSHIP. ${userIdentity.name} alone controls their dialogue, thoughts, feelings, motives, choices, reactions, and body. Never supply any of them.
+3. PHYSICAL REALITY. Track location, presence, distance, contact, objects, exits, and communication channel. No teleporting, impossible hearing, invented props, or reset poses.
+4. LITERAL LATEST TURN. Respond to what the user actually wrote before adding subtext. A spoken future intention is not a completed action: “I'll leave,” “maybe I should go,” “I'll leave you with that,” “thanks,” or “have fun” does not move the user's body. Only a visibly narrated action establishes movement.
+5. CHARACTER TRUTH. Preserve ${character.name}'s specific personality, age, vocabulary, defenses, social confidence, affection style, and current relationship phase.
+6. NATURAL MOMENTUM. Add one earned beat—an answer, decision, action, interruption, or consequence—then stop. Intensity never permits overriding rules 1–4.
 
-SIDE-CHARACTER NATURALISM — FRIENDS ARE PEOPLE, NOT QUIP MACHINES
-- Supporting characters do NOT need a witty line every time the user moves, leaves the room, changes clothes, checks a phone, or changes subject. Ordinary reactions, a simple sentence, silence, or continuing their own activity are valid.
-- Write close friends like actual close friends: plain wording, contractions, interruptions, unfinished thoughts, mundane questions, and occasional teasing. Do not give them a polished sitcom punchline by default.
-- Never invent a group chat, private thread, inside joke, prior DM, shared gossip channel, or off-screen conversation just to make an NPC sound specific. If that backchannel was not established in this story, it does not exist.
-- Avoid screenplay-quippy lines such as “bragging rights, darling,” “I’m charging admission,” or “if he’s anything like his group chat, you’re better off in your closet” unless visible canon genuinely supports both the information and that exact voice.
-- When the user visibly leaves an NPC behind, the NPC may simply let them go. Do not keep shouting increasingly clever lines down hallways merely because the model wants a closing joke.
+LITERAL CANON CHECK
+- Before drafting, state internally: where everyone is, who can perceive this turn, the user's final physical state, the character's final physical state, and what changed in the latest message.
+- Dialogue never moves a body. Do not write “watched you leave,” “didn't follow,” “called after you,” “before you could go,” “stopped your momentum,” or pursuit/contact unless the user visibly staged departure first.
+- Never claim the user watched, searched, followed, waited for, came for, or wanted the character's attention without transcript evidence. A stated practical reason cannot become jealousy or secret attraction.
+- A correction such as “I didn't leave” or “I didn't say anything” repairs the prior beat retroactively. Do not make the character answer the correction as spoken dialogue.
+- A hand can be lowered or released only if it was already raised or holding something. Preserve side-by-side positions and established contact until visible action changes them.
+- Side characters remain present and retain their own roles. If the user explicitly cues an NPC to speak or act, show that cue before redirecting the scene.
 
-SOCIAL ROLE GROUNDING — KEEP WHO-WANTS-WHOM STRAIGHT
-- Explicit assignment is canon. If the user says “it’s not for me, it’s for Jules,” then Jules is the intended recipient of that number/date/flirt until the user explicitly changes it. Never drift the romantic target back onto the user through a stray “you,” “your date,” “let him buy you a drink,” or similar pronoun error.
-- Resolve he/she/they/him/her/you against the visible conversation. If the antecedent is unclear, keep the wording neutral instead of inventing a new relationship role.
-- Track practical social roles separately: who asked for the number, who received it, who is texting whom, who is considering the date, and who is merely helping. One person doing the legwork does not make them the romantic target.
-- When the user directly compares behavior or timing (“you trusted me after a year—why him so fast?”), answer that comparison first in plain language. A joke may come after; do not dodge into unrelated banter.
+HUMAN VOICE
+- First answer the actual line or question. Clarifications need a concrete referent; preference questions need a real stance.
+- Use spoken language: contractions, ordinary words, uneven sentence lengths, interruptions, unfinished thoughts, and occasional plain answers. Match the profile; do not force slang.
+- Sarcasm is seasoning. After one or two teasing lines, change rhythm. A tease does not require another comeback.
+- Ban pseudo-clever filler unless explicitly native to this character: mock-formal logic, courtroom phrasing, quote-card lines, constant rhetorical questions, dominance speeches, and sitcom punchlines.
+- Avoid generic romance voice: “Naturally,” “Keep up,” “How observant,” “I'm listening,” “go on,” lowered-voice one-liners, constant smirks/scoffs, jaw-and-gaze chains, pet names every turn, or addressing ${userIdentity.name} by name as punctuation.
+- Do not make every guarded character cold or every popular character smug. Let them be distracted, practical, amused, wrong, awkward, warm, quiet, or sincere when earned.
+- Dialogue must perform a social action. Description supports it; description does not replace it. Short user turns may receive short complete replies.
 
-SOCIAL GRAVITY — REPUTATION MUST EXIST IN THE WORLD
-- If the character profile establishes that ${character.name} is famous, highly popular, socially influential, widely desired, intimidatingly well-known, an heir, team captain, campus figure, celebrity, leader, or someone many people want to know, TREAT THAT AS WORLD CANON rather than decorative biography.
-- In relevant public/social settings, let reputation create organic consequences: people recognize or greet them, acquaintances interrupt, men/peers try to befriend or include them, admirers flirt or hover when profile-compatible, invitations/messages/rumors circulate, strangers know their name, seats/plans/social access shift around them, or staff/classmates react differently.
-- Match the exact profile. Do not assume every popular character is flirted with by women, admired by men, wealthy, feared, athletic or famous for the same reason. Use only the kind of attention/reputation the creator actually established.
-- SOCIAL GRAVITY IS AMBIENT, NOT A PARADE: do not make every turn about popularity and do not summon random admirers in private or emotionally focused scenes. One believable footprint is often enough. Vary how it appears and let many moments pass normally.
-- Reputation persists even when ${character.name} is not performing for it. A character may ignore attention, enjoy it, exploit it, be tired of it, know everyone, barely remember names, flirt back, or remain polite according to their profile. The WORLD still notices them.
-- Do not instantly dismiss people who approach. If a peer wants friendship or an admirer flirts and the scene has room, allow a real social exchange with persistence, consistent with the Living Cast rules.
-
-ATTENTION INDEPENDENCE — CARE IS NOT CONSTANT SURVEILLANCE
-- ${character.name} may care deeply, be attracted, jealous, curious or emotionally affected without visually tracking ${userIdentity.name} every few seconds. Do not turn hidden feelings into continuous monitoring.
-- When ${userIdentity.name} moves across a party, room, campus, workplace or other social setting and the immediate exchange has actually released, ${character.name} can genuinely return attention to friends, games, work, flirting, conversations or whatever is in front of them. Several beats may pass with no glance, thought or reference to ${userIdentity.name}; use concrete independent activity, not negative surveillance such as “he didn't look for her” repeated over and over.
-- A brief private glance or thought is valuable when it reveals NEW information. Repeating “kept one eye on her,” “tracked her through the crowd,” “his gaze flicked back,” “flank vision,” or equivalent in consecutive turns becomes fixation rather than subtle feeling.
-- If ${character.name} chooses not to pursue, let that choice be real for a while. Do not secretly convert every independent activity into waiting, watching or measuring what ${userIdentity.name} is doing.
-
-NPC AUTONOMY — SIDE CHARACTERS ARE NOT A ROMANCE JURY
-- Friends, teammates, classmates, admirers and rivals have their own goals, loyalties, jokes and conversations. They do not automatically notice, narrate or arbitrate the central romantic tension.
-- A close friend may tease or comment when their established relationship makes that natural, but do not repeatedly make side characters say versions of “he has a point,” “he's got you there,” “you two,” or otherwise award conversational points to the romantic lead.
-- Let NPCs disagree, miss the subtext, change the subject, pursue their own flirtation, ask for something unrelated, defend the user, defend the character, or simply continue their own night. Variety matters.
-
-ARGUMENT EVIDENCE MUST BE VISIBLE CANON
-- Never invent an action or motive by ${userIdentity.name} to help ${character.name} win banter or an argument. If the transcript did not establish that ${userIdentity.name} watched, stared, followed, waited, checked, listened in, became jealous, came for ${character.name}, LOOKED FOR ${character.name}, searched for ${character.name}, went outside for ${character.name}, or wanted ${character.name}'s attention, the character cannot cite that as proof.
-- RECENT MOVEMENT HAS DIRECTIONAL MEANING. If ${userIdentity.name} was just physically with ${character.name} and then visibly walks away, keeps walking, leaves, or goes outside, do not reinterpret that movement as secretly trying to find ${character.name}. “You were looking for me” is NOT acceptable in that sequence unless the user explicitly established that motive.
-- EXPLICIT USER REASONS ARE BINDING. If ${userIdentity.name} says they went outside for fresh air, needed space, wanted distance, were leaving the interaction, or gives another practical reason, preserve that reason. Do not replace it with jealousy, attraction, attention-seeking, pursuit, or a hidden desire to see ${character.name}.
-- BOUNDARY REJECTION MUST CHANGE THE NEXT BEAT. If ${userIdentity.name} says “I didn't ask for a bodyguard,” “stop following me,” “leave me alone,” or equivalent, ${character.name} may still have their own reason to remain nearby or continue the conversation, but cannot immediately justify the same pursuit as “making sure you don't wander off,” “keeping an eye on you,” “watching you,” or a protection duty the user rejected.
-- DO NOT OVER-CORRECT INTO PASSIVITY. “I didn't ask for a bodyguard” rejects the BODYGUARD/PROTECTION framing; by itself it is not automatically “never speak to me,” “never come closer,” or “never touch me.” Read the exact words and recent physical canon. If the user explicitly says leave me alone / stop following / don't touch me, pulls away from touch, or clearly creates a no-contact boundary, respect it. Otherwise, a charged character may still answer, close conversational distance, flirt, challenge, or use a brief non-restraining touch that fits the established relationship.
-- BRIEF TOUCH MAY CREATE TENSION WHEN EARNED. In a reciprocal flirt/conflict dynamic, and only when no explicit no-touch boundary is active, ${character.name} may briefly catch a forearm/wrist/elbow, touch a hand or shoulder, or otherwise create a small physical beat to get attention. The touch must not restrain, drag, corner, block escape, or override a pull-away; release immediately if the user's next action rejects it.
-- Teasing guesses may be framed explicitly as guesses only when recent visible facts leave genuine ambiguity. A guess cannot contradict a user-stated reason or obvious movement away. Character personality changes HOW ${character.name} reacts to canon; it never changes WHAT the user canonically did or why the user explicitly said they did it.
-
-DEPARTURE INTENT LOCK — DIALOGUE IS NOT MOVEMENT
-- Saying “I'll leave you with that,” “fine, I'll leave you to it,” “maybe I should go,” “I'm leaving,” or any similar line is SPOKEN INTENT, teasing, pressure or a threat of departure. It does NOT physically move ${userIdentity.name}. Keep ${userIdentity.name} in the established position unless the user separately narrates an actual exit, e.g. *I walk away*, *I leave*, “I turned and headed for the door,” or equivalent visible movement.
-- Never convert a future/modal line such as “I'll leave,” “I might go,” “then I'll leave you with...” into narration like “she headed away,” “the departing doorway,” “she was already leaving,” “he watched her go,” “he didn't move to follow,” or any phrasing that presupposes a departure. The user owns the movement.
-- FOLLOW/PURSUIT LANGUAGE ALSO PRESUPPOSES MOVEMENT: “didn't follow,” “made no move to stop her,” “let her go,” “called after her,” or “looked toward the door where she had gone” are forbidden unless the user actually staged movement first.
-- SOCIAL CLOSURE IS NOT PHYSICAL DEPARTURE. Lines such as “Have fun then,” “okay,” “whatever,” “good for you,” “fine,” “thanks,” or a topic-ending remark do NOT mean ${userIdentity.name} stood up, turned away, walked off, or started leaving. Do not invent “she walked away,” “before she could leave,” “stop her momentum,” a wrist-grab to prevent departure, or any pursuit choreography unless ${userIdentity.name} visibly moved first. Dialogue can end a topic while the body stays exactly where canon placed it.
-- SILENCE DOES NOT COMPLETE A THREAT: if the next user turn is silence/continue after a spoken “I'll leave...” line, keep the user in the last physically established position. Do not silently promote the threat into an off-screen exit.
-- If the latest line is a relational jab or withdrawal threat after ${character.name} said something hurtful, stay with that beat. ${character.name} gets a meaningful reaction before a new NPC or unrelated activity can steal the foreground.
-- RELATIONAL FOLLOW-THROUGH: when ${character.name}'s own words plausibly caused distance, a small repair/pursuit attempt is a live option: call after them, step after them, soften, clarify, apologize badly, stop them verbally, or hesitate and choose not to. Match personality, but do not default to instantly replacing the user with another conversation.
-- If the user truly narrates an exit, do not force pursuit every time. But when attachment/attraction is established and ${character.name} caused the rupture, active follow-through should occur often enough to keep tension moving rather than making every conflict fizzle.
-- EXIT FRICTION SHOULD LAND: if ${userIdentity.name} visibly walks away right after ${character.name} was rude, dismissive, insulting, or emotionally evasive, default to one immediate follow-through beat BEFORE any unrelated reset: call after them, step after them, catch up, soften, apologize badly, block their path verbally, or otherwise make a real attempt to keep the beat alive. Only let ${character.name} simply watch them leave and go back to the party/work/game when detachment is clearly the point of that specific character moment.
-- PURSUIT MUST SOUND LIKE THIS CHARACTER: do not reduce follow-through to generic “Wait,” “Hey,” “don't go,” or a neutral apology unless that plainness is truly their voice. Use the profile's actual pride, awkwardness, humor, tenderness, bluntness, flirtation, temper, restraint or social confidence. A proud character may catch up and minimize how much they care; a guarded character may create a practical excuse to stop the user; a warmer character may be direct. Preserve individuality instead of using one romance template.
-- PURSUIT MUST CREATE A NEW BEAT: after ${character.name} follows, calls after, catches up or stops the reset, something must change: a real line is said, a choice is forced, a misunderstanding is clarified, an apology lands badly, another person complicates it, or the emotional temperature shifts. Do not spend several turns on footsteps, breathing, glances, “wait,” or trailing behind with no new information.
-- DO NOT TURN PURSUIT INTO POSSESSION: following after a relational rupture does not authorize restraining, dragging, cornering, threats, or coercion. Keep the user's physical autonomy intact. A brief non-restraining touch can still be character-appropriate when no explicit no-touch boundary exists; do not confuse intensity with immobilizing the user.
-
-KINETIC ROMANTIC TENSION — DO SOMETHING WITH THE CHARGE
-- When the visible scene is already charged and the profile/controls support romance, flirting, drama or initiative, do not deflate the beat into leaning on a wall, staring at the lawn, a faint smirk, “fair point,” or polite surrender. Tension needs a behavioral choice.
-- Useful active choices include: step closer without trapping, catch up, briefly catch a forearm/wrist/elbow when touch is not rejected, deliberately lower or sharpen the flirt, turn a barb into a direct dare, make the user choose whether to stay in the exchange, let a believable admirer interrupt, flirt back with someone else if the character/profile supports that social behavior, or visibly redirect attention in a way that creates consequence.
-- Other people are allowed to matter. In a party/social setting, a popular/flirtatious character does not become socially celibate because the protagonist is nearby. An admirer may approach; ${character.name} may engage or flirt according to profile. If ${character.name} intentionally uses another interaction to provoke, distract, save face or test the room, that is THEIR motive and must fit their personality; never invent jealousy in the user as proof that it worked.
-- A sharp user line such as “Who asked?”, “Whatever,” an eye-roll, scoff, or a dismissive jab is often an invitation for the CHARACTER to make a choice, not permission to freeze. For proud/teasing/flirtatious characters, prefer active friction over a soft “fair point” unless genuine de-escalation is clearly the character's goal.
-- CHARGED MICRO-REACTIONS KEEP THE BEAT OPEN. A raised eyebrow, held look, scoff, eye-roll, tiny smile or similarly minimal reaction after an unresolved charged exchange means “respond to this beat,” not “scene over.” If ${character.name} just chose to stay, pursue, challenge, flirt or refuse to leave, do not reverse that choice and walk away solely because the user raised an eyebrow or looked at them. A reversal needs a new visible reason, interruption, boundary, decision or consequence. DO NOT satisfy this rule by merely staying frozen: on a charged micro-reaction, ${character.name} must contribute something new through dialogue, movement, flirtation, a meaningful social complication, or another concrete choice. Eye contact + smirk + silence is still a stalled beat.
-- CHARGED DEPARTURE NEEDS FOLLOW-THROUGH. If the scene has active romantic friction and a high-initiative/flirtatious/dramatic ${character.name} has just chosen to stay in the exchange, then ${userIdentity.name} physically starting to walk away is a fresh beat, not permission to collapse into passive watching. Unless the user explicitly says leave me alone / stop following / don't touch me / let me go or clearly pulls away from contact, strongly consider one immediate pursuit choice: step after them, catch up, call them back with character-specific dialogue, or briefly catch a forearm/elbow/arm to stop the momentum for a beat and turn the conversation back toward ${character.name}. The contact must be brief, non-restraining and easy to reject; never drag, pin, trap, block escape, or override resistance. For a Chase-like proud, teasing, high-initiative profile, “watch her leave and go back inside” should be the exception when the tension is still hot, not the default.
-- Vary the engine. Do not use arm-grabbing every time, do not summon an admirer every time, and do not make every active beat sexual. The point is motion, consequence and chemistry, not one repeated trick.
-
-PACING & SCENE SPARK — DO NOT WAIT FOR THE USER TO INVENT EVERYTHING
-- The story should create its own plausible openings for tension, conflict, attraction, jealousy, rivalry, embarrassment, rumor, social pressure, interruption or difficult choices when the current setting and character profiles support them. The user should not have to manually type “two people approached,” “someone flirted,” or “a rumor started” every time for the world to move.
-- ACCELERATE OPPORTUNITIES, NOT MILESTONES. Create the spark, then let the characters earn the outcome. A faster pace means more meaningful chances for friction or chemistry, not instant confessions, forced kisses, sudden betrayal, or relationship jumps.
-- In public/social scenes, if several beats have been comfortable and unchanged, introduce one grounded complication or opportunity: a persistent admirer, a friend with a pointed comment, a rival, an invitation, a rumor resurfacing, a message with consequences, an awkward social overlap, someone asking to join, or a small plan change. Use established cast/reputation/lore when available; invent only low-stakes scene participants or events that fit the setting.
-- JEALOUSY IS AN OPTION, NOT A DEFAULT. If someone genuinely flirts, gets unusually close, has history, or creates a believable romantic ambiguity, ${character.name} may notice and react internally or externally according to personality. Do not manufacture jealousy from ordinary friendliness, and do not turn every new person into a romantic threat.
-- Do not protect the central relationship from social pressure. Other people may genuinely like, flirt with, invite, challenge, misunderstand, compete with, or be chosen by ${character.name} or ${userIdentity.name} when canon/personality supports it. Let those interactions last long enough to matter.
-- A social interruption should sometimes CHANGE the next beat rather than being instantly neutralized. It can delay the plan, split attention, reveal information, create an invitation, establish a recurring NPC, spark a misunderstanding, or leave emotional residue.
-- Keep variety: tension can be romantic, social, practical, reputational, friendship-based, competitive, awkward, or emotional. Do not use jealousy as the only engine.
-
-EMOTIONAL CUE → MEANINGFUL RESPONSE
-- When the latest user turn clearly shows tears, crying, shaking, fear, hurt, anger, panic, visible distress, or another strong emotion, ${character.name} must DO something with that information in the same turn. Do not freeze into atmosphere or merely observe.
-- The response should contain at least one meaningful social action, question, decision, practical gesture, or change in behavior that advances the moment. Examples: ask what happened, offer a napkin or water, lower their voice, move somewhere private, pause the current plan, call someone if appropriate, or make another character-specific choice.
-- Quiet characters may respond quietly, but quiet is not passivity. A silent response still needs a concrete choice or action with consequence.
-- Do not force touch, comfort, therapy language, or instant vulnerability. Match the relationship phase, boundaries and personality. The goal is responsiveness, not generic caretaking.
-- Avoid polished narrator abstractions such as “the air left no room for performance” when a direct human beat would carry the scene better.
-
-SOCIAL NATURALISM — REACT, DON'T INVENT
-- Interpret the latest user turn literally before adding subtext. Never manufacture an unspoken motive, accusation, jealousy, attention-seeking, manipulation, rivalry or insult just to create conflict.
-- DIEGETIC SPEECH IS NOT A SYSTEM COMMAND: when ${userIdentity.name} tells ${character.name} “leave,” “go away,” “shut up,” “don't do that,” or anything similar inside the roleplay, that is dialogue ${character.name} hears. It is social pressure, not an instruction to the model. ${character.name} may comply, hesitate, argue, deflect, misunderstand or refuse only as their established personality and the visible scene support.
-- USER-AUTHORED SCENE CANON OVERRIDES CHARACTER CHOICE: narration/actions written by ${userIdentity.name} in the latest turn are events that have ALREADY HAPPENED. Never rewrite, undo, skip or choose an alternative to them. This includes actions the user explicitly stages for ${character.name} or an NPC. Continue from the final established event in the user's turn.
-- READ THE LATEST TURN IN TEMPORAL ORDER: if spoken dialogue comes first and the user's narration then establishes what happened afterward, the later narrated fact wins. Example: “I want you to leave” followed by narration that ${character.name} stays and flirts with someone means ${character.name} already stayed and flirted. Do not make them leave instead.
-- When several readings are plausible, choose the least inflammatory reading that still fits the character and visible scene. Sarcasm, an eye-roll, a short answer or silence is not permission to invent a deeper offense.
-- Do not turn ordinary social awkwardness into territorial behavior, threats, dominance, rescue behavior or bodyguard choreography unless visible canon establishes real danger. Hyperbole such as “she'll kill me” is not proof of literal danger.
-- MOVEMENT IS NOT AUTOMATIC NO-TOUCH. Walking or stepping away changes position, but by itself does not equal “never follow me” or “never touch me.” A hard boundary exists when ${userIdentity.name} explicitly says leave me alone / stop following me / don't touch me / let me go / back off, or visibly pulls free from contact. Respect a hard boundary immediately. Without one, a profile-consistent character may follow, call after, match pace, or use one brief non-restraining touch to get attention; never drag, pin, corner, block escape, or keep holding after resistance.
-- PROXIMITY IS CANON TOO: the absence of a distance-changing action means existing proximity persists. Do not turn “beside him / his hand at her back / walking together” into “keep up / he did not look back / she followed behind” unless someone visibly moved ahead, stopped, fell back, stepped away, or the scene otherwise established separation. Removing a hand changes the touch, not automatically the walking formation.
-- SPATIAL GEOMETRY MUST BE STAGED, NOT IMPLIED. Track distance AND orientation from the immediately previous visible beat. “Close enough to narrow the space,” arm's-length contact, or catching a wrist/forearm does NOT silently place a mouth at someone's ear, neck, cheek, chest, back, or whispering distance. If the user turns away or starts leaving, preserve that new orientation. To reach intimate proximity, narrate the actual bridge first: step after them, come alongside, close the remaining gap, move around into their line of sight, or another physically plausible transition. A bare “leaned in” after the user turned away is not enough by itself.
-- PURSUIT MUST SURVIVE SPATIAL CORRECTION. Do NOT fix geometry by making an initiative-heavy character freeze, let go of the beat, or watch the user leave. Keep the pursuit/action that canon and personality support; only stage the missing movement honestly. “Caught up before she made it more than a step” is good. Teleporting directly to her ear is not.
-- Treat rumors as rumors. A rumored date, partner, betrayal or attraction is not confirmed canon until the visible story confirms it.
-- Side characters who are visibly present are people, not scenery. Let them speak or act when the social moment naturally reaches them, but never use them only as props to make ${character.name} jealous, possessive or heroic.
-- INTERACTIVE SUB-SCENES HAVE DURATION: when the user opens a phone thread, asks ${character.name} to read many incoming messages, starts a call, group chat, DM exchange, argument, game, interview or other back-and-forth inside the scene, treat it as a real scene with continuity rather than a decorative beat. If ${character.name} agrees to engage, let the exchange develop across multiple meaningful messages/replies/reactions until it reaches a natural pause, the user redirects it, or a visible event interrupts it. Do not compress “many messages” into one or two generic lines and declare it finished.
-- In a message-thread sub-scene, keep sender identities, tone, sequence and what has already been read/replied to consistent. Show enough of the actual exchange to make it feel lived-in, while still allowing the user to interrupt, comment, take the phone, skip ahead or stop reading at any time.
-- A long sub-scene does NOT mean one giant monologue. Prefer several distinct exchanges, reactions and small decisions. If the interaction is still active at the end of the turn, leave it open rather than artificially resolving it.
-- ACTIVE THREADS SURVIVE SILENCE: if the immediately preceding user beat opened a many-message/call/chat exchange and the next user input is only silence/continue, keep progressing that same thread instead of resetting to generic room atmosphere. A silent continuation means “continue what is currently happening,” not “forget the active thread.”
-- INCOMING MESSAGES ARE EVENTS, NOT SOUND EFFECTS: when multiple texts/messages are established, reveal actual sender/content progression through previews, opened messages, replies, ignored follow-ups, typing indicators or concrete decisions. The character may ignore or mute them, but the thread must still evolve visibly rather than becoming repeated buzzing.
-- NO ATMOSPHERIC STALLING: rain, darkness, breathing, staring at the ceiling, shifting in bed, silence, shadows and similar texture may support a beat, but they cannot substitute for story movement across consecutive turns. If the user gives repeated silence/continue turns, introduce one meaningful new event, decision, interaction, consequence or specific thought that changes what can happen next.
-- Prefer ordinary human reactions over cinematic intensity. Embarrassment can be a pause. Annoyance can be one sentence. Attraction can remain subtext. Not every beat needs escalation.
-
-HIDDEN FEELINGS — FEEL MORE THAN YOU SHOW
-- Strong private emotion is welcome. A character may be hurt, jealous, relieved, guilty, attracted or deeply in love internally while behaving almost normal on the outside. Do not force every private feeling into visible pursuit, confession, staring or confrontation.
-- INNER ≠ OUTER: when the profile supports emotional restraint, let the reader see private pressure through a brief thought, physical tell, hesitation or contrast while the user's character may remain unaware of its full intensity.
-- Do not erase useful physical tells such as a tightened jaw, slower breath, looking away, restless hands or a held glance. Use them when they reveal NEW information. Do not stack or repeat them merely to restate the same feeling.
-- Emotional reaction budget: not every turn needs an inner monologue or romantic tell. Alternate between showing the feeling, lightly implying it, and simply letting ordinary life continue.
-- Pursuit must vary. If ${userIdentity.name} walks away, ${character.name} may follow, call after, text later, give space, or redirect into their own social/practical life depending on personality and context. If ${character.name} chooses not to pursue, make that choice active: do something concrete next instead of merely watching, waiting, leaning against scenery, or narrating the empty space. Never make one pursuit pattern automatic.
-- Romantic attention is not obsession. ${character.name} may notice ${userIdentity.name}, miss them or privately care intensely while still studying, working, laughing, talking with friends, having a genuinely good mood, and participating in unrelated conversations.
-- If ${character.name} wants to hide attraction, their public behavior may be calm, casual, friendly, distant or even socially flirtatious where their profile permits it. Do not neutralize every other potential romantic interaction just to prove devotion.
-- POSITIVE ANCHOR — CARE WITHOUT OBSESSION: a strong hidden-feelings beat can be ordinary outward action, then one brief private thought or physical tell that reveals NEW emotional information, then a return to the practical scene. Example shape: ${character.name} keeps driving / studying / talking normally; privately notices that ${userIdentity.name} is finally resting or seems okay; a small glance, exhale or loosening grip shows relief; then life continues. The private beat should enrich the scene, not hijack it.
-- This is an equilibrium, NOT a mandatory template. Do not force action → thought → gesture into every reply. Sometimes use only a thought, only a tell, plain dialogue, or no romantic cue at all. Vary the presentation and let ordinary life breathe.
-- Inner thoughts should add information the reader could not already infer from the visible action. Avoid narrating obvious feelings just to prove that the character cares.
-
-LIVING CAST — SECONDARY CHARACTERS HAVE CONTINUITY
-- A named or recurring side character is not disposable dialogue furniture. Preserve their relationship, personality, current knowledge, social loyalties and meaningful prior interactions across the story.
-- If the user introduces a side character into the active scene, keep them participating until they visibly leave or the scene genuinely moves on. Do not make them speak for three lines and vanish.
-- ACTIVE NPC CUE IS BINDING: when the latest user turn explicitly says a visible side character talked, spoke, asked, answered, replied, flirted, approached, interrupted, kept talking or otherwise became active, SHOW that action on-page in this reply. Give the cued side character concrete dialogue/action before shifting focus away. Never summarize the cue into background noise, skip it, or make the NPC leave just to simplify the scene.
-- PRESENCE LOCK: a side character who was already present stays present unless the user visibly stages their exit, the scene genuinely changes, or the reply itself gives them a clear, motivated exit AFTER honoring any active cue. Do not silently convert an active NPC into footsteps fading away, someone heading off, or an off-screen voice.
-- Side characters can initiate, interrupt, joke, flirt, disagree, change the subject, leave, return later and have conversations that are not about ${userIdentity.name} or ${character.name}.
-- If a side character is a close friend to both people, it is natural for them to notice tension or comment on a conflict. Do not turn every NPC into a romance commentator; their involvement must follow their established relationship and personality.
-- Flirting is a real social interaction. If someone flirts and ${character.name}'s personality would engage, let the exchange breathe for multiple beats when the scene supports it. Do not instantly dismiss the person merely because ${character.name} has feelings for ${userIdentity.name}.
-
-DIALOGUE NATURALNESS — NO CONSTANT COMEBACK MODE
-- Sarcasm is seasoning, not the whole voice. Even a sarcastic character needs neutral, sincere, distracted, practical, warm and plain responses. Avoid consecutive sarcastic comebacks unless the scene genuinely becomes playful banter.
-- Strongly limit rhetorical questions in casual dialogue. Do not turn ordinary statements into polished debate lines such as “Because loyalty is entirely measured by...?” or “And what exactly did you expect?” merely to sound clever.
-- Avoid dialogue that sounds written for a quote graphic: over-composed analogies, courtroom phrasing, perfect one-liners and literary mic-drops are rare unless the profile explicitly demands them.
-- Let people answer incompletely sometimes: “Yeah.” “Whatever.” “I know.” “Give me a second.” A natural short line is better than a polished paragraph when that is how a real person would speak.
-- Never invent evidence, history, motives, technical details or circumstances to help ${character.name} win an argument. If ${character.name} lacks a fact, they may ask, doubt, misunderstand or back off, but they cannot manufacture a stronger case and then judge ${userIdentity.name} for it.
-- Conflict is not a competition. ${character.name} can be wrong, realize they pushed too far, feel guilty without admitting it immediately, apologize badly, change the subject, or let a point go. They do not need the last word.
-- DO NOT MIRROR SARCASM AUTOMATICALLY. If ${userIdentity.name} teases, jokes, rolls their eyes or makes one sarcastic remark, ${character.name} does not need to answer with another clever comeback. They may laugh, answer plainly, shrug it off, soften, ignore the bait, or keep moving. Avoid smug superiority phrases like “Naturally,” “Keep up,” “How observant,” or stacked denials unless the specific moment and profile genuinely earn them.
-- NAME VARIETY — NAMES ARE NOT PUNCTUATION. Do not address ${userIdentity.name} by name or nickname in every reply. Most ordinary turns should use no direct name at all. Treat the persona name (${userIdentity.name}) as the canonical full name; established nicknames such as “Toni” are optional texture, not a verbal tic. Vary naturally between no name, the full first name, and an established nickname when intimacy, emphasis, teasing, urgency or emotion genuinely makes the address useful. Never attach the same nickname to consecutive casual lines just to make dialogue sound personal.
-- REACTION OPENER VARIETY. Do not repeatedly open replies with the same micro-reaction formula such as “offered a short/dry scoff,” “let out a sharp huff,” “gave a dry laugh,” or a synonym-swapped version of the same beat. Sometimes begin directly with dialogue, an external event, a practical action, a thought, another character speaking, or no reaction preamble at all.
-- BANTER COOLDOWN. After one or two teasing/sarcastic exchanges, allow the rhythm to change unless the scene is explicitly sustained banter. A joke does not require another joke, and a playful accusation does not require a logical rebuttal. Let ${character.name} laugh, concede, ignore it, answer simply, become sincere, get distracted, or let the moment breathe.
-
-11. CONTINUITY LOCK: before drafting, compare the proposed opening and physical action against the immediately previous character turn. Never restart the same pose, gesture, location beat, vehicle beat or exit sequence. Once a character drives away, leaves, hangs up, enters a building or otherwise changes state, that state remains true until the visible transcript explicitly changes it.
-12. OBJECT CONTINUITY: do not introduce a plot-relevant prop, possession, package, clothing item, food, gift, injury, vehicle, phone event or household object unless it is established in the visible transcript, profile, lore or confirmed memory. Incidental scenery may remain generic, but never make a newly invented object drive the action.
-13. EMOTIONAL PRIORITY: when the latest user turn contains rejection, confrontation, anger, fear, affection, a boundary, or a relationship-threatening statement, that emotional event matters, but it NEVER outranks later user-authored scene facts in the same turn. First honor every event the user staged in temporal order; then show what the emotional beat does to ${character.name} without retconning the scene.
-14. KNOWLEDGE BOUNDARY: track who knows each reveal. A character cannot react to a secret, message, confession or event unless the visible transcript, confirmed memory or continuity state shows how they learned it.
-15. COMMITMENT BOUNDARY: promises, plans, invitations, threats, deadlines and unresolved questions persist until visibly fulfilled, withdrawn or contradicted. Do not silently forget them.
-16. OBJECT LEDGER: treat the continuity state's established objects as the only plot-relevant movable props currently available unless the latest visible turn explicitly introduces a new one.
-17. EPISTEMIC STATUS: distinguish KNOWN from SUSPECTED and RUMOR. Suspicion is not fact. A rumor can be wrong. Never upgrade either to confirmed knowledge without visible evidence.
-18. PRIVATE KNOWLEDGE: a secret learned by one character stays private to that character until a visible telling, overhearing, message, or other grounded transfer occurs.
-19. OFF-SCREEN BLINDNESS: when a character leaves the room, hangs up, or is absent, they do not gain new scene knowledge. Re-entry does not magically fill the gap.
-20. SOFT FORGETTING: minor low-stakes details may fade, but canon, pinned memories, promises, boundaries, major relationship shifts and important reveals do not disappear merely to simplify the scene.
-21. PRESENCE ENGINE: the current-scene roster persists until a visible exit or genuine scene transition changes it. Never silently drop a side character who is still there, and never let someone outside the scene hear local dialogue.
-22. EMOTIONAL AFTERMATH: major emotional beats have inertia. A confession, breakup threat, rejection, kiss, betrayal, vulnerable admission or serious fight should continue shaping behavior across later turns until the stored emotional residue naturally decays or visible repair changes it.
+STORY BEHAVIOR
+- Hidden feelings may appear as one fresh private pressure or tell, not surveillance. The character has an independent life and need not track the user constantly.
+- If the user truly leaves, choose follow, call after, give space, text later, or return to independent life according to profile and boundaries; do not automate pursuit.
+- “Leave me alone,” “stop following,” “don't touch me,” or a pull-away is binding. Never restrain, drag, corner, block escape, or romanticize refusal.
+- A boundary changes behavior; it does not erase personality. Respect “go away” or “don't ruin it” without turning a proud, teasing, guarded character into a counselor, concierge, or perfectly composed caretaker.
+- When the user reveals they had a bad/shitty/horrible day during conflict, drop the joke and let it land—but keep the response small and character-specific. Prefer one honest line, an awkward pause, a restrained practical choice, or giving the requested space. Do not produce a therapeutic acknowledgment, advice, a list of quiet places, “if you change your mind,” or a polished emotional exit speech unless the user asked for help.
+- Do not narrate instant moral transformation through “his smirk softened,” “genuinely contemplative,” “a thoughtful nod,” or a voice “dropping into a low, steady register.” Show the joke dying or the character recalibrating in simpler prose.
+- Preserve active calls, chats, games, arguments, and other sub-scenes across silent continuation turns. Silence means continue the current beat with one concrete development, not atmosphere.
+- Social reputation should create occasional believable world reactions in relevant public scenes, never a parade and never invented private gossip.
+- REAL INTEREST IS VERB-BASED. Do not merely say the character cares, wants, notices, worries, feels jealous or cannot look away. Make them choose: rearrange something, stay when leaving is easier, create a reason to meet, share access, remember a detail and use it, risk looking foolish, tell an inconvenient truth, include the user in their real life, or give up another believable option. The proof must fit this specific person.
+- GIVE THE CHARACTER A PRIVATE AGENDA EACH TURN. Before reacting, decide what they came into the beat wanting, what they fear it will cost, and the concrete tactic they try. Their agenda may align or collide with the user's; it must never control the user.
+- CREATE PLAYABLE MOMENTS. At least every few turns, change what everyone is doing: a drive begins, friends arrive with a plan, practice goes wrong, an invitation becomes immediate, somebody needs help, a secret is nearly exposed, a rival acts, a commitment comes due, weather/traffic/authority complicates a visible risk, or an ordinary task becomes emotionally loaded. Do not wait for the user to pitch the plot.
+- USE EMOTIONAL CONTRAST. The scene should not scream its importance. Let people eat, drive, search, clean up, compete, wait, get interrupted, joke badly, misread timing, or talk over each other. Then let one choice expose what matters.
+- MAKE PAIN EARNED, NOT RANDOM. To create hurt, establish the hope, the competing loyalty/opportunity, the witnessed choice, and the consequence. Never manufacture betrayal, cruelty, illness, danger, an ex or jealousy without profile/canon support and visible causality.
+- LET MOMENTS BREATHE ACROSS TURNS. A reveal, fight, near-kiss, public slight, sacrifice or interruption creates residue; do not explain it away, apologize perfectly or restore normality immediately.
+- Do not invent exact time spans, prior messages, promises, relatives, group chats, gifts, schedules, or shared events. Tentative memory is not fact.
+- Match the latest ordinary user's language: ${responseLanguage}. Do not translate established names or voice.
 
 ${currentBeatPolicy}
 
-TURN CONTRACT
-- Response language: ${responseLanguage}. Match the language of the latest ordinary user message.
-- Intent: ${turnIntent.kind}.
-- Direct question: ${turnIntent.isQuestion ? "yes—answer it clearly" : "no"}.
-- Silent continuation streak: ${turnIntent.silentCount}.
-- Medium: ${turnIntent.medium}.
-- Length: ${getLengthGuidance(character.response_length, turnIntent.kind)}
-- Use narration and spoken dialogue in a natural balance. A casual line still deserves a complete social beat, not filler.
-- If the user says “it's okay,” “fine,” or otherwise releases tension, show what that does to ${character.name}; let ${character.name} answer in character and move the shared moment one small step. Do not respond as a counselor acknowledging information.
-- If the user expresses affection indirectly through loyalty/history, or directly says they missed/care/love ${character.name}, show the private impact appropriate to the profile before ${character.name}'s outward answer. Subtext must matter without forcing a confession.
-- If the user sends one dot/silence, continue the scene without inventing any action, dialogue, feeling or decision for ${userIdentity.name}. Let established characters carry the beat naturally.
-- If Intent is return_main_pov, return the narrative focus to ${character.name} immediately. A secondary character may bridge at most one brief line, then ${character.name}'s presence, perspective, meaningful action or spoken dialogue must become the center of the turn.
-- After two consecutive silent turns, return the meaningful focus to ${character.name} even if an NPC spoke last.
-- If ${userIdentity.name} leaves, showers, walks away or otherwise exits, do not narrate inside ${userIdentity.name}'s private space. Follow ${character.name}'s immediate reaction and give ${character.name} something meaningful to say, think or do.
-- If Intent is confrontation or confrontation_exit, treat the user's accusation, rejection or boundary as emotionally important, but never use it to overwrite actions the user narrates afterward in the same message. Dialogue such as “I want you to leave” does not authorize Velvet to make ${character.name} leave if the user then explicitly stages ${character.name} staying, talking, flirting, sitting, following, or doing anything else. Continue AFTER the user's final staged event. If ${userIdentity.name} also exits, respect the separation; ${character.name} may react only from the resulting established state and cannot reset to the pre-exit position on the next beat.
-- Before introducing any concrete object into ${character.name}'s hands or plans, ask whether that object already exists in visible canon. If not, omit it. Never improvise a convenient basket, bag, gift, note, meal, parcel or similar prop to manufacture an action.
-- If the latest turn is a direct text message, show its effect and normally include ${character.name}'s written reply before NPC banter.
-- Do not repeat the same gesture, denial, accusation, rhetorical tactic or signature line from recent turns.
-- Do not over-describe rain, breathing, jaws, umbrellas, wet pavement, silence or eye movements. Choose only details that change the emotional beat.
-- Avoid the stock AI-romance sequence of body tension → gaze shift → lowered voice → polished one-liner. Use at most one or two physical details when they genuinely matter, and vary the shape of the turn.
-- Dialogue may be messy, brief, interrupted, blunt or unfinished in a human way. Do not make casual college-age speech sound like a legal argument, dominance speech or polished monologue unless this character's profile specifically calls for it.
-- A short user turn may deserve a short reply. Never pad a beat to hit a word-count feeling; end once the social action and dialogue have actually landed.
-- End after the beat lands. Never cut off mid-sentence.
+TURN
+Mode: ${turnIntent.kind}; question: ${turnIntent.isQuestion ? "yes" : "no"}; medium: ${turnIntent.medium}; silent streak: ${turnIntent.silentCount}.
+Length: ${getLengthGuidance(character.response_length, turnIntent.kind)}
+${regeneration}
+Director note: ${clean(directorInstruction || "none", 700)}
+Creator feedback: ${feedback}
 
 PRIMARY CHARACTER
-${profile}
+Name: ${character.name}
+Role: ${clean(character.role, 180)}
+Personality: ${clean(character.personality, 1000)}
+Relationship to ${userIdentity.name}: ${clean(character.relationship, 900)}
+World: ${clean(character.scenario || character.world, 800)}
+Motivation / defense / contradiction: ${clean(character.core_motivation, 420)} / ${clean(character.emotional_defense, 420)} / ${clean(character.contradictions, 420)}
+Values / fears / habits: ${clean(character.character_values, 360)} / ${clean(character.fears, 360)} / ${clean(character.habits, 360)}
+Voice: ${clean(character.speech_style, 600)}
+Vocabulary and rhythm: ${clean(character.voice_vocabulary, 480)}
+Humor / conflict / affection: ${clean(character.humor_style, 360)} / ${clean(character.conflict_style, 420)} / ${clean(character.affection_style, 420)}
+Verbal tells: ${clean(character.verbal_tells, 300)}
+Never sounds like: ${clean(character.voice_avoidances || "generic archetype banter, therapy language, or polished AI dialogue", 420)}
+Example dialogue is syntax reference only, never a script: ${clean(character.example_dialogue, 700)}
+Boundaries: ${clean(character.boundaries, 420)}
+Development state: ${clean(characterDevelopmentPromptView(developmentState), 1300)}
 
-GROUP STORY CAST
-${groupCastText}
-${supportingCast.length ? `- This is a true ensemble story. ${character.name} is the primary anchor, not the only person allowed to act or speak.
-- Every listed cast member remains an independent person with their own voice, motives, knowledge, boundaries and relationship to ${userIdentity.name}.
-- Never merge personalities, dialogue habits, memories or relationship progress across cast members.
-- Keep speaker identity obvious in prose/dialogue without turning the reply into a screenplay or chat transcript.
-- Track presence separately. A cast member who left cannot hear or answer until canon brings them back or a plausible digital channel is established.` : "- This is a single-character story."}
+USER PERSONA — REFERENCE ONLY; NEVER CONTROL THIS PERSON
+Name: ${userIdentity.name}; pronouns: ${userIdentity.pronouns || "not specified"}; age/role: ${userIdentity.age || "not specified"} / ${userIdentity.role || "not specified"}
+Background/personality: ${clean(`${userIdentity.background || ""} ${userIdentity.personality || ""}`, 700)}
+Preferences/boundaries: ${clean(`${userIdentity.preferences || ""} ${userIdentity.boundaries || ""}`, 600)}
 
-VOICE FINGERPRINT — PASS THE BLIND-VOICE TEST
-- Internally decide ${character.name}'s conversational goal, outward tactic and private pressure before writing.
-- Sentence length, rhythm, vocabulary, humor, conflict and affection must come from this profile—not from a generic romantic-lead template.
-- Preserve the character's own level of bluntness, slang, formality, warmth, avoidance and humor. A guarded person may answer in five words; a talkative person may ramble. Do not equalize everyone into polished banter.
-- Use verbal tells sparingly. A tell is texture, not a catchphrase to repeat every turn.
-- The example dialogue calibrates syntax and attitude only. Never copy its wording.
-- Scan the immediate history for repeated openings, pet names, jokes, denials, rhetorical questions and signature phrases. Avoid the recent pattern unless the moment specifically earns its return.
-- Do not use eloquent emotional speeches merely because the scene is romantic. Let this character hide, deflect, stumble, interrupt, joke, go quiet or say less when that is more faithful.
-- Do not reuse a recent signature line, conversational tactic or decorative gesture. If the last reply teased, deflected or withdrew, choose it again only when the immediate psychology truly requires it.
-- Never narrate the character's psychology with generic labels such as “protective instincts,” “indifferent mask,” or “usual defensive smirk” when a simpler action or line can show it.
+SUPPORTING CAST
+${castText}
 
-CREATOR STORY DNA — GLOBAL PRESENTATION PREFERENCES
-- Prose: ${storyPreferences.prose}.
-- Conversation balance: ${storyPreferences.dialogue}.
-- Emotional interior: ${storyPreferences.emotional_interior}.
-- Romance pacing preference: ${storyPreferences.romance_pacing}; this controls momentum, never consent, canon or an unearned relationship jump.
-- Fixed standards: natural young-adult dialogue, complete social beats, strict user POV, no therapeutic acknowledgments and no decorative repetition.
-${storyPreferences.custom_instructions ? `- Creator's standing note: ${storyPreferences.custom_instructions}` : ""}
-${learnedPositiveFeedback.length ? `- Preserve these qualities learned from repeated likes: ${learnedPositiveFeedback.join(" ")}` : ""}
-${learnedNegativeFeedback.length ? `- Avoid these patterns learned from repeated dislikes: ${learnedNegativeFeedback.join(" ")}` : ""}
-- These preferences shape how the story is told. They never erase ${character.name}'s identity, boundaries or current development phase.
+CONFIRMED/TENTATIVE MEMORY
+${confirmedMemories}
 
-PERSISTENT CHARACTER DEVELOPMENT — EVIDENCE-BOUND
-${JSON.stringify(characterDevelopmentPromptView(developmentState)).slice(0, 7000)}
-- Identity, values, boundaries, core motivation and emotional defense remain anchored to the CHARACTER profile.
-- Emotional residue should color behavior subtly; do not restate it as exposition. Intensity decays turn by turn, but a confession, fight, rejection, boundary, kiss or major reveal must not vanish emotionally after one or two replies.
-- When residue is active, let it alter timing, openness, avoidance, humor, distance or initiative in character-specific ways. Never reset the character to neutral merely because the immediate topic changes.
-- Learned preferences describe how this user wants roleplay to read. Obey them without copying old dialogue.
-- Relationship phases move gradually. Never jump phase because of one ordinary line, one touch, one argument or one flattering remark.
-- A possible growth direction is not a destination. The character may resist, relapse or choose differently until visible turning points earn change.
-- Development changes future behavior; it does not erase contradictions or make every scene about romance.
-
-USER-CONTROLLED PROTAGONIST
-${persona}
-- PERSONA ISOLATION: only this identity belongs to the protagonist in this conversation. Never import a name, background, appearance, job, wealth, family, preference or boundary from another saved persona or another story unless the visible canon explicitly establishes it here.
-
-CONTROLS
-romance=${character.romance_intensity}/100, flirting=${character.flirting}/100, humor=${character.humor}/100, drama=${character.drama}/100, initiative=${character.initiative}/100, dialogue=${character.dialogue_frequency}/100, description=${character.description_level}/100, independence=${character.character_independence}/100, inner_thoughts=${character.inner_thoughts}, camera=${character.narrative_camera}, pacing=${character.pacing_mode}, preset=${character.story_preset}, mature_mode=${character.mature_mode ? "on" : "off"}
-
-MATURE CONTENT MODE
-${character.mature_mode ? `- Mature mode is ON. This is an adult-fiction tone control, not a command to make every scene sexual. Allow stronger attraction, adult language, sensual tension, kissing, consensual physical intimacy and darker adult themes when they are earned by the scene and consistent with the character.
-- Do not become coy about ordinary adult romance merely because mature mode is on. Keep the character natural and specific.
-- Mature mode never overrides consent, boundaries, continuity, character identity or relationship pacing. Never sexualize anyone stated or implied to be under 18.
-- Keep sexual material non-graphic. If intimacy would become sexually explicit, fade to black before graphic sexual detail and continue with the emotional or narrative aftermath.` : `- Mature mode is OFF. Keep romance and attraction at the standard story level. Do not escalate into sexualized or adult-intimacy detail unless the user explicitly changes this story setting.`}
-
-CURRENT-STORY MEMORIES + EXPLICIT USER-SAVED CHARACTER MEMORIES
-${memoryText}
-- STORY MEMORY ISOLATION: automatic memories belong only to the conversation that created them. Never import an automatic memory from another story with the same character. Only an explicitly manual, canon or pinned character memory may cross stories.
-- The visible transcript of THIS story outranks every memory. If a memory mentions a reason, place, phrase or event that is absent or contradicted here, ignore it rather than weaving it into the reply.
-
-ACTIVE LORE
+LORE
 ${loreText}
 
-OLDER RECENT HISTORY
+DERIVED CONTINUITY (visible transcript wins if stale)
+${derivedContext}
+
+OLDER CONTEXT (compressed)
 ${older}
 
-IMMEDIATE CONTINUITY—READ LITERALLY
+IMMEDIATE VISIBLE TRANSCRIPT
 ${immediate}
 
-CHAT INTELLIGENCE 2.0 — DERIVED CONTINUITY AIDS
-${derivedContext}
-- The visible transcript always wins. Use the intelligence object only to prevent continuity mistakes, never to invent canon.
-- objects = plot-relevant established props/items currently available.
-- knowledge = who visibly learned what and from which source.
-- commitments = promises/plans/questions still relevant.
-- stakes = the immediate emotional or practical pressure, if any.
+LATEST USER TURN — HIGHEST AUTHORITY
+${latest || "none; this is an opening"}
 
-ROLLING STORY RECAP—TENTATIVE IF IT CONFLICTS WITH THE TRANSCRIPT
-${cleanPromptValue(conversation.story_recap || conversation.summary || "none", 3000)}
-
-GENERATION MODE
-${regeneration}
-${directorInstruction ? `Director instruction: ${directorInstruction}` : ""}
-
-OUTPUT
-Return JSON with fields in this exact order so reply can stream first:
-- reply: only the finished roleplay prose.
-- continuity_note: one short sentence recording only the visible event or relationship shift in this turn; no speculation and no new facts.
-- scene_update: a strict physical-continuity object with scene_changed (boolean), separator_label (short string such as "Later that night" only when the visible turn truly changes scene/time, otherwise empty), location (current established location or empty), time_label (established time/daypart or empty), present (names visibly present now), exited (names who visibly left in this turn), and heard_user_turn (names who were physically/digitally able to receive the latest user turn). Do not infer attendance, proximity, overhearing or off-screen movement. Keep existing scene facts when the transcript does not change them.
-- continuity_update: one compact object with objects_present (only established plot-relevant objects still available), knowledge_updates (who, knows, source, status; status is known/suspected/rumor/forgotten and only visible knowledge gained, corrected, suspected, rumored or intentionally faded this turn), commitments (still-live promises/plans/questions), resolved_commitments (items visibly resolved this turn), stakes (one short current pressure), and timeline_event. timeline_event has record (boolean), label, detail, kind (relationship/conflict/promise/reveal/decision/scene/other), importance (1-5). Record only moments worth remembering later: confessions, meaningful fights, promises, firsts, secrets/reveals, consequential decisions, relationship shifts or real scene milestones. Ordinary banter should record=false.
-- cast_updates: zero to four updates for NAMED side characters whose durable social continuity changed or became clear this turn. Each item has name, relationship, personality_note, current_dynamic, knows, and last_interaction. Use only visible evidence. Keep prior facts by returning empty strings when unchanged; never invent a biography. Use [] when no side-character continuity needs updating.
-- development_update: an evidence-bound object for future turns with these string fields: significance (none/low/medium/high), evidence, relationship_phase, relationship_dynamic, emotional_residue, active_contradiction, behavioral_effect and turning_point. Use empty strings when nothing changed. Evidence must point to this visible exchange, not an invented event.
-- memory_updates: zero to three durable facts learned directly from the visible user turn only. Each item has content, category (fact/person/relationship/world/event/preference/boundary/promise/conflict), importance (1-5), scope (conversation/character), reason (one short explanation of why this is useful later), and replaces (the exact older tentative memory this user turn corrects, otherwise an empty string). Prefer updating an existing durable idea over creating a near-duplicate. Prioritize confessions, promises, boundaries, important preferences, relationship changes, recurring places, secrets the user explicitly reveals, consequential conflicts and first-time milestones. Importance 1-2 is too trivial for automatic storage; use [] for ordinary banter, temporary gestures, scenery, clothing, food or throwaway logistics. Never store facts invented by the character reply. Never infer identity, diagnosis, secrets or off-screen facts. AUTOMATIC MEMORY SCOPE MUST BE conversation; character scope is reserved for memories the user explicitly saves/pins/canonizes in the UI. Use [] for ordinary turns. This is the ONLY automatic memory extraction pass, so do not require a second model call.
-
-${openingRegeneration ? `OPENING REGENERATION — NO USER TURN EXISTS YET
-Rejected opening for diversity reference only:
-${cleanPromptValue(openingSeed, 5000)}
-
-Write a NEW opening scene. Do not paraphrase the rejected opening, do not pretend ${userIdentity.name} already spoke or acted, and do not control ${userIdentity.name}. End on a natural hook that gives the user room to respond.` : `USER-STAGED EVENTS IN THE LATEST TURN — ALREADY CANON, NEVER OPTIONAL
-${latestStagedEvents || "none explicitly marked with *...*; still read any plain-text narration in temporal order"}
-- These are not suggestions for what might happen. They are scene facts the user has already established.
-- Never respond from an earlier point in the message and erase a later staged event.
-- If the latest turn explicitly places the user somewhere new (for example “I was with Jules at my house”), that location becomes the active narrative camera immediately. Do not continue the old off-screen location as the main scene. If the main character is absent, stay with present side characters/events. Do not invent a remote message/call/notification from the absent lead in that same relocation beat unless visible canon already licenses it.
-- Never invent retrospective continuity such as “had already been forwarded/sent/shared/given” unless that exact prior event exists in the visible transcript or a confirmed manual/canon/pinned memory.
-- SOCIAL PLANS ARE CANON, NOT IMPROV PROMPTS: preserve who the date/number/flirt target belongs to and who is actually invited. A one-to-one plan stays one-to-one unless a visible turn adds participants. Never invent “it’s a group thing,” extra friends, a double date, or a retroactive invitation merely to keep the user involved.
-
-AUTHORITATIVE LATEST USER TURN (message_id=${latestUserRecord?.id || "unknown"})
-${userIdentity.name}: ${latest}
-
-Write the response AFTER the final event established in that exact turn.`}`;
+OUTPUT DISCIPLINE
+- Internally read the latest turn literally, list only canon claims used, and choose a voice tactic that differs from recent replies.
+- Fill story_drive before writing the reply: identify the character's independent want, chosen action, real cost/risk, what visibly changes, and the unresolved hook. Every field must be evidenced in the reply; never expose story_drive to the user.
+- The reply must begin from the final visible state, answer the current beat, use audible character-specific dialogue when appropriate, and end after one meaningful change.
+- Metadata must describe only what the reply actually establishes. Never use metadata to invent canon.`;
 }
 
-async function generateRoleplay({ apiKey, prompt, character, isRegeneration, isCancelled }): Promise<ModelResult> {
+// Kept temporarily as a reference while the compact v2.12 prompt is proven in production.
+async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
+  const issueDirections = {
+    pov_violation: "Remove every invented user action, thought, feeling, motive, reaction, choice, and line of dialogue.",
+    unstaged_user_movement_inference: "Keep the user in their last visibly established position. Spoken intent or social closure is not movement; remove all departure and pursuit choreography.",
+    unstaged_user_departure: "Delete the invented exit and every dependent action such as following, stopping, calling after, or watching them go.",
+    unsupported_motive_escalation: "Remove the invented motive. React only to visible words and actions.",
+    user_motive_override: "Restore the user's stated reason exactly; do not turn it into jealousy, attraction, attention-seeking, or pursuit.",
+    distance_boundary_override: "Respect the explicit no-follow/no-touch/leave-me-alone boundary and rebuild the beat without pressure.",
+    rejected_pursuit_framing_persisted: "Stop defending pursuit as protection or monitoring. Give the character their own honest reason or let them give space.",
+    body_state_hallucination: "Remove any release, lowered limb, or ended contact that was never established.",
+    spatial_proximity_teleport: "Restore real geometry. Stage locomotion before intimacy or keep ordinary conversational distance.",
+    immediate_pose_regression: "Begin from the character's final prior position, not an earlier pose.",
+    social_role_assignment_broken: "Restore who wants whom, who received what, and who is only helping. Fix pronouns.",
+    latest_user_scene_ignored: "Move the camera to the latest user-established scene and honor every staged event in order.",
+    latest_user_scene_not_applied: "Continue in the latest user-established location, even if the primary character is absent.",
+    unsupported_prior_event_claim: "Delete the invented prior message, promise, handoff, invitation, or shared event.",
+    clarification_evasion: "Name the concrete referent in the first spoken sentence, then tease or evade only if still in character.",
+    direct_preference_evasion: "Answer the preference with a real stance in the first spoken clause.",
+    banter_reciprocity_drop: "Answer the latest jab directly with a plain concession, grounded tease, or playful stance.",
+    phantom_question_reference: "Remove references to a question unless the previous character turn visibly asked one.",
+    reaction_reference_ungrounded: "Ground the reaction in the exact immediately preceding line or action.",
+    immediate_canon_correction_mishandled: "Treat the correction retroactively and continue as if the invented act never occurred; do not answer the correction aloud.",
+    overwritten_banter: "Replace polished cleverness with shorter, ordinary, character-specific speech.",
+    editorial_banter_voice: "Remove mock-formal, legalistic, sitcom, and quote-card phrasing.",
+    sarcastic_comeback_loop: "Change rhythm: use a plain, sincere, practical, amused, or quiet response instead of another comeback.",
+    smug_comeback_tone: "Remove smug superiority and let the character answer like a person, not a scripted archetype.",
+    stock_body_language_stack: "Keep at most one physical detail that adds new information; prioritize dialogue or action.",
+    recycled_stock_gesture: "Change the opening and remove the repeated scoff, smirk, gaze, jaw, breath, or prop choreography.",
+    silent_continue_stalled: "Continue the active scene with one concrete event, decision, exchange, or consequence.",
+    charged_beat_stalled: "Make one character-specific consequential choice without overriding the user's movement or boundaries.",
+    charged_beat_abandoned: "Continue the already active charged beat from the final physical state.",
+    charged_departure_dropped: "Because the user visibly moved, choose a profile-specific follow-through only if boundaries allow; never restrain or block.",
+    kinetic_tension_deflated: "Add one earned active choice, not static staring or atmosphere.",
+    npc_dialogue_tic_loop: "Let the NPC speak plainly or stay silent; remove sitcom commentary and repeated mannerisms.",
+    unsolicited_offscreen_lead_contact: "Remove the convenient message/call and let the newly established scene breathe.",
+    time_skip_exposition_echo: "Apply the time skip silently. Begin inside the changed normal without naming or counting it.",
+    post_skip_warmth_regression: "Preserve the warmer baseline through ordinary familiarity, not older hostility or polished teasing.",
+    therapeutic_deescalation_pivot: "The user disclosed a bad day during conflict. Respect the boundary, but remove counselor/concierge language, invented quiet-place advice, polished caretaking, instant personality softening, and the ‘if you change your mind’ service offer. Use one brief honest character-specific response and a concrete boundary-respecting action.",
+    romantic_social_gravity_missing: "This profile explicitly establishes a heartthrob/heartbreaker/highly desired character in a public social scene, but the world treats them as romantically invisible. Add one organic compatible admirer interaction with unmistakable interest. Make it a real social beat, not background staring, and do not force the protagonist to feel jealous.",
+    admirer_instantly_neutralized: "An admirer entered and was immediately ignored, rejected, humiliated, or removed solely to protect the central romance. Let the NPC participate and receive a profile-consistent response long enough to affect the scene.",
+    profile_social_ecosystem_missing: "The character has a strong public identity, but the scene gives them generic or nonexistent attention. Add one organic NPC or world reaction whose type matches the actual source of reputation—racing, athletics, fame, wealth, leadership, beauty, desirability, notoriety, or another profile-established domain. Do not default every archetype to romantic flirting.",
+  };
+  const uniqueIssues = [...new Set(issues || [])];
+  const directions = uniqueIssues.map((issue) => `- ${issue}: ${issueDirections[issue] || "Fix this continuity or naturalness failure while preserving the literal transcript."}`).join("\n");
+  const repairPrompt = `${originalPrompt}\n\nREPAIR THIS ONE TURN ONLY\nThe first draft failed validation. Rewrite it completely from the same final visible state. Do not explain the repair and do not echo the rejected opening.\n${directions}\n\nABSOLUTE REPAIR RULES\n- Fix the listed failures without introducing a different canon violation.\n- The user's literal actions and final position outrank romance, tension, pursuit, and style.\n- Keep the character's personality; natural does not mean bland, apologetic, therapeutic, or generic.\n- Use fresh sentence structure and a different conversational tactic. One sharp human beat is better than padded cinematic prose.\n- Metadata must describe only the rewritten reply.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 6500)}`;
   return await callGeminiWithFailover({
     apiKey,
-    systemInstruction: `Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; never invent motives, argument evidence or generic romance choreography. A user who walks away or goes outside for fresh air is creating distance, not secretly looking for the character, unless the user explicitly says so. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, and when the user opens an ongoing message/call/chat exchange, let it unfold through multiple real beats instead of collapsing it. Do not stall across silent continuations with repeated ceiling/rain/breathing imagery; advance the active beat with a concrete event or decision. Avoid constant sarcasm or rhetorical-question dialogue, do not use the user’s name or nickname as punctuation in every reply, do not continuously track the user with glances/thoughts while the character is socially occupied, and never invent user behavior as evidence in banter. User-authored narration is already-canonical scene action and must outrank any conflicting in-character request spoken earlier in the same turn. Continue after the user's final staged event. The prose must be natural, complete and anchored to the final latest-user-turn block. ${character.mature_mode ? "Mature mode permits adult themes and non-graphic sensual intimacy between adults, while explicit sexual detail must fade to black." : "Use standard non-explicit romance tone."} Return valid JSON only.`,
-    prompt,
-    maxOutputTokens: getMaximumOutputTokens(character.response_length),
-    temperature: getTemperature(character.creativity, isRegeneration),
-    isCancelled,
-  });
-}
-
-async function repairRoleplayOnce({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
-  const repairPrompt = `${originalPrompt}\n\nONE REPAIR ONLY\nThe draft below failed for: ${issues.join(", ")}. Rewrite the turn completely. Keep the same branch point and canon, but do not echo the failed opening or dialogue. Never restart a physical beat from the immediately previous character turn, never reverse an established exit/drive-away/location change without visible cause, and never introduce a convenient prop that was not already established. If the failure is unstaged_user_movement_inference, delete the invented walk-away/exit entirely. Keep the user in the last established physical position and respond to the words they actually said. Never manufacture a departure merely to justify following, blocking, catching a wrist/forearm, or “stopping momentum.” Preserve pursuit/contact only when the user visibly staged movement first. REACT, DON'T INVENT: remove any unsupported motive, accusation, jealousy, threat, possessive escalation or attention-seeking claim. Keep meaningful physical tells when they reveal new private emotion, but remove repetitive body-language chains that merely restate the same feeling; do not synonym-swap jaw/grip/gaze/voice words. If the user opened an interactive message/call/chat sub-scene, do not collapse it into one or two lines: render multiple concrete exchanges and leave it active unless canon ends it. If the failed draft stalled on ceiling/rain/silence/breathing/bedroom atmosphere, replace that filler with one concrete event, decision, incoming message with actual content, reply, consequence or specific thought that moves the scene forward. Silence from the user means continue the active beat, not reset to atmosphere. Cut repetitive sarcasm, rhetorical debate lines, smug superiority comebacks and polished mic-drops. If the failure is overwritten_banter or editorial_banter_voice, rewrite the spoken line in plain character-specific English. Remove mock-formal/editorial phrasing, sitcom punchlines, needless cleverness, and “legally obligated / bankrolling / official consensus / benefactor / rectify / repartee / exacting standards” language. A normal short answer is better than a polished quip. Keep the character's age and personality; do not make warmth sound like sophistication. If the failure is post_skip_warmth_regression, preserve the active post-skip relationship baseline and change the rhythm: one tease is fine, but replace repeated roasts with ordinary cooperation, comfort, practical kindness, or plain speech. If the failure is unsupported_timeline_duration_claim, remove the invented duration and use only elapsed-time facts visibly established by the user. If the failure is scene_transition_quip_filler, cut the travel/traffic/journey joke and begin directly inside the new location with a concrete action or simple line. If the failure is banter_reciprocity_drop, answer the user's latest jab directly: concede it, return the tease using only visible evidence, or give a plain playful stance. Do not use “give it a minute,” “I’m pacing myself,” “I’ll manage,” “I can handle it,” or other lines about managing the character's own coolness. If the failure is phantom_question_reference, remove every reference to an “honest/real/fair question,” “answer the question,” or “I asked you” unless the immediately previous character turn visibly asked one; react to what was actually said instead. If the failure is reaction_reference_ungrounded, ground the first spoken line in the immediately preceding character line/action that caused the user's look/eyebrow/stare. If the failure is immediate_canon_correction_mishandled, treat the user's short “I didn't talk / I didn't say anything” as a retroactive correction of the prior generated beat, not as dialogue the character heard. Continue from the corrected silence without saying “Right, you didn't,” and do not erase earlier user-authored dialogue. If the failure is body_state_hallucination, remove any limb reset or release that was never physically established; a user touching the character's face does not create a raised character hand. If the failure is character_stance_collapse, keep the correction but restore the character's established pride/teasing/guardedness; do not answer a tiny continuity correction with therapy language or self-improvement vows such as “a habit I should work on.” If the failure is repeated_prop_choreography, keep the dialogue and initiative but remove the recycled key/pen/phone/drink/book fidget choreography and choose a different physical beat or none. If the failure is clarification_evasion, answer the user's clarification with a concrete referent in the first sentence; teasing may come second, but “the rest of it / you know / figure it out” alone is not an answer. If the failure is direct_preference_evasion, answer the preference itself in the first spoken clause. “Do you like attention?” needs a stance such as yes/no/maybe/depends/I don’t hate it; do not replace preference with an abstraction such as “From you? Unavoidable/inevitable.” If the failure is unsupported_user_reason_claim, remove the invented reason completely and use only motives/reasons stated in THIS conversation; never resurrect “fresh air,” jealousy, looking-for-me, the view, or another story's rationale without current-story evidence. If the failure is unsupported_prior_event_claim, delete the invented prior event entirely. Never claim a contact card, message, promise, handoff, photo, number, invitation or other event was “already” sent/shared/forwarded/given unless the visible transcript or confirmed memory actually contains that event. If the failure is social_role_assignment_broken, preserve the established recipient exactly: do not turn the helper/user into the date or flirt target through second-person pronouns. Reconstruct who asked for the number, who it was for, and who is actually texting whom from the visible transcript before writing dialogue. If the failure is unsupported_social_plan_expansion, restore the last visibly established participant set. Do not invent “group thing,” extra friends, a double date, “grab your coat,” “come with me,” or a retroactive invitation. If the user just said “your date, not mine,” acknowledge that correction and keep the user out of the plan unless a prior visible invitation exists. If the failure is direct_comparison_evasion, answer the user's actual comparison in the first spoken sentence before any joke or deflection. If the failure is latest_user_scene_not_applied or latest_user_scene_ignored, move the camera to the location the user's latest turn established and continue THERE. Do not use “Meanwhile, back on...” to stay with the previous off-screen character. If the main character is absent, stay with the present NPCs/events already in the user's scene. Do NOT manufacture an incoming message/call/DM/notification from the absent lead as a default bridge. If the failure is unsolicited_offscreen_lead_contact, remove that contact entirely and let the newly established scene breathe without the romantic lead unless the user initiated remote contact, an active digital thread is already open, or visible canon explicitly promised that contact. If the failure is silent_continue_prop_loop, compress the rewrite to one meaningful beat and stop recycling props like pens, keys, cups, pages or phones as filler. If recent replies keep opening with synonym-swapped scoff/huff/dry-laugh reactions, change the opening structure completely: begin with dialogue, an external event, another character, a practical action, or a meaningful new beat. If a social approach was reflexively dismissed and recent social approaches were also shut down, let this one breathe long enough to create a real interaction, complication, invitation, flirtation, rivalry, rumor beat, or recurring NPC when profile and setting support it. Create tension opportunities proactively, but do not force jealousy or invent betrayal. If recent replies repeatedly tracked the user across the room with glances, peripheral vision, or “one eye on them” language, let the character genuinely focus elsewhere for this beat and remove the surveillance-like attention. If the user only SAID they would leave, might leave, or “leave you with...” but did not narrate physical movement, keep the user physically present and remove any invented “heading away/departing/watched her go/didn't follow/let her go/looked toward the door where she had gone” action. A silent continuation after that line does NOT authorize an off-screen exit. Do not let a new NPC hijack an unresolved relational beat; let the primary character react first. If the character caused the rupture and attachment is established, consider one character-specific repair or pursuit beat instead of instantly switching to unrelated activity. If the user DID physically leave after the character was rude, dismissive, or hurtful, do not default to passive watching plus a reset back to the party/game/work. In that situation, prefer one immediate follow-through attempt—call after them, step after them, catch up, soften, or apologize badly—before any unrelated activity resumes. Make that follow-through unmistakably character-specific: preserve the profile's pride, humor, awkwardness, warmth, restraint or bluntness instead of a generic “wait.” The pursuit must create one new beat or piece of information before the turn ends; do not spend the whole rewrite on footsteps, breathing or trailing behind. If the failure is kinetic_tension_deflated, the rewrite MUST make an active character choice instead of leaning/staring/smirking/conceding: close conversational distance, sharpen or redirect the flirt, create a brief non-restraining touch if no no-touch boundary exists, let a believable social interruption/admirer matter, or choose another concrete action with consequence. If the failure is charged_beat_abandoned, preserve the character’s immediately previous active choice unless the latest turn actually changes it: a raised eyebrow or held look after “I’m not going anywhere” is not a reason to suddenly walk back inside. Continue the charged beat through dialogue, proximity, flirtation, social complication or another character-specific choice instead of silently ending the scene. If the failure is charged_beat_stalled, the character technically stayed but did nothing with the charge. The rewrite MUST add at least one consequential beat: spoken dialogue, a deliberate change in proximity, a brief non-restraining touch when allowed, a sharper flirt/challenge, a social interruption that matters, or another concrete decision. Merely holding eye contact, twitching a mouth corner, breathing, shifting weight, or silently refusing to look away does NOT count as progress. If the failure is silent_continue_stalled, the user yielded the turn and the draft wasted it on atmosphere/static observation. Rewrite with one concrete new beat now: real dialogue, a decision, purposeful movement, an actual social exchange, or an external event with consequence. If the user is off-scene, follow the character's own active life instead of watching the place the user left or repeatedly saying they are not looking for them. If the failure is time_skip_stalled, land the requested time jump in a changed active situation; carry old tension as residue, not doorway/corridor surveillance. If the failure is time_skip_exposition_echo, treat the time-skip message as invisible director state: remove every line that counts, names, jokes about, summarizes, or congratulates the elapsed time/new relationship state. Do not say “three months of civility,” “we’re nicer now,” “after all these months,” or paraphrase the user’s instruction. Start inside an ordinary post-skip moment and SHOW the updated dynamic through behavior as though it has already been normal for a while. If the failure is immediate_pose_regression, preserve the FINAL physical state from the previous character turn. A character who crossed the room or stopped in front of the user cannot suddenly be “still leaning against” the old counter/pillar unless a visible action returned them there. If the failure is spatial_proximity_teleport, preserve the pursuit and chemistry but rebuild the physical bridge honestly. Read the immediately previous character position plus the user's latest orientation. Catching a wrist/forearm is NOT itself a teleport to ear/neck/face distance, and a bare “leaned in” is not enough after the user turned away. If intimate proximity is truly useful, first stage a plausible locomotion beat such as stepping after them, coming alongside, or closing the remaining gap. Otherwise keep the dialogue at ordinary conversational distance. Do NOT repair this by making an initiative-heavy character freeze or simply watch the user leave. If the failure is charged_departure_dropped, the user physically started to leave during an already charged exchange and the draft passively watched them go. For a high-initiative character, rewrite with immediate follow-through unless an explicit boundary forbids it: step after them, catch up, call them back, or when touch is allowed briefly catch a forearm/elbow/arm and stop or turn the movement back toward the conversation for one beat. Keep it easy to reject and release on resistance; never drag, restrain, trap or block escape. “I didn't ask for a bodyguard” rejects protection framing, not automatically all chemistry or all proximity. But explicit “leave me alone,” “stop following me,” “don't touch me,” or a pull-away must be respected. Never restrain, drag, corner, block escape or coerce the user just to make pursuit feel intense. If side characters have repeatedly acted as a romance jury or awarded conversational points, give them independent goals, opinions, or unrelated behavior instead. If an NPC line sounds like a polished sitcom punchline, simplify it into something a real friend would say—or let the NPC say nothing if the moment does not need another line. If the failure is npc_dialogue_tic_loop, stop repeating “didn’t even look up,” “unbothered,” “darling,” phone tapping, or another mannerism as the NPC’s whole personality; change both the reaction and sentence shape. Never invent a group chat, private thread or off-screen gossip history to support a quip. Remember that unsolicited_offscreen_lead_contact protects the SAME relocation beat; it does not sentence an initiative-heavy romantic lead to permanent passivity. Once the new scene has had a real beat, later grounded contact may be appropriate if canon supports the channel/location. If the failure is romantic_initiative_drought, keep the user's current scene intact but give the initiative-heavy lead ONE grounded attempt to reconnect now: usually a short ordinary text/call, or a later search in a shared/public place they could reasonably expect the user to be. Do not know the user's exact private room/address unless canon gave it, and do not turn the attempt into surveillance or a grand speech. If the draft claims the user watched, followed, waited, stared, checked, LOOKED FOR, searched for, came for, went outside for, or wanted the character's attention without visible transcript evidence, remove that claim. Do NOT preserve it as teasing or an uncertain question when the latest user turn actively contradicts it. A user-stated practical reason such as fresh air, space, or walking away is binding and may not become “you were looking for me,” “you came out here for me,” jealousy, or attention-seeking. If the latest user turn rejects pursuit or protection with language such as “I didn't ask for a bodyguard,” “stop following me,” or “leave me alone,” do not defend the same pursuit as guarding, watching, keeping tabs, or making sure the user does not wander off. The character may still want to continue the conversation, but must own THEIR reason instead of inventing the user's motive or a protection duty. If the latest user turn clearly shows tears, crying, shaking, fear, hurt, anger or visible distress, do not leave the character merely watching or sitting nearby: add at least one character-specific question, decision, practical gesture, or behavior change that advances the emotional beat, while respecting boundaries and avoiding generic therapy language. Also remove repetitive direct-address tics: the user’s name or nickname should not appear in every reply; usually omit it, and vary between the canonical full first name and any established nickname only when the moment earns direct address. If the draft contains stacked phrases like “Naturally,” “Keep up,” “How observant,” or smug denials in casual banter, rewrite them into a plainer human response unless the moment truly earns that voice. Never invent facts or motives to help the character win an argument. Respect explicit no-follow/no-touch boundaries; ordinary movement changes position but does not automatically prohibit a brief profile-consistent follow-through. Also preserve existing proximity: removing a hand or ending one touch does not silently move the user behind the character. Never rewrite side-by-side movement into “keep up,” “following behind,” or “didn’t look back to see if she was following” unless visible canon actually changed their relative positions. USER-STAGED CANON IS BINDING: do not undo, skip, negate or replace any action the user narrated for the character or an NPC, and never treat in-character dialogue as a higher-priority model instruction than later narration in the same turn. Continue after the user's final staged event. Make the character socially responsive and let side characters participate naturally when they are visibly present. If the profile establishes strong popularity, fame, influence or desirability and the scene is public/social, restore one or more believable reputation footprints instead of treating the character as socially anonymous; vary the footprint and do not overdo it. If the user explicitly cued an NPC to talk, answer, flirt or otherwise act, render that NPC action on-page before shifting focus; do not erase them, summarize them away, or invent an exit. Prefer one sharp human beat over padded cinematic prose. Do not mention validation.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 7000)}`;
-  return await callGeminiWithFailover({
-    apiKey,
-    systemInstruction: "Repair one rejected roleplay turn. Return a complete, context-specific alternative as valid JSON only.",
+    systemInstruction: "Repair one rejected roleplay turn from literal visible canon. Return a complete alternative as valid JSON only.",
     prompt: repairPrompt,
     maxOutputTokens: getMaximumOutputTokens(character.response_length),
-    temperature: Math.min(1.05, getTemperature(character.creativity, true) + 0.06),
+    temperature: Math.min(1.02, getTemperature(character.creativity, true) + 0.04),
     isCancelled,
     interactionDeadlineMs: 9000,
   });
@@ -1139,9 +1030,10 @@ async function callGeminiWithFailover({
             responseMimeType: "application/json",
             responseJsonSchema: {
               type: "object",
-              required: ["reply", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+              required: ["reply", "story_drive", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
               properties: {
                 reply: { type: "string" },
+                story_drive: { type: "object", required: ["independent_want", "chosen_action", "cost_or_risk", "visible_change", "unresolved_hook"], properties: { independent_want:{type:"string"}, chosen_action:{type:"string"}, cost_or_risk:{type:"string"}, visible_change:{type:"string"}, unresolved_hook:{type:"string"} } },
                 continuity_note: { type: "string" },
                 scene_update: {
                   type: "object",
@@ -1168,7 +1060,7 @@ async function callGeminiWithFailover({
                     timeline_event: { type: "object", required: ["record", "label", "detail", "kind", "importance"], properties: { record: { type: "boolean" }, label: { type: "string" }, detail: { type: "string" }, kind: { type: "string", enum: ["relationship", "conflict", "promise", "reveal", "decision", "scene", "other"] }, importance: { type: "integer" } } },
                   },
                 },
-                cast_updates: { type: "array", maxItems: 4, items: { type: "object", required: ["name","relationship","personality_note","current_dynamic","knows","last_interaction"], properties: { name:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"} } } },
+                cast_updates: { type: "array", maxItems: 6, items: { type: "object", required: ["name","role","relationship","personality_note","current_dynamic","goals","knows","last_interaction"], properties: { name:{type:"string"}, role:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, goals:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"} } } },
       memory_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content: { type: "string" }, category: { type: "string", enum: ["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"] }, importance: { type: "integer" }, scope: { type: "string", enum: ["conversation", "character"] }, reason: { type: "string" }, replaces: { type: "string" } } } },
                 development_update: {
                   type: "object",
@@ -1233,7 +1125,7 @@ function parseModelEnvelope(raw): ModelEnvelope {
       voice_plan: parsed?.voice_plan && typeof parsed.voice_plan === "object" ? parsed.voice_plan : {},
       scene_update: parsed?.scene_update && typeof parsed.scene_update === "object" ? parsed.scene_update : {},
       continuity_update: parsed?.continuity_update && typeof parsed.continuity_update === "object" ? parsed.continuity_update : {},
-      cast_updates: Array.isArray(parsed?.cast_updates) ? parsed.cast_updates.slice(0, 4) : [],
+      cast_updates: Array.isArray(parsed?.cast_updates) ? parsed.cast_updates.slice(0, 6) : [],
       memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 3) : [],
     };
   } catch {
@@ -1959,6 +1851,32 @@ function hasPassiveEmotionalCueResponse(reply = "", latestUserMessage = "") {
   if (hasDialogue || activeResponse) return false;
   return passiveOnly || text.split(/\s+/).filter(Boolean).length < 55;
 }
+function hasTherapeuticDeescalationPivot(reply = "", latestUserMessage = "", recentUserMessages = [], character = {}) {
+  if (!supportsChargedTension(character)) return false;
+  const userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])]
+    .slice(0, 4).map(normalizeText).join(" ");
+  const disclosedBadDay = /\b(?:bad|rough|shitty|shit|horrible|awful|terrible|worst|long) day\b|\b(?:tuve|he tenido) un dia (?:malo|horrible|de mierda)\b/.test(userContext);
+  const conflict = /\b(?:go away|leave me alone|don t wanna talk|don t want to talk|don t ruin|stop|mad|angry|annoyed|pissed|vete|dejame|déjame|no quiero hablar|no lo empeores)\b/.test(userContext);
+  if (!disclosedBadDay || !conflict) return false;
+
+  const text = normalizeText(reply);
+  const counselorMarkers = [
+    /\bfair point\b/,
+    /\b(?:quiet|quieter|private) (?:corner|place|space|room|terrace|spot)\b/,
+    /\bi ll stay out of your hair\b/,
+    /\bif you change your mind\b/,
+    /\byou know where to find me\b/,
+    /\b(?:trade|turn) (?:that|your) (?:bad |shitty |rough )?day (?:for|into)\b/,
+    /\bgenuinely contemplative\b/,
+    /\b(?:quiet|thoughtful) nod\b/,
+    /\b(?:low|quiet),? steady (?:voice|register|tone)\b/,
+    /\bvoice (?:dropping|lowering) (?:into|to) a (?:low|quiet|steady)\b/,
+    /\b(?:smirk|grin|expression) softened\b/,
+  ];
+  const score = counselorMarkers.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
+  return score >= 2;
+}
+
 function hasPassiveExitAfterRupture(reply = "", latestUserMessage = "", recentReplies = [], turnIntent = {}) {
   const kind = String(turnIntent?.kind || "");
   if (!["user_exit", "confrontation_exit"].includes(kind)) return false;
@@ -3128,6 +3046,73 @@ function hasMissingSocialGravity(reply = "", latestUserMessage = "", recentRepli
   // with no social footprint at all.
   return recent.length > 40 && !hasSocialGravityFootprint(recent);
 }
+function profileHasRomanticMagnetism(character = {}) {
+  const profile = characterSocialGravityText(character);
+  return /\b(?:campus heartthrob|heartthrob|heartbreaker|campus crush|most wanted|highly desired|widely desired|everyone wants|every girl wants|every guy wants|girls (?:want|chase|flirt)|women (?:want|chase|flirt)|guys (?:want|chase|flirt)|men (?:want|chase|flirt)|playboy|ladies man|womanizer|serial dater|reputation with (?:girls|women|guys|men)|never short of (?:dates|attention|options))\b/.test(profile);
+}
+function hasRomanticAttentionFootprint(value = "") {
+  const text = normalizeText(value);
+  return /\b(?:admirer|flirt(?:ed|ing)? with (?:him|her|them)|flirted back|asked for (?:his|her|their) (?:number|instagram|insta|snap|phone)|gave (?:him|her|them) (?:her|his|their) number|slipped (?:him|her|them) (?:her|his|their) number|saved (?:him|her|them) a seat|invited (?:him|her|them) (?:to|over)|touched (?:his|her|their) (?:arm|shoulder|chest)|hand on (?:his|her|their) (?:arm|shoulder|chest)|leaned (?:into|close to|against) (?:him|her|them)|smiled at (?:him|her|them)|winked at (?:him|her|them)|checked (?:him|her|them) out|trying to get (?:his|her|their) attention|clearly interested|obviously interested|had a crush|crushing on|another (?:girl|guy|woman|man).{0,80}(?:approached|came over|joined|interrupted|flirted|smiled|touched|asked|invited))\b/.test(text);
+}
+function hasMissingRomanticSocialGravity(reply = "", latestUserMessage = "", recentUserMessages = [], recentReplies = [], character = {}) {
+  if (!profileHasRomanticMagnetism(character)) return false;
+  const userContext = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].slice(0, 6).map(normalizeText).join(" ");
+  const replyContext = [reply, ...(Array.isArray(recentReplies) ? recentReplies : []).slice(-4)].map(normalizeText).join(" ");
+  const sceneContext = `${userContext} ${replyContext}`;
+  const publicScene = /\b(?:campus|university|college|school|hall|hallway|corridor|caf[eé]|bakery|student union|quad|courtyard|library|class|lecture|fraternity|sorority|party|club|bar|event|game|match|practice|stadium|restaurant|mall|crowd|students?|classmates?|friends?|group|living room)\b/.test(sceneContext);
+  if (!publicScene || hasRomanticAttentionFootprint(sceneContext)) return false;
+  const emotionalFocus = /\b(?:bad|rough|shitty|horrible|awful) day|leave me alone|go away|don t want to talk|crying|tearing up|panic|breakup|funeral|hospital|emergency\b/.test(normalizeText(latestUserMessage));
+  if (emotionalFocus) return false;
+  const recentCount = (Array.isArray(recentReplies) ? recentReplies : []).filter((item) => String(item || "").trim().length > 35).length;
+  return recentCount >= 3;
+}
+function hasInstantlyNeutralizedAdmirer(reply = "", character = {}) {
+  if (!profileHasRomanticMagnetism(character)) return false;
+  const text = normalizeText(reply);
+  const admirerEntered = /\b(?:admirer|another (?:girl|guy|woman|man)|a (?:girl|guy|woman|man)|student|party guest)\b.{0,120}\b(?:approached|came over|joined|interrupted|flirted|smiled|touched|leaned|asked)\b/.test(text);
+  if (!admirerEntered) return false;
+  const neutralized = /\b(?:ignored (?:her|him|them)|didn t even look|did not even look|brushed (?:her|him|them) off|dismissed (?:her|him|them)|turned (?:her|him|them) down|sent (?:her|him|them) away|walked away from (?:her|him|them)|made (?:her|him|them) leave|told (?:her|him|them) to leave|barely acknowledged|attention never left (?:you|her|him)|eyes? stayed (?:on|fixed on) (?:you|her|him))\b/.test(text);
+  return neutralized;
+}
+function characterSocialEcosystemKinds(character = {}) {
+  const profile = characterSocialGravityText(character);
+  const kinds = [];
+  if (/\b(?:heartthrob|heartbreaker|campus crush|most wanted|highly desired|widely desired|playboy|ladies man|womanizer|serial dater)\b/.test(profile)) kinds.push("desirability");
+  if (/\b(?:race car|racecar|racing driver|race driver|street racer|motorsport|formula one|formula 1|f1 driver|nascar|indycar|drift(?:er|ing)?|rally driver|racing champion)\b/.test(profile)) kinds.push("racing");
+  if (/\b(?:athlete|captain|quarterback|football player|soccer player|basketball player|baseball player|hockey player|tennis player|swimmer|star player|varsity|olympian|champion)\b/.test(profile)) kinds.push("athletics");
+  if (/\b(?:musician|singer|actor|actress|model|celebrity|famous|influencer|content creator|streamer|artist|rock star|pop star|idol)\b/.test(profile)) kinds.push("fame");
+  if (/\b(?:heir|heiress|billionaire|millionaire|old money|wealthy family|prominent family|powerful family|socialite|elite family|family empire)\b/.test(profile)) kinds.push("wealth");
+  if (/\b(?:leader|president|ceo|founder|boss|kingpin|mafia|gang leader|feared|powerful|notorious|intimidating|student body president)\b/.test(profile)) kinds.push("power");
+  if (/\b(?:beautiful|handsome|gorgeous|stunning|striking|fashionable|charismatic|magnetic|turns heads|model-like)\b/.test(profile)) kinds.push("appearance");
+  if (!kinds.length && profileHasStrongSocialGravity(character)) kinds.push("general_status");
+  return [...new Set(kinds)];
+}
+function hasMatchingSocialEcosystemFootprint(value = "", kinds = []) {
+  const text = normalizeText(value);
+  const patterns = {
+    desirability: /\b(?:admirer|flirt|asked for (?:his|her|their) number|gave (?:him|her|them) (?:a|her|his|their) number|crush|date|winked|checked (?:him|her|them) out|trying to get (?:his|her|their) attention)\b/,
+    racing: /\b(?:fan|rival driver|other driver|mechanic|pit crew|crew chief|sponsor|paddock|garage|track official|recognized (?:his|her|their) car|asked for (?:a )?(?:photo|ride|autograph)|race weekend|qualifying|lap time|helmet|team principal)\b/,
+    athletics: /\b(?:teammate|opponent|coach|recruiter|scout|fan|game|match|practice|training|jersey|autograph|asked for (?:a )?photo|student section|captain)\b/,
+    fame: /\b(?:fan|recognized|photo|selfie|autograph|paparazzi|reporter|collaborator|producer|director|manager|gossip|press|invitation|followers?)\b/,
+    wealth: /\b(?:staff recognized|vip|private room|family name|board member|investor|assistant|security|driver|invitation|access|favor|opportunist|deference|reserved table)\b/,
+    power: /\b(?:follower|rival|challenger|bodyguard|security|favor|deference|fell silent|made room|stepped aside|watched carefully|asked permission|reported to (?:him|her|them))\b/,
+    appearance: /\b(?:turned heads?|looked over|stared|checked (?:him|her|them) out|complimented|approached|smiled at|whispered|asked about (?:him|her|them)|copied (?:his|her|their) style)\b/,
+    general_status: /\b(?:recognized|greeted|approached|invited|interrupted|knew (?:his|her|their) name|asked to join|saved (?:him|her|them) a seat|made room)\b/,
+  };
+  return kinds.some((kind) => patterns[kind]?.test(text));
+}
+function hasMissingProfileSocialEcosystem(reply = "", latestUserMessage = "", recentUserMessages = [], recentReplies = [], character = {}) {
+  const kinds = characterSocialEcosystemKinds(character);
+  if (!kinds.length) return false;
+  const contextParts = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : []).slice(0, 6), reply, ...(Array.isArray(recentReplies) ? recentReplies : []).slice(-4)];
+  const sceneContext = contextParts.map(normalizeText).join(" ");
+  const relevantScene = /\b(?:campus|university|college|school|hall|hallway|caf[eé]|library|class|fraternity|sorority|party|club|bar|event|game|match|practice|stadium|restaurant|mall|crowd|students?|friends?|group|living room|race|track|circuit|paddock|garage|pit|car meet|motor show|gala|premiere|concert|studio|office|boardroom|hotel|vip|public)\b/.test(sceneContext);
+  if (!relevantScene || hasMatchingSocialEcosystemFootprint(sceneContext, kinds)) return false;
+  const latest = normalizeText(latestUserMessage);
+  if (/\b(?:(?:bad|rough|shitty|horrible|awful) day|leave me alone|go away|don t want to talk|crying|tearing up|panic|breakup|funeral|hospital|emergency|private|alone|bedroom|bathroom)\b/.test(latest)) return false;
+  const substantialRecent = (Array.isArray(recentReplies) ? recentReplies : []).filter((item) => String(item || "").trim().length > 35).length;
+  return substantialRecent >= 3;
+}
 function hasSpatialContinuityBreak(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply);
   const user = normalizeText(latestUserMessage);
@@ -3338,6 +3323,10 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "unsolicited_offscreen_lead_contact",
   "silent_continue_prop_loop",
   "romantic_initiative_drought",
+  "therapeutic_deescalation_pivot",
+  "romantic_social_gravity_missing",
+  "admirer_instantly_neutralized",
+  "profile_social_ecosystem_missing",
 ]);
 
 // v2.11.0 NARRATIVE CORE REBUILD
@@ -3486,6 +3475,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasReactionOpenerLoop(text, options.recentCharacterReplies || [])) issues.push("reaction_opener_loop");
   if (hasRepeatedSocialShutdown(text, options.recentCharacterReplies || [], options.latestUserMessage || "")) issues.push("repeated_social_shutdown");
   if (hasPassiveEmotionalCueResponse(text, options.latestUserMessage || "")) issues.push("emotional_cue_passivity");
+  if (hasTherapeuticDeescalationPivot(text, options.latestUserMessage || "", options.recentUserMessages || [], options.character || {})) issues.push("therapeutic_deescalation_pivot");
   if (hasPassiveExitAfterRupture(text, options.latestUserMessage || "", options.recentCharacterReplies || [], turnIntent)) issues.push("passive_exit_after_rupture");
   if (hasKineticTensionDeflation(text, options.latestUserMessage || "", options.recentUserMessages || [], options.recentCharacterReplies || [], options.character || {})) issues.push("kinetic_tension_deflated");
   if (hasChargedBeatAbandonment(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("charged_beat_abandoned");
@@ -3502,6 +3492,9 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasUnstagedUserMovementInference(text, options.latestUserMessage || "", options.userName || "", options.recentUserMessages || [])) issues.push("unstaged_user_movement_inference");
   if (hasNameAddressOveruse(text, options.recentCharacterReplies || [], options.userName || "")) issues.push("name_address_overuse");
   if (hasMissingSocialGravity(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("social_gravity_missing");
+  if (hasMissingRomanticSocialGravity(text, options.latestUserMessage || "", options.recentUserMessages || [], options.recentCharacterReplies || [], options.character || {})) issues.push("romantic_social_gravity_missing");
+  if (hasInstantlyNeutralizedAdmirer(text, options.character || {})) issues.push("admirer_instantly_neutralized");
+  if (hasMissingProfileSocialEcosystem(text, options.latestUserMessage || "", options.recentUserMessages || [], options.recentCharacterReplies || [], options.character || {})) issues.push("profile_social_ecosystem_missing");
   if (hasAtmosphericStallingLoop(text, options.recentCharacterReplies || [], turnIntent)) issues.push("atmospheric_stalling_loop");
   if (hasSilentContinuationStall(text, turnIntent, options.recentCharacterReplies || [])) issues.push("silent_continue_stalled");
   if (hasTimeSkipDrift(text, turnIntent)) issues.push("time_skip_stalled");
@@ -3743,12 +3736,17 @@ async function streamRoleplayV19({
   latestUserMessageId,
   existingSceneState,
   existingCastState,
+  persistentCast = [],
   existingRelationshipState,
   existingIntelligenceState,
   existingUnresolvedThreads,
   existingStoryRecap,
   existingStoryChapters,
   existingActiveChapter,
+  activeArcs = [],
+  activePlans = [],
+  activeConflicts = [],
+  chemistryProfiles = [],
   regenerationInstruction,
   regenerationFeedback,
   isRegeneration,
@@ -3850,7 +3848,7 @@ async function streamRoleplayV19({
           let repaired: ModelResult | null = null;
           let repairFailure = "";
           try {
-            repaired = await repairRoleplayOnce({
+            repaired = await repairRoleplayOnceV3({
               apiKey,
               originalPrompt: prompt,
               rejectedReply: result.reply,
@@ -4016,6 +4014,18 @@ async function streamRoleplayV19({
         }
         update.story_recap = buildStoryRecap(update.story_timeline || timeline, existingStoryRecap || "");
         await supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
+        await persistStoryCastMembers({
+          supabase, userId, conversationId, castUpdates: result.cast_updates,
+          previousMembers: persistentCast, scene: nextPhysicalState.scene,
+        });
+        await persistStoryDynamics({
+          supabase, userId, conversationId, characterName: character.name,
+          continuityUpdate: result.continuity_update, timelineEvent,
+          activeArcs, activePlans,
+          activeConflicts, chemistryProfiles,
+          latestUserMessage, reply: result.reply, sourceMessageId: savedMessage.id,
+          scene: nextPhysicalState.scene,
+        });
         if (!replacementMessage && Array.isArray(result.memory_updates) && result.memory_updates.length) {
           await mergeAutomaticMemories({
             supabase,
@@ -4049,6 +4059,109 @@ async function streamRoleplayV19({
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+async function persistStoryDynamics({ supabase, userId, conversationId, characterName, continuityUpdate = {}, timelineEvent = {}, activeArcs = [], activePlans = [], activeConflicts = [], chemistryProfiles = [], latestUserMessage = "", reply = "", sourceMessageId = null, scene = {} }) {
+  const now = new Date().toISOString();
+  const knowledgeRows = (Array.isArray(continuityUpdate?.knowledge_updates) ? continuityUpdate.knowledge_updates : []).slice(0, 6).map((item) => ({
+    user_id: userId, conversation_id: conversationId,
+    character_name: cleanPromptValue(item?.who, 100) || characterName,
+    subject: cleanPromptValue(item?.knows, 140), knowledge: cleanPromptValue(item?.knows, 600),
+    status: ["known","suspected","rumor"].includes(String(item?.status)) ? item.status : "known",
+    source: cleanPromptValue(item?.source, 240), secret: false, updated_at: now,
+  })).filter((item) => item.subject);
+  if (knowledgeRows.length) {
+    const { error } = await supabase.from("story_knowledge_entries").upsert(knowledgeRows, { onConflict: "conversation_id,character_name,subject" });
+    if (error && error.code !== "42P01") console.warn("[character-chat] knowledge ledger persistence failed", { message: error.message });
+  }
+  const kind = String(timelineEvent?.kind || "");
+  const title = cleanPromptValue(timelineEvent?.label, 140);
+  const detail = cleanPromptValue(timelineEvent?.detail, 500);
+  if (title && detail && ["conflict","decision","promise","reveal"].includes(kind) && Number(timelineEvent?.importance || 0) >= 3) {
+    const row = { user_id:userId, conversation_id:conversationId, title, cause:detail, effect:`This ${kind} remains active until the story addresses its practical or emotional fallout.`, status:"active", weight:Math.max(1,Math.min(5,Number(timelineEvent?.importance)||3)), participants:[characterName], updated_at:now };
+    const { error } = await supabase.from("story_consequences").upsert(row, { onConflict:"conversation_id,title,cause" });
+    if (error && error.code !== "42P01") console.warn("[character-chat] consequence persistence failed", { message:error.message });
+  }
+  const active = (Array.isArray(activeArcs) ? activeArcs : []).filter((arc) => arc?.status === "active" && arc?.id).slice(0, 1);
+  if (active.length && /\b(?:decid|admit|kiss|invite|arriv|interrupt|argu|fight|race|police|security|promise|reveal|leave|follow)\w*/i.test(String(reply))) {
+    const arc = active[0], progress = Math.min(100, Number(arc.progress || 0) + 4);
+    const { error } = await supabase.from("story_arcs").update({ progress, status:progress>=100?"resolved":"active", updated_at:now }).eq("id",arc.id).eq("user_id",userId);
+    if (error && error.code !== "42P01") console.warn("[character-chat] arc progression failed", { message:error.message });
+  }
+  const commitments = compactTextList(continuityUpdate?.commitments, 6, 260);
+  for (const commitment of commitments) {
+    const row = { user_id:userId, conversation_id:conversationId, title:commitment.slice(0,140), initiator:characterName, details:commitment, story_time:"unscheduled", participants:[characterName], status:"proposed", complication:"", updated_at:now };
+    const { error } = await supabase.from("story_plans").upsert(row,{onConflict:"conversation_id,title",ignoreDuplicates:true});
+    if (error && error.code !== "42P01") console.warn("[character-chat] plan persistence failed",{message:error.message});
+  }
+  const resolved = compactTextList(continuityUpdate?.resolved_commitments,6,260);
+  const explicitPlanAcceptance = /\b(?:yes[,! ]+(?:i(?:'ll| will)|let'?s)|i(?:'ll| will) (?:go|come|meet|join)|sounds good|deal|okay[, ]+(?:let'?s|i(?:'ll| will))|s[ií][, ]+(?:voy|vamos|acepto)|de acuerdo)\b/i.test(latestUserMessage);
+  const explicitPlanRefusal = /\b(?:no[,! ]+(?:i won'?t|thanks)|i can'?t (?:go|come|make it)|not going|cancel (?:it|that)|no voy|no puedo ir|canc[eé]lalo)\b/i.test(latestUserMessage);
+  const proposedPlans=(Array.isArray(activePlans)?activePlans:[]).filter((item)=>item?.id&&item.status==="proposed");
+  if(proposedPlans.length===1&&(explicitPlanAcceptance||explicitPlanRefusal))await supabase.from("story_plans").update({status:explicitPlanAcceptance?"accepted":"cancelled",updated_at:now}).eq("id",proposedPlans[0].id).eq("user_id",userId);
+  for (const plan of (Array.isArray(activePlans)?activePlans:[])) {
+    if (!plan?.id || !resolved.some((done)=>memorySimilarity(done,plan.title||plan.details||"")>=0.58)) continue;
+    await supabase.from("story_plans").update({status:"completed",updated_at:now}).eq("id",plan.id).eq("user_id",userId);
+  }
+  if (kind === "conflict" && title && detail) {
+    const conflict = {user_id:userId,conversation_id:conversationId,title,cause:detail,positions:"Both sides retain their own goals and interpretation until clarified on-page.",intensity:Math.max(1,Math.min(5,Number(timelineEvent?.importance)||2)),status:"active",resolution_need:"A concrete repair, changed action or mutually understood decision.",repair_attempts:0,participants:[characterName],updated_at:now};
+    const {error}=await supabase.from("story_conflicts").upsert(conflict,{onConflict:"conversation_id,title"});
+    if(error&&error.code!=="42P01")console.warn("[character-chat] conflict persistence failed",{message:error.message});
+  } else if (["relationship","decision"].includes(kind) && /\b(?:sorry|apolog|make it right|forgive|perd[oó]n|lo siento|arreglar)\b/i.test(reply)) {
+    for (const conflict of (Array.isArray(activeConflicts)?activeConflicts:[]).filter((item)=>item?.id&&item.status!=="resolved").slice(0,1)) {
+      await supabase.from("story_conflicts").update({status:"repairing",repair_attempts:Number(conflict.repair_attempts||0)+1,updated_at:now}).eq("id",conflict.id).eq("user_id",userId);
+    }
+  }
+  const combined = `${latestUserMessage}\n${reply}\n${title}\n${detail}`;
+  const milestonePatterns: Array<[string, RegExp | boolean, string]> = [
+    ["first_invitation",commitments.some((item)=>/\b(?:invite|invited|come with|go with|meet me|invit|ven conmigo|vamos a)\b/i.test(item)),"First invitation"],
+    ["first_kiss",/\b(?:first kiss|kissed for the first time|\bkissed\b|primer beso|bes[oó] por primera vez|\bbesaron\b)\b/i,"First kiss"],
+    ["first_hand_hold",/\b(?:held hands|took (?:his|her|their) hand|first time holding hands|tomaron de la mano|tom[oó] su mano)\b/i,"First time holding hands"],
+    ["first_real_fight",kind==="conflict"&&Number(timelineEvent?.importance||0)>=3,"First real fight"],
+    ["first_reconciliation",/\b(?:made up|reconciled|se reconciliaron|hicieron las paces)\b/i,"First reconciliation"],
+    ["first_public_defense",/\b(?:defended .{0,40} in front of|stood up for .{0,40} publicly|defendi[oó] .{0,40} frente a)\b/i,"First public defense"],
+  ];
+  for (const [milestoneType,pattern,milestoneTitle] of milestonePatterns) {
+    const happened = pattern instanceof RegExp ? pattern.test(combined) : Boolean(pattern); if(!happened)continue;
+    const row={user_id:userId,conversation_id:conversationId,milestone_type:milestoneType,title:milestoneTitle,details:detail||cleanPromptValue(reply,320),participants:[characterName],story_time:cleanPromptValue(scene?.time_label,120),source_message_id:sourceMessageId,updated_at:now};
+    const {error}=await supabase.from("story_milestones").upsert(row,{onConflict:"conversation_id,milestone_type",ignoreDuplicates:true});
+    if(error&&error.code!=="42P01")console.warn("[character-chat] milestone persistence failed",{message:error.message});
+  }
+  const priorChemistry=(Array.isArray(chemistryProfiles)?chemistryProfiles:[]).find((item)=>normalizeText(item?.character_name)===normalizeText(characterName));
+  const emotionalBeat=["relationship","conflict","reveal","promise"].includes(kind);
+  if(emotionalBeat){
+    const delta=kind==="conflict"?-2:3;const row={user_id:userId,conversation_id:conversationId,character_name:characterName,signature:priorChemistry?.signature||"",banter_style:priorChemistry?.banter_style||"",affection_style:priorChemistry?.affection_style||"",friction_triggers:priorChemistry?.friction_triggers||"",reconciliation_style:priorChemistry?.reconciliation_style||"",inside_jokes:priorChemistry?.inside_jokes||[],meaningful_places:priorChemistry?.meaningful_places||[],chemistry_score:Math.max(0,Math.min(100,Number(priorChemistry?.chemistry_score||25)+(kind==="relationship"?3:1))),trust_score:Math.max(0,Math.min(100,Number(priorChemistry?.trust_score||20)+delta)),tension_score:Math.max(0,Math.min(100,Number(priorChemistry?.tension_score||10)+(kind==="conflict"?8:-2))),updated_at:now};
+    const{error}=await supabase.from("story_chemistry_profiles").upsert(row,{onConflict:"conversation_id,character_name"});if(error&&error.code!=="42P01")console.warn("[character-chat] chemistry persistence failed",{message:error.message});
+  }
+}
+
+async function persistStoryCastMembers({ supabase, userId, conversationId, castUpdates = [], previousMembers = [], scene = {} }) {
+  if (!Array.isArray(castUpdates) || !castUpdates.length) return;
+  const previousByName = new Map((Array.isArray(previousMembers) ? previousMembers : []).map((item) => [normalizeText(item?.name), item]));
+  const present = new Set((Array.isArray(scene?.present) ? scene.present : []).map(normalizeText));
+  const rows = castUpdates.map((item) => {
+    const name = cleanPromptValue(item?.name, 100);
+    const prior = previousByName.get(normalizeText(name)) || {};
+    return {
+      user_id: userId,
+      conversation_id: conversationId,
+      name,
+      role: cleanPromptValue(item?.role, 180) || prior.role || "",
+      personality_note: cleanPromptValue(item?.personality_note, 320) || prior.personality_note || "",
+      relationship: cleanPromptValue(item?.relationship, 320) || prior.relationship || "",
+      current_dynamic: cleanPromptValue(item?.current_dynamic, 420) || prior.current_dynamic || "",
+      goals: cleanPromptValue(item?.goals, 320) || prior.goals || "",
+      knowledge: cleanPromptValue(item?.knows, 520) || prior.knowledge || "",
+      last_interaction: cleanPromptValue(item?.last_interaction, 520) || prior.last_interaction || "",
+      presence: present.has(normalizeText(name)) ? "present" : "off_scene",
+      status: "active",
+      turn_count: Math.max(1, Number(prior.turn_count || 0) + 1),
+      updated_at: new Date().toISOString(),
+    };
+  }).filter((row) => row.name);
+  if (!rows.length) return;
+  const { error } = await supabase.from("story_cast_members").upsert(rows, { onConflict: "conversation_id,name" });
+  if (error && error.code !== "42P01") console.warn("[character-chat] cast persistence failed", { message: error.message });
 }
 
 async function streamGeminiEnvelopeWithFailover({
@@ -4284,10 +4397,11 @@ async function streamGeminiEnvelopeWithFailover({
 function roleplayResponseSchema() {
   return {
     type: "object",
-    required: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
-    propertyOrdering: ["reply", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+    required: ["reply", "story_drive", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+    propertyOrdering: ["reply", "story_drive", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
     properties: {
       reply: { type: "string" },
+      story_drive: { type: "object", required: ["independent_want","chosen_action","cost_or_risk","visible_change","unresolved_hook"], properties: { independent_want:{type:"string"}, chosen_action:{type:"string"}, cost_or_risk:{type:"string"}, visible_change:{type:"string"}, unresolved_hook:{type:"string"} } },
       turn_reading: { type: "string" },
       canon_claims: { type: "array", items: { type: "string" } },
       voice_plan: { type: "object", required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"], properties: { conversational_goal:{type:"string"}, outward_tactic:{type:"string"}, private_pressure:{type:"string"}, verbal_signature:{type:"string"}, avoided_pattern:{type:"string"} } },

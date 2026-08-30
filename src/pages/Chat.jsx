@@ -54,6 +54,7 @@ import StoryHubDrawer from "../components/StoryHubDrawer";
 import StoryAmbience from "../components/StoryAmbience";
 import AudioStatusPill from "../components/AudioStatusPill";
 import RelationshipDrawer from "../components/RelationshipDrawer";
+import StoryWorldDrawer from "../components/StoryWorldDrawer";
 import { useChats } from "../context/ChatsContext";
 import { useCharacters } from "../context/CharactersContext";
 import { usePersonas } from "../context/PersonasContext";
@@ -66,7 +67,10 @@ import { speakText, stopSpeech } from "../utils/speech";
 import { readAudioPreference, stopAllAudio } from "../utils/audioBus";
 import { clearBugReportPrivateContext, setBugReportPrivateContext } from "../utils/bugReporter";
 import { buildLivingSceneHeader, continuityGuardLabel, continuityGuardTitle } from "../utils/livingScenes";
+import { suggestAmbienceForScene } from "../utils/ambienceIntelligence";
 import "../styles/chat.css";
+import "../styles/world-studio.css";
+import "../styles/velvet-v33-story-dynamics.css";
 
 const SILENT_CONTINUE_MESSAGE = "[SILENT_CONTINUE]";
 const RETURN_MAIN_POV_MESSAGE = "[RETURN_MAIN_POV]";
@@ -91,7 +95,14 @@ const POSITIVE_FEEDBACK = [
   ["pacing", "Pacing"],
 ];
 
-function Chat({ character, conversationId, focusMessageId = null, onBack, onDeleted, onOpenMemories, onOpenDiagnostics, onOpenCharacter }) {
+function displayStoryTitle(title) {
+  const clean = String(title || "")
+    .replace(/\s*[·•]\s*\d{1,2}[-/.][^·•]+$/iu, "")
+    .trim();
+  return clean || "Current story";
+}
+
+function Chat({ character, conversationId, focusMessageId = null, onConversationChange, onBack, onDeleted, onOpenMemories, onOpenDiagnostics, onOpenCharacter }) {
   const { settings, recordStoryFeedback, undoStoryFeedback } = useSettings();
   const { theme, setTheme } = useTheme();
   const { confirmAction, scheduleDeletion } = useFeedback();
@@ -174,10 +185,9 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const [simpleVibe, setSimpleVibe] = useState("balanced");
   const [simpleResponseStyle, setSimpleResponseStyle] = useState("balanced");
   const [memoryBookOpen, setMemoryBookOpen] = useState(false);
-  const [memoryBookCount, setMemoryBookCount] = useState(0);
   const [readingMode, setReadingMode] = useState(() => localStorage.getItem("velvet_reading_mode") === "1");
-  const [readingChromeVisible, setReadingChromeVisible] = useState(true);
   const [relationshipOpen, setRelationshipOpen] = useState(false);
+  const [worldStudioOpen, setWorldStudioOpen] = useState(false);
   const [silentCue, setSilentCue] = useState("");
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [storyHubOpen, setStoryHubOpen] = useState(false);
@@ -191,6 +201,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     catch { return false; }
   });
   const [catchUpOpen, setCatchUpOpen] = useState(false);
+  const [dismissedAmbienceSuggestion, setDismissedAmbienceSuggestion] = useState("");
   const sceneImageInputRef = useRef(null);
 
   const messagesEndRef = useRef(null);
@@ -211,7 +222,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
   const chatOverlayOpen = Boolean(
     menuOpen || directorNoteOpen || selectedMessage || controlsOpen || characterProfileOpen ||
-    memoryBookOpen || relationshipOpen || timelineOpen || storyHubOpen || catchUpOpen
+    memoryBookOpen || relationshipOpen || worldStudioOpen || timelineOpen || storyHubOpen || catchUpOpen
   );
 
   function armChatExitGuard(duration = 700) {
@@ -226,6 +237,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     setCharacterProfileOpen(false);
     setMemoryBookOpen(false);
     setRelationshipOpen(false);
+    setWorldStudioOpen(false);
     setTimelineOpen(false);
     setStoryHubOpen(false);
     setCatchUpOpen(false);
@@ -374,7 +386,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
       const viewportHeight = window.visualViewport?.height || window.innerHeight || 0;
       const composerHeight = Math.max(54, composerNode.getBoundingClientRect().height || 0);
-      const headerAllowance = readingMode && !readingChromeVisible ? 24 : 76;
+      const headerAllowance = 76;
       const availableStoryHeight = Math.max(0, viewportHeight - composerHeight - headerAllowance - 28);
       const storyHeight = messagesNode.getBoundingClientRect().height;
 
@@ -401,7 +413,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       viewport?.removeEventListener("resize", measure);
       media.removeEventListener?.("change", measure);
     };
-  }, [conversationReady, visibleMessages.length, latestMessageContent, readingMode, readingChromeVisible]);
+  }, [conversationReady, visibleMessages.length, latestMessageContent]);
 
   // VELVET_TYPING_GLIMPSE_V1
   // The inline “X is writing…” bubble is only a brief reassurance, not a
@@ -450,11 +462,18 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     [conversation?.sceneState, conversation?.ambientMode, character.name]
   );
   const continuityLabel = continuityGuardLabel(conversation?.continuityGuard || {});
+  const ambienceSuggestion = useMemo(() => {
+    if (!conversation?.conversationId || conversation?.ambientMode && conversation.ambientMode !== "none") return null;
+    const recentText = visibleMessages.slice(-5).map((item) => item.content || "").join(" ");
+    const suggestion = suggestAmbienceForScene(recentText);
+    if (!suggestion || suggestion.confidence === "low") return null;
+    const key = `${conversation.conversationId}:${suggestion.mode}`;
+    return dismissedAmbienceSuggestion === key ? null : { ...suggestion, key };
+  }, [conversation?.conversationId, conversation?.ambientMode, visibleMessages, dismissedAmbienceSuggestion]);
 
 
   useEffect(() => {
     localStorage.setItem("velvet_reading_mode", readingMode ? "1" : "0");
-    setReadingChromeVisible(false);
   }, [readingMode]);
 
   useEffect(() => {
@@ -468,6 +487,13 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }, [conversationId]);
 
   useEffect(() => { loadConversationList(); }, [character.id, conversation?.conversationId]);
+
+  useEffect(() => {
+    const resolvedConversationId = conversation?.conversationId;
+    if (!resolvedConversationId) return;
+    setActiveConversationId(resolvedConversationId);
+    onConversationChange?.(resolvedConversationId);
+  }, [conversation?.conversationId]);
 
   useEffect(() => {
     const id = conversation?.conversationId;
@@ -595,7 +621,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
   async function loadConversationList() {
     const { data, error } = await supabase.from("conversations")
-      .select("id, title, updated_at, is_pinned").eq("character_id", character.id).is("archived_at", null)
+      .select("id, title, updated_at, is_pinned").eq("character_id", character.id).is("archived_at", null).is("trashed_at", null)
       .order("is_pinned", { ascending: false }).order("updated_at", { ascending: false });
     if (error) return console.error("Could not load conversation list:", error);
     setConversationList(data || []);
@@ -616,6 +642,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       const distanceFromBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
       stickToBottomRef.current = distanceFromBottom < 170;
       setShowJumpToBottom(distanceFromBottom > 360);
+
     }
 
     trackScrollPosition();
@@ -626,6 +653,33 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
       window.removeEventListener("resize", trackScrollPosition);
     };
   }, []);
+
+  useEffect(() => {
+    const id = conversation?.conversationId;
+    if (!id || conversationLoading) return undefined;
+    const key = `velvet_scroll_v380_${id}`;
+    let frame = 0;
+    let restored = false;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(key) || "null");
+      if (saved && Number.isFinite(saved.top) && !stickToBottomRef.current) {
+        requestAnimationFrame(() => window.scrollTo({ top: saved.top, behavior: "auto" }));
+        restored = true;
+      } else if (saved && saved.mode === "reading") {
+        requestAnimationFrame(() => window.scrollTo({ top: saved.top || 0, behavior: "auto" }));
+        restored = true;
+      }
+    } catch {}
+    const save = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const distance = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+        try { sessionStorage.setItem(key, JSON.stringify({ top: window.scrollY, mode: distance > 220 ? "reading" : "latest", at: Date.now() })); } catch {}
+      });
+    };
+    window.addEventListener("scroll", save, { passive: true });
+    return () => { save(); cancelAnimationFrame(frame); window.removeEventListener("scroll", save); };
+  }, [conversation?.conversationId, conversationLoading]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -1058,7 +1112,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   function openActions(chatMessage) {
-    if (chatMessage.isStreaming || busy) return;
+    if (chatMessage.isStreaming) return;
     setSelectedMessage(chatMessage);
     setActionMode("menu");
     setActionDraft("");
@@ -1069,7 +1123,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   function openMessageFeedback(chatMessage, kind) {
-    if (chatMessage.isStreaming || busy || chatMessage.sender !== "character") return;
+    if (chatMessage.isStreaming || chatMessage.sender !== "character") return;
     const latestMessage = [...(conversation?.messages || [])].filter((item) => !item.isStreaming).at(-1);
     setSelectedMessage(chatMessage);
     setActionMode(kind === "positive" ? "positive-feedback" : "regenerate");
@@ -1121,6 +1175,11 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     event?.preventDefault?.();
     event?.stopPropagation?.();
     if (!selectedMessage) return;
+
+    if (busy && ["rewind", "delete"].includes(action)) {
+      showActionNotice("Let Velvet finish this reply first", "working", 1800);
+      return;
+    }
 
     try {
       setActionLoading(true);
@@ -1281,7 +1340,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   async function createBranchFromSelected() {
-    if (!selectedMessage || actionLoading) return;
+    if (!selectedMessage || actionLoading || busy) return;
     try {
       setActionLoading(true);
       setSendError("");
@@ -1299,8 +1358,28 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     }
   }
 
+  async function saveCanonCorrection() {
+    if (!selectedMessage || !actionDraft.trim() || !conversation?.conversationId || actionLoading || busy) return;
+    try {
+      setActionLoading(true);
+      const { data: auth } = await supabase.auth.getUser();
+      const { error } = await supabase.from("story_canon_corrections").insert({
+        user_id: auth?.user?.id,
+        conversation_id: conversation.conversationId,
+        source_message_id: selectedMessage.id,
+        correction: actionDraft.trim(),
+      });
+      if (error) throw error;
+      await supabase.from("conversations").update({ scene_state: {}, cast_state: {}, updated_at: new Date().toISOString() }).eq("id", conversation.conversationId);
+      await refreshStoryMetadata(character.id);
+      setActionNotice("Canon corrected ✓");
+      closeActionsAfterAction();
+    } catch (error) { setSendError(error.message || "Canon correction could not be saved."); }
+    finally { setActionLoading(false); }
+  }
+
   async function saveEditedMessage() {
-    if (!selectedMessage || !actionDraft.trim()) return;
+    if (!selectedMessage || !actionDraft.trim() || busy) return;
 
     try {
       setActionLoading(true);
@@ -1319,7 +1398,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   async function saveEditedAIResponse() {
-    if (!selectedMessage || !actionDraft.trim()) return;
+    if (!selectedMessage || !actionDraft.trim() || busy) return;
     try {
       setActionLoading(true);
       const previousContent = selectedMessage.content;
@@ -1481,7 +1560,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   async function quickRefineSelected(feedbackCode, instruction = "") {
-    if (!selectedMessage || selectedMessage.sender !== "character" || actionLoading) return;
+    if (!selectedMessage || selectedMessage.sender !== "character" || actionLoading || busy) return;
     const latestMessage = [...(conversation?.messages || [])].filter((item) => !item.isStreaming).at(-1);
     if (latestMessage?.id !== selectedMessage.id) {
       setSendError("Rewind to this response first before generating a new version from it.");
@@ -1525,6 +1604,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
   }
 
   async function chooseAlternative(alternative) {
+    if (busy || actionLoading) return;
     try {
       setActionLoading(true);
       await selectMessageAlternative(character.id, selectedMessage.id, alternative.content);
@@ -1618,12 +1698,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     }
   }
 
-
-  function handleReadingSurfaceClick() {
-    // v2.1.7: immersive mode never hides the story header. The character name,
-    // navigation and three-dot menu stay available at all times.
-    if (readingMode && !readingChromeVisible) setReadingChromeVisible(true);
-  }
 
   async function applyDirectorAndRegenerate(event) {
     event?.preventDefault?.();
@@ -1728,7 +1802,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
     >
       <StoryAmbience mode={conversation?.ambientMode || "none"} volume={conversation?.ambientVolume ?? 18} soundOn={ambientSoundOn} />
       <AudioStatusPill onStopAll={() => { setAmbientSoundOn(false); stopAllAudio(); setSpeakingMessageId(null); }} />
-      <header
+      {typeof document !== "undefined" && createPortal((<header
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
       >
@@ -1742,40 +1816,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           <button className="chat__character-name-button chat__character-name-button--primary" onClick={() => setCharacterProfileOpen(true)} aria-label={`View ${character.name}'s profile`}>
             <strong>{conversationDisplayName}</strong>
           </button>
-          {conversation?.groupMode && <span className="chat__group-cast-line">{groupCast.map((item) => item.name).join(" · ")}</span>}
-          <label className="chat__conversation-picker chat__conversation-picker--title">
-            <select value={conversation?.conversationId || activeConversationId} onChange={(event) => switchConversation(event.target.value)} disabled={busy || conversationLoading} aria-label="Current story">
-              {conversationList.map((item) => <option key={item.id} value={item.id}>{item.is_pinned ? "★ " : ""}{item.title || "Current story"}</option>)}
-            </select>
-            <ChevronDown size={13} />
-          </label>
-          {conversation?.branchParentId && <span className="chat__branch-badge"><GitBranch size={12}/>Branch</span>}
         </div>
-        <button
-          className={`chat__icon-button chat__reading-button${readingMode ? " is-active" : ""}`}
-          onClick={() => setReadingMode((current) => !current)}
-          aria-label={readingMode ? "Exit immersive mode" : "Enter immersive mode"}
-          title={readingMode ? "Exit immersive mode" : "Immersive mode"}
-        >
-          <Eye size={18} />
-        </button>
-        <button
-          className="chat__icon-button chat__memory-book-button"
-          onClick={() => setMemoryBookOpen(true)}
-          aria-label={`Open ${character.name}'s memory book`}
-          disabled={!conversationReady}
-        >
-          <BookOpen size={19} />
-          {memoryBookCount > 0 && <span>{memoryBookCount > 99 ? "99+" : memoryBookCount}</span>}
-        </button>
-        <button
-          className="chat__icon-button chat__relationship-header"
-          onClick={() => { setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }}
-          aria-label="Open relationship engine"
-          title="Relationship"
-        >
-          <HeartHandshake size={18} />
-        </button>
         <button
           className="chat__icon-button chat__more"
           onClick={() => setMenuOpen((current) => !current)}
@@ -1788,11 +1829,20 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         {menuOpen && typeof document !== "undefined" && createPortal((
           <div className="chat__menu-backdrop" onClick={(event) => event.target === event.currentTarget && setMenuOpen(false)}>
             <section className="chat__menu" role="dialog" aria-modal="true" aria-label="Story options" onClick={(event) => event.stopPropagation()}>
-              <header className="chat__menu-sheet-header"><div><small>STORY OPTIONS</small><strong>{conversationDisplayName}</strong></div><button type="button" onClick={() => setMenuOpen(false)} aria-label="Close story options"><X size={19}/></button></header>
+              <header className="chat__menu-sheet-header"><div><small>STORY OPTIONS</small><strong>{conversationDisplayName}</strong>{conversation?.groupMode && <span className="chat__group-cast-line">{groupCast.map((item) => item.name).join(" · ")}</span>}</div><button type="button" onClick={() => setMenuOpen(false)} aria-label="Close story options"><X size={19}/></button></header>
               <button className="chat__menu-new" onClick={handleNewConversation} disabled={busy || creatingConversation}>
                 {creatingConversation ? <LoaderCircle className="spin" size={17} /> : <SquarePen size={17} />}
                 New conversation
               </button>
+              <label className="chat__menu-story-picker">
+                <span><BookOpen size={17} />Current story</span>
+                <span className="chat__menu-story-select">
+                  <select value={conversation?.conversationId || activeConversationId} onChange={(event) => { setMenuOpen(false); switchConversation(event.target.value); }} disabled={busy || conversationLoading} aria-label="Switch story">
+                    {conversationList.map((item) => <option key={item.id} value={item.id}>{item.is_pinned ? "★ " : ""}{displayStoryTitle(item.title)}</option>)}
+                  </select>
+                  <ChevronDown size={14} />
+                </span>
+              </label>
               <div className="chat__menu-quick">
                 <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Current story</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
@@ -1804,13 +1854,14 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setReadingMode((current) => !current); }}><Eye size={17} /> {readingMode ? "Exit immersive mode" : "Immersive mode"}</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); openDirector("next"); }} disabled={!conversationReady || busy}><Sparkles size={17} /> Guide the next beat</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><BookOpen size={17} /> Story Hub</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setWorldStudioOpen(true); }} disabled={!conversationReady}><Globe2 size={17} /> World Studio</button>
               <button className="chat__menu-controls" onClick={exportCurrentStory} disabled={!conversationReady || !visibleMessages.length}><Download size={17} /> Export this story</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }} disabled={!conversationReady}><Clock3 size={17} /> Story timeline</button>
               <button className="chat__menu-danger" onClick={handleDeleteConversation} disabled={deleting}><Trash2 size={17} /> {deleting ? "Deleting..." : "Delete conversation"}</button>
             </section>
           </div>
         ), document.body)}
-      </header>
+      </header>), document.body)}
 
       {conversationReady && (livingSceneHeader.items.length > 0 || livingSceneHeader.present.length > 0) && (
         <div className="chat__living-scene" aria-label="Current scene">
@@ -1830,7 +1881,15 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         <button type="button" className="chat__mobile-exit" onClick={handleChatBack} aria-label="Leave chat"><ArrowLeft size={20}/></button>
       ), document.body)}
 
-      <div onClick={handleReadingSurfaceClick} className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
+      {ambienceSuggestion && !chatOverlayOpen && (
+        <div className="chat__ambience-suggestion" role="status">
+          <span><Sparkles size={14}/><b>{ambienceSuggestion.label}</b> fits this scene</span>
+          <button type="button" onClick={async()=>{ try { await updateConversationSettings(character.id,{ ambientMode: ambienceSuggestion.mode }); setAmbientSoundOn(true); } catch(error){ setSendError(error.message || "Couldn’t change ambience."); } }}>Use</button>
+          <button type="button" aria-label="Dismiss ambience suggestion" onClick={()=>setDismissedAmbienceSuggestion(ambienceSuggestion.key)}><X size={13}/></button>
+        </div>
+      )}
+
+      <div className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
 
         {visibleMessages.length === 0 && !busy && <div className={`chat__introduction${character.coverUrl ? " chat__introduction--covered" : ""}`} style={{ "--character-color": character.color }}>
           {character.coverUrl && <div className="chat__profile-cover"><img src={character.coverUrl} alt="" decoding="async" /></div>}
@@ -1957,6 +2016,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
 
       {silentCue && <div className="chat__silent-cue" role="status"><Sparkles size={13}/><span>{silentCue}</span></div>}
 
+      {typeof document !== "undefined" && createPortal((
       <form className={`chat__composer${replyTo ? " chat__composer--replying" : ""}`} onSubmit={handleSubmit}>
         {replyTo && (
           <div className="chat__reply-draft">
@@ -2014,6 +2074,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
           </button>
         )}
       </form>
+      ), document.body)}
 
       {directorNoteOpen && typeof document !== "undefined" && createPortal((
         <div className="director-sheet-backdrop" onClick={(event) => event.target === event.currentTarget && setDirectorNoteOpen(false)}>
@@ -2022,11 +2083,11 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
             <header><div><span><Sparkles size={15}/> SCENE DIRECTOR</span><h2>Guide the story</h2><p>Write one direction, then choose whether it belongs to the next beat or should replace the latest reply.</p></div><button type="button" onClick={()=>setDirectorNoteOpen(false)} aria-label="Close Scene Director"><X size={19}/></button></header>
             <div className="director-sheet__presets">
               <button type="button" onClick={()=>applyDirectorPreset("Use more natural audible dialogue and less descriptive filler in the next beat.")}><MessageSquareQuote size={17}/><span>More dialogue<small>Less filler</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset("Increase believable tension through choices and subtext, without forcing a confession or melodrama.")}><Sparkles size={17}/><span>More tension<small>Keep it believable</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset("Move the scene forward naturally to the next meaningful beat or location. Preserve continuity.")}><ChevronRight size={17}/><span>Move scene<small>Advance naturally</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset("Bring in one plausible established side character if it fits the current situation. Do not derail the main scene.")}><UserRound size={17}/><span>Bring someone in<small>Established NPC</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset(`Follow ${character.name}'s point of view/presence for the next beat without controlling my character.`)}><Eye size={17}/><span>Follow {character.name}<small>Shift the camera</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset("Surprise me with a plausible next beat that fits canon and this character's independent life.")}><GitBranch size={17}/><span>Surprise me<small>Canon-safe twist</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset(`Let ${character.name} be wrong, misunderstand something, or make an imperfect choice without turning cruel or stupid.`)}><GitBranch size={17}/><span>Let them be wrong<small>More human</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset("Bring in one plausible established side character with their own goal. Let them affect the scene without becoming a jealousy prop.")}><UserRound size={17}/><span>Bring in an NPC<small>Independent motive</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset("Reduce romantic focus for this beat. Continue friendships, obligations, conflict or ordinary life without erasing established feelings.")}><HeartHandshake size={17}/><span>Less romance<small>Broaden the story</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset("Advance the current night to the next meaningful moment. Preserve positions, unresolved feelings and who is still present.")}><Clock3 size={17}/><span>Advance the night<small>Keep continuity</small></span></button>
+              <button type="button" onClick={()=>applyDirectorPreset("Do not soften this conflict into therapy, instant apology or perfect emotional maturity. Keep boundaries safe, but let the disagreement remain difficult and character-specific.")}><Flame size={17}/><span>Keep the conflict<small>Don't sanitize it</small></span></button>
             </div>
             <label className="director-sheet__custom"><span>What should Velvet do?</span><textarea value={directorNote} onChange={(event)=>setDirectorNote(event.target.value)} maxLength={500} rows={3} placeholder="e.g. Two hours later he texts me… or: Make him stay instead of leaving…"/><small>{directorNote.length}/500</small></label>
             <footer className="director-sheet__dual-footer">
@@ -2045,7 +2106,6 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         onClose={() => setMemoryBookOpen(false)}
         character={character}
         conversationId={conversation?.conversationId}
-        onCountChange={setMemoryBookCount}
       />
 
       <StoryTimelineDrawer
@@ -2095,6 +2155,8 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
         persona={personas.find((item) => item.id === conversation?.personaId) || null}
         conversation={conversation}
       />
+
+      <StoryWorldDrawer open={worldStudioOpen} onClose={()=>setWorldStudioOpen(false)} conversationId={conversation?.conversationId}/>
 
       {controlsOpen && (
         <div className="chat-controls-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !savingControls && setControlsOpen(false)}>
@@ -2277,17 +2339,18 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
                     </p>
 
                     <div className="message-sheet__refine-grid message-sheet__refine-grid--smart">
-                      <button onClick={() => quickRefineSelected("wrong_continuity")}><Clock3 size={18}/><span>Wrong continuity</span></button>
-                      <button onClick={() => quickRefineSelected("out_of_character")}><UserRound size={18}/><span>Out of character</span></button>
-                      <button onClick={() => quickRefineSelected("too_cold")}><HeartHandshake size={18}/><span>Too cold</span></button>
-                      <button onClick={() => quickRefineSelected("too_romantic")}><Flame size={18}/><span>Too romantic</span></button>
-                      <button onClick={() => quickRefineSelected("not_enough_dialogue")}><MessageSquareQuote size={18}/><span>More dialogue</span></button>
-                      <button onClick={() => quickRefineSelected("repetitive")}><RefreshCw size={18}/><span>Repetitive</span></button>
+                      <button disabled={busy} onClick={() => quickRefineSelected("wrong_continuity")}><Clock3 size={18}/><span>Wrong continuity</span></button>
+                      <button disabled={busy} onClick={() => quickRefineSelected("out_of_character")}><UserRound size={18}/><span>Out of character</span></button>
+                      <button disabled={busy} onClick={() => quickRefineSelected("too_cold")}><HeartHandshake size={18}/><span>Too cold</span></button>
+                      <button disabled={busy} onClick={() => quickRefineSelected("too_romantic")}><Flame size={18}/><span>Too romantic</span></button>
+                      <button disabled={busy} onClick={() => quickRefineSelected("not_enough_dialogue")}><MessageSquareQuote size={18}/><span>More dialogue</span></button>
+                      <button disabled={busy} onClick={() => quickRefineSelected("repetitive")}><RefreshCw size={18}/><span>Repetitive</span></button>
                     </div>
 
                     <button
                       className="message-sheet__branch-feature"
                       onClick={(event) => runAction("rewind", event)}
+                      disabled={busy}
                     >
                       <Rewind size={19} />
                       <span><strong>Rewind to here</strong><small>Keep this message and remove everything that came after it.</small></span>
@@ -2312,7 +2375,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
                   </>
                 ) : (
                   <div className="message-sheet__user-menu">
-                    <button className="message-sheet__branch-feature" onClick={(event) => runAction("rewind", event)}>
+                    <button className="message-sheet__branch-feature" onClick={(event) => runAction("rewind", event)} disabled={busy}>
                       <Rewind size={19} />
                       <span><strong>Rewind to here</strong><small>Keep this message and remove everything that came after it.</small></span>
                     </button>
@@ -2336,9 +2399,10 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
                 )}
                 <button onClick={() => runAction("memory")}><BookmarkPlus size={17} /><span>Save to memory</span></button>
                 <button onClick={() => runAction("bookmark")}><Star size={17} /><span>{selectedMessage.isBookmarked ? "Remove saved moment" : "Save moment"}</span></button>
+                <button onClick={() => { setActionDraft(""); setActionMode("correct-canon"); }}><ShieldCheck size={17}/><span>Correct canon</span></button>
                 <button onClick={() => runAction("quote")}><MessageSquareQuote size={17} /><span>Quote</span></button>
                 <button onClick={() => { setActionDraft(`${conversation?.title || character.name} · branch`); setActionMode("branch"); }}><GitBranch size={17} /><span>Branch from here</span></button>
-                <button className="danger" onClick={() => runAction("delete")}><Trash2 size={17} /><span>Delete</span></button>
+                <button className="danger" onClick={() => runAction("delete")} disabled={busy}><Trash2 size={17} /><span>Delete</span></button>
                 <button className="message-sheet__back" onClick={() => setActionMode("menu")}><ArrowLeft size={17} /><span>Back</span></button>
               </div>
             )}
@@ -2347,10 +2411,18 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
               <div className="message-sheet__editor">
                 <p>Create a new timeline that keeps this message and everything before it. The original story stays untouched.</p>
                 <input value={actionDraft} maxLength={80} onChange={(event) => setActionDraft(event.target.value)} placeholder="Branch name" autoFocus />
-                <button onClick={createBranchFromSelected} disabled={actionLoading || !actionDraft.trim()}>
+                <button onClick={createBranchFromSelected} disabled={busy || actionLoading || !actionDraft.trim()}>
                   {actionLoading ? <LoaderCircle className="spin" size={17} /> : <GitBranch size={17} />}
                   Create branch
                 </button>
+              </div>
+            )}
+
+            {actionMode === "correct-canon" && (
+              <div className="message-sheet__editor">
+                <p>State what is actually true. This becomes higher authority than derived positions and memories, but it will never be spoken as your character's dialogue.</p>
+                <textarea value={actionDraft} onChange={(event)=>setActionDraft(event.target.value)} rows="5" placeholder="Example: I never left the living room. Chase is still beside the patio doors." autoFocus/>
+                <button onClick={saveCanonCorrection} disabled={busy||!actionDraft.trim()||actionLoading}>{actionLoading?<LoaderCircle className="spin" size={17}/>:<ShieldCheck size={17}/>}Save canon correction</button>
               </div>
             )}
 
@@ -2358,7 +2430,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
               <div className="message-sheet__editor">
                 <p>Everything after this message will be regenerated.</p>
                 <textarea value={actionDraft} onChange={(event) => setActionDraft(event.target.value)} rows="6" autoFocus />
-                <button onClick={saveEditedMessage} disabled={!actionDraft.trim() || actionLoading}>
+                <button onClick={saveEditedMessage} disabled={busy || !actionDraft.trim() || actionLoading}>
                   {actionLoading ? <LoaderCircle className="spin" size={17} /> : <Check size={17} />}
                   Save and regenerate
                 </button>
@@ -2369,7 +2441,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
               <div className="message-sheet__editor">
                 <p>Edit only what you want. Later messages stay in place, and Velvet will rebuild hidden continuity from the visible story. Your previous wording is saved as an alternative.</p>
                 <textarea value={actionDraft} onChange={(event) => setActionDraft(event.target.value)} rows="7" autoFocus />
-                <button onClick={saveEditedAIResponse} disabled={!actionDraft.trim() || actionLoading}>
+                <button onClick={saveEditedAIResponse} disabled={busy || !actionDraft.trim() || actionLoading}>
                   {actionLoading ? <LoaderCircle className="spin" size={17} /> : <Check size={17} />}
                   Use this version
                 </button>
@@ -2394,7 +2466,7 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
                     rows="4"
                     autoFocus
                   />}
-                <button onClick={regenerate} disabled={actionLoading || (feedbackOnly && !regenerationFeedback.length)}>
+                <button onClick={regenerate} disabled={actionLoading || (!feedbackOnly && busy) || (feedbackOnly && !regenerationFeedback.length)}>
                   {actionLoading ? <LoaderCircle className="spin" size={17} /> : feedbackOnly ? <Check size={17}/> : <RefreshCw size={17} />}
                   {feedbackOnly ? "Save feedback" : "Generate another response"}
                 </button>
@@ -2425,12 +2497,12 @@ function Chat({ character, conversationId, focusMessageId = null, onBack, onDele
               <div className="message-sheet__alternatives">
                 {alternatives.length === 0 ? (
                   <p>No previous alternatives yet. Regenerate this response to create one.</p>
-                ) : alternatives.map((alternative, index) => (
-                  <button key={alternative.id} onClick={() => chooseAlternative(alternative)}>
+                ) : <><div className="message-sheet__branch-heading"><strong>Branch Compare</strong><span>Compare the preserved versions side by side, then choose the one that becomes canon.</span></div><div className="message-sheet__branch-compare">{alternatives.map((alternative, index) => (
+                  <button key={alternative.id} onClick={() => chooseAlternative(alternative)} disabled={busy || actionLoading}>
                     <small>{alternative.current ? "CURRENT" : `VERSION ${index + 1}`}</small>
-                    <span>{alternative.content}</span>
+                    <span>{alternative.content}</span><b>{alternative.current ? "Current canon" : "Use this version"}</b>
                   </button>
-                ))}
+                ))}</div></>}
               </div>
             )}
           </section>
@@ -2460,6 +2532,8 @@ function MessageBubble({
   const SWIPE_MAX_VERTICAL_PX = 48;
   const swipeGestureRef = useRef(null);
   const suppressTapRef = useRef(false);
+  const longPressTimerRef = useRef(0);
+  const longPressStartRef = useRef(null);
   const canSwipe =
     message.sender === "character" &&
     !message.isStreaming &&
@@ -2499,6 +2573,13 @@ function MessageBubble({
       lastY: touch.clientY,
       axis: null,
     };
+    longPressStartRef.current = { x: touch.clientX, y: touch.clientY };
+    window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = window.setTimeout(() => {
+      suppressTapRef.current = true;
+      onOpenActions(message);
+      window.setTimeout(() => { suppressTapRef.current = false; }, 300);
+    }, 520);
   }
 
   function handleTouchMove(event) {
@@ -2513,6 +2594,10 @@ function MessageBubble({
 
     gesture.lastX = touch.clientX;
     gesture.lastY = touch.clientY;
+    if (longPressStartRef.current && (Math.abs(touch.clientX-longPressStartRef.current.x) > 10 || Math.abs(touch.clientY-longPressStartRef.current.y) > 10)) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressStartRef.current = null;
+    }
 
     if (!gesture.axis) {
       if (absX < 12 && absY < 12) return;
@@ -2530,6 +2615,8 @@ function MessageBubble({
   }
 
   function handleTouchEnd(event) {
+    window.clearTimeout(longPressTimerRef.current);
+    longPressStartRef.current = null;
     const gesture = swipeGestureRef.current;
     const finalTouch = event.changedTouches?.[0];
     if (gesture && finalTouch) {
@@ -2560,7 +2647,7 @@ function MessageBubble({
   }
 
   function handleMessageTap(event) {
-    if (suppressTapRef.current || message.isStreaming || swipeDisabled || shouldIgnoreSwipeTarget(event.target)) return;
+    if (suppressTapRef.current || message.isStreaming || shouldIgnoreSwipeTarget(event.target)) return;
     event.stopPropagation();
     onOpenActions(message);
   }
@@ -2581,7 +2668,7 @@ function MessageBubble({
       onTouchStart={canSwipe ? handleTouchStart : undefined}
       onTouchMove={canSwipe ? handleTouchMove : undefined}
       onTouchEnd={canSwipe ? handleTouchEnd : undefined}
-      onTouchCancel={resetSwipeGesture}
+      onTouchCancel={() => { window.clearTimeout(longPressTimerRef.current); longPressStartRef.current = null; resetSwipeGesture(); }}
       onClick={handleMessageTap}
       onContextMenu={(event) => { event.preventDefault(); onOpenActions(message); }}
     >

@@ -343,6 +343,7 @@ export function ChatsProvider({
       )
       .eq("group_mode", false)
       .is("trashed_at", null)
+      .is("archived_at", null)
       .order(
         "updated_at",
         {
@@ -1205,6 +1206,8 @@ export function ChatsProvider({
       .select("*")
       .eq("id", conversationId)
       .eq("character_id", characterId)
+      .is("trashed_at", null)
+      .is("archived_at", null)
       .single();
 
     if (error) throw error;
@@ -2454,6 +2457,15 @@ export function ChatsProvider({
 
     if (!conversationId) {
       return;
+    }
+
+    const { error: memoryDeleteError } = await supabase
+      .from("memories")
+      .delete()
+      .eq("conversation_id", conversationId);
+
+    if (memoryDeleteError) {
+      throw memoryDeleteError;
     }
 
     const {

@@ -66,3 +66,8 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* Velvet 3.8 Continuity: native-feeling route handoff without moving the bottom nav. */
+.velvet-route-stage{min-height:100%;animation:velvetRouteEnter 180ms cubic-bezier(.2,.75,.25,1) both}
+@keyframes velvetRouteEnter{from{opacity:.25;transform:translate3d(0,5px,0)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.velvet-route-stage{animation:none}}

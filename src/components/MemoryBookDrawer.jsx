@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "../services/supabase";
 
 const CATEGORIES = [
@@ -50,6 +51,33 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
   useEffect(() => {
     if (open && character?.id) loadMemories();
   }, [open, character?.id, conversationId]);
+
+  useEffect(() => {
+    if (!open || typeof document === "undefined") return undefined;
+
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const previous = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+
+    return () => {
+      Object.assign(body.style, previous);
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
 
   async function loadMemories() {
     setLoading(true);
@@ -230,7 +258,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
 
   if (!open) return null;
 
-  return (
+  return createPortal((
     <div className="memory-book-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && onClose()}>
       <aside className="memory-book" role="dialog" aria-modal="true">
         <div className="memory-book__grab" />
@@ -243,6 +271,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
           <button className="memory-book__close" onClick={onClose}><X size={19} /></button>
         </header>
 
+        <div className="memory-book__scroll">
         <div className="memory-book__tools">
           <label><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search memories..." /></label>
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
@@ -304,9 +333,10 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
         ) : (
           <div className="memory-book__empty"><BookOpen size={25} /><strong>No memories here yet</strong><p>{search || filter !== "all" ? "Try a different search or filter." : "Velvet will add meaningful memories as the story grows."}</p></div>
         )}
+        </div>
       </aside>
     </div>
-  );
+  ), document.body);
 
   function MemoryGroup({ title, memories: groupMemories }) {
     return (

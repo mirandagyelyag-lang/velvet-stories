@@ -1,9 +1,9 @@
 import {
+  Activity,
   BookOpen,
   BookMarked,
   Compass,
   Eye,
-  MessageCircle,
   Search,
   Moon,
   Sun,
@@ -17,7 +17,7 @@ import "../styles/sidebar.css";
 const navigation = [
   { id: "chats", label: "Stories", icon: BookOpen },
   { id: "characters", label: "Characters", icon: Compass },
-  { id: "inbox", label: "Chats", icon: MessageCircle },
+  { id: "pulse", label: "Pulse", icon: Activity },
   { id: "memories", label: "Memories", icon: BookMarked },
   { id: "profile", label: "Profile", icon: UserRound },
 ];

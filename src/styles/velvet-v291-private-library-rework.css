@@ -477,6 +477,10 @@
 .reference-inbox__preview { margin-top:7px !important; line-height:1.45 !important; }
 
 @media (max-width:760px) {
+  .reference-inbox__list{gap:12px !important}
+  .reference-inbox__row{border-radius:18px !important;min-height:78px !important}
+  .profile-access-backdrop { align-items:end; padding:0; }
+  .profile-access-panel { border-radius:24px 24px 0 0; }
   .library-purpose-note {
     margin:0 0 12px;
     display:grid;
@@ -510,38 +514,4 @@
   .character-memory-card__hero { min-height:156px; }
   .character-memory-card__identity { min-height:80px; padding:15px 16px 13px; }
   .character-memory-card__identity small { font-size:.56rem; }
-  .character-memory-card__identity strong { font-size:1.28rem; }
-  .character-memory-thought > p { font-size:1rem; }
-
-  .profile-access-backdrop { align-items:end; padding:0; }
-  .profile-access-panel {
-    width:100%;
-    max-height:90dvh;
-    padding:20px 16px calc(18px + env(safe-area-inset-bottom));
-    border-radius:24px 24px 0 0;
-  }
-  .profile-access-panel__rows > div { grid-template-columns:92px minmax(0,1fr); }
-  .profile-access-panel > footer { display:grid; grid-template-columns:1fr 1fr; }
-
-  .reference-inbox__list--quiet { gap:12px !important; }
-  .reference-inbox__row--quiet {
-    min-height:78px !important;
-    grid-template-columns:54px minmax(0,1fr) 7px !important;
-    gap:12px !important;
-    padding:11px 12px !important;
-    border-radius:18px !important;
-  }
-  .reference-inbox__avatar--quiet { width:54px !important; height:54px !important; }
-  .reference-inbox__preview { margin-top:5px !important; }
-}
-
-@media (max-width:390px) {
-  .characters-library__grid { grid-template-columns:minmax(0,1fr) !important; }
-  .characters-library__card .discover-burgundy__feature-card-main { min-height:250px; }
-  .reference-inbox__row--quiet {
-    grid-template-columns:50px minmax(0,1fr) 7px !important;
-    gap:10px !important;
-    padding:10px 11px !important;
-  }
-  .reference-inbox__avatar--quiet { width:50px !important; height:50px !important; }
-}
+  .character-memory-card

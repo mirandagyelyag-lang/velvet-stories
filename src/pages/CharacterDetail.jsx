@@ -68,6 +68,7 @@ export default function CharacterDetail({
         .eq("character_id", character.id)
         .eq("group_mode", false)
         .is("trashed_at", null)
+        .is("archived_at", null)
         .order("updated_at", { ascending: false })
         .limit(8);
 

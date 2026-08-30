@@ -31,7 +31,18 @@ lerna-debug.log*
 
 # Audit/export artifacts that must never become a second source of truth
 velvet-stories/
+velvet-stories-v*/
+velvet-*-temporal/
+*-backup-*/
+*.zip
+.vercel-backup-*/
 character-chat-v*.ts
 ChatsContext-v*.jsx
 *auditoria*.zip
 supabase/functions/swift-task/
+
+.vercel
+.env*
+
+.vercel
+.env*

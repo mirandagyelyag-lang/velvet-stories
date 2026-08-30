@@ -71,7 +71,7 @@ export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpen
     setError("");
     try {
       const [conversationResult, messageResult, memoryResult, loreResult] = await Promise.all([
-        supabase.from("conversations").select("id, character_id, title, summary, story_recap, updated_at, story_timeline, group_mode, group_character_ids, group_title").is("trashed_at", null).order("updated_at", { ascending: false }).limit(140),
+        supabase.from("conversations").select("id, character_id, title, summary, story_recap, updated_at, story_timeline, group_mode, group_character_ids, group_title").is("trashed_at", null).is("archived_at", null).order("updated_at", { ascending: false }).limit(140),
         supabase.from("messages").select("id, conversation_id, sender, content, created_at").order("created_at", { ascending: false }).limit(500),
         supabase.from("memories").select("id, conversation_id, character_id, content, category, importance, created_at, is_canon, is_pinned").is("superseded_at", null).order("created_at", { ascending: false }).limit(260),
         supabase.from("lore_entries").select("id, lorebook_id, name, content, entry_type, keywords, updated_at").eq("is_active", true).order("updated_at", { ascending: false }).limit(260),
@@ -117,6 +117,7 @@ export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpen
       });
 
       (memoryResult.data || []).forEach((memory) => {
+        if (memory.conversation_id && !byConversation.has(memory.conversation_id)) return;
         const score = scoreText(memory.content, needle);
         if (!score) return;
         const character = characters.find((item) => item.id === memory.character_id);

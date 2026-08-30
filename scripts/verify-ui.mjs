@@ -54,7 +54,8 @@ const studioLiteStyles = read("src/styles/velvet-v290-character-studio-lite.css"
 const privateLibraryStyles = read("src/styles/velvet-v291-private-library-rework.css");
 const mobileLibraryStyles = read("src/styles/velvet-v292-mobile-library-polish.css");
 const charactersCleanStyles = read("src/styles/velvet-v298-characters-clean-mobile.css");
-const chatInbox = read("src/pages/ChatInbox.jsx");
+const pulse = read("src/pages/Pulse.jsx");
+const pulseStyles = read("src/styles/pulse.css");
 const swipeTrash = read("src/components/SwipeToTrash.jsx");
 const myCharacters = read("src/pages/MyCharacters.jsx");
 
@@ -65,7 +66,8 @@ check("burgundy reference layer stays after the mobile foundation", main.include
 check("legacy mobile hotfix styles are no longer loaded", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!main.includes(name)));
 check("legacy mobile hotfix files were removed", ["mobile-v71.css","velvet-v171-hotfix.css","velvet-v172-mobile-emergency.css","velvet-v181-guarded-swipe.css","velvet-v19-phone-first.css","velvet-v191-composer-hotfix.css","velvet-v192-message-sheet-portal.css","velvet-v193-mobile-geometry.css"].every((name)=>!existsSync(`src/styles/${name}`)));
 const versionConfig = read("src/config/version.js");
-check("release metadata matches package version", versionConfig.includes(`VELVET_VERSION = "${pkg.version}"`) && /VELVET_RELEASE = ".+"/.test(versionConfig));
+const viteConfig = read("vite.config.js");
+check("release metadata matches package version", versionConfig.includes("VELVET_VERSION = __VELVET_VERSION__") && viteConfig.includes("__VELVET_VERSION__: JSON.stringify(velvetVersion)") && viteConfig.includes("const velvetVersion = pkg.version"));
 check("version config exports the complete build metadata contract", ["VELVET_VERSION", "VELVET_RELEASE", "VELVET_BUILD_TIME"].every((name) => versionConfig.includes(`export const ${name} =`)));
 check("opening regeneration keeps the old opening visible until replacement text arrives", chatsContextV260.includes("const openingRegeneration = Boolean(") && chatsContextV260.includes("if (!openingRegeneration)") && chatsContextV260.includes("if (openingRegeneration && options.regenerateMessageId)") && chatsContextV260.includes("removeMessageFromState(characterId, options.regenerateMessageId)"));
 check("empty character introduction never flashes while AI is busy", chat.includes("visibleMessages.length === 0 && !busy"));
@@ -76,7 +78,7 @@ check("Burgundy background cannot end before the document", reference.includes('
 check("Stories has designed Light Dark and Comfort palettes", ['data-theme="light"','data-theme="dark"','data-theme="comfort"'].every((token)=>reference.includes(token)) && ['--stories-canvas','--stories-panel','--stories-sidebar','--stories-nav'].every((token)=>reference.includes(token)));
 check("desktop Stories sidebar is a full-height fixed app rail", reference.includes('body.velvet-burgundy-route .sidebar') && reference.includes('position: fixed !important') && reference.includes('height: 100dvh !important') && reference.includes('grid-column: 2 !important'));
 check("Stories theme color follows the active theme", stories.includes('const { theme } = useTheme()') && stories.includes('light: "#f7eff2"') && stories.includes('comfort: "#eee4dc"') && stories.includes('dark: "#10090e"'));
-check("dedicated Chats shares the themed full-canvas route", read("src/pages/ChatInbox.jsx").includes('classList.add("velvet-burgundy-route")') && read("src/pages/ChatInbox.jsx").includes('const { theme } = useTheme()'));
+check("Pulse shares the themed full-canvas route", pulse.includes('classList.add("velvet-burgundy-route")') && pulse.includes('const { theme } = useTheme()'));
 check("startup recovery boundary wraps the provider tree", read("src/main.jsx").includes("<VelvetErrorBoundary>") && read("src/components/VelvetErrorBoundary.jsx").includes("Repair & reopen Velvet"));
 check("boot watchdog can recover before React mounts", read("index.html").includes("__VELVET_REPAIR_APP__") && read("index.html").includes("velvet_boot_repaired_v269"));
 check("recovery clears service worker caches without deleting local storage", read("src/utils/runtimeRecovery.js").includes("getRegistrations") && read("src/utils/runtimeRecovery.js").includes("caches.keys") && !read("src/utils/runtimeRecovery.js").includes("localStorage.clear"));
@@ -85,7 +87,7 @@ check("reload preserves the active Velvet destination", app.includes("readVelvet
 check("reload can restore an open character chat", app.includes('requested === "chat"') && app.includes('params.set("character", characterId)') && app.includes('setSelectedConversationId(locationState.conversationId || null)') && app.includes('characters.find((item) => item.id === locationState.characterId)'));
 check("browser back forward stays synced with persistent URLs", app.includes('window.addEventListener("popstate", handleBrowserBack)') && app.includes('event.state?.velvetNavigation ? event.state : readVelvetLocation()'));
 
-check("mobile navigation has the five reference destinations", ["Stories","Characters","Chats","Memories","Profile"].every((label)=>sidebar.includes(`label: "${label}"`)) && reference.includes("repeat(5, minmax(0,1fr))"));
+check("mobile navigation has the five reference destinations", ["Stories","Characters","Pulse","Memories","Profile"].every((label)=>sidebar.includes(`label: "${label}"`)) && reference.includes("repeat(5, minmax(0,1fr))"));
 check("mobile page controls are at least 44px", mobile.includes("button{min-height:44px}"));
 check("mobile forms use sixteen pixel fields", mobile.includes("button,input,textarea,select{font-size:16px!important}"));
 check("chat uses native document scrolling", mobile.includes("overflow-y:auto!important") && mobile.includes("touch-action:pan-y!important") && mobile.includes(".app--chat .chat{display:block!important"));
@@ -110,8 +112,8 @@ check("composer has explicit three slot grid", mobile.includes("grid-template-co
 check("composer accounts for keyboard and safe area", mobile.includes("--velvet-keyboard-offset") && mobile.includes("env(safe-area-inset-bottom)"));
 check("short stories can flow directly into composer", chat.includes("chat--compact-mobile") && mobile.includes(".chat--compact-mobile .chat__composer{position:relative!important"));
 check("scene director is portaled and phone sized", chat.includes("SCENE DIRECTOR") && chat.includes("directorNoteOpen && typeof document") && mobile.includes(".director-sheet{width:100%!important"));
-check("scene director has all quick directions", ["More dialogue","More tension","Move scene","Bring someone in","Surprise me"].every((label)=>chat.includes(label)));
-check("relationship engine is reachable from chat", chat.includes("chat__relationship-header") && chat.includes("setRelationshipOpen(true)"));
+check("scene director has all quick directions", ["More dialogue","Let them be wrong","Bring in an NPC","Less romance","Advance the night","Keep the conflict"].every((label)=>chat.includes(label)));
+check("relationship engine is reachable from the story options menu", chat.includes("<span>Relationship<small>Story pulse</small></span>") && chat.includes("setRelationshipOpen(true)"));
 check("Memories uses the shared your MEMORIES library hero", memories.includes('reference-stories-title__script">your') && memories.includes("<h1>MEMORIES</h1>") && memories.includes("PRIVATE MEMORY BOOK") && memories.includes("onBack"));
 check("AI Status returns through history", app.includes("goBackOr") && app.includes('activePage === "diagnostics"') && diagnostics.includes("VELVET DOCTOR"));
 check("AI diagnostics can clear stale PWA cache", diagnostics.includes("Clear app cache & reload") && diagnostics.includes('action: "diagnostics"'));
@@ -129,21 +131,20 @@ check("Character Studio real-exit layer is the final mobile authority", main.inc
 check("Stories matches the burgundy library structure", ["STORY LIBRARY","COLLECTIONS","RECENT STORIES","Favorites","Archived","Trash"].every((label)=>stories.includes(label)) && reference.includes("reference-collections__grid") && reference.includes("grid-template-columns: repeat(3, minmax(0,1fr))"));
 check("Stories has reference search filter and glowing new story action", stories.includes("Search a story, character or moment...") && stories.includes("reference-filter") && reference.includes("reference-stories-new"));
 check("Stories three-dot menu is touch safe", stories.includes("onPointerDown={(event) => event.stopPropagation()}") && stories.includes('aria-haspopup="menu"') && stabilityStyles.includes("Stories three-dot menu interaction shield") && !read("src/styles/velvet-v220.css").includes(".reference-story-row,.discover-burgundy__card"));
-check("dedicated Chats destination exists and opens conversations", app.includes('activePage === "inbox"') && existsSync("src/pages/ChatInbox.jsx") && sidebar.includes('id: "inbox"'));
-const inbox = read("src/pages/ChatInbox.jsx");
-check("Chats keeps the shared your CHATS composition", inbox.includes('reference-stories-title__script">your') && inbox.includes("<h1>CHATS</h1>") && inbox.includes("ACTIVE CONVERSATIONS") && reference.includes("reference-inbox--v2116"));
-check("Chats has real search filters and one new chat action", inbox.includes("Search chats...") && ["Unread","Favorites","Archived"].every((label)=>inbox.includes(label)) && inbox.includes("onBrowseCharacters") && inbox.includes("reference-inbox__new-top") && !inbox.includes("reference-inbox__new-chat"));
-check("Chats unread state is evidence based instead of fabricated", inbox.includes("READ_KEY_PREFIX") && inbox.includes('item.sender !== "user"') && inbox.includes("new Date(item.created_at).getTime() > seenAt") && chat.includes("velvet_chat_seen_v2114_") && !inbox.includes("Math.random"));
-check("Chats keeps the exact Stories theme shell", inbox.includes('classList.add("velvet-burgundy-route")') && reference.includes("var(--stories-row)") && reference.includes("reference-inbox--v2116") && reference.includes("background: transparent !important"));
-check("Stories and Chats communicate distinct jobs", stories.includes("Stories are your archive") && stories.includes("STORY LIBRARY") && inbox.includes("ACTIVE CONVERSATIONS") && inbox.includes("Search chats"));
-check("Chats rows have visible breathing room", privateLibraryStyles.includes(".reference-inbox__list--quiet") && privateLibraryStyles.includes("gap:14px") && privateLibraryStyles.includes("border-radius:20px"));
-check("Chats phone layout stays inside the viewport", reference.includes(".reference-inbox.reference-inbox--v2116") && reference.includes("overflow-x: clip !important") && reference.includes("grid-template-columns: 50px minmax(0,1fr) 8px"));
-check("Chats labels single stories by character and Group Stories by their ensemble title", inbox.includes("const displayName = conversation.group_mode") && inbox.includes(": character.name") && inbox.includes("<strong>{displayName}</strong>"));
-check("Chats uses one latest-message preview with time beside the name", inbox.includes("const lastMessage = clean(conversation.latest?.content") && inbox.includes("<time>{lastMessageAt}</time>") && inbox.includes("reference-inbox__preview") && !inbox.includes("You: {truncate"));
-check("Chats filters are quiet text tabs on phone", reference.includes("reference-inbox__tabs--quiet") && reference.includes("background: transparent !important") && reference.includes("border-bottom: 1px solid") && !inbox.includes("<b>{count}</b>"));
-check("Chats uses separated quiet conversation cards", privateLibraryStyles.includes(".reference-inbox__row--quiet") && privateLibraryStyles.includes("border-radius:20px") && privateLibraryStyles.includes("box-shadow:0 8px 24px"));
-check("Chats uses a compact unread badge with time metadata", inbox.includes("reference-inbox__meta--velvet") && inbox.includes("conversation.unreadCount > 9") && read("src/styles/velvet-v2100-chats-inbox-rework.css").includes("reference-inbox__meta--velvet b"));
-check("Chats hero and rows are denser on phone", reference.includes("min-height: 112px !important") && reference.includes("min-height: 72px") && reference.includes("width: 50px") && reference.includes("height: 50px"));
+check("Pulse replaces the redundant Chats destination", app.includes('activePage === "pulse"') && existsSync("src/pages/Pulse.jsx") && sidebar.includes('id: "pulse"') && !existsSync("src/pages/ChatInbox.jsx"));
+check("inactive stories disappear everywhere except their Stories collection", pulse.includes('.is("trashed_at", null)') && pulse.includes('.is("archived_at", null)') && searchPage.includes('.is("trashed_at", null).is("archived_at", null)') && memories.includes('activeConversationIds.has(memory.conversation_id)') && characterDetailV240.includes('.is("archived_at", null)') && chatsContextV260.includes('.is("archived_at", null)'));
+check("archived and trashed stories cannot reopen through cards or old URLs", stories.includes('!conversation.trashed_at && !conversation.archived_at && onOpenCharacter') && chatsContextV260.includes('.eq("character_id", characterId)\n      .is("trashed_at", null)\n      .is("archived_at", null)'));
+check("permanent story deletion removes its memories before the conversation", stories.includes('from("memories").delete().eq("conversation_id", conversationId)') && chatsContextV260.includes('memoryDeleteError'));
+check("legacy inbox links recover into Pulse", app.includes('rawRequested === "inbox" ? "pulse"'));
+check("Pulse reads real durable story dynamics", ["story_arcs","story_plans","story_conflicts","story_consequences","story_calendar_events","story_cast_members"].every((table)=>pulse.includes(`from("${table}")`)));
+check("Pulse loads independent story tables in parallel", pulse.includes("await Promise.all([") && pulse.includes("groupByConversation"));
+check("Pulse uses three self-explanatory sections without filters", ["Needs attention","Coming up","Continue"].every((label)=>pulse.includes(`\"${label}\"`)) && !pulse.includes("pulse-filters") && !pulse.includes("pulse-stats") && !pulse.includes("Search a person"));
+check("Pulse opens the exact conversation", pulse.includes("onOpenCharacter(story.character, story.id)"));
+check("Pulse never fabricates activity counts", pulse.includes("story.conflicts.length") && pulse.includes("story.consequences.length") && pulse.includes("story.plans.length") && !pulse.includes("Math.random"));
+check("Pulse supports single and Group Story identities", pulse.includes("const displayName = story.group_mode") && pulse.includes("story.group_title") && pulse.includes("story.character.name"));
+check("Pulse uses current scene presence and durable cast", pulse.includes("scene.present") && pulse.includes('member.presence === "present"') && pulse.includes("uniqueNames"));
+check("Pulse has a compact phone-native layout", pulseStyles.includes("@media(max-width:760px)") && pulseStyles.includes("grid-template-columns:50px minmax(0,1fr) 26px") && pulseStyles.includes(".pulse-story__continue span{display:none}"));
+check("Stories and Pulse communicate distinct jobs", stories.includes("Stories are your archive") && stories.includes("STORY LIBRARY") && pulse.includes("WHAT IS STILL ALIVE") && pulse.includes("Choose a moment"));
 check("Characters mobile library keeps a safe compact grid", privateLibraryStyles.includes(".characters-library__grid") && privateLibraryStyles.includes("grid-template-columns:repeat(2,minmax(0,1fr))"));
 check("Characters clean mobile layer removes duplicated search UI and shortens cards", charactersCleanStyles.includes("body.velvet-discover-route .mobile-global-search { display: none !important; }") && charactersCleanStyles.includes("aspect-ratio: .90 / 1 !important") && charactersCleanStyles.includes("height: 60px !important"));
 check("Profile action buttons become full-width", mobile.includes(".profile-setting>button{grid-column:1/-1!important;width:100%!important"));
@@ -233,7 +234,7 @@ check("character art is lazy decoded for long lists", characterCard.includes('lo
 
 check("AI responses can be edited without deleting later visible messages", chat.includes("editCharacterMessageInPlace") && chat.includes("Your previous wording is saved as an alternative") && read("src/context/ChatsContext.jsx").includes("async function editCharacterMessageInPlace"));
 check("response alternatives have inline arrows counters and guarded swipe", chat.includes("chat-message__version-nav") && chat.includes("navigateResponseVersion") && chat.includes("onVersionNavigate(message, dx < 0 ? 1 : -1)"));
-check("Group Stories create a real multi-character conversation", groupStoryModal.includes("Choose 2–5 characters") && groupStoryModal.includes("createGroupConversation") && read("src/context/ChatsContext.jsx").includes("group_character_ids") && read("src/pages/ChatInbox.jsx").includes("Group story"));
+check("Group Stories create a real multi-character conversation", groupStoryModal.includes("Choose 2–5 characters") && groupStoryModal.includes("createGroupConversation") && read("src/context/ChatsContext.jsx").includes("group_character_ids") && stories.includes("setGroupStoryOpen(true)"));
 check("Group Story chat exposes the ensemble identity", chat.includes("conversationDisplayName") && chat.includes("chat__group-cast-line") && storycraftStyles.includes(".chat__group-cast-line"));
 check("Personas 2.0 can be chosen before a story begins", characterDetailV240.includes("Your persona") && characterDetailV240.includes("storyPersonaId") && characterDetailV240.includes("this story only"));
 check("Lorebooks explain scene-relevant retrieval", lorebooksV240.includes("scores the entry name and content against the current scene") && lorebooksV240.includes("only the most relevant lore"));
@@ -268,7 +269,7 @@ check("ambience fades cleanly and enforces one active room", storyAmbience.inclu
 check("mobile ambience pauses and resumes instead of restarting on visibility changes", audioBus.includes('window.addEventListener("pagehide", stopAllAudio)') && !audioBus.includes('document.visibilityState === "hidden"') && storyAmbience.includes("visibilityPausedRef") && storyAmbience.includes("pauseActiveAmbience") && storyAmbience.includes("switchAmbience(latest.mode, latest.volume)"));
 check("device voice center supports language filters favorites and future neural engines", storyHubDrawer.includes("All languages") && storyHubDrawer.includes("Favorite this voice") && speechUtil.includes("neuralReady: true") && storyHubDrawer.includes("Neural-ready architecture"));
 check("voice volume is remembered without changing story ambience volume", storyHubDrawer.includes('writeAudioPreference("voice", character.id') && chat.includes('readAudioPreference("voice", character.id') && storyHubDrawer.includes("ambientVolume"));
-check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes('"2.11.15"'));
+check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes(`"${pkg.version}"`));
 check("Characters keeps the v2.9.8 layout and only swaps the Characters title font", read("src/pages/MyCharacters.jsx").includes('characters-library__velvet-title') && read("src/pages/MyCharacters.jsx").includes('inTrash ? "Trash" : "Characters"') && read("src/styles/velvet-v298-characters-clean-mobile.css").includes('.characters-library__compact-copy .characters-library__velvet-title') && read("src/styles/velvet-v298-characters-clean-mobile.css").includes('font-family: "Pinyon Script", cursive !important;'));
 check("updater only offers genuinely newer semantic versions", pwaContext.includes("compareVersions(serverVersion, VELVET_VERSION) > 0") && pwaContext.includes("compareVersions(remote, VELVET_VERSION) > 0"));
 check("Stories rapid cleanup uses intentional right swipe with no confirmation", stories.includes('direction="right"') && stories.includes('batchKey: "story-cleanup"') && !stories.includes('title: "Delete this conversation?"'));
@@ -283,7 +284,7 @@ check("mobile QA shield covers every primary route and phone sheets", stabilityS
 
 
 check("Possible next beat no longer auto-appears after replies", !chat.includes("Possible next beat") && !chat.includes("queueLivingSceneSuggestion") && chat.includes("Guide the next beat"));
-check("Chats and Memories use intentional right-swipe rapid cleanup with batch Undo", inbox.includes('direction="right"') && memories.includes('direction="right"') && swipeTrash.includes('direction = "left"') && swipeTrash.includes('absX > absY * 1.35') && swipeTrash.includes('offset >= DELETE_THRESHOLD') && feedbackContext.includes('batchKey') && feedbackContext.includes('Undo all'));
+check("Stories and Memories use intentional right-swipe rapid cleanup with batch Undo", stories.includes('direction="right"') && memories.includes('direction="right"') && swipeTrash.includes('direction = "left"') && swipeTrash.includes('absX > absY * 1.35') && swipeTrash.includes('offset >= DELETE_THRESHOLD') && feedbackContext.includes('batchKey') && feedbackContext.includes('Undo all'));
 check("swipe trash action stays visually hidden until a real left drag", swipeTrash.includes("is-revealed") && !swipeTrash.includes('className="sr-only"') && mobileLibraryStyles.includes(".swipe-trash.is-revealed .swipe-trash__action") && mobileLibraryStyles.includes("opacity: 0") && mobileLibraryStyles.includes("visibility: hidden"));
 check("Characters gets a compact two-column mobile cast", mobileLibraryStyles.includes(".characters-library__grid") && mobileLibraryStyles.includes("grid-template-columns:repeat(2,minmax(0,1fr))") && mobileLibraryStyles.includes("discover-burgundy__feature-card-copy em { display:none"));
 check("v2.9.2 mobile library polish loads last", main.includes('import "./styles/velvet-v292-mobile-library-polish.css";') && main.lastIndexOf("velvet-v292-mobile-library-polish.css") > main.lastIndexOf("velvet-v291-private-library-rework.css"));
@@ -320,6 +321,11 @@ check("trash Undo action has its own high-contrast button", feedbackStyles.inclu
 check("mobile confirmation stays compact and centered instead of becoming a bottom sheet", feedbackStyles.includes("place-items:center") && feedbackStyles.includes("align-items:center") && !feedbackStyles.includes("align-items:end") && feedbackStyles.includes("width:min(326px"));
 check("Stories ellipsis opens on completed tap instead of pointer-down", stories.includes("onPointerDown={(event) => { event.stopPropagation(); }}") && stories.includes("onClick={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId") && !stories.includes("onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId"));
 check("library ellipsis controls use the compact precision layer", main.includes("velvet-v296-precision-actions.css") && precisionActions.includes("width: 32px !important") && precisionActions.includes("touch-action: pan-y !important"));
+check("completed message feedback and options remain usable while another reply streams", chat.includes('function openActions(chatMessage) {\n    if (chatMessage.isStreaming) return;') && chat.includes('function openMessageFeedback(chatMessage, kind) {\n    if (chatMessage.isStreaming || chatMessage.sender !== "character") return;') && chat.includes('if (suppressTapRef.current || message.isStreaming || shouldIgnoreSwipeTarget(event.target)) return;'));
+check("story-mutating message actions wait for the active generation", chat.includes('if (busy && ["rewind", "delete"].includes(action))') && chat.includes('disabled={busy || actionLoading || !actionDraft.trim()}') && chat.includes('disabled={busy || actionLoading}'));
+check("long chats keep the full header available at every scroll position", !chat.includes('headerScrollRef') && !chat.includes('scrollHeaderVisible') && !chat.includes('chat__header--scroll-hidden'));
+check("Character AI overlay header authority is loaded last", main.trimEnd().endsWith('import "./styles/chat-header-overlay.css";') && main.indexOf('chat-header-overlay.css') > main.indexOf('velvet-v374-chat-composer-authority.css'));
+check("chat header escapes every route containing block through a body portal", chat.includes("createPortal((<header") && chat.includes("</header>), document.body)}") && read("src/styles/chat-header-overlay.css").includes("body > .chat__header"));
 
 let failed=0;
 for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }
@@ -339,11 +345,10 @@ console.log(`\n${checks.length} UI checks passed.`);
 {
   const feedback = read("src/context/FeedbackContext.jsx");
   const stories = read("src/pages/Chats.jsx");
-  const inbox = read("src/pages/ChatInbox.jsx");
   const memories = read("src/pages/Memories.jsx");
   check("rapid cleanup Undo window is 2.5 seconds", feedback.includes("}, 2500);") && !feedback.includes("5200"));
   check("Stories optimistically trash immediately", stories.includes("setConversations((current) => current.map((item) => item.id === conversationId ? { ...item, trashed_at: trashedAt } : item))"));
-  check("Chats optimistically disappear immediately", inbox.includes("setRows((current) => current.filter((item) => item.id !== conversation.id))"));
+  check("Pulse does not duplicate destructive story controls", !pulse.includes("scheduleDeletion") && !pulse.includes("SwipeToTrash"));
   check("Memories optimistically disappear immediately", memories.includes("setMemories((current) => current.filter((item) => item.id !== memory.id))"));
 }
 

@@ -321,6 +321,20 @@ export function CharactersProvider({ children }) {
     return data?.sample || "";
   }
 
+  async function buildCharacterVoiceLab(characterData) {
+    const { data, error } = await supabase.functions.invoke("character-chat", {
+      body: { action: "character_voice_lab", draft: characterDraftPayload(characterData) },
+      timeout: 30000,
+    });
+    if (error) throw new Error(await readCharacterFunctionError(error, "Velvet couldn't build this Voice Lab."));
+    return data?.lab || {};
+  }
+  async function openCharacterLearningRoom(characterData, situation) {
+    const { data, error } = await supabase.functions.invoke("character-chat", { body: { action: "character_learning_room", draft: characterDraftPayload(characterData), situation }, timeout: 32000 });
+    if (error) throw new Error(await readCharacterFunctionError(error, "Velvet couldn't open the Learning Room."));
+    return Array.isArray(data?.samples) ? data.samples : [];
+  }
+
   async function toggleFavorite(characterId) {
     const character = characters.find((item) => item.id === characterId);
     if (!character) return null;
@@ -385,6 +399,8 @@ export function CharactersProvider({ children }) {
         organizeCharacterDraft,
         generateCharacterDraft,
         testCharacterVoice,
+        buildCharacterVoiceLab,
+        openCharacterLearningRoom,
         generateInstantStory,
         deleteCharacter,
         listTrashedCharacters,

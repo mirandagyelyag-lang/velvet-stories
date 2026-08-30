@@ -73,7 +73,7 @@ const generatedDraftFields = [
 ];
 
 function CreateCharacterModal({ onClose, onCreated, character = null, remixSource = null }) {
-  const { createCharacter, updateCharacter, enhanceCharacterDraft, enhanceCharacterFields, organizeCharacterDraft, generateCharacterDraft, testCharacterVoice } = useCharacters();
+  const { createCharacter, updateCharacter, enhanceCharacterDraft, enhanceCharacterFields, organizeCharacterDraft, generateCharacterDraft, testCharacterVoice, buildCharacterVoiceLab, openCharacterLearningRoom } = useCharacters();
   const onCloseRef = useRef(onClose);
   const savingRef = useRef(false);
   const [form, setForm] = useState(() => character ? {
@@ -158,6 +158,12 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
   const [creatorStatus, setCreatorStatus] = useState("");
   const [voiceTesting, setVoiceTesting] = useState(false);
   const [voiceSample, setVoiceSample] = useState("");
+  const [voiceLab, setVoiceLab] = useState(null);
+  const [voiceLabLoading, setVoiceLabLoading] = useState(false);
+  const [learningSituation, setLearningSituation] = useState("A friend says they had a terrible day and does not want to talk.");
+  const [learningSamples, setLearningSamples] = useState([]);
+  const [learningSelected, setLearningSelected] = useState([]);
+  const [learningLoading, setLearningLoading] = useState(false);
   const [toolNotice, setToolNotice] = useState("");
   const [studioStep, setStudioStep] = useState("essence");
   const draftStorageKey = useMemo(() => `velvet_character_draft_v18_${character?.id || (remixSource?.id ? `remix_${remixSource.id}` : "new")}`, [character?.id, remixSource?.id]);
@@ -228,7 +234,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
     return Math.round((filled / required.length) * 100);
   }, [form.name, form.role, form.personality, form.firstMessage]);
   const voiceFingerprintCount = voiceFingerprintFields.filter((field) => form[field]?.trim()).length;
-  const aiBusy = enhancing || Boolean(fieldPolishing) || organizing || generating;
+  const aiBusy = enhancing || Boolean(fieldPolishing) || organizing || generating || voiceLabLoading || learningLoading;
   const quickDraftReady = !character && completion === 100 && creatorStatus.startsWith("Complete draft");
 
   function updateField(event) {
@@ -399,6 +405,33 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
       setVoiceSample(await testCharacterVoice(form));
     } catch (requestError) { setError(requestError.message || "Velvet couldn't test this voice."); }
     finally { setVoiceTesting(false); }
+  }
+
+  async function handleVoiceLab() {
+    if (aiBusy || saving || !form.name.trim() || !form.personality.trim()) return;
+    try {
+      setVoiceLabLoading(true); setError("");
+      setVoiceLab(await buildCharacterVoiceLab(form));
+    } catch (requestError) { setError(requestError.message || "Velvet couldn't build this Voice Lab."); }
+    finally { setVoiceLabLoading(false); }
+  }
+
+  function applyVoiceLab() {
+    if (!voiceLab) return;
+    setForm((current) => ({ ...current, ...voiceLab }));
+    setToolNotice("Voice Lab applied. You can edit every field before saving.");
+  }
+  async function runLearningRoom() {
+    if (aiBusy || !form.name.trim() || !form.personality.trim()) return;
+    try { setLearningLoading(true); setError(""); setLearningSelected([]); setLearningSamples(await openCharacterLearningRoom(form, learningSituation)); }
+    catch (requestError) { setError(requestError.message || "Velvet couldn't open the Learning Room."); }
+    finally { setLearningLoading(false); }
+  }
+  function applyLearningRoom() {
+    const chosen=learningSelected.map((index)=>learningSamples[index]).filter(Boolean);
+    if (!chosen.length) return;
+    setForm((current)=>({...current,exampleDialogue:[current.exampleDialogue,...chosen].filter(Boolean).join("\n\n")}));
+    setToolNotice(`${chosen.length} non-canonical voice ${chosen.length===1?"sample":"samples"} saved as examples.`);
   }
 
   function validateCharacter() {
@@ -669,6 +702,17 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                 </button>
                 <small>This previews writing voice, not device text-to-speech.</small>
                 {voiceSample && <blockquote>{voiceSample}</blockquote>}
+              </div>
+              <div className="studio-voice-lab">
+                <div><strong>Voice Lab</strong><small>Tests the same person in casual, angry, flirting, vulnerable and awkward moments—then builds one consistent fingerprint.</small></div>
+                <button type="button" onClick={handleVoiceLab} disabled={saving || aiBusy}>{voiceLabLoading ? <LoaderCircle className="character-modal__spinner" size={16}/> : <Sparkles size={16}/>} {voiceLabLoading ? "Building five situations…" : "Build Voice Lab"}</button>
+                {voiceLab && <div className="studio-voice-lab__result"><blockquote>{voiceLab.exampleDialogue}</blockquote><button type="button" onClick={applyVoiceLab}>Apply this fingerprint</button></div>}
+              </div>
+              <div className="studio-learning-room">
+                <div><strong>Learning Room</strong><small>Creates ten auditions without adding anything to story canon. Select only the replies that genuinely sound right.</small></div>
+                <textarea rows="3" value={learningSituation} onChange={(event)=>setLearningSituation(event.target.value)} placeholder="Test situation"/>
+                <button type="button" onClick={runLearningRoom} disabled={saving||aiBusy}>{learningLoading?<LoaderCircle className="character-modal__spinner" size={16}/>:<MessageCircle size={16}/>}Generate 10 auditions</button>
+                {learningSamples.length>0&&<div className="studio-learning-room__samples">{learningSamples.map((sample,index)=><label key={index} className={learningSelected.includes(index)?"selected":""}><input type="checkbox" checked={learningSelected.includes(index)} onChange={()=>setLearningSelected((current)=>current.includes(index)?current.filter((item)=>item!==index):[...current,index])}/><span><small>OPTION {index+1}</small>{sample}</span></label>)}<button type="button" onClick={applyLearningRoom} disabled={!learningSelected.length}>Save selected voice examples</button></div>}
               </div>
               <details className="studio-voice-fingerprint">
                 <summary>

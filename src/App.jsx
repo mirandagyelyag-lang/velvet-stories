@@ -16,7 +16,7 @@ const routeImports = {
   discover: () => import("./pages/MyCharacters"),
   chat: () => import("./pages/Chat"),
   detail: () => import("./pages/CharacterDetail"),
-  inbox: () => import("./pages/ChatInbox"),
+  pulse: () => import("./pages/Pulse"),
   memories: () => import("./pages/Memories"),
   profile: () => import("./pages/Profile"),
   personas: () => import("./pages/Personas"),
@@ -30,7 +30,7 @@ const Chats = lazy(routeImports.stories);
 const MyCharacters = lazy(routeImports.discover);
 const Chat = lazy(routeImports.chat);
 const CharacterDetail = lazy(routeImports.detail);
-const ChatInbox = lazy(routeImports.inbox);
+const Pulse = lazy(routeImports.pulse);
 const Memories = lazy(routeImports.memories);
 const Profile = lazy(routeImports.profile);
 const Personas = lazy(routeImports.personas);
@@ -43,7 +43,7 @@ const CreateCharacterModal = lazy(routeImports.studio);
 const VELVET_PAGES = new Set([
   "characters",
   "chats",
-  "inbox",
+  "pulse",
   "memories",
   "personas",
   "lorebooks",
@@ -53,9 +53,35 @@ const VELVET_PAGES = new Set([
   "search",
 ]);
 
+const VELVET_LAST_LOCATION_KEY = "velvet:last-location:v1";
+
+function readStoredVelvetLocation() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(VELVET_LAST_LOCATION_KEY) || "null");
+    if (!stored || typeof stored !== "object") return null;
+    if (stored.mode === "chat" && stored.characterId) return stored;
+    if (stored.mode === "character" && stored.characterId) return stored;
+    if (stored.mode === "page" && VELVET_PAGES.has(stored.page)) return stored;
+  } catch {}
+  return null;
+}
+
+function persistVelvetLocation(location) {
+  try {
+    localStorage.setItem(VELVET_LAST_LOCATION_KEY, JSON.stringify({
+      mode: location.mode || "page",
+      page: location.page || "chats",
+      characterId: location.characterId || null,
+      conversationId: location.conversationId || null,
+      messageId: location.messageId || null,
+    }));
+  } catch {}
+}
+
 function readVelvetLocation() {
   const params = new URLSearchParams(window.location.search);
-  const requested = params.get("open");
+  const rawRequested = params.get("open");
+  const requested = rawRequested === "inbox" ? "pulse" : rawRequested;
 
   if (requested === "chat") {
     return {
@@ -76,6 +102,11 @@ function readVelvetLocation() {
       conversationId: null,
       messageId: null,
     };
+  }
+
+  if (!rawRequested) {
+    const stored = readStoredVelvetLocation();
+    if (stored) return stored;
   }
 
   return {
@@ -191,6 +222,13 @@ function App() {
         setPreviewCharacter(null);
       }
 
+      persistVelvetLocation({
+        mode: state.mode || "page",
+        page: state.page || "chats",
+        characterId: state.characterId || character?.id || null,
+        conversationId: state.conversationId || null,
+        messageId: state.messageId || null,
+      });
       window.scrollTo({ top: 0, behavior: "auto" });
     }
 
@@ -314,7 +352,9 @@ function App() {
       conversationId: null,
       messageId: null,
     };
-    const nextUrl = buildVelvetUrl({ mode: "page", page });
+    const nextLocation = { mode: "page", page, characterId: null, conversationId: null, messageId: null };
+    const nextUrl = buildVelvetUrl(nextLocation);
+    persistVelvetLocation(nextLocation);
 
     if (options.replace) {
       window.history.replaceState(nextState, "", nextUrl);
@@ -340,6 +380,7 @@ function App() {
       messageId,
     };
 
+    persistVelvetLocation(nextLocation);
     window.history.pushState(
       {
         velvetNavigation: true,
@@ -363,6 +404,7 @@ function App() {
       characterId: character.id,
       conversationId: null,
     };
+    persistVelvetLocation(nextLocation);
     window.history.pushState(
       { velvetNavigation: true, ...nextLocation, character },
       "",
@@ -393,6 +435,24 @@ function App() {
     navigate("chats", { replace: true });
   }
 
+  function syncActiveConversation(conversationId) {
+    if (!selectedCharacter?.id || !conversationId) return;
+    setSelectedConversationId(conversationId);
+    const nextLocation = {
+      mode: "chat",
+      page: "chats",
+      characterId: selectedCharacter.id,
+      conversationId,
+      messageId: null,
+    };
+    persistVelvetLocation(nextLocation);
+    window.history.replaceState(
+      { velvetNavigation: true, ...nextLocation, character: selectedCharacter },
+      "",
+      buildVelvetUrl(nextLocation)
+    );
+  }
+
   function renderPage() {
     if (previewCharacter) {
       return (
@@ -417,6 +477,7 @@ function App() {
           character={selectedCharacter}
           conversationId={selectedConversationId}
           focusMessageId={selectedMessageId}
+          onConversationChange={syncActiveConversation}
           onBack={leaveCurrentChat}
           onDeleted={() => navigate("chats", { replace: true })}
           onOpenMemories={() => navigate("memories")}
@@ -459,8 +520,8 @@ function App() {
       );
     }
 
-    if (activePage === "inbox") {
-      return <ChatInbox onOpenCharacter={openCharacter} onBrowseCharacters={() => navigate("characters")} />;
+    if (activePage === "pulse") {
+      return <Pulse onOpenCharacter={openCharacter} onBrowseStories={() => navigate("chats")} />;
     }
 
     if (activePage === "memories") {
@@ -502,7 +563,7 @@ function App() {
         <Sidebar activePage={["personas", "lorebooks", "settings", "diagnostics"].includes(activePage) ? "profile" : activePage} onNavigate={navigate} />
       )}
 
-      {!creatorOpen && <main className="app__content"><Suspense fallback={<VelvetRouteLoading />}>{renderPage()}</Suspense></main>}
+      {!creatorOpen && <main className="app__content"><div className="velvet-route-stage" key={selectedCharacter ? `chat-${selectedCharacter.id}-${selectedConversationId || "current"}` : `page-${activePage}`}><Suspense fallback={<VelvetRouteLoading />}>{renderPage()}</Suspense></div></main>}
 
       {creatorOpen && (
         <Suspense fallback={<VelvetRouteLoading overlay />}>

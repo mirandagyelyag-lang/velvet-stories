@@ -42,7 +42,6 @@ import "./styles/velvet-v291-private-library-rework.css";
 import "./styles/velvet-v292-mobile-library-polish.css";
 import "./styles/velvet-v296-precision-actions.css";
 import "./styles/velvet-v298-characters-clean-mobile.css";
-import "./styles/velvet-v2100-chats-inbox-rework.css";
 
 installMobileViewportLock();
 applySafeModeClass();
@@ -107,3 +106,5 @@ import "./styles/velvet-v2101-character-profile-actions.css";
 import "./styles/velvet-v2107-memories-safe-area.css";
 
 import "./styles/velvet-v21033-native-viewport-lock.css";
+import "./styles/velvet-v374-chat-composer-authority.css";
+import "./styles/chat-header-overlay.css";

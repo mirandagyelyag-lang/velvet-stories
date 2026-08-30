@@ -8,12 +8,19 @@ function RoleplayText({ content = "" }) {
     <span className="roleplay-text roleplay-text--single-message">
       {lines.map((line, index) => (
         <Fragment key={`${index}-${line.slice(0, 18)}`}>
-          {renderInline(line, String(index))}
+          {renderLine(line, String(index))}
           {index < lines.length - 1 && <br />}
         </Fragment>
       ))}
     </span>
   );
+}
+
+function renderLine(line, keyPrefix) {
+  const match = String(line).match(/^\s*(?:\*\*)?([\p{L}][\p{L}\p{N} .'-]{0,34})(?:\*\*)?\s*:\s+(.+)$/u);
+  if (!match) return renderInline(line, keyPrefix);
+  const speaker = match[1].trim();
+  return <span className="roleplay-speaker-beat"><span className="roleplay-speaker-beat__badge" aria-hidden="true">{speaker.slice(0,1).toUpperCase()}</span><span className="roleplay-speaker-beat__content"><strong>{speaker}</strong>{renderInline(match[2], `${keyPrefix}-spoken`)}</span></span>;
 }
 
 function renderInline(text, keyPrefix) {

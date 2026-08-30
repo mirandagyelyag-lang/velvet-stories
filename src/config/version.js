@@ -1,3 +1,3 @@
-export const VELVET_VERSION = "2.11.22";
-export const VELVET_RELEASE = "Literal Movement Lock";
-export const VELVET_BUILD_TIME = "2026-08-26T15:20:00.000-04:00";
+export const VELVET_VERSION = __VELVET_VERSION__;
+export const VELVET_RELEASE = __VELVET_RELEASE__;
+export const VELVET_BUILD_TIME = __VELVET_BUILD_TIME__;

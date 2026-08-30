@@ -204,6 +204,12 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     const approved = await confirmAction({ title: "Delete forever?", message: "This story cannot be recovered after this.", confirmLabel: "Delete forever" });
     if (!approved) return;
     setDeletingId(conversationId);
+    const { error: memoryDeleteError } = await supabase.from("memories").delete().eq("conversation_id", conversationId);
+    if (memoryDeleteError) {
+      setError("We couldn't permanently delete that story.");
+      setDeletingId(null);
+      return;
+    }
     const { error: requestError } = await supabase.from("conversations").delete().eq("id", conversationId);
     if (requestError) setError("We couldn't permanently delete that story."); else setConversations((current) => current.filter((item) => item.id !== conversationId));
     setDeletingId(null);
@@ -363,7 +369,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       >
       <article
         className={`reference-story-row${conversation.is_pinned ? " reference-story-row--favorite" : ""}`}
-        onClick={() => !conversation.trashed_at && onOpenCharacter(character, conversation.id)}
+        onClick={() => !conversation.trashed_at && !conversation.archived_at && onOpenCharacter(character, conversation.id)}
       >
         <div className="reference-story-row__art">{art ? <img src={art} alt=""/> : <span>{character.initials}</span>}</div>
         <div className="reference-story-row__copy">

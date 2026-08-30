@@ -1,0 +1,5 @@
+.world-studio>nav{display:flex;grid-template-columns:none;overflow-x:auto;padding-bottom:5px}
+.world-studio>nav button{flex:0 0 96px}
+.world-studio__check{display:flex;grid-template-columns:20px 1fr;align-items:center;gap:9px}
+.world-studio__check input{width:18px;min-height:18px}
+.world-studio label{display:grid;gap:5px;color:var(--text-secondary);font-size:.78rem}

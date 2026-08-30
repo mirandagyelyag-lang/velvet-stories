@@ -1,0 +1,22 @@
+import { readFileSync } from "node:fs";
+import assert from "node:assert/strict";
+import { compileStoryContract } from "../supabase/functions/character-chat/engine/story-contract.ts";
+const read=(path)=>readFileSync(new URL(`../${path}`,import.meta.url),"utf8");
+const migration=read("supabase/migrations/202608280001_velvet_v320_world_studio.sql"), edge=read("supabase/functions/character-chat/index.ts"), world=read("src/components/StoryWorldDrawer.jsx"), chat=read("src/pages/Chat.jsx"), modal=read("src/components/CreateCharacterModal.jsx"), context=read("src/context/CharactersContext.jsx"), css=read("src/styles/world-studio.css");
+const checks=[]; const check=(name,pass)=>checks.push({name,pass:Boolean(pass)});
+for(const table of ["story_bible_entries","story_cast_connections","story_calendar_events","story_canon_corrections"]) check(`${table} exists with RLS`,migration.includes(`create table if not exists public.${table}`)&&migration.includes(`'${table}'`));
+check("Story Bible supports canon private and tentative authority",migration.includes("('canon','private','tentative')")&&world.includes("What is permanently true?"));
+check("manual NPC creator stores personality goals knowledge and relationships",["personality_note","relationship","current_dynamic","goals","knowledge"].every((field)=>world.includes(field)));
+check("NPC-to-NPC connections support known private and secret bonds",migration.includes("('known','private','secret')")&&world.includes("Connect two people"));
+check("calendar tracks story-relative time without forcing a clock",world.includes("Story time: Saturday night, after finals")&&migration.includes("story_time text not null"));
+check("World Studio is reachable and phone safe",chat.includes("World Studio")&&chat.includes("<StoryWorldDrawer")&&css.includes("max-height:92dvh"));
+check("Correct Canon is available on message actions",chat.includes("Correct canon")&&chat.includes("saveCanonCorrection")&&chat.includes("will never be spoken"));
+check("canon correction clears stale physical derived state",chat.includes("scene_state: {}, cast_state: {}"));
+check("Learning Room is non-canonical and creates exactly ten auditions",edge.includes('action === "character_learning_room"')&&edge.includes("minItems:10,maxItems:10")&&modal.includes("Generate 10 auditions"));
+check("only selected Learning Room samples become voice examples",modal.includes("Save selected voice examples")&&modal.includes("learningSelected.map")&&context.includes("openCharacterLearningRoom"));
+
+const contract=compileStoryContract({character:{},userName:"A",latestUserMessage:"*I stay beside the door*",turnIntent:{},storyBible:[{title:"House",content:"The patio door is broken",authority:"canon"}],castConnections:[{from_name:"Jules",to_name:"Chase",relationship:"distrusts him",visibility:"known"}],calendarEvents:[{title:"Race",story_time:"Saturday",status:"upcoming"}],canonCorrections:[{correction:"I never left the living room."}]});
+assert.equal(contract.storyAuthority.corrections[0],"I never left the living room.");
+check("all four authority sources reach the turn contract",contract.storyAuthority.bible.length===1&&contract.storyAuthority.castConnections.length===1&&contract.storyAuthority.calendar.length===1&&contract.storyAuthority.corrections.length===1);
+check("explicit correction is highest authority",contract.authority[0]==="latest explicit canon correction");
+for(const item of checks) console.log(`${item.pass?"PASS":"FAIL"} ${item.name}`); const failed=checks.filter((item)=>!item.pass); console.log(`\n${checks.length-failed.length}/${checks.length} Velvet v3.2 World Studio checks passed.`); if(failed.length)process.exit(1);
