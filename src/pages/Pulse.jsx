@@ -7,6 +7,7 @@ import {
   MapPin,
   MessageCircleMore,
   RotateCw,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -15,17 +16,11 @@ import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
 import "../styles/pulse.css";
 
-const FILTERS = [
-  { id: "recent", label: "Recent" },
-  { id: "threads", label: "Open threads" },
-];
-
 function Pulse({ onOpenCharacter, onBrowseStories }) {
   const { user } = useAuth();
   const { characters, charactersLoading } = useCharacters();
   const { theme } = useTheme();
   const [stories, setStories] = useState([]);
-  const [filter, setFilter] = useState("recent");
   const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -96,27 +91,53 @@ function Pulse({ onOpenCharacter, onBrowseStories }) {
     return () => { alive = false; };
   }, [user?.id, characters, charactersLoading, reloadKey]);
 
-  const featured = stories[0] || null;
-  const threadCount = useMemo(
-    () => stories.reduce((total, story) => total + story.openThreads.length, 0),
-    [stories],
-  );
-  const visibleStories = useMemo(
-    () => filter === "threads" ? stories.filter((story) => story.openThreads.length) : stories,
-    [filter, stories],
-  );
+  const sections = useMemo(() => {
+    const needsAttention = stories.filter((story) => story.openThreads.length > 0);
+    const comingUp = stories.filter((story) => (
+      story.openThreads.length === 0 && hasScene(story.scene)
+    ));
+    const continueStories = stories.filter((story) => (
+      story.openThreads.length === 0 && !hasScene(story.scene)
+    ));
 
-  const continueStory = (story) => onOpenCharacter?.(story.character, story.id);
+    return [
+      {
+        id: "attention",
+        eyebrow: "NEEDS ATTENTION",
+        title: "Loose threads",
+        description: "Moments you left unfinished.",
+        stories: needsAttention,
+      },
+      {
+        id: "coming",
+        eyebrow: "COMING UP",
+        title: "Scenes waiting",
+        description: "Stories with a place and moment ready for you.",
+        stories: comingUp,
+      },
+      {
+        id: "continue",
+        eyebrow: "CONTINUE",
+        title: "Pick up where you left off",
+        description: "Everything else you have been living in Velvet.",
+        stories: continueStories,
+      },
+    ].filter((section) => section.stories.length > 0);
+  }, [stories]);
 
   return (
     <section className="chats-page chats-page--reference pulse-page">
       <div className="pulse-shell">
-        <header className="pulse-heading">
-          <div className="pulse-heading__eyebrow"><Activity size={15}/><span>YOUR STORIES, RIGHT NOW</span></div>
-          <div className="pulse-heading__title" aria-label="Your Pulse">
-            <span>your</span><h1>PULSE</h1><i aria-hidden="true">✦</i>
+        <header className="pulse-header">
+          <div className="pulse-header__copy">
+            <span className="pulse-header__eyebrow"><Activity size={15}/> STORY PULSE</span>
+            <h1>Pulse</h1>
+            <p>A clear way back into the stories that are still with you.</p>
           </div>
-          <p>Return to what matters without losing the thread.</p>
+          <button className="pulse-header__library" type="button" onClick={onBrowseStories}>
+            <BookOpenText size={17}/>
+            <span>Open Stories</span>
+          </button>
         </header>
 
         {error ? (
@@ -124,55 +145,19 @@ function Pulse({ onOpenCharacter, onBrowseStories }) {
             <button type="button" onClick={() => setReloadKey((value) => value + 1)}>Try again <RotateCw size={16}/></button>
           </PulseState>
         ) : loading ? (
-          <PulseState icon={LoaderCircle} iconClassName="spin" text="Gathering your stories…"/>
-        ) : featured ? (
-          <>
-            <FeaturedStory story={featured} onContinue={() => continueStory(featured)}/>
-
-            <div className="pulse-glance" aria-label="Pulse overview">
-              <div><BookOpenText size={18}/><span><strong>{stories.length}</strong>{pluralize(stories.length, "active story", "active stories")}</span></div>
-              <i aria-hidden="true"/>
-              <div><MessageCircleMore size={18}/><span><strong>{threadCount}</strong>{pluralize(threadCount, "open thread", "open threads")}</span></div>
-            </div>
-
-            <section className="pulse-library" aria-labelledby="pulse-library-title">
-              <header className="pulse-library__heading">
-                <div>
-                  <span>KEEP MOVING</span>
-                  <h2 id="pulse-library-title">Your stories</h2>
-                </div>
-                <div className="pulse-filters" aria-label="Filter stories">
-                  {FILTERS.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={filter === item.id ? "is-active" : ""}
-                      aria-pressed={filter === item.id}
-                      onClick={() => setFilter(item.id)}
-                    >
-                      {item.label}
-                      {item.id === "threads" && threadCount ? <b>{threadCount}</b> : null}
-                    </button>
-                  ))}
-                </div>
-              </header>
-
-              {visibleStories.length ? (
-                <div className="pulse-list">
-                  {visibleStories.map((story) => (
-                    <StoryRow key={story.id} story={story} onContinue={() => continueStory(story)}/>
-                  ))}
-                </div>
-              ) : (
-                <div className="pulse-threads-empty">
-                  <MessageCircleMore size={22}/>
-                  <div><strong>Nothing is waiting on you</strong><span>Your stories have no open threads right now.</span></div>
-                </div>
-              )}
-            </section>
-          </>
+          <PulseState icon={LoaderCircle} iconClassName="spin" text="Finding your unfinished moments…"/>
+        ) : stories.length ? (
+          <div className="pulse-sections">
+            {sections.map((section) => (
+              <PulseSection
+                key={section.id}
+                section={section}
+                onContinue={(story) => onOpenCharacter?.(story.character, story.id)}
+              />
+            ))}
+          </div>
         ) : (
-          <PulseState icon={Activity} title="Your Pulse is quiet—for now" text="Start or continue a story and its latest moments will appear here.">
+          <PulseState icon={Sparkles} title="Your Pulse is quiet—for now" text="Start a story and the moment you leave will appear here.">
             <button type="button" onClick={onBrowseStories}>Browse Stories <ArrowRight size={16}/></button>
           </PulseState>
         )}
@@ -181,55 +166,50 @@ function Pulse({ onOpenCharacter, onBrowseStories }) {
   );
 }
 
-function FeaturedStory({ story, onContinue }) {
-  const sceneLabel = getSceneLabel(story.scene);
-  const mainThread = story.openThreads[0];
-
+function PulseSection({ section, onContinue }) {
   return (
-    <article className="pulse-feature">
-      <div className="pulse-feature__art">
-        {story.art ? <img src={story.art} alt="" fetchPriority="high" decoding="async"/> : <span>{story.initials}</span>}
-        <div className="pulse-feature__shade"/>
-        <span className="pulse-feature__time">{formatRelativeDate(story.updated_at)}</span>
-      </div>
-      <div className="pulse-feature__body">
-        <span className="pulse-feature__label"><i aria-hidden="true"/> CONTINUE NOW</span>
-        <h2>{story.displayName}</h2>
-        {sceneLabel ? <p className="pulse-feature__scene"><MapPin size={14}/>{sceneLabel}</p> : null}
-        <div className="pulse-feature__recap">
-          <span>LAST TIME</span>
-          <p>{story.recap}</p>
+    <section className={`pulse-section pulse-section--${section.id}`} aria-labelledby={`pulse-${section.id}-title`}>
+      <header className="pulse-section__heading">
+        <div>
+          <span>{section.eyebrow}</span>
+          <h2 id={`pulse-${section.id}-title`}>{section.title}</h2>
+          <p>{section.description}</p>
         </div>
-        {mainThread ? (
-          <div className="pulse-feature__thread">
-            <MessageCircleMore size={17}/>
-            <span><b>Still open</b>{truncate(mainThread, 118)}</span>
-          </div>
-        ) : null}
-        <button type="button" onClick={onContinue}>Continue story <ArrowRight size={18}/></button>
+      </header>
+
+      <div className="pulse-list">
+        {section.stories.map((story) => (
+          <PulseStoryCard key={story.id} story={story} onContinue={() => onContinue(story)}/>
+        ))}
       </div>
-    </article>
+    </section>
   );
 }
 
-function StoryRow({ story, onContinue }) {
-  const mainThread = story.openThreads[0];
-  const sceneLabel = getSceneLabel(story.scene);
+function PulseStoryCard({ story, onContinue }) {
+  const location = clean(story.scene.location);
+  const time = clean(story.scene.time_label || story.scene.time);
+  const companions = story.group_mode
+    ? story.groupCharacters.map((character) => character.name).filter(Boolean).join(" · ")
+    : "";
 
   return (
-    <article className="pulse-row">
-      <button className="pulse-row__button" type="button" onClick={onContinue} aria-label={`Continue ${story.displayName}`}>
-        <span className="pulse-row__art">
-          {story.art ? <img src={story.art} alt="" loading="lazy" decoding="async"/> : story.initials}
+    <article className="pulse-story-card">
+      <span className="pulse-story-card__art">
+        {story.art ? <img src={story.art} alt="" loading="lazy" decoding="async"/> : story.initials}
+      </span>
+      <div className="pulse-story-card__copy">
+        <h3>{story.displayName}</h3>
+        {companions ? <span className="pulse-story-card__companions">with {companions}</span> : null}
+        <p>{getMomentText(story)}</p>
+        <span className="pulse-story-card__where">
+          {location ? <><MapPin size={14}/><span>{location}</span></> : time ? <><Clock3 size={14}/><span>{time}</span></> : <><MessageCircleMore size={14}/><span>Last moment saved</span></>}
+          {location && time ? <><i aria-hidden="true">·</i><span>{time}</span></> : null}
         </span>
-        <span className="pulse-row__copy">
-          <span className="pulse-row__topline"><strong>{story.displayName}</strong><time>{formatRelativeDate(story.updated_at)}</time></span>
-          <span className="pulse-row__recap">{truncate(story.recap, 125)}</span>
-          <span className="pulse-row__meta">
-            {mainThread ? <><MessageCircleMore size={13}/><b>{story.openThreads.length}</b> {pluralize(story.openThreads.length, "open thread", "open threads")}</> : sceneLabel ? <><MapPin size={13}/>{sceneLabel}</> : <><Clock3 size={13}/>Ready to continue</>}
-          </span>
-        </span>
-        <span className="pulse-row__action"><span>Continue</span><ArrowRight size={18}/></span>
+      </div>
+      <button className="pulse-story-card__continue" type="button" onClick={onContinue}>
+        <span>Continue story</span>
+        <ArrowRight size={18}/>
       </button>
     </article>
   );
@@ -269,6 +249,15 @@ function shapeStory(conversation, character, groupCharacters) {
   };
 }
 
+function getMomentText(story) {
+  if (story.openThreads[0]) return `Unfinished: ${truncate(story.openThreads[0], 155)}`;
+  return story.recap || "The last scene is waiting for you.";
+}
+
+function hasScene(scene = {}) {
+  return Boolean(clean(scene.location) || clean(scene.time_label || scene.time));
+}
+
 function normalizeThreads(value) {
   if (!Array.isArray(value)) return [];
   return value.map((thread) => {
@@ -276,16 +265,6 @@ function normalizeThreads(value) {
     if (!thread || typeof thread !== "object") return "";
     return clean(thread.title || thread.label || thread.summary || thread.detail || thread.text || "");
   }).filter(Boolean);
-}
-
-function getSceneLabel(scene = {}) {
-  const location = clean(scene.location);
-  const time = clean(scene.time_label || scene.time);
-  return [location, time].filter(Boolean).join(" · ");
-}
-
-function pluralize(value, singular, plural) {
-  return value === 1 ? singular : plural;
 }
 
 function clean(value = "") {
@@ -299,19 +278,6 @@ function clean(value = "") {
 
 function truncate(value = "", max = 140) {
   return value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
-}
-
-function formatRelativeDate(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const now = new Date();
-  const today = date.toDateString() === now.toDateString();
-  if (today) return `Today · ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return date.toLocaleDateString([], { day: "numeric", month: "short" });
 }
 
 export default Pulse;
