@@ -234,7 +234,14 @@ function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, o
   return (
     <header className="characters-library__compact-hero">
       <div className="characters-library__compact-copy">
-        <h1 className={inTrash ? undefined : "characters-library__velvet-title"}>{inTrash ? "Trash" : "Characters"}</h1>
+        {inTrash ? (
+          <h1>Trash</h1>
+        ) : (
+          <div className="characters-library__wordmark" aria-label="Your characters">
+            <span>your</span>
+            <strong>CHARACTERS</strong>
+          </div>
+        )}
         <p>{inTrash ? `${count} deleted ${count === 1 ? "character" : "characters"}` : `Your private cast · ${count} saved`}</p>
       </div>
 
@@ -248,12 +255,26 @@ function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, o
 }
 
 function FeatureCard({ character, menuId, setMenuId, onOpenCharacter, onToggleFavorite, onEditCharacter, onRemixCharacter, onOpenTags, onDeleteCharacter }) {
+  const tags = (character.tags || []).filter(Boolean).slice(0, 2);
   return (
     <article className="discover-burgundy__feature-card characters-library__card">
       <button className="discover-burgundy__feature-card-main" onClick={() => onOpenCharacter(character)}>
         <CharacterImage character={character} />
         <span className="discover-burgundy__feature-card-shade" />
-        <span className="discover-burgundy__feature-card-copy"><strong>{character.name}</strong><small>{character.role || character.world || "Character"}</small><em>{shortQuote(character)}</em></span>
+        {character.isFavorite && (
+          <span className="characters-library__favorite-mark" aria-label="Favorite">
+            <Heart size={13} fill="currentColor" />
+          </span>
+        )}
+        <span className="discover-burgundy__feature-card-copy">
+          <strong>{character.name}</strong>
+          <small>{character.role || character.world || "Character"}</small>
+          {tags.length > 0 && (
+            <span className="characters-library__card-tags">
+              {tags.map((tag) => <i key={tag}>{normalizeLabel(tag)}</i>)}
+            </span>
+          )}
+        </span>
       </button>
       <CharacterMenu character={character} menuId={menuId} setMenuId={setMenuId} onOpenCharacter={onOpenCharacter} onToggleFavorite={onToggleFavorite} onEditCharacter={onEditCharacter} onRemixCharacter={onRemixCharacter} onOpenTags={onOpenTags} onDeleteCharacter={onDeleteCharacter} />
     </article>
@@ -290,12 +311,6 @@ function EmptyState({ title, text }) {
 
 function normalizeLabel(value) {
   return String(value || "").trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
-}
-
-function shortQuote(character) {
-  const source = character.description || character.world || "Open their profile";
-  const clean = source.replace(/\s+/g, " ").trim();
-  return clean.length > 52 ? `${clean.slice(0, 49).trim()}…` : clean;
 }
 
 export default MyCharacters;

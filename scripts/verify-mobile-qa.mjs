@@ -29,7 +29,7 @@ check("Character Studio Lite primary phone actions are thumb sized",studioLite.i
 
 check("Memories index mirrors Characters in a two-column phone gallery",mobileLibrary.includes(".memory-character-index__grid")&&mobileLibrary.includes("grid-template-columns:repeat(2,minmax(0,1fr))"));
 check("importance filter stays inside the selected memory character and remains zoom-safe",memories.includes("selectedMemoryCharacter")&&memories.includes("Filter memories by importance")&&privateLibrary.includes(".memories-character-library__importance select")&&privateLibrary.includes("font-size:16px"));
-check("Pulse has separate touch-friendly story cards",pulseCss.includes(".pulse-feed{display:grid;gap:9px")&&pulseCss.includes("border-radius:19px")&&pulse.includes("pulse-story__main"));
+check("Pulse has separate touch-friendly story cards",pulseCss.includes(".pulse-list { display: grid; gap: 9px; }")&&pulseCss.includes("border-radius: 19px")&&pulse.includes("pulse-row__button")&&pulseCss.includes("min-height: 88px"));
 
 check("Stories and Memories require an intentional right-swipe before fast delete",stories.includes('direction="right"')&&memories.includes('direction="right"')&&swipeTrash.includes('absX > absY * 1.35')&&swipeTrash.includes('DELETE_THRESHOLD = 86')&&swipeTrash.includes('offset >= DELETE_THRESHOLD')&&mobileLibrary.includes("touch-action: pan-y"));
 check("resting swipe rows cannot expose Delete labels or red underlay",!swipeTrash.includes('className="sr-only"')&&swipeTrash.includes("aria-label={label}")&&swipeTrash.includes("is-revealed")&&mobileLibrary.includes("opacity: 0")&&mobileLibrary.includes("visibility: hidden"));

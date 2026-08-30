@@ -321,3 +321,56 @@
 @media (max-width:760px) {
   .swipe-trash--right .swipe-trash__action { width:104px; }
 }
+
+
+/* v3.8.9 · Per-story trash action physically behind each card */
+.swipe-trash--story {
+  position: relative;
+  background: var(--stories-canvas, #10090e);
+}
+.swipe-trash--story.swipe-trash--right > .swipe-trash__action {
+  inset: 0 auto 0 0;
+  z-index: 1;
+  width: min(112px, var(--swipe-distance, 0px));
+  height: 100%;
+  min-width: 0;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  color: var(--stories-accent, #d4879c);
+  background: transparent;
+  box-shadow: none;
+  opacity: var(--swipe-reveal, 0);
+  transform: none;
+  transition: opacity 90ms ease, visibility 0s linear 100ms;
+}
+.swipe-trash--story.swipe-trash--right.is-armed > .swipe-trash__action {
+  color: #efb2c2;
+  background: transparent;
+}
+.swipe-trash--story > .swipe-trash__action svg {
+  box-sizing: border-box;
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  flex: 0 0 38px;
+  color: currentColor;
+  background: color-mix(in srgb, var(--stories-surface, #24131a) 94%, white 6%);
+  border: 1px solid color-mix(in srgb, var(--stories-accent, #d4879c) 34%, transparent);
+  border-radius: 999px;
+  box-shadow: 0 5px 16px rgba(7, 2, 4, .22);
+  transform: scale(calc(.82 + (var(--swipe-reveal, 0) * .18)));
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+.swipe-trash--story > .swipe-trash__action span { display: none; }
+.swipe-trash--story.is-armed > .swipe-trash__action svg {
+  color: #f5c5d1;
+  background: color-mix(in srgb, var(--stories-surface, #24131a) 86%, var(--stories-accent, #d4879c) 14%);
+  border-color: color-mix(in srgb, var(--stories-accent, #d4879c) 52%, transparent);
+}
+.swipe-trash--story > .swipe-trash__content {
+  position: relative;
+  z-index: 2;
+}

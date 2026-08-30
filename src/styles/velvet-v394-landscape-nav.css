@@ -1,0 +1,46 @@
+/* Velvet Stories v3.9.4 · Compact landscape navigation
+   Keep the same five-destination dock while preventing it from taking over
+   short phone viewports. This file is loaded last as the geometry authority. */
+
+@media (orientation: landscape) and (max-width: 1000px) and (max-height: 540px) {
+  .mobile-nav.velvet-reference-nav {
+    left: 50% !important;
+    right: auto !important;
+    bottom: max(5px, env(safe-area-inset-bottom)) !important;
+    width: min(620px, calc(100vw - 36px - env(safe-area-inset-left) - env(safe-area-inset-right))) !important;
+    height: 54px !important;
+    min-height: 54px !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 1px !important;
+    padding: 4px 6px !important;
+    border-radius: 18px !important;
+    box-sizing: border-box !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .mobile-nav.velvet-reference-nav .sidebar__link {
+    min-width: 0 !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    gap: 1px !important;
+    padding: 2px 0 !important;
+    border-radius: 12px !important;
+    font-size: .47rem !important;
+    line-height: 1 !important;
+  }
+
+  .mobile-nav.velvet-reference-nav .sidebar__link svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .mobile-nav.velvet-reference-nav .sidebar__link--active::before {
+    display: none !important;
+  }
+
+  .mobile-nav.velvet-reference-nav .sidebar__link--active::after {
+    bottom: 1px !important;
+    width: 22px !important;
+    height: 2px !important;
+  }
+}

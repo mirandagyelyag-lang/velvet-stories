@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 const MAX_REVEAL = 112;
 const DELETE_THRESHOLD = 86;
 
-function SwipeToTrash({ children, onDelete, disabled = false, label = "Delete", className = "", direction = "left" }) {
+function SwipeToTrash({ children, onDelete, disabled = false, label = "Delete", className = "", direction = "left", silent = false, showLabel = false }) {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const gestureRef = useRef({ x: 0, y: 0, axis: null });
@@ -46,7 +46,7 @@ function SwipeToTrash({ children, onDelete, disabled = false, label = "Delete", 
 
     suppressClickUntilRef.current = Date.now() + 700;
     setOffset(isRight ? MAX_REVEAL : -MAX_REVEAL);
-    navigator.vibrate?.(8);
+    if (!silent) navigator.vibrate?.(8);
     try { await onDelete?.(); } finally { window.setTimeout(() => setOffset(0), 140); }
   }
 
@@ -56,9 +56,11 @@ function SwipeToTrash({ children, onDelete, disabled = false, label = "Delete", 
 
   const revealed = isRight ? offset > 6 : offset < -6;
   const armed = isRight ? offset >= DELETE_THRESHOLD : offset <= -DELETE_THRESHOLD;
+  const revealProgress = Math.min(1, Math.abs(offset) / MAX_REVEAL);
+  const revealDistance = Math.min(MAX_REVEAL, Math.abs(offset));
   return (
-    <div className={`swipe-trash${isRight ? " swipe-trash--right" : ""}${dragging ? " is-dragging" : ""}${revealed ? " is-revealed" : ""}${armed ? " is-armed" : ""}${className ? ` ${className}` : ""}`} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={finishGesture} onTouchCancel={() => { setDragging(false); setOffset(0); }} onClickCapture={guardClick} role="group" aria-label={label}>
-      <div className="swipe-trash__action" aria-hidden="true"><Trash2 size={20}/></div>
+    <div className={`swipe-trash${isRight ? " swipe-trash--right" : ""}${dragging ? " is-dragging" : ""}${revealed ? " is-revealed" : ""}${armed ? " is-armed" : ""}${className ? ` ${className}` : ""}`} style={{ "--swipe-reveal": revealProgress, "--swipe-distance": `${revealDistance}px` }} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={finishGesture} onTouchCancel={() => { setDragging(false); setOffset(0); }} onClickCapture={guardClick} role="group" aria-label={label}>
+      {!silent && <div className="swipe-trash__action" aria-hidden="true"><Trash2 size={18}/>{showLabel && <span>Delete</span>}</div>}
       <div className="swipe-trash__content" style={{ transform: `translate3d(${offset}px,0,0)` }}>{children}</div>
     </div>
   );

@@ -14,8 +14,7 @@ const utility = read("src/utils/livingScenes.js");
 const checks = [];
 const check = (name, pass) => checks.push({ name, pass: Boolean(pass) });
 
-const viteConfig = read("vite.config.js");
-check("release metadata matches package version", read("src/config/version.js").includes("VELVET_VERSION = __VELVET_VERSION__") && viteConfig.includes("__VELVET_VERSION__: JSON.stringify(velvetVersion)") && viteConfig.includes("const velvetVersion = pkg.version"));
+check("release metadata matches package version", read("src/config/version.js").includes(`VELVET_VERSION = "${pkg.version}"`) && /VELVET_RELEASE = ".+"/.test(read("src/config/version.js")));
 check("Living Scenes stylesheet is the final release layer", main.lastIndexOf("velvet-v270-living-scenes.css") > main.lastIndexOf("velvet-v2616-audio-center.css"));
 
 const header = buildLivingSceneHeader({ sceneState: { location: "Campus quad", time_label: "Late night", present: ["Theo", "Jules"] }, ambientMode: "rain" }, "Theo");

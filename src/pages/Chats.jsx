@@ -215,6 +215,33 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     setDeletingId(null);
   }
 
+  function swipeDeleteConversationForever(conversationId) {
+    const conversation = conversations.find((item) => item.id === conversationId);
+    if (!conversation?.trashed_at) return;
+
+    setConversations((current) => current.filter((item) => item.id !== conversationId));
+    const restoreSnapshot = () => setConversations((current) =>
+      current.some((item) => item.id === conversationId) ? current : [...current, conversation].sort(sortConversations)
+    );
+
+    scheduleDeletion({
+      batchKey: "trash-permanent-cleanup",
+      message: (count) => `${count} ${count === 1 ? "story" : "stories"} deleted forever`,
+      onUndo: restoreSnapshot,
+      onCommit: async () => {
+        const { error: memoryDeleteError } = await supabase.from("memories").delete().eq("conversation_id", conversationId);
+        if (memoryDeleteError) throw memoryDeleteError;
+        const { error: requestError } = await supabase.from("conversations").delete().eq("id", conversationId);
+        if (requestError) throw requestError;
+      },
+      onError: (requestError) => {
+        console.error("Permanent trash swipe failed:", requestError);
+        restoreSnapshot();
+        setError("We couldn't permanently delete that story.");
+      },
+    });
+  }
+
   async function duplicateConversation(event, conversation) {
     event.stopPropagation();
     try {
@@ -363,9 +390,9 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         key={conversation.id}
         className="swipe-trash--story"
         direction="right"
-        disabled={Boolean(conversation.trashed_at || deletingId === conversation.id || updatingId === conversation.id)}
-        onDelete={() => deleteConversation(null, conversation.id)}
-        label={`Delete ${title}`}
+        disabled={Boolean(deletingId === conversation.id || updatingId === conversation.id)}
+        onDelete={() => conversation.trashed_at ? swipeDeleteConversationForever(conversation.id) : deleteConversation(null, conversation.id)}
+        label={conversation.trashed_at ? `Delete ${title} forever` : `Delete ${title}`}
       >
       <article
         className={`reference-story-row${conversation.is_pinned ? " reference-story-row--favorite" : ""}`}

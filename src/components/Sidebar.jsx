@@ -2,12 +2,12 @@ import {
   Activity,
   BookOpen,
   BookMarked,
-  Compass,
   Eye,
   Search,
   Moon,
   Sun,
   UserRound,
+  UsersRound,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -16,7 +16,7 @@ import "../styles/sidebar.css";
 
 const navigation = [
   { id: "chats", label: "Stories", icon: BookOpen },
-  { id: "characters", label: "Characters", icon: Compass },
+  { id: "characters", label: "Characters", icon: UsersRound },
   { id: "pulse", label: "Pulse", icon: Activity },
   { id: "memories", label: "Memories", icon: BookMarked },
   { id: "profile", label: "Profile", icon: UserRound },

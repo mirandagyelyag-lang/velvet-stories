@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const velvetVersion = pkg.version;
-const velvetRelease = "Pulse Redesign · Auto Diagnostics";
+const velvetRelease = "Pulse Rebuilt";
 const velvetBuildTime = new Date().toISOString();
 
 export default defineConfig({

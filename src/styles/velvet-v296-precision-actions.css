@@ -2,9 +2,12 @@
    Smaller library action targets + tap-complete activation to avoid scroll collisions. */
 
 @media (max-width: 760px) {
-  /* Stories: the ellipsis no longer owns a 42px circle beside every row. */
+  /* Stories: the ellipsis no longer owns a 42px circle beside every row.
+     First column matches .reference-story-row__art's actual 62px width
+     at this breakpoint (see velvet-v2611-six-fixes.css) — it was
+     previously a stale 72px, leaving a visible gap beside the thumbnail. */
   .reference-story-row {
-    grid-template-columns: 72px minmax(0,1fr) 34px !important;
+    grid-template-columns: 62px minmax(0,1fr) 34px !important;
   }
   .story-action-menu--reference {
     align-self: center;
