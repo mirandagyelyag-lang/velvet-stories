@@ -16,8 +16,11 @@
   background-image: url('/velvet-login-first-choice.webp');
   background-size: cover;
   background-position: center center;
-  transform: scale(1.02);
+  transform: scale(1.06);
+  animation: velvetAuthBgIn 1.4s cubic-bezier(.16,1,.3,1) forwards;
 }
+
+@keyframes velvetAuthBgIn { to { transform: scale(1.02); } }
 
 .auth__veil--first-choice {
   position: fixed;
@@ -45,7 +48,16 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   cursor: pointer;
+  transition: transform .2s ease, background .2s ease, box-shadow .2s ease;
 }
+
+.auth__theme-toggle--first-choice:hover {
+  background: rgba(255, 250, 247, 0.92);
+  box-shadow: 0 6px 18px rgba(107, 49, 49, 0.14);
+  transform: translateY(-1px) rotate(12deg);
+}
+
+.auth__theme-toggle--first-choice:active { transform: scale(.94); }
 
 .auth__card--first-choice {
   position: relative;
@@ -58,6 +70,15 @@
   box-shadow:
     0 28px 70px rgba(107, 49, 49, 0.18),
     0 4px 20px rgba(131, 72, 59, 0.08);
+  opacity: 0;
+  transform: translateY(18px) scale(.98);
+  animation: velvetAuthCardIn .7s cubic-bezier(.16,1,.3,1) .1s forwards;
+}
+
+@keyframes velvetAuthCardIn { to { opacity: 1; transform: translateY(0) scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth__card--first-choice, .auth__background--first-choice { animation: none; opacity: 1; transform: none; }
 }
 
 .auth__hero--first-choice {
@@ -121,6 +142,11 @@
   border: 1px solid rgba(211, 181, 166, 0.72);
   border-radius: 18px;
   background: rgba(255, 251, 249, 0.84);
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.auth__input--first-choice:hover {
+  border-color: rgba(191, 148, 128, 0.85);
 }
 
 .auth__input--two {
@@ -159,8 +185,15 @@
 .auth__input--first-choice button {
   padding: 4px;
   border: 0;
+  border-radius: 8px;
   background: transparent;
   cursor: pointer;
+  transition: color .18s ease, background .18s ease;
+}
+
+.auth__input--first-choice button:hover {
+  color: #9c1238;
+  background: rgba(156, 18, 56, 0.08);
 }
 
 .auth__remembered--first-choice {
@@ -208,10 +241,17 @@
 
 .auth__remembered--first-choice > button {
   border: 0;
+  border-radius: 8px;
+  padding: 4px 8px;
   background: transparent;
   color: #9e4363;
   font-weight: 600;
   cursor: pointer;
+  transition: background .18s ease;
+}
+
+.auth__remembered--first-choice > button:hover {
+  background: rgba(158, 67, 99, 0.1);
 }
 
 .auth__error--first-choice {
@@ -222,6 +262,12 @@
   background: rgba(255, 237, 243, 0.94);
   border: 1px solid rgba(211, 121, 152, 0.28);
   font-size: 0.76rem;
+  animation: velvetAuthErrorIn .25s ease-out;
+}
+
+@keyframes velvetAuthErrorIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .auth__submit--first-choice {
@@ -237,6 +283,17 @@
   letter-spacing: 0.01em;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 12px 24px rgba(129, 20, 53, 0.2);
   cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+.auth__submit--first-choice:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 16px 32px rgba(129, 20, 53, 0.3);
+  filter: brightness(1.05);
+}
+
+.auth__submit--first-choice:active:not(:disabled) {
+  transform: translateY(0) scale(.98);
 }
 
 .auth__submit--first-choice:disabled {
