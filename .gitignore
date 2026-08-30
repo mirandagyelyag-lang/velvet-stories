@@ -43,6 +43,3 @@ supabase/functions/swift-task/
 
 .vercel
 .env*
-
-.vercel
-.env*
