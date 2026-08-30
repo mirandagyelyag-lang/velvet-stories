@@ -154,6 +154,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
   const [advancedOpen, setAdvancedOpen] = useState(Boolean(character));
   const [quickName, setQuickName] = useState("");
   const [quickRelationship, setQuickRelationship] = useState("");
+  const [quickStep, setQuickStep] = useState(1);
   const [characterConcept, setCharacterConcept] = useState(() => remixSource ? buildRemixSeed(remixSource) : "");
   const [creatorStatus, setCreatorStatus] = useState("");
   const [voiceTesting, setVoiceTesting] = useState(false);
@@ -520,51 +521,108 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
         {toolNotice && <div className="character-studio__tool-notice" role="status"><Sparkles size={15}/><span>{toolNotice}</span><button type="button" onClick={()=>setToolNotice("")} aria-label="Dismiss"><X size={15}/></button></div>}
 
         {!character && !advancedOpen ? (
-          <form className="character-studio-lite" onSubmit={(event) => { event.preventDefault(); quickDraftReady ? saveCharacter("profile") : handleGenerateCharacter(); }}>
-            <div className="character-studio-lite__canvas">
-              <section className="character-studio-lite__intro">
-                <span className="character-studio-lite__spark"><Sparkles size={20}/></span>
-                <div>
-                  <small>{remixSource ? "REMIX WITHOUT THE FORM" : "ONE IDEA IS ENOUGH"}</small>
-                  <h3>{quickDraftReady ? `${form.name} is ready.` : remixSource ? "Keep the depth. Change the person." : "Describe the vibe. Velvet does the rest."}</h3>
-                  <p>{quickDraftReady ? "The advanced personality, voice, values, fears, habits, world and opening are already filled behind the scenes." : remixSource ? `Velvet will use ${remixSource.name} only as a depth template. Name, identity, history and exact personality should come out new.` : "A sentence is enough. Name and relationship are optional. You can fine-tune all the deep fields later if you care about them."}</p>
-                </div>
-              </section>
+          <form className="character-studio-lite" data-quick-step={quickDraftReady ? "ready" : quickStep} onSubmit={(event) => { event.preventDefault(); quickDraftReady ? saveCharacter("profile") : handleGenerateCharacter(); }}>
+            <div className="character-studio-lite__mobile-head">
+              <button type="button" className="character-studio-lite__mobile-back" onClick={onClose} disabled={saving} aria-label="Back to Characters">
+                <ChevronLeft size={20}/>
+              </button>
+              <div className="character-studio-lite__mobile-title">
+                <strong>{quickDraftReady ? (form.name || "Ready") : "New character"}</strong>
+                <span>{quickDraftReady ? "Ready to meet" : quickStep === 1 ? "Idea" : "Details"}</span>
+              </div>
+              <div className={`character-studio-lite__mobile-save${autosaveStatus.includes("Saved") ? " is-saved" : ""}`}>
+                <Check size={14}/><span>{autosaveStatus.includes("Saved") ? "Saved" : autosaveStatus}</span>
+              </div>
+            </div>
 
+            {!quickDraftReady && <div className="character-studio-lite__progress" aria-label={`Step ${quickStep} of 2`}>
+              <i className={quickStep >= 1 ? "active" : ""}/>
+              <i className={quickStep >= 2 ? "active" : ""}/>
+            </div>}
+
+            <div className="character-studio-lite__canvas">
               {!quickDraftReady ? (
-                <>
-                  <label className="character-studio-lite__idea">
-                    <span>What are you imagining?</span>
-                    <textarea value={characterConcept} onChange={(event)=>{ setCharacterConcept(event.target.value); setCreatorStatus(""); }} maxLength={1200} rows="5" placeholder="Popular university guy, a little arrogant, our friend group is eight people, he already likes me but I'm oblivious…" disabled={generating || saving}/>
-                  </label>
-                  <div className="character-studio-lite__optional">
-                    <label><span>Name <em>optional</em></span><input value={quickName} onChange={(event)=>setQuickName(event.target.value)} placeholder="Let Velvet choose" disabled={generating || saving}/></label>
-                    <label><span>Relationship <em>optional</em></span><input value={quickRelationship} onChange={(event)=>setQuickRelationship(event.target.value)} placeholder="Friends, rivals, stranger…" disabled={generating || saving}/></label>
-                  </div>
-                  <div className="character-studio-lite__portrait">
-                    <div className="character-studio-lite__avatar" style={{ "--quick-color": form.color }}>
-                      {avatarPreview ? <img src={avatarPreview} alt="Character portrait preview"/> : <span>{createInitials(quickName)}</span>}
+                quickStep === 1 ? (
+                  <section className="character-studio-lite__step character-studio-lite__step--idea">
+                    <div className="character-studio-lite__new-intro">
+                      <span className="character-studio-lite__spark"><Sparkles size={19}/></span>
+                      <div>
+                        <small>{remixSource ? "REMIX" : "START WITH A FEELING"}</small>
+                        <h3>{remixSource ? `Reimagine ${remixSource.name}` : "Who do you want to meet?"}</h3>
+                        <p>{remixSource ? "Keep the depth, change the person. Tell Velvet what should feel different." : "One messy sentence is enough. Velvet can build the personality, voice, history and opening from it."}</p>
+                      </div>
                     </div>
-                    <div><strong>Portrait</strong><small>Optional. You can add the cover later.</small></div>
-                    <label><ImagePlus size={16}/><span>{avatarPreview ? "Change" : "Add photo"}</span><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event)=>selectImage(event,"avatar")} disabled={generating || saving}/></label>
-                    {avatarPreview && <button type="button" onClick={()=>removeImage("avatar")} aria-label="Remove portrait"><Trash2 size={15}/></button>}
-                  </div>
-                  {!remixSource && <div className="character-studio-lite__seeds">
-                    {["Best friends to lovers", "Campus tension", "Rich & impossible", "Green flag bad boy", "Surprise me"].map((seed)=><button type="button" key={seed} onClick={()=>setCharacterConcept(seed)} disabled={generating}>{seed}</button>)}
-                  </div>}
-                  <div className="character-studio-lite__actions character-studio-lite__actions--generate">
-                    <button type="button" className="character-studio-lite__fine" onClick={()=>setAdvancedOpen(true)} disabled={generating || saving}>Fine-tune manually</button>
-                    <button type="submit" className="character-studio-lite__primary" disabled={saving || generating}>
-                      {generating ? <><LoaderCircle className="character-modal__spinner" size={17}/> Creating…</> : <><Sparkles size={17}/> {characterConcept.trim() || remixSource ? "Create with AI" : "Surprise me"}</>}
+
+                    <label className="character-studio-lite__idea character-studio-lite__idea--new">
+                      <span>Describe them</span>
+                      <div className="character-studio-lite__textarea-shell">
+                        <textarea value={characterConcept} onChange={(event)=>{ setCharacterConcept(event.target.value); setCreatorStatus(""); }} maxLength={1200} rows="5" placeholder="Popular university guy, arrogant with everyone except me, our friend group is eight people, he already likes me but I have no idea…" disabled={generating || saving}/>
+                        <small>{characterConcept.length}/1200</small>
+                      </div>
+                    </label>
+
+                    {!remixSource && <div className="character-studio-lite__seeds character-studio-lite__seeds--new" aria-label="Idea starters">
+                      {[
+                        ["Best friends", "Best friends to lovers"],
+                        ["Tension", "Campus tension"],
+                        ["Impossible", "Rich & impossible"],
+                        ["Bad boy", "Green flag bad boy"],
+                        ["Surprise me", "Surprise me"],
+                      ].map(([label, seed])=><button type="button" key={seed} onClick={()=>setCharacterConcept(seed)} disabled={generating}>{label}</button>)}
+                    </div>}
+
+                    <div className="character-studio-lite__step-footer">
+                      <button type="button" className="character-studio-lite__primary character-studio-lite__next" onClick={()=>setQuickStep(2)} disabled={saving || generating}>
+                        <span>{characterConcept.trim() || remixSource ? "Continue" : "Surprise me"}</span>
+                        <ChevronDown size={18}/>
+                      </button>
+                    </div>
+                  </section>
+                ) : (
+                  <section className="character-studio-lite__step character-studio-lite__step--details">
+                    <div className="character-studio-lite__details-head">
+                      <button type="button" onClick={()=>setQuickStep(1)} disabled={saving || generating}><ChevronLeft size={18}/><span>Idea</span></button>
+                      <div><small>STEP 2 OF 2</small><h3>A few details.</h3><p>Everything here is optional. Leave it blank and Velvet will decide.</p></div>
+                    </div>
+
+                    <div className="character-studio-lite__identity-card">
+                      <div className="character-studio-lite__avatar character-studio-lite__avatar--large" style={{ "--quick-color": form.color }}>
+                        {avatarPreview ? <img src={avatarPreview} alt="Character portrait preview"/> : <span>{createInitials(quickName)}</span>}
+                      </div>
+                      <div>
+                        <strong>{quickName.trim() || "Let Velvet choose"}</strong>
+                        <span>{quickRelationship.trim() || "Relationship can develop naturally"}</span>
+                      </div>
+                      <label className="character-studio-lite__photo-button" aria-label={avatarPreview ? "Change portrait" : "Add portrait"}>
+                        <ImagePlus size={18}/><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event)=>selectImage(event,"avatar")} disabled={generating || saving}/>
+                      </label>
+                    </div>
+
+                    <div className="character-studio-lite__optional character-studio-lite__optional--new">
+                      <label><span>Name <em>optional</em></span><input value={quickName} onChange={(event)=>setQuickName(event.target.value)} placeholder="Let Velvet choose" disabled={generating || saving}/></label>
+                      <label><span>Relationship <em>optional</em></span><input value={quickRelationship} onChange={(event)=>setQuickRelationship(event.target.value)} placeholder="Friends, rivals, stranger…" disabled={generating || saving}/></label>
+                    </div>
+
+                    {avatarPreview && <button type="button" className="character-studio-lite__remove-photo" onClick={()=>removeImage("avatar")} disabled={generating || saving}><Trash2 size={15}/><span>Remove photo</span></button>}
+
+                    <button type="button" className="character-studio-lite__fine character-studio-lite__fine--new" onClick={()=>setAdvancedOpen(true)} disabled={generating || saving}>
+                      <span>Want full control?</span><strong>Fine-tune manually</strong>
                     </button>
-                    {generating && <button type="button" className="character-studio-lite__stop" onClick={stopCharacterGeneration}>Stop</button>}
-                  </div>
-                </>
+
+                    <div className="character-studio-lite__step-footer character-studio-lite__step-footer--generate">
+                      <button type="submit" className="character-studio-lite__primary character-studio-lite__create" disabled={saving || generating}>
+                        {generating ? <><LoaderCircle className="character-modal__spinner" size={18}/> Creating…</> : <><Sparkles size={18}/> {characterConcept.trim() || remixSource ? "Create with Velvet" : "Surprise me"}</>}
+                      </button>
+                      {generating && <button type="button" className="character-studio-lite__stop" onClick={stopCharacterGeneration}>Stop generation</button>}
+                    </div>
+                  </section>
+                )
               ) : (
-                <>
+                <section className="character-studio-lite__ready-shell">
+                  <div className="character-studio-lite__ready-kicker"><Check size={15}/><span>READY</span></div>
                   <article className="character-studio-lite__result" style={{ "--quick-color": form.color }}>
                     <div className="character-studio-lite__result-media">
-                      {coverPreview ? <img src={coverPreview} alt=""/> : avatarPreview ? <img src={avatarPreview} alt=""/> : <span>{createInitials(form.name)}</span>}
+                      {avatarPreview ? <img src={avatarPreview} alt=""/> : <span>{createInitials(form.name)}</span>}
                     </div>
                     <div className="character-studio-lite__result-copy">
                       <small>{form.role}</small>
@@ -576,25 +634,25 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
 
                   <section className="character-studio-lite__behind">
                     <span><Check size={15}/></span>
-                    <div><strong>Deep profile complete</strong><small>Personality · values · fears · habits · contradictions · voice · conflict · affection · world · opening</small></div>
+                    <div><strong>Deep profile built</strong><small>Personality · voice · values · fears · habits · world · opening</small></div>
                   </section>
 
                   <section className="character-studio-lite__variations">
-                    <div><small>MAKE ANOTHER</small><strong>Same spark, different person</strong></div>
+                    <div><small>NOT QUITE?</small><strong>Shift the energy</strong></div>
                     <div>{["Softer", "Colder", "Funnier", "More arrogant", "Different dynamic"].map((direction)=><button type="button" key={direction} onClick={()=>handleQuickVariation(direction)} disabled={generating || saving}>{direction}</button>)}</div>
                   </section>
 
                   <div className="character-studio-lite__actions character-studio-lite__actions--ready">
-                    <button type="button" className="character-studio-lite__ghost" onClick={handleRegenerateQuickDraft} disabled={generating || saving}><RefreshCw size={16}/><span>Regenerate</span></button>
+                    <button type="button" className="character-studio-lite__ghost" onClick={handleRegenerateQuickDraft} disabled={generating || saving}><RefreshCw size={16}/><span>Again</span></button>
                     <button type="button" className="character-studio-lite__fine" onClick={()=>setAdvancedOpen(true)} disabled={generating || saving}>Fine-tune</button>
-                    <button type="button" className="character-studio-lite__secondary" onClick={()=>saveCharacter("profile")} disabled={saving || generating}>{saving ? "Saving…" : "Create character"}</button>
+                    <button type="button" className="character-studio-lite__secondary" onClick={()=>saveCharacter("profile")} disabled={saving || generating}>{saving ? "Saving…" : "Save character"}</button>
                     <button type="button" className="character-studio-lite__primary" onClick={()=>saveCharacter("chat")} disabled={saving || generating}><MessageCircle size={17}/><span>{saving ? "Saving…" : "Start chatting"}</span></button>
                   </div>
-                </>
+                </section>
               )}
 
               {(creatorStatus || error) && <p className={`character-studio-lite__status${error ? " is-error" : ""}`}>{error || creatorStatus}</p>}
-              <footer className="character-studio-lite__privacy"><Check size={13}/><span>Private library · autosaved locally · nothing is saved until you choose Create or Start chatting.</span></footer>
+              <footer className="character-studio-lite__privacy"><Check size={13}/><span>Private · autosaved locally</span></footer>
             </div>
           </form>
         ) : (

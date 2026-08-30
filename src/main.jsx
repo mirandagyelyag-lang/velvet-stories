@@ -113,3 +113,5 @@ import "./styles/velvet-v394-landscape-nav.css";
 import "./styles/velvet-v396-characters-nav-indicator.css";
 import "./styles/velvet-v397-unified-mobile-nav.css";
 import "./styles/velvet-v398-story-launcher-scroll.css";
+
+import "./styles/velvet-v399-quick-create-mobile.css";
