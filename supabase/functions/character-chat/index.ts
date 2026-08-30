@@ -628,20 +628,20 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
     supabase.from("messages")
       .select("id, conversation_id, user_id, sender, content, created_at, edited_at, reply_to_message_id, reply_preview, reply_sender")
       .eq("conversation_id", conversationId).eq("user_id", userId)
-      .order("created_at", { ascending: false }).limit(36),
+      .order("created_at", { ascending: false }).limit(28),
     supabase.from("memories")
       .select("id, conversation_id, content, importance, category, is_pinned, is_canon, why_remembered, source, scope, superseded_at, created_at, updated_at")
       .in("character_id", groupCharacterIds).eq("user_id", userId)
       .is("superseded_at", null)
       .order("is_canon", { ascending: false })
       .order("is_pinned", { ascending: false }).order("importance", { ascending: false })
-      .order("created_at", { ascending: false }).limit(80),
+      .order("created_at", { ascending: false }).limit(48),
     conversation.lorebook_id
       ? supabase.from("lore_entries")
         .select("id, entry_type, name, content, keywords, event_date, always_include")
         .eq("lorebook_id", conversation.lorebook_id).eq("user_id", userId)
         .eq("is_active", true).order("always_include", { ascending: false })
-        .order("updated_at", { ascending: false }).limit(24)
+        .order("updated_at", { ascending: false }).limit(18)
       : Promise.resolve({ data: [], error: null }),
     groupCharacterIds.length > 1
       ? supabase.from("characters")
@@ -655,30 +655,30 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
   }
   if (!characterResult.data) throw new Error("Character not found");
 
-  // v3 cast storage is optional during rolling deploys. Existing stories continue
-  // from conversations.cast_state until the migration is applied.
-  const persistentCastResult = await supabase.from("story_cast_members")
-    .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, updated_at")
-    .eq("conversation_id", conversationId).eq("user_id", userId)
-    .order("updated_at", { ascending: false }).limit(24);
+  // v3 cast + World Studio context is optional during rolling deploys. Fetch it
+  // in ONE parallel phase so every reply does not pay an extra Supabase round trip.
+  const [persistentCastResult, storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult] = await Promise.all([
+    supabase.from("story_cast_members")
+      .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, updated_at")
+      .eq("conversation_id", conversationId).eq("user_id", userId)
+      .order("updated_at", { ascending: false }).limit(16),
+    supabase.from("story_bible_entries").select("id, category, title, content, authority, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(24),
+    supabase.from("story_cast_connections").select("id, from_name, to_name, relationship, visibility, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(24),
+    supabase.from("story_calendar_events").select("id, title, story_time, details, participants, status, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(24),
+    supabase.from("story_canon_corrections").select("id, correction, source_message_id, created_at").eq("conversation_id", conversationId).eq("user_id", userId).order("created_at", { ascending: false }).limit(12),
+    supabase.from("story_arcs").select("id, title, summary, kind, status, progress, stakes, next_pressure, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(16),
+    supabase.from("story_knowledge_entries").select("id, character_name, subject, knowledge, status, source, secret, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(32),
+    supabase.from("story_consequences").select("id, title, cause, effect, status, weight, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(18),
+    supabase.from("story_chemistry_profiles").select("*").eq("conversation_id",conversationId).eq("user_id",userId).limit(8),
+    supabase.from("story_plans").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(16),
+    supabase.from("story_conflicts").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(12),
+    supabase.from("story_milestones").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("created_at",{ascending:true}).limit(24),
+  ]);
   if (persistentCastResult.error && persistentCastResult.error.code !== "42P01") {
     console.warn("[character-chat] persistent cast unavailable", { message: persistentCastResult.error.message });
   }
-  const [storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult] = await Promise.all([
-    supabase.from("story_bible_entries").select("id, category, title, content, authority, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(40),
-    supabase.from("story_cast_connections").select("id, from_name, to_name, relationship, visibility, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(40),
-    supabase.from("story_calendar_events").select("id, title, story_time, details, participants, status, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(40),
-    supabase.from("story_canon_corrections").select("id, correction, source_message_id, created_at").eq("conversation_id", conversationId).eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
-    supabase.from("story_arcs").select("id, title, summary, kind, status, progress, stakes, next_pressure, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(24),
-    supabase.from("story_knowledge_entries").select("id, character_name, subject, knowledge, status, source, secret, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(60),
-    supabase.from("story_consequences").select("id, title, cause, effect, status, weight, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(30),
-    supabase.from("story_chemistry_profiles").select("*").eq("conversation_id",conversationId).eq("user_id",userId).limit(12),
-    supabase.from("story_plans").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(30),
-    supabase.from("story_conflicts").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(24),
-    supabase.from("story_milestones").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("created_at",{ascending:true}).limit(40),
-  ]);
   for (const optional of [storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult]) {
-    if (optional.error && optional.error.code !== "42P01") console.warn("[character-chat] world studio context unavailable", { message: optional.error.message });
+    if (optional.error && optional.error.code !== "42P01") console.warn("[character-chat] optional story context unavailable", { message: optional.error.message });
   }
 
   return {
@@ -696,7 +696,7 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
       if (String(memory.conversation_id || "") === String(conversationId)) return true;
       if (String(memory.scope || "") !== "character") return false;
       return memory.source === "manual" || Boolean(memory.is_canon) || Boolean(memory.is_pinned);
-    }).slice(0, 32),
+    }).slice(0, 24),
     loreEntries: loreResult.data || [],
     persistentCast: persistentCastResult.data || [],
     storyBible: storyBibleResult.data || [],
@@ -786,28 +786,35 @@ function buildNarrativePromptV3({
   const supportingCast = (Array.isArray(groupCharacters) ? groupCharacters : [])
     .filter((item) => item?.id && item.id !== character.id);
   const latest = openingRegeneration ? "" : compactMessageForPrompt(latestUserRecord?.content || "", 4200);
-  const immediate = messages.slice(-10).map((message) => {
+  const immediate = messages.slice(-8).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
-    return `${speaker}: ${compactMessageForPrompt(message.content, 1400)}`;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 1200)}`;
   }).join("\n\n") || "none";
-  const older = messages.slice(-18, -10).map((message) => {
+  const older = messages.slice(-14, -8).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : character.name;
-    return `${speaker}: ${compactMessageForPrompt(message.content, 420)}`;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 360)}`;
   }).join("\n") || "none";
-  const confirmedMemories = memories.slice(0, 12).map((memory) =>
-    `- ${memory.is_canon || memory.is_pinned || memory.source === "manual" ? "CONFIRMED" : "TENTATIVE"}: ${clean(memory.content, 420)}`
+  const confirmedMemories = memories.slice(0, 10).map((memory) =>
+    `- ${memory.is_canon || memory.is_pinned || memory.source === "manual" ? "CONFIRMED" : "TENTATIVE"}: ${clean(memory.content, 360)}`
   ).join("\n") || "none";
-  const loreText = loreEntries.slice(0, 8).map((entry) => `- ${clean(entry.name, 100)}: ${clean(entry.content, 520)}`).join("\n") || "none";
+  const loreText = loreEntries.slice(0, 6).map((entry) => `- ${clean(entry.name, 100)}: ${clean(entry.content, 440)}`).join("\n") || "none";
   const castText = supportingCast.slice(0, 6).map((member) =>
     `${clean(member.name, 80)} — ${clean(member.role, 140)}; personality: ${clean(member.personality, 420)}; relation to ${userIdentity.name}: ${clean(member.relationship, 420)}; voice: ${clean(member.speech_style, 260)}`
   ).join("\n") || "none";
   const derivedContext = JSON.stringify({
+    recap: cleanPromptValue(conversation.story_recap || conversation.summary || "", 900),
     scene: conversation.scene_state || {},
     relationship: conversation.relationship_state || {},
     cast: conversation.cast_state || {},
-    open_threads: conversation.unresolved_threads || [],
-    recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-6) : [],
-  }).slice(0, 4200);
+    open_threads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads.slice(-8) : [],
+    recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-4) : [],
+  }).slice(0, 3600);
+  const recentOpenings = messages
+    .filter((message) => message.sender === "character")
+    .slice(-3)
+    .map((message) => compactMessageForPrompt(String(message.content || "").split(/\n+/)[0], 120))
+    .filter(Boolean)
+    .join(" | ") || "none";
   const feedback = [
     ...positiveFeedbackDirectives(storyPreferences.learned_positive_feedback).map((item) => `Keep: ${item}`),
     ...feedbackDirectives(storyPreferences.learned_negative_feedback).map((item) => `Avoid: ${item}`),
@@ -921,11 +928,14 @@ ${immediate}
 LATEST USER TURN — HIGHEST AUTHORITY
 ${latest || "none; this is an opening"}
 
+VOICE FRESHNESS
+Recent reply openings: ${recentOpenings}
+Do not reuse the same opening gesture, first-line construction, comeback rhythm, or signature phrase unless repetition is deliberately meaningful in-scene. Prefer a different social tactic over synonym-swapping.
+
 OUTPUT DISCIPLINE
-- Internally read the latest turn literally, list only canon claims used, and choose a voice tactic that differs from recent replies.
-- Fill story_drive before writing the reply: identify the character's independent want, chosen action, real cost/risk, what visibly changes, and the unresolved hook. Every field must be evidenced in the reply; never expose story_drive to the user.
-- The reply must begin from the final visible state, answer the current beat, use audible character-specific dialogue when appropriate, and end after one meaningful change.
-- Metadata must describe only what the reply actually establishes. Never use metadata to invent canon.`;
+- Read the latest turn literally and silently choose the character's independent want, tactic, cost/risk, and one visible change. Keep story_drive to terse labels only; never expose it in prose.
+- The reply begins from the final visible state, answers the current beat, uses character-specific spoken language when appropriate, and ends after one meaningful change.
+- Keep hidden metadata terse and factual. Record only what the visible reply actually establishes.`;
 }
 
 // Kept temporarily as a reference while the compact v2.12 prompt is proven in production.
@@ -1028,56 +1038,7 @@ async function callGeminiWithFailover({
             topP: 0.92,
             thinkingConfig: { thinkingLevel: "MINIMAL" },
             responseMimeType: "application/json",
-            responseJsonSchema: {
-              type: "object",
-              required: ["reply", "story_drive", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
-              properties: {
-                reply: { type: "string" },
-                story_drive: { type: "object", required: ["independent_want", "chosen_action", "cost_or_risk", "visible_change", "unresolved_hook"], properties: { independent_want:{type:"string"}, chosen_action:{type:"string"}, cost_or_risk:{type:"string"}, visible_change:{type:"string"}, unresolved_hook:{type:"string"} } },
-                continuity_note: { type: "string" },
-                scene_update: {
-                  type: "object",
-                  required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"],
-                  properties: {
-                    scene_changed: { type: "boolean" },
-                    separator_label: { type: "string" },
-                    location: { type: "string" },
-                    time_label: { type: "string" },
-                    present: { type: "array", items: { type: "string" } },
-                    exited: { type: "array", items: { type: "string" } },
-                    heard_user_turn: { type: "array", items: { type: "string" } },
-                  },
-                },
-                continuity_update: {
-                  type: "object",
-                  required: ["objects_present", "knowledge_updates", "commitments", "resolved_commitments", "stakes", "timeline_event"],
-                  properties: {
-                    objects_present: { type: "array", maxItems: 12, items: { type: "string" } },
-                    knowledge_updates: { type: "array", maxItems: 6, items: { type: "object", required: ["who", "knows", "source", "status"], properties: { who: { type: "string" }, knows: { type: "string" }, source: { type: "string" }, status: { type: "string", enum: ["known", "suspected", "rumor", "forgotten"] } } } },
-                    commitments: { type: "array", maxItems: 8, items: { type: "string" } },
-                    resolved_commitments: { type: "array", maxItems: 8, items: { type: "string" } },
-                    stakes: { type: "string" },
-                    timeline_event: { type: "object", required: ["record", "label", "detail", "kind", "importance"], properties: { record: { type: "boolean" }, label: { type: "string" }, detail: { type: "string" }, kind: { type: "string", enum: ["relationship", "conflict", "promise", "reveal", "decision", "scene", "other"] }, importance: { type: "integer" } } },
-                  },
-                },
-                cast_updates: { type: "array", maxItems: 6, items: { type: "object", required: ["name","role","relationship","personality_note","current_dynamic","goals","knows","last_interaction"], properties: { name:{type:"string"}, role:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, goals:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"} } } },
-      memory_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content: { type: "string" }, category: { type: "string", enum: ["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"] }, importance: { type: "integer" }, scope: { type: "string", enum: ["conversation", "character"] }, reason: { type: "string" }, replaces: { type: "string" } } } },
-                development_update: {
-                  type: "object",
-                  required: ["significance", "evidence", "relationship_phase", "relationship_dynamic", "emotional_residue", "active_contradiction", "behavioral_effect", "turning_point"],
-                  properties: {
-                    significance: { type: "string" },
-                    evidence: { type: "string" },
-                    relationship_phase: { type: "string" },
-                    relationship_dynamic: { type: "string" },
-                    emotional_residue: { type: "string" },
-                    active_contradiction: { type: "string" },
-                    behavioral_effect: { type: "string" },
-                    turning_point: { type: "string" },
-                  },
-                },
-              },
-            },
+            responseJsonSchema: roleplayResponseSchema(),
           },
         }),
       });
@@ -1118,6 +1079,7 @@ function parseModelEnvelope(raw): ModelEnvelope {
     const parsed = JSON.parse(clean);
     return {
       reply: String(parsed?.reply || "").trim(),
+      story_drive: parsed?.story_drive && typeof parsed.story_drive === "object" ? parsed.story_drive : {},
       continuity_note: String(parsed?.continuity_note || "").trim().slice(0, 600),
       development_update: parsed?.development_update && typeof parsed.development_update === "object"
         ? parsed.development_update
@@ -1129,7 +1091,7 @@ function parseModelEnvelope(raw): ModelEnvelope {
       memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 3) : [],
     };
   } catch {
-    return { reply: String(raw || "").trim(), continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [] };
+    return { reply: String(raw || "").trim(), story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [] };
   }
 }
 
@@ -3271,62 +3233,28 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
-  // QUICK REPLY LANE: spend a second model call only on continuity/canon failures
-  // that materially change what happened. Style issues remain visible to the
-  // prompt/telemetry but do not double generation latency on ordinary turns.
-  "unsupported_motive_escalation",
+  // SPEED + QUALITY: second model calls are reserved for mistakes the user
+  // would experience as broken canon, broken agency, or a direct non-answer.
   "distance_boundary_override",
-  "social_tension_overescalation",
   "active_npc_cue_skipped",
-  "active_npc_erased_after_cue",
-  "cued_npc_marked_exited",
-  "interactive_thread_collapsed",
   "spatial_relationship_broken",
   "spatial_proximity_teleport",
-  "passive_exit_after_rupture",
-  "kinetic_tension_deflated",
-  "charged_beat_abandoned",
-  "charged_beat_stalled",
-  "charged_departure_dropped",
-  "invented_debate_evidence",
   "user_motive_overwritten",
   "rejected_pursuit_framing_persisted",
   "unstaged_user_departure_inference",
   "unstaged_user_movement_inference",
-  "silent_continue_stalled",
-  "time_skip_stalled",
-  "time_skip_exposition_echo",
   "immediate_pose_regression",
-  "overwritten_banter",
-  "editorial_banter_voice",
-  "post_skip_warmth_regression",
-  "unsupported_timeline_duration_claim",
-  "scene_transition_quip_filler",
-  "clarification_evasion",
-  "direct_preference_evasion",
-  "banter_reciprocity_drop",
-  "phantom_question_reference",
-  "reaction_reference_ungrounded",
   "immediate_canon_correction_mishandled",
   "body_state_hallucination",
-  "character_stance_collapse",
-  "repeated_prop_choreography",
+  "clarification_evasion",
+  "direct_preference_evasion",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
-  "unsupported_timeline_duration_claim",
   "social_role_assignment_broken",
   "unsupported_social_plan_expansion",
-  "npc_dialogue_tic_loop",
-  "direct_comparison_evasion",
   "latest_user_scene_not_applied",
   "latest_user_scene_ignored",
   "unsolicited_offscreen_lead_contact",
-  "silent_continue_prop_loop",
-  "romantic_initiative_drought",
-  "therapeutic_deescalation_pivot",
-  "romantic_social_gravity_missing",
-  "admirer_instantly_neutralized",
-  "profile_social_ecosystem_missing",
 ]);
 
 // v2.11.0 NARRATIVE CORE REBUILD
@@ -3789,7 +3717,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Produce one grounded, socially natural roleplay continuation. Let characters feel more than they show: preserve useful private emotion while keeping outward behavior proportionate, and let ordinary life continue after a brief meaningful inner beat. React literally before inferring subtext; do not invent motives, argument evidence or generic romance choreography. Keep side characters socially alive, honor explicit user cues for NPCs to speak or act on-page, preserve immediate relative body positions until visible movement changes them, and make profile-established social status/reputation visibly affect relevant public scenes without turning every turn into a popularity spectacle. Avoid constant sarcasm or rhetorical-question dialogue, do not use the user’s name or nickname as punctuation in every reply, do not continuously track the user with glances/thoughts while the character is socially occupied, and never invent user behavior as evidence in banter. User-authored narration is binding scene canon; never erase a later staged event merely to obey an earlier line of dialogue. If the latest user turn establishes a new place or companion, move the narrative camera there immediately instead of continuing the previous off-screen location. Do not pull an absent romantic lead back into THAT SAME relocation reply by inventing a text, call, DM, notification or coincidence unless the user/current digital thread/visible prior promise actually licenses the contact. After the new scene has had a real beat, an initiative-heavy romantic lead may proactively seek the user again through a grounded channel or plausible shared location using only knowledge they actually possess; do not keep them artificially passive forever. Side-character dialogue should be ordinary and human rather than a string of polished punchlines, and side characters may simply let a moment end. Never invent a group chat/private thread/off-screen gossip channel to make an NPC quip work. Never fabricate a retrospective “already sent/shared/forwarded/given” event. Keep explicit social-role assignments stable: if the user says a number/date/flirt target is for a friend, never silently make the user the recipient through pronoun drift. Treat the plan participants as canon too: never turn a one-to-one date into a group outing, invent extra attendees, or retroactively invite the user without visible evidence. If the user corrects who the date belongs to, accept that correction instead of inventing a reason they are still included. Short user corrections such as “I didn't talk” repair the previous beat when no real speech-question preceded them; do not make the character answer the correction as dialogue, erase earlier user speech, invent a limb reset, or collapse a proud/teasing voice into therapy-speak. Answer direct comparison/challenge questions before joking. Supporting-friend dialogue should usually be plain conversational English with at most one light joke; do not stack “darling,” polished metaphors, sitcom punchlines, or repeated unbothered-phone choreography. Continue after the user's final staged event. Put reply first in the JSON object, then the hidden continuity fields. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice specific rather than archetypal. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, cinematic body-language chains or therapist speech. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           temperature: getTemperature(character.creativity, isRegeneration),
@@ -4183,8 +4111,8 @@ async function streamGeminiEnvelopeWithFailover({
   // fallback in parallel. The first model that produces actual reply prose wins;
   // slower requests are cancelled. A slow first token is never itself a user-facing
   // failure and never clears an already visible bubble.
-  const hedgeDelays = [0, 4500, 8000];
-  const overallDeadlineMs = 36000;
+  const hedgeDelays = [0, 3500, 7000];
+  const overallDeadlineMs = 30000;
   const deadlineAt = Date.now() + overallDeadlineMs;
   const controllers = new Map<string, AbortController>();
   const launched = new Set<string>();
@@ -4397,20 +4325,40 @@ async function streamGeminiEnvelopeWithFailover({
 function roleplayResponseSchema() {
   return {
     type: "object",
-    required: ["reply", "story_drive", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
-    propertyOrdering: ["reply", "story_drive", "turn_reading", "canon_claims", "voice_plan", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"],
+    required: ["reply", "story_drive", "scene_update", "continuity_update", "development_update"],
+    propertyOrdering: ["reply", "story_drive", "scene_update", "continuity_update", "development_update", "cast_updates", "memory_updates"],
     properties: {
       reply: { type: "string" },
       story_drive: { type: "object", required: ["independent_want","chosen_action","cost_or_risk","visible_change","unresolved_hook"], properties: { independent_want:{type:"string"}, chosen_action:{type:"string"}, cost_or_risk:{type:"string"}, visible_change:{type:"string"}, unresolved_hook:{type:"string"} } },
-      turn_reading: { type: "string" },
-      canon_claims: { type: "array", items: { type: "string" } },
-      voice_plan: { type: "object", required: ["conversational_goal", "outward_tactic", "private_pressure", "verbal_signature", "avoided_pattern"], properties: { conversational_goal:{type:"string"}, outward_tactic:{type:"string"}, private_pressure:{type:"string"}, verbal_signature:{type:"string"}, avoided_pattern:{type:"string"} } },
-      continuity_note: { type: "string" },
-      scene_update: { type: "object", required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"], properties: { scene_changed:{type:"boolean"}, separator_label:{type:"string"}, location:{type:"string"}, time_label:{type:"string"}, present:{type:"array",items:{type:"string"}}, exited:{type:"array",items:{type:"string"}}, heard_user_turn:{type:"array",items:{type:"string"}} } },
-      continuity_update: { type: "object", required: ["objects_present","knowledge_updates","commitments","resolved_commitments","stakes","timeline_event"], properties: { objects_present:{type:"array",maxItems:12,items:{type:"string"}}, knowledge_updates:{type:"array",maxItems:6,items:{type:"object",required:["who","knows","source","status"],properties:{who:{type:"string"},knows:{type:"string"},source:{type:"string"},status:{type:"string",enum:["known","suspected","rumor","forgotten"]}}}}, commitments:{type:"array",maxItems:8,items:{type:"string"}}, resolved_commitments:{type:"array",maxItems:8,items:{type:"string"}}, stakes:{type:"string"}, timeline_event:{type:"object",required:["record","label","detail","kind","importance"],properties:{record:{type:"boolean"},label:{type:"string"},detail:{type:"string"},kind:{type:"string",enum:["relationship","conflict","promise","reveal","decision","scene","other"]},importance:{type:"integer"}}} } },
-      cast_updates: { type: "array", maxItems: 4, items: { type: "object", required: ["name","relationship","personality_note","current_dynamic","knows","last_interaction"], properties: { name:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"} } } },
-      memory_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["content","category","importance","scope","reason","replaces"], properties: { content:{type:"string"}, category:{type:"string",enum:["fact","person","relationship","world","event","preference","boundary","promise","conflict"]}, importance:{type:"integer"}, scope:{type:"string",enum:["conversation","character"]}, reason:{type:"string"}, replaces:{type:"string"} } } },
-      development_update: { type: "object", required: ["significance","evidence","relationship_phase","relationship_dynamic","emotional_residue","active_contradiction","behavioral_effect","turning_point"], properties: { significance:{type:"string"}, evidence:{type:"string"}, relationship_phase:{type:"string"}, relationship_dynamic:{type:"string"}, emotional_residue:{type:"string"}, active_contradiction:{type:"string"}, behavioral_effect:{type:"string"}, turning_point:{type:"string"} } },
+      scene_update: {
+        type: "object",
+        required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"],
+        properties: {
+          scene_changed: { type: "boolean" }, separator_label: { type: "string" }, location: { type: "string" }, time_label: { type: "string" },
+          present: { type: "array", maxItems: 8, items: { type: "string" } },
+          exited: { type: "array", maxItems: 6, items: { type: "string" } },
+          heard_user_turn: { type: "array", maxItems: 8, items: { type: "string" } },
+        },
+      },
+      continuity_update: {
+        type: "object",
+        required: ["objects_present", "knowledge_updates", "commitments", "resolved_commitments", "stakes", "timeline_event"],
+        properties: {
+          objects_present: { type: "array", maxItems: 8, items: { type: "string" } },
+          knowledge_updates: { type: "array", maxItems: 4, items: { type: "object", required: ["who", "knows", "source", "status"], properties: { who:{type:"string"}, knows:{type:"string"}, source:{type:"string"}, status:{type:"string", enum:["known","suspected","rumor","forgotten"]} } } },
+          commitments: { type: "array", maxItems: 5, items: { type: "string" } },
+          resolved_commitments: { type: "array", maxItems: 5, items: { type: "string" } },
+          stakes: { type: "string" },
+          timeline_event: { type: "object", required: ["record", "label", "detail", "kind", "importance"], properties: { record:{type:"boolean"}, label:{type:"string"}, detail:{type:"string"}, kind:{type:"string", enum:["relationship","conflict","promise","reveal","decision","scene","other"]}, importance:{type:"integer"} } },
+        },
+      },
+      development_update: {
+        type: "object",
+        required: ["significance", "evidence", "relationship_phase", "relationship_dynamic", "emotional_residue", "active_contradiction", "behavioral_effect", "turning_point"],
+        properties: { significance:{type:"string"}, evidence:{type:"string"}, relationship_phase:{type:"string"}, relationship_dynamic:{type:"string"}, emotional_residue:{type:"string"}, active_contradiction:{type:"string"}, behavioral_effect:{type:"string"}, turning_point:{type:"string"} },
+      },
+      cast_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["name", "relationship", "personality_note", "current_dynamic", "knows", "last_interaction"], properties: { name:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"} } } },
+      memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content:{type:"string"}, category:{type:"string", enum:["fact","person","relationship","world","event","preference","boundary","promise","conflict"]}, importance:{type:"integer"}, scope:{type:"string", enum:["conversation","character"]}, reason:{type:"string"}, replaces:{type:"string"} } } },
     },
   };
 }
@@ -4735,7 +4683,7 @@ function selectRelevantMemories(memories, messages) {
     const leftRelevant = normalizeText(left.content).split(" ").some((word) => word.length > 4 && recent.includes(word)) ? 1 : 0;
     const rightRelevant = normalizeText(right.content).split(" ").some((word) => word.length > 4 && recent.includes(word)) ? 1 : 0;
     return rightRelevant - leftRelevant || Number(right.importance || 0) - Number(left.importance || 0);
-  }).slice(0, 18);
+  }).slice(0, 14);
 }
 function selectRelevantLore(entries, messages, groupCharacters = []) {
   const recentRaw = messages.slice(-28).map((message) => message.content).join(" ");
@@ -4804,9 +4752,9 @@ function getLengthGuidance(length, kind) {
   return "45–140 words. Shorter is better when the social beat already lands.";
 }
 function getMaximumOutputTokens(length) {
-  if (length === "short") return 1100;
-  if (length === "long") return 2800;
-  return 1900;
+  if (length === "short") return 1000;
+  if (length === "long") return 2200;
+  return 1500;
 }
 function getTemperature(creativity, regeneration) {
   const value = clampNumber(creativity, 0.2, 1.2, 0.84);

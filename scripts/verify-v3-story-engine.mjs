@@ -22,11 +22,11 @@ check("rolling deploy remains backward compatible", edge.includes('persistentCas
 check("legacy prompt implementation is removed", !edge.includes("function buildNarrativePromptLegacy(") && !edge.includes("function buildNarrativePromptV212("));
 check("legacy repair implementation is removed", !edge.includes("repairRoleplayOnceLegacy") && edge.includes("repairRoleplayOnceV3"));
 check("one generation, validation and at most one repair remain", edge.includes("streamGeminiEnvelopeWithFailover({") && edge.includes("let validationIssues = validateNarrativeReply(") && edge.includes("if (blocking.length)") && edge.includes("repairRoleplayOnceV3({"));
-check("reply and world metadata share one model response", edge.includes('required: ["reply", "story_drive", "continuity_note", "scene_update", "continuity_update", "cast_updates", "development_update", "memory_updates"]'));
+check("reply and world metadata share one compact model response", edge.includes('required: ["reply", "story_drive", "scene_update", "continuity_update", "development_update"]') && edge.includes("responseJsonSchema: roleplayResponseSchema()"));
 check("living-story drive is structured before prose", edge.includes('required: ["independent_want","chosen_action","cost_or_risk","visible_change","unresolved_hook"]') && contract.includes("livingStoryEngine") && contract.includes("interestProofRequired"));
 check("canon violations remain the repair budget", edge.includes("const REPAIR_TRIGGER_ISSUES") && edge.includes('"distance_boundary_override"') && edge.includes('"spatial_proximity_teleport"'));
 check("readable replies fail soft after bounded protection", edge.includes("protected reply remained imperfect; keeping readable live reply"));
-check("edge keeps live streaming and model failover", edge.includes("streamGenerateContent?alt=sse") && edge.includes("const hedgeDelays = [0, 4500, 8000]") && edge.includes("cancelLosers"));
+check("edge keeps live streaming and bounded model failover", edge.includes("streamGenerateContent?alt=sse") && edge.includes("const hedgeDelays = [0, 3500, 7000]") && edge.includes("cancelLosers"));
 check("no narrative fallback fabricates prose", !/function\s+\w*Fallback\s*\(/.test(edge));
 
 const syntax = spawnSync(process.execPath, ["--experimental-strip-types", "--check", new URL("../supabase/functions/character-chat/index.ts", import.meta.url).pathname], { encoding: "utf8" });

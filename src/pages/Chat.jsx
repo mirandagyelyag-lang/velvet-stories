@@ -415,26 +415,19 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     };
   }, [conversationReady, visibleMessages.length, latestMessageContent]);
 
-  // VELVET_TYPING_GLIMPSE_V1
-  // The inline “X is writing…” bubble is only a brief reassurance, not a
-  // progress screen. Delay it so fast replies never flash it, then hide it
-  // again even if the model is still thinking. Streaming text always wins.
+  // VELVET_TYPING_GLIMPSE_V2
+  // Give immediate mobile feedback while the first token is on its way, then
+  // hand the space to the real streamed reply. No blank “is it frozen?” gap.
   useEffect(() => {
-    const eligible = (isTyping || generationState === "generating") && !characterStreaming;
+    const eligible = (isTyping || generationState === "generating" || generationState === "writing") && !characterStreaming;
     if (!eligible) {
       setTypingIndicatorVisible(false);
       return undefined;
     }
 
-    let hideTimer = null;
-    const showTimer = window.setTimeout(() => {
-      setTypingIndicatorVisible(true);
-      hideTimer = window.setTimeout(() => setTypingIndicatorVisible(false), 1250);
-    }, 700);
-
+    const showTimer = window.setTimeout(() => setTypingIndicatorVisible(true), 350);
     return () => {
       window.clearTimeout(showTimer);
-      if (hideTimer) window.clearTimeout(hideTimer);
       setTypingIndicatorVisible(false);
     };
   }, [isTyping, generationState, characterStreaming]);

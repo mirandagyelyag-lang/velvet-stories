@@ -713,7 +713,7 @@ export function ChatsProvider({
       const elapsed = Date.now() - lastStreamFlushAt;
       // VELVET_STREAM_POLISH_V2: slightly slower paint cadence on touch devices
       // keeps long replies fluid without making the stream feel delayed.
-      const targetCadence = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 52 : 40;
+      const targetCadence = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 44 : 32;
       const waitMs = Math.max(0, targetCadence - elapsed);
       streamFlushTimer = setTimeout(() => {
         streamFlushTimer = null;

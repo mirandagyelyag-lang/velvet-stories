@@ -314,5 +314,60 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
 }
 
 export function storyContractPrompt(contract: StoryContract) {
-  return `TURN CONTRACT — SINGLE SOURCE OF TRUTH\n${JSON.stringify(contract, null, 2)}\n\nExecution order: understand this contract, decide what the character wants before reacting, choose conduct consistent with the character, choreograph the beat, then write. Never reverse the order. If initiativePlan.required is true, create the selected playable action or event on-page now; dialogue alone does not satisfy it. If livingStoryEngine.interestProofRequired is true, the reply must contain visible proof of voluntary investment with a real cost or risk; attraction narration, eye contact, banter, questions and promises about later do not satisfy it. If livingStoryEngine.sceneChangeRequired is true, something materially different must be true at the end of the reply. Chemistry must be relationship-specific. Jealousy requires evidence. Proposed plans are not automatically accepted. Active conflict changes behavior until repaired, and achieved milestones are never repeated as firsts. Canon corrections retroactively replace contradicted derived state. Story Bible canon is binding; private/secret entries may guide narration but must not become character knowledge without evidence or the Knowledge Ledger. Calendar events are commitments, not permission to skip time. Active arcs and consequences exert pressure until resolved. Stored state is descriptive, not permission to contradict the latest visible turn.`;
+  const take = (value: unknown, maximum = 6) => Array.isArray(value) ? value.slice(0, maximum) : [];
+  const pick = (value: Record<string, unknown> = {}, keys: string[] = []) => Object.fromEntries(
+    keys.map((key) => [key, value?.[key]]).filter(([, item]) => item !== undefined && item !== null && item !== "")
+  );
+
+  // The full engine remains available to deterministic persistence, but the model
+  // gets a compact turn contract. This keeps the useful story brain without sending
+  // a mini database dump on every message.
+  const compact = {
+    finalState: contract.finalState,
+    userAuthored: contract.userAuthored,
+    characterBehavior: {
+      socialEcosystems: take(contract.characterBehavior.socialEcosystems, 3),
+      voiceAnchors: take(contract.characterBehavior.voiceAnchors, 4),
+      independence: contract.characterBehavior.independence,
+      initiative: contract.characterBehavior.initiative,
+    },
+    supportingCast: take(contract.supportingCast, 6).map((item) => pick(item as Record<string, unknown>, ["name", "role", "relationship", "current_dynamic", "goals", "presence", "status"])),
+    turnObjective: contract.turnObjective,
+    conversationQuality: contract.conversationQuality,
+    independentLife: { anchors: take(contract.independentLife.anchors, 4) },
+    canon: {
+      bible: take(contract.storyAuthority.bible, 8).map((item) => pick(item as Record<string, unknown>, ["category", "title", "content", "authority"])),
+      castConnections: take(contract.storyAuthority.castConnections, 8).map((item) => pick(item as Record<string, unknown>, ["from_name", "to_name", "relationship", "visibility"])),
+      calendar: take(contract.storyAuthority.calendar, 6).map((item) => pick(item as Record<string, unknown>, ["title", "story_time", "details", "participants", "status"])),
+      corrections: take(contract.storyAuthority.corrections, 6),
+    },
+    dynamics: {
+      arcs: take(contract.storyDynamics.activeArcs, 6).map((item) => pick(item as Record<string, unknown>, ["title", "summary", "kind", "status", "stakes", "next_pressure", "participants"])),
+      knowledge: take(contract.storyDynamics.knowledgeLedger, 10).map((item) => pick(item as Record<string, unknown>, ["character_name", "subject", "knowledge", "status", "secret"])),
+      consequences: take(contract.storyDynamics.activeConsequences, 6).map((item) => pick(item as Record<string, unknown>, ["title", "cause", "effect", "status", "weight", "participants"])),
+      dueEvents: take(contract.storyDynamics.dueCalendarEvents, 4).map((item) => pick(item as Record<string, unknown>, ["title", "story_time", "details", "participants", "status"])),
+    },
+    initiative: {
+      required: contract.initiativePlan.required,
+      intensity: contract.initiativePlan.intensity,
+      talkOnlyDrought: contract.initiativePlan.talkOnlyDrought,
+      options: take(contract.initiativePlan.availablePressure, 3),
+    },
+    living: {
+      mode: contract.livingStoryEngine.mode,
+      interestProofRequired: contract.livingStoryEngine.interestProofRequired,
+      sceneChangeRequired: contract.livingStoryEngine.sceneChangeRequired,
+      emotionalCost: contract.livingStoryEngine.emotionalCost,
+    },
+    relationship: {
+      chemistry: pick((contract.relationshipEngines.chemistry?.profile || {}) as Record<string, unknown>, ["character_name", "signature", "chemistry_score", "trust_score", "tension_score", "notes"]),
+      jealousy: { stage: contract.relationshipEngines.jealousy?.stage, evidence: take(contract.relationshipEngines.jealousy?.evidence, 4) },
+      plans: take(contract.relationshipEngines.plans?.active, 5).map((item) => pick(item as Record<string, unknown>, ["title", "activity", "participants", "status", "story_time"])),
+      conflicts: take(contract.relationshipEngines.conflictAndRepair?.active, 4).map((item) => pick(item as Record<string, unknown>, ["title", "cause", "positions", "intensity", "status", "resolution_need"])),
+      milestones: take(contract.relationshipEngines.milestones?.achieved, 6).map((item) => pick(item as Record<string, unknown>, ["milestone_type", "title", "details", "created_at"])),
+      choreography: contract.relationshipEngines.choreography,
+    },
+  };
+
+  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character voice → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, STAGE IT IN THIS REPLY: stage one concrete action or event without deciding the user's response; dialogue alone does not satisfy initiative. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Stored state never overrides the latest visible user turn.`;
 }
