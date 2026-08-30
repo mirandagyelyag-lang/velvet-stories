@@ -39,6 +39,20 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   useEffect(() => { loadConversations(); }, [user?.id, characters.length]);
 
   useEffect(() => {
+    if (!pickerOpen && !groupStoryOpen) return undefined;
+
+    const root = document.documentElement;
+    const body = document.body;
+    root.classList.add("velvet-story-launcher-open");
+    body.classList.add("velvet-story-launcher-open");
+
+    return () => {
+      root.classList.remove("velvet-story-launcher-open");
+      body.classList.remove("velvet-story-launcher-open");
+    };
+  }, [pickerOpen, groupStoryOpen]);
+
+  useEffect(() => {
     if (!menuId) return undefined;
 
     function closeStoryMenu(event) {
@@ -550,10 +564,12 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       {pickerOpen && (
         <div className="conversation-picker-backdrop" onMouseDown={() => !creatingId && setPickerOpen(false)}>
           <section className="conversation-picker conversation-picker--editorial" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="conversation-picker-title">
+            <span className="velvet-sheet-grabber" aria-hidden="true" />
             <header>
               <div><p>NEW STORY</p><h2 id="conversation-picker-title">Who is this story with?</h2><span>Choose a character. Velvet will create a fresh timeline.</span></div>
               <button onClick={() => setPickerOpen(false)} disabled={Boolean(creatingId)} aria-label="Close"><X size={20}/></button>
             </header>
+            <div className="conversation-picker__scroll">
             {characters.length > 0 ? (
               <div className="conversation-picker__list conversation-picker__list--editorial">
                 {characters.map((character) => (
@@ -567,6 +583,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
             ) : (
               <div className="conversation-picker__empty"><p>Create a character before beginning a story.</p><button onClick={() => { setPickerOpen(false); onBrowseCharacters(); }}>Create a character</button></div>
             )}
+            </div>
           </section>
         </div>
       )}

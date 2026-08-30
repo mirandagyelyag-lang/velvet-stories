@@ -61,11 +61,13 @@ export default function GroupStoryModal({ onClose, onOpenStory }) {
   return (
     <div className="group-story-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && onClose()}>
       <section className="group-story-sheet" role="dialog" aria-modal="true" aria-label="Create Group Story">
+        <span className="velvet-sheet-grabber" aria-hidden="true" />
         <header>
           <div><small>ENSEMBLE STORY</small><h2>Group Story</h2><p>Choose 2–5 characters. Velvet keeps each voice, relationship and knowledge separate.</p></div>
           <button type="button" onClick={onClose} disabled={saving} aria-label="Close"><X size={20}/></button>
         </header>
 
+        <div className="group-story-sheet__scroll">
         <label className="group-story-search"><Search size={17}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find characters…"/></label>
 
         <div className="group-story-cast">
@@ -91,6 +93,7 @@ export default function GroupStoryModal({ onClose, onOpenStory }) {
         </div>
 
         {error && <p className="group-story-error">{error}</p>}
+        </div>
         <footer><button type="button" className="secondary" onClick={onClose} disabled={saving}>Cancel</button><button type="button" className="primary" onClick={create} disabled={saving || selected.length < 2}>{saving ? <LoaderCircle className="spin" size={16}/> : <UsersRound size={16}/>} {saving ? "Creating…" : "Start Group Story"}</button></footer>
       </section>
     </div>
