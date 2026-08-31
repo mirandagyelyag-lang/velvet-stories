@@ -1,0 +1,370 @@
+/* =========================================================
+   Velvet Stories v3.13.0 · Scroll Authority
+   One gesture, one owner. Loaded LAST on purpose.
+   ========================================================= */
+
+:root {
+  --velvet-scroll-top-gap: 0px;
+  --velvet-scroll-bottom-gap: calc(92px + env(safe-area-inset-bottom));
+}
+
+/* ---------- Route shell: the document itself no longer carries app scroll ---------- */
+.app {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+.app__content {
+  position: relative !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  max-height: 100dvh !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  scroll-behavior: auto !important;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 18px var(--velvet-scroll-bottom-gap);
+}
+
+.velvet-route-stage {
+  min-width: 0 !important;
+  min-height: 100% !important;
+  overflow: visible !important;
+}
+
+/* Chat is a viewport, not a long document. */
+.app--chat .app__content {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none !important;
+  padding-bottom: 0 !important;
+}
+
+.app--chat .velvet-route-stage,
+.app--chat .chat {
+  width: 100% !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+.app--chat .chat {
+  display: block !important;
+  overscroll-behavior: none !important;
+}
+
+.app--chat .chat__content {
+  box-sizing: border-box !important;
+  width: min(820px, calc(100% - 32px)) !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  max-height: 100dvh !important;
+  margin: 0 auto !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  scroll-behavior: auto !important;
+  scrollbar-gutter: stable;
+  scroll-padding-top: calc(94px + env(safe-area-inset-top)) !important;
+  scroll-padding-bottom: calc(156px + env(safe-area-inset-bottom) + var(--velvet-keyboard-offset, 0px)) !important;
+  padding-bottom: calc(156px + env(safe-area-inset-bottom) + var(--velvet-keyboard-offset, 0px)) !important;
+}
+
+/* Never let a nested message list become a second chat scroller. */
+.chat__messages,
+.chat__introduction,
+.chat__living-scene {
+  overflow: visible !important;
+  max-height: none !important;
+  overscroll-behavior: auto !important;
+}
+
+/* ---------- Single-owner vertical sheets / dialogs ---------- */
+:where(
+  .memory-editor,
+  .timeline-drawer,
+  .message-sheet,
+  .director-sheet,
+  .chat-controls,
+  .chat__menu,
+  .character-profile-sheet,
+  .catchup-card,
+  .v312-cast-peek,
+  .world-studio,
+  .story-setup-sheet,
+  .character-studio-lite
+) {
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  scroll-behavior: auto !important;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 12px calc(24px + env(safe-area-inset-bottom));
+}
+
+/* These shells have an explicit inner body. The shell itself must never scroll. */
+:where(.memory-book, .story-hub, .relationship-drawer, .conversation-picker, .group-story-sheet) {
+  min-height: 0 !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+:where(
+  .memory-book__scroll,
+  .story-hub__body,
+  .relationship-drawer__body,
+  .conversation-picker__scroll,
+  .group-story-sheet__scroll
+) {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  scroll-behavior: auto !important;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 12px calc(28px + env(safe-area-inset-bottom));
+}
+
+/* Backdrops are gesture dead-ends. Scroll belongs only to the sheet above them. */
+:where(
+  .memory-book-backdrop,
+  .timeline-drawer-backdrop,
+  .story-hub-backdrop,
+  .relationship-drawer-backdrop,
+  .message-sheet-backdrop,
+  .director-sheet-backdrop,
+  .chat-controls-backdrop,
+  .chat__menu-backdrop,
+  .character-profile-sheet-backdrop,
+  .catchup-backdrop,
+  .v312-cast-peek-backdrop,
+  .world-studio-backdrop,
+  .story-setup-backdrop,
+  .conversation-picker-backdrop,
+  .group-story-backdrop,
+  .character-studio-backdrop,
+  .memory-editor-backdrop
+) {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none !important;
+}
+
+/* ---------- Horizontal rails: horizontal when intended, vertical page pan still allowed ---------- */
+:where(
+  .reference-stories-hero__actions,
+  .settings-page__nav,
+  .memories-reference__groups,
+  .memories-reference__pinned-rail,
+  .story-hub__tabs,
+  .v311-group-presence,
+  .character-studio-lite__seeds--new,
+  .character-studio__journey,
+  .keepsake-ambience,
+  .audio-center__voice-filters,
+  .message-sheet__refine-secondary
+) {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  overscroll-behavior-inline: contain !important;
+  overscroll-behavior-block: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-x pan-y !important;
+  scroll-behavior: auto !important;
+  scrollbar-width: none !important;
+}
+
+:where(
+  .reference-stories-hero__actions,
+  .settings-page__nav,
+  .memories-reference__groups,
+  .memories-reference__pinned-rail,
+  .story-hub__tabs,
+  .v311-group-presence,
+  .character-studio-lite__seeds--new,
+  .character-studio__journey,
+  .keepsake-ambience,
+  .audio-center__voice-filters,
+  .message-sheet__refine-secondary
+)::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Inputs may grow, but should not drag the entire viewport while editing. */
+textarea,
+input,
+select {
+  overscroll-behavior: contain;
+}
+
+textarea {
+  touch-action: pan-y !important;
+}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 760px), (pointer: coarse) {
+  :root {
+    --velvet-scroll-bottom-gap: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .app__content {
+    scrollbar-width: none !important;
+    scroll-padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .app__content::-webkit-scrollbar,
+  .app--chat .chat__content::-webkit-scrollbar,
+  :where(
+    .memory-editor,
+    .timeline-drawer,
+    .message-sheet,
+    .director-sheet,
+    .chat-controls,
+    .chat__menu,
+    .character-profile-sheet,
+    .catchup-card,
+    .v312-cast-peek,
+    .world-studio,
+    .story-setup-sheet,
+    .character-studio-lite,
+    .memory-book__scroll,
+    .story-hub__body,
+    .relationship-drawer__body,
+    .conversation-picker__scroll,
+    .group-story-sheet__scroll
+  )::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .app--chat .chat__content {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    scroll-padding-top: calc(84px + env(safe-area-inset-top)) !important;
+    scroll-padding-bottom: calc(148px + env(safe-area-inset-bottom) + var(--velvet-keyboard-offset, 0px)) !important;
+    padding-bottom: calc(148px + env(safe-area-inset-bottom) + var(--velvet-keyboard-offset, 0px)) !important;
+  }
+
+  /* Bottom sheets use almost the full visual viewport, but never the page behind them. */
+  :where(
+    .memory-book,
+    .timeline-drawer,
+    .message-sheet,
+    .director-sheet,
+    .chat-controls,
+    .chat__menu,
+    .character-profile-sheet,
+    .catchup-card,
+    .v312-cast-peek,
+    .world-studio,
+    .story-setup-sheet,
+    .conversation-picker,
+    .group-story-sheet,
+    .character-studio
+  ) {
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top))) !important;
+  }
+
+  /* Avoid browser scroll anchoring fighting with dynamic chat/message insertion. */
+  .chat__content { overflow-anchor: none; }
+  .chat__messages > :not(.chat-message--streaming) { overflow-anchor: auto; }
+  .chat__messages > :last-child { overflow-anchor: auto; }
+}
+
+/* ---------- Desktop scrollbars: visible but quiet ---------- */
+@media (min-width: 761px) and (pointer: fine) {
+  :where(
+    .app__content,
+    .app--chat .chat__content,
+    .memory-editor,
+    .timeline-drawer,
+    .message-sheet,
+    .director-sheet,
+    .chat-controls,
+    .chat__menu,
+    .character-profile-sheet,
+    .catchup-card,
+    .v312-cast-peek,
+    .world-studio,
+    .story-setup-sheet,
+    .character-studio-lite,
+    .memory-book__scroll,
+    .story-hub__body,
+    .relationship-drawer__body,
+    .conversation-picker__scroll,
+    .group-story-sheet__scroll
+  ) {
+    scrollbar-width: thin !important;
+    scrollbar-color: color-mix(in srgb, var(--accent) 28%, transparent) transparent !important;
+  }
+
+  :where(
+    .app__content,
+    .app--chat .chat__content,
+    .memory-editor,
+    .timeline-drawer,
+    .message-sheet,
+    .director-sheet,
+    .chat-controls,
+    .chat__menu,
+    .character-profile-sheet,
+    .catchup-card,
+    .v312-cast-peek,
+    .world-studio,
+    .story-setup-sheet,
+    .character-studio-lite,
+    .memory-book__scroll,
+    .story-hub__body,
+    .relationship-drawer__body,
+    .conversation-picker__scroll,
+    .group-story-sheet__scroll
+  )::-webkit-scrollbar { width: 7px; height: 7px; }
+
+  :where(
+    .app__content,
+    .app--chat .chat__content,
+    .memory-editor,
+    .timeline-drawer,
+    .message-sheet,
+    .director-sheet,
+    .chat-controls,
+    .chat__menu,
+    .character-profile-sheet,
+    .catchup-card,
+    .v312-cast-peek,
+    .world-studio,
+    .story-setup-sheet,
+    .character-studio-lite,
+    .memory-book__scroll,
+    .story-hub__body,
+    .relationship-drawer__body,
+    .conversation-picker__scroll,
+    .group-story-sheet__scroll
+  )::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
+    border-radius: 999px;
+  }
+}

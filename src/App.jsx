@@ -78,16 +78,33 @@ function persistVelvetLocation(location) {
   } catch {}
 }
 
+function getRouteScrollOwner() {
+  if (typeof document === "undefined") return null;
+  return document.querySelector(".app__content");
+}
+
+function scrollRouteTo(top = 0, behavior = "auto") {
+  const owner = getRouteScrollOwner();
+  const safeTop = Number.isFinite(Number(top)) ? Number(top) : 0;
+  if (owner) {
+    owner.scrollTo({ top: safeTop, behavior });
+    return;
+  }
+  window.scrollTo({ top: safeTop, behavior });
+}
+
 function savePageScroll(page) {
   if (!page || typeof sessionStorage === "undefined") return;
-  try { sessionStorage.setItem(`velvet_page_scroll_${page}`, String(window.scrollY || 0)); } catch {}
+  const owner = getRouteScrollOwner();
+  const top = owner ? owner.scrollTop : (window.scrollY || 0);
+  try { sessionStorage.setItem(`velvet_page_scroll_${page}`, String(top)); } catch {}
 }
 
 function restorePageScroll(page, fallback = 0) {
   if (!page || typeof sessionStorage === "undefined") return;
   let top = fallback;
   try { top = Number(sessionStorage.getItem(`velvet_page_scroll_${page}`) || fallback); } catch {}
-  requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: Number.isFinite(top) ? top : fallback, behavior: "auto" })));
+  requestAnimationFrame(() => requestAnimationFrame(() => scrollRouteTo(Number.isFinite(top) ? top : fallback, "auto")));
 }
 
 function readVelvetLocation() {
@@ -242,7 +259,7 @@ function App() {
         messageId: state.messageId || null,
       });
       if (state.mode === "page") restorePageScroll(state.page, 0);
-      else window.scrollTo({ top: 0, behavior: "auto" });
+      else scrollRouteTo(0, "auto");
     }
 
     window.addEventListener("popstate", handleBrowserBack);
@@ -331,7 +348,7 @@ function App() {
         setActivePage("search");
         const nextState = { velvetNavigation: true, mode: "page", page: "search", character: null, characterId: null, conversationId: null, messageId: null };
         window.history.pushState(nextState, "", buildVelvetUrl({ mode: "page", page: "search" }));
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        scrollRouteTo(0, "smooth");
       }
     }
     window.addEventListener("keydown", handleGlobalSearchShortcut);
@@ -426,7 +443,7 @@ function App() {
       "",
       buildVelvetUrl(nextLocation)
     );
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollRouteTo(0, "smooth");
   }
 
   async function startNewStoryFromProfile(character, options = {}) {

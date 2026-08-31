@@ -217,6 +217,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
   const messagesEndRef = useRef(null);
   const messagesMeasureRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const stoppedRef = useRef(false);
   const generationRunRef = useRef(0);
@@ -672,50 +673,48 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }
 
   useEffect(() => {
+    const owner = scrollContainerRef.current;
+    if (!owner) return undefined;
+
     function trackScrollPosition() {
-      // Do not let opening/closing the mobile keyboard redefine whether the
-      // reader was following the newest messages.
+      // The chat owns its own scroll. Keyboard movement must never redefine
+      // whether the reader intentionally left the newest messages.
       if (keyboardOpenRef.current) return;
-      const distanceFromBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+      const distanceFromBottom = Math.max(0, owner.scrollHeight - owner.scrollTop - owner.clientHeight);
       stickToBottomRef.current = distanceFromBottom < 170;
       setShowJumpToBottom(distanceFromBottom > 360);
-
     }
 
     trackScrollPosition();
-    window.addEventListener("scroll", trackScrollPosition, { passive: true });
+    owner.addEventListener("scroll", trackScrollPosition, { passive: true });
     window.addEventListener("resize", trackScrollPosition);
     return () => {
-      window.removeEventListener("scroll", trackScrollPosition);
+      owner.removeEventListener("scroll", trackScrollPosition);
       window.removeEventListener("resize", trackScrollPosition);
     };
   }, []);
 
   useEffect(() => {
     const id = conversation?.conversationId;
-    if (!id || conversationLoading) return undefined;
+    const owner = scrollContainerRef.current;
+    if (!id || conversationLoading || !owner) return undefined;
     const key = `velvet_scroll_v380_${id}`;
     let frame = 0;
-    let restored = false;
     try {
       const saved = JSON.parse(sessionStorage.getItem(key) || "null");
-      if (saved && Number.isFinite(saved.top) && !stickToBottomRef.current) {
-        requestAnimationFrame(() => window.scrollTo({ top: saved.top, behavior: "auto" }));
-        restored = true;
-      } else if (saved && saved.mode === "reading") {
-        requestAnimationFrame(() => window.scrollTo({ top: saved.top || 0, behavior: "auto" }));
-        restored = true;
+      if (saved && saved.mode === "reading" && Number.isFinite(saved.top)) {
+        requestAnimationFrame(() => owner.scrollTo({ top: saved.top, behavior: "auto" }));
       }
     } catch {}
     const save = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const distance = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
-        try { sessionStorage.setItem(key, JSON.stringify({ top: window.scrollY, mode: distance > 220 ? "reading" : "latest", at: Date.now() })); } catch {}
+        const distance = Math.max(0, owner.scrollHeight - owner.scrollTop - owner.clientHeight);
+        try { sessionStorage.setItem(key, JSON.stringify({ top: owner.scrollTop, mode: distance > 220 ? "reading" : "latest", at: Date.now() })); } catch {}
       });
     };
-    window.addEventListener("scroll", save, { passive: true });
-    return () => { save(); cancelAnimationFrame(frame); window.removeEventListener("scroll", save); };
+    owner.addEventListener("scroll", save, { passive: true });
+    return () => { save(); cancelAnimationFrame(frame); owner.removeEventListener("scroll", save); };
   }, [conversation?.conversationId, conversationLoading]);
 
   useEffect(() => {
@@ -737,7 +736,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         const savedTop = preserveScrollOnKeyboardRef.current;
         cancelAnimationFrame(restoreFrame);
         restoreFrame = requestAnimationFrame(() => {
-          window.scrollTo({ top: savedTop, behavior: "auto" });
+          scrollContainerRef.current?.scrollTo({ top: savedTop, behavior: "auto" });
         });
       }
     }
@@ -794,16 +793,18 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   async function handleLoadEarlierMessages() {
     if (loadingHistoryRef.current || conversation?.loadingEarlierMessages) return;
 
-    const previousHeight = document.documentElement.scrollHeight;
-    const previousTop = window.scrollY;
+    const owner = scrollContainerRef.current;
+    const previousHeight = owner?.scrollHeight || 0;
+    const previousTop = owner?.scrollTop || 0;
     loadingHistoryRef.current = true;
 
     try {
       await loadEarlierMessages(character.id);
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
-          const addedHeight = document.documentElement.scrollHeight - previousHeight;
-          window.scrollTo({ top: previousTop + addedHeight, behavior: "auto" });
+          const currentOwner = scrollContainerRef.current;
+          const addedHeight = Math.max(0, (currentOwner?.scrollHeight || previousHeight) - previousHeight);
+          currentOwner?.scrollTo({ top: previousTop + addedHeight, behavior: "auto" });
           loadingHistoryRef.current = false;
         });
       });
@@ -822,7 +823,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     // Capture position before the browser focuses the textarea. This runs
     // before the native keyboard has a chance to move the document.
     if (!stickToBottomRef.current) {
-      preserveScrollOnKeyboardRef.current = window.scrollY;
+      preserveScrollOnKeyboardRef.current = scrollContainerRef.current?.scrollTop || 0;
     } else {
       preserveScrollOnKeyboardRef.current = null;
     }
@@ -832,7 +833,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     if (preserveScrollOnKeyboardRef.current === null || stickToBottomRef.current) return;
     const savedTop = preserveScrollOnKeyboardRef.current;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => window.scrollTo({ top: savedTop, behavior: "auto" }));
+      requestAnimationFrame(() => scrollContainerRef.current?.scrollTo({ top: savedTop, behavior: "auto" }));
     });
   }
 
@@ -1410,7 +1411,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       setActiveConversationId(branch.id);
       await startConversation(character, { conversationId: branch.id });
       await loadConversationList();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       console.error("Branch creation failed:", error);
       setSendError(error.message || "We couldn't create that branch.");
@@ -1720,7 +1721,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       const created = await createNewConversation(character);
       setActiveConversationId(created.conversationId);
       await loadConversationList();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       console.error("Error creating conversation:", error);
       setSendError("We couldn't create a new conversation.");
@@ -1982,7 +1983,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         </div>
       )}
 
-      <div className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
+      <div ref={scrollContainerRef} className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
 
         {visibleMessages.length === 0 && !busy && <div className={`chat__introduction${character.coverUrl ? " chat__introduction--covered" : ""}`} style={{ "--character-color": character.color }}>
           {character.coverUrl && <div className="chat__profile-cover"><img src={character.coverUrl} alt="" decoding="async" /></div>}
