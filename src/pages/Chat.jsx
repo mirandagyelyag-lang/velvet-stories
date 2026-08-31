@@ -425,7 +425,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       return undefined;
     }
 
-    const showTimer = window.setTimeout(() => setTypingIndicatorVisible(true), 350);
+    const showTimer = window.setTimeout(() => setTypingIndicatorVisible(true), 120);
     return () => {
       window.clearTimeout(showTimer);
       setTypingIndicatorVisible(false);

@@ -181,25 +181,25 @@ Deno.serve(async (request) => {
     const storyPreferences = normalizeStoryPreferences(body?.storyPreferences);
     if (!conversationId) return json({ error: "conversationId is required" }, 400);
 
-    if (generationId) {
-      const { error } = await cancellationAdmin.from("generation_requests").insert({
-        id: generationId,
-        user_id: userData.user.id,
-        conversation_id: conversationId,
-        cancelled: false,
-        updated_at: new Date().toISOString(),
-      });
-      if (error && error.code !== "23505") throw new Error(error.message);
-      // VELVET_SPEED_V282: the row was just created as not-cancelled. Avoid an
-      // immediate read-back round trip before context loading; the throttled
-      // cancellation probe below still catches a racing Stop request.
-    }
-
-    const loaded = await loadContext({
+    // VELVET_TURBO_V3102: registration and context loading are independent.
+    // Start them together so the phone does not pay one Supabase round trip and
+    // then another before Gemini can even begin.
+    const generationRegistrationPromise = generationId
+      ? cancellationAdmin.from("generation_requests").insert({
+          id: generationId,
+          user_id: userData.user.id,
+          conversation_id: conversationId,
+          cancelled: false,
+          updated_at: new Date().toISOString(),
+        })
+      : Promise.resolve({ error: null });
+    const contextPromise = loadContext({
       supabase,
       conversationId,
       userId: userData.user.id,
     });
+    const [registrationResult, loaded] = await Promise.all([generationRegistrationPromise, contextPromise]);
+    if (registrationResult?.error && registrationResult.error.code !== "23505") throw new Error(registrationResult.error.message);
     const configuredCharacter = applyConversationControls(loaded.character, loaded.conversation);
     const userIdentity = getUserIdentity(userData.user, loaded.persona);
 
@@ -616,6 +616,27 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
 
   const groupCharacterIds = [...new Set([conversation.character_id, ...(Array.isArray(conversation.group_character_ids) ? conversation.group_character_ids : [])].filter(Boolean))];
 
+  // VELVET_TURBO_V3102: fire the optional story tables at the same time as the
+  // character/messages/memory batch. They used to begin only after the core
+  // batch finished, creating an avoidable second network phase.
+  const optionalContextPromise = Promise.all([
+    supabase.from("story_cast_members")
+      .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, updated_at")
+      .eq("conversation_id", conversationId).eq("user_id", userId)
+      .order("updated_at", { ascending: false }).limit(12),
+    supabase.from("story_bible_entries").select("id, category, title, content, authority, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(16),
+    supabase.from("story_cast_connections").select("id, from_name, to_name, relationship, visibility, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(16),
+    supabase.from("story_calendar_events").select("id, title, story_time, details, participants, status, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(12),
+    supabase.from("story_canon_corrections").select("id, correction, source_message_id, created_at").eq("conversation_id", conversationId).eq("user_id", userId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("story_arcs").select("id, title, summary, kind, status, progress, stakes, next_pressure, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(10),
+    supabase.from("story_knowledge_entries").select("id, character_name, subject, knowledge, status, source, secret, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(18),
+    supabase.from("story_consequences").select("id, title, cause, effect, status, weight, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(10),
+    supabase.from("story_chemistry_profiles").select("*").eq("conversation_id",conversationId).eq("user_id",userId).limit(4),
+    supabase.from("story_plans").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(10),
+    supabase.from("story_conflicts").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(8),
+    supabase.from("story_milestones").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("created_at",{ascending:true}).limit(16),
+  ]);
+
   const [characterResult, personaResult, messagesResult, memoriesResult, loreResult, groupCharactersResult] = await Promise.all([
     supabase.from("characters")
       .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, voice_vocabulary, humor_style, conflict_style, affection_style, verbal_tells, voice_avoidances, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
@@ -628,20 +649,20 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
     supabase.from("messages")
       .select("id, conversation_id, user_id, sender, content, created_at, edited_at, reply_to_message_id, reply_preview, reply_sender")
       .eq("conversation_id", conversationId).eq("user_id", userId)
-      .order("created_at", { ascending: false }).limit(28),
+      .order("created_at", { ascending: false }).limit(20),
     supabase.from("memories")
       .select("id, conversation_id, content, importance, category, is_pinned, is_canon, why_remembered, source, scope, superseded_at, created_at, updated_at")
       .in("character_id", groupCharacterIds).eq("user_id", userId)
       .is("superseded_at", null)
       .order("is_canon", { ascending: false })
       .order("is_pinned", { ascending: false }).order("importance", { ascending: false })
-      .order("created_at", { ascending: false }).limit(48),
+      .order("created_at", { ascending: false }).limit(30),
     conversation.lorebook_id
       ? supabase.from("lore_entries")
         .select("id, entry_type, name, content, keywords, event_date, always_include")
         .eq("lorebook_id", conversation.lorebook_id).eq("user_id", userId)
         .eq("is_active", true).order("always_include", { ascending: false })
-        .order("updated_at", { ascending: false }).limit(18)
+        .order("updated_at", { ascending: false }).limit(10)
       : Promise.resolve({ data: [], error: null }),
     groupCharacterIds.length > 1
       ? supabase.from("characters")
@@ -657,23 +678,7 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
 
   // v3 cast + World Studio context is optional during rolling deploys. Fetch it
   // in ONE parallel phase so every reply does not pay an extra Supabase round trip.
-  const [persistentCastResult, storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult] = await Promise.all([
-    supabase.from("story_cast_members")
-      .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, updated_at")
-      .eq("conversation_id", conversationId).eq("user_id", userId)
-      .order("updated_at", { ascending: false }).limit(16),
-    supabase.from("story_bible_entries").select("id, category, title, content, authority, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(24),
-    supabase.from("story_cast_connections").select("id, from_name, to_name, relationship, visibility, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(24),
-    supabase.from("story_calendar_events").select("id, title, story_time, details, participants, status, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(24),
-    supabase.from("story_canon_corrections").select("id, correction, source_message_id, created_at").eq("conversation_id", conversationId).eq("user_id", userId).order("created_at", { ascending: false }).limit(12),
-    supabase.from("story_arcs").select("id, title, summary, kind, status, progress, stakes, next_pressure, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(16),
-    supabase.from("story_knowledge_entries").select("id, character_name, subject, knowledge, status, source, secret, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(32),
-    supabase.from("story_consequences").select("id, title, cause, effect, status, weight, participants, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(18),
-    supabase.from("story_chemistry_profiles").select("*").eq("conversation_id",conversationId).eq("user_id",userId).limit(8),
-    supabase.from("story_plans").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(16),
-    supabase.from("story_conflicts").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("updated_at",{ascending:false}).limit(12),
-    supabase.from("story_milestones").select("*").eq("conversation_id",conversationId).eq("user_id",userId).order("created_at",{ascending:true}).limit(24),
-  ]);
+  const [persistentCastResult, storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult] = await optionalContextPromise;
   if (persistentCastResult.error && persistentCastResult.error.code !== "42P01") {
     console.warn("[character-chat] persistent cast unavailable", { message: persistentCastResult.error.message });
   }
@@ -786,29 +791,29 @@ function buildNarrativePromptV3({
   const supportingCast = (Array.isArray(groupCharacters) ? groupCharacters : [])
     .filter((item) => item?.id && item.id !== character.id);
   const latest = openingRegeneration ? "" : compactMessageForPrompt(latestUserRecord?.content || "", 4200);
-  const immediate = messages.slice(-8).map((message) => {
+  const immediate = messages.slice(-6).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
-    return `${speaker}: ${compactMessageForPrompt(message.content, 1200)}`;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 900)}`;
   }).join("\n\n") || "none";
-  const older = messages.slice(-14, -8).map((message) => {
+  const older = messages.slice(-10, -6).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : character.name;
-    return `${speaker}: ${compactMessageForPrompt(message.content, 360)}`;
+    return `${speaker}: ${compactMessageForPrompt(message.content, 280)}`;
   }).join("\n") || "none";
-  const confirmedMemories = memories.slice(0, 10).map((memory) =>
-    `- ${memory.is_canon || memory.is_pinned || memory.source === "manual" ? "CONFIRMED" : "TENTATIVE"}: ${clean(memory.content, 360)}`
+  const confirmedMemories = memories.slice(0, 7).map((memory) =>
+    `- ${memory.is_canon || memory.is_pinned || memory.source === "manual" ? "CONFIRMED" : "TENTATIVE"}: ${clean(memory.content, 300)}`
   ).join("\n") || "none";
-  const loreText = loreEntries.slice(0, 6).map((entry) => `- ${clean(entry.name, 100)}: ${clean(entry.content, 440)}`).join("\n") || "none";
+  const loreText = loreEntries.slice(0, 4).map((entry) => `- ${clean(entry.name, 90)}: ${clean(entry.content, 320)}`).join("\n") || "none";
   const castText = supportingCast.slice(0, 6).map((member) =>
     `${clean(member.name, 80)} — ${clean(member.role, 140)}; personality: ${clean(member.personality, 420)}; relation to ${userIdentity.name}: ${clean(member.relationship, 420)}; voice: ${clean(member.speech_style, 260)}`
   ).join("\n") || "none";
   const derivedContext = JSON.stringify({
-    recap: cleanPromptValue(conversation.story_recap || conversation.summary || "", 900),
+    recap: cleanPromptValue(conversation.story_recap || conversation.summary || "", 650),
     scene: conversation.scene_state || {},
     relationship: conversation.relationship_state || {},
     cast: conversation.cast_state || {},
-    open_threads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads.slice(-8) : [],
-    recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-4) : [],
-  }).slice(0, 3600);
+    open_threads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads.slice(-5) : [],
+    recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-3) : [],
+  }).slice(0, 2400);
   const recentOpenings = messages
     .filter((message) => message.sender === "character")
     .slice(-3)
@@ -829,52 +834,31 @@ function buildNarrativePromptV3({
       ? `Rewrite from the same branch point with a different choice and dialogue. Direction: ${clean(regenerationInstruction || "none", 700)}`
       : "This is a new canonical turn.";
 
-  return `You are Velvet, writing the next beat of a private character roleplay. Write only the story reply in the reply field; fill the compact continuity fields from the same beat.
+  return `You are Velvet. Write the next natural beat of a private character roleplay. The visible story reply goes in reply; hidden continuity fields stay terse and factual.
 
 ${storyContractPrompt(turnContract as any)}
 
-PRIORITY ORDER — WHEN RULES SEEM TO CONFLICT, THE EARLIER RULE WINS
-1. VISIBLE CANON. The transcript, latest user-authored actions, confirmed memories, and explicit director state are binding. Unknown details stay unknown.
-2. USER OWNERSHIP. ${userIdentity.name} alone controls their dialogue, thoughts, feelings, motives, choices, reactions, and body. Never supply any of them.
-3. PHYSICAL REALITY. Track location, presence, distance, contact, objects, exits, and communication channel. No teleporting, impossible hearing, invented props, or reset poses.
-4. LITERAL LATEST TURN. Respond to what the user actually wrote before adding subtext. A spoken future intention is not a completed action: “I'll leave,” “maybe I should go,” “I'll leave you with that,” “thanks,” or “have fun” does not move the user's body. Only a visibly narrated action establishes movement.
-5. CHARACTER TRUTH. Preserve ${character.name}'s specific personality, age, vocabulary, defenses, social confidence, affection style, and current relationship phase.
-6. NATURAL MOMENTUM. Add one earned beat—an answer, decision, action, interruption, or consequence—then stop. Intensity never permits overriding rules 1–4.
+NON-NEGOTIABLE CANON
+- The latest visible user turn outranks stored state. Unknown facts stay unknown.
+- ${userIdentity.name} alone controls their dialogue, thoughts, feelings, motives, reactions, choices and body. Never invent them.
+- Preserve location, distance, contact, objects, exits and communication medium. Spoken intent is NOT movement. “I'll leave,” “thanks,” or “have fun” never means the user physically left unless they staged it.
+- A correction repairs the prior beat retroactively. Do not answer it as spoken dialogue.
+- Boundaries such as leave me alone / don't follow / don't touch are binding. Respect them without turning the character into a therapist or a different person.
+- Answer the literal latest line or question before subtext. Clarifications name the concrete referent; preference questions give a real stance.
 
-LITERAL CANON CHECK
-- Before drafting, state internally: where everyone is, who can perceive this turn, the user's final physical state, the character's final physical state, and what changed in the latest message.
-- Dialogue never moves a body. Do not write “watched you leave,” “didn't follow,” “called after you,” “before you could go,” “stopped your momentum,” or pursuit/contact unless the user visibly staged departure first.
-- Never claim the user watched, searched, followed, waited for, came for, or wanted the character's attention without transcript evidence. A stated practical reason cannot become jealousy or secret attraction.
-- A correction such as “I didn't leave” or “I didn't say anything” repairs the prior beat retroactively. Do not make the character answer the correction as spoken dialogue.
-- A hand can be lowered or released only if it was already raised or holding something. Preserve side-by-side positions and established contact until visible action changes them.
-- Side characters remain present and retain their own roles. If the user explicitly cues an NPC to speak or act, show that cue before redirecting the scene.
+VOICE + QUALITY
+- Sound like ${character.name}, not an archetype. Use their vocabulary, defenses, humor, affection and social confidence.
+- Prefer ordinary spoken language, contractions, uneven sentence lengths, interruptions and plain answers. Dialogue should DO something socially.
+- Vary rhythm. Do not loop smirks, scoffs, jaw/gaze/breath choreography, rhetorical questions, mock-formal logic, sitcom banter, dominance speeches, therapist language or polished quote-card lines.
+- Sarcasm is seasoning, not the whole meal. Popular does not automatically mean smug; guarded does not automatically mean cold.
+- If the user reveals a bad day or pain during conflict, let it land in one small character-specific beat. No counseling speech unless asked.
 
-HUMAN VOICE
-- First answer the actual line or question. Clarifications need a concrete referent; preference questions need a real stance.
-- Use spoken language: contractions, ordinary words, uneven sentence lengths, interruptions, unfinished thoughts, and occasional plain answers. Match the profile; do not force slang.
-- Sarcasm is seasoning. After one or two teasing lines, change rhythm. A tease does not require another comeback.
-- Ban pseudo-clever filler unless explicitly native to this character: mock-formal logic, courtroom phrasing, quote-card lines, constant rhetorical questions, dominance speeches, and sitcom punchlines.
-- Avoid generic romance voice: “Naturally,” “Keep up,” “How observant,” “I'm listening,” “go on,” lowered-voice one-liners, constant smirks/scoffs, jaw-and-gaze chains, pet names every turn, or addressing ${userIdentity.name} by name as punctuation.
-- Do not make every guarded character cold or every popular character smug. Let them be distracted, practical, amused, wrong, awkward, warm, quiet, or sincere when earned.
-- Dialogue must perform a social action. Description supports it; description does not replace it. Short user turns may receive short complete replies.
-
-STORY BEHAVIOR
-- Hidden feelings may appear as one fresh private pressure or tell, not surveillance. The character has an independent life and need not track the user constantly.
-- If the user truly leaves, choose follow, call after, give space, text later, or return to independent life according to profile and boundaries; do not automate pursuit.
-- “Leave me alone,” “stop following,” “don't touch me,” or a pull-away is binding. Never restrain, drag, corner, block escape, or romanticize refusal.
-- A boundary changes behavior; it does not erase personality. Respect “go away” or “don't ruin it” without turning a proud, teasing, guarded character into a counselor, concierge, or perfectly composed caretaker.
-- When the user reveals they had a bad/shitty/horrible day during conflict, drop the joke and let it land—but keep the response small and character-specific. Prefer one honest line, an awkward pause, a restrained practical choice, or giving the requested space. Do not produce a therapeutic acknowledgment, advice, a list of quiet places, “if you change your mind,” or a polished emotional exit speech unless the user asked for help.
-- Do not narrate instant moral transformation through “his smirk softened,” “genuinely contemplative,” “a thoughtful nod,” or a voice “dropping into a low, steady register.” Show the joke dying or the character recalibrating in simpler prose.
-- Preserve active calls, chats, games, arguments, and other sub-scenes across silent continuation turns. Silence means continue the current beat with one concrete development, not atmosphere.
-- Social reputation should create occasional believable world reactions in relevant public scenes, never a parade and never invented private gossip.
-- REAL INTEREST IS VERB-BASED. Do not merely say the character cares, wants, notices, worries, feels jealous or cannot look away. Make them choose: rearrange something, stay when leaving is easier, create a reason to meet, share access, remember a detail and use it, risk looking foolish, tell an inconvenient truth, include the user in their real life, or give up another believable option. The proof must fit this specific person.
-- GIVE THE CHARACTER A PRIVATE AGENDA EACH TURN. Before reacting, decide what they came into the beat wanting, what they fear it will cost, and the concrete tactic they try. Their agenda may align or collide with the user's; it must never control the user.
-- CREATE PLAYABLE MOMENTS. At least every few turns, change what everyone is doing: a drive begins, friends arrive with a plan, practice goes wrong, an invitation becomes immediate, somebody needs help, a secret is nearly exposed, a rival acts, a commitment comes due, weather/traffic/authority complicates a visible risk, or an ordinary task becomes emotionally loaded. Do not wait for the user to pitch the plot.
-- USE EMOTIONAL CONTRAST. The scene should not scream its importance. Let people eat, drive, search, clean up, compete, wait, get interrupted, joke badly, misread timing, or talk over each other. Then let one choice expose what matters.
-- MAKE PAIN EARNED, NOT RANDOM. To create hurt, establish the hope, the competing loyalty/opportunity, the witnessed choice, and the consequence. Never manufacture betrayal, cruelty, illness, danger, an ex or jealousy without profile/canon support and visible causality.
-- LET MOMENTS BREATHE ACROSS TURNS. A reveal, fight, near-kiss, public slight, sacrifice or interruption creates residue; do not explain it away, apologize perfectly or restore normality immediately.
-- Do not invent exact time spans, prior messages, promises, relatives, group chats, gifts, schedules, or shared events. Tentative memory is not fact.
-- Match the latest ordinary user's language: ${responseLanguage}. Do not translate established names or voice.
+STORY MOVEMENT
+- Give ${character.name} a private want and one plausible tactic. Add ONE earned action, answer, interruption, choice or consequence, then stop before deciding the user's response.
+- Interest is proved through choices with cost: staying, rearranging plans, inviting, remembering and using a detail, risking embarrassment, sharing access, telling an inconvenient truth. Do not merely narrate that they care.
+- Keep side characters ordinary and independent. Preserve active calls, chats, games, arguments and tasks across silent turns.
+- Do not invent exact time spans, prior messages, promises, relatives, group chats, gifts, schedules, betrayal, illness, danger, exes or jealousy without visible support.
+- Match the user's current language: ${responseLanguage}. Keep established names and character voice intact.
 
 ${currentBeatPolicy}
 
@@ -882,60 +866,55 @@ TURN
 Mode: ${turnIntent.kind}; question: ${turnIntent.isQuestion ? "yes" : "no"}; medium: ${turnIntent.medium}; silent streak: ${turnIntent.silentCount}.
 Length: ${getLengthGuidance(character.response_length, turnIntent.kind)}
 ${regeneration}
-Director note: ${clean(directorInstruction || "none", 700)}
-Creator feedback: ${feedback}
+Director: ${clean(directorInstruction || "none", 520)}
+Feedback: ${feedback}
 
-PRIMARY CHARACTER
-Name: ${character.name}
-Role: ${clean(character.role, 180)}
-Personality: ${clean(character.personality, 1000)}
-Relationship to ${userIdentity.name}: ${clean(character.relationship, 900)}
-World: ${clean(character.scenario || character.world, 800)}
-Motivation / defense / contradiction: ${clean(character.core_motivation, 420)} / ${clean(character.emotional_defense, 420)} / ${clean(character.contradictions, 420)}
-Values / fears / habits: ${clean(character.character_values, 360)} / ${clean(character.fears, 360)} / ${clean(character.habits, 360)}
-Voice: ${clean(character.speech_style, 600)}
-Vocabulary and rhythm: ${clean(character.voice_vocabulary, 480)}
-Humor / conflict / affection: ${clean(character.humor_style, 360)} / ${clean(character.conflict_style, 420)} / ${clean(character.affection_style, 420)}
-Verbal tells: ${clean(character.verbal_tells, 300)}
-Never sounds like: ${clean(character.voice_avoidances || "generic archetype banter, therapy language, or polished AI dialogue", 420)}
-Example dialogue is syntax reference only, never a script: ${clean(character.example_dialogue, 700)}
-Boundaries: ${clean(character.boundaries, 420)}
-Development state: ${clean(characterDevelopmentPromptView(developmentState), 1300)}
+CHARACTER
+${character.name} — ${clean(character.role, 150)}
+Personality: ${clean(character.personality, 760)}
+Relationship to ${userIdentity.name}: ${clean(character.relationship, 700)}
+World/situation: ${clean(character.scenario || character.world, 620)}
+Motivation / defense / contradiction: ${clean(character.core_motivation, 300)} / ${clean(character.emotional_defense, 300)} / ${clean(character.contradictions, 300)}
+Voice: ${clean(character.speech_style, 440)}
+Vocabulary: ${clean(character.voice_vocabulary, 340)}
+Humor / conflict / affection: ${clean(character.humor_style, 260)} / ${clean(character.conflict_style, 300)} / ${clean(character.affection_style, 300)}
+Avoid sounding like: ${clean(character.voice_avoidances || "generic archetype banter, therapy language, or polished AI dialogue", 320)}
+Example syntax only, never a script: ${clean(character.example_dialogue, 480)}
+Boundaries: ${clean(character.boundaries, 320)}
+Development: ${clean(characterDevelopmentPromptView(developmentState), 850)}
 
-USER PERSONA — REFERENCE ONLY; NEVER CONTROL THIS PERSON
-Name: ${userIdentity.name}; pronouns: ${userIdentity.pronouns || "not specified"}; age/role: ${userIdentity.age || "not specified"} / ${userIdentity.role || "not specified"}
-Background/personality: ${clean(`${userIdentity.background || ""} ${userIdentity.personality || ""}`, 700)}
-Preferences/boundaries: ${clean(`${userIdentity.preferences || ""} ${userIdentity.boundaries || ""}`, 600)}
+USER REFERENCE — NEVER CONTROL
+${userIdentity.name}; pronouns ${userIdentity.pronouns || "not specified"}; age/role ${userIdentity.age || "not specified"} / ${userIdentity.role || "not specified"}.
+Background/personality: ${clean(`${userIdentity.background || ""} ${userIdentity.personality || ""}`, 460)}
+Preferences/boundaries: ${clean(`${userIdentity.preferences || ""} ${userIdentity.boundaries || ""}`, 420)}
 
 SUPPORTING CAST
 ${castText}
 
-CONFIRMED/TENTATIVE MEMORY
+MEMORY
 ${confirmedMemories}
 
 LORE
 ${loreText}
 
-DERIVED CONTINUITY (visible transcript wins if stale)
+CURRENT CONTINUITY
 ${derivedContext}
 
-OLDER CONTEXT (compressed)
+OLDER CONTEXT
 ${older}
 
-IMMEDIATE VISIBLE TRANSCRIPT
+RECENT VISIBLE TRANSCRIPT
 ${immediate}
 
 LATEST USER TURN — HIGHEST AUTHORITY
 ${latest || "none; this is an opening"}
 
-VOICE FRESHNESS
-Recent reply openings: ${recentOpenings}
-Do not reuse the same opening gesture, first-line construction, comeback rhythm, or signature phrase unless repetition is deliberately meaningful in-scene. Prefer a different social tactic over synonym-swapping.
+FRESHNESS
+Recent character openings: ${recentOpenings}
+Do not reuse their opening gesture, first-line construction, comeback rhythm or signature phrase unless repetition is meaningful.
 
-OUTPUT DISCIPLINE
-- Read the latest turn literally and silently choose the character's independent want, tactic, cost/risk, and one visible change. Keep story_drive to terse labels only; never expose it in prose.
-- The reply begins from the final visible state, answers the current beat, uses character-specific spoken language when appropriate, and ends after one meaningful change.
-- Keep hidden metadata terse and factual. Record only what the visible reply actually establishes.`;
+OUTPUT
+Start from the final visible physical state. Answer this beat directly, preserve character-specific voice, make one meaningful change, and stop. Put reply first. Hidden metadata may record only what the reply actually showed.`;
 }
 
 // Kept temporarily as a reference while the compact v2.12 prompt is proven in production.
@@ -4111,8 +4090,8 @@ async function streamGeminiEnvelopeWithFailover({
   // fallback in parallel. The first model that produces actual reply prose wins;
   // slower requests are cancelled. A slow first token is never itself a user-facing
   // failure and never clears an already visible bubble.
-  const hedgeDelays = [0, 3500, 7000];
-  const overallDeadlineMs = 30000;
+  const hedgeDelays = [0, 1200, 3200];
+  const overallDeadlineMs = 22000;
   const deadlineAt = Date.now() + overallDeadlineMs;
   const controllers = new Map<string, AbortController>();
   const launched = new Set<string>();
@@ -4752,9 +4731,9 @@ function getLengthGuidance(length, kind) {
   return "45–140 words. Shorter is better when the social beat already lands.";
 }
 function getMaximumOutputTokens(length) {
-  if (length === "short") return 1000;
-  if (length === "long") return 2200;
-  return 1500;
+  if (length === "short") return 800;
+  if (length === "long") return 1700;
+  return 1200;
 }
 function getTemperature(creativity, regeneration) {
   const value = clampNumber(creativity, 0.2, 1.2, 0.84);

@@ -26,7 +26,7 @@ check("reply and world metadata share one compact model response", edge.includes
 check("living-story drive is structured before prose", edge.includes('required: ["independent_want","chosen_action","cost_or_risk","visible_change","unresolved_hook"]') && contract.includes("livingStoryEngine") && contract.includes("interestProofRequired"));
 check("canon violations remain the repair budget", edge.includes("const REPAIR_TRIGGER_ISSUES") && edge.includes('"distance_boundary_override"') && edge.includes('"spatial_proximity_teleport"'));
 check("readable replies fail soft after bounded protection", edge.includes("protected reply remained imperfect; keeping readable live reply"));
-check("edge keeps live streaming and bounded model failover", edge.includes("streamGenerateContent?alt=sse") && edge.includes("const hedgeDelays = [0, 3500, 7000]") && edge.includes("cancelLosers"));
+check("edge keeps live streaming and bounded model failover", edge.includes("streamGenerateContent?alt=sse") && edge.includes("const hedgeDelays = [0, 1200, 3200]") && edge.includes("cancelLosers"));
 check("no narrative fallback fabricates prose", !/function\s+\w*Fallback\s*\(/.test(edge));
 
 const syntax = spawnSync(process.execPath, ["--experimental-strip-types", "--check", new URL("../supabase/functions/character-chat/index.ts", import.meta.url).pathname], { encoding: "utf8" });
