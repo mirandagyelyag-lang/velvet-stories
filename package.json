@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.13.0",
+  "version": "3.13.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -25,7 +25,8 @@
     "verify:v380": "node scripts/verify-v380-continuity.mjs",
     "verify:v311": "node scripts/verify-v3110-experience.mjs",
     "verify:v312": "node scripts/verify-v3120-never-lose-story.mjs",
-    "verify:v313": "node scripts/verify-v3130-scroll-authority.mjs"
+    "verify:v313": "node scripts/verify-v3130-scroll-authority.mjs",
+    "verify:v3131": "node scripts/verify-v3131-native-edges.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

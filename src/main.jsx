@@ -120,3 +120,5 @@ import "./styles/chat-header-overlay.css";
 import "./styles/velvet-v3120-never-lose-story.css";
 
 import "./styles/velvet-v3130-scroll-authority.css";
+
+import "./styles/velvet-v3131-native-edges.css";

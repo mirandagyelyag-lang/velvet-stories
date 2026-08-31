@@ -6,7 +6,7 @@ const main = read("src/main.jsx");
 const app = read("src/App.jsx");
 const chat = read("src/pages/Chat.jsx");
 const checks = [
-  ["scroll authority loads last", main.trim().endsWith('import "./styles/velvet-v3130-scroll-authority.css";')],
+  ["scroll authority remains the base scroll layer", main.includes('import "./styles/velvet-v3130-scroll-authority.css";') && main.indexOf('velvet-v3130-scroll-authority.css') < main.indexOf('velvet-v3131-native-edges.css')],
   ["app route owns vertical scroll", css.includes(".app__content") && css.includes("overflow-y: auto !important")],
   ["chat has its own scroll owner", chat.includes("scrollContainerRef") && chat.includes("ref={scrollContainerRef}")],
   ["chat no longer measures window scroll", !chat.includes("window.scrollY") && !chat.includes("document.documentElement.scrollHeight")],
