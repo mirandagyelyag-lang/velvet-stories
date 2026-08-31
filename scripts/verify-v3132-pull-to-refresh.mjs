@@ -17,9 +17,9 @@ const checks=[
   ['service worker update check runs', /registration\.update\(\)/.test(util)],
   ['page reload is restored', /window\.location\.reload\(\)/.test(util)],
   ['visual refresh indicator exists', /velvet-pull-refresh/.test(css)],
-  ['new CSS loaded after native edges', main.trim().endsWith('import "./styles/velvet-v3132-pull-to-refresh.css";')],
-  ['package version bumped', pkg.version==='3.13.2'],
-  ['public version bumped', ver.version==='3.13.2'],
+  ['pull refresh CSS stays after native edges', main.lastIndexOf('velvet-v3132-pull-to-refresh.css') > main.lastIndexOf('velvet-v3131-native-edges.css')],
+  ['package version keeps pull-refresh release or newer', Number(pkg.version.split('.')[0]) > 3 || (Number(pkg.version.split('.')[0]) === 3 && (Number(pkg.version.split('.')[1]) > 13 || (Number(pkg.version.split('.')[1]) === 13 && Number(pkg.version.split('.')[2]) >= 2)))],
+  ['public version keeps pull-refresh release or newer', Number(ver.version.split('.')[0]) > 3 || (Number(ver.version.split('.')[0]) === 3 && (Number(ver.version.split('.')[1]) > 13 || (Number(ver.version.split('.')[1]) === 13 && Number(ver.version.split('.')[2]) >= 2)))],
 ];
 let pass=0;
 for(const [name,ok] of checks){ console.log(`${ok?'PASS':'FAIL'} · ${name}`); if(ok) pass++; }

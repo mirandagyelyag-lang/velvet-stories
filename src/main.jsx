@@ -125,3 +125,5 @@ import "./styles/velvet-v3130-scroll-authority.css";
 
 import "./styles/velvet-v3131-native-edges.css";
 import "./styles/velvet-v3132-pull-to-refresh.css";
+
+import "./styles/velvet-v3133-fixed-bottom-dock.css";
