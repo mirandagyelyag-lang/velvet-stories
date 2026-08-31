@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const velvetVersion = pkg.version;
-const velvetRelease = "Pulse Rebuilt";
+const velvetRelease = "Never Lose a Story";
 const velvetBuildTime = new Date().toISOString();
 
 export default defineConfig({
@@ -30,7 +30,7 @@ export default defineConfig({
     },
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       injectRegister: "auto",
       includeAssets: [
         "velvet-vs-v4-favicon.png",
@@ -72,8 +72,8 @@ export default defineConfig({
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
+        clientsClaim: false,
+        skipWaiting: false,
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2,mp3}"],
         runtimeCaching: [

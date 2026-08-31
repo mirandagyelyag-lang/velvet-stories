@@ -25,6 +25,11 @@ check("one generation, validation and at most one repair remain", edge.includes(
 check("reply and world metadata share one compact model response", edge.includes('required: ["reply", "story_drive", "scene_update", "continuity_update", "development_update"]') && edge.includes("responseJsonSchema: roleplayResponseSchema()"));
 check("living-story drive is structured before prose", edge.includes('required: ["independent_want","chosen_action","cost_or_risk","visible_change","unresolved_hook"]') && contract.includes("livingStoryEngine") && contract.includes("interestProofRequired"));
 check("canon violations remain the repair budget", edge.includes("const REPAIR_TRIGGER_ISSUES") && edge.includes('"distance_boundary_override"') && edge.includes('"spatial_proximity_teleport"'));
+check("dialogue-first naturalism is explicit", edge.includes("DIALOGUE-FIRST NATURALISM") && edge.includes("NO PROP SOUP"));
+check("initiative no longer forces prop choreography", contract.includes("Dialogue can satisfy initiative") && contract.includes("Do not invent props, chores, entrances or busywork"));
+check("scene choreography is continuity-first, not prose-first", contract.includes("Track physical reality silently") && contract.includes("Do not inventory props"));
+check("openings are shorter and mobile-natural", edge.includes("opening scene, 55-105 words") && edge.includes("OPENING NATURALISM"));
+check("severe overwritten narration can trigger one bounded repair", edge.includes("hasOverwrittenNarration") && edge.includes('"overwritten_narration"'));
 check("readable replies fail soft after bounded protection", edge.includes("protected reply remained imperfect; keeping readable live reply"));
 check("edge keeps live streaming and bounded model failover", edge.includes("streamGenerateContent?alt=sse") && edge.includes("const hedgeDelays = [0, 1200, 3200]") && edge.includes("cancelLosers"));
 check("no narrative fallback fabricates prose", !/function\s+\w*Fallback\s*\(/.test(edge));

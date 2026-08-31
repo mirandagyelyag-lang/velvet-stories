@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
-import { Activity, ArrowLeft, Check, Download, Eye, FileDown, Heart, MessageCircle, MonitorSmartphone, Moon, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Sun, Type, WifiOff, X, Wrench } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Activity, ArrowLeft, Check, Download, Eye, FileDown, FileUp, Heart, LoaderCircle, MessageCircle, MonitorSmartphone, Moon, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Sun, Type, WifiOff, X, Wrench } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { usePWA } from "../context/PWAContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
+import { useAuth } from "../context/AuthContext";
+import { triggerJsonDownload } from "../utils/velvetResilience";
 import { VELVET_BUILD_TIME, VELVET_RELEASE, VELVET_VERSION } from "../config/version";
 import { isSafeModeEnabled, leaveVelvetSafeMode, startVelvetSafeMode } from "../utils/safeMode";
 import "../styles/settings.css";
@@ -17,6 +19,10 @@ function Settings({ onBack, onOpenDiagnostics }) {
   const [health, setHealth] = useState({ supabase: "checking", engine: "checking" });
   const [safeMode, setSafeMode] = useState(() => isSafeModeEnabled());
   const [safeModeBusy, setSafeModeBusy] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupNotice, setBackupNotice] = useState("");
+  const restoreInputRef = useRef(null);
+  const { user } = useAuth();
   useEffect(() => {
     let live = true;
     (async () => {
@@ -48,6 +54,65 @@ function Settings({ onBack, onOpenDiagnostics }) {
       if (themeMeta && previousThemeColor) themeMeta.setAttribute("content", previousThemeColor);
     };
   }, [theme]);
+  async function exportVelvetBackup() {
+    if (!user?.id || backupBusy) return;
+    setBackupBusy(true); setBackupNotice("");
+    try {
+      const tableNames = ["characters","personas","lorebooks","lore_entries","conversations","messages","memories","message_alternatives","story_snapshots","story_milestones","story_cast_members","story_chemistry_profiles","story_canon_corrections","user_story_preferences"];
+      const tables = {};
+      const skipped = [];
+      for (const table of tableNames) {
+        try {
+          const { data, error } = await supabase.from(table).select("*").eq("user_id", user.id);
+          if (error) throw error;
+          tables[table] = data || [];
+        } catch (error) {
+          skipped.push({ table, reason: String(error?.message || "unavailable").slice(0,160) });
+        }
+      }
+      const local = {};
+      try {
+        for (let index=0; index<localStorage.length; index+=1) {
+          const key = localStorage.key(index);
+          if (key && /^(velvet_story_theme_v312_|velvet_character_story_style_|velvet_scene_|velvet_reading_mode|velvet_draft_)/.test(key)) local[key] = localStorage.getItem(key);
+        }
+      } catch {}
+      const payload = { format:"velvet-full-backup", version:VELVET_VERSION, exportedAt:new Date().toISOString(), userId:user.id, tables, local, skipped };
+      triggerJsonDownload(`Velvet-Backup-${new Date().toISOString().slice(0,10)}.json`, payload);
+      setBackupNotice(`Backup ready · ${Object.values(tables).reduce((sum,rows)=>sum+(rows?.length||0),0)} records saved${skipped.length?` · ${skipped.length} optional sections unavailable`:""}.`);
+    } catch (error) {
+      setBackupNotice(error?.message || "Velvet couldn't create the backup.");
+    } finally { setBackupBusy(false); }
+  }
+
+  async function restoreVelvetBackup(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !user?.id || backupBusy) return;
+    let payload;
+    try { payload = JSON.parse(await file.text()); } catch { return setBackupNotice("That file isn't a valid Velvet backup."); }
+    if (payload?.format !== "velvet-full-backup" || !payload?.tables) return setBackupNotice("That file isn't a full Velvet backup.");
+    if (payload.userId && payload.userId !== user.id) return setBackupNotice("This backup belongs to a different Velvet account.");
+    const approved = await confirmAction({ title:"Restore this Velvet backup?", message:"Existing rows with the same IDs will be updated. Current stories not present in the backup are left alone.", confirmLabel:"Restore backup" });
+    if (!approved) return;
+    setBackupBusy(true); setBackupNotice("");
+    const order = ["characters","personas","lorebooks","lore_entries","conversations","messages","memories","message_alternatives","story_snapshots","story_milestones","story_cast_members","story_chemistry_profiles","story_canon_corrections","user_story_preferences"];
+    const failures=[];
+    let restored=0;
+    try {
+      for (const table of order) {
+        const rows = Array.isArray(payload.tables?.[table]) ? payload.tables[table] : [];
+        if (!rows.length) continue;
+        const safeRows = rows.map((row)=>({ ...row, ...(Object.prototype.hasOwnProperty.call(row,"user_id") ? { user_id:user.id } : {}) }));
+        const { error } = await supabase.from(table).upsert(safeRows, { onConflict:"id" });
+        if (error) failures.push(`${table}: ${error.message}`); else restored += rows.length;
+      }
+      try { Object.entries(payload.local||{}).forEach(([key,value])=>localStorage.setItem(key,String(value))); } catch {}
+      setBackupNotice(`Restore finished · ${restored} records${failures.length?` · ${failures.length} optional sections need attention`:""}. Reopen Velvet to refresh everything.`);
+    } catch (error) { setBackupNotice(error?.message || "Restore stopped unexpectedly."); }
+    finally { setBackupBusy(false); }
+  }
+
   async function confirmReset() { if (await confirmAction({ title: "Reset all preferences?", message: "Reading, story style, learned feedback, export and safety preferences will return to their defaults.", confirmLabel: "Reset settings" })) resetSettings(); }
   async function toggleSafeMode() {
     if (safeModeBusy) return;
@@ -101,8 +166,9 @@ function Settings({ onBack, onOpenDiagnostics }) {
         onRemove={removeStoryFeedback}
       />
     </div>
-    <div className="settings-group settings-group--exports"><header><FileDown size={19}/><div><h2>Stories & exports</h2><p>Choose how your private stories leave Velvet.</p></div></header>
-      <SettingChoice label="Default export format" value={settings.exportFormat} options={[['markdown','Markdown'],['text','Plain text'],['json','JSON backup']]} onChange={(value)=>updateSetting('exportFormat',value)}/>
+    <div className="settings-group settings-group--exports"><header><FileDown size={19}/><div><h2>Stories & backup</h2><p>Export one story normally, or keep a full safety copy of your Velvet world.</p></div></header>
+      <SettingChoice label="Default story export" value={settings.exportFormat} options={[["markdown","Markdown"],["text","Plain text"],["json","JSON story"]]} onChange={(value)=>updateSetting("exportFormat",value)}/>
+      <div className="v312-backup-center"><div><strong>Never Lose a Story</strong><small>Characters, conversations, messages, Memories, worlds and local story preferences in one JSON backup.</small></div><div className="v312-backup-center__actions"><button type="button" onClick={exportVelvetBackup} disabled={backupBusy}>{backupBusy?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>}Back up Velvet</button><button type="button" onClick={()=>restoreInputRef.current?.click()} disabled={backupBusy}><FileUp size={15}/>Restore backup</button><input ref={restoreInputRef} type="file" accept="application/json,.json" hidden onChange={restoreVelvetBackup}/></div>{backupNotice&&<p className="v312-backup-center__notice">{backupNotice}</p>}</div>
     </div>
     <div className="settings-group" id="settings-privacy"><header><ShieldCheck size={19}/><div><h2>Privacy & safety</h2><p>Protection against accidental destructive actions.</p></div></header>
       <Toggle label="Confirm before deleting" description="Ask before deleting characters, conversations and lore." checked={settings.confirmBeforeDelete} onChange={(value)=>updateSetting('confirmBeforeDelete',value)}/>

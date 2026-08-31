@@ -38,6 +38,12 @@ const NEGATIVE_FEEDBACK_CODES = new Set([
   "repetitive",
   "pov_violation",
   "missing_emotional_impact",
+  "too_long",
+  "too_formal",
+  "too_cold",
+  "too_romantic",
+  "too_ai",
+  "wrong_continuity",
 ]);
 
 function loadLocalSettings() {

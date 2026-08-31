@@ -573,7 +573,7 @@ async function handleCharacterLearningRoom({ apiKey, draft, situation }) {
 
 async function handleInstantStory({ apiKey, draft, idea }) {
   const safeDraft = draft && typeof draft === "object" ? draft : {};
-  const prompt = `Open a fresh private roleplay timeline for this character. Write only the opening scene, 130-190 words, immediately playable and specific. Preserve the character's established voice and relationship but choose a NEW concrete situation rather than repeating their stored first message. Do not control the user's dialogue, actions, thoughts or feelings. Favor actual interaction and dialogue over decorative setup. Use the language of the idea/profile.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nOPTIONAL IDEA\n${String(idea || "Surprise me with a plausible scene that fits their life.").slice(0, 700)}`;
+  const prompt = `Open a fresh private roleplay timeline for this character. Write only the opening scene, 55-105 words, immediately playable and specific. Preserve the character's established voice and relationship but choose a NEW concrete situation rather than repeating their stored first message. Do not control the user's dialogue, actions, thoughts or feelings. MOBILE NATURALISM: use 0-2 short narration sentences around 1-4 natural spoken lines. Prefer the first visible sentence to be dialogue when that fits the character. The first spoken line must sound normal if copied out of the scene, not like exposition disguised as dialogue. Start with dialogue or one simple action when plausible. Do not inventory the room, weather, clothing, sounds, props, textures, or routine movements. Mention at most one environmental detail if it changes the interaction. Collapse mundane movement into one clause. Casual young-adult characters should sound casual and age-appropriate, not perfectly witty, literary, legalistic, or academic unless their profile explicitly requires that voice. Favor actual interaction and dialogue over decorative setup. End on a clean conversational opening, choice, request, interruption, or action the user can answer immediately. Do not manufacture a dramatic cliffhanger just to end the paragraph. Use the language of the idea/profile.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nOPTIONAL IDEA\n${String(idea || "Surprise me with a plausible scene that fits their life.").slice(0, 700)}`;
   const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
   let lastError = "Velvet couldn't open an instant story.";
   for (const model of models) {
@@ -598,7 +598,7 @@ async function handleCharacterGenerate({ apiKey, concept }) {
     temperature: 0.78,
     purpose: "character-generate",
     deadlineMs: 22000,
-    prompt: `Create one complete, original adult fictional roleplay character from the creator's request below. Honor any requested name exactly; if no name is supplied, invent a memorable full name. Build an independent person with a life, responsibilities, relationships, conflicts and ambitions beyond romance. Make the bond with the user specific and playable, the character voice unmistakable, and the opening scene immediately interactive. Avoid generic archetype dialogue, constant hostility, instant confessions and controlling the user's dialogue, thoughts, feelings or actions. The possible growth direction must be gradual rather than guaranteed. Example dialogue calibrates voice but is not a future script. Keep each supporting field to one or two precise sentences, Personality and Relationship below 130 words each, and the opening scene between 120 and 190 words so the complete draft arrives quickly. Write every field and the opening scene in the language used by the creator; if the request has no language, use natural English. Return every field in the schema.\n\nCREATOR REQUEST\n${request}`,
+    prompt: `Create one complete, original adult fictional roleplay character from the creator's request below. Honor any requested name exactly; if no name is supplied, invent a memorable full name. Build an independent person with a life, responsibilities, relationships, conflicts and ambitions beyond romance. Make the bond with the user specific and playable, the character voice unmistakable, and the opening scene immediately interactive. Avoid generic archetype dialogue, constant hostility, instant confessions and controlling the user's dialogue, thoughts, feelings or actions. The possible growth direction must be gradual rather than guaranteed. Example dialogue calibrates voice but is not a future script. Keep each supporting field to one or two precise sentences, Personality and Relationship below 130 words each, and the opening scene between 55 and 105 words so the complete draft arrives quickly. OPENING NATURALISM: use 0-2 short narration sentences and 1-4 spoken lines; prefer dialogue as the first visible sentence when plausible; the first spoken line must sound natural without relying on exposition; start with dialogue or a simple action when plausible; do not inventory weather, architecture, clothing, sounds, props, textures, or choreograph routine movement. Mention only details that change the interaction. Casual young-adult characters should sound like real people their age, with contractions, fragments and imperfect phrasing, not polished sitcom, legalistic, academic, or quote-card dialogue unless explicitly requested. Write every field and the opening scene in the language used by the creator; if the request has no language, use natural English. Return every field in the schema.\n\nCREATOR REQUEST\n${request}`,
   });
   return json({ character });
 }
@@ -825,6 +825,13 @@ function buildNarrativePromptV3({
     ...feedbackDirectives(storyPreferences.learned_negative_feedback).map((item) => `Avoid: ${item}`),
     ...feedbackDirectives(regenerationFeedback).map((item) => `Fix now: ${item}`),
   ].slice(0, 10).join("\n") || "none";
+  const creatorStyle = clean(storyPreferences.custom_instructions || "none", 900);
+  const groupRules = supportingCast.length ? `GROUP STORY RULES
+- This is an ensemble scene. Do NOT make every character speak every turn. Usually 1-2 characters respond; others may stay silent, be occupied, leave, or react only when the visible beat gives them a reason.
+- Keep each cast member's vocabulary, priorities and relationship to ${userIdentity.name} distinct. Do not merge everyone into one shared attitude.
+- Characters may talk to each other when natural, but never turn the scene into a roll call.
+- Preserve who is physically present from scene/cast state. A character outside the scene cannot suddenly speak in person.
+- Independent bonds can differ: one person may trust ${userIdentity.name}, another may be irritated, another may know less. Do not synchronize emotions for convenience.` : "";
   const currentBeatPolicy = buildCurrentBeatPolicy({
     turnIntent, character, latestUserMessage: latestUserRecord?.content || "", messages, openingRegeneration,
   });
@@ -848,13 +855,19 @@ NON-NEGOTIABLE CANON
 
 VOICE + QUALITY
 - Sound like ${character.name}, not an archetype. Use their vocabulary, defenses, humor, affection and social confidence.
-- Prefer ordinary spoken language, contractions, uneven sentence lengths, interruptions and plain answers. Dialogue should DO something socially.
+- DIALOGUE-FIRST NATURALISM: when the user just spoke, usually let the character answer within the first sentence or two. Prefer 1-4 spoken lines and only the narration needed to make them legible.
+- Prefer ordinary spoken language, contractions, fragments, uneven sentence lengths, interruptions and plain answers. Let a line be a little imperfect. Dialogue should DO something socially.
+- Narration is support, not the main event. In an ordinary turn, use at most 1-2 concrete physical details unless the user explicitly asks for a literary/immersive scene. If a detail can be removed without changing meaning, remove it.
+- NO PROP SOUP: do not inventory architecture, weather, temperature, clothing, sounds, boxes, papers, furniture, doors, vents, drinks, phones or other scenery just to make the prose feel cinematic. Mention a prop only when someone actually uses it or it changes access, stakes or meaning.
+- Collapse routine movement. Do not choreograph walking, adjusting clothes, setting objects down, looking over, breathing, shifting weight, or crossing a room step-by-step. One short clause is enough unless the movement itself is the point.
 - Vary rhythm. Do not loop smirks, scoffs, jaw/gaze/breath choreography, rhetorical questions, mock-formal logic, sitcom banter, dominance speeches, therapist language or polished quote-card lines.
+- Casual young-adult speech should sound age-appropriate and spontaneous. Do not make ordinary students/friends talk like professors, screenwriters, lawyers, or prestige-TV antiheroes unless the profile explicitly calls for that register.
 - Sarcasm is seasoning, not the whole meal. Popular does not automatically mean smug; guarded does not automatically mean cold.
 - If the user reveals a bad day or pain during conflict, let it land in one small character-specific beat. No counseling speech unless asked.
 
 STORY MOVEMENT
-- Give ${character.name} a private want and one plausible tactic. Add ONE earned action, answer, interruption, choice or consequence, then stop before deciding the user's response.
+- Give ${character.name} a private want and one plausible tactic. Add ONE earned answer, decision, invitation, reveal, interruption, action or consequence, then stop before deciding the user's response.
+- A meaningful change does NOT require a new prop or physical action every turn. A direct answer, admission, refusal, joke, invitation or decision can be the whole beat if it genuinely changes the interaction.
 - Interest is proved through choices with cost: staying, rearranging plans, inviting, remembering and using a detail, risking embarrassment, sharing access, telling an inconvenient truth. Do not merely narrate that they care.
 - Keep side characters ordinary and independent. Preserve active calls, chats, games, arguments and tasks across silent turns.
 - Do not invent exact time spans, prior messages, promises, relatives, group chats, gifts, schedules, betrayal, illness, danger, exes or jealousy without visible support.
@@ -868,6 +881,8 @@ Length: ${getLengthGuidance(character.response_length, turnIntent.kind)}
 ${regeneration}
 Director: ${clean(directorInstruction || "none", 520)}
 Feedback: ${feedback}
+Creator style: ${creatorStyle}
+${groupRules}
 
 CHARACTER
 ${character.name} — ${clean(character.role, 150)}
@@ -941,6 +956,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     reaction_reference_ungrounded: "Ground the reaction in the exact immediately preceding line or action.",
     immediate_canon_correction_mishandled: "Treat the correction retroactively and continue as if the invented act never occurred; do not answer the correction aloud.",
     overwritten_banter: "Replace polished cleverness with shorter, ordinary, character-specific speech.",
+    overwritten_narration: "Cut the mini-novel staging. Keep at most one or two necessary physical details, collapse routine movement, remove decorative environment/prop inventory, and let natural dialogue carry the beat.",
     editorial_banter_voice: "Remove mock-formal, legalistic, sitcom, and quote-card phrasing.",
     sarcastic_comeback_loop: "Change rhythm: use a plain, sincere, practical, amused, or quiet response instead of another comeback.",
     smug_comeback_tone: "Remove smug superiority and let the character answer like a person, not a scripted archetype.",
@@ -1628,7 +1644,7 @@ function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMes
     base.push("- Preserve this character's stance while accepting the correction. A proud/teasing/guarded character can adjust without suddenly becoming meek, therapeutic, self-improving, or emotionally deflated.");
   }
   if (openingRegeneration || kind === "opening") {
-    base.push("- Opening: establish one concrete active situation. The character should already be doing, saying, deciding, handling, or reacting to something; do not open on decorative stillness alone.");
+    base.push("- Opening: establish one concrete active situation with almost no setup tax. Prefer dialogue first. Use at most one useful environmental detail, no prop inventory, and no choreographed entrance. The first spoken line should sound like something this person would actually say aloud, not a polished premise summary. End with an immediate opening the user can answer.");
   } else if (kind === "silent_continue" || kind === "return_main_pov") {
     base.push("- SILENT CONTINUE: the user intentionally yielded the narrative turn. Continue from the exact last state and add one concrete new beat: dialogue, decision, movement with purpose, a real social exchange, an external event with consequence, or a specific action that changes what can happen next.");
     base.push("- If the user is currently off-scene, follow the character's OWN life. Do not spend the turn watching the doorway, remembering where the user vanished, leaning against a wall/pillar, breathing, or stating that the character is not looking for them. Independent activity must actually happen on-page.");
@@ -2146,6 +2162,8 @@ const regenerationFeedbackRules = new Map([
   ["too_romantic", "The response pushed romance too hard. Pull back to the earned relationship phase and let the scene breathe without forced intimacy."],
   ["too_ai", "Make the turn less scripted: remove stock romance gestures, cinematic body-language chains, polished dominance lines and narrator labels. React literally and let the character sound casually human."],
   ["wrong_continuity", "Correct continuity first: location, exits, who is present, what each person knows, established objects and unresolved commitments must match visible canon."],
+  ["too_long", "Make the response materially shorter. Keep the social beat and cut decorative narration, repeated explanation and extra props."],
+  ["too_formal", "Use more casual, age-appropriate spoken language. Avoid polished essay phrasing, legalistic logic and prestige-TV dialogue."],
 ]);
 
 function normalizeRegenerationFeedback(value = []) {
@@ -2678,6 +2696,30 @@ function characterAllowsOrnateDialogue(character = {}) {
   const style = normalizeText(`${character?.speech_style || ""} ${character?.voice_vocabulary || ""} ${character?.personality || ""}`);
   return /\b(?:formal|theatrical|academic|professor|poetic|eloquent|verbose|old fashioned|old-fashioned|literary|philosophical)\b/.test(style);
 }
+function hasOverwrittenNarration(reply = "", latestUserMessage = "", character = {}) {
+  const raw = String(reply || "").trim();
+  const allWords = normalizeText(raw).split(/\s+/).filter(Boolean);
+  if (allWords.length < 95) return false;
+  const dialogueText = [...raw.matchAll(/["“]([^"”]+)["”]/g)].map((match) => match[1] || "").join(" ");
+  const dialogueWords = normalizeText(dialogueText).split(/\s+/).filter(Boolean);
+  // Explicitly ornate/literary profiles get more room, but even they should not trip
+  // the detector unless the turn is overwhelmingly decorative.
+  const ornateProfile = characterAllowsOrnateDialogue(character);
+  const narrationRatio = 1 - (dialogueWords.length / Math.max(1, allWords.length));
+  const narration = normalizeText(stripDialogue(raw));
+  const decorativeMarkers = [
+    /\b(?:damp chill|cold air|metallic rattle|dull thud|faint hum|fluorescent light|dim light|neon light|rain(?:water)?|pavement|corridor|hallway|architecture|ceiling|vent|breeze|temperature)\b/,
+    /\b(?:adjust(?:ed|ing)? (?:his|her|their) (?:collar|cuff|sleeve|coat|jacket)|balanced? .*? against (?:one|his|her) hip|without breaking stride|free hand|shift(?:ed|ing)? (?:his|her|their) weight)\b/,
+    /\b(?:deposited|placed|set|dropped) .*? (?:bench|table|counter|desk).*?\b(?:thud|clatter|click|rattle)\b/,
+    /\b(?:eyes?|gaze|jaw|breath|shoulders?|mouth|lips)\b/,
+    /\b(?:heavy|sharp|damp|cold|steel|iron|stainless|faint|soft|low|slow)\b/,
+  ].filter((pattern) => pattern.test(narration)).length;
+  const sentenceCount = stripDialogue(raw).split(/[.!?]+/).map((item) => item.trim()).filter(Boolean).length;
+  const casualUserTurn = normalizeText(latestUserMessage).length < 420;
+  const threshold = ornateProfile ? 5 : 3;
+  return casualUserTurn && narrationRatio >= (ornateProfile ? 0.78 : 0.68) && sentenceCount >= 4 && decorativeMarkers >= threshold;
+}
+
 function hasOverwrittenBanter(reply = "", latestUserMessage = "", character = {}) {
   if (characterAllowsOrnateDialogue(character)) return false;
   const dialogue = [...String(reply || "").matchAll(/["“]([^"”]+)["”]/g)].map((match) => normalizeText(match[1])).join(" ");
@@ -3227,6 +3269,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "body_state_hallucination",
   "clarification_evasion",
   "direct_preference_evasion",
+  "overwritten_narration",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
   "social_role_assignment_broken",
@@ -3359,6 +3402,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasSarcasticComebackLoop(text, options.recentCharacterReplies || [])) issues.push("sarcastic_comeback_loop");
   if (hasSmugComebackTone(text, options.latestUserMessage || "")) issues.push("smug_comeback_tone");
   if (hasOverwrittenBanter(text, options.latestUserMessage || "", options.character || {})) issues.push("overwritten_banter");
+  if (hasOverwrittenNarration(text, options.latestUserMessage || "", options.character || {})) issues.push("overwritten_narration");
   if (hasEditorialBanterVoice(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("editorial_banter_voice");
   if (hasClarificationEvasion(text, options.latestUserMessage || "")) issues.push("clarification_evasion");
   if (hasDirectPreferenceEvasion(text, options.latestUserMessage || "", options.character || {})) issues.push("direct_preference_evasion");

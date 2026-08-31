@@ -252,7 +252,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
       talkOnlyDrought,
       availablePressure,
       instruction: initiativeRequired
-        ? "Choose one grounded opportunity or pressure and STAGE IT IN THIS REPLY. The character must decide, invite, act, interrupt, arrive, involve someone, reveal something, or face a consequence—not merely discuss what could happen. Give the user a concrete situation to react to and stop before deciding their response."
+        ? "Choose one grounded opportunity or pressure and make it real IN THIS REPLY. It may be a decision, invitation, reveal, interruption, concise action, arrival, social move, or consequence. Dialogue can satisfy initiative when it contains a real choice, answer, reveal, invitation or refusal. Do not invent props, chores, entrances or busywork merely to prove the scene is moving. Give the user one concrete thing to react to and stop before deciding their response."
         : "Advance only what the current beat earns. Initiative never overrides a boundary.",
       guardrails: [
         "Never narrate the user's thoughts, feelings, jealousy, consent, dialogue or unstated movement.",
@@ -268,10 +268,10 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
       interestProofRequired,
       sceneChangeRequired,
       emotionalCost: "A meaningful choice should cost the character something small but real: time, convenience, pride, social ease, reputation, another opportunity, or the safety of staying emotionally hidden.",
-      instruction: "Write a lived beat, not a response-shaped paragraph. The character enters with a want that exists independently of the user's line, chooses a tactic, and changes the situation on-page. If interestProofRequired is true, prove interest through one voluntary, character-specific investment or risk now; attraction words, staring, teasing, protectiveness and jealousy alone do not count. If sceneChangeRequired is true, materially alter the activity, access, participants, plan, information, stakes or physical situation before ending. Leave a clean opening for the user without asking them to invent the plot.",
+      instruction: "Write one lived beat, not a mini-novel. Answer the user's literal turn first. The character has an independent want and chooses one tactic, but that tactic may be spoken: a decision, reveal, refusal, invitation, admission or joke can move the scene without extra choreography. If interestProofRequired is true, prove interest through one voluntary, character-specific investment or risk now; attraction words, staring, teasing, protectiveness and jealousy alone do not count. If sceneChangeRequired is true, change the activity, access, participants, plan, information or stakes with the smallest natural beat needed. Do not manufacture props or physical business just to show movement. Leave a clean opening for the user without asking them to invent the plot.",
       realityRules: [
         "Desire has behavior: the character arranges, remembers, returns, makes room, risks embarrassment, changes a plan, shares access, tells an inconvenient truth, or chooses the user when another option genuinely exists.",
-        "Emotion is not constant intensity. Use contrast: ordinary activity, interruption, imperfect timing, embarrassment, silence, humor, practical detail, then one honest pressure point.",
+        "Emotion is not constant intensity. Use contrast: ordinary dialogue, imperfect timing, embarrassment, silence, humor, practical behavior, then one honest pressure point. Do not decorate every beat with weather, objects or body-language detail.",
         "NPCs are people, not jealousy props. Give an active NPC a separate goal, relationship and consequence; let them interrupt, disagree, need something, invite someone or change the plan.",
         "Conflict must threaten something specific. Nobody fights merely because the story needs drama; incompatible goals, loyalty, reputation, fear, bad timing, secrecy or a broken commitment create the collision.",
         "Coincidences may open a scene once. After that, consequences come from visible choices. Police, rivals, family, friends and authority follow causes already present in the world.",
@@ -307,7 +307,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
       },
       choreography: {
         location: text(scene.location || "unknown"), present, activity: sceneActivity, objects: sceneObjects,
-        instruction: "Block the scene physically. Give active NPCs positions, tasks and entrances tied to the location. Every meaningful movement must have a cause and update distance or access. Let dialogue happen during an activity; never teleport people, move the user without authored action, or make a crowd stand silently as decoration.",
+        instruction: "Track physical reality silently. Narrate movement only when it changes distance, access, contact, participants or stakes. Do not inventory props, assign everyone a task, or choreograph routine walking/looking/handling objects just to make the scene feel cinematic. Dialogue may happen with little or no movement. Never teleport people or move the user without authored action.",
       },
     },
   };

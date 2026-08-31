@@ -78,6 +78,18 @@ function persistVelvetLocation(location) {
   } catch {}
 }
 
+function savePageScroll(page) {
+  if (!page || typeof sessionStorage === "undefined") return;
+  try { sessionStorage.setItem(`velvet_page_scroll_${page}`, String(window.scrollY || 0)); } catch {}
+}
+
+function restorePageScroll(page, fallback = 0) {
+  if (!page || typeof sessionStorage === "undefined") return;
+  let top = fallback;
+  try { top = Number(sessionStorage.getItem(`velvet_page_scroll_${page}`) || fallback); } catch {}
+  requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({ top: Number.isFinite(top) ? top : fallback, behavior: "auto" })));
+}
+
 function readVelvetLocation() {
   const params = new URLSearchParams(window.location.search);
   const rawRequested = params.get("open");
@@ -229,7 +241,8 @@ function App() {
         conversationId: state.conversationId || null,
         messageId: state.messageId || null,
       });
-      window.scrollTo({ top: 0, behavior: "auto" });
+      if (state.mode === "page") restorePageScroll(state.page, 0);
+      else window.scrollTo({ top: 0, behavior: "auto" });
     }
 
     window.addEventListener("popstate", handleBrowserBack);
@@ -337,6 +350,7 @@ function App() {
   if (!user) return <Auth />;
 
   function navigate(page, options = {}) {
+    savePageScroll(activePage);
     setSelectedCharacter(null);
     setSelectedConversationId(null);
     setSelectedMessageId(null);
@@ -362,10 +376,11 @@ function App() {
       window.history.pushState(nextState, "", nextUrl);
     }
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    restorePageScroll(page, 0);
   }
 
   function openCharacter(character, conversationId = null, messageId = null) {
+    savePageScroll(activePage);
     setPreviewCharacter(null);
     setSelectedCharacter(character);
     setSelectedConversationId(conversationId);
@@ -394,6 +409,7 @@ function App() {
 
 
   function openCharacterProfile(character) {
+    savePageScroll(activePage);
     setSelectedCharacter(null);
     setSelectedConversationId(null);
     setSelectedMessageId(null);
@@ -467,6 +483,7 @@ function App() {
             setEditingCharacter(character);
             setCreatorOpen(true);
           }}
+          onOpenMemories={() => navigate("memories")}
         />
       );
     }
@@ -496,6 +513,7 @@ function App() {
             setCreatorOpen(true);
           }}
           onOpenCharacter={openCharacterProfile}
+          onOpenStory={openCharacter}
           onEditCharacter={(character) => {
             setEditingCharacter(character);
             setRemixSource(null);
@@ -596,7 +614,7 @@ function App() {
 }
 
 function VelvetRouteLoading({ overlay = false }) {
-  return <div className={`velvet-route-loading${overlay ? " velvet-route-loading--overlay" : ""}`} role="status" aria-live="polite"><span>✦</span><small>Opening Velvet…</small></div>;
+  return <div className={`velvet-route-loading v311-route-skeleton${overlay ? " velvet-route-loading--overlay" : ""}`} role="status" aria-live="polite"><div className="v311-route-skeleton__top"><span>✦</span><small>Opening Velvet…</small></div><div className="v311-route-skeleton__cards"><i/><i/><i/></div></div>;
 }
 
 export default App;

@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -8,6 +9,8 @@ import {
 import { useAuth } from "./AuthContext";
 import { useSettings } from "./SettingsContext";
 import { supabase } from "../services/supabase";
+import { characterStoryStyleInstruction } from "../utils/characterStoryStyle";
+import { isProbablyUuid, isRetryableNetworkError, isRetryableStatus, recordGenerationMetric, wait } from "../utils/velvetResilience";
 
 const ChatsContext = createContext();
 const MESSAGE_PAGE_SIZE = 40;
@@ -31,6 +34,31 @@ export function ChatsProvider({
     useRef({});
 
   const activeRequests = useRef({});
+  const offlineQueueRef = useRef([]);
+  const flushingOfflineRef = useRef(false);
+  const [offlineQueueSize, setOfflineQueueSize] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) {
+      offlineQueueRef.current = [];
+      setOfflineQueueSize(0);
+      return;
+    }
+    offlineQueueRef.current = readOfflineQueue(user.id);
+    setOfflineQueueSize(offlineQueueRef.current.length);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const flush = () => { void flushOfflineQueue(); };
+    window.addEventListener("online", flush);
+    const timer = window.setTimeout(flush, 500);
+    return () => {
+      window.removeEventListener("online", flush);
+      window.clearTimeout(timer);
+    };
+  }, [user?.id, chats]);
+
 
   function getCharacterMessages(
     characterId
@@ -219,7 +247,7 @@ export function ChatsProvider({
         previousOpenedAt: conversation.last_opened_at || "",
         catchUpAvailable: Boolean(
           conversation.last_opened_at &&
-          Date.now() - new Date(conversation.last_opened_at).getTime() >= 18 * 60 * 60 * 1000 &&
+          Date.now() - new Date(conversation.last_opened_at).getTime() >= 6 * 60 * 60 * 1000 &&
           (conversation.story_recap || conversation.summary)
         ),
 
@@ -429,7 +457,7 @@ export function ChatsProvider({
   ) {
     const content =
       character.firstMessage ||
-      `*${character.name} looks at you quietly.* “So, where should our story begin?”`;
+      `${character.name} glances over. “Hey. What’s going on?”`;
 
     const {
       data,
@@ -481,6 +509,128 @@ export function ChatsProvider({
     return storyRevision;
   }
 
+  function persistOfflineQueue(nextQueue) {
+    offlineQueueRef.current = nextQueue;
+    setOfflineQueueSize(nextQueue.length);
+    if (!user?.id) return;
+    try { localStorage.setItem(offlineQueueKey(user.id), JSON.stringify(nextQueue)); } catch {}
+  }
+
+  function queueOptimisticMessage(characterId, conversationId, sender, content, options = {}, optimisticId = `offline-${crypto.randomUUID()}`) {
+    const pendingMessage = {
+      id: optimisticId,
+      conversationId,
+      userId: user.id,
+      sender,
+      content: String(content || "").trim(),
+      createdAt: new Date().toISOString(),
+      editedAt: null,
+      isBookmarked: false,
+      bookmarkLabel: "",
+      chapterNumber: null,
+      replyToMessageId: isProbablyUuid(options.replyToMessageId) ? options.replyToMessageId : null,
+      replyPreview: options.replyPreview ? String(options.replyPreview).slice(0, 280) : "",
+      replySender: options.replySender || "",
+      isStreaming: false,
+      isPending: true,
+      isOfflinePending: true,
+    };
+
+    const alreadyVisible = (chats[characterId]?.messages || []).some((item) => item.id === optimisticId);
+    if (!alreadyVisible) appendMessageToState(characterId, pendingMessage);
+
+    const alreadyQueued = offlineQueueRef.current.some((item) => item.localId === optimisticId);
+    if (!alreadyQueued) {
+      const nextQueue = [...offlineQueueRef.current, {
+        localId: optimisticId,
+        characterId,
+        conversationId,
+        content: pendingMessage.content,
+        replyToMessageId: pendingMessage.replyToMessageId,
+        replyPreview: pendingMessage.replyPreview,
+        replySender: pendingMessage.replySender,
+        directorInstruction: String(options.directorInstruction || "").trim().slice(0, 500),
+        createdAt: pendingMessage.createdAt,
+      }];
+      persistOfflineQueue(nextQueue);
+    }
+
+    try {
+      window.dispatchEvent(new CustomEvent("velvet:offline-queue", { detail: { state: "queued", characterId, count: offlineQueueRef.current.length } }));
+    } catch {}
+    return pendingMessage;
+  }
+
+  async function flushOfflineQueue() {
+    if (!user?.id || flushingOfflineRef.current || !navigator.onLine || !offlineQueueRef.current.length) return;
+    flushingOfflineRef.current = true;
+    try {
+      let queue = [...offlineQueueRef.current];
+      while (queue.length && navigator.onLine) {
+        const item = queue[0];
+        try {
+          const { data, error } = await supabase
+            .from("messages")
+            .insert({
+              conversation_id: item.conversationId,
+              user_id: user.id,
+              sender: "user",
+              content: item.content,
+              reply_to_message_id: isProbablyUuid(item.replyToMessageId) ? item.replyToMessageId : null,
+              reply_preview: item.replyPreview || null,
+              reply_sender: item.replySender || null,
+            })
+            .select()
+            .single();
+          if (error) throw error;
+
+          const savedMessage = convertDatabaseMessage(data);
+          setChats((currentChats) => {
+            const currentChat = currentChats[item.characterId];
+            if (!currentChat) return currentChats;
+            return {
+              ...currentChats,
+              [item.characterId]: {
+                ...currentChat,
+                messages: (currentChat.messages || []).map((message) => message.id === item.localId ? savedMessage : message),
+              },
+            };
+          });
+
+          const storyRevision = crypto.randomUUID();
+          await supabase.from("conversations")
+            .update({ story_revision: storyRevision, updated_at: new Date().toISOString() })
+            .eq("id", item.conversationId)
+            .eq("user_id", user.id);
+
+          queue = queue.slice(1);
+          persistOfflineQueue(queue);
+          try {
+            window.dispatchEvent(new CustomEvent("velvet:offline-queue", { detail: { state: "sent", characterId: item.characterId, count: queue.length } }));
+          } catch {}
+
+          const loadedConversation = chats[item.characterId];
+          if (loadedConversation?.conversationId === item.conversationId && !isCharacterGenerating(item.characterId)) {
+            try {
+              await generateCharacterReply(item.characterId, {
+                expectedUserMessageId: savedMessage.id,
+                directorInstruction: item.directorInstruction || "",
+              });
+            } catch (generationError) {
+              console.warn("Queued message was sent, but its reply could not be generated yet:", generationError);
+            }
+          }
+        } catch (error) {
+          if (!navigator.onLine || isRetryableNetworkError(error)) break;
+          console.warn("Could not flush queued Velvet message:", error);
+          break;
+        }
+      }
+    } finally {
+      flushingOfflineRef.current = false;
+    }
+  }
+
   async function addMessage(
     characterId,
     sender,
@@ -493,23 +643,27 @@ export function ChatsProvider({
       throw new Error("The conversation is not ready yet.");
     }
 
-    // VELVET_FAST_SEND_V1
-    // Paint the user's message immediately instead of making the phone wait for
-    // the insert + story-revision round trip before anything appears to happen.
+    const trimmedContent = String(content || "").trim();
     const optimisticId = sender === "user" ? `pending-${crypto.randomUUID()}` : null;
+    const safeReplyId = isProbablyUuid(options.replyToMessageId) ? options.replyToMessageId : null;
+
+    if (sender === "user" && navigator.onLine === false) {
+      return queueOptimisticMessage(characterId, conversation.conversationId, sender, trimmedContent, { ...options, replyToMessageId: safeReplyId }, optimisticId);
+    }
+
     if (optimisticId) {
       appendMessageToState(characterId, {
         id: optimisticId,
         conversationId: conversation.conversationId,
         userId: user.id,
         sender,
-        content: content.trim(),
+        content: trimmedContent,
         createdAt: new Date().toISOString(),
         editedAt: null,
         isBookmarked: false,
         bookmarkLabel: "",
         chapterNumber: null,
-        replyToMessageId: options.replyToMessageId || null,
+        replyToMessageId: safeReplyId,
         replyPreview: options.replyPreview ? String(options.replyPreview).slice(0, 280) : "",
         replySender: options.replySender || "",
         isStreaming: false,
@@ -524,8 +678,8 @@ export function ChatsProvider({
           conversation_id: conversation.conversationId,
           user_id: user.id,
           sender,
-          content: content.trim(),
-          reply_to_message_id: options.replyToMessageId || null,
+          content: trimmedContent,
+          reply_to_message_id: safeReplyId,
           reply_preview: options.replyPreview ? String(options.replyPreview).slice(0, 280) : null,
           reply_sender: options.replySender || null,
         })
@@ -551,7 +705,6 @@ export function ChatsProvider({
       }
 
       if (sender === "user") {
-        // Keep revision safety authoritative before AI generation begins.
         await bumpStoryRevision(characterId);
       } else {
         await supabase
@@ -563,6 +716,16 @@ export function ChatsProvider({
 
       return newMessage;
     } catch (error) {
+      if (optimisticId && sender === "user" && (navigator.onLine === false || isRetryableNetworkError(error))) {
+        setChats((currentChats) => ({
+          ...currentChats,
+          [characterId]: {
+            ...currentChats[characterId],
+            messages: (currentChats[characterId]?.messages || []).map((item) => item.id === optimisticId ? { ...item, isPending: true, isOfflinePending: true } : item),
+          },
+        }));
+        return queueOptimisticMessage(characterId, conversation.conversationId, sender, trimmedContent, { ...options, replyToMessageId: safeReplyId }, optimisticId);
+      }
       if (optimisticId) removeMessageFromState(characterId, optimisticId);
       throw error;
     }
@@ -635,6 +798,8 @@ export function ChatsProvider({
     const streamMessageId = `stream-${crypto.randomUUID()}`;
     const requestStartedAt = Date.now();
     let diagnosticModel = "";
+    let diagnosticPrimaryModel = "";
+    let diagnosticFirstTokenMs = 0;
     let diagnosticRepair = false;
     recordAiSession({ started: 1, lastError: "" });
     let streamStarted = false;
@@ -795,7 +960,7 @@ export function ChatsProvider({
             regenerationInstruction: options.instruction?.trim() || "",
             regenerationFeedback: Array.isArray(options.feedbackCodes) ? options.feedbackCodes : [],
             directorInstruction: options.directorInstruction?.trim() || "",
-            storyPreferences: buildStoryPreferencesPayload(settings),
+            storyPreferences: buildStoryPreferencesPayload(settings, characterId),
             generationId,
           }),
           signal: requestController.signal,
@@ -856,12 +1021,14 @@ export function ChatsProvider({
 
             if (completedMessage) {
               finalMessage = completedMessage;
+              const backgroundDuration = Date.now() - requestStartedAt;
               recordAiSession({
                 success: 1,
                 lastSuccessAt: new Date().toISOString(),
-                lastDurationMs: Date.now() - requestStartedAt,
+                lastDurationMs: backgroundDuration,
                 lastError: "",
               });
+              recordGenerationMetric({ status: "success", model: diagnosticModel || "background", firstTokenMs: diagnosticFirstTokenMs, durationMs: backgroundDuration, fallbackUsed: false, repairUsed: diagnosticRepair });
               return {
                 message: finalMessage,
                 learnedMemoryCount: 0,
@@ -897,31 +1064,44 @@ export function ChatsProvider({
         }));
       }
 
-      try {
-        response = await fetch(functionUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionData.session.access_token}`,
-            ...(publishableKey ? { apikey: publishableKey } : {}),
-          },
-          body: JSON.stringify({
-            conversationId: conversation.conversationId,
-            regenerateMessageId: options.regenerateMessageId || null,
-            expectedUserMessageId,
-            regenerationInstruction: options.instruction?.trim() || "",
-            regenerationFeedback: Array.isArray(options.feedbackCodes) ? options.feedbackCodes : [],
-            directorInstruction: options.directorInstruction?.trim() || "",
-            storyPreferences: buildStoryPreferencesPayload(settings),
-            generationId,
-          }),
-          signal: requestController.signal,
-        });
-      } catch (error) {
-        if (requestWasCancelled() || error?.name === "AbortError") {
-          throw cancellationError();
+      const liveRequestInit = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+          ...(publishableKey ? { apikey: publishableKey } : {}),
+        },
+        body: JSON.stringify({
+          conversationId: conversation.conversationId,
+          regenerateMessageId: options.regenerateMessageId || null,
+          expectedUserMessageId,
+          regenerationInstruction: options.instruction?.trim() || "",
+          regenerationFeedback: Array.isArray(options.feedbackCodes) ? options.feedbackCodes : [],
+          directorInstruction: options.directorInstruction?.trim() || "",
+          storyPreferences: buildStoryPreferencesPayload(settings, characterId),
+          generationId,
+        }),
+        signal: requestController.signal,
+      };
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          response = await fetch(functionUrl, liveRequestInit);
+        } catch (error) {
+          if (requestWasCancelled() || error?.name === "AbortError") throw cancellationError();
+          if (attempt === 0 && navigator.onLine && isRetryableNetworkError(error)) {
+            await wait(420);
+            continue;
+          }
+          throw error;
         }
-        throw error;
+
+        if (attempt === 0 && isRetryableStatus(response.status)) {
+          try { await response.body?.cancel?.(); } catch {}
+          await wait(response.status === 429 ? 850 : 420);
+          continue;
+        }
+        break;
       }
 
       if (response.status === 499) {
@@ -959,6 +1139,7 @@ export function ChatsProvider({
 
           if (eventData.type === "start") {
             diagnosticModel = String(eventData.model || diagnosticModel || "");
+            diagnosticPrimaryModel = diagnosticPrimaryModel || diagnosticModel;
             diagnosticRepair = Boolean(eventData.repairUsed);
             if (diagnosticModel || diagnosticRepair) recordAiSession({ lastModel: diagnosticModel, repairs: diagnosticRepair ? 1 : 0 });
             setChats((currentChats) => ({
@@ -970,12 +1151,23 @@ export function ChatsProvider({
                   pinned: Number(eventData.pinnedMemoryCount || 0),
                   items: Array.isArray(eventData.memoryItems) ? eventData.memoryItems : [],
                 },
+                lastMemoryInfluenceAt: Date.now(),
                 loreUsage: {
                   count: Number(eventData.loreCount || 0),
                   items: Array.isArray(eventData.loreItems) ? eventData.loreItems : [],
                 },
               },
             }));
+            try {
+              const items = Array.isArray(eventData.memoryItems) ? eventData.memoryItems : [];
+              if (items.length) {
+                const key = `velvet_memory_influence_${characterId}`;
+                const current = JSON.parse(localStorage.getItem(key) || "{}");
+                const now = new Date().toISOString();
+                for (const item of items) if (item?.id) current[item.id] = { at: now, conversationId: conversation.conversationId };
+                localStorage.setItem(key, JSON.stringify(current));
+              }
+            } catch {}
             continue;
           }
 
@@ -1003,7 +1195,8 @@ export function ChatsProvider({
             completeContent += chunk;
 
             if (!streamStarted) {
-              recordAiSession({ firstTokenMs: Date.now() - requestStartedAt });
+              diagnosticFirstTokenMs = Date.now() - requestStartedAt;
+              recordAiSession({ firstTokenMs: diagnosticFirstTokenMs });
               streamStarted = true;
               pendingStreamContent = completeContent;
               lastStreamFlushAt = Date.now();
@@ -1159,7 +1352,16 @@ export function ChatsProvider({
         }
       }
 
-      recordAiSession({ success: 1, lastSuccessAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: Date.now() - requestStartedAt, lastError: "" });
+      const finalDurationMs = Date.now() - requestStartedAt;
+      recordAiSession({ success: 1, lastSuccessAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: finalDurationMs, lastError: "" });
+      recordGenerationMetric({
+        status: "success",
+        model: diagnosticModel,
+        firstTokenMs: diagnosticFirstTokenMs,
+        durationMs: finalDurationMs,
+        fallbackUsed: Boolean(diagnosticPrimaryModel && diagnosticModel && diagnosticPrimaryModel !== diagnosticModel),
+        repairUsed: diagnosticRepair,
+      });
       return {
         message: finalMessage,
         learnedMemoryCount,
@@ -1182,7 +1384,9 @@ export function ChatsProvider({
         throw cancellationError();
       }
 
-      recordAiSession({ failed: 1, lastErrorAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: Date.now() - requestStartedAt, lastError: String(error?.message || "Generation failed").slice(0, 220) });
+      const failedDurationMs = Date.now() - requestStartedAt;
+      recordAiSession({ failed: 1, lastErrorAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: failedDurationMs, lastError: String(error?.message || "Generation failed").slice(0, 220) });
+      recordGenerationMetric({ status: "error", model: diagnosticModel, firstTokenMs: diagnosticFirstTokenMs, durationMs: failedDurationMs, fallbackUsed: Boolean(diagnosticPrimaryModel && diagnosticModel && diagnosticPrimaryModel !== diagnosticModel), repairUsed: diagnosticRepair, error: error?.message || "Generation failed" });
       throw error;
     } finally {
       clearStreamFlushTimer();
@@ -2507,6 +2711,8 @@ export function ChatsProvider({
         isCharacterStreaming,
         getGenerationState,
         isCharacterGenerating,
+        offlineQueueSize,
+        flushOfflineQueue,
         startConversation,
         createNewConversation,
         createGroupConversation,
@@ -2570,6 +2776,19 @@ function recordAiSession(patch = {}) {
     sessionStorage.setItem(key, JSON.stringify(next));
   } catch {
     // Diagnostics must never interfere with chat generation.
+  }
+}
+
+function offlineQueueKey(userId) {
+  return `velvet_offline_queue_v312_${userId || "anonymous"}`;
+}
+
+function readOfflineQueue(userId) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(offlineQueueKey(userId)) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item) => item?.localId && item?.conversationId && item?.characterId && String(item?.content || "").trim()) : [];
+  } catch {
+    return [];
   }
 }
 
@@ -2659,7 +2878,7 @@ function getBrowserPublishableKey() {
   );
 }
 
-function buildStoryPreferencesPayload(settings = {}) {
+function buildStoryPreferencesPayload(settings = {}, characterId = "") {
   const learnedPositiveFeedback = Object.entries(settings.storyPositiveFeedbackCounts || {})
     .filter(([, count]) => Number(count) >= 2)
     .map(([code]) => code)
@@ -2673,7 +2892,7 @@ function buildStoryPreferencesPayload(settings = {}) {
     dialogue: settings.storyDialogue || "dialogue_forward",
     emotionalInterior: settings.storyEmotion || "interior_visible",
     romancePacing: settings.storyPacing || "medium_fast",
-    customInstructions: String(settings.storyInstructions || "").trim().slice(0, 900),
+    customInstructions: [String(settings.storyInstructions || "").trim(), characterStoryStyleInstruction(characterId)].filter(Boolean).join("\n").slice(0, 900),
     learnedPositiveFeedback,
     learnedNegativeFeedback,
   };

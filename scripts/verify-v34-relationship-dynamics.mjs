@@ -8,7 +8,7 @@ const checks=[
  ["Plans persist and cannot auto-accept",migration.includes("story_plans")&&contractSource.includes("A proposal is not accepted until the user accepts it")&&edge.includes("plan persistence failed")],
  ["Conflict and reconciliation retain residue",migration.includes("story_conflicts")&&contractSource.includes("Do not reset to normal")&&edge.includes('status:"repairing"')],
  ["Milestones persist and prevent repeated firsts",migration.includes("story_milestones")&&contractSource.includes("never replay them as firsts")&&edge.includes("milestone persistence failed")],
- ["Scene Choreographer blocks physical scenes",contract.relationshipEngines.choreography.activity==="dancing"&&contractSource.includes("Block the scene physically")],
+ ["Scene Choreographer tracks physical reality without forcing prose",contract.relationshipEngines.choreography.activity==="dancing"&&contractSource.includes("Track physical reality silently")&&contractSource.includes("Dialogue may happen with little or no movement")],
  ["World Studio exposes all four durable dynamics",["chemistry","plan","conflict","milestone"].every((name)=>studio.includes(`["${name}"`))],
  ["Chemistry tracks trust and tension",["chemistry_score","trust_score","tension_score"].every((name)=>migration.includes(name)&&studio.includes(name))],
  ["Conflict has staged repair",migration.includes("'brewing','active','cooling','repairing','resolved'")],

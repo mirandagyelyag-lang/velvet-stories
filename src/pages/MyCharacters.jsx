@@ -16,11 +16,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useCharacters } from "../context/CharactersContext";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
+import { supabase } from "../services/supabase";
 import "../styles/my-characters.css";
 
 const MAIN_FILTERS = ["All", "Favorites"];
 
-function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onRemixCharacter }) {
+function MyCharacters({ onCreateCharacter, onOpenCharacter, onOpenStory, onEditCharacter, onRemixCharacter }) {
   const {
     characters,
     deleteCharacter,
@@ -42,6 +43,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
   const [trashed, setTrashed] = useState([]);
   const [menuId, setMenuId] = useState(null);
   const [showMore, setShowMore] = useState(false);
+  const [storyHighlights, setStoryHighlights] = useState([]);
 
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route", "velvet-discover-route");
@@ -55,6 +57,29 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
   useEffect(() => {
     if (view === "trash") listTrashedCharacters().then(setTrashed).catch(console.error);
   }, [view, listTrashedCharacters]);
+
+  useEffect(() => {
+    if (view !== "active" || !characters.length) return;
+    let active = true;
+    supabase.from("conversations").select("id, character_id, title, updated_at, story_recap, unresolved_threads").eq("group_mode", false).is("trashed_at", null).is("archived_at", null).order("updated_at", { ascending: false }).limit(40)
+      .then(({ data, error }) => {
+        if (!active || error) return;
+        const latestByCharacter = new Map();
+        for (const row of data || []) if (!latestByCharacter.has(row.character_id)) latestByCharacter.set(row.character_id, row);
+        const rows = [...latestByCharacter.values()].map((row)=>({ ...row, character: characters.find((item)=>item.id===row.character_id) })).filter((row)=>row.character);
+        const now=Date.now();
+        const picks=[];
+        if(rows[0]) picks.push({ ...rows[0], reason:`${rows[0].character.name} is still where you left them`, kind:"recent" });
+        const unresolved=rows.find((row)=>Array.isArray(row.unresolved_threads)&&row.unresolved_threads.length>0&&row.id!==rows[0]?.id);
+        if(unresolved) picks.push({ ...unresolved, reason:`Something is still unresolved with ${unresolved.character.name}`, kind:"thread" });
+        const stale=rows.find((row)=>now-new Date(row.updated_at).getTime()>3*24*60*60*1000&&!picks.some((pick)=>pick.id===row.id));
+        if(stale) picks.push({ ...stale, reason:`${stale.character.name} hasn't seen you in a while`, kind:"return" });
+        const favorite=rows.find((row)=>row.character.isFavorite&&!picks.some((pick)=>pick.id===row.id));
+        if(favorite&&picks.length<3) picks.push({ ...favorite, reason:"One of your favorites", kind:"favorite" });
+        setStoryHighlights(picks.slice(0,3));
+      });
+    return ()=>{ active=false; };
+  }, [view, characters]);
 
   const sourceCharacters = view === "trash" ? trashed : characters;
   const dynamicTags = useMemo(
@@ -152,6 +177,14 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onEditCharacter, onR
   return (
     <section className={`chats-page chats-page--reference discover-burgundy characters-library ${view === "trash" ? "discover-burgundy--trash" : ""}`}>
       <CharacterLibraryHero view={view} count={sourceCharacters.length} onCreateCharacter={onCreateCharacter} onBack={openCharacters} />
+
+      {view === "active" && storyHighlights.length > 0 && !search && activeChip === "All" && <section className="v311-discover-now">
+        <header><div><small>FOR YOU</small><h2>Pick the story back up</h2></div><Sparkles size={18}/></header>
+        <div className="v311-discover-now__rail">{storyHighlights.map((item)=><button type="button" key={item.id} onClick={()=>onOpenStory ? onOpenStory(item.character,item.id) : onOpenCharacter(item.character)}>
+          <span className="v311-discover-now__art">{item.character.imageUrl||item.character.coverUrl?<img src={item.character.imageUrl||item.character.coverUrl} alt=""/>:<i style={{"--character-color":item.character.color}}>{item.character.initials||item.character.name?.slice(0,2)}</i>}</span>
+          <span><small>{item.reason}</small><strong>{item.character.name}</strong><p>{item.story_recap || item.title || "Your story is still here."}</p><em>{relativeStoryTime(item.updated_at)}</em></span><ArrowRight size={16}/>
+        </button>)}</div>
+      </section>}
 
       <div className="discover-burgundy__controls characters-library__controls">
         <label className="discover-burgundy__search">
@@ -307,6 +340,13 @@ function CharacterImage({ character }) {
 
 function EmptyState({ title, text }) {
   return <div className="discover-burgundy__empty"><Sparkles size={24} /><h2>{title}</h2><p>{text}</p></div>;
+}
+
+function relativeStoryTime(value){
+  const diff=Math.max(0,Date.now()-new Date(value||0).getTime());
+  if(diff<60*60*1000) return `${Math.max(1,Math.round(diff/60000))} min ago`;
+  if(diff<24*60*60*1000) return `${Math.round(diff/3600000)} h ago`;
+  const days=Math.round(diff/86400000); return days===1?"Yesterday":`${days} days ago`;
 }
 
 function normalizeLabel(value) {

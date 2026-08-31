@@ -1,25 +1,32 @@
 import {
   ArrowLeft,
   BookOpen,
+  Brain,
   ChevronRight,
   Heart,
+  Images,
   MessageCircle,
   Pencil,
   Plus,
   Quote,
   Sparkles,
+  Trash2,
+  Upload,
   Volume2,
   WandSparkles,
+  SlidersHorizontal,
   LoaderCircle,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "../services/supabase";
 import { useCharacters } from "../context/CharactersContext";
+import { useAuth } from "../context/AuthContext";
 import { usePersonas } from "../context/PersonasContext";
 import { useLorebooks } from "../context/LorebooksContext";
 import { useTheme } from "../context/ThemeContext";
+import StoryVoiceSheet from "../components/StoryVoiceSheet";
 import "../styles/character-detail.css";
 
 export default function CharacterDetail({
@@ -30,6 +37,7 @@ export default function CharacterDetail({
   onOpenStory,
   onEdit,
   onInstantStory,
+  onOpenMemories,
 }) {
   const [stories, setStories] = useState([]);
   const { generateInstantStory } = useCharacters();
@@ -42,6 +50,13 @@ export default function CharacterDetail({
   const [storyOpening, setStoryOpening] = useState("");
   const [storyPersonaId, setStoryPersonaId] = useState("");
   const [storyLorebookId, setStoryLorebookId] = useState("");
+  const [memoryCount, setMemoryCount] = useState(0);
+  const [styleOpen, setStyleOpen] = useState(false);
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [galleryBusy, setGalleryBusy] = useState(false);
+  const [galleryError, setGalleryError] = useState("");
+  const mediaInputRef = useRef(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route");
@@ -62,18 +77,13 @@ export default function CharacterDetail({
 
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("conversations")
-        .select("id, title, updated_at, branch_parent_id")
-        .eq("character_id", character.id)
-        .eq("group_mode", false)
-        .is("trashed_at", null)
-        .is("archived_at", null)
-        .order("updated_at", { ascending: false })
-        .limit(8);
-
+      const [storiesResult, memoriesResult] = await Promise.all([
+        supabase.from("conversations").select("id, title, updated_at, branch_parent_id, cover_url, story_recap, relationship_state").eq("character_id", character.id).eq("group_mode", false).is("trashed_at", null).is("archived_at", null).order("updated_at", { ascending: false }).limit(8),
+        supabase.from("memories").select("id", { count: "exact", head: true }).eq("character_id", character.id).is("superseded_at", null),
+      ]);
       if (alive) {
-        setStories(data || []);
+        setStories(storiesResult.data || []);
+        setMemoryCount(Number(memoriesResult.count || 0));
         setLoading(false);
       }
     })();
@@ -83,6 +93,59 @@ export default function CharacterDetail({
     };
   }, [character.id]);
 
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!user?.id) return;
+      try {
+        const folder = `${user.id}/gallery/${character.id}`;
+        const { data, error } = await supabase.storage.from("character-media").list(folder, { limit: 24, sortBy: { column: "created_at", order: "desc" } });
+        if (error) throw error;
+        const items = (data || []).filter((item)=>item?.name && !item.name.startsWith(".")).map((item)=>{
+          const path = `${folder}/${item.name}`;
+          const { data: publicData } = supabase.storage.from("character-media").getPublicUrl(path);
+          return { path, name: item.name, url: publicData?.publicUrl || "" };
+        }).filter((item)=>item.url);
+        if (alive) setGalleryItems(items);
+      } catch (error) {
+        if (alive) setGalleryError(error?.message || "Could not load character photos.");
+      }
+    })();
+    return () => { alive = false; };
+  }, [character.id, user?.id]);
+
+  async function uploadGalleryMedia(event) {
+    const files = Array.from(event.target.files || []).filter((file)=>file.type.startsWith("image/")).slice(0, Math.max(0, 12-galleryItems.length));
+    event.target.value = "";
+    if (!files.length || !user?.id) return;
+    try {
+      setGalleryBusy(true); setGalleryError("");
+      const folder = `${user.id}/gallery/${character.id}`;
+      const uploaded = [];
+      for (const file of files) {
+        const extension = (file.name.split(".").pop() || "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
+        const path = `${folder}/${crypto.randomUUID()}.${extension}`;
+        const { error } = await supabase.storage.from("character-media").upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+        if (error) throw error;
+        const { data } = supabase.storage.from("character-media").getPublicUrl(path);
+        if (data?.publicUrl) uploaded.push({ path, name: path.split("/").pop(), url: data.publicUrl });
+      }
+      setGalleryItems((current)=>[...uploaded, ...current].slice(0,24));
+    } catch (error) {
+      setGalleryError(error?.message || "Could not add those photos.");
+    } finally { setGalleryBusy(false); }
+  }
+
+  async function deleteGalleryMedia(item) {
+    if (!item?.path || galleryBusy) return;
+    try {
+      setGalleryBusy(true); setGalleryError("");
+      const { error } = await supabase.storage.from("character-media").remove([item.path]);
+      if (error) throw error;
+      setGalleryItems((current)=>current.filter((row)=>row.path!==item.path));
+    } catch (error) { setGalleryError(error?.message || "Could not remove that photo."); }
+    finally { setGalleryBusy(false); }
+  }
 
   function openStorySetup() {
     setStoryOpening("");
@@ -102,6 +165,8 @@ export default function CharacterDetail({
 
   const tags = character.tags || [];
   const latestStory = stories[0] || null;
+  const latestRelationship = latestStory?.relationship_state || {};
+  const mediaItems = [...new Set([character.coverUrl, character.imageUrl, ...stories.map((story)=>story.cover_url)].filter(Boolean))].slice(0, 6);
   const depth = useMemo(
     () => [
       { label: "Values", value: character.values },
@@ -175,6 +240,15 @@ export default function CharacterDetail({
           </div>
         </div>
       </section>
+
+      <nav className="v311-profile-deck" aria-label={`${character.name} profile sections`}>
+        <button type="button" onClick={()=>document.querySelector(".character-profile__relationship")?.scrollIntoView({behavior:"smooth",block:"start"})}><Heart size={17}/><span><strong>Relationship</strong><small>{humanRelationshipPhase(latestRelationship.relationship_phase)}</small></span><ChevronRight size={15}/></button>
+        <button type="button" onClick={onOpenMemories}><Brain size={17}/><span><strong>Memories</strong><small>{memoryCount} saved</small></span><ChevronRight size={15}/></button>
+        <button type="button" onClick={()=>document.querySelector(".character-profile__stories")?.scrollIntoView({behavior:"smooth",block:"start"})}><MessageCircle size={17}/><span><strong>Stories</strong><small>{stories.length} recent</small></span><ChevronRight size={15}/></button>
+        <button type="button" onClick={()=>setStyleOpen(true)}><SlidersHorizontal size={17}/><span><strong>Story voice</strong><small>How they feel in chat</small></span><ChevronRight size={15}/></button>
+      </nav>
+
+      <section className="v311-profile-media v312-profile-media"><header><div><small>MEDIA</small><h2>Photos & covers</h2><p>A private visual scrapbook for this character.</p></div><button type="button" onClick={()=>mediaInputRef.current?.click()} disabled={galleryBusy}><Upload size={17}/>{galleryBusy?"Adding…":"Add photos"}</button></header><input ref={mediaInputRef} type="file" accept="image/*" multiple hidden onChange={uploadGalleryMedia}/>{galleryError&&<div className="v312-profile-media__error">{galleryError}</div>}<div className="v312-profile-media__grid">{mediaItems.map((src,index)=><figure className="is-core" key={`${src}-${index}`}><img src={src} alt="" loading="lazy" decoding="async"/><figcaption>{index===0?"Profile / cover":"Story cover"}</figcaption></figure>)}{galleryItems.map((item)=><figure key={item.path}><img src={item.url} alt="" loading="lazy" decoding="async"/><button type="button" onClick={()=>deleteGalleryMedia(item)} aria-label="Remove photo" disabled={galleryBusy}><Trash2 size={14}/></button></figure>)}{!mediaItems.length&&!galleryItems.length&&<button type="button" className="v312-profile-media__empty" onClick={()=>mediaInputRef.current?.click()}><Images size={22}/><span>Add the first photo</span></button>}</div></section>
 
       <div className="character-profile__layout">
         <main className="character-profile__main">
@@ -333,6 +407,8 @@ export default function CharacterDetail({
         </aside>
       </div>
 
+      <StoryVoiceSheet open={styleOpen} onClose={()=>setStyleOpen(false)} character={character} />
+
       {storySetupOpen && typeof document !== "undefined" && createPortal((
         <div className="story-setup-backdrop story-setup-backdrop--portal" onMouseDown={(event)=>event.target === event.currentTarget && setStorySetupOpen(false)}>
           <section className="story-setup-sheet" role="dialog" aria-modal="true" aria-label={`Start a new story with ${character.name}`}>
@@ -356,6 +432,18 @@ export default function CharacterDetail({
       ), document.body)}
     </section>
   );
+}
+
+function humanRelationshipPhase(value="") {
+  const key=String(value||"").toLowerCase().replace(/[_-]+/g," ");
+  if(!key||key==="baseline") return "Still unfolding";
+  if(/stranger|new/.test(key)) return "New";
+  if(/familiar|acquaint/.test(key)) return "Familiar";
+  if(/friend|close/.test(key)) return "Close";
+  if(/complic|tension|conflict/.test(key)) return "Complicated";
+  if(/romance|dating|lover|couple/.test(key)) return "Growing closer";
+  if(/repair|rebuild/.test(key)) return "Rebuilding";
+  return key.replace(/\b\w/g,(m)=>m.toUpperCase());
 }
 
 function formatDate(value) {

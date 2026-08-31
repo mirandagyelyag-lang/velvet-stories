@@ -26,6 +26,7 @@ import {
   MapPin,
   MoreHorizontal,
   Pencil,
+  Palette,
   RefreshCw,
   Reply,
   Rewind,
@@ -42,6 +43,7 @@ import {
   Trash2,
   UserRound,
   UsersRound,
+  WifiOff,
   Volume2,
   X,
 } from "lucide-react";
@@ -55,6 +57,7 @@ import StoryAmbience from "../components/StoryAmbience";
 import AudioStatusPill from "../components/AudioStatusPill";
 import RelationshipDrawer from "../components/RelationshipDrawer";
 import StoryWorldDrawer from "../components/StoryWorldDrawer";
+import MessageQualitySheet from "../components/MessageQualitySheet";
 import { useChats } from "../context/ChatsContext";
 import { useCharacters } from "../context/CharactersContext";
 import { usePersonas } from "../context/PersonasContext";
@@ -68,6 +71,7 @@ import { readAudioPreference, stopAllAudio } from "../utils/audioBus";
 import { clearBugReportPrivateContext, setBugReportPrivateContext } from "../utils/bugReporter";
 import { buildLivingSceneHeader, continuityGuardLabel, continuityGuardTitle } from "../utils/livingScenes";
 import { suggestAmbienceForScene } from "../utils/ambienceIntelligence";
+import { STORY_THEMES, readStoryTheme, saveStoryTheme } from "../utils/velvetResilience";
 import "../styles/chat.css";
 import "../styles/world-studio.css";
 import "../styles/velvet-v33-story-dynamics.css";
@@ -141,6 +145,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     restoreStorySnapshot,
     deleteStorySnapshot,
     dismissCatchUp,
+    offlineQueueSize,
+    flushOfflineQueue,
   } = useChats();
 
   const [message, setMessage] = useState("");
@@ -163,6 +169,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [feedbackOnly, setFeedbackOnly] = useState(false);
   const [messageFeedback, setMessageFeedback] = useState({});
   const [feedbackNotice, setFeedbackNotice] = useState(null);
+  const [qualityMessage, setQualityMessage] = useState(null);
   const [replacementUndo, setReplacementUndo] = useState(null);
   const [rewindUndo, setRewindUndo] = useState(null);
   const [actionNotice, setActionNotice] = useState(null);
@@ -187,6 +194,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [memoryBookOpen, setMemoryBookOpen] = useState(false);
   const [readingMode, setReadingMode] = useState(() => localStorage.getItem("velvet_reading_mode") === "1");
   const [relationshipOpen, setRelationshipOpen] = useState(false);
+  const [relationshipCharacter, setRelationshipCharacter] = useState(character);
+  const [groupPeekCharacter, setGroupPeekCharacter] = useState(null);
+  const [storyTheme, setStoryTheme] = useState("velvet");
+  const [draftSavedAt, setDraftSavedAt] = useState(0);
   const [worldStudioOpen, setWorldStudioOpen] = useState(false);
   const [silentCue, setSilentCue] = useState("");
   const [timelineOpen, setTimelineOpen] = useState(false);
@@ -222,7 +233,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
   const chatOverlayOpen = Boolean(
     menuOpen || directorNoteOpen || selectedMessage || controlsOpen || characterProfileOpen ||
-    memoryBookOpen || relationshipOpen || worldStudioOpen || timelineOpen || storyHubOpen || catchUpOpen
+    memoryBookOpen || relationshipOpen || groupPeekCharacter || worldStudioOpen || timelineOpen || storyHubOpen || catchUpOpen || qualityMessage
   );
 
   function armChatExitGuard(duration = 700) {
@@ -237,6 +248,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     setCharacterProfileOpen(false);
     setMemoryBookOpen(false);
     setRelationshipOpen(false);
+    setGroupPeekCharacter(null);
     setWorldStudioOpen(false);
     setTimelineOpen(false);
     setStoryHubOpen(false);
@@ -490,6 +502,33 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
   useEffect(() => {
     const id = conversation?.conversationId;
+    setStoryTheme(readStoryTheme(id));
+  }, [conversation?.conversationId]);
+
+  useEffect(() => {
+    const handleQueueEvent = (event) => {
+      if (event?.detail?.characterId && event.detail.characterId !== character.id) return;
+      if (event?.detail?.state === "queued") showActionNotice("Saved offline · sends automatically when you reconnect", "neutral", 3200);
+      if (event?.detail?.state === "sent") showActionNotice("Queued message sent ✓", "success", 1800);
+    };
+    window.addEventListener("velvet:offline-queue", handleQueueEvent);
+    return () => window.removeEventListener("velvet:offline-queue", handleQueueEvent);
+  }, [character.id]);
+
+  function applyStoryTheme(themeId) {
+    setStoryTheme(themeId);
+    saveStoryTheme(conversation?.conversationId, themeId);
+    if (settings.haptics) navigator.vibrate?.(4);
+  }
+
+  function openRelationshipFor(target = character) {
+    setRelationshipCharacter(target || character);
+    setRelationshipOpen(true);
+    refreshStoryMetadata(character.id).catch(() => {});
+  }
+
+  useEffect(() => {
+    const id = conversation?.conversationId;
     if (!id) return;
     const savedDraft = localStorage.getItem(`velvet_draft_${id}`) || "";
     setMessage(savedDraft);
@@ -514,8 +553,13 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   useEffect(() => {
     const id = conversation?.conversationId;
     if (!id) return;
-    if (message) localStorage.setItem(`velvet_draft_${id}`, message);
-    else localStorage.removeItem(`velvet_draft_${id}`);
+    if (message) {
+      localStorage.setItem(`velvet_draft_${id}`, message);
+      setDraftSavedAt(Date.now());
+    } else {
+      localStorage.removeItem(`velvet_draft_${id}`);
+      setDraftSavedAt(0);
+    }
   }, [message, conversation?.conversationId]);
 
   useEffect(() => {
@@ -873,12 +917,23 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       window.requestAnimationFrame(() => resizeComposer());
       if (settings.haptics) navigator.vibrate?.(6);
 
-      const savedUserMessage = await addMessage(character.id, "user", messageToSend, replyForThisMessage ? {
-        replyToMessageId: replyForThisMessage.id,
-        replyPreview: replyForThisMessage.content,
-        replySender: replyForThisMessage.sender,
-      } : {});
+      const savedUserMessage = await addMessage(character.id, "user", messageToSend, {
+        ...(replyForThisMessage ? {
+          replyToMessageId: replyForThisMessage.id,
+          replyPreview: replyForThisMessage.content,
+          replySender: replyForThisMessage.sender,
+        } : {}),
+        directorInstruction: noteForThisGeneration,
+      });
       userMessageSaved = true;
+
+      if (savedUserMessage?.isOfflinePending) {
+        setSending(false);
+        setIsTyping(false);
+        setSilentCue("");
+        showActionNotice("Saved offline · Velvet will send it automatically", "neutral", 3200);
+        return;
+      }
 
       // Stop may have happened while the user message was being saved.
       if (generationRunRef.current !== runId || stoppedRef.current) return;
@@ -1324,6 +1379,19 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       return next;
     });
     setFeedbackNotice(null);
+  }
+
+  function openQualityMonitor(chatMessage) {
+    if (!chatMessage || chatMessage.sender !== "character" || chatMessage.isStreaming) return;
+    if (settings.haptics) navigator.vibrate?.(16);
+    setQualityMessage(chatMessage);
+  }
+
+  function rateQuality(option) {
+    if (!qualityMessage || !option) return;
+    rememberFeedback(option.kind, option.codes, qualityMessage.id);
+    if (settings.haptics) navigator.vibrate?.(option.kind === "positive" ? [10, 22, 10] : 9);
+    setQualityMessage(null);
   }
 
   function savePositiveFeedback() {
@@ -1785,7 +1853,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
   return (
     <section
-      className={`chat${readingMode ? " chat--reading" : ""}${compactMobileChat ? " chat--compact-mobile" : ""}${conversation?.ambientMode && conversation.ambientMode !== "none" ? ` chat--ambient-${conversation.ambientMode}` : ""}`}
+      className={`chat chat--story-${storyTheme}${readingMode ? " chat--reading" : ""}${compactMobileChat ? " chat--compact-mobile" : ""}${conversation?.ambientMode && conversation.ambientMode !== "none" ? ` chat--ambient-${conversation.ambientMode}` : ""}`}
       data-reading-width={settings.readingWidth || "comfortable"}
       data-reading-font={settings.readingFont || "clean"}
       style={{
@@ -1838,7 +1906,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
               </label>
               <div className="chat__menu-quick">
                 <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Current story</small></span></button>
-                <button type="button" onClick={() => { setMenuOpen(false); setRelationshipOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
+                <button type="button" onClick={() => { setMenuOpen(false); openRelationshipFor(character); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Activity size={17}/><span>AI Status<small>Velvet Doctor</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Bug size={17}/><span>Report a problem<small>Private by default</small></span></button>
               </div>
@@ -1869,6 +1937,38 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           </div>
         </div>
       )}
+
+      {conversationReady && conversation?.groupMode && (
+        <div className="v311-group-presence" aria-label="Characters in this group story">
+          {groupCast.map((item) => {
+            const state = conversation.castState?.[item.name] || conversation.castState?.[item.id] || {};
+            const rawStatus = String(state.current_status || "").toLowerCase();
+            const presentNames = Array.isArray(conversation.sceneState?.present) ? conversation.sceneState.present : [];
+            const present = !rawStatus || rawStatus === "present" || presentNames.some((name)=>String(name).toLowerCase()===String(item.name).toLowerCase());
+            return <button type="button" key={item.id} className={present ? "is-present" : "is-away"} onClick={()=>setGroupPeekCharacter({ ...item, __present: present })} title={present ? `${item.name} is in this scene` : `${item.name} is currently off scene`}>
+              <span>{item.imageUrl ? <img src={item.imageUrl} alt=""/> : item.initials || item.name?.slice(0,1)}</span>
+              <small>{item.name}</small><i>{present ? "here" : "away"}</i>
+            </button>;
+          })}
+        </div>
+      )}
+
+      {groupPeekCharacter && typeof document !== "undefined" && createPortal((
+        <div className="v312-cast-peek-backdrop" onMouseDown={(event)=>event.target===event.currentTarget&&setGroupPeekCharacter(null)}>
+          <section className="v312-cast-peek" role="dialog" aria-modal="true" aria-label={`${groupPeekCharacter.name} in this group story`}>
+            <button className="v312-cast-peek__close" type="button" onClick={()=>setGroupPeekCharacter(null)} aria-label="Close"><X size={18}/></button>
+            <div className="v312-cast-peek__avatar">{groupPeekCharacter.imageUrl ? <img src={groupPeekCharacter.imageUrl} alt=""/> : <span>{groupPeekCharacter.initials || groupPeekCharacter.name?.slice(0,1)}</span>}</div>
+            <small>{groupPeekCharacter.__present ? "IN THIS SCENE" : "CURRENTLY OFF SCENE"}</small>
+            <h2>{groupPeekCharacter.name}</h2>
+            <p>{groupPeekCharacter.role || groupPeekCharacter.description || "Part of this group story."}</p>
+            <div className="v312-cast-peek__actions">
+              <button type="button" onClick={()=>{ const target=groupPeekCharacter; setGroupPeekCharacter(null); openRelationshipFor(target); }}><HeartHandshake size={16}/>Relationship</button>
+              <button type="button" onClick={()=>{ setGroupPeekCharacter(null); onOpenMemories?.(); }}><Brain size={16}/>Memories</button>
+              <button type="button" onClick={()=>{ const target=groupPeekCharacter; setGroupPeekCharacter(null); onOpenCharacter?.(target); }}><UserRound size={16}/>Profile</button>
+            </div>
+          </section>
+        </div>
+      ), document.body)}
 
       {!chatOverlayOpen && typeof document !== "undefined" && createPortal((
         <button type="button" className="chat__mobile-exit" onClick={handleChatBack} aria-label="Leave chat"><ArrowLeft size={20}/></button>
@@ -1940,6 +2040,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                   character={character}
                   onOpenActions={openActions}
                   onOpenFeedback={openMessageFeedback}
+                  onOpenQuality={openQualityMonitor}
                   onVersionNavigate={navigateResponseVersion}
                   versionState={responseVersions[chatMessage.id]}
                   versionNavigationEnabled={index === visibleMessages.length - 1 && chatMessage.sender === "character"}
@@ -2022,6 +2123,13 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         {memoryCaptureNotice > 0 && (
           <div className="chat__memory-capture-notice" role="status">
             <Brain size={13}/><span>{memoryCaptureNotice} important {memoryCaptureNotice === 1 ? "memory" : "memories"} captured</span>
+          </div>
+        )}
+
+        {(message.trim() || offlineQueueSize > 0) && (
+          <div className="v312-composer-state" aria-live="polite">
+            {offlineQueueSize > 0 ? <button type="button" onClick={()=>flushOfflineQueue?.()}><WifiOff size={11}/>{offlineQueueSize} queued</button> : null}
+            {message.trim() ? <span>Draft saved{draftSavedAt ? "" : ""}</span> : null}
           </div>
         )}
 
@@ -2140,10 +2248,12 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         </div>
       ), document.body)}
 
+      <MessageQualitySheet open={Boolean(qualityMessage)} message={qualityMessage} character={character} onClose={()=>setQualityMessage(null)} onRate={rateQuality} />
+
       <RelationshipDrawer
         open={relationshipOpen}
         onClose={() => setRelationshipOpen(false)}
-        character={character}
+        character={relationshipCharacter || character}
         characters={characters}
         persona={personas.find((item) => item.id === conversation?.personaId) || null}
         conversation={conversation}
@@ -2215,8 +2325,15 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                     {sceneImages.length > 1 && <label className="chat-controls__background-toggle"><input type="checkbox" checked={backgroundSlideshow} onChange={(event) => setBackgroundSlideshow(event.target.checked)} /><span>Slow slideshow</span></label>}
                   </div>}
                 </section>
+                <section className="chat-controls__simple-section v312-story-palette">
+                  <span><Palette size={17}/><strong>Story palette</strong></span>
+                  <p>A tiny atmosphere shift for this story only. Velvet's burgundy identity stays intact.</p>
+                  <div className="v312-story-palette__options">
+                    {STORY_THEMES.map((option)=><button type="button" key={option.id} className={storyTheme===option.id?"active":""} onClick={()=>applyStoryTheme(option.id)} style={{"--story-palette-accent":option.accent}}><i/><span>{option.label}<small>{option.description}</small></span></button>)}
+                  </div>
+                </section>
                 <section className="chat-controls__simple-section">
-                  <span><Eye size={17}/><strong>Theme</strong></span>
+                  <span><Eye size={17}/><strong>Reading light</strong></span>
                   <div className="chat-controls__theme-options">
                     <button type="button" className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}><Sun size={17}/>Light</button>
                     <button type="button" className={theme === "dark" ? "active" : ""} onClick={() => setTheme("dark")}><Moon size={17}/>Dark</button>
@@ -2510,6 +2627,7 @@ function MessageBubble({
   character,
   onOpenActions,
   onOpenFeedback,
+  onOpenQuality,
   onVersionNavigate,
   versionState,
   versionNavigationEnabled = false,
@@ -2532,6 +2650,7 @@ function MessageBubble({
     !message.isStreaming &&
     versionNavigationEnabled &&
     !swipeDisabled;
+  const canLongPress = message.sender === "character" && !message.isStreaming;
 
   function resetSwipeGesture() {
     swipeGestureRef.current = null;
@@ -2544,7 +2663,7 @@ function MessageBubble({
   }
 
   function handleTouchStart(event) {
-    if (!canSwipe || event.touches.length !== 1 || shouldIgnoreSwipeTarget(event.target)) {
+    if ((!canSwipe && !canLongPress) || event.touches.length !== 1 || shouldIgnoreSwipeTarget(event.target)) {
       resetSwipeGesture();
       return;
     }
@@ -2553,33 +2672,33 @@ function MessageBubble({
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
     const edgeGuard = 28;
 
-    // Leave the OS/browser back gesture alone at the extreme left/right edges.
-    if (touch.clientX <= edgeGuard || (viewportWidth && touch.clientX >= viewportWidth - edgeGuard)) {
+    if (canSwipe && touch.clientX > edgeGuard && (!viewportWidth || touch.clientX < viewportWidth - edgeGuard)) {
+      swipeGestureRef.current = { startX: touch.clientX, startY: touch.clientY, lastX: touch.clientX, lastY: touch.clientY, axis: null };
+    } else {
       resetSwipeGesture();
-      return;
     }
 
-    swipeGestureRef.current = {
-      startX: touch.clientX,
-      startY: touch.clientY,
-      lastX: touch.clientX,
-      lastY: touch.clientY,
-      axis: null,
-    };
-    longPressStartRef.current = { x: touch.clientX, y: touch.clientY };
-    window.clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = window.setTimeout(() => {
-      suppressTapRef.current = true;
-      onOpenActions(message);
-      window.setTimeout(() => { suppressTapRef.current = false; }, 300);
-    }, 520);
+    if (canLongPress) {
+      longPressStartRef.current = { x: touch.clientX, y: touch.clientY };
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = window.setTimeout(() => {
+        suppressTapRef.current = true;
+        onOpenQuality?.(message);
+        window.setTimeout(() => { suppressTapRef.current = false; }, 320);
+      }, 480);
+    }
   }
 
   function handleTouchMove(event) {
     const gesture = swipeGestureRef.current;
-    if (!gesture || event.touches.length !== 1) return;
+    if (event.touches.length !== 1) return;
 
     const touch = event.touches[0];
+    if (longPressStartRef.current && (Math.abs(touch.clientX-longPressStartRef.current.x) > 10 || Math.abs(touch.clientY-longPressStartRef.current.y) > 10)) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressStartRef.current = null;
+    }
+    if (!gesture) return;
     const dx = touch.clientX - gesture.startX;
     const dy = touch.clientY - gesture.startY;
     const absX = Math.abs(dx);
@@ -2587,10 +2706,6 @@ function MessageBubble({
 
     gesture.lastX = touch.clientX;
     gesture.lastY = touch.clientY;
-    if (longPressStartRef.current && (Math.abs(touch.clientX-longPressStartRef.current.x) > 10 || Math.abs(touch.clientY-longPressStartRef.current.y) > 10)) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressStartRef.current = null;
-    }
 
     if (!gesture.axis) {
       if (absX < 12 && absY < 12) return;
@@ -2657,10 +2772,10 @@ function MessageBubble({
   return (
     <article
       data-message-id={message.id}
-      className={`chat-message chat-message--${message.sender}${message.isStreaming ? " chat-message--streaming" : ""}${message.isBookmarked ? " chat-message--bookmarked" : ""}${canSwipe ? " chat-message--swipeable" : ""}`}
-      onTouchStart={canSwipe ? handleTouchStart : undefined}
-      onTouchMove={canSwipe ? handleTouchMove : undefined}
-      onTouchEnd={canSwipe ? handleTouchEnd : undefined}
+      className={`chat-message chat-message--${message.sender}${message.isStreaming ? " chat-message--streaming" : ""}${message.isBookmarked ? " chat-message--bookmarked" : ""}${message.isOfflinePending ? " chat-message--offline-pending" : message.isPending ? " chat-message--pending" : ""}${canSwipe ? " chat-message--swipeable" : ""}`}
+      onTouchStart={(canSwipe || canLongPress) ? handleTouchStart : undefined}
+      onTouchMove={(canSwipe || canLongPress) ? handleTouchMove : undefined}
+      onTouchEnd={(canSwipe || canLongPress) ? handleTouchEnd : undefined}
       onTouchCancel={() => { window.clearTimeout(longPressTimerRef.current); longPressStartRef.current = null; resetSwipeGesture(); }}
       onClick={handleMessageTap}
       onContextMenu={(event) => { event.preventDefault(); onOpenActions(message); }}
@@ -2717,6 +2832,8 @@ function MessageBubble({
               <MoreHorizontal size={16} />
             </button>
           )}
+          {message.isOfflinePending && <small className="v312-message-pending"><WifiOff size={11}/>Queued until you're online</small>}
+          {!message.isOfflinePending && message.isPending && <small className="v312-message-pending">Sending…</small>}
           {message.editedAt && <small className="chat-message__edited">edited</small>}
           {showTimestamp && message.createdAt && <time className="chat-message__time">{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>}
         </div>

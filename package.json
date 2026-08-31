@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.10.0",
+  "version": "3.12.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,11 +9,11 @@
     "lint": "oxlint",
     "clean": "node scripts/clean-workspace.mjs",
     "verify:story": "node scripts/verify-v3-story-engine.mjs",
-    "verify:v3": "node scripts/verify-v3-conversations.mjs",
-    "verify:v31": "node scripts/verify-v31-living-characters.mjs",
-    "verify:v32": "node scripts/verify-v32-world-studio.mjs",
+    "verify:v3": "node --experimental-strip-types scripts/verify-v3-conversations.mjs",
+    "verify:v31": "node --experimental-strip-types scripts/verify-v31-living-characters.mjs",
+    "verify:v32": "node --experimental-strip-types scripts/verify-v32-world-studio.mjs",
     "verify:v33": "node scripts/verify-v33-story-dynamics.mjs",
-    "verify:v34": "node scripts/verify-v34-relationship-dynamics.mjs",
+    "verify:v34": "node --experimental-strip-types scripts/verify-v34-relationship-dynamics.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
     "preview": "vite preview",
     "verify:mobile": "node scripts/verify-mobile-qa.mjs",
@@ -22,7 +22,9 @@
     "verify:living-scenes": "node scripts/verify-living-scenes.mjs",
     "verify:edge-boot": "node scripts/verify-edge-boot.mjs",
     "verify:install-lock": "node scripts/verify-install-lock.mjs",
-    "verify:v380": "node scripts/verify-v380-continuity.mjs"
+    "verify:v380": "node scripts/verify-v380-continuity.mjs",
+    "verify:v311": "node scripts/verify-v3110-experience.mjs",
+    "verify:v312": "node scripts/verify-v3120-never-lose-story.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

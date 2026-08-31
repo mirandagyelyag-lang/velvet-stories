@@ -5,6 +5,7 @@ import { VELVET_BUILD_TIME, VELVET_RELEASE, VELVET_VERSION } from "../config/ver
 import { formatBugReport } from "../utils/bugReporter";
 import { auditAmbienceTracks } from "../utils/ambienceQuality";
 import { isSafeModeEnabled, leaveVelvetSafeMode, startVelvetSafeMode } from "../utils/safeMode";
+import { readGenerationMetrics, summarizeGenerationMetrics } from "../utils/velvetResilience";
 import "../styles/diagnostics.css";
 
 export default function Diagnostics({ onBack }) {
@@ -18,6 +19,8 @@ export default function Diagnostics({ onBack }) {
   const [audioAudit, setAudioAudit] = useState(null);
   const [audioAuditRunning, setAudioAuditRunning] = useState(false);
   const sessionStats = useMemo(readSessionStats, [checks]);
+  const performanceRows = useMemo(() => readGenerationMetrics(), [checks]);
+  const performanceSummary = useMemo(() => summarizeGenerationMetrics(performanceRows), [performanceRows]);
   const device = useMemo(getDeviceSnapshot, []);
 
   async function runChecks(probeAi = false) {
@@ -28,6 +31,15 @@ export default function Diagnostics({ onBack }) {
       browser: { ok: navigator.onLine, detail: navigator.onLine ? "Online" : "Offline" },
       audio: { ok: Boolean(window.AudioContext || window.webkitAudioContext || window.speechSynthesis), detail: safeMode ? "Available, paused by Safe Mode" : "Audio engine available" },
     };
+    try {
+      const versionResponse = await fetch(`/velvet-version.json?doctor=${Date.now()}`, { cache: "no-store" });
+      if (!versionResponse.ok) throw new Error(`Host returned ${versionResponse.status}`);
+      const hostPayload = await versionResponse.json().catch(() => ({}));
+      const host = window.location.hostname;
+      next.hosting = { ok: true, detail: `${/vercel\.app$/i.test(host) ? "Vercel" : host || "Current host"} · serving v${hostPayload?.version || VELVET_VERSION}` };
+    } catch (error) {
+      next.hosting = { ok: false, detail: error?.message || "Could not reach the deployed app shell" };
+    }
     try {
       if ("serviceWorker" in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
@@ -111,10 +123,15 @@ export default function Diagnostics({ onBack }) {
 
     <section className="diagnostics-card"><header><Activity size={18}/><div><h2>Live checks</h2><p>The normal check does not spend a Gemini generation. “Test AI too” sends one tiny diagnostic request.</p></div></header>
       <div className="diagnostics-actions"><button onClick={()=>runChecks(false)} disabled={running}>{running?<LoaderCircle className="spin" size={16}/>:<RefreshCw size={16}/>}Run app checks</button><button onClick={()=>runChecks(true)} disabled={running}><Cpu size={16}/>Test AI too</button></div>
-      {checks && <div className="diagnostics-status-list"><Status icon={Check} label="App version" data={checks.version}/><Status icon={Wifi} label="Browser/network" data={checks.browser}/><Status icon={Database} label="Supabase session" data={checks.supabase}/><Status icon={Activity} label="Edge Function" data={checks.edge}/><Status icon={Cpu} label="Gemini" data={checks.ai}/><Status icon={Smartphone} label="PWA / cache" data={checks.pwa}/><Status icon={Volume2} label="Audio engine" data={checks.audio}/>{checks.models && <div className="diagnostics-models"><small>Configured models</small><code>{[checks.models.primary, checks.models.fallback, checks.models.emergency].filter(Boolean).join(" → ") || "Unknown"}</code></div>}</div>}
+      {checks && <div className="diagnostics-status-list"><Status icon={Check} label="App version" data={checks.version}/><Status icon={Wifi} label="Browser/network" data={checks.browser}/><Status icon={Activity} label="Hosting / Vercel" data={checks.hosting}/><Status icon={Database} label="Supabase session" data={checks.supabase}/><Status icon={Activity} label="Edge Function" data={checks.edge}/><Status icon={Cpu} label="Gemini" data={checks.ai}/><Status icon={Smartphone} label="PWA / cache" data={checks.pwa}/><Status icon={Volume2} label="Audio engine" data={checks.audio}/>{checks.models && <div className="diagnostics-models"><small>Configured models</small><code>{[checks.models.primary, checks.models.fallback, checks.models.emergency].filter(Boolean).join(" → ") || "Unknown"}</code></div>}</div>}
     </section>
 
     <section className="diagnostics-card"><header><Cpu size={18}/><div><h2>Last AI activity</h2><p>Local session counters help separate a quota problem from a UI problem.</p></div></header><div className="diagnostics-grid"><Metric label="Last successful AI request" value={formatActivityTime(sessionStats.lastSuccessAt)}/><Metric label="Last model" value={sessionStats.lastModel || "None yet"}/><Metric label="Repairs" value={String(sessionStats.repairs)}/><Metric label="Last error" value={sessionStats.lastError || "None"}/><Metric label="Last error time" value={formatActivityTime(sessionStats.lastErrorAt)}/><Metric label="First reply text" value={sessionStats.firstTokenMs ? `${sessionStats.firstTokenMs} ms` : "—"}/><Metric label="Full response" value={sessionStats.lastDurationMs ? `${sessionStats.lastDurationMs} ms` : "—"}/></div></section>
+
+    <section className="diagnostics-card v312-performance-card"><header><Activity size={18}/><div><h2>Real response speed</h2><p>Measured on this device from your actual Velvet replies, not a synthetic benchmark.</p></div></header>
+      <div className="diagnostics-grid"><Metric label="Median first text" value={performanceSummary.p50FirstTokenMs ? `${performanceSummary.p50FirstTokenMs} ms` : "—"}/><Metric label="Median full reply" value={performanceSummary.p50DurationMs ? `${performanceSummary.p50DurationMs} ms` : "—"}/><Metric label="Average first text" value={performanceSummary.avgFirstTokenMs ? `${performanceSummary.avgFirstTokenMs} ms` : "—"}/><Metric label="Fallback wins" value={`${performanceSummary.fallbackCount} / ${performanceSummary.success || 0}`}/><Metric label="Repair passes" value={String(performanceSummary.repairCount)}/><Metric label="Recorded replies" value={String(performanceSummary.total)}/></div>
+      {performanceRows.length > 0 && <div className="v312-performance-list">{performanceRows.slice(0,6).map((row,index)=><div key={`${row.at}-${index}`}><span><strong>{row.model || "Unknown model"}</strong><small>{formatActivityTime(row.at)}</small></span><em>{row.firstTokenMs ? `${row.firstTokenMs} ms first` : "no first-token timing"} · {row.durationMs ? `${row.durationMs} ms total` : "unfinished"}{row.fallbackUsed ? " · fallback" : ""}{row.repairUsed ? " · repaired" : ""}</em></div>)}</div>}
+    </section>
 
     <section className="diagnostics-card diagnostics-card--audio-quality"><header><Volume2 size={18}/><div><h2>Ambience quality check</h2><p>Checks all eight local tracks for quiet edges, clipping and obvious loop mismatches. It never uploads your audio.</p></div></header>
       <div className="diagnostics-actions"><button onClick={runAudioAudit} disabled={audioAuditRunning}>{audioAuditRunning ? <LoaderCircle className="spin" size={16}/> : <RefreshCw size={16}/>}Check ambience audio</button></div>

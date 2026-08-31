@@ -211,7 +211,7 @@ function PulseCharacterLibrary({ shelves, onOpen }) {
             <span className="pulse-character-card__copy">
               <small>{shelf.isGroup ? "GROUP STORY" : `${shelf.stories.length} ${shelf.stories.length === 1 ? "MOMENT" : "MOMENTS"}`}</small>
               <strong>{shelf.name}</strong>
-              <em>{truncate(getMomentText(shelf.stories[0]), 76)}</em>
+              <em>{truncate(shelfNudge(shelf), 82)}</em>
               <span>{relativeTime(shelf.latestAt)}</span>
             </span>
             <span className="pulse-character-card__arrow" aria-hidden="true"><ArrowRight size={18}/></span>
@@ -333,6 +333,18 @@ function buildShelves(stories) {
   return Array.from(map.values())
     .map((shelf) => ({ ...shelf, stories: [...shelf.stories].sort(sortNewest) }))
     .sort((a, b) => toTime(b.latestAt) - toTime(a.latestAt));
+}
+
+function shelfNudge(shelf) {
+  const latest = shelf?.stories?.[0];
+  if (!latest) return "This story is still here.";
+  const name = shelf.isGroup ? shelf.name : (shelf.name || "This character");
+  if (latest.openThreads?.length) return `You left something unfinished with ${name}.`;
+  const age = Date.now() - toTime(latest.updated_at);
+  const day = 24 * 60 * 60 * 1000;
+  if (age > 5 * day) return `${name} hasn't seen you in ${Math.max(1, Math.floor(age / day))} days.`;
+  if (age > day) return `${name}'s story has been quiet since ${relativeTime(latest.updated_at).toLowerCase()}.`;
+  return getMomentText(latest);
 }
 
 function getShelfKey(story) {

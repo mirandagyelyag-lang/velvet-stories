@@ -59,11 +59,13 @@ const views = [
 
 const groups = [
   { id: "all", label: "All", icon: null },
+  { id: "pinned", label: "Pinned", icon: Pin },
   { id: "moments", label: "Moments", icon: Sparkles },
-  { id: "characters", label: "Characters", icon: UserRound },
-  { id: "relationships", label: "Relationships", icon: Heart },
-  { id: "preferences", label: "Preferences", icon: SlidersHorizontal },
+  { id: "about-you", label: "About you", icon: Heart },
+  { id: "about-them", label: "About them", icon: UserRound },
+  { id: "relationships", label: "Relationship", icon: Heart },
   { id: "places", label: "Places", icon: MapPin },
+  { id: "people", label: "People", icon: UserRound },
 ];
 
 const emptyDraft = { content: "", category: "fact", importance: 3, isImportant: false, isPinned: true, isCanon: false, scope: "character", replaceMemoryId: "", mergeMemoryId: "" };
@@ -92,6 +94,7 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
   const [pendingMemoryDeletionIds, setPendingMemoryDeletionIds] = useState([]);
   const [workingId, setWorkingId] = useState(null);
   const [importanceFilter, setImportanceFilter] = useState("all");
+  const [cleanupNotice, setCleanupNotice] = useState("");
 
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route");
@@ -276,12 +279,14 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
     return activeMemories
       .filter((memory) => memory.character_id === selectedMemoryCharacter.id)
       .filter((memory) => memoryMatchesImportance(memory, importanceFilter))
+      .filter((memory) => memoryMatchesGroup(memory, group))
       .sort(sortMemoryRows);
-  }, [activeMemories, selectedMemoryCharacter, importanceFilter]);
+  }, [activeMemories, selectedMemoryCharacter, importanceFilter, group]);
 
   function openMemoryCharacter(characterId) {
     setSelectedCharacterId(characterId);
     setImportanceFilter("all");
+    setGroup("all");
     setMenuId(null);
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -289,8 +294,60 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
   function closeMemoryCharacter() {
     setSelectedCharacterId("all");
     setImportanceFilter("all");
+    setGroup("all");
     setMenuId(null);
     window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  const duplicateClusters = useMemo(() => selectedMemoryCharacter ? findDuplicateClusters(activeMemories.filter((memory)=>memory.character_id===selectedMemoryCharacter.id)) : [], [activeMemories, selectedMemoryCharacter]);
+  const globalDuplicateClusters = useMemo(() => characters.flatMap((character) => findDuplicateClusters(activeMemories.filter((memory)=>memory.character_id===character.id))), [activeMemories, characters]);
+  const globalDuplicateCount = useMemo(() => globalDuplicateClusters.reduce((sum, cluster)=>sum+Math.max(0, cluster.length-1),0), [globalDuplicateClusters]);
+
+  async function cleanAllDuplicates() {
+    if (!globalDuplicateClusters.length || workingId) return;
+    try {
+      setCleanupNotice("");
+      setWorkingId("global-duplicate-cleanup");
+      const now = new Date().toISOString();
+      const updates = [];
+      for (const cluster of globalDuplicateClusters) {
+        const keep = chooseMemoryKeeper(cluster);
+        for (const memory of cluster) {
+          if (memory.id === keep.id || memory.is_canon) continue;
+          const { error: mergeError } = await supabase.from("memories").update({ superseded_at: now, superseded_by: keep.id, updated_at: now }).eq("id", memory.id);
+          if (mergeError) throw mergeError;
+          updates.push({ id: memory.id, keeper: keep.id });
+        }
+      }
+      if (updates.length) setMemories((current)=>current.map((item)=>{ const hit=updates.find((u)=>u.id===item.id); return hit ? {...item,superseded_at:now,superseded_by:hit.keeper} : item; }));
+      setCleanupNotice(updates.length ? `${updates.length} safe duplicate ${updates.length===1?"memory":"memories"} merged across your Memory Book.` : "No safe duplicates needed merging.");
+    } catch (requestError) {
+      setError(requestError.message || "Velvet couldn't clean duplicate memories.");
+    } finally {
+      setWorkingId(null);
+    }
+  }
+
+  async function cleanSelectedDuplicates() {
+    if (!selectedMemoryCharacter || !duplicateClusters.length || workingId) return;
+    try {
+      setCleanupNotice("");
+      setWorkingId("duplicate-cleanup");
+      const now = new Date().toISOString();
+      const updates = [];
+      for (const cluster of duplicateClusters) {
+        const keep = chooseMemoryKeeper(cluster);
+        for (const memory of cluster) {
+          if (memory.id === keep.id || memory.is_canon) continue;
+          const { error: mergeError } = await supabase.from("memories").update({ superseded_at: now, superseded_by: keep.id, updated_at: now }).eq("id", memory.id);
+          if (mergeError) throw mergeError;
+          updates.push({ id: memory.id, keeper: keep.id });
+        }
+      }
+      if (updates.length) setMemories((current)=>current.map((item)=>{ const hit=updates.find((u)=>u.id===item.id); return hit ? {...item,superseded_at:now,superseded_by:hit.keeper} : item; }));
+      setCleanupNotice(updates.length ? `${updates.length} duplicate ${updates.length===1?"memory":"memories"} merged into the clearest versions.` : "No safe duplicates needed merging.");
+    } catch (requestError) { setError(requestError.message || "Velvet couldn't merge duplicates."); }
+    finally { setWorkingId(null); }
   }
 
   if (selectedMemoryCharacter) {
@@ -314,19 +371,16 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
         <div className="memory-character-detail__copy"><small>CHARACTER · {selectedMemoryCharacter.name}</small><h2>{selectedMemoryCharacter.name}</h2><p>{selectedMemoryCharacter.role || "Character"}</p><span>{totalMemories} {totalMemories === 1 ? "saved memory" : "saved memories"}</span></div>
       </section>
 
-      <div className="memory-character-detail__toolbar">
-        <label className="memories-character-library__importance">
-          <Star size={16}/>
-          <select value={importanceFilter} onChange={(event) => setImportanceFilter(event.target.value)} aria-label="Filter memories by importance">
-            <option value="all">All importance</option>
-            <option value="essential">Essential · 5</option>
-            <option value="high">High · 4+</option>
-            <option value="medium">Medium · 3+</option>
-            <option value="low">Low · 1–2</option>
-          </select>
-          <ChevronDown size={14}/>
-        </label>
+      <div className="memory-character-detail__toolbar v311-memory-toolbar">
+        <div className="v311-memory-tabs" role="tablist" aria-label="Memory categories">
+          {groups.map((item)=>{ const Icon=item.icon; return <button type="button" key={item.id} className={group===item.id?"is-active":""} onClick={()=>setGroup(item.id)}>{Icon&&<Icon size={13}/>}<span>{item.label}</span></button>; })}
+        </div>
+        <div className="v311-memory-tools">
+          <label className="memories-character-library__importance"><Star size={16}/><select value={importanceFilter} onChange={(event) => setImportanceFilter(event.target.value)} aria-label="Filter memories by importance"><option value="all">All importance</option><option value="essential">Essential · 5</option><option value="high">High · 4+</option><option value="medium">Medium · 3+</option><option value="low">Low · 1–2</option></select><ChevronDown size={14}/></label>
+          {duplicateClusters.length>0&&<button type="button" className="v311-memory-clean" onClick={cleanSelectedDuplicates} disabled={workingId==="duplicate-cleanup"}><Combine size={15}/>{workingId==="duplicate-cleanup"?"Cleaning…":`Merge ${duplicateClusters.reduce((sum,c)=>sum+Math.max(0,c.length-1),0)} duplicates`}</button>}
+        </div>
       </div>
+      {cleanupNotice&&<div className="v311-memory-clean-notice"><Check size={14}/><span>{cleanupNotice}</span><button type="button" onClick={()=>setCleanupNotice("")}><X size={13}/></button></div>}
 
       {error && !editorOpen && <div className="memories-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")}><X size={16}/></button></div>}
 
@@ -348,6 +402,7 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
           onPin={() => togglePinned(memory)}
           onEdit={() => openEdit(memory)}
           onDelete={() => deleteMemory(memory)}
+          influencedAt={readMemoryInfluence(selectedMemoryCharacter.id, memory.id)}
         /></SwipeToTrash>) : <div className="memory-character-detail__empty"><Sparkles size={18}/><strong>No memories at this importance.</strong><span>Try another filter or add one for {selectedMemoryCharacter.name}.</span></div>}
       </section>
 
@@ -380,6 +435,9 @@ function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
 
     <div className="memories-character-library__summary"><span>CHARACTERS</span><small>{memoryIndexGroups.length} in your memory book</small></div>
 
+    {globalDuplicateCount > 0 && <div className="v312-memory-hygiene"><span><Combine size={17}/><span><strong>Memory cleanup</strong><small>{globalDuplicateCount} similar {globalDuplicateCount===1?"memory":"memories"} can be merged safely.</small></span></span><button type="button" onClick={cleanAllDuplicates} disabled={workingId==="global-duplicate-cleanup"}>{workingId==="global-duplicate-cleanup"?<><LoaderCircle className="spin" size={14}/>Cleaning…</>:<>Merge duplicates</>}</button></div>}
+    {cleanupNotice&&<div className="v311-memory-clean-notice"><Check size={14}/><span>{cleanupNotice}</span><button type="button" onClick={()=>setCleanupNotice("")}><X size={13}/></button></div>}
+
     {error && !editorOpen && <div className="memories-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")}><X size={16}/></button></div>}
     {loading && <div className="page-state"><LoaderCircle className="spin" size={28}/><p>Opening memories...</p></div>}
     {!loading && characters.length === 0 && <div className="page-state page-state--empty"><span><UserRound size={28}/></span><h2>No characters yet</h2><p>Create someone before giving them long-term memories.</p><button onClick={onBrowseCharacters}>Create a character</button></div>}
@@ -404,7 +462,7 @@ function MemoryCharacterIndexCard({ character, count, onOpen }) {
   </article>;
 }
 
-function CharacterThoughtRow({ memory, busy, menuOpen, onMenu, onCanon, onPin, onEdit, onDelete }) {
+function CharacterThoughtRow({ memory, busy, menuOpen, onMenu, onCanon, onPin, onEdit, onDelete, influencedAt }) {
   const importance = Number(memory.importance || 0);
   return <div className={`character-memory-thought${memory.is_canon ? " is-canon" : ""}${memory.is_pinned ? " is-pinned" : ""}`}>
     <div className="character-memory-thought__meta">
@@ -413,7 +471,7 @@ function CharacterThoughtRow({ memory, busy, menuOpen, onMenu, onCanon, onPin, o
       {memory.is_pinned && <span><Pin size={12}/>Pinned</span>}
     </div>
     <p>{memory.content}</p>
-    <div className="character-memory-thought__foot"><time>{formatMemoryDate(memory.updated_at || memory.created_at)}</time><div className="character-memory-thought__menu-wrap"><button type="button" onClick={onMenu} disabled={busy} aria-label="Memory actions">{busy ? <LoaderCircle className="spin" size={15}/> : <MoreHorizontal size={17}/>}</button>{menuOpen && <div className="memories-reference__actions character-memory-thought__actions"><button onClick={onPin}>{memory.is_pinned ? <PinOff size={15}/> : <Pin size={15}/>} {memory.is_pinned ? "Unpin" : "Pin"}</button><button onClick={onCanon}><ShieldCheck size={15}/> {memory.is_canon ? "Remove canon" : "Mark canon"}</button><button onClick={onEdit}><Pencil size={15}/>Edit</button><button className="danger" onClick={onDelete}><Trash2 size={15}/>Delete</button></div>}</div></div>
+    <div className="character-memory-thought__foot"><div className="v311-memory-footdates"><time>{formatMemoryDate(memory.updated_at || memory.created_at)}</time>{influencedAt&&<span className="v311-memory-used"><Sparkles size={11}/>Used in a reply {formatInfluenceDate(influencedAt)}</span>}</div><div className="character-memory-thought__menu-wrap"><button type="button" onClick={onMenu} disabled={busy} aria-label="Memory actions">{busy ? <LoaderCircle className="spin" size={15}/> : <MoreHorizontal size={17}/>}</button>{menuOpen && <div className="memories-reference__actions character-memory-thought__actions"><button onClick={onPin}>{memory.is_pinned ? <PinOff size={15}/> : <Pin size={15}/>} {memory.is_pinned ? "Unpin" : "Pin"}</button><button onClick={onCanon}><ShieldCheck size={15}/> {memory.is_canon ? "Remove canon" : "Mark canon"}</button><button onClick={onEdit}><Pencil size={15}/>Edit</button><button className="danger" onClick={onDelete}><Trash2 size={15}/>Delete</button></div>}</div></div>
   </div>;
 }
 
@@ -505,13 +563,52 @@ function MemoryEditor({ editingMemory, draft, setDraft, draftCharacterId, setDra
 
 function memoryMatchesGroup(memory, group) {
   if (group === "all") return true;
-  if (group === "moments") return ["event", "conflict"].includes(memory.category);
-  if (group === "characters") return ["person", "fact"].includes(memory.category) || !memory.category;
-  if (group === "relationships") return ["relationship", "promise"].includes(memory.category);
-  if (group === "preferences") return ["preference", "boundary"].includes(memory.category);
+  if (group === "pinned") return Boolean(memory.is_pinned || memory.is_canon);
+  if (group === "moments") return ["event", "conflict", "promise"].includes(memory.category);
+  if (group === "about-you") return ["preference", "boundary"].includes(memory.category);
+  if (group === "about-them") return ["fact"].includes(memory.category);
+  if (group === "relationships") return ["relationship", "promise", "conflict"].includes(memory.category);
   if (group === "places") return memory.category === "world";
+  if (group === "people") return memory.category === "person";
   return true;
 }
+
+function readMemoryInfluence(characterId, memoryId) {
+  try { return JSON.parse(localStorage.getItem(`velvet_memory_influence_${characterId}`) || "{}")[memoryId]?.at || ""; } catch { return ""; }
+}
+function formatInfluenceDate(value) {
+  if (!value) return "";
+  const diff = Date.now() - new Date(value).getTime();
+  if (diff < 60*60*1000) return "just now";
+  if (diff < 24*60*60*1000) return "today";
+  if (diff < 48*60*60*1000) return "yesterday";
+  return new Date(value).toLocaleDateString([], { day:"numeric", month:"short" });
+}
+function memoryTokenSet(value="") { return new Set(normalize(value).split(/\s+/).filter((token)=>token.length>2)); }
+function memorySimilarityScore(a,b) {
+  const A=memoryTokenSet(a), B=memoryTokenSet(b); if(!A.size||!B.size) return 0;
+  let shared=0; A.forEach((token)=>{if(B.has(token)) shared++;});
+  return shared / Math.max(A.size,B.size);
+}
+function findDuplicateClusters(rows=[]) {
+  const remaining=[...rows].filter((m)=>!m.superseded_at); const clusters=[]; const used=new Set();
+  for (const memory of remaining) {
+    if(used.has(memory.id)) continue;
+    const cluster=[memory];
+    for (const other of remaining) {
+      if(other.id===memory.id||used.has(other.id)) continue;
+      const exact=normalize(memory.content)===normalize(other.content);
+      const similar=memory.category===other.category && memorySimilarityScore(memory.content,other.content)>=0.82;
+      if(exact||similar) cluster.push(other);
+    }
+    if(cluster.length>1){ cluster.forEach((m)=>used.add(m.id)); clusters.push(cluster); }
+  }
+  return clusters;
+}
+function chooseMemoryKeeper(cluster=[]) {
+  return [...cluster].sort((a,b)=>Number(b.is_canon)-Number(a.is_canon)||Number(b.is_pinned)-Number(a.is_pinned)||Number(b.importance||0)-Number(a.importance||0)||String(b.content||"").length-String(a.content||"").length)[0];
+}
+
 function groupLabel(memory) {
   if (["event", "conflict"].includes(memory.category)) return "MOMENT";
   if (["person", "fact"].includes(memory.category) || !memory.category) return "CHARACTER";
