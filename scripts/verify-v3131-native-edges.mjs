@@ -13,9 +13,9 @@ const checks=[
   ['sheet scroll edges are hard stops', /\.memory-book__scroll[\s\S]*overscroll-behavior-y:\s*none\s*!important/.test(css)],
   ['horizontal rails do not glow/reveal', /overscroll-behavior-inline:\s*none\s*!important/.test(css)],
   ['mobile removes stable gutter', /scrollbar-gutter:\s*auto\s*!important/.test(css)],
-  ['native edges CSS loaded last', main.trim().endsWith('import "./styles/velvet-v3131-native-edges.css";')],
-  ['package version bumped', pkg.version==='3.13.1'],
-  ['public version bumped', ver.version==='3.13.1'],
+  ['native edges CSS loaded before refresh layer', main.includes('import "./styles/velvet-v3131-native-edges.css";') && main.indexOf('velvet-v3131-native-edges.css') < main.indexOf('velvet-v3132-pull-to-refresh.css')],
+  ['package version keeps native edges release or newer', /^3\.(?:1[3-9]|[2-9]\d)\./.test(pkg.version)],
+  ['public version keeps native edges release or newer', /^3\.(?:1[3-9]|[2-9]\d)\./.test(ver.version)],
 ];
 let pass=0;
 for(const [name,ok] of checks){ console.log(`${ok?'PASS':'FAIL'} · ${name}`); if(ok) pass++; }
