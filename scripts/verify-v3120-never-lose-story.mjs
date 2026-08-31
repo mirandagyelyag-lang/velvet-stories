@@ -15,6 +15,7 @@ const vite = read("vite.config.js");
 const edge = read("supabase/functions/character-chat/index.ts");
 const css = read("src/styles/velvet-v3120-never-lose-story.css");
 const main = read("src/main.jsx");
+const galleryMigration = read("supabase/migrations/202608310001_velvet_v312_character_gallery.sql");
 
 const checks = [];
 const check = (name, condition) => checks.push({ name, ok: Boolean(condition) });
@@ -31,11 +32,11 @@ check("9 Discover and Pulse use personal story nudges", discover.includes("is st
 check("10 Diagnostics shows hosting and live performance", diagnostics.includes("Real response speed") && diagnostics.includes("Hosting / Vercel") && diagnostics.includes("summarizeGenerationMetrics"));
 check("11 first-token and total reply metrics are recorded", resilience.includes("recordGenerationMetric") && resilience.includes("firstTokenMs") && chats.includes("diagnosticFirstTokenMs"));
 check("12 PWA updates are user-controlled prompts", vite.includes('registerType: "prompt"') && vite.includes("skipWaiting: false") && pwa.includes("needRefresh") && pwa.includes("updateApp"));
-check("13 characters have a private media gallery", details.includes("galleryItems") && details.includes("uploadGalleryMedia") && details.includes('from("character-media")') && details.includes("Add photos"));
+check("13 characters have a private cross-device media gallery", details.includes("galleryItems") && details.includes("uploadGalleryMedia") && details.includes('from("character-gallery")') && details.includes("createSignedUrl") && galleryMigration.includes("Users can read their character gallery") && galleryMigration.includes("Users can list legacy character gallery") && details.includes("Add photos"));
 check("14 each story can keep an atmosphere palette", resilience.includes("STORY_THEMES") && resilience.includes("saveStoryTheme") && chat.includes("Story palette") && css.includes("chat--story-night"));
 check("15 Never Lose a Story backup exports and restores", settings.includes("exportVelvetBackup") && settings.includes("restoreVelvetBackup") && settings.includes("velvet-full-backup") && settings.includes("Never Lose a Story"));
 check("v3.12 stylesheet is loaded last", main.trim().endsWith('import "./styles/velvet-v3120-never-lose-story.css";'));
-check("v3.12 package uses the expected release", read("package.json").includes('"version": "3.12.0"') && vite.includes('Never Lose a Story'));
+check("v3.12 package uses the expected release", read("package.json").includes('"version": "3.12.1"') && vite.includes('Never Lose a Story'));
 
 for (const result of checks) console.log(`${result.ok ? "PASS" : "FAIL"} ${result.name}`);
 const failed = checks.filter((result) => !result.ok);

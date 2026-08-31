@@ -95,22 +95,59 @@ export default function CharacterDetail({
 
   useEffect(() => {
     let alive = true;
+
+    async function listGalleryBucket(bucket, folder, { signed = false } = {}) {
+      const storage = supabase.storage.from(bucket);
+      const { data, error } = await storage.list(folder, {
+        limit: 24,
+        sortBy: { column: "created_at", order: "desc" },
+      });
+      if (error) throw error;
+
+      const rows = (data || []).filter((item) => item?.name && !item.name.startsWith("."));
+      if (!rows.length) return [];
+      const paths = rows.map((item) => `${folder}/${item.name}`);
+
+      if (signed) {
+        const { data: signedRows, error: signedError } = await storage.createSignedUrls(paths, 60 * 60 * 24 * 7);
+        if (signedError) throw signedError;
+        const signedByPath = new Map((signedRows || []).map((item) => [item.path, item.signedUrl || ""]));
+        return rows.map((item, index) => ({
+          bucket,
+          path: paths[index],
+          name: item.name,
+          url: signedByPath.get(paths[index]) || "",
+        })).filter((item) => item.url);
+      }
+
+      return rows.map((item, index) => {
+        const { data: publicData } = storage.getPublicUrl(paths[index]);
+        return { bucket, path: paths[index], name: item.name, url: publicData?.publicUrl || "" };
+      }).filter((item) => item.url);
+    }
+
     (async () => {
       if (!user?.id) return;
-      try {
-        const folder = `${user.id}/gallery/${character.id}`;
-        const { data, error } = await supabase.storage.from("character-media").list(folder, { limit: 24, sortBy: { column: "created_at", order: "desc" } });
-        if (error) throw error;
-        const items = (data || []).filter((item)=>item?.name && !item.name.startsWith(".")).map((item)=>{
-          const path = `${folder}/${item.name}`;
-          const { data: publicData } = supabase.storage.from("character-media").getPublicUrl(path);
-          return { path, name: item.name, url: publicData?.publicUrl || "" };
-        }).filter((item)=>item.url);
-        if (alive) setGalleryItems(items);
-      } catch (error) {
-        if (alive) setGalleryError(error?.message || "Could not load character photos.");
+      const folder = `${user.id}/gallery/${character.id}`;
+      setGalleryError("");
+
+      const [privateResult, legacyResult] = await Promise.allSettled([
+        listGalleryBucket("character-gallery", folder, { signed: true }),
+        // RC1 briefly stored gallery files in character-media. Keep those visible
+        // so installing the fix never makes an existing photo disappear.
+        listGalleryBucket("character-media", folder),
+      ]);
+
+      if (!alive) return;
+      const privateItems = privateResult.status === "fulfilled" ? privateResult.value : [];
+      const legacyItems = legacyResult.status === "fulfilled" ? legacyResult.value : [];
+      setGalleryItems([...privateItems, ...legacyItems].slice(0, 24));
+
+      if (privateResult.status === "rejected" && legacyResult.status === "rejected") {
+        setGalleryError(privateResult.reason?.message || legacyResult.reason?.message || "Could not load character photos.");
       }
     })();
+
     return () => { alive = false; };
   }, [character.id, user?.id]);
 
@@ -121,14 +158,16 @@ export default function CharacterDetail({
     try {
       setGalleryBusy(true); setGalleryError("");
       const folder = `${user.id}/gallery/${character.id}`;
+      const storage = supabase.storage.from("character-gallery");
       const uploaded = [];
       for (const file of files) {
         const extension = (file.name.split(".").pop() || "jpg").replace(/[^a-z0-9]/gi, "").toLowerCase() || "jpg";
         const path = `${folder}/${crypto.randomUUID()}.${extension}`;
-        const { error } = await supabase.storage.from("character-media").upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
+        const { error } = await storage.upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
         if (error) throw error;
-        const { data } = supabase.storage.from("character-media").getPublicUrl(path);
-        if (data?.publicUrl) uploaded.push({ path, name: path.split("/").pop(), url: data.publicUrl });
+        const { data, error: signedError } = await storage.createSignedUrl(path, 60 * 60 * 24 * 7);
+        if (signedError) throw signedError;
+        if (data?.signedUrl) uploaded.push({ bucket: "character-gallery", path, name: path.split("/").pop(), url: data.signedUrl });
       }
       setGalleryItems((current)=>[...uploaded, ...current].slice(0,24));
     } catch (error) {
@@ -140,7 +179,7 @@ export default function CharacterDetail({
     if (!item?.path || galleryBusy) return;
     try {
       setGalleryBusy(true); setGalleryError("");
-      const { error } = await supabase.storage.from("character-media").remove([item.path]);
+      const { error } = await supabase.storage.from(item.bucket || "character-gallery").remove([item.path]);
       if (error) throw error;
       setGalleryItems((current)=>current.filter((row)=>row.path!==item.path));
     } catch (error) { setGalleryError(error?.message || "Could not remove that photo."); }
@@ -248,7 +287,7 @@ export default function CharacterDetail({
         <button type="button" onClick={()=>setStyleOpen(true)}><SlidersHorizontal size={17}/><span><strong>Story voice</strong><small>How they feel in chat</small></span><ChevronRight size={15}/></button>
       </nav>
 
-      <section className="v311-profile-media v312-profile-media"><header><div><small>MEDIA</small><h2>Photos & covers</h2><p>A private visual scrapbook for this character.</p></div><button type="button" onClick={()=>mediaInputRef.current?.click()} disabled={galleryBusy}><Upload size={17}/>{galleryBusy?"Adding…":"Add photos"}</button></header><input ref={mediaInputRef} type="file" accept="image/*" multiple hidden onChange={uploadGalleryMedia}/>{galleryError&&<div className="v312-profile-media__error">{galleryError}</div>}<div className="v312-profile-media__grid">{mediaItems.map((src,index)=><figure className="is-core" key={`${src}-${index}`}><img src={src} alt="" loading="lazy" decoding="async"/><figcaption>{index===0?"Profile / cover":"Story cover"}</figcaption></figure>)}{galleryItems.map((item)=><figure key={item.path}><img src={item.url} alt="" loading="lazy" decoding="async"/><button type="button" onClick={()=>deleteGalleryMedia(item)} aria-label="Remove photo" disabled={galleryBusy}><Trash2 size={14}/></button></figure>)}{!mediaItems.length&&!galleryItems.length&&<button type="button" className="v312-profile-media__empty" onClick={()=>mediaInputRef.current?.click()}><Images size={22}/><span>Add the first photo</span></button>}</div></section>
+      <section className="v311-profile-media v312-profile-media"><header><div><small>MEDIA</small><h2>Photos & covers</h2><p>A private visual scrapbook that follows this character across your devices.</p></div><button type="button" onClick={()=>mediaInputRef.current?.click()} disabled={galleryBusy}><Upload size={17}/>{galleryBusy?"Adding…":"Add photos"}</button></header><input ref={mediaInputRef} type="file" accept="image/*" multiple hidden onChange={uploadGalleryMedia}/>{galleryError&&<div className="v312-profile-media__error">{galleryError}</div>}<div className="v312-profile-media__grid">{mediaItems.map((src,index)=><figure className="is-core" key={`${src}-${index}`}><img src={src} alt="" loading="lazy" decoding="async"/><figcaption>{index===0?"Profile / cover":"Story cover"}</figcaption></figure>)}{galleryItems.map((item)=><figure key={item.path}><img src={item.url} alt="" loading="lazy" decoding="async"/><button type="button" onClick={()=>deleteGalleryMedia(item)} aria-label="Remove photo" disabled={galleryBusy}><Trash2 size={14}/></button></figure>)}{!mediaItems.length&&!galleryItems.length&&<button type="button" className="v312-profile-media__empty" onClick={()=>mediaInputRef.current?.click()}><Images size={22}/><span>Add the first photo</span></button>}</div></section>
 
       <div className="character-profile__layout">
         <main className="character-profile__main">
