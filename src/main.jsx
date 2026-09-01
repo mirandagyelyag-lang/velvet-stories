@@ -16,8 +16,6 @@ import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
 import { markVelvetHealthy, recordVelvetRuntimeError } from "./utils/runtimeRecovery";
 import { applySafeModeClass } from "./utils/safeMode";
 import { installMobileViewportLock } from "./utils/mobileViewportLock";
-import { installVelvetPullToRefresh } from "./utils/pullToRefresh";
-import { installSheetHandleScroll } from "./utils/sheetHandleScroll";
 import "./index.css";
 import "./styles/velvet-ui.css";
 import "./styles/velvet-v18.css";
@@ -46,8 +44,6 @@ import "./styles/velvet-v296-precision-actions.css";
 import "./styles/velvet-v298-characters-clean-mobile.css";
 
 installMobileViewportLock();
-installVelvetPullToRefresh();
-installSheetHandleScroll();
 applySafeModeClass();
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
@@ -122,14 +118,3 @@ import "./styles/velvet-v3110-experience.css";
 
 import "./styles/chat-header-overlay.css";
 import "./styles/velvet-v3120-never-lose-story.css";
-
-import "./styles/velvet-v3130-scroll-authority.css";
-
-import "./styles/velvet-v3131-native-edges.css";
-import "./styles/velvet-v3132-pull-to-refresh.css";
-
-import "./styles/velvet-v3133-fixed-bottom-dock.css";
-
-import "./styles/velvet-v3134-compact-page-ends.css";
-
-import "./styles/velvet-v3137-sheet-handle-scroll.css";

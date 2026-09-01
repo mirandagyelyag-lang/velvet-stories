@@ -35,7 +35,7 @@ check("12 PWA updates are user-controlled prompts", vite.includes('registerType:
 check("13 characters have a private cross-device media gallery", details.includes("galleryItems") && details.includes("uploadGalleryMedia") && details.includes('from("character-gallery")') && details.includes("createSignedUrl") && galleryMigration.includes("Users can read their character gallery") && galleryMigration.includes("Users can list legacy character gallery") && details.includes("Add photos"));
 check("14 each story can keep an atmosphere palette", resilience.includes("STORY_THEMES") && resilience.includes("saveStoryTheme") && chat.includes("Story palette") && css.includes("chat--story-night"));
 check("15 Never Lose a Story backup exports and restores", settings.includes("exportVelvetBackup") && settings.includes("restoreVelvetBackup") && settings.includes("velvet-full-backup") && settings.includes("Never Lose a Story"));
-check("v3.12 features remain loaded before the v3.13 scroll authority", main.includes('import "./styles/velvet-v3120-never-lose-story.css";') && main.trim().endsWith('import "./styles/velvet-v3130-scroll-authority.css";'));
+check("v3.12 feature layer remains loaded without a later custom scroll authority", main.includes('import "./styles/velvet-v3120-never-lose-story.css";') && !main.includes("velvet-v3130-scroll-authority.css"));
 check("v3.12 feature set survives the v3.13 release", /"version": "3\.1[3-9]\.|"version": "[4-9]\./.test(read("package.json")) && vite.includes('Never Lose a Story'));
 
 for (const result of checks) console.log(`${result.ok ? "PASS" : "FAIL"} ${result.name}`);
