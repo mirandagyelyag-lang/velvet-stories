@@ -337,7 +337,8 @@
   justify-content: center;
   align-items: center;
   padding: 0;
-  gap: 0;
+  flex-direction: column;
+  gap: 5px;
   overflow: hidden;
   color: var(--stories-accent, #d4879c);
   background: transparent;
@@ -364,7 +365,16 @@
   transform: scale(calc(.82 + (var(--swipe-reveal, 0) * .18)));
   transition: color 120ms ease, background 120ms ease, border-color 120ms ease, transform 120ms ease;
 }
-.swipe-trash--story > .swipe-trash__action span { display: none; }
+.swipe-trash--story > .swipe-trash__action span {
+  display: block;
+  color: currentColor;
+  font-size: .57rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .swipe-trash--story.is-armed > .swipe-trash__action svg {
   color: #f5c5d1;
   background: color-mix(in srgb, var(--stories-surface, #24131a) 86%, var(--stories-accent, #d4879c) 14%);

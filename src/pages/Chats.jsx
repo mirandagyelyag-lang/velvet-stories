@@ -407,6 +407,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         disabled={Boolean(deletingId === conversation.id || updatingId === conversation.id)}
         onDelete={() => conversation.trashed_at ? swipeDeleteConversationForever(conversation.id) : deleteConversation(null, conversation.id)}
         label={conversation.trashed_at ? `Delete ${title} forever` : `Delete ${title}`}
+        actionText={conversation.trashed_at ? "Delete" : "Trash"}
+        showLabel
       >
       <article
         className={`reference-story-row${conversation.is_pinned ? " reference-story-row--favorite" : ""}`}

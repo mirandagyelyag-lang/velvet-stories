@@ -4,7 +4,7 @@ const main=fs.readFileSync('src/main.jsx','utf8');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const checks=[
  ['new css imported last', main.trim().endsWith('import "./styles/velvet-v3134-compact-page-ends.css";')],
- ['version 3.13.4', pkg.version==='3.13.4'],
+ ['version 3.13.4 or later', /^3\.(?:1[3-9]|[2-9]\d)\./.test(pkg.version) || /^[4-9]\./.test(pkg.version)],
  ['normal pages lose viewport min height', css.includes('min-height: 0 !important')],
  ['normal pages use auto height', css.includes('height: auto !important')],
  ['child page bottom padding compact', css.includes('padding-bottom: 14px !important')],

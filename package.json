@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.13.4",
+  "version": "3.13.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -29,7 +29,8 @@
     "verify:v3131": "node scripts/verify-v3131-native-edges.mjs",
     "verify:v3132": "node scripts/verify-v3132-pull-to-refresh.mjs",
     "verify:v3133": "node scripts/verify-v3133-fixed-bottom-dock.mjs",
-    "verify:v3134": "node scripts/verify-v3134-compact-page-ends.mjs"
+    "verify:v3134": "node scripts/verify-v3134-compact-page-ends.mjs",
+    "verify:v3135": "node scripts/verify-v3135-pulse-shelves.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",
