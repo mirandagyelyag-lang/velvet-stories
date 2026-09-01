@@ -431,12 +431,16 @@ function relativeTime(value) {
 }
 
 function clean(value = "") {
-  return String(value)
+  if (value == null) return "";
+
+  const normalized = String(value)
     .replace(/\*+/g, "")
     .replaceAll("[", "")
     .replaceAll("]", "")
     .replace(/\s+/g, " ")
     .trim();
+
+  return /^(?:null|undefined)$/i.test(normalized) ? "" : normalized;
 }
 
 function truncate(value = "", max = 140) {
