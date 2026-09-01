@@ -17,6 +17,7 @@ import { markVelvetHealthy, recordVelvetRuntimeError } from "./utils/runtimeReco
 import { applySafeModeClass } from "./utils/safeMode";
 import { installMobileViewportLock } from "./utils/mobileViewportLock";
 import { installVelvetPullToRefresh } from "./utils/pullToRefresh";
+import { installSheetHandleScroll } from "./utils/sheetHandleScroll";
 import "./index.css";
 import "./styles/velvet-ui.css";
 import "./styles/velvet-v18.css";
@@ -46,6 +47,7 @@ import "./styles/velvet-v298-characters-clean-mobile.css";
 
 installMobileViewportLock();
 installVelvetPullToRefresh();
+installSheetHandleScroll();
 applySafeModeClass();
 
 if (import.meta.env.DEV && "serviceWorker" in navigator) {
@@ -129,3 +131,5 @@ import "./styles/velvet-v3132-pull-to-refresh.css";
 import "./styles/velvet-v3133-fixed-bottom-dock.css";
 
 import "./styles/velvet-v3134-compact-page-ends.css";
+
+import "./styles/velvet-v3137-sheet-handle-scroll.css";
