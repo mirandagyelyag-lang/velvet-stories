@@ -22,6 +22,8 @@
     gap: 7px !important;
     padding: 7px max(9px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(9px, env(safe-area-inset-left)) !important;
     border-radius: 20px 20px 0 0;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .chat__composer textarea {

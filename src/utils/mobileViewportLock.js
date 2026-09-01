@@ -4,12 +4,6 @@ function stopBrowserScaleGesture(event) {
   event.preventDefault();
 }
 
-function stopMultiTouchScale(event) {
-  if (event.touches?.length > 1) {
-    event.preventDefault();
-  }
-}
-
 export function installMobileViewportLock() {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   if (window[LOCK_KEY]) return;
@@ -21,9 +15,9 @@ export function installMobileViewportLock() {
   document.addEventListener("gesturechange", stopBrowserScaleGesture, options);
   document.addEventListener("gestureend", stopBrowserScaleGesture, options);
 
-  // Chromium/Android PWA: cancel only multi-touch movement. A normal one-finger
-  // touchmove is deliberately untouched so document/chat/sheet scrolling stays native.
-  document.addEventListener("touchmove", stopMultiTouchScale, options);
+  // Do not observe touchmove. Even a non-passive listener that usually does
+  // nothing forces mobile browsers to consult JavaScript before every frame of
+  // a finger scroll. The viewport meta and CSS touch-action already own scale.
 
   window[LOCK_KEY] = true;
 }

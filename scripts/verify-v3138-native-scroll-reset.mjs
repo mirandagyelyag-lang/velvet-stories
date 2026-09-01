@@ -30,7 +30,7 @@ const removedFiles = [
 ];
 
 const checks = [
-  ["release is v3.13.8 Native Scroll Reset", pkg.version === "3.13.8" && release.version === "3.13.8" && release.name === "Native Scroll Reset"],
+  ["release retains the v3.13.8 reset or a later compatible build", /^3\.13\.(?:[89]|[1-9]\d)$/.test(pkg.version) && release.version === pkg.version],
   ["custom scroll imports and installers are absent", removedImports.every((token) => !main.includes(token)) && !main.includes("installVelvetPullToRefresh") && !main.includes("installSheetHandleScroll")],
   ["custom scroll implementation files are deleted", removedFiles.every((path) => !existsSync(new URL(`../${path}`, import.meta.url)))],
   ["normal one-finger native page scrolling remains available", mobile.includes("overflow-y:auto!important") && mobile.includes("touch-action:pan-y!important")],

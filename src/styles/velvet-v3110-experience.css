@@ -187,7 +187,7 @@
 
 /* Native mobile behavior */
 @media (max-width: 760px), (pointer: coarse) {
-  html, body { overscroll-behavior-y: none; }
+  html, body { overscroll-behavior-y: auto; }
   button, [role="button"] { -webkit-tap-highlight-color: transparent; }
   .chat__content, .chat__messages, .memory-book__scroll, .relationship-drawer, .story-setup-sheet, .message-sheet { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; }
   .chat__composer { padding-left: max(9px, env(safe-area-inset-left)) !important; padding-right: max(9px, env(safe-area-inset-right)) !important; padding-bottom: max(8px, env(safe-area-inset-bottom)) !important; gap: 6px !important; }

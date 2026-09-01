@@ -80,7 +80,7 @@ function persistVelvetLocation(location) {
 
 function getRouteScrollOwner() {
   if (typeof document === "undefined") return null;
-  return document.querySelector(".app__content");
+  return document.scrollingElement;
 }
 
 function scrollRouteTo(top = 0, behavior = "auto") {
