@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.14.3",
+  "version": "3.14.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -40,7 +40,8 @@
     "android:verify": "node scripts/verify-android-native.mjs",
     "verify:v3140": "node scripts/verify-v3140-native-polish.mjs",
     "verify:v3142": "node scripts/verify-v3142-visible-native-splash.mjs",
-    "verify:v3143": "node scripts/verify-v3143-cinematic-splash.mjs"
+    "verify:v3143": "node scripts/verify-v3143-cinematic-splash.mjs",
+    "verify:v3144": "node scripts/verify-v3144-dark-reference-splash.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",
