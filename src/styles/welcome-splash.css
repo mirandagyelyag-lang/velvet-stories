@@ -10,7 +10,7 @@
   background: linear-gradient(160deg, #f8ece7, #efd7d4 60%, #dbaeb5);
   animation: velvetSplashOut .4s 1s forwards;
 }
-.velvet-splash img { width: min(180px,42vw); border-radius: 34px; box-shadow: 0 26px 70px rgba(84,26,48,.18); }
+.velvet-splash:not(.velvet-splash--native) img { width: min(180px,42vw); border-radius: 34px; box-shadow: 0 26px 70px rgba(84,26,48,.18); }
 .velvet-splash h1 { margin: 8px 0 0; font-family: "Cormorant Garamond", serif; font-size: clamp(3rem,9vw,5rem); font-weight: 500; letter-spacing: .02em; }
 .velvet-splash p { margin: 0; color: #855c68; }
 :root[data-theme="dark"] .velvet-splash { color: #f6e9e8; background: linear-gradient(160deg,#24151f,#130d12 68%,#46172d); }
@@ -18,7 +18,7 @@
 :root[data-theme="comfort"] .velvet-splash { color: #493a31; background: linear-gradient(160deg,#f4ede0,#e7dbc8 70%,#c7aa98); }
 @keyframes velvetSplashOut { to { opacity: 0; visibility: hidden; transform: scale(1.015); } }
 
-/* v3.14.4 · exact dark-reference Android reveal
+/* v3.14.5 · exact dark-reference Android reveal · fullscreen sizing fix
    Final frame deliberately uses the approved Velvet reference artwork itself.
    The animation only reveals/builds it; it does not redraw the logo in a cuter style. */
 .velvet-splash--native.velvet-splash--reference-dark {
@@ -55,18 +55,31 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-}
-
-.velvet-reference__image {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
-  max-width: none;
-  border-radius: 0;
-  box-shadow: none;
+  overflow: hidden;
+}
+
+/* IMPORTANT: the generic web splash image rule must never size native artwork.
+   This selector intentionally outranks `.velvet-splash img` so Samsung/WebView
+   cannot collapse the 9:16 artwork into a small card on the left. */
+.velvet-splash.velvet-splash--native .velvet-reference__image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   object-fit: contain;
-  object-position: center;
+  object-position: 50% 50%;
   user-select: none;
   -webkit-user-drag: none;
 }
