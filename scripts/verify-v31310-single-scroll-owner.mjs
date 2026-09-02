@@ -8,9 +8,10 @@ const stability = read("src/styles/velvet-v265-stability.css");
 const appCss = read("src/App.css");
 const legacy = read("src/styles/velvet-v17.css");
 const app = read("src/App.jsx");
+const patchVersion = Number(pkg.version.split(".")[2]);
 
 const checks = [
-  ["release is v3.13.10 Single Native Scroll", pkg.version === "3.13.10" && release.version === "3.13.10" && release.name === "Single Native Scroll"],
+  ["release retains v3.13.10 Single Native Scroll or a later compatible build", pkg.version.startsWith("3.13.") && patchVersion >= 10 && release.version === pkg.version],
   ["only html owns mobile vertical page scrolling", foundation.includes("html{width:100%!important") && foundation.includes("overflow-y:auto!important") && foundation.includes("body,#root{") && foundation.includes("overflow-y:visible!important")],
   ["app shell horizontal protection cannot create a nested vertical scroller", stability.includes("html,body,#root,.app,.app__content{max-width:100%!important;overflow-x:clip!important") && !stability.includes("overflow-x:hidden!important")],
   ["route pages clip overflow without capturing the vertical gesture", foundation.includes(".chats-page,.discover-index") && foundation.includes("overflow-x:clip!important") && !foundation.includes("html,body,#root{")],

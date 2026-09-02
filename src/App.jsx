@@ -181,6 +181,7 @@ function App() {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [previewCharacter, setPreviewCharacter] = useState(null);
+  const [memoryFocusCharacterId, setMemoryFocusCharacterId] = useState("");
 
   useEffect(() => {
     charactersRef.current = characters;
@@ -372,6 +373,7 @@ function App() {
     setSelectedConversationId(null);
     setSelectedMessageId(null);
     setPreviewCharacter(null);
+    setMemoryFocusCharacterId(page === "memories" ? (options.memoryCharacterId || "") : "");
     setActivePage(page);
 
     const nextState = {
@@ -556,12 +558,21 @@ function App() {
     }
 
     if (activePage === "pulse") {
-      return <Pulse onOpenCharacter={openCharacter} onBrowseStories={() => navigate("chats")} />;
+      return (
+        <Pulse
+          onOpenCharacter={openCharacter}
+          onBrowseStories={() => navigate("chats")}
+          onNewStory={startNewStoryFromProfile}
+          onOpenMemories={(characterId) => navigate("memories", { memoryCharacterId: characterId })}
+          onOpenProfile={openCharacterProfile}
+        />
+      );
     }
 
     if (activePage === "memories") {
       return (
         <Memories
+          initialCharacterId={memoryFocusCharacterId}
           onBack={() => goBackOr("profile")}
           onBrowseCharacters={() => navigate("characters")}
           onOpenCharacter={openCharacter}

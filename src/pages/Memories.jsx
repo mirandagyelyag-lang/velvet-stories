@@ -70,14 +70,14 @@ const groups = [
 
 const emptyDraft = { content: "", category: "fact", importance: 3, isImportant: false, isPinned: true, isCanon: false, scope: "character", replaceMemoryId: "", mergeMemoryId: "" };
 
-function Memories({ onBack, onBrowseCharacters, onOpenCharacter }) {
+function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenCharacter }) {
   const { scheduleDeletion } = useFeedback();
   const { user } = useAuth();
   const { characters } = useCharacters();
   const { theme } = useTheme();
   const [memories, setMemories] = useState([]);
   const [conversationByCharacter, setConversationByCharacter] = useState(new Map());
-  const [selectedCharacterId, setSelectedCharacterId] = useState("all");
+  const [selectedCharacterId, setSelectedCharacterId] = useState(() => initialCharacterId || "all");
   const [category, setCategory] = useState("all");
   const [view, setView] = useState("active");
   const [group, setGroup] = useState("all");

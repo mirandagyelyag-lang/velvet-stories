@@ -8,7 +8,7 @@ const swipe = read("src/components/SwipeToTrash.jsx");
 const swipeCss = read("src/styles/velvet-v292-mobile-library-polish.css");
 
 const checks = [
-  ["Pulse groups stories into character shelves", pulse.includes("buildShelves(stories)") && pulse.includes("PulseCharacterLibrary")],
+  ["Pulse groups stories into character shelves", (pulse.includes("buildShelves(stories)") || pulse.includes("buildShelves(stories, characters)")) && pulse.includes("PulseCharacterLibrary")],
   ["each shelf separates unfinished, recent and waiting moments", ["Unfinished", "Recent", "Waiting for you"].every((label) => pulse.includes(label))],
   ["Group Stories keep their own cast shelf", pulse.includes("return `group:${story.id}`") && pulse.includes("pulse-portrait--group")],
   ["mobile Pulse removes repeated helper copy", pulseCss.includes(".pulse-library__heading > p { display: none; }") && pulseCss.includes(".pulse-header__library span { display: none; }")],

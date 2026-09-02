@@ -1,5 +1,5 @@
-/* Velvet Stories · Pulse 2.0
-   Character-first shelves inspired by Memories: one person outside, their moments inside. */
+/* Velvet Stories · Pulse 3.0
+   A character-first return center: priority story, quick actions and exact resume points. */
 .pulse-page {
   --pulse-ink: var(--ref-ink, #f8edf0);
   --pulse-ink-soft: var(--ref-rose-pale, #f5d0d9);
@@ -189,13 +189,31 @@
   display: grid;
   place-items: center;
   color: rgba(255,240,245,.88);
-  background: rgba(17,8,12,.42);
+  background: rgba(17,8,12,.76);
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 50%;
-  backdrop-filter: blur(10px);
   transition: transform .18s ease, background .18s ease;
 }
 .pulse-character-card:hover .pulse-character-card__arrow { transform: translateX(2px); background: rgba(122,41,71,.64); }
+.pulse-character-card__status {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  z-index: 3;
+  padding: 6px 9px;
+  color: rgba(255, 237, 242, .78);
+  background: rgba(17, 8, 12, .78);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 999px;
+  font-size: .45rem;
+  font-weight: 850;
+  letter-spacing: .13em;
+}
+.pulse-character-card__status.is-attention {
+  color: #fff4f6;
+  background: rgba(150, 43, 76, .88);
+  border-color: rgba(255, 178, 197, .24);
+}
 
 .pulse-detail { min-width: 0; }
 .pulse-detail__hero {
@@ -246,6 +264,141 @@
 .pulse-detail__identity p { margin: 10px 0 0; color: var(--pulse-muted); font-size: .66rem; }
 
 .pulse-detail__sections { display: grid; gap: 41px; }
+.pulse-continue {
+  position: relative;
+  overflow: hidden;
+  padding: 22px;
+  background:
+    radial-gradient(circle at 90% 4%, rgba(226, 138, 160, .18), transparent 31%),
+    linear-gradient(140deg, color-mix(in srgb, var(--stories-panel, #211018) 90%, transparent), color-mix(in srgb, #4b1b2b 54%, transparent));
+  border: 1px solid rgba(224, 117, 143, .23);
+  border-radius: 23px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .14);
+}
+.pulse-continue__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--pulse-accent);
+  font-size: .52rem;
+  font-weight: 850;
+  letter-spacing: .17em;
+}
+.pulse-continue__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 24px;
+  margin-top: 13px;
+}
+.pulse-continue__copy { min-width: 0; }
+.pulse-continue__copy > small {
+  display: block;
+  overflow: hidden;
+  color: rgba(245, 208, 217, .7);
+  font-size: .57rem;
+  font-weight: 730;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pulse-continue__copy h2 {
+  display: -webkit-box;
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: var(--pulse-ink-soft);
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(1.65rem, 3.4vw, 2.45rem);
+  font-weight: 520;
+  line-height: 1.04;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.pulse-continue__copy p {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  overflow: hidden;
+  color: var(--pulse-muted);
+  font-size: .59rem;
+  white-space: nowrap;
+}
+.pulse-continue__copy p svg { flex: 0 0 auto; color: var(--pulse-accent); }
+.pulse-continue__copy p span { overflow: hidden; text-overflow: ellipsis; }
+.pulse-continue__copy p i { flex: 0 0 auto; color: var(--pulse-line); font-style: normal; }
+.pulse-continue__body > button,
+.pulse-empty-character > button {
+  display: inline-flex;
+  min-height: 43px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 17px;
+  color: #fff7f9;
+  background: var(--pulse-accent-strong);
+  border: 0;
+  border-radius: 999px;
+  font-size: .65rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.pulse-continue__body > button:hover,
+.pulse-empty-character > button:hover { background: #c35772; }
+
+.pulse-detail__actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: -28px;
+}
+.pulse-quick-action {
+  min-width: 0;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 10px;
+  color: var(--pulse-ink-soft);
+  background: color-mix(in srgb, var(--stories-panel, #211018) 68%, transparent);
+  border: 1px solid var(--pulse-line);
+  border-radius: 15px;
+  font-size: .61rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.pulse-quick-action svg { flex: 0 0 auto; color: var(--pulse-accent); }
+.pulse-quick-action:hover { border-color: rgba(226, 138, 160, .44); background: color-mix(in srgb, var(--pulse-accent) 7%, var(--stories-panel, #211018)); }
+.pulse-quick-action--primary { color: #fff7f9; background: color-mix(in srgb, var(--pulse-accent-strong) 72%, var(--stories-panel, #211018)); }
+.pulse-quick-action--primary svg { color: #fff0f4; }
+
+.pulse-empty-character {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 17px;
+  padding: 22px;
+  background: color-mix(in srgb, var(--stories-panel, #211018) 62%, transparent);
+  border: 1px dashed rgba(224, 117, 143, .24);
+  border-radius: 21px;
+}
+.pulse-empty-character > span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  color: var(--pulse-accent);
+  background: rgba(226, 138, 160, .08);
+  border: 1px solid var(--pulse-line);
+  border-radius: 16px;
+}
+.pulse-empty-character div { min-width: 0; }
+.pulse-empty-character small { color: var(--pulse-accent); font-size: .49rem; font-weight: 850; letter-spacing: .16em; }
+.pulse-empty-character h2 { margin: 4px 0 0; color: var(--pulse-ink-soft); font-family: "Cormorant Garamond", serif; font-size: 1.55rem; font-weight: 550; }
+.pulse-empty-character p { margin: 4px 0 0; color: var(--pulse-muted); font-size: .62rem; line-height: 1.45; }
 .pulse-moment-section > header { margin-bottom: 12px; }
 .pulse-moment-section > header h2 {
   margin: 4px 0 0;
@@ -377,6 +530,7 @@
   .pulse-character-card__copy em { min-height: 2.2em; font-size: .72rem; }
   .pulse-character-card__copy > span { font-size: .52rem; }
   .pulse-character-card__arrow { top: 9px; right: 9px; width: 34px; height: 34px; }
+  .pulse-character-card__status { top: 10px; left: 10px; padding: 5px 7px; font-size: .41rem; }
 
   .pulse-detail__hero {
     grid-template-columns: 40px 78px minmax(0, 1fr);
@@ -390,6 +544,15 @@
   .pulse-detail__identity h1 { font-size: clamp(2rem, 9vw, 2.7rem); }
   .pulse-detail__identity p { margin-top: 7px; font-size: .57rem; }
   .pulse-detail__sections { gap: 31px; }
+  .pulse-continue { padding: 17px; border-radius: 19px; }
+  .pulse-continue__body { grid-template-columns: 1fr; gap: 14px; }
+  .pulse-continue__copy h2 { font-size: 1.56rem; }
+  .pulse-continue__body > button { width: 100%; }
+  .pulse-detail__actions { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: -20px; }
+  .pulse-quick-action { min-height: 46px; border-radius: 14px; }
+  .pulse-empty-character { grid-template-columns: 42px minmax(0, 1fr); gap: 13px; padding: 17px; }
+  .pulse-empty-character > span { width: 42px; height: 42px; border-radius: 14px; }
+  .pulse-empty-character > button { grid-column: 1 / -1; width: 100%; }
   .pulse-moment-section > header h2 { font-size: 1.7rem; }
   .pulse-moment-section > header p { font-size: .61rem; }
   .pulse-moment-list { border-radius: 16px; }
@@ -408,11 +571,15 @@
   .pulse-detail__back { width: 38px; height: 38px; }
   .pulse-detail__hero .pulse-portrait--compact { width: 68px; height: 74px; border-radius: 14px; }
   .pulse-detail__identity h1 { font-size: 1.85rem; }
+  .pulse-continue__copy h2 { font-size: 1.42rem; }
+  .pulse-quick-action { font-size: .57rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pulse-character-card,
   .pulse-character-card__arrow,
+  .pulse-quick-action,
+  .pulse-continue__body > button,
   .pulse-moment-row,
   .pulse-moment-row__arrow { transition: none; }
 }

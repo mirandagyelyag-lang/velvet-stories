@@ -2,13 +2,17 @@ import {
   Activity,
   ArrowLeft,
   ArrowRight,
+  BookHeart,
   BookOpenText,
+  CirclePlay,
   Clock3,
   LoaderCircle,
   MapPin,
   MessageCircleMore,
+  Plus,
   RotateCw,
   Sparkles,
+  UserRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -22,7 +26,7 @@ const PULSE_DETAIL_SCROLL_KEY = "velvet:pulse:detail-scroll";
 const PULSE_SHELF_KEY = "velvet:pulse:shelf";
 const RECENT_WINDOW_MS = 72 * 60 * 60 * 1000;
 
-function Pulse({ onOpenCharacter, onBrowseStories }) {
+function Pulse({ onOpenCharacter, onBrowseStories, onNewStory, onOpenMemories, onOpenProfile }) {
   const { user } = useAuth();
   const { characters, charactersLoading } = useCharacters();
   const { theme } = useTheme();
@@ -107,7 +111,7 @@ function Pulse({ onOpenCharacter, onBrowseStories }) {
     return () => { alive = false; };
   }, [user?.id, characters, charactersLoading, reloadKey]);
 
-  const shelves = useMemo(() => buildShelves(stories), [stories]);
+  const shelves = useMemo(() => buildShelves(stories, characters), [stories, characters]);
   const selectedShelf = shelves.find((shelf) => shelf.key === selectedShelfKey) || null;
 
   useEffect(() => {
@@ -159,7 +163,15 @@ function Pulse({ onOpenCharacter, onBrowseStories }) {
     <section className="chats-page chats-page--reference pulse-page">
       <div className="pulse-shell">
         {selectedShelf ? (
-          <PulseShelfView shelf={selectedShelf} onBack={closeShelf} onContinue={continueStory}/>
+          <PulseShelfView
+            shelf={selectedShelf}
+            onBack={closeShelf}
+            onContinue={continueStory}
+            onBrowseStories={onBrowseStories}
+            onNewStory={onNewStory}
+            onOpenMemories={onOpenMemories}
+            onOpenProfile={onOpenProfile}
+          />
         ) : (
           <>
             <header className="pulse-header">
@@ -209,10 +221,13 @@ function PulseCharacterLibrary({ shelves, onOpen }) {
             <PulsePortrait shelf={shelf}/>
             <span className="pulse-character-card__shade" aria-hidden="true"/>
             <span className="pulse-character-card__copy">
-              <small>{shelf.isGroup ? "GROUP STORY" : `${shelf.stories.length} ${shelf.stories.length === 1 ? "MOMENT" : "MOMENTS"}`}</small>
+              <small>{shelf.isGroup ? "GROUP STORY" : storyCountLabel(shelf.stories.length)}</small>
               <strong>{shelf.name}</strong>
               <em>{truncate(shelfNudge(shelf), 82)}</em>
-              <span>{relativeTime(shelf.latestAt)}</span>
+              <span>{shelf.latestAt ? relativeTime(shelf.latestAt) : "Ready when you are"}</span>
+            </span>
+            <span className={`pulse-character-card__status${shelf.unfinishedCount ? " is-attention" : ""}`}>
+              {shelf.unfinishedCount ? `${shelf.unfinishedCount} OPEN` : shelf.stories.length ? "UP TO DATE" : "NEW"}
             </span>
             <span className="pulse-character-card__arrow" aria-hidden="true"><ArrowRight size={18}/></span>
           </button>
@@ -239,8 +254,14 @@ function PulsePortrait({ shelf, compact = false }) {
   );
 }
 
-function PulseShelfView({ shelf, onBack, onContinue }) {
-  const sections = useMemo(() => categorizeStories(shelf.stories), [shelf.stories]);
+function PulseShelfView({ shelf, onBack, onContinue, onBrowseStories, onNewStory, onOpenMemories, onOpenProfile }) {
+  const priorityStory = shelf.priorityStory;
+  const otherStories = useMemo(
+    () => shelf.stories.filter((story) => story.id !== priorityStory?.id),
+    [shelf.stories, priorityStory?.id]
+  );
+  const sections = useMemo(() => categorizeStories(otherStories), [otherStories]);
+  const character = shelf.character;
 
   return (
     <div className="pulse-detail">
@@ -252,11 +273,45 @@ function PulseShelfView({ shelf, onBack, onContinue }) {
         <div className="pulse-detail__identity">
           <span>{shelf.isGroup ? "GROUP PULSE" : "CHARACTER PULSE"}</span>
           <h1>{shelf.name}</h1>
-          <p>{shelf.stories.length} saved {shelf.stories.length === 1 ? "moment" : "moments"} · latest {relativeTime(shelf.latestAt).toLowerCase()}</p>
+          <p>{shelf.stories.length ? `${shelf.stories.length} saved ${shelf.stories.length === 1 ? "story" : "stories"} · latest ${relativeTime(shelf.latestAt).toLowerCase()}` : "No stories yet · a clean beginning"}</p>
         </div>
       </header>
 
       <div className="pulse-detail__sections">
+        {priorityStory ? (
+          <PulseContinueCard story={priorityStory} onContinue={() => onContinue(priorityStory)}/>
+        ) : (
+          <PulseEmptyCharacter shelf={shelf} onStart={() => character && onNewStory?.(character)}/>
+        )}
+
+        <div className="pulse-detail__actions" aria-label={`Quick actions for ${shelf.name}`}>
+          {priorityStory ? (
+            <button className="pulse-quick-action pulse-quick-action--primary" type="button" onClick={() => onContinue(priorityStory)}>
+              <CirclePlay size={17}/><span>Continue</span>
+            </button>
+          ) : null}
+          {!shelf.isGroup && character ? (
+            <button className="pulse-quick-action" type="button" onClick={() => onNewStory?.(character)}>
+              <Plus size={17}/><span>New Story</span>
+            </button>
+          ) : null}
+          {!shelf.isGroup && character ? (
+            <button className="pulse-quick-action" type="button" onClick={() => onOpenMemories?.(character.id)}>
+              <BookHeart size={17}/><span>Memories</span>
+            </button>
+          ) : null}
+          {!shelf.isGroup && character ? (
+            <button className="pulse-quick-action" type="button" onClick={() => onOpenProfile?.(character)}>
+              <UserRound size={17}/><span>Profile</span>
+            </button>
+          ) : null}
+          {shelf.isGroup ? (
+            <button className="pulse-quick-action" type="button" onClick={onBrowseStories}>
+              <BookOpenText size={17}/><span>All Stories</span>
+            </button>
+          ) : null}
+        </div>
+
         {sections.map((section) => (
           <section className="pulse-moment-section" key={section.id} aria-labelledby={`pulse-${section.id}`}>
             <header>
@@ -273,6 +328,39 @@ function PulseShelfView({ shelf, onBack, onContinue }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function PulseContinueCard({ story, onContinue }) {
+  const location = clean(story.scene.location);
+  const sceneTime = clean(story.scene.time_label || story.scene.time);
+
+  return (
+    <section className="pulse-continue" aria-labelledby="pulse-continue-title">
+      <div className="pulse-continue__eyebrow"><Sparkles size={14}/> CONTINUE NOW</div>
+      <div className="pulse-continue__body">
+        <div className="pulse-continue__copy">
+          <small>{storyTitle(story)}</small>
+          <h2 id="pulse-continue-title">{getMomentText(story)}</h2>
+          <p>
+            {location ? <><MapPin size={13}/><span>{location}</span></> : sceneTime ? <><Clock3 size={13}/><span>{sceneTime}</span></> : <><MessageCircleMore size={13}/><span>Last scene saved</span></>}
+            {location && sceneTime ? <><i aria-hidden="true">·</i><span>{sceneTime}</span></> : null}
+            <i aria-hidden="true">·</i><span>{relativeTime(story.updated_at)}</span>
+          </p>
+        </div>
+        <button type="button" onClick={onContinue}>Continue <ArrowRight size={17}/></button>
+      </div>
+    </section>
+  );
+}
+
+function PulseEmptyCharacter({ shelf, onStart }) {
+  return (
+    <section className="pulse-empty-character">
+      <span><Sparkles size={22}/></span>
+      <div><small>FIRST CHAPTER</small><h2>Nothing has happened yet.</h2><p>Start a story with {shelf.name} and Pulse will keep every return point here.</p></div>
+      <button type="button" onClick={onStart}>Start first story <ArrowRight size={16}/></button>
+    </section>
   );
 }
 
@@ -307,7 +395,7 @@ function PulseState({ icon: Icon, iconClassName = "", title, text, children }) {
   );
 }
 
-function buildShelves(stories) {
+function buildShelves(stories, characters = []) {
   const map = new Map();
 
   stories.forEach((story) => {
@@ -321,6 +409,7 @@ function buildShelves(stories) {
         portraits: story.portraits,
         stories: [],
         latestAt: story.updated_at,
+        character: story.group_mode ? null : story.character,
       });
     }
 
@@ -330,14 +419,44 @@ function buildShelves(stories) {
     shelf.portraits = unique([...shelf.portraits, ...story.portraits]);
   });
 
+  characters.forEach((character) => {
+    const key = `character:${character.id}`;
+    if (map.has(key)) return;
+    map.set(key, {
+      key,
+      isGroup: false,
+      name: character.name || "Unnamed character",
+      initials: character.initials || initialsFor(character.name),
+      portraits: unique([character.coverUrl, character.imageUrl]),
+      stories: [],
+      latestAt: null,
+      character,
+    });
+  });
+
   return Array.from(map.values())
-    .map((shelf) => ({ ...shelf, stories: [...shelf.stories].sort(sortNewest) }))
-    .sort((a, b) => toTime(b.latestAt) - toTime(a.latestAt));
+    .map((shelf) => {
+      const sortedStories = [...shelf.stories].sort(sortNewest);
+      return {
+        ...shelf,
+        stories: sortedStories,
+        priorityStory: pickPriorityStory(sortedStories),
+        unfinishedCount: sortedStories.filter((story) => story.openThreads.length).length,
+      };
+    })
+    .sort((a, b) => {
+      const timeDifference = toTime(b.latestAt) - toTime(a.latestAt);
+      return timeDifference || a.name.localeCompare(b.name);
+    });
+}
+
+function pickPriorityStory(stories) {
+  return stories.find((story) => story.openThreads.length) || stories[0] || null;
 }
 
 function shelfNudge(shelf) {
   const latest = shelf?.stories?.[0];
-  if (!latest) return "This story is still here.";
+  if (!latest) return `Begin a new story with ${shelf?.name || "this character"}.`;
   const name = shelf.isGroup ? shelf.name : (shelf.name || "This character");
   if (latest.openThreads?.length) return `You left something unfinished with ${name}.`;
   const age = Date.now() - toTime(latest.updated_at);
@@ -404,6 +523,15 @@ function shapeStory(conversation, character, groupCharacters) {
 function getMomentText(story) {
   if (story.openThreads[0]) return truncate(story.openThreads[0], 155);
   return story.recap || "The last scene is waiting for you.";
+}
+
+function storyTitle(story) {
+  return clean(story.title) || clean(story.group_title) || clean(story.displayName) || "Saved story";
+}
+
+function storyCountLabel(count) {
+  if (!count) return "NO STORIES YET";
+  return `${count} ${count === 1 ? "STORY" : "STORIES"}`;
 }
 
 function normalizeThreads(value) {
