@@ -1,28 +1,37 @@
 import { useEffect, useState } from "react";
 import { isVelvetNativeRuntime } from "../native/velvetNative";
 import velvetLogo from "../assets/velvet-logo.webp";
-import velvetDarkReference from "../assets/velvet-cinematic-dark-reference.png";
+import velvetDarkReference from "../assets/velvet-cinematic-dark-reference.webp";
+import velvetCinematicInk from "../assets/velvet-cinematic-ink.webp";
+import velvetCinematicCore from "../assets/velvet-cinematic-core.webp";
 import "../styles/welcome-splash.css";
 
 function NativeDarkVelvetReveal() {
   return (
-    <div className="velvet-reference velvet-reference--fluid" aria-hidden="true">
-      <div className="velvet-reference__ambient" />
+    <div className="velvet-reference velvet-reference--build" aria-hidden="true">
+      <div className="velvet-build__ambient" />
 
-      <div className="velvet-reference__art-stage">
-        <img
-          className="velvet-reference__art"
-          src={velvetDarkReference}
-          alt=""
-          draggable="false"
-        />
+      <div className="velvet-build__reveal velvet-build__reveal--core">
+        <img className="velvet-build__layer velvet-build__layer--core" src={velvetCinematicCore} alt="" draggable="false" />
       </div>
 
-      <div className="velvet-reference__ribbon velvet-reference__ribbon--left" />
-      <div className="velvet-reference__ribbon velvet-reference__ribbon--right" />
-      <div className="velvet-reference__sheen" />
-      <div className="velvet-reference__bloom" />
-      <div className="velvet-reference__grain" />
+      <div className="velvet-build__reveal velvet-build__reveal--ink">
+        <img className="velvet-build__layer velvet-build__layer--ink" src={velvetCinematicInk} alt="" draggable="false" />
+      </div>
+
+      <div className="velvet-build__draw-front" />
+      <div className="velvet-build__ribbon velvet-build__ribbon--a" />
+      <div className="velvet-build__ribbon velvet-build__ribbon--b" />
+
+      <img
+        className="velvet-build__final"
+        src={velvetDarkReference}
+        alt=""
+        draggable="false"
+      />
+
+      <div className="velvet-build__final-glow" />
+      <div className="velvet-build__grain" />
     </div>
   );
 }
@@ -51,7 +60,7 @@ export default function WelcomeSplash() {
 
   if (nativeRuntime) {
     return (
-      <div className="velvet-splash velvet-splash--native velvet-splash--reference-dark velvet-splash--fluid">
+      <div className="velvet-splash velvet-splash--native velvet-splash--reference-dark velvet-splash--true-build">
         <NativeDarkVelvetReveal />
       </div>
     );

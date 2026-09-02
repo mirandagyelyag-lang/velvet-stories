@@ -45,3 +45,6 @@ Do not place extracted Velvet ZIPs, backups or `node_modules` inside this folder
 
 
 Android 3.13.17 can recover the public Supabase client key from the existing Supabase CLI login if local env files are missing.
+
+## v3.14.8
+Fixes the cinematic splash PWA build by using a lossless WebP source under Workbox's precache threshold, while keeping the one-take native reveal unchanged.

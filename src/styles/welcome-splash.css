@@ -18,4 +18,278 @@
 :root[data-theme="comfort"] .velvet-splash { color: #493a31; background: linear-gradient(160deg,#f4ede0,#e7dbc8 70%,#c7aa98); }
 @keyframes velvetSplashOut { to { opacity: 0; visibility: hidden; transform: scale(1.015); } }
 
-/* v3.14.6 · one-take cinematic native splash\n   One approved artwork, one continuous timeline. No slices, no cards, no\n   staggered image swaps. Motion is GPU-friendly transform/opacity whenever possible. */\n.velvet-splash--native.velvet-splash--reference-dark.velvet-splash--fluid {\n  display: block;\n  overflow: hidden;\n  pointer-events: none;\n  background: #080306;\n  color: #f6d2ca;\n  animation: velvetFluidExit .44s 2.58s cubic-bezier(.4,0,.2,1) forwards;\n}\n\n.velvet-reference--fluid {\n  position: absolute;\n  inset: 0;\n  overflow: hidden;\n  isolation: isolate;\n  background:\n    radial-gradient(ellipse at 50% 58%, rgba(76, 8, 30, .22), transparent 50%),\n    linear-gradient(180deg, #0a0407 0%, #12060b 64%, #080306 100%);\n}\n\n.velvet-reference__ambient {\n  position: absolute;\n  inset: -12%;\n  z-index: 0;\n  background:\n    radial-gradient(ellipse at 50% 55%, rgba(130, 21, 55, .22), transparent 34%),\n    radial-gradient(ellipse at 52% 84%, rgba(92, 10, 40, .17), transparent 38%);\n  opacity: .08;\n  transform: scale(.96);\n  animation: velvetFluidAmbient 2.55s cubic-bezier(.2,.72,.2,1) forwards;\n  will-change: opacity, transform;\n}\n\n.velvet-reference__art-stage {\n  position: absolute;\n  inset: 0;\n  z-index: 2;\n  overflow: hidden;\n}\n\n.velvet-splash.velvet-splash--native .velvet-reference__art {\n  position: absolute;\n  inset: 0;\n  display: block;\n  width: 100% !important;\n  height: 100% !important;\n  min-width: 100% !important;\n  min-height: 100% !important;\n  max-width: none !important;\n  max-height: none !important;\n  margin: 0 !important;\n  padding: 0 !important;\n  border: 0;\n  border-radius: 0 !important;\n  box-shadow: none !important;\n  object-fit: cover;\n  object-position: 50% 50%;\n  user-select: none;\n  -webkit-user-drag: none;\n  opacity: 0;\n  transform: translate3d(0, 1.1%, 0) scale(1.055);\n  filter: brightness(.30) saturate(.82) contrast(1.08) blur(8px);\n  animation: velvetFluidArt 2.28s cubic-bezier(.16,.78,.2,1) .08s forwards;\n  will-change: opacity, transform, filter;\n  backface-visibility: hidden;\n}\n\n/* Two broad wine ribbons cross the exact artwork continuously. They never\n   reveal separate image fragments, so there is no slideshow/cut feeling. */\n.velvet-reference__ribbon {\n  position: absolute;\n  z-index: 3;\n  width: 76vw;\n  height: 18vw;\n  min-height: 88px;\n  border-radius: 999px;\n  opacity: 0;\n  mix-blend-mode: screen;\n  pointer-events: none;\n  background: linear-gradient(90deg,\n    transparent 0%,\n    rgba(99, 14, 43, .08) 20%,\n    rgba(177, 36, 72, .25) 44%,\n    rgba(255, 184, 174, .58) 50%,\n    rgba(144, 27, 62, .18) 59%,\n    transparent 82%);\n  filter: blur(8px);\n  will-change: transform, opacity;\n  backface-visibility: hidden;\n}\n\n.velvet-reference__ribbon--left {\n  left: -44vw;\n  top: 44%;\n  transform: translate3d(0,0,0) rotate(-30deg) scaleX(.72);\n  animation: velvetFluidRibbonLeft 2.05s cubic-bezier(.18,.72,.22,1) .10s both;\n}\n\n.velvet-reference__ribbon--right {\n  right: -49vw;\n  top: 50%;\n  transform: translate3d(0,0,0) rotate(31deg) scaleX(.70);\n  animation: velvetFluidRibbonRight 2.12s cubic-bezier(.18,.72,.22,1) .22s both;\n}\n\n/* One long feathered highlight gives the Netflix-like "being written by light"\n   feeling without hard clip-path edges. */\n.velvet-reference__sheen {\n  position: absolute;\n  z-index: 4;\n  top: -18%;\n  left: -58vw;\n  width: 42vw;\n  height: 136%;\n  opacity: 0;\n  pointer-events: none;\n  mix-blend-mode: screen;\n  background: linear-gradient(90deg,\n    transparent 0%,\n    rgba(123, 22, 52, .06) 26%,\n    rgba(225, 89, 110, .18) 41%,\n    rgba(255, 220, 208, .78) 50%,\n    rgba(210, 62, 92, .16) 59%,\n    transparent 100%);\n  filter: blur(10px);\n  transform: translate3d(0,0,0) rotate(8deg);\n  animation: velvetFluidSheen 1.86s cubic-bezier(.24,.7,.2,1) .24s both;\n  will-change: transform, opacity;\n  backface-visibility: hidden;\n}\n\n.velvet-reference__bloom {\n  position: absolute;\n  z-index: 5;\n  left: 50%;\n  top: 54%;\n  width: 34vw;\n  aspect-ratio: 1;\n  border-radius: 50%;\n  opacity: 0;\n  transform: translate3d(-50%,-50%,0) scale(.55);\n  background: radial-gradient(circle,\n    rgba(255, 223, 211, .28) 0%,\n    rgba(190, 45, 79, .18) 22%,\n    rgba(91, 13, 42, .08) 48%,\n    transparent 72%);\n  filter: blur(16px);\n  mix-blend-mode: screen;\n  animation: velvetFluidBloom 1.18s cubic-bezier(.2,.74,.2,1) .94s both;\n  will-change: opacity, transform;\n}\n\n.velvet-reference__grain {\n  position: absolute;\n  inset: 0;\n  z-index: 6;\n  pointer-events: none;\n  opacity: .055;\n  background-image:\n    radial-gradient(circle at 21% 63%, rgba(255,220,210,.55) 0 1px, transparent 1.4px),\n    radial-gradient(circle at 64% 48%, rgba(255,174,170,.42) 0 1px, transparent 1.4px),\n    radial-gradient(circle at 76% 66%, rgba(255,210,202,.34) 0 1px, transparent 1.3px);\n  background-size: 73px 89px, 109px 97px, 127px 131px;\n  animation: velvetFluidGrain 2.4s ease-out both;\n}\n\n@keyframes velvetFluidArt {\n  0% {\n    opacity: 0;\n    transform: translate3d(0,1.1%,0) scale(1.055);\n    filter: brightness(.30) saturate(.82) contrast(1.08) blur(8px);\n  }\n  18% { opacity: .10; }\n  38% {\n    opacity: .34;\n    filter: brightness(.52) saturate(.92) contrast(1.07) blur(4.2px);\n  }\n  63% {\n    opacity: .72;\n    transform: translate3d(0,.35%,0) scale(1.018);\n    filter: brightness(.82) saturate(.98) contrast(1.045) blur(1.5px);\n  }\n  84% { opacity: .94; }\n  100% {\n    opacity: 1;\n    transform: translate3d(0,0,0) scale(1);\n    filter: brightness(1.01) saturate(1.01) contrast(1.02) blur(0);\n  }\n}\n\n@keyframes velvetFluidRibbonLeft {\n  0% { opacity: 0; transform: translate3d(-12vw,8vh,0) rotate(-30deg) scaleX(.72); }\n  18% { opacity: .18; }\n  48% { opacity: .72; }\n  78% { opacity: .28; }\n  100% { opacity: 0; transform: translate3d(104vw,-18vh,0) rotate(-22deg) scaleX(1.08); }\n}\n\n@keyframes velvetFluidRibbonRight {\n  0% { opacity: 0; transform: translate3d(14vw,-4vh,0) rotate(31deg) scaleX(.70); }\n  22% { opacity: .14; }\n  52% { opacity: .60; }\n  80% { opacity: .22; }\n  100% { opacity: 0; transform: translate3d(-108vw,18vh,0) rotate(24deg) scaleX(1.06); }\n}\n\n@keyframes velvetFluidSheen {\n  0% { opacity: 0; transform: translate3d(0,0,0) rotate(8deg); }\n  16% { opacity: .18; }\n  44% { opacity: .78; }\n  72% { opacity: .38; }\n  100% { opacity: 0; transform: translate3d(166vw,0,0) rotate(8deg); }\n}\n\n@keyframes velvetFluidBloom {\n  0% { opacity: 0; transform: translate3d(-50%,-50%,0) scale(.55); }\n  42% { opacity: .48; }\n  100% { opacity: 0; transform: translate3d(-50%,-50%,0) scale(1.95); }\n}\n\n@keyframes velvetFluidAmbient {\n  0% { opacity: .08; transform: scale(.96); }\n  60% { opacity: .68; }\n  100% { opacity: .52; transform: scale(1.025); }\n}\n\n@keyframes velvetFluidGrain {\n  0% { opacity: 0; transform: translate3d(0,4px,0); }\n  35% { opacity: .035; }\n  100% { opacity: .055; transform: translate3d(0,0,0); }\n}\n\n@keyframes velvetFluidExit {\n  0% { opacity: 1; }\n  100% { opacity: 0; visibility: hidden; }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .velvet-splash--native.velvet-splash--reference-dark.velvet-splash--fluid {\n    animation-delay: 1.02s;\n  }\n  .velvet-reference__art {\n    animation-duration: .01ms !important;\n    animation-delay: 0ms !important;\n  }\n  .velvet-reference__ambient,\n  .velvet-reference__ribbon,\n  .velvet-reference__sheen,\n  .velvet-reference__bloom,\n  .velvet-reference__grain { display: none; }\n}\n
+/* v3.14.9 · true logo-build reveal
+   The approved artwork is preserved as the final frame. Two transparent light
+   extractions are progressively uncovered from left to right, so only the
+   luminous lettering and ribbons appear to be constructed. No image slices. */
+.velvet-splash--native.velvet-splash--reference-dark.velvet-splash--true-build {
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+  background: #070205;
+  color: #f6d2ca;
+  animation: velvetBuildExit .36s 2.70s cubic-bezier(.4,0,.2,1) forwards;
+}
+
+.velvet-reference--build {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 50% 55%, rgba(92, 9, 35, .22), transparent 44%),
+    linear-gradient(180deg, #090306 0%, #12050a 62%, #080205 100%);
+}
+
+.velvet-build__ambient {
+  position: absolute;
+  inset: -10%;
+  z-index: 0;
+  opacity: .16;
+  transform: scale(.97);
+  background:
+    radial-gradient(ellipse at 49% 58%, rgba(143, 24, 57, .24), transparent 34%),
+    radial-gradient(ellipse at 56% 82%, rgba(84, 7, 34, .18), transparent 39%);
+  animation: velvetBuildAmbient 2.55s cubic-bezier(.2,.75,.2,1) forwards;
+  will-change: opacity, transform;
+}
+
+.velvet-build__reveal {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  z-index: 2;
+  width: 0;
+  overflow: hidden;
+  will-change: width, opacity;
+}
+
+.velvet-build__reveal--core {
+  opacity: 0;
+  animation: velvetBuildCore 1.52s cubic-bezier(.18,.76,.18,1) .08s forwards;
+}
+
+.velvet-build__reveal--ink {
+  opacity: 0;
+  z-index: 3;
+  animation: velvetBuildInk 1.88s cubic-bezier(.16,.78,.18,1) .16s forwards;
+}
+
+.velvet-build__layer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  width: 100vw !important;
+  height: 100% !important;
+  min-width: 100vw !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  object-fit: cover;
+  object-position: 50% 50%;
+  user-select: none;
+  -webkit-user-drag: none;
+  backface-visibility: hidden;
+}
+
+.velvet-build__layer--core {
+  filter: brightness(1.36) saturate(1.12) drop-shadow(0 0 12px rgba(255,121,142,.42));
+  opacity: .96;
+}
+
+.velvet-build__layer--ink {
+  filter: brightness(1.10) saturate(1.06) drop-shadow(0 0 8px rgba(199,45,78,.30));
+  opacity: .94;
+}
+
+.velvet-build__draw-front {
+  position: absolute;
+  z-index: 5;
+  top: 18%;
+  bottom: 16%;
+  left: -18vw;
+  width: 18vw;
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(180,39,76,.12) 28%,
+    rgba(255,181,176,.34) 47%,
+    rgba(255,233,221,.92) 55%,
+    rgba(206,54,89,.20) 68%,
+    transparent 100%);
+  filter: blur(12px);
+  transform: skewX(-8deg);
+  animation: velvetBuildFront 1.86s cubic-bezier(.16,.78,.18,1) .12s forwards;
+  will-change: transform, opacity;
+}
+
+.velvet-build__ribbon {
+  position: absolute;
+  z-index: 4;
+  width: 82vw;
+  height: 11vw;
+  min-height: 56px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: linear-gradient(90deg, transparent, rgba(123,17,51,.12), rgba(245,118,128,.36), rgba(255,205,193,.56), rgba(138,21,57,.12), transparent);
+  filter: blur(10px);
+  will-change: transform, opacity;
+}
+
+.velvet-build__ribbon--a {
+  left: -54vw;
+  top: 43%;
+  transform: rotate(-29deg);
+  animation: velvetBuildRibbonA 1.90s cubic-bezier(.2,.74,.2,1) .10s both;
+}
+
+.velvet-build__ribbon--b {
+  right: -58vw;
+  top: 53%;
+  transform: rotate(27deg);
+  animation: velvetBuildRibbonB 2.02s cubic-bezier(.2,.74,.2,1) .22s both;
+}
+
+.velvet-splash.velvet-splash--native .velvet-build__final {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  object-fit: cover;
+  object-position: 50% 50%;
+  user-select: none;
+  -webkit-user-drag: none;
+  opacity: 0;
+  transform: scale(1.018);
+  filter: brightness(.82) saturate(.94);
+  animation: velvetBuildFinal .92s cubic-bezier(.2,.72,.2,1) 1.66s forwards;
+  will-change: opacity, transform, filter;
+  backface-visibility: hidden;
+}
+
+.velvet-build__final-glow {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: 55%;
+  width: 30vw;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate3d(-50%,-50%,0) scale(.65);
+  background: radial-gradient(circle, rgba(255,221,207,.22), rgba(190,44,76,.13) 30%, transparent 70%);
+  filter: blur(18px);
+  mix-blend-mode: screen;
+  animation: velvetBuildFinalGlow .88s ease-out 1.54s both;
+}
+
+.velvet-build__grain {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  opacity: 0;
+  background-image:
+    radial-gradient(circle at 23% 61%, rgba(255,220,210,.42) 0 1px, transparent 1.3px),
+    radial-gradient(circle at 66% 48%, rgba(255,174,170,.34) 0 1px, transparent 1.4px),
+    radial-gradient(circle at 77% 65%, rgba(255,210,202,.28) 0 1px, transparent 1.2px);
+  background-size: 73px 89px, 109px 97px, 127px 131px;
+  animation: velvetBuildGrain 2.45s ease-out .10s both;
+}
+
+@keyframes velvetBuildCore {
+  0% { width: 0; opacity: 0; }
+  10% { opacity: .54; }
+  55% { opacity: 1; }
+  100% { width: 100%; opacity: .74; }
+}
+
+@keyframes velvetBuildInk {
+  0% { width: 0; opacity: 0; }
+  12% { opacity: .30; }
+  62% { opacity: .96; }
+  100% { width: 100%; opacity: 1; }
+}
+
+@keyframes velvetBuildFront {
+  0% { opacity: 0; transform: translate3d(0,0,0) skewX(-8deg); }
+  12% { opacity: .16; }
+  48% { opacity: .92; }
+  78% { opacity: .38; }
+  100% { opacity: 0; transform: translate3d(136vw,0,0) skewX(-8deg); }
+}
+
+@keyframes velvetBuildRibbonA {
+  0% { opacity: 0; transform: translate3d(-8vw,7vh,0) rotate(-29deg) scaleX(.74); }
+  24% { opacity: .20; }
+  52% { opacity: .58; }
+  82% { opacity: .18; }
+  100% { opacity: 0; transform: translate3d(113vw,-16vh,0) rotate(-20deg) scaleX(1.08); }
+}
+
+@keyframes velvetBuildRibbonB {
+  0% { opacity: 0; transform: translate3d(8vw,-6vh,0) rotate(27deg) scaleX(.74); }
+  26% { opacity: .16; }
+  54% { opacity: .48; }
+  84% { opacity: .14; }
+  100% { opacity: 0; transform: translate3d(-116vw,16vh,0) rotate(20deg) scaleX(1.08); }
+}
+
+@keyframes velvetBuildFinal {
+  0% { opacity: 0; transform: scale(1.018); filter: brightness(.82) saturate(.94); }
+  55% { opacity: .82; }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1) saturate(1); }
+}
+
+@keyframes velvetBuildFinalGlow {
+  0% { opacity: 0; transform: translate3d(-50%,-50%,0) scale(.65); }
+  48% { opacity: .30; }
+  100% { opacity: 0; transform: translate3d(-50%,-50%,0) scale(1.65); }
+}
+
+@keyframes velvetBuildAmbient {
+  0% { opacity: .16; transform: scale(.97); }
+  65% { opacity: .66; }
+  100% { opacity: .50; transform: scale(1.02); }
+}
+
+@keyframes velvetBuildGrain {
+  0% { opacity: 0; }
+  38% { opacity: .025; }
+  100% { opacity: .05; }
+}
+
+@keyframes velvetBuildExit {
+  0% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .velvet-splash--native.velvet-splash--reference-dark.velvet-splash--true-build { animation-delay: 1.0s; }
+  .velvet-build__reveal { width: 100%; opacity: 1; animation: none; }
+  .velvet-build__final { opacity: 1 !important; transform: none !important; filter: none !important; animation: none !important; }
+  .velvet-build__draw-front,
+  .velvet-build__ribbon,
+  .velvet-build__ambient,
+  .velvet-build__final-glow,
+  .velvet-build__grain { display: none; }
+}

@@ -91,6 +91,8 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
+          // Keep a little headroom for cinematic launch artwork while the source image stays optimized.
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
           cleanupOutdatedCaches: true,
           clientsClaim: false,
           skipWaiting: false,
