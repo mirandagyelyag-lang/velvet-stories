@@ -6,51 +6,23 @@ import "../styles/welcome-splash.css";
 
 function NativeDarkVelvetReveal() {
   return (
-    <div className="velvet-reference" aria-hidden="true">
+    <div className="velvet-reference velvet-reference--fluid" aria-hidden="true">
       <div className="velvet-reference__ambient" />
 
-      <div className="velvet-reference__stage">
+      <div className="velvet-reference__art-stage">
         <img
-          className="velvet-reference__image velvet-reference__image--ghost"
-          src={velvetDarkReference}
-          alt=""
-          draggable="false"
-        />
-        <img
-          className="velvet-reference__image velvet-reference__image--slice velvet-reference__image--slice-a"
-          src={velvetDarkReference}
-          alt=""
-          draggable="false"
-        />
-        <img
-          className="velvet-reference__image velvet-reference__image--slice velvet-reference__image--slice-b"
-          src={velvetDarkReference}
-          alt=""
-          draggable="false"
-        />
-        <img
-          className="velvet-reference__image velvet-reference__image--slice velvet-reference__image--slice-c"
-          src={velvetDarkReference}
-          alt=""
-          draggable="false"
-        />
-        <img
-          className="velvet-reference__image velvet-reference__image--sweep"
-          src={velvetDarkReference}
-          alt=""
-          draggable="false"
-        />
-        <img
-          className="velvet-reference__image velvet-reference__image--final"
+          className="velvet-reference__art"
           src={velvetDarkReference}
           alt=""
           draggable="false"
         />
       </div>
 
-      <div className="velvet-reference__beam velvet-reference__beam--left" />
-      <div className="velvet-reference__beam velvet-reference__beam--right" />
-      <div className="velvet-reference__flash" />
+      <div className="velvet-reference__ribbon velvet-reference__ribbon--left" />
+      <div className="velvet-reference__ribbon velvet-reference__ribbon--right" />
+      <div className="velvet-reference__sheen" />
+      <div className="velvet-reference__bloom" />
+      <div className="velvet-reference__grain" />
     </div>
   );
 }
@@ -65,7 +37,7 @@ export default function WelcomeSplash() {
 
   useEffect(() => {
     if (!visible) return;
-    const duration = nativeRuntime ? 2860 : 1250;
+    const duration = nativeRuntime ? 3060 : 1250;
     const timer = window.setTimeout(() => {
       if (!nativeRuntime) {
         try { sessionStorage.setItem("velvet-splash-seen", "1"); } catch {}
@@ -79,7 +51,7 @@ export default function WelcomeSplash() {
 
   if (nativeRuntime) {
     return (
-      <div className="velvet-splash velvet-splash--native velvet-splash--reference-dark">
+      <div className="velvet-splash velvet-splash--native velvet-splash--reference-dark velvet-splash--fluid">
         <NativeDarkVelvetReveal />
       </div>
     );
