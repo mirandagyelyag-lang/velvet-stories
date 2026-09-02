@@ -44,3 +44,8 @@ supabase/functions/swift-task/
 .vercel
 .env*
 .env.android.local
+# Android generated/local files
+android/.gradle/
+android/**/build/
+android/local.properties
+*.apk
