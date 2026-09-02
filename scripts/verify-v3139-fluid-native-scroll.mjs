@@ -11,9 +11,10 @@ const foundation = read("src/styles/velvet-mobile-foundation.css");
 const burgundy = read("src/styles/velvet-burgundy-reference.css");
 const header = read("src/styles/chat-header-overlay.css");
 const reliability = read("src/styles/velvet-v3120-never-lose-story.css");
+const patchVersion = Number(pkg.version.split(".")[2]);
 
 const checks = [
-  ["release is v3.13.9 Fluid Native Scroll", pkg.version === "3.13.9" && release.version === "3.13.9" && release.name === "Fluid Native Scroll"],
+  ["release retains v3.13.9 fluid scrolling or a later compatible build", pkg.version.startsWith("3.13.") && patchVersion >= 9 && release.version === pkg.version],
   ["no global touchmove listener blocks compositor scrolling", !viewport.includes('addEventListener("touchmove"') && !viewport.includes("stopMultiTouchScale")],
   ["the document is the single route scroll owner", app.includes("return document.scrollingElement;") && !app.includes('document.querySelector(".app__content")')],
   ["mobile document overscroll remains native", index.includes("body{overscroll-behavior-y:auto}") && experience.includes("html, body { overscroll-behavior-y: auto; }")],

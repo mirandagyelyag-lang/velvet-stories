@@ -8,7 +8,7 @@ check("viewport guard never intercepts one-finger touch movement", !viewportLock
 check("v2.10.33 viewport lock is installed before React and remains in the final CSS stack", mainEntry.includes("installMobileViewportLock();")&&mainEntry.indexOf("installMobileViewportLock();")<mainEntry.indexOf("createRoot(")&&mainEntry.includes('import "./styles/velvet-v21033-native-viewport-lock.css";')&&mainEntry.indexOf('import "./styles/velvet-v21033-native-viewport-lock.css";')<mainEntry.indexOf('import "./styles/velvet-v374-chat-composer-authority.css";'));
 check("v2.10.33 legacy mobile CSS no longer grants pinch zoom", !mobile.includes("pinch-zoom")&&!studio2610.includes("pinch-zoom")&&!studioLite.includes("pinch-zoom"));
 
-check("360-430px route shell cannot create horizontal page overflow",stability.includes("@media (max-width:430px)")&&stability.includes("overflow-x:hidden!important"));
+check("360-430px route shell clips horizontally without becoming a second scroller",stability.includes("@media (max-width:430px)")&&stability.includes("overflow-x:clip!important")&&!stability.includes("html,body,#root,.app,.app__content{max-width:100%!important;overflow-x:hidden!important"));
 check("all primary destinations are covered by the mobile viewport shield",[".stories-page",".discover-page",".chats-page",".memories-page",".profile-page",".settings-page",".diagnostics-page",".search-page",".personas-page",".lorebooks-page"].every(t=>stability.includes(t)));
 check("one-finger chat scroll stays native",mobile.includes("touch-action:pan-y!important")&&mobile.includes("overflow-y:auto!important"));
 check("chat never becomes a nested vertical scroller",mobile.includes(".chat__content,.chat__content--wallpaper")&&mobile.includes("overflow:visible!important"));

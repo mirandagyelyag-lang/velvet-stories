@@ -54,7 +54,7 @@
 
 @media (max-width: 760px) {
   .app { display: block; }
-  .app__content { min-height: 100dvh; overflow-x:hidden; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .app__content { min-height: 100dvh; overflow-x:clip; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
   .app--chat .app__content { padding-bottom: 0; }
   .page-heading { margin-bottom: 20px; padding-bottom: 18px; }
   .page-heading h1 { font-size: clamp(2.8rem, 13vw, 4rem); }
