@@ -42,3 +42,6 @@ npm run clean
 - `scripts/`: automated source and behavior verification.
 
 Do not place extracted Velvet ZIPs, backups or `node_modules` inside this folder. `.gitignore` prevents them from becoming a second source of truth.
+
+
+Android 3.13.17 can recover the public Supabase client key from the existing Supabase CLI login if local env files are missing.

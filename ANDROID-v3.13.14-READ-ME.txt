@@ -1,0 +1,16 @@
+Velvet Stories Android v3.13.15 — NATIVE CLEAN INSTALL
+
+This build is based on Velvet v3.13.13 / the latest v3.13.11 application work and fixes Android startup rather than layering another web/PWA patch.
+
+GUARDS IN THIS BUILD
+- Android build uses http://localhost, a different origin from the first broken https://localhost APK.
+- The Android HTML is stamped with velvet-runtime=android at build time.
+- Vite PWA is disabled for Android builds.
+- The Android sync fails if sw.js, workbox, manifest.webmanifest, or the native runtime marker is wrong.
+- Any service workers/cache entries in the current native origin are removed without deleting localStorage.
+- PWA "Repair & reopen" UI is not used for native React errors.
+- Android build imports the public Supabase config from Desktop\velvet-stories\.env/.env.local without putting secrets into this ZIP.
+- Android versionCode=3 and versionName=3.13.15.
+- INSTALL-VELVET-ANDROID.ps1 builds, verifies, installs, and launches the APK on one authorized USB device.
+
+NO .env, node_modules, dist, .vercel, or secret/service-role keys are included in this archive.

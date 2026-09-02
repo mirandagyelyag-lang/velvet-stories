@@ -1,0 +1,85 @@
+/* Velvet Stories v3.14.0 · Android Native Polish Pass I */
+:root.velvet-native-runtime {
+  --velvet-native-safe-top: 0px;
+  --velvet-native-safe-right: 0px;
+  --velvet-native-safe-bottom: 0px;
+  --velvet-native-safe-left: 0px;
+  --velvet-native-visual-height: 100dvh;
+  --velvet-safe-top: max(env(safe-area-inset-top), var(--velvet-native-safe-top));
+  --velvet-safe-right: max(env(safe-area-inset-right), var(--velvet-native-safe-right));
+  --velvet-safe-bottom: max(env(safe-area-inset-bottom), var(--velvet-native-safe-bottom));
+  --velvet-safe-left: max(env(safe-area-inset-left), var(--velvet-native-safe-left));
+  overscroll-behavior: none;
+  background: var(--background);
+}
+
+html.velvet-native-runtime,
+html.velvet-native-runtime body,
+html.velvet-native-runtime #root {
+  min-height: var(--velvet-native-visual-height);
+  background: var(--background);
+}
+
+html.velvet-native-runtime body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.velvet-native-runtime button,
+html.velvet-native-runtime [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (max-width: 760px) {
+  html.velvet-native-runtime .app,
+  html.velvet-native-runtime .app__content,
+  html.velvet-native-runtime .chat {
+    min-height: var(--velvet-native-visual-height) !important;
+  }
+
+  html.velvet-native-runtime .mobile-nav.velvet-reference-nav {
+    left: calc(14px + var(--velvet-safe-left)) !important;
+    right: calc(14px + var(--velvet-safe-right)) !important;
+    bottom: calc(8px + var(--velvet-safe-bottom)) !important;
+  }
+
+  html.velvet-native-runtime .mobile-global-search {
+    right: calc(18px + var(--velvet-safe-right)) !important;
+    bottom: calc(82px + var(--velvet-safe-bottom)) !important;
+  }
+
+  html.velvet-native-runtime body > .chat__composer {
+    left: calc(8px + var(--velvet-safe-left)) !important;
+    right: calc(8px + var(--velvet-safe-right)) !important;
+    bottom: calc(8px + var(--velvet-safe-bottom) + var(--velvet-keyboard-offset, 0px)) !important;
+  }
+
+  html.velvet-native-runtime .chat__polish-stack {
+    bottom: calc(84px + var(--velvet-safe-bottom) + var(--velvet-keyboard-offset, 0px)) !important;
+  }
+
+  html.velvet-native-runtime .chat__ambience-suggestion,
+  html.velvet-native-runtime .audio-status-pill {
+    margin-top: var(--velvet-safe-top);
+  }
+
+  html.velvet-native-runtime.velvet-native-keyboard-open .mobile-nav,
+  html.velvet-native-runtime.velvet-native-keyboard-open .mobile-global-search {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(18px) !important;
+    transition: opacity .14s ease, transform .14s ease;
+  }
+
+  html.velvet-native-runtime.velvet-native-keyboard-open body > .chat__composer {
+    transition: bottom .12s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.velvet-native-runtime .mobile-nav.velvet-reference-nav,
+  html.velvet-native-runtime body > .chat__composer {
+    will-change: transform;
+  }
+}

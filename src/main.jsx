@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { Capacitor } from "@capacitor/core";
 
 import { AuthProvider } from "./context/AuthContext";
 import { CharactersProvider } from "./context/CharactersContext";
@@ -16,6 +17,7 @@ import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
 import { markVelvetHealthy, recordVelvetRuntimeError } from "./utils/runtimeRecovery";
 import { applySafeModeClass } from "./utils/safeMode";
 import { installMobileViewportLock } from "./utils/mobileViewportLock";
+import { installVelvetNativeRuntime } from "./native/velvetNative";
 import "./index.css";
 import "./styles/velvet-ui.css";
 import "./styles/velvet-v18.css";
@@ -44,18 +46,19 @@ import "./styles/velvet-v296-precision-actions.css";
 import "./styles/velvet-v298-characters-clean-mobile.css";
 
 installMobileViewportLock();
+installVelvetNativeRuntime();
 applySafeModeClass();
 
-if (import.meta.env.DEV && "serviceWorker" in navigator) {
+const nativeRuntime = __VELVET_ANDROID_BUILD__ || Capacitor.isNativePlatform();
+
+if ((import.meta.env.DEV || nativeRuntime) && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     registrations.forEach((registration) => registration.unregister());
   });
 
   if ("caches" in window) {
     caches.keys().then((keys) => {
-      keys
-        .filter((key) => key.includes("workbox") || key.includes("precache"))
-        .forEach((key) => caches.delete(key));
+      keys.forEach((key) => caches.delete(key));
     });
   }
 }
@@ -118,3 +121,4 @@ import "./styles/velvet-v3110-experience.css";
 
 import "./styles/chat-header-overlay.css";
 import "./styles/velvet-v3120-never-lose-story.css";
+import "./styles/velvet-v3140-native-polish.css";

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { syncNativeChrome } from "../native/velvetNative";
 
 const ThemeContext = createContext();
 const THEMES = ["light", "dark", "comfort"];
@@ -16,6 +17,7 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem("velvet-theme", theme); } catch {}
+    syncNativeChrome(theme);
   }, [theme]);
 
   function setTheme(nextTheme) {

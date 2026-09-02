@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { lockVelvetPortrait } from "../utils/lockOrientation";
 import { VELVET_VERSION } from "../config/version";
@@ -8,6 +9,67 @@ const INSTALL_DISMISSED_KEY = "velvet_install_prompt_dismissed";
 const UPDATE_PENDING_KEY = "velvet_update_pending_v269";
 
 export function PWAProvider({ children }) {
+  if (Capacitor.isNativePlatform()) {
+    return <NativePWAProvider>{children}</NativePWAProvider>;
+  }
+  return <WebPWAProvider>{children}</WebPWAProvider>;
+}
+
+function NativePWAProvider({ children }) {
+  const [online, setOnline] = useState(() => navigator.onLine);
+
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    void lockVelvetPortrait();
+    const relock = () => { if (document.visibilityState === "visible") void lockVelvetPortrait(); };
+    document.addEventListener("visibilitychange", relock);
+    window.addEventListener("orientationchange", relock);
+    return () => {
+      document.removeEventListener("visibilitychange", relock);
+      window.removeEventListener("orientationchange", relock);
+    };
+  }, []);
+
+  const noUpdate = async () => ({ available: false, version: VELVET_VERSION });
+  const value = useMemo(() => ({
+    canInstall: false,
+    installed: true,
+    installDismissed: true,
+    installApp: async () => ({ outcome: "installed" }),
+    dismissInstall: () => {},
+    showIOSInstructions: false,
+    closeIOSInstructions: () => {},
+    online,
+    offlineReady: false,
+    dismissOfflineReady: () => {},
+    needRefresh: false,
+    dismissRefresh: () => {},
+    updateApp: noUpdate,
+    platform: Capacitor.getPlatform(),
+    localVersion: VELVET_VERSION,
+    serverVersion: VELVET_VERSION,
+    serverUpdateAvailable: false,
+    checkingForUpdate: false,
+    updating: false,
+    updateProblem: "",
+    checkForUpdate: noUpdate,
+    repairUpdate: noUpdate,
+  }), [online]);
+
+  return <PWAContext.Provider value={value}>{children}</PWAContext.Provider>;
+}
+
+function WebPWAProvider({ children }) {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installDismissed, setInstallDismissed] = useState(() => {
     try { return localStorage.getItem(INSTALL_DISMISSED_KEY) === "true"; }

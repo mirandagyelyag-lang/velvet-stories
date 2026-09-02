@@ -43,3 +43,4 @@ supabase/functions/swift-task/
 
 .vercel
 .env*
+.env.android.local

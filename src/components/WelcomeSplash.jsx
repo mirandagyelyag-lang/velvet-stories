@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { isVelvetNativeRuntime } from "../native/velvetNative";
 import velvetLogo from "../assets/velvet-logo.webp";
 import "../styles/welcome-splash.css";
 
 export default function WelcomeSplash() {
+  const nativeRuntime = isVelvetNativeRuntime();
   const [visible, setVisible] = useState(() => {
+    if (nativeRuntime) return false;
     try { return sessionStorage.getItem("velvet-splash-seen") !== "1"; }
     catch { return true; }
   });

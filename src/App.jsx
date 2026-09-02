@@ -7,6 +7,7 @@ import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import { useCharacters } from "./context/CharactersContext";
 import WelcomeSplash from "./components/WelcomeSplash";
+import { isVelvetNativeRuntime } from "./native/velvetNative";
 import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
@@ -182,6 +183,35 @@ function App() {
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [previewCharacter, setPreviewCharacter] = useState(null);
   const [memoryFocusCharacterId, setMemoryFocusCharacterId] = useState("");
+
+  useEffect(() => {
+    if (!isVelvetNativeRuntime()) return;
+
+    window.__VELVET_ANDROID_BACK__ = () => {
+      if (creatorOpen) {
+        setCreatorOpen(false);
+        setEditingCharacter(null);
+        setRemixSource(null);
+        return true;
+      }
+
+      if (selectedCharacter || previewCharacter || activePage !== "chats") {
+        const state = window.history.state;
+        if (state?.velvetNavigation && window.history.length > 1) {
+          window.history.back();
+        } else {
+          navigate("chats", { replace: true });
+        }
+        return true;
+      }
+
+      return false;
+    };
+
+    return () => {
+      delete window.__VELVET_ANDROID_BACK__;
+    };
+  }, [creatorOpen, selectedCharacter, previewCharacter, activePage]);
 
   useEffect(() => {
     charactersRef.current = characters;

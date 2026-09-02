@@ -28,6 +28,9 @@ class VelvetErrorBoundary extends Component {
   render() {
     if (!this.state.error) return this.props.children;
 
+    const native = Boolean(window.__VELVET_IS_NATIVE__?.());
+    const message = this.state.error?.message || String(this.state.error || "Unknown startup error");
+
     return (
       <main className="velvet-runtime-recovery" role="alert">
         <div className="velvet-runtime-recovery__card">
@@ -35,11 +38,17 @@ class VelvetErrorBoundary extends Component {
           <p className="velvet-runtime-recovery__eyebrow">VELVET RECOVERY</p>
           <h1>Velvet tripped while opening.</h1>
           <p>
-            Your stories and account are still safe. Repair the app cache and reopen the newest build.
+            {native
+              ? `Android startup error: ${message}`
+              : "Your stories and account are still safe. Repair the app cache and reopen the newest build."}
           </p>
-          <button type="button" onClick={() => this.repair()} disabled={this.state.repairing}>
-            {this.state.repairing ? "Repairing…" : "Repair & reopen Velvet"}
-          </button>
+          {native ? (
+            <button type="button" onClick={() => window.location.reload()}>Reopen Velvet</button>
+          ) : (
+            <button type="button" onClick={() => this.repair()} disabled={this.state.repairing}>
+              {this.state.repairing ? "Repairing…" : "Repair & reopen Velvet"}
+            </button>
+          )}
           <button
             type="button"
             className="velvet-runtime-recovery__secondary"
