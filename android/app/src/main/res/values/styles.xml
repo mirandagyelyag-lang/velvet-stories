@@ -7,8 +7,8 @@
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:navigationBarColor">#16050F</item>
-        <item name="android:statusBarColor">#16050F</item>
+        <item name="android:navigationBarColor">#090307</item>
+        <item name="android:statusBarColor">#090307</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
@@ -16,15 +16,15 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <item name="android:navigationBarColor">#16050F</item>
-        <item name="android:statusBarColor">#16050F</item>
-        <item name="android:windowBackground">#16050F</item>
+        <item name="android:navigationBarColor">#090307</item>
+        <item name="android:statusBarColor">#090307</item>
+        <item name="android:windowBackground">#090307</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#16050F</item>
+        <item name="windowSplashScreenBackground">#090307</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/velvet_splash_transparent</item>
-        <item name="windowSplashScreenIconBackgroundColor">#16050F</item>
+        <item name="windowSplashScreenIconBackgroundColor">#090307</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
