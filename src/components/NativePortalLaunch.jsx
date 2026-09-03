@@ -7,7 +7,7 @@ const VELVET_LETTERS = [..."VELVET"];
 
 export default function NativePortalLaunch() {
   const stars = Array.from({ length: 22 }, (_, index) => index);
-  const petals = Array.from({ length: 6 }, (_, index) => index);
+  const petals = Array.from({ length: 4 }, (_, index) => index);
 
   useEffect(() => {
     setNativeLaunchFullscreen(true);
@@ -38,21 +38,6 @@ export default function NativePortalLaunch() {
             }}
           />
         ))}
-      </div>
-
-      <div className="velvet-portal__traveler" aria-hidden="true">
-        <span className="velvet-portal__trail" />
-        <svg viewBox="0 0 120 82" role="presentation">
-          <g className="velvet-portal__wing velvet-portal__wing--left">
-            <path d="M59 43C44 15 15 5 9 24c-5 18 16 32 47 24-19 18-34 21-36 7-2-11 12-15 39-12Z" />
-            <path d="M57 45C42 32 24 29 20 42c-4 13 13 21 36 10" />
-          </g>
-          <g className="velvet-portal__wing velvet-portal__wing--right">
-            <path d="M61 43c15-28 44-38 50-19 5 18-16 32-47 24 19 18 34 21 36 7 2-11-12-15-39-12Z" />
-            <path d="M63 45c15-13 33-16 37-3 4 13-13 21-36 10" />
-          </g>
-          <path className="velvet-portal__body" d="M60 38c2 9 2 18 0 30M60 39c-4-10-10-15-15-18M60 39c4-10 10-15 15-18" />
-        </svg>
       </div>
 
       <div className="velvet-portal__petals" aria-hidden="true">

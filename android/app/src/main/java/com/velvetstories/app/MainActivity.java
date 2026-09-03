@@ -25,6 +25,12 @@ public class MainActivity extends BridgeActivity {
         WindowInsetsControllerCompat launchController = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         launchController.hide(WindowInsetsCompat.Type.systemBars());
         launchController.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        getWindow().setStatusBarColor(Color.parseColor("#16050F"));
+        getWindow().setNavigationBarColor(Color.parseColor("#16050F"));
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            getWindow().setStatusBarContrastEnforced(false);
+            getWindow().setNavigationBarContrastEnforced(false);
+        }
 
         if (bridge != null && bridge.getWebView() != null) {
             WebView webView = bridge.getWebView();

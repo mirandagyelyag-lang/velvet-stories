@@ -21,9 +21,11 @@
     <title>Velvet Stories</title>
 
     <style>
+      html, body { margin:0; }
+      html.velvet-native-prepaint, html.velvet-native-prepaint body, html.velvet-native-prepaint #root { min-height:100%; background:#16050f !important; overflow:hidden; }
       #velvet-native-prepaint { display:none; }
       html.velvet-native-prepaint #velvet-native-prepaint {
-        display:block; position:fixed; inset:0; z-index:2147481000; pointer-events:none;
+        display:block; position:fixed; inset:-1px; z-index:2147481000; pointer-events:none;
         background:#16050f url('/velvet-portal-bg.webp') center top / cover no-repeat;
       }
       html.velvet-native-prepaint #velvet-native-prepaint::after {
