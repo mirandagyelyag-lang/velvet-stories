@@ -7,10 +7,12 @@ import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import { useCharacters } from "./context/CharactersContext";
 import WelcomeSplash from "./components/WelcomeSplash";
+import NativeButterflyLaunch from "./components/NativeButterflyLaunch";
 import { isVelvetNativeRuntime } from "./native/velvetNative";
 import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
+import "./styles/velvet-v3151-butterfly-launch.css";
 
 const routeImports = {
   stories: () => import("./pages/Chats"),
@@ -184,6 +186,13 @@ function App() {
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [previewCharacter, setPreviewCharacter] = useState(null);
   const [memoryFocusCharacterId, setMemoryFocusCharacterId] = useState("");
+  const [nativeLaunchSettled, setNativeLaunchSettled] = useState(!nativeRuntime);
+
+  useEffect(() => {
+    if (!nativeRuntime) return undefined;
+    const timer = window.setTimeout(() => setNativeLaunchSettled(true), 1180);
+    return () => window.clearTimeout(timer);
+  }, [nativeRuntime]);
 
   useEffect(() => {
     if (!nativeRuntime) return;
@@ -387,16 +396,8 @@ function App() {
     return () => window.removeEventListener("keydown", handleGlobalSearchShortcut);
   }, [user?.id]);
 
-  if (authLoading) {
-    if (nativeRuntime) {
-      return (
-        <main className="app-loading app-loading--native" aria-label="Velvet Stories is starting">
-          <div className="app-loading__native-mark" aria-hidden="true">VS</div>
-          <div className="app-loading__native-rule" aria-hidden="true"><i /></div>
-          <small>VELVET STORIES</small>
-        </main>
-      );
-    }
+  if (authLoading || (nativeRuntime && !nativeLaunchSettled)) {
+    if (nativeRuntime) return <NativeButterflyLaunch />;
 
     return (
       <main className="app-loading">
