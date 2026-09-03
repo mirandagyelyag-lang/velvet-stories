@@ -7,12 +7,12 @@ import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import { useCharacters } from "./context/CharactersContext";
 import WelcomeSplash from "./components/WelcomeSplash";
-import NativeButterflyLaunch from "./components/NativeButterflyLaunch";
+import NativePortalLaunch from "./components/NativePortalLaunch";
 import { isVelvetNativeRuntime } from "./native/velvetNative";
 import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
-import "./styles/velvet-v3151-butterfly-launch.css";
+import "./styles/velvet-v3153-portal-launch.css";
 
 const routeImports = {
   stories: () => import("./pages/Chats"),
@@ -190,7 +190,7 @@ function App() {
 
   useEffect(() => {
     if (!nativeRuntime) return undefined;
-    const timer = window.setTimeout(() => setNativeLaunchSettled(true), 1180);
+    const timer = window.setTimeout(() => setNativeLaunchSettled(true), 6600);
     return () => window.clearTimeout(timer);
   }, [nativeRuntime]);
 
@@ -397,7 +397,7 @@ function App() {
   }, [user?.id]);
 
   if (authLoading || (nativeRuntime && !nativeLaunchSettled)) {
-    if (nativeRuntime) return <NativeButterflyLaunch />;
+    if (nativeRuntime) return <NativePortalLaunch />;
 
     return (
       <main className="app-loading">
