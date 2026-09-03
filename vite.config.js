@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const velvetVersion = pkg.version;
-const velvetRelease = "Native Polish Pass I";
+const velvetRelease = "Android Launch Reset";
 const velvetBuildTime = new Date().toISOString();
 
 export default defineConfig(({ mode }) => {

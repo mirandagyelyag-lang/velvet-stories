@@ -34,7 +34,10 @@ export function velvetHaptic(kind = "selection") {
   VelvetNative.haptic({ kind }).catch(() => {});
 }
 
-function updateVisualViewport() {
+let viewportFrame = 0;
+let insetRefreshTimer = 0;
+
+function updateVisualViewportNow() {
   const viewport = window.visualViewport;
   const height = Math.max(0, viewport?.height || window.innerHeight || 0);
   const offsetTop = Math.max(0, viewport?.offsetTop || 0);
@@ -42,7 +45,21 @@ function updateVisualViewport() {
   const root = document.documentElement;
   root.style.setProperty("--velvet-native-visual-height", `${height}px`);
   root.classList.toggle("velvet-native-keyboard-open", keyboard > 80);
-  refreshNativeInsets();
+}
+
+function scheduleVisualViewportUpdate() {
+  if (viewportFrame) return;
+  viewportFrame = window.requestAnimationFrame(() => {
+    viewportFrame = 0;
+    updateVisualViewportNow();
+  });
+}
+
+function scheduleNativeInsetRefresh(delay = 80) {
+  window.clearTimeout(insetRefreshTimer);
+  insetRefreshTimer = window.setTimeout(() => {
+    refreshNativeInsets();
+  }, delay);
 }
 
 function installTastefulHaptics() {
@@ -64,11 +81,22 @@ export function installVelvetNativeRuntime() {
 
   root.classList.add("velvet-native-runtime");
   root.setAttribute("data-velvet-runtime", "android");
-  updateVisualViewport();
+  updateVisualViewportNow();
+  scheduleNativeInsetRefresh(0);
   installTastefulHaptics();
 
-  window.addEventListener("resize", updateVisualViewport, { passive: true });
-  window.addEventListener("orientationchange", updateVisualViewport, { passive: true });
-  window.visualViewport?.addEventListener("resize", updateVisualViewport, { passive: true });
-  window.visualViewport?.addEventListener("scroll", updateVisualViewport, { passive: true });
+  window.addEventListener("resize", () => {
+    scheduleVisualViewportUpdate();
+    scheduleNativeInsetRefresh();
+  }, { passive: true });
+  window.addEventListener("orientationchange", () => {
+    scheduleVisualViewportUpdate();
+    scheduleNativeInsetRefresh(180);
+  }, { passive: true });
+
+  // visualViewport can emit many scroll/resize events while the keyboard or
+  // a finger is moving. Keep those updates in JavaScript and do not cross the
+  // Capacitor bridge on every frame.
+  window.visualViewport?.addEventListener("resize", scheduleVisualViewportUpdate, { passive: true });
+  window.visualViewport?.addEventListener("scroll", scheduleVisualViewportUpdate, { passive: true });
 }

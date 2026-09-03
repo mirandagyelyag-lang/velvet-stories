@@ -17,7 +17,7 @@ const mustContain = (file, needles) => {
 
 mustContain("src/native/velvetNative.js", ["VelvetNative", "getInsets", "setSystemBars", "haptic", "velvet-native-keyboard-open"]);
 mustContain("src/styles/velvet-v3140-native-polish.css", ["--velvet-native-safe-bottom", ".chat__composer", ".mobile-nav"]);
-mustContain("src/components/WelcomeSplash.jsx", ["isVelvetNativeRuntime", "if (nativeRuntime) return false"]);
+mustContain("src/App.jsx", ["!nativeRuntime && <WelcomeSplash />"]);
 mustContain("src/context/ThemeContext.jsx", ["syncNativeChrome(theme)"]);
 mustContain("src/App.jsx", ["__VELVET_ANDROID_BACK__"]);
 mustContain("android/app/src/main/java/com/velvetstories/app/VelvetNativePlugin.java", ["@CapacitorPlugin(name = \"VelvetNative\")", "WindowInsetsCompat", "VibrationEffect"]);

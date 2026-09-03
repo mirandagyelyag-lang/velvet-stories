@@ -23,6 +23,58 @@
 .app-loading span { font-size: 2rem; animation: velvet-loading 900ms infinite alternate; }
 .app-loading p { margin: 0; color: var(--text-secondary); font-family: "Cormorant Garamond", serif; font-size: 1.2rem; }
 
+/* v3.15.0 · Android launch bridge.
+   This is deliberately tiny and static: Android owns the splash, React only
+   paints a matching surface while the persisted Supabase session is restored. */
+.app-loading--native {
+  width: 100%;
+  min-height: var(--velvet-native-visual-height, 100dvh);
+  gap: 11px;
+  color: #ead39b;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(121, 88, 43, .10), transparent 28%),
+    #0b0d14;
+  overflow: hidden;
+}
+
+.app-loading--native .app-loading__native-mark {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 8vw, 2.65rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -.14em;
+  text-indent: -.14em;
+  text-shadow: 0 0 18px rgba(224, 190, 116, .16);
+}
+
+.app-loading--native small {
+  color: rgba(238, 218, 171, .64);
+  font-size: .54rem;
+  font-weight: 600;
+  letter-spacing: .34em;
+  text-indent: .34em;
+}
+
+.app-loading__native-rule {
+  position: relative;
+  width: 58px;
+  height: 1px;
+  overflow: hidden;
+  background: rgba(224, 193, 129, .13);
+}
+
+.app-loading__native-rule i {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(246, 222, 167, .78), transparent);
+  transform: translateX(-110%);
+  animation: velvet-native-boot-line 1.05s ease-in-out infinite;
+}
+
+@keyframes velvet-native-boot-line {
+  58%, 100% { transform: translateX(110%); }
+}
+
 .page-heading {
   display: flex;
   align-items: end;

@@ -168,6 +168,7 @@ function buildVelvetUrl({ mode = "page", page = "chats", characterId = null, con
 }
 
 function App() {
+  const nativeRuntime = isVelvetNativeRuntime();
   const { user, authLoading } = useAuth();
   const { createNewConversation } = useChats();
   const { characters, charactersLoading } = useCharacters();
@@ -185,7 +186,7 @@ function App() {
   const [memoryFocusCharacterId, setMemoryFocusCharacterId] = useState("");
 
   useEffect(() => {
-    if (!isVelvetNativeRuntime()) return;
+    if (!nativeRuntime) return;
 
     window.__VELVET_ANDROID_BACK__ = () => {
       if (creatorOpen) {
@@ -211,7 +212,7 @@ function App() {
     return () => {
       delete window.__VELVET_ANDROID_BACK__;
     };
-  }, [creatorOpen, selectedCharacter, previewCharacter, activePage]);
+  }, [creatorOpen, selectedCharacter, previewCharacter, activePage, nativeRuntime]);
 
   useEffect(() => {
     charactersRef.current = characters;
@@ -387,6 +388,16 @@ function App() {
   }, [user?.id]);
 
   if (authLoading) {
+    if (nativeRuntime) {
+      return (
+        <main className="app-loading app-loading--native" aria-label="Velvet Stories is starting">
+          <div className="app-loading__native-mark" aria-hidden="true">VS</div>
+          <div className="app-loading__native-rule" aria-hidden="true"><i /></div>
+          <small>VELVET STORIES</small>
+        </main>
+      );
+    }
+
     return (
       <main className="app-loading">
         <span>✦</span>
@@ -633,7 +644,7 @@ function App() {
 
   return (
     <>
-    <WelcomeSplash />
+    {!nativeRuntime && <WelcomeSplash />}
     <div className={`app ${selectedCharacter ? "app--chat" : ""}`}>
       {!selectedCharacter && !creatorOpen && (
         <Sidebar activePage={["personas", "lorebooks", "settings", "diagnostics"].includes(activePage) ? "profile" : activePage} onNavigate={navigate} />

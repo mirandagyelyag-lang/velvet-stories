@@ -1,6 +1,10 @@
 package com.velvetstories.app;
 
+import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.core.view.WindowCompat;
@@ -16,6 +20,20 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        if (bridge != null && bridge.getWebView() != null) {
+            WebView webView = bridge.getWebView();
+            webView.setBackgroundColor(Color.parseColor("#0B0D14"));
+            webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            webView.setVerticalScrollBarEnabled(false);
+            webView.setHorizontalScrollBarEnabled(false);
+
+            WebSettings settings = webView.getSettings();
+            settings.setSupportZoom(false);
+            settings.setBuiltInZoomControls(false);
+            settings.setDisplayZoomControls(false);
+            settings.setTextZoom(100);
+        }
 
         velvetBackCallback = new OnBackPressedCallback(true) {
             @Override

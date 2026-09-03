@@ -51,14 +51,29 @@ applySafeModeClass();
 
 const nativeRuntime = __VELVET_ANDROID_BUILD__ || Capacitor.isNativePlatform();
 
-if ((import.meta.env.DEV || nativeRuntime) && "serviceWorker" in navigator) {
+if (import.meta.env.DEV && "serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     registrations.forEach((registration) => registration.unregister());
   });
+}
 
-  if ("caches" in window) {
-    caches.keys().then((keys) => {
-      keys.forEach((key) => caches.delete(key));
+if (nativeRuntime) {
+  const cleanupKey = `velvet:native-pwa-clean:${__VELVET_VERSION__}`;
+  let shouldClean = true;
+  try { shouldClean = localStorage.getItem(cleanupKey) !== "1"; } catch {}
+
+  if (shouldClean) {
+    const jobs = [];
+    if ("serviceWorker" in navigator) {
+      jobs.push(navigator.serviceWorker.getRegistrations().then((registrations) =>
+        Promise.allSettled(registrations.map((registration) => registration.unregister()))
+      ));
+    }
+    if ("caches" in window) {
+      jobs.push(caches.keys().then((keys) => Promise.allSettled(keys.map((key) => caches.delete(key)))));
+    }
+    Promise.allSettled(jobs).finally(() => {
+      try { localStorage.setItem(cleanupKey, "1"); } catch {}
     });
   }
 }
