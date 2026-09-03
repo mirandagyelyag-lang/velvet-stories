@@ -12,7 +12,7 @@ import { isVelvetNativeRuntime } from "./native/velvetNative";
 import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
-import "./styles/velvet-v3153-portal-launch.css";
+import "./styles/velvet-v3154-living-portal.css";
 
 const routeImports = {
   stories: () => import("./pages/Chats"),
@@ -186,11 +186,11 @@ function App() {
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [previewCharacter, setPreviewCharacter] = useState(null);
   const [memoryFocusCharacterId, setMemoryFocusCharacterId] = useState("");
-  const [nativeLaunchSettled, setNativeLaunchSettled] = useState(!nativeRuntime);
+  const [nativeLaunchVisible, setNativeLaunchVisible] = useState(nativeRuntime);
 
   useEffect(() => {
     if (!nativeRuntime) return undefined;
-    const timer = window.setTimeout(() => setNativeLaunchSettled(true), 6600);
+    const timer = window.setTimeout(() => setNativeLaunchVisible(false), 7500);
     return () => window.clearTimeout(timer);
   }, [nativeRuntime]);
 
@@ -396,8 +396,15 @@ function App() {
     return () => window.removeEventListener("keydown", handleGlobalSearchShortcut);
   }, [user?.id]);
 
-  if (authLoading || (nativeRuntime && !nativeLaunchSettled)) {
-    if (nativeRuntime) return <NativePortalLaunch />;
+  if (authLoading) {
+    if (nativeRuntime) {
+      return (
+        <>
+          <div className="velvet-native-launch-underlay" aria-hidden="true" />
+          {nativeLaunchVisible && <NativePortalLaunch key="velvet-native-launch" />}
+        </>
+      );
+    }
 
     return (
       <main className="app-loading">
@@ -407,7 +414,14 @@ function App() {
     );
   }
 
-  if (!user) return <Auth />;
+  if (!user) {
+    return (
+      <>
+        <Auth />
+        {nativeRuntime && nativeLaunchVisible && <NativePortalLaunch key="velvet-native-launch" />}
+      </>
+    );
+  }
 
   function navigate(page, options = {}) {
     savePageScroll(activePage);
@@ -679,6 +693,7 @@ function App() {
       )}
       <PWAStatus />
     </div>
+    {nativeRuntime && nativeLaunchVisible && <NativePortalLaunch key="velvet-native-launch" />}
     </>
   );
 }

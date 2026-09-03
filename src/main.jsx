@@ -115,6 +115,12 @@ window.requestAnimationFrame(() => {
   window.requestAnimationFrame(() => {
     markVelvetHealthy();
     window.__VELVET_BOOT_OK__ = true;
+    if (nativeRuntime) {
+      window.setTimeout(() => {
+        document.documentElement.classList.remove("velvet-native-prepaint");
+        document.getElementById("velvet-native-prepaint")?.remove();
+      }, 900);
+    }
   });
 });
 

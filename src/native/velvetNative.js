@@ -14,6 +14,12 @@ export async function syncNativeChrome(theme = "light") {
   await refreshNativeInsets();
 }
 
+
+export async function setNativeLaunchFullscreen(enabled = true) {
+  if (!nativeRuntime()) return;
+  try { await VelvetNative.setLaunchFullscreen({ enabled: Boolean(enabled) }); } catch {}
+}
+
 export async function refreshNativeInsets() {
   if (!nativeRuntime() || typeof document === "undefined") return;
   try {

@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.15.3",
+  "version": "3.15.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -49,7 +49,8 @@
     "verify:v3150": "node scripts/verify-v3150-android-launch-reset.mjs",
     "verify:v3151": "node scripts/verify-v3151-butterfly-launch.mjs",
     "verify:v3152": "node scripts/verify-v3152-cinematic-butterfly.mjs",
-    "verify:v3153": "node scripts/verify-v3153-portal-launch.mjs"
+    "verify:v3153": "node scripts/verify-v3153-portal-launch.mjs",
+    "verify:v3154": "node scripts/verify-v3154-living-portal.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

@@ -8,6 +8,8 @@ import android.webkit.WebView;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -20,10 +22,13 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowInsetsControllerCompat launchController = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        launchController.hide(WindowInsetsCompat.Type.systemBars());
+        launchController.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
 
         if (bridge != null && bridge.getWebView() != null) {
             WebView webView = bridge.getWebView();
-            webView.setBackgroundColor(Color.parseColor("#0B0D14"));
+            webView.setBackgroundColor(Color.parseColor("#16050F"));
             webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
             webView.setVerticalScrollBarEnabled(false);
             webView.setHorizontalScrollBarEnabled(false);

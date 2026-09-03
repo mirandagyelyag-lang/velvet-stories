@@ -46,6 +46,24 @@ public class VelvetNativePlugin extends Plugin {
         });
     }
 
+
+    @PluginMethod
+    public void setLaunchFullscreen(PluginCall call) {
+        final boolean enabled = call.getBoolean("enabled", true);
+        getActivity().runOnUiThread(() -> {
+            Window window = getActivity().getWindow();
+            View decor = window.getDecorView();
+            WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
+            if (enabled) {
+                controller.hide(WindowInsetsCompat.Type.systemBars());
+                controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            } else {
+                controller.show(WindowInsetsCompat.Type.systemBars());
+            }
+            call.resolve();
+        });
+    }
+
     @PluginMethod
     public void getInsets(PluginCall call) {
         getActivity().runOnUiThread(() -> {
