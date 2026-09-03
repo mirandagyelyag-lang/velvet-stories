@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="velvet-version" content="3.13.15" />
+    <meta name="velvet-version" content="3.15.6" />
     <meta name="velvet-runtime" content="web" />
     <meta
       name="viewport"
@@ -26,11 +26,11 @@
       #velvet-native-prepaint { display:none; }
       html.velvet-native-prepaint #velvet-native-prepaint {
         display:block; position:fixed; inset:-1px; z-index:2147481000; pointer-events:none;
-        background:#16050f url('/velvet-portal-bg.webp') center top / cover no-repeat;
+        background:#16050f url('/velvet-portal-bg.webp') center top / auto 125% no-repeat;
       }
       html.velvet-native-prepaint #velvet-native-prepaint::after {
         content:""; position:absolute; inset:0;
-        background:linear-gradient(180deg,rgba(7,1,9,.01),rgba(6,1,8,.08) 56%,rgba(5,1,7,.72) 100%);
+        background:linear-gradient(180deg,rgba(7,1,9,.01),rgba(6,1,8,.08) 56%,rgba(5,1,7,.38) 100%);
       }
     </style>
 

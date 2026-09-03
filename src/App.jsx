@@ -12,7 +12,7 @@ import { isVelvetNativeRuntime } from "./native/velvetNative";
 import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
-import "./styles/velvet-v3155-portal-polish.css";
+import "./styles/velvet-v3156-portal-reframe.css";
 
 const routeImports = {
   stories: () => import("./pages/Chats"),

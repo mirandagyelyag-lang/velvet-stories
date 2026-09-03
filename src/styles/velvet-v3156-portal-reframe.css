@@ -1,0 +1,245 @@
+.velvet-native-launch-underlay { position: fixed; inset: 0; background: #16050f; z-index: 2147480000; }
+/* Velvet Stories v3.15.6 · Portal Reframe
+   Instant first paint, real curtain reveal, living depth, traveling butterfly, and a soft portal handoff. */
+.app-loading--portal {
+  --portal-pink: #f485ba;
+  --portal-blush: #ffe2ef;
+  --portal-wine: #6a163d;
+  position: fixed;
+  inset: 0;
+  z-index: 2147482000;
+  isolation: isolate;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 1fr auto auto minmax(28px, .10fr);
+  align-items: end;
+  justify-items: center;
+  padding: max(12px, var(--velvet-safe-top, 0px)) 22px max(18px, var(--velvet-safe-bottom, 0px));
+  color: #fbe0eb;
+  background: #16050f;
+  animation: velvet-portal-shell-exit .72s cubic-bezier(.2,.7,.17,1) 6.78s forwards;
+}
+.app-loading--portal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 48%, transparent 0 44%, rgba(4,1,5,.08) 70%, rgba(3,0,3,.46) 100%);
+}
+
+.velvet-portal__scene {
+  position: absolute;
+  inset: 0;
+  z-index: -5;
+  overflow: hidden;
+  background: #16050f;
+  transform: scale(1.01);
+  animation: velvet-portal-camera 7.48s cubic-bezier(.16,.7,.15,1) both;
+  will-change: transform, filter;
+}
+.velvet-portal__scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(6,1,8,.01) 0%, rgba(5,1,8,.01) 55%, rgba(5,1,7,.14) 72%, rgba(5,1,7,.50) 100%),
+    radial-gradient(ellipse at 50% 34%, transparent 20%, rgba(6,1,8,.04) 58%, rgba(4,1,6,.48) 100%);
+}
+.velvet-portal__scene img {
+  width: 100%;
+  height: 125%;
+  object-fit: cover;
+  object-position: center top;
+  user-select: none;
+  pointer-events: none;
+  filter: saturate(1.08) contrast(1.045) brightness(.92);
+}
+.velvet-portal__depth { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; }
+.velvet-portal__depth--near {
+  background: radial-gradient(circle at 50% 62%, rgba(255,104,171,.09), transparent 31%);
+  animation: velvet-depth-near 3.1s ease-in-out 1.1s infinite alternate;
+}
+.velvet-portal__depth--far {
+  background: linear-gradient(180deg, rgba(255,138,189,.035), transparent 38%);
+  animation: velvet-depth-far 4.2s ease-in-out .7s infinite alternate;
+}
+
+.velvet-portal__curtain {
+  position: absolute;
+  z-index: 30;
+  top: -5%;
+  bottom: -5%;
+  width: 68%;
+  pointer-events: none;
+  opacity: .995;
+  background:
+    radial-gradient(ellipse at 72% 46%, rgba(189,48,112,.38), transparent 32%),
+    linear-gradient(90deg, #080107 0%, #210419 19%, #56102f 48%, #8a1b4c 69%, #2a061c 100%);
+  box-shadow: inset -26px 0 44px rgba(0,0,0,.58), 18px 0 48px rgba(0,0,0,.34);
+  overflow: hidden;
+  will-change: transform, clip-path;
+}
+.velvet-portal__curtain i {
+  position:absolute; inset:-8% -20%;
+  background: repeating-linear-gradient(96deg, transparent 0 18px, rgba(255,255,255,.045) 20px 23px, rgba(0,0,0,.18) 28px 46px);
+  filter: blur(.7px);
+  animation: velvet-curtain-sheen 1.3s ease-in-out infinite alternate;
+}
+.velvet-portal__curtain--left {
+  left: -11%;
+  transform-origin: left center;
+  clip-path: polygon(0 0, 100% 0, 93% 20%, 100% 42%, 91% 63%, 99% 81%, 92% 100%, 0 100%);
+  animation: velvet-curtain-left 1.62s cubic-bezier(.16,.84,.18,1) .04s forwards;
+}
+.velvet-portal__curtain--right {
+  right: -11%;
+  transform: scaleX(-1);
+  transform-origin: right center;
+  clip-path: polygon(0 0, 100% 0, 93% 20%, 100% 42%, 91% 63%, 99% 81%, 92% 100%, 0 100%);
+  animation: velvet-curtain-right 1.62s cubic-bezier(.16,.84,.18,1) .04s forwards;
+}
+
+.velvet-portal__moon-glow {
+  position: absolute;
+  z-index: -2;
+  top: 8%;
+  left: 50%;
+  width: min(45vw, 205px);
+  aspect-ratio: 1;
+  transform: translateX(-50%) scale(.66);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,189,218,.28), rgba(233,78,148,.11) 36%, transparent 72%);
+  filter: blur(14px);
+  opacity: 0;
+  animation: velvet-moon-bloom 1.65s ease-out .68s forwards, velvet-moon-breathe 1.9s ease-in-out 2.45s infinite alternate;
+}
+
+.velvet-portal__stars { position:absolute; inset:0; z-index:4; pointer-events:none; }
+.velvet-portal__stars i {
+  position:absolute; left:var(--x); top:var(--y); width:var(--size); aspect-ratio:1; border-radius:50%;
+  background:#ffe4ef; box-shadow:0 0 7px rgba(255,128,181,.82), 0 0 16px rgba(226,53,129,.28);
+  opacity:0; animation:velvet-star-awake 1.45s ease-in-out var(--delay) infinite alternate;
+}
+
+.velvet-portal__trail::before { left:18px; top:-10px; animation:velvet-trail-spark .8s ease-in-out infinite alternate; }
+.velvet-portal__trail::after { left:43px; top:4px; animation:velvet-trail-spark .65s ease-in-out .12s infinite alternate-reverse; }
+
+.velvet-portal__petals { position:absolute; inset:0; z-index:18; pointer-events:none; overflow:hidden; }
+.velvet-portal__petals i {
+  --p:var(--petal); position:absolute; left:calc(8% + var(--p) * 15%); top:-7%;
+  width:calc(7px + (var(--p) % 3) * 3px); height:calc(12px + (var(--p) % 3) * 4px);
+  border-radius:75% 18% 72% 26%; background:linear-gradient(145deg,rgba(255,176,207,.72),rgba(113,19,61,.35));
+  filter:drop-shadow(0 0 5px rgba(239,80,148,.22)); opacity:0;
+  animation:velvet-petal-fall 3.7s cubic-bezier(.33,.08,.76,.92) calc(3.7s + var(--p) * .31s) 1 forwards;
+}
+
+.velvet-portal__brand {
+  position:absolute; z-index:24; left:0; right:0; bottom:18.5vh; display:grid; place-items:center; margin:0;
+  text-shadow:0 0 24px rgba(213,51,127,.18); pointer-events:none;
+}
+.velvet-portal__word { display:flex; align-items:baseline; justify-content:center; }
+.velvet-portal__word strong {
+  font-family:Georgia,"Times New Roman",serif; font-size:clamp(2.7rem,12vw,4.2rem); font-weight:400; line-height:.9; letter-spacing:.08em; text-indent:.08em;
+  color:#f6b8d2; background:linear-gradient(180deg,#fff1f7 0%,#ef9ebe 50%,#a43a6d 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  opacity:0; transform:translateY(12px) scale(.96); filter:blur(6px);
+  animation:velvet-word-form .82s cubic-bezier(.16,.76,.17,1) 2.48s forwards;
+}
+.velvet-portal__stories {
+  margin-top:11px; font-size:clamp(.69rem,3.2vw,.92rem); font-weight:500; letter-spacing:.58em; text-indent:.58em;
+  color:rgba(255,205,225,.86); opacity:0; transform:translateY(8px); animation:velvet-stories-in .62s ease-out 3.48s forwards;
+}
+.velvet-portal__ornament { margin-top:10px; font-size:.68rem; color:#f8b3d0; opacity:0; animation:velvet-diamond-in .55s ease-out 3.82s forwards, velvet-portal-diamond 1.2s ease-in-out 4.35s infinite alternate; }
+
+.velvet-portal__loading {
+  position:absolute; z-index:24; left:50%; bottom:4.8vh; transform:translate(-50%,10px); width:min(78vw,340px); display:grid; place-items:center; gap:10px; padding:0;
+  opacity:0; animation:velvet-portal-loading-in .65s ease-out 4.25s forwards;
+}
+.velvet-portal__loading p,.velvet-portal__loading small { margin:0; font-family:Georgia,"Times New Roman",serif; font-weight:400; color:rgba(255,222,235,.9); }
+.velvet-portal__loading p { font-size:clamp(.9rem,3.7vw,1.06rem); font-style:italic; letter-spacing:.018em; }
+.velvet-portal__loading small { margin-top:1px; font-size:clamp(.62rem,2.7vw,.76rem); letter-spacing:.18em; text-transform:uppercase; color:rgba(241,165,197,.64); }
+.velvet-portal__progress {
+  position:relative; width:100%; height:7px; border-radius:999px; border:1px solid rgba(246,122,176,.35);
+  background:rgba(31,5,21,.62); box-shadow:inset 0 0 0 1px rgba(255,255,255,.024),0 0 20px rgba(198,37,104,.07); overflow:visible;
+}
+.velvet-portal__progress i {
+  position:absolute; inset:1px auto 1px 1px; width:calc(100% - 2px); border-radius:inherit; transform-origin:left center; transform:scaleX(.025);
+  background:linear-gradient(90deg,#74224d 0%,#d84a8c 37%,#ffadd1 80%,#ffd7e8 100%); box-shadow:0 0 12px rgba(247,106,168,.35);
+  animation:velvet-portal-progress 2.18s cubic-bezier(.17,.77,.18,1) 4.58s forwards;
+}
+.velvet-portal__progress b {
+  position:absolute; left:2.5%; top:50%; transform:translate(-50%,-50%) scale(.84); color:#fff3f8; font-size:.82rem; font-weight:400;
+  text-shadow:0 0 8px #ff6eae,0 0 18px #d33882; animation:velvet-portal-spark 2.18s cubic-bezier(.17,.77,.18,1) 4.58s forwards;
+}
+.velvet-portal__final-glow {
+  position:absolute; z-index:26; left:50%; top:49%; width:12vmin; aspect-ratio:1; border-radius:50%; transform:translate(-50%,-50%) scale(.4);
+  opacity:0; background:radial-gradient(circle,rgba(255,232,242,.74),rgba(245,112,172,.27) 28%,transparent 70%); filter:blur(4px);
+  animation:velvet-final-glow .72s ease-out 6.62s forwards; pointer-events:none;
+}
+
+@keyframes velvet-curtain-left {
+  0% { transform:translate3d(0,0,0) scaleX(1.04) skewX(-1deg); }
+  38% { transform:translate3d(-12%,0,0) scaleX(.96) skewX(-2deg); }
+  100% { transform:translate3d(-72%,0,0) scaleX(.72) skewX(-7deg); opacity:.62; }
+}
+@keyframes velvet-curtain-right {
+  0% { transform:translate3d(0,0,0) scaleX(-1.04) skewX(-1deg); }
+  38% { transform:translate3d(12%,0,0) scaleX(-.96) skewX(-2deg); }
+  100% { transform:translate3d(72%,0,0) scaleX(-.72) skewX(-7deg); opacity:.62; }
+}
+@keyframes velvet-curtain-sheen { from{ transform:translateX(-2%) skewX(-2deg); opacity:.48; } to{ transform:translateX(4%) skewX(1deg); opacity:.9; } }
+@keyframes velvet-portal-camera {
+  0% { transform:scale(1.00); filter:saturate(.98) brightness(.93); }
+  28% { transform:scale(1.035); filter:saturate(1.03) brightness(.98); }
+  72% { transform:scale(1.075); filter:saturate(1.07) brightness(1); }
+  88% { transform:scale(1.095); }
+  100% { transform:scale(1.12); filter:saturate(1.10) brightness(1.07); }
+}
+@keyframes velvet-depth-near { from{ opacity:.2; transform:translateY(4px) scale(.98); } to{ opacity:.74; transform:translateY(-3px) scale(1.04); } }
+@keyframes velvet-depth-far { from{ opacity:.12; transform:translateY(-2px); } to{ opacity:.45; transform:translateY(3px); } }
+@keyframes velvet-moon-bloom { 0%{opacity:0;transform:translateX(-50%) scale(.66);} 100%{opacity:.9;transform:translateX(-50%) scale(1);} }
+@keyframes velvet-moon-breathe { from{opacity:.58;} to{opacity:1;} }
+@keyframes velvet-star-awake { from{opacity:.05;transform:scale(.65);} to{opacity:.88;transform:scale(1.46);} }
+@keyframes velvet-petal-fall {
+  0%{opacity:0;transform:translate3d(-5vw,-5vh,0) rotate(0deg);} 16%{opacity:.66;} 72%{opacity:.48;} 100%{opacity:0;transform:translate3d(14vw,108vh,0) rotate(380deg);}
+}
+@keyframes velvet-word-form { to{opacity:1;transform:translateY(0) scale(1);filter:blur(0);} }
+@keyframes velvet-stories-in { to{opacity:1;transform:translateY(0);} }
+@keyframes velvet-diamond-in { to{opacity:1;} }
+@keyframes velvet-portal-loading-in { to{opacity:1;transform:translateY(0);} }
+@keyframes velvet-portal-progress { 0%{transform:scaleX(.025);} 48%{transform:scaleX(.57);} 78%{transform:scaleX(.84);} 100%{transform:scaleX(1);} }
+@keyframes velvet-portal-spark { 0%{left:2.5%;} 48%{left:57%;} 78%{left:84%;} 100%{left:100%;} }
+@keyframes velvet-portal-diamond { from{opacity:.42;transform:scale(.78) rotate(0);} to{opacity:1;transform:scale(1.14) rotate(18deg);} }
+@keyframes velvet-final-glow { 0%{opacity:0;transform:translate(-50%,-50%) scale(.4);} 55%{opacity:.68;} 100%{opacity:0;transform:translate(-50%,-50%) scale(8);} }
+@keyframes velvet-portal-shell-exit {
+  0%{opacity:1;} 45%{opacity:.98;} 100%{opacity:0;visibility:hidden;pointer-events:none;}
+}
+
+@media (max-height:700px){
+  .velvet-portal__brand{margin-bottom:15px;}
+  .velvet-portal__word strong{font-size:clamp(2.35rem,10.8vw,3.55rem);}
+  .velvet-portal__loading{gap:10px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .velvet-portal__scene{animation:none;transform:scale(1.035);}
+  .velvet-portal__curtain--left{animation:velvet-curtain-left 1.1s ease-out .08s forwards;}
+  .velvet-portal__curtain--right{animation:velvet-curtain-right 1.1s ease-out .08s forwards;}
+  .velvet-portal__stars i,.velvet-portal__petals i,.velvet-portal__moon-glow{animation:none;}
+}
+
+/* v3.15.5: prevent any WebView/safe-area flash around the full-screen launch. */
+html.velvet-native-runtime,
+html.velvet-native-runtime body,
+html.velvet-native-runtime #root { background:#16050f; }
+.app-loading--portal { top:0; right:0; bottom:0; left:0; margin:0; max-width:none; }
+
+/* v3.15.6 visual reframe: use the scenic artwork, not its empty lower matte. */
+.velvet-native-launch-underlay { background:#16050f url('/velvet-portal-bg.webp') center top / auto 125% no-repeat; }
+@media (max-height:760px){
+  .velvet-portal__brand{bottom:19vh;}
+  .velvet-portal__loading{bottom:3.8vh;}
+}

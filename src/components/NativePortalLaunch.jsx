@@ -3,8 +3,6 @@ import { useEffect } from "react";
 import portalArtwork from "../assets/velvet-portal-bg.webp";
 import { setNativeLaunchFullscreen } from "../native/velvetNative";
 
-const VELVET_LETTERS = [..."VELVET"];
-
 export default function NativePortalLaunch() {
   const stars = Array.from({ length: 22 }, (_, index) => index);
   const petals = Array.from({ length: 4 }, (_, index) => index);
@@ -45,11 +43,7 @@ export default function NativePortalLaunch() {
       </div>
 
       <section className="velvet-portal__brand" aria-hidden="true">
-        <div className="velvet-portal__word" aria-label="Velvet">
-          {VELVET_LETTERS.map((letter, index) => (
-            <strong key={`${letter}-${index}`} style={{ "--letter": index }}>{letter}</strong>
-          ))}
-        </div>
+        <div className="velvet-portal__word" aria-label="Velvet"><strong className="velvet-portal__velvet">VELVET</strong></div>
         <span className="velvet-portal__stories">STORIES</span>
         <span className="velvet-portal__ornament">✦</span>
       </section>

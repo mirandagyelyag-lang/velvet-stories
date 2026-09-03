@@ -4,7 +4,7 @@ $project = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $project
 
 Write-Host ""
-Write-Host "=== Velvet Stories Android 3.15.5 · Portal Polish ===" -ForegroundColor Magenta
+Write-Host "=== Velvet Stories Android 3.15.6 · Portal Reframe ===" -ForegroundColor Magenta
 Write-Host "One clean flow: dependencies -> Supabase public config -> Android sync -> Java 21 -> SDK -> APK -> Samsung."
 
 Write-Host "Synchronizing npm dependencies..."
@@ -14,7 +14,7 @@ if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
 Write-Host "Preparing and verifying the native Android bundle..."
 npm run android:sync
 if ($LASTEXITCODE -ne 0) { throw "Android sync/verification failed" }
-npm run verify:v3155
+npm run verify:v3156
 if ($LASTEXITCODE -ne 0) { throw "Native polish verification failed" }
 
 # Find a Java 21 runtime. Android Studio/JetBrains frequently installs it under .jdks.
@@ -80,7 +80,7 @@ if ($LASTEXITCODE -ne 0) { throw "Android APK build failed" }
 $apk = Join-Path $androidProject "app\build\outputs\apk\debug\app-debug.apk"
 if (!(Test-Path $apk)) { throw "Gradle finished but app-debug.apk was not created" }
 
-Write-Host "Installing Velvet 3.15.5 on the Samsung..." -ForegroundColor Cyan
+Write-Host "Installing Velvet 3.15.6 on the Samsung..." -ForegroundColor Cyan
 & $adb install -r -d $apk | Out-Host
 if ($LASTEXITCODE -ne 0) { throw "Android could not install the Velvet APK" }
 
@@ -90,6 +90,6 @@ Start-Sleep -Milliseconds 400
 if ($LASTEXITCODE -ne 0) { throw "Velvet installed, but Android could not launch MainActivity" }
 
 Write-Host ""
-Write-Host "VELVET 3.15.5 PORTAL POLISH IS INSTALLED AND OPENED." -ForegroundColor Green
+Write-Host "VELVET 3.15.6 PORTAL REFRAME IS INSTALLED AND OPENED." -ForegroundColor Green
 Write-Host "You can unplug the USB when Velvet is visible on the phone." -ForegroundColor Green
 Write-Host ""
