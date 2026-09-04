@@ -7,12 +7,12 @@ import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import { useCharacters } from "./context/CharactersContext";
 import WelcomeSplash from "./components/WelcomeSplash";
-import NativeMirrorLaunch from "./components/NativeMirrorLaunch";
+import NativeCrystalLaunch from "./components/NativeCrystalLaunch";
 import { isVelvetNativeRuntime } from "./native/velvetNative";
 import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
-import "./styles/velvet-v3157-mirror-assembly.css";
+import "./styles/velvet-v3159-crystal-cinematic.css";
 
 const routeImports = {
   stories: () => import("./pages/Chats"),
@@ -190,7 +190,7 @@ function App() {
 
   useEffect(() => {
     if (!nativeRuntime) return undefined;
-    const timer = window.setTimeout(() => setNativeLaunchVisible(false), 5700);
+    const timer = window.setTimeout(() => setNativeLaunchVisible(false), 6200);
     return () => window.clearTimeout(timer);
   }, [nativeRuntime]);
 
@@ -401,7 +401,7 @@ function App() {
       return (
         <>
           <div className="velvet-native-launch-underlay" aria-hidden="true" />
-          {nativeLaunchVisible && <NativeMirrorLaunch key="velvet-native-launch" />}
+          {nativeLaunchVisible && <NativeCrystalLaunch key="velvet-native-launch" />}
         </>
       );
     }
@@ -418,7 +418,7 @@ function App() {
     return (
       <>
         <Auth />
-        {nativeRuntime && nativeLaunchVisible && <NativeMirrorLaunch key="velvet-native-launch" />}
+        {nativeRuntime && nativeLaunchVisible && <NativeCrystalLaunch key="velvet-native-launch" />}
       </>
     );
   }
@@ -693,7 +693,7 @@ function App() {
       )}
       <PWAStatus />
     </div>
-    {nativeRuntime && nativeLaunchVisible && <NativeMirrorLaunch key="velvet-native-launch" />}
+    {nativeRuntime && nativeLaunchVisible && <NativeCrystalLaunch key="velvet-native-launch" />}
     </>
   );
 }
