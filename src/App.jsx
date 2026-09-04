@@ -7,12 +7,12 @@ import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import { useCharacters } from "./context/CharactersContext";
 import WelcomeSplash from "./components/WelcomeSplash";
-import NativeCrystalLaunch from "./components/NativeCrystalLaunch";
+import NativeRealVsLaunch from "./components/NativeRealVsLaunch";
 import { isVelvetNativeRuntime } from "./native/velvetNative";
 import "./App.css";
 import "./styles/velvet-unified.css";
 import "./styles/velvet-v17.css";
-import "./styles/velvet-v3159-crystal-cinematic.css";
+import "./styles/velvet-v3160-real-vector-vs.css";
 
 const routeImports = {
   stories: () => import("./pages/Chats"),
@@ -401,7 +401,7 @@ function App() {
       return (
         <>
           <div className="velvet-native-launch-underlay" aria-hidden="true" />
-          {nativeLaunchVisible && <NativeCrystalLaunch key="velvet-native-launch" />}
+          {nativeLaunchVisible && <NativeRealVsLaunch key="velvet-native-launch" />}
         </>
       );
     }
@@ -418,7 +418,7 @@ function App() {
     return (
       <>
         <Auth />
-        {nativeRuntime && nativeLaunchVisible && <NativeCrystalLaunch key="velvet-native-launch" />}
+        {nativeRuntime && nativeLaunchVisible && <NativeRealVsLaunch key="velvet-native-launch" />}
       </>
     );
   }
@@ -693,7 +693,7 @@ function App() {
       )}
       <PWAStatus />
     </div>
-    {nativeRuntime && nativeLaunchVisible && <NativeCrystalLaunch key="velvet-native-launch" />}
+    {nativeRuntime && nativeLaunchVisible && <NativeRealVsLaunch key="velvet-native-launch" />}
     </>
   );
 }

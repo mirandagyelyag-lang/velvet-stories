@@ -2,13 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="velvet-version" content="3.15.8" />
+    <meta name="velvet-version" content="3.15.9" />
     <meta name="velvet-runtime" content="android" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#722640" />
+    <meta name="theme-color" content="#050103" />
     <meta name="description" content="Private worlds and endless stories with AI characters." />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,6 +16,7 @@
     <meta name="apple-mobile-web-app-title" content="Velvet Stories" />
     <meta name="format-detection" content="telephone=no" />
 
+    <link rel="preload" as="image" href="/velvet-crystal-vs.png" />
     <link rel="icon" href="/velvet-vs-v4-favicon.png" type="image/png" sizes="64x64" />
     <link rel="apple-touch-icon" href="/velvet-vs-v4-apple-180.png" />
     <title>Velvet Stories</title>
@@ -26,11 +27,13 @@
       #velvet-native-prepaint { display:none; }
       html.velvet-native-prepaint #velvet-native-prepaint {
         display:block; position:fixed; inset:-1px; z-index:2147481000; pointer-events:none;
-        background:#090307 radial-gradient(circle at 50% 46%, rgba(111,22,64,.28), transparent 34%);
+        background-color:#050103;
+        background-image:linear-gradient(rgba(4,0,3,.48),rgba(4,0,3,.48)),url('/velvet-crystal-vs.png');
+        background-size:cover; background-position:center; filter:blur(8px) brightness(.62); transform:scale(1.03);
       }
       html.velvet-native-prepaint #velvet-native-prepaint::after {
         content:""; position:absolute; inset:0;
-        background:radial-gradient(ellipse at center,transparent 24%,rgba(0,0,0,.18) 64%,rgba(0,0,0,.7) 100%);
+        background:radial-gradient(ellipse at center,transparent 28%,rgba(0,0,0,.08) 60%,rgba(0,0,0,.5) 100%);
       }
     </style>
 
@@ -154,10 +157,10 @@
         }, 8000);
       })();
     </script>
-    <script type="module" crossorigin src="/assets/index-CpcHWTqT.js"></script>
+    <script type="module" crossorigin src="/assets/index-CpHLtOIU.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-yoQFdYqt.js">
     <link rel="modulepreload" crossorigin href="/assets/AuthContext-DwDq0Ycz.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-DuiFOPsv.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-BNu5_FsJ.css">
   </head>
 
   <body>

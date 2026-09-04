@@ -1,0 +1,93 @@
+.velvet-native-launch-underlay{position:fixed;inset:0;z-index:2147480000;background:#050103}
+
+.velvet-real-vs-launch{
+  position:fixed;inset:0;z-index:2147482000;overflow:hidden;isolation:isolate;
+  width:100%;height:100dvh;min-height:100dvh;background:#050103;
+  animation:vvs-shell-out .38s cubic-bezier(.22,.7,.18,1) 5.58s forwards;
+}
+.velvet-real-vs-launch__underlay{
+  position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 48%,rgba(82,8,38,.45) 0%,rgba(20,2,12,.85) 52%,#050103 100%);
+}
+.velvet-real-vs-launch__svg{
+  position:absolute;inset:0;width:100%;height:100%;display:block;overflow:hidden;
+}
+.velvet-real-vs-launch__bg{animation:vvs-bg 5.5s ease-in-out both;transform-origin:50% 48%}
+.velvet-real-vs-launch__core-glow{animation:vvs-glow 2.7s ease 1.85s both}
+.velvet-real-vs-launch__core-glow--small{animation-duration:2.2s;animation-delay:2s}
+
+.velvet-real-vs-launch__dust-dot{
+  fill:#ff89c0;opacity:.22;animation:vvs-dust 3.8s ease-in-out infinite alternate;
+}
+.velvet-real-vs-launch__dust-dot:nth-child(3n){opacity:.1;animation-duration:4.6s}
+.velvet-real-vs-launch__dust-dot:nth-child(4n){opacity:.18;animation-duration:5.2s}
+
+.velvet-real-vs-launch__shard{
+  transform-box:fill-box;transform-origin:center;
+  transform:translate(calc(var(--tx) * 1px),calc(var(--ty) * 1px)) rotate(var(--rot)) scale(1.08);
+  opacity:0;
+  animation:
+    vvs-shard-in 1.48s cubic-bezier(.14,.78,.18,1) var(--delay) forwards,
+    vvs-shard-out .76s cubic-bezier(.5,0,.84,.32) calc(4.68s + var(--delay)) forwards;
+}
+.velvet-real-vs-launch__shard-fill{
+  fill:url(#velvetShardFill);opacity:.88;filter:url(#velvetVsGlow);
+}
+.velvet-real-vs-launch__shard-line{
+  fill:none;stroke:rgba(255,244,251,.95);stroke-width:.38;stroke-linejoin:round;opacity:.95;
+}
+
+.velvet-real-vs-launch__vs-group{transform-origin:50px 80px}
+.velvet-real-vs-launch__vs{
+  font-family: "Times New Roman", Georgia, serif;
+  font-weight: 400;
+  font-size: 34px;
+  letter-spacing: -1.6px;
+  fill: url(#velvetVsFill);
+  stroke: rgba(255,245,250,.95);
+  stroke-width: .14;
+  opacity:0;
+  filter:url(#velvetVsGlow);
+  transform-origin:50px 80px;
+  animation:vvs-vs-in .5s ease 1.9s forwards,vvs-vs-breathe 1.65s ease-in-out 2.4s infinite alternate,vvs-vs-out .35s ease 4.88s forwards;
+}
+.velvet-real-vs-launch__vs--glow{opacity:0;stroke:none;fill:#ff7fb9;filter:url(#velvetSoftGlow);animation:vvs-vs-glow .5s ease 1.86s forwards,vvs-vs-out .35s ease 4.88s forwards}
+
+.velvet-real-vs-launch__sheen{
+  fill:url(#velvetShardInner);opacity:0;transform:rotate(16deg);transform-origin:50px 80px;
+  animation:vvs-sheen 1.05s cubic-bezier(.18,.68,.22,1) 2.62s forwards;
+}
+
+.velvet-real-vs-launch__sparkle path{fill:#fff9fd;opacity:0;animation:vvs-spark 1.05s ease var(--delay) both}
+.velvet-real-vs-launch__progress-line{stroke:rgba(255,184,220,.65);stroke-width:.35;stroke-linecap:round;opacity:.9}
+.velvet-real-vs-launch__progress-glint{fill:#fff;opacity:0;filter:url(#velvetStarGlow);animation:vvs-progress 2.28s cubic-bezier(.16,.7,.24,1) 2.5s forwards}
+.velvet-real-vs-launch__flash{fill:#fff;opacity:0;filter:url(#velvetSoftGlow);animation:vvs-flash .7s ease 5s forwards}
+
+@keyframes vvs-bg{0%{transform:scale(1.02)}45%{transform:scale(1.04)}100%{transform:scale(1.065)}}
+@keyframes vvs-glow{0%{opacity:0;transform:scale(.75)}38%{opacity:.82}100%{opacity:0;transform:scale(1.45)}}
+@keyframes vvs-dust{0%{transform:translateY(0);opacity:.08}100%{transform:translateY(-4px);opacity:.24}}
+@keyframes vvs-shard-in{
+  0%{opacity:0;transform:translate(calc(var(--tx) * 1px),calc(var(--ty) * 1px)) rotate(var(--rot)) scale(1.08);filter:brightness(1.35)}
+  55%{opacity:.96}
+  100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);filter:brightness(1)}
+}
+@keyframes vvs-shard-out{
+  0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1)}
+  100%{opacity:0;transform:translate(calc(var(--ox) * 1px),calc(var(--oy) * 1px)) rotate(var(--or)) scale(1.08)}
+}
+@keyframes vvs-vs-in{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes vvs-vs-glow{from{opacity:0;transform:scale(.96)}to{opacity:.6;transform:scale(1.02)}}
+@keyframes vvs-vs-breathe{from{transform:scale(1)}to{transform:scale(1.02)}}
+@keyframes vvs-vs-out{from{opacity:1}to{opacity:0}}
+@keyframes vvs-sheen{0%{transform:translateX(-44px) rotate(16deg);opacity:0}20%{opacity:.72}75%{opacity:.3}100%{transform:translateX(122px) rotate(16deg);opacity:0}}
+@keyframes vvs-spark{0%,100%{opacity:0;transform:scale(.2)}38%{opacity:1;transform:scale(1.25)}72%{opacity:.65}}
+@keyframes vvs-progress{0%{opacity:0;transform:translateX(0)}12%{opacity:1}88%{opacity:1}100%{opacity:0;transform:translateX(26px)}}
+@keyframes vvs-flash{0%{opacity:0;transform:scale(.2)}36%{opacity:.9}100%{opacity:0;transform:scale(42)}}
+@keyframes vvs-shell-out{to{opacity:0;visibility:hidden;transform:scale(1.008)}}
+
+@media (prefers-reduced-motion:reduce){
+  .velvet-real-vs-launch *{animation-duration:.01ms!important;animation-delay:0ms!important}
+  .velvet-real-vs-launch{animation:vvs-shell-out .2s ease 1.2s forwards!important}
+  .velvet-real-vs-launch__shard{display:none!important}
+  .velvet-real-vs-launch__vs,.velvet-real-vs-launch__vs--glow{opacity:1!important}
+}
