@@ -19,6 +19,11 @@ export type StoryContractInput = {
   storyMilestones?: Array<Record<string, unknown>>;
   recentMessages?: Array<Record<string, unknown>>;
   opening?: boolean;
+  intelligenceState?: Record<string, unknown>;
+  developmentState?: Record<string, unknown>;
+  relationshipState?: Record<string, unknown>;
+  storyChapters?: Array<Record<string, unknown>>;
+  activeChapter?: Record<string, unknown>;
 };
 
 export type StoryContract = {
@@ -78,6 +83,58 @@ export type StoryContract = {
     emotionalCost: string;
     instruction: string;
     realityRules: string[];
+  };
+  characterMind: {
+    know: string;
+    believe: string;
+    misunderstand: string;
+    want: string;
+    avoid: string;
+    wontAdmit: string;
+    outsidePriority: string;
+    shortGoal: string;
+    midGoal: string;
+    longGoal: string;
+    attachmentPattern: string;
+    microvoice: string;
+    energy: string;
+  };
+  temporalEngine: {
+    storyNow: string;
+    recentElapsed: string;
+    upcoming: Array<Record<string, unknown>>;
+    instruction: string;
+  };
+  intensityDirector: {
+    recentLevel: number;
+    targetBand: string;
+    instruction: string;
+  };
+  driftProtection: {
+    anchors: string[];
+    recentVoiceShift: string;
+    instruction: string;
+  };
+  storySeason: {
+    current: Record<string, unknown>;
+    previous: Array<Record<string, unknown>>;
+    instruction: string;
+  };
+  emotionalIntelligence: {
+    emotionalCausality: { trigger: string; interpretation: string; emotion: string; behavioralPressure: string };
+    anticipation: { next: string; expected: string; feared: string };
+    publicPrivateMode: string;
+    behavioralMemory: { pattern: string; conflictPattern: string; contradiction: string };
+    conflictPersonality: string;
+    groupDynamics: Array<Record<string, unknown>>;
+    misunderstanding: string;
+    slowChange: string;
+    sceneMomentum: "hold" | "turn" | "close";
+    narrativeCompression: string;
+    contradictions: string[];
+    privateIntentions: { intention: string; expected: string; feared: string };
+    antiRepetition: string[];
+    reflection: Record<string, unknown>;
   };
   relationshipEngines: {
     chemistry: Record<string, unknown>;
@@ -191,6 +248,31 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   ].map(text).join(" "));
   const interestProofRequired = !boundaries.length && romanticStory && (recentCharacterTurns.length < 2 || recentInterestProofCount === 0);
   const sceneChangeRequired = !boundaries.length && (talkOnlyDrought || (recentCharacterTurns.length >= 5 && recentActionCount <= 2));
+  const intelligence = input.intelligenceState && typeof input.intelligenceState === "object" ? input.intelligenceState : {};
+  const priorMind = intelligence.character_mind && typeof intelligence.character_mind === "object" ? intelligence.character_mind as Record<string, unknown> : {};
+  const development = input.developmentState && typeof input.developmentState === "object" ? input.developmentState : {};
+  const relationshipState = input.relationshipState && typeof input.relationshipState === "object" ? input.relationshipState : {};
+  const recentIntensity = Math.max(1, Math.min(10, Number(intelligence.intensity_level || 4)));
+  const targetBand = activeConflicts.length || activeConsequences.some((item) => Number(item?.weight || 0) >= 4)
+    ? "5-8"
+    : romanticStory && recentIntensity >= 7
+      ? "3-6"
+      : drama >= 65
+        ? "4-7"
+        : "2-5";
+  const currentChapter = input.activeChapter && typeof input.activeChapter === "object" ? input.activeChapter : {};
+  const pastChapters = (input.storyChapters || []).slice(-4);
+  const mindFrom = (key: string, fallback = "") => text((priorMind as Record<string, unknown>)[key] || fallback);
+  const priorReflection = intelligence.last_reflection && typeof intelligence.last_reflection === "object" ? intelligence.last_reflection as Record<string, unknown> : {};
+  const publicPrivateMode = mode === "digital" ? "digital" : present.length >= 3 ? "public" : present.length <= 2 ? "private" : "mixed";
+  const conflictPersonality = text(input.character.conflict_style || input.character.emotional_defense || "react according to established defense and pride");
+  const contradictionList = [text(input.character.contradictions), text(development.active_contradiction), mindFrom("contradiction_in_play")].filter(Boolean).slice(0, 4);
+  const groupDynamicEvidence = (input.castConnections || []).filter((item) => {
+    const from = normalized(item?.from_name), to = normalized(item?.to_name);
+    return present.some((name) => normalized(name) === from || normalized(name) === to);
+  }).slice(0, 8);
+  const sceneMomentum: "hold" | "turn" | "close" = boundaries.length ? "close" : talkOnlyDrought ? "turn" : recentCharacterTurns.length >= 4 && recentActionCount <= 1 ? "turn" : "hold";
+
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
     : drama >= 60 && availablePressure.some((item) => item.startsWith("external complication"))
@@ -232,7 +314,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     conversationQuality: { recentPatterns, nextTurnAdjustments },
     independentLife: {
       anchors: lifeAnchors,
-      instruction: "Give the character ongoing obligations, friendships, work and interests implied by these anchors. Use them only when relevant; never invent a schedule merely to avoid the user.",
+      instruction: "Give the character ongoing obligations, friendships, work, interests and private priorities implied by these anchors. Their life may inconveniently compete with the relationship: they can be busy, late, distracted, committed elsewhere, or choose another responsibility without this meaning rejection. Use only grounded anchors; never invent a schedule merely to avoid the user. Do not make the character permanently available or optimize their life around the protagonist.",
     },
     storyAuthority: {
       bible: (input.storyBible || []).slice(0, 24),
@@ -263,6 +345,42 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
         "Persist consequences: do not erase damage, promises, social fallout or unfinished plans next turn.",
       ],
     },
+    characterMind: {
+      know: mindFrom("know"),
+      believe: mindFrom("believe"),
+      misunderstand: mindFrom("misunderstand"),
+      want: mindFrom("want", text(development.independent_priority || input.character.core_motivation)),
+      avoid: mindFrom("avoid", text(input.character.emotional_defense)),
+      wontAdmit: mindFrom("wont_admit"),
+      outsidePriority: mindFrom("outside_priority", text(development.independent_priority)),
+      shortGoal: mindFrom("short_goal", text(development.independent_priority || input.character.core_motivation)),
+      midGoal: mindFrom("mid_goal", text(input.character.core_motivation)),
+      longGoal: mindFrom("long_goal", text(input.character.growth_direction || input.character.character_values)),
+      attachmentPattern: mindFrom("attachment_pattern", "unknown"),
+      microvoice: mindFrom("microvoice", text(development.voice_shift || relationshipState.voice_shift)),
+      energy: mindFrom("energy", "steady"),
+    },
+    temporalEngine: {
+      storyNow: text(scene.time_label || "unknown"),
+      recentElapsed: text(intelligence.elapsed_since_previous || "unspecified"),
+      upcoming: dueCalendarEvents.slice(0, 5),
+      instruction: "Treat story time as canon. Distinguish minutes, days, weeks and long absences when the transcript/calendar establishes them. Never call something yesterday, months ago, or soon unless supported. Upcoming commitments may pressure choices, but do not silently jump time or complete them off-screen.",
+    },
+    intensityDirector: {
+      recentLevel: recentIntensity,
+      targetBand,
+      instruction: "Emotional intensity must breathe. Do not ratchet upward every turn. After a 7-10 beat, prefer decompression, awkward normality, practical behavior or quiet residue unless a visible cause escalates again. Ordinary scenes may sit at 2-4 without being filler.",
+    },
+    driftProtection: {
+      anchors: [input.character.core_motivation, input.character.emotional_defense, input.character.contradictions, input.character.character_values, input.character.voice_avoidances].map(text).filter(Boolean).slice(0, 5),
+      recentVoiceShift: text(development.voice_shift || relationshipState.voice_shift),
+      instruction: "Compare the next choice to the base motivation, defense, contradictions and voice. Growth may bend behavior but cannot replace the person with a generic nicer, colder, more romantic or more emotionally fluent version. If a recent shift conflicts with the base identity, preserve the identity and make the shift smaller.",
+    },
+    storySeason: {
+      current: currentChapter,
+      previous: pastChapters,
+      instruction: "Treat chapters as invisible story seasons. A new season requires a durable change in normal life, relationship baseline, location/time era, major goal or social world—not one dramatic line. Inside a season, let motifs and consequences recur lightly without summarizing the arc to the user.",
+    },
     livingStoryEngine: {
       mode: livingMode,
       interestProofRequired,
@@ -271,7 +389,10 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
       instruction: "Write one lived beat, not a mini-novel. Answer the user's literal turn first. The character has an independent want and chooses one tactic, but that tactic may be spoken: a decision, reveal, refusal, invitation, admission or joke can move the scene without extra choreography. If interestProofRequired is true, prove interest through one voluntary, character-specific investment or risk now; attraction words, staring, teasing, protectiveness and jealousy alone do not count. If sceneChangeRequired is true, change the activity, access, participants, plan, information or stakes with the smallest natural beat needed. Do not manufacture props or physical business just to show movement. Leave a clean opening for the user without asking them to invent the plot.",
       realityRules: [
         "Desire has behavior: the character arranges, remembers, returns, makes room, risks embarrassment, changes a plan, shares access, tells an inconvenient truth, or chooses the user when another option genuinely exists.",
-        "Emotion is not constant intensity. Use contrast: ordinary dialogue, imperfect timing, embarrassment, silence, humor, practical behavior, then one honest pressure point. Do not decorate every beat with weather, objects or body-language detail.",
+        "Emotion is not constant intensity. Use contrast: ordinary dialogue, imperfect timing, embarrassment, silence, humor, practical behavior, then one honest pressure point. Strong emotion leaves residue but should not hijack every later line. Do not decorate every beat with weather, objects or body-language detail.",
+        "Development is asymmetric. A character can become more trusting while remaining avoidant, more affectionate while still bad at apologies, or more honest while still proud. Never flatten growth into universally nicer, calmer, wiser behavior.",
+        "People relapse under pressure. Established defenses, habits and verbal instincts may briefly return when stress is high, but the relapse must reflect accumulated growth rather than reset canon to day one.",
+        "Learning the protagonist is not optimization. Remember preferences, boundaries and patterns naturally, but the character may still disagree, forget a minor detail, misread an ambiguous situation, have incompatible wants or say no.",
         "NPCs are people, not jealousy props. Give an active NPC a separate goal, relationship and consequence; let them interrupt, disagree, need something, invite someone or change the plan.",
         "Conflict must threaten something specific. Nobody fights merely because the story needs drama; incompatible goals, loyalty, reputation, fear, bad timing, secrecy or a broken commitment create the collision.",
         "Coincidences may open a scene once. After that, consequences come from visible choices. Police, rivals, family, friends and authority follow causes already present in the world.",
@@ -279,10 +400,31 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
         "Romantic initiative never means coercion. A refusal or boundary ends that tactic immediately; the character may feel and choose privately, but cannot pressure or engineer a workaround.",
       ],
     },
+    emotionalIntelligence: {
+      emotionalCausality: {
+        trigger: mindFrom("emotion_trigger"),
+        interpretation: mindFrom("emotion_interpretation"),
+        emotion: mindFrom("current_emotion"),
+        behavioralPressure: mindFrom("behavioral_pressure"),
+      },
+      anticipation: { next: mindFrom("anticipated_next"), expected: mindFrom("expected_outcome"), feared: mindFrom("feared_outcome") },
+      publicPrivateMode,
+      behavioralMemory: { pattern: mindFrom("behavioral_pattern", text(development.private_pattern)), conflictPattern: mindFrom("conflict_pattern", conflictPersonality), contradiction: mindFrom("contradiction_in_play", contradictionList[0] || "") },
+      conflictPersonality,
+      groupDynamics: groupDynamicEvidence,
+      misunderstanding: mindFrom("misunderstand"),
+      slowChange: text(development.retained_growth || development.voice_shift || relationshipState.voice_shift),
+      sceneMomentum,
+      narrativeCompression: "Compress only uneventful transit/routine after the live interaction is complete. Never summarize over an unresolved user choice, conflict, promise, intimacy milestone or active conversation.",
+      contradictions: contradictionList,
+      privateIntentions: { intention: mindFrom("private_intention"), expected: mindFrom("expected_outcome"), feared: mindFrom("feared_outcome") },
+      antiRepetition: [...recentPatterns, text(priorReflection.avoid_repeat)].filter(Boolean).slice(0, 6),
+      reflection: priorReflection,
+    },
     relationshipEngines: {
       chemistry: {
         profile: chemistry,
-        instruction: "Make this relationship recognizable without repeating a gimmick. Reuse at most one established joke, gesture or meaningful place in a scene; create new chemistry through choices, timing and vulnerability. Never copy another character's romantic pattern.",
+        instruction: "Make this relationship recognizable without repeating a gimmick. Reuse at most one established joke, gesture or meaningful place in a scene; create new chemistry through choices, timing, mutual history and vulnerability. Chemistry must have contrast: ease can coexist with irritation, attraction with embarrassment, trust with one unresolved doubt. Never copy another character's romantic pattern and never make every interaction romantic.",
       },
       jealousy: {
         stage: jealousyStage,
@@ -298,12 +440,12 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
       conflictAndRepair: {
         active: activeConflicts,
         instruction: activeConflicts.length
-          ? "Carry the conflict residue into word choice, access, trust and behavior. Do not reset to normal. Repair must match the character: an imperfect attempt, concrete amends, honest admission or changed action—not therapy language or one apology that erases everything."
+          ? "Carry the conflict residue into word choice, access, trust and behavior. Do not reset to normal. Repair must match the character: an imperfect attempt, concrete amends, honest admission or changed action—not therapy language or one apology that erases everything. A repair attempt can partially fail, be mistimed, protect pride, or solve the practical issue before the emotional one. Improvement must be demonstrated across later behavior, not declared in one scene."
           : "Conflict needs a concrete incompatible goal, witnessed slight, broken promise or consequential misunderstanding. Never create cruelty without motive.",
       },
       milestones: {
         achieved: milestones,
-        instruction: "Treat achieved firsts as canon and never replay them as firsts. Do not rush a new milestone simply to fill a turn; earn it through the current relationship phase and record only events that actually occur on-page.",
+        instruction: "Treat achieved firsts as canon and never replay them as firsts. Do not rush a new milestone simply to fill a turn; earn it through accumulated behavior and the current relationship phase. A milestone changes expectations afterward, but does not erase defenses, awkwardness or old habits overnight. record only events that actually occur on-page.",
       },
       choreography: {
         location: text(scene.location || "unknown"), present, activity: sceneActivity, objects: sceneObjects,
@@ -353,11 +495,31 @@ export function storyContractPrompt(contract: StoryContract) {
       talkOnlyDrought: contract.initiativePlan.talkOnlyDrought,
       options: take(contract.initiativePlan.availablePressure, 2),
     },
+    mind: contract.characterMind,
+    temporal: { storyNow: contract.temporalEngine.storyNow, recentElapsed: contract.temporalEngine.recentElapsed, upcoming: take(contract.temporalEngine.upcoming, 3).map((item) => pick(item as Record<string, unknown>, ["title", "story_time", "details", "participants", "status"])) },
+    intensity: contract.intensityDirector,
+    drift: contract.driftProtection,
+    season: contract.storySeason,
     living: {
       mode: contract.livingStoryEngine.mode,
       interestProofRequired: contract.livingStoryEngine.interestProofRequired,
       sceneChangeRequired: contract.livingStoryEngine.sceneChangeRequired,
       emotionalCost: contract.livingStoryEngine.emotionalCost,
+    },
+    emotionalIntelligence: {
+      emotionalCausality: contract.emotionalIntelligence.emotionalCausality,
+      anticipation: contract.emotionalIntelligence.anticipation,
+      publicPrivateMode: contract.emotionalIntelligence.publicPrivateMode,
+      behavioralMemory: contract.emotionalIntelligence.behavioralMemory,
+      conflictPersonality: contract.emotionalIntelligence.conflictPersonality,
+      groupDynamics: take(contract.emotionalIntelligence.groupDynamics, 5).map((item) => pick(item as Record<string, unknown>, ["from_name","to_name","relationship","visibility"])),
+      misunderstanding: contract.emotionalIntelligence.misunderstanding,
+      slowChange: contract.emotionalIntelligence.slowChange,
+      sceneMomentum: contract.emotionalIntelligence.sceneMomentum,
+      contradictions: take(contract.emotionalIntelligence.contradictions, 4),
+      privateIntentions: contract.emotionalIntelligence.privateIntentions,
+      antiRepetition: take(contract.emotionalIntelligence.antiRepetition, 5),
+      reflection: contract.emotionalIntelligence.reflection,
     },
     relationship: {
       chemistry: pick((contract.relationshipEngines.chemistry?.profile || {}) as Record<string, unknown>, ["character_name", "signature", "chemistry_score", "trust_score", "tension_score", "notes"]),
@@ -369,5 +531,5 @@ export function storyContractPrompt(contract: StoryContract) {
     },
   };
 
-  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character voice → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, STAGE IT IN THIS REPLY: stage one concrete action or event without deciding the user's response; dialogue alone does not satisfy initiative. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Stored state never overrides the latest visible user turn.`;
+  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → character voice → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use emotionalIntelligence.sceneMomentum to know when to hold, turn or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn.`;
 }

@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.16.1",
+  "version": "3.21.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -55,7 +55,14 @@
     "verify:v3157": "node scripts/verify-v3157-mirror-assembly.mjs",
     "verify:v3158": "node scripts/verify-v3158-true-mirror.mjs",
     "verify:v3159": "node scripts/verify-v3159-crystal-cinematic.mjs",
-    "verify:v3160": "node scripts/verify-v3160-voiceprint.mjs"
+    "verify:v3160": "node scripts/verify-v3160-voiceprint.mjs",
+    "verify:v3170": "node scripts/verify-v3170-living-character.mjs",
+    "verify:v3171": "node scripts/verify-v3171-force-update.mjs",
+    "verify:v3180": "node scripts/verify-v3180-deep-characters.mjs",
+    "verify:v3190": "node scripts/verify-v3190-character-mind.mjs",
+    "verify:v3200": "node scripts/verify-v3200-emotional-intelligence.mjs",
+    "verify:v3210": "node scripts/verify-v3210-human-behavior.mjs",
+    "verify:v3210-release": "node scripts/verify-v3210-release.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

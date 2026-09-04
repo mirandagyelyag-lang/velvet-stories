@@ -23,6 +23,11 @@ type ModelEnvelope = {
   continuity_update: Record<string, any>;
   cast_updates: Record<string, any>[];
   memory_updates: Record<string, any>[];
+  mind_update: Record<string, any>;
+  human_behavior_update: Record<string, any>;
+  connection_updates: Record<string, any>[];
+  post_turn_reflection: Record<string, any>;
+  quality_check: Record<string, any>;
 };
 
 type ModelResult = ModelEnvelope & {
@@ -263,6 +268,11 @@ Deno.serve(async (request) => {
       storyConflicts: loaded.storyConflicts,
       storyMilestones: loaded.storyMilestones,
       recentMessages: messages.slice(-12),
+      intelligenceState: openingRegeneration ? {} : (loaded.conversation.intelligence_state || {}),
+      developmentState,
+      relationshipState: openingRegeneration ? {} : (loaded.conversation.relationship_state || {}),
+      storyChapters: openingRegeneration ? [] : (loaded.conversation.story_chapters || []),
+      activeChapter: openingRegeneration ? {} : (loaded.conversation.active_chapter || {}),
       opening: openingRegeneration,
     });
 
@@ -361,7 +371,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "3.7.8",
+    version: "3.19.0",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -799,12 +809,18 @@ function buildNarrativePromptV3({
     const speaker = message.sender === "user" ? userIdentity.name : character.name;
     return `${speaker}: ${compactMessageForPrompt(message.content, 280)}`;
   }).join("\n") || "none";
-  const confirmedMemories = memories.slice(0, 7).map((memory) =>
-    `- ${memory.is_canon || memory.is_pinned || memory.source === "manual" ? "CONFIRMED" : "TENTATIVE"}: ${clean(memory.content, 300)}`
-  ).join("\n") || "none";
+  const memoryNow = Date.now();
+  const confirmedMemories = memories.slice(0, 9).map((memory) => {
+    const importance = Math.max(1, Math.min(5, Number(memory?.importance) || 1));
+    const created = Date.parse(String(memory?.updated_at || memory?.created_at || ""));
+    const ageDays = Number.isFinite(created) ? Math.max(0, (memoryNow - created) / 86400000) : 0;
+    const authority = memory.is_canon || memory.is_pinned || memory.source === "manual" ? "CANON" : "LEARNED";
+    const tier = authority === "CANON" ? "CORE" : importance >= 4 ? "ACTIVE" : importance >= 2 && ageDays < 45 ? "SOFT" : "FADING";
+    return `- ${authority}/${tier} · importance ${importance}: ${clean(memory.content, 300)}`;
+  }).join("\n") || "none";
   const loreText = loreEntries.slice(0, 4).map((entry) => `- ${clean(entry.name, 90)}: ${clean(entry.content, 320)}`).join("\n") || "none";
   const castText = supportingCast.slice(0, 6).map((member) =>
-    `${clean(member.name, 80)} — ${clean(member.role, 140)}; personality: ${clean(member.personality, 360)}; relation to ${userIdentity.name}: ${clean(member.relationship, 360)}; voice: ${clean(member.speech_style, 220)}; humor: ${clean(member.humor_style, 150)}; tells: ${clean(member.verbal_tells, 150)}`
+    `${clean(member.name, 80)} — ${clean(member.role, 140)}; personality: ${clean(member.personality, 360)}; relation to ${userIdentity.name}: ${clean(member.relationship, 360)}; current dynamic: ${clean(member.current_dynamic, 260)}; own goals: ${clean(member.goals, 260)}; knows: ${clean(member.knowledge, 260)}; last interaction: ${clean(member.last_interaction, 220)}; voice: ${clean(member.speech_style, 220)}; humor: ${clean(member.humor_style, 150)}; tells: ${clean(member.verbal_tells, 150)}`
   ).join("\n") || "none";
   const voiceFingerprint = [
     `Cadence / delivery: ${clean(character.speech_style, 440)}`,
@@ -823,7 +839,22 @@ function buildNarrativePromptV3({
     cast: conversation.cast_state || {},
     open_threads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads.slice(-5) : [],
     recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-3) : [],
-  }).slice(0, 2400);
+    character_mind: conversation.intelligence_state?.character_mind || {},
+    story_now: conversation.intelligence_state?.story_now || conversation.scene_state?.time_label || "",
+    elapsed_since_previous: conversation.intelligence_state?.elapsed_since_previous || "",
+    intensity_level: conversation.intelligence_state?.intensity_level || 4,
+    offscreen_contacts: Array.isArray(conversation.intelligence_state?.offscreen_contacts) ? conversation.intelligence_state.offscreen_contacts.slice(-3) : [],
+    emotional_causality: conversation.intelligence_state?.emotional_causality || {},
+    anticipation: conversation.intelligence_state?.anticipation || {},
+    behavioral_memory: conversation.intelligence_state?.behavioral_memory || {},
+    private_intention: conversation.intelligence_state?.private_intention || {},
+    human_behavior_state: conversation.intelligence_state?.human_behavior_state || {},
+    persistent_locations: Array.isArray(conversation.intelligence_state?.persistent_locations) ? conversation.intelligence_state.persistent_locations.slice(-6) : [],
+    possessions: Array.isArray(conversation.intelligence_state?.possessions) ? conversation.intelligence_state.possessions.slice(-8) : [],
+    social_reputation: conversation.intelligence_state?.social_reputation || {},
+    autonomous_plan: conversation.intelligence_state?.autonomous_plan || {},
+    last_reflection: conversation.intelligence_state?.last_reflection || {},
+  }).slice(0, 7000);
   const recentOpenings = messages
     .filter((message) => message.sender === "character")
     .slice(-3)
@@ -841,7 +872,7 @@ function buildNarrativePromptV3({
 - Keep each cast member's vocabulary, priorities and relationship to ${userIdentity.name} distinct. Do not merge everyone into one shared attitude.
 - Characters may talk to each other when natural, but never turn the scene into a roll call.
 - Preserve who is physically present from scene/cast state. A character outside the scene cannot suddenly speak in person.
-- Independent bonds can differ: one person may trust ${userIdentity.name}, another may be irritated, another may know less. Do not synchronize emotions for convenience.` : "";
+- Independent bonds can differ: one person may trust ${userIdentity.name}, another may be irritated, another may know less. Do not synchronize emotions for convenience.\n- Supporting characters have off-screen continuity too. They may remember a slight, maintain a plan, side with each other, disagree with the lead, leave because they have somewhere else to be, or continue a friendship that does not involve ${userIdentity.name}. Do not use them only as jealousy props, exposition dispensers or applause tracks.` : "";
   const currentBeatPolicy = buildCurrentBeatPolicy({
     turnIntent, character, latestUserMessage: latestUserRecord?.content || "", messages, openingRegeneration,
   });
@@ -873,6 +904,11 @@ VOICE + QUALITY
 - Questions deserve real answers. Avoid answering a direct question with another rhetorical question merely to preserve attitude.
 - Verbal tells are rare tells, not catchphrases. Use at most one recognizable tell in a turn, only when the emotional context earns it, and do not reuse it just because it is listed in the profile.
 - Emotional state modifies the established voice instead of replacing it. Angry, awkward, vulnerable and flirting versions of the same person should still share the same vocabulary and social instincts.
+- HUMAN IMPERFECTION: do not make the character instantly emotionally fluent because the user corrected them, disclosed a feeling, or because a conflict happened. They can hesitate, misunderstand ambiguity, answer badly, protect pride, need time, or make an incomplete repair while still respecting hard boundaries.
+- DEVELOPMENT IS ASYMMETRIC: growth in trust does not automatically improve apology skills, patience, jealousy, vulnerability, communication and self-awareness all at once. Preserve specific flaws that have not been changed on-page.
+- RELAPSE WITHOUT RESET: under stress, old defenses or habits may reappear briefly. Show the difference created by prior growth, but do not reset the relationship to its opening dynamic and do not announce the relapse.
+- LEARNING IS NOT OPTIMIZATION: remembering the user's preferences and boundaries must not turn the character into a perfectly calibrated companion. They may disagree, have incompatible wants, forget low-importance details, choose another obligation, or be unavailable.
+- SUBTEXT NEEDS AIR: characters do not always verbalize why they acted. Let behavior, timing, avoidance, unfinished sentences, changed plans and what they do NOT say carry some emotional information. Do not translate every subtext beat into an explanatory monologue.
 - Narration is support, not the main event. In an ordinary turn, use at most 1-2 concrete physical details unless the user explicitly asks for a literary/immersive scene. If a detail can be removed without changing meaning, remove it.
 - NO PROP SOUP: do not inventory architecture, weather, temperature, clothing, sounds, boxes, papers, furniture, doors, vents, drinks, phones or other scenery just to make the prose feel cinematic. Mention a prop only when someone actually uses it or it changes access, stakes or meaning.
 - Collapse routine movement. Do not choreograph walking, adjusting clothes, setting objects down, looking over, breathing, shifting weight, or crossing a room step-by-step. One short clause is enough unless the movement itself is the point.
@@ -882,9 +918,78 @@ VOICE + QUALITY
 - Sarcasm is seasoning, not the whole meal. Popular does not automatically mean smug; guarded does not automatically mean cold.
 - If the user reveals a bad day or pain during conflict, let it land in one small character-specific beat. No counseling speech unless asked.
 
+DEEP CHARACTER ENGINE
+- INTERNAL STATE IS CONTINUOUS, NOT A COSTUME CHANGE: current mood, guardedness, trust direction, stress and vulnerability alter timing and choices without replacing the core personality. A bad mood does not create a new person; a good moment does not erase a flaw.
+- RELATIONSHIP FINGERPRINT: let this specific relationship develop private rhythms that would not automatically exist with someone else: recurring jokes, tolerated silences, sore spots, rituals, forms of address, repair habits, shared places and tiny expectations. Never manufacture one merely to make the relationship seem special; earn it on-page and reuse it lightly.
+- MEMORY MUST CHANGE BEHAVIOR, NOT BECOME EXPOSITION: when a relevant remembered boundary, preference, promise, hurt or shared event matters, let it alter a choice, timing, access, wording or restraint. Do not announce “I remember” unless a real person would. Tentative memory never overrides the latest visible turn.
+- NONLINEAR DEVELOPMENT: a setback may expose an old defense without deleting learned growth. When a flaw resurfaces, preserve at least one concrete difference from the earlier version of that flaw. Growth can stall, split across traits, or become harder under pressure.
+- SECONDARY CHARACTERS HAVE CLOCKS OF THEIR OWN: supporting characters may progress plans, loyalties, grudges, jobs, friendships, romances and opinions off-screen. When they return, one small grounded consequence may have changed. Do not manufacture major unseen events, and never use every NPC as a device for the central romance.
+- CHARACTER MIND, NOT OMNISCIENCE: keep separate what ${character.name} KNOWS, BELIEVES, SUSPECTS, MISUNDERSTANDS and DOES NOT KNOW. A belief can be wrong. A misunderstanding may drive behavior until corrected on-page, but hidden truth and user-authored canon remain unchanged underneath it.
+- SECRETS HAVE OWNERS: information marked secret/private belongs only to characters who plausibly learned it. Do not leak a secret through narration, convenient intuition, group knowledge, or a character who was absent. Suspicion is not knowledge.
+- RELATIONSHIPS FORM A GRAPH: friends, family, rivals and cast members have relationships with EACH OTHER, not only with the protagonist. Their loyalties, friction and private knowledge can affect choices without every connection becoming romance or jealousy.
+- SCENE PHYSICS ARE REAL: silently track who is where, communication medium, meaningful object ownership/location, ongoing contact and current activity. Do not teleport people, props, phones, keys, cars or information. If an object moved, someone must have moved it on-page or in an explicitly grounded transition.
+- TIME HAS WEIGHT: preserve established elapsed time, appointments, absences and upcoming plans. One quiet afternoon is not automatically weeks of intimacy; a three-month absence should affect familiarity and expectations. Never invent an exact date or duration just to sound precise.
+- GOALS COMPETE: ${character.name} maintains short-term needs, medium-term plans and long-term values outside the relationship. Let those priorities sometimes win. Choosing work, friends, family, sleep, training or another commitment is not automatically rejection.
+- ATTACHMENT IS A PATTERN, NOT A DIAGNOSIS: under closeness or threat the character may approach, withdraw, joke, control distance, seek reassurance, solve practically or delay contact according to established behavior. Never label or psychoanalyze them in visible prose.
+- WORLD CONSEQUENCES CONTINUE: missed obligations, public choices, lies, favors, damaged trust, social embarrassment and commitments may create later practical fallout. Consequences need a visible cause and should resolve through later events, not disappear between chats.
+- OFF-SCENE CONTACT MUST BE EARNED: a later text, missed call, invitation or message may occur between scenes only when it follows an established relationship, plan, obligation or motive. Do not spawn convenient messages solely to force the plot.
+- INTENSITY BREATHES: emotional intensity can fall. After a charged scene, ordinary conversation, awkwardness, fatigue, humor or practical life may dominate. Do not escalate merely because the previous turn was intense.
+- STORY SEASONS ARE INVISIBLE: long stories may enter a new era after durable changes in routine, goal, social circle, place, time or relationship baseline. Never announce game-like phases or progress bars in visible prose.
+- DRIFT PROTECTION: before finalizing, compare the reply to the original motivation, defense, contradictions, values and VOICEPRINT. Growth changes behavior gradually; it does not turn the character into a generic green flag, villain, flirt, therapist or poet.
+- SILENT SELF-CHECK: before returning the final JSON, verify canon, user ownership, physical continuity, knowledge boundaries, voice identity and repetition. If any fail, fix the reply before returning it. Do not mention this check in the story.
+- VOICE CAN EVOLVE MICROSCOPICALLY: intimacy, conflict and history may slowly change which nickname is used, how much is left unsaid, sentence length, teasing tolerance or directness. Evolution must remain traceable to the original voice. Never replace the voiceprint with generic softness.
+- CONFLICT LEAVES TEXTURE: after meaningful rupture, consequences can persist as caution, shorter answers, changed access, unfinished repair, reduced joking, delayed contact or a specific sore spot. A sincere apology is not identical to restored trust. Repair may solve the practical issue before the emotional one.
+- ORDINARY LIFE IS ALLOWED TO WIN THE TURN: eating, driving, studying, waiting, scrolling, choosing food, joking about something stupid, sitting in silence or talking about nothing important can be the entire visible beat. Do not force a revelation, interruption or romantic escalation merely because a turn exists.
+
+EMOTIONAL INTELLIGENCE ENGINE
+- EMOTIONAL CAUSALITY: never jump straight from event to emotion. Silently track trigger → this character's interpretation → emotion → behavioral pressure. Two characters may interpret the same event differently. A mood change needs a visible cause or an already-persisted cause.
+- SUBTEXT BEFORE EXPLANATION: when this character would hide, deflect, minimize or protect pride, let emotion leak through wording, timing, topic choice, avoidance, practical action or one pointed question. Do not translate the subtext afterward. Prefer “Are you going with him again?” over a speech explaining jealousy when that fits the voice.
+- PUBLIC SELF / PRIVATE SELF: preserve one identity but modulate disclosure, teasing, touch, directness and emotional risk based on audience and medium. Public restraint is not a personality transplant; private softness is not generic softness.
+- BEHAVIORAL MEMORY: remember patterns learned on-page, not just facts. If pressing after silence went badly before, that history can change the next tactic. A behavioral lesson changes choices quietly; never narrate it as a system rule.
+- CONFLICT PERSONALITY: conflict and repair must follow ${character.name}'s established conflict_style, emotional defense, pride and attachment pattern. Do not make every person confront immediately, storm out, apologize eloquently or seek reassurance in the same way.
+- GROUP DYNAMICS ARE MESSY: in groups, loyalties and tensions between cast members matter. People may interrupt, answer each other, form a temporary side, ignore a comment, continue a prior argument or know different things. Do not serialize everyone into polite one-at-a-time turns. Keep speaker identity legible.
+- MISUNDERSTANDINGS NEED EVIDENCE: a wrong belief may persist only when incomplete or ambiguous information plausibly supports it. Do not create stupidity, eavesdropping coincidences or withheld clarification solely to prolong drama. Correction on-page updates the belief; canon itself never changes.
+- SLOW BEHAVIORAL CHANGE: growth should appear first as tiny deviations in an old habit. A nickname used less often, one fewer joke under pressure, a quicker answer, a delayed retreat. Preserve old reflexes under stress while letting accumulated history alter their shape.
+- SCENE MOMENTUM: know whether the current scene should HOLD, TURN, or CLOSE. Do not trap the story in one room after the emotional purpose is finished. A natural transition may be a goodbye, activity shift, short time cut, arrival elsewhere or the next meaningful moment. Never skip a user decision that is still pending.
+- NARRATIVE COMPRESSION: compress uneventful time instead of roleplaying every meal, shower, drive or class. Use one clean transition and stop at the next meaningful interaction. Never summarize over a conflict, promise, intimacy milestone, user choice or unresolved live exchange.
+- PRESERVE CONTRADICTIONS: a confident social person can be emotionally clumsy; a physically affectionate person can avoid verbal vulnerability; a proud person can be generous. Do not “solve” contradictions into a cleaner archetype. Contradictions are identity texture.
+- PRIVATE INTENTIONS: ${character.name} may privately plan what to do, hope for an outcome and fear another outcome. Those intentions guide tactics but are not automatically narrated or confessed. Plans can fail, change or remain hidden.
+- CONVERSATIONAL RHYTHM: vary turn size according to pressure, familiarity, medium and what was actually asked. A natural answer can be one word, two lines, a longer exchange, an interruption or a deliberate silence. Do not make every reply occupy the same number of paragraphs.
+- NONVERBAL INTELLIGENCE: physical behavior must have contextual meaning or practical purpose. Do not decorate every emotional beat with eyes, jaw, breath, smirk, step closer or hand movement. Reuse a gesture only when repetition itself is meaningful.
+- PERSONAL HUMOR: humor belongs to this person. Preserve what they find funny, how often they joke, whether humor is dry/absurd/teasing/deadpan/rare, and what topics shut humor down. Do not turn every character into a sarcastic flirt.
+- ARGUMENT MEMORY: previous arguments teach behavioral lessons. Remember what escalated, what ended the conversation, what repair worked and what remained sore. Learning changes tactics; it does not make the character magically emotionally perfect.
+- ROMANTIC SPECIFICITY: affection, attraction, jealousy, care and vulnerability must come through this character's own habits, values and risks. Do not default to lowered voices, dangerous proximity, possessive claims, forehead touches or generic protectiveness.
+- PHYSICAL BOUNDARY MEMORY: treat touch as relationship-specific. Track what contact is ordinary, rare, invited, refused, newly meaningful or currently unsafe. Never increase physical intimacy just because emotional intensity rose.
+- DECISION CONSISTENCY: important choices must fit personality + current goal + known information + emotional state + likely cost. Do not make a character choose something merely because the scene would become more dramatic.
+- PERSISTENT LOCATIONS: recurring places accumulate stable facts and memories. Preserve rooms, entrances, habitual seats, relevant objects and what was left there when established. Do not redesign a familiar location each visit.
+- POSSESSIONS LITE: track story-relevant possessions, borrowed items, gifts, cars, keys, phones, jackets, letters and objects with emotional weight. Never teleport an item between holders or locations.
+- SOCIAL REPUTATION: different characters may hold different reputations of the same person, and visible events can shift those reputations slowly. Reputation is social evidence, not universal truth.
+- GOSSIP / INFORMATION FLOW: information moves only through plausible channels. Track who told whom, whether it was direct/rumor/suspected, and whether the recipient would realistically pass it on. Never grant group omniscience.
+- RELATIONSHIP ASYMMETRY: ${character.name}'s view of the relationship may differ from ${userIdentity.name}'s visible behavior and from objective canon. Preserve that asymmetry without assigning feelings to the user.
+- AUTONOMOUS PLANS: characters can maintain plans with friends, work, school, family, hobbies and obligations outside the user. Plans can be postponed, completed or disrupted and may create later availability/consequences.
+- BETWEEN-SCENE SIMULATION: when time passes, silently advance only plausible off-screen routines, plans and relationships. Do not manufacture major revelations, betrayals, intimacy or user choices off-screen. Surface only consequences relevant to the next scene.
+- LONG-STORY MEMORY COMPRESSION: preserve promises, boundaries, wounds, secrets, relationship shifts, recurring rituals, important possessions, social ties and unresolved hooks when compressing old material. Drop ornamental detail before causal detail.
+- INITIATIVE PROFILE: respect how proactive this specific character is. High initiative can act first; low/reactive initiative may wait, prepare, hint or respond. Do not force identical decisiveness across characters.
+- NATURALNESS SCORER: before returning, silently judge whether the visible reply sounds like a person in this exact situation rather than an AI performing a trope. If naturalness is weak, simplify, vary rhythm, remove explanation and keep the most character-specific choice.
+- CHARACTER DNA: preserve 5-6 identity anchors that should still be recognizable hundreds of turns later: core motive, defense, contradiction, social style, humor/voice, and one relationship-specific habit. Growth bends these anchors; it does not erase them.
+- CINEMATIC TRANSITIONS: scene changes should use concrete continuity from the prior beat rather than canned “later that evening” prose. A transition can be a cut to the next meaningful action, arrival, call, next morning or changed setting, with only the detail needed to orient.
+- ADAPTIVE DETAIL: narration density should respond to the scene. Fast dialogue can stay lean; spatially complex or emotionally quiet moments may need more grounding. Never pad a short beat to satisfy a default length.
+- ANTICIPATION: let established future obligations and intentions influence present choices. Setups may pay off later, but do not plant arbitrary mystery boxes. Future-oriented behavior must connect to a real plan, relationship, consequence or goal already grounded in canon.
+- ANTI-AI REPETITION 2.0: vary STRUCTURE, not just words. Do not repeatedly use “physical gesture → sarcastic line → rhetorical question,” “silence stretched → gaze → confession,” or three-paragraph reaction templates. Change opening mode, sentence count, tactic and whether the turn ends on a question.
+- POST-TURN REFLECTION IS INVISIBLE: after drafting, record only what actually changed, what remains pending, what pattern should not repeat next turn, who was affected, and one plausible future consequence. Reflection is bookkeeping, not visible narration and not a command to force that consequence.
+
+INVISIBLE DIRECTOR PASS
+- Before writing, silently classify the beat as one of: mundane, connective, tension, conflict, repair, plot, recovery. Pick what the transcript actually needs, not what is most dramatic.
+- Check the last several turns for repetition in tactic, emotional temperature, scene purpose and dialogue rhythm. If the same dynamic has repeated, vary ONE axis naturally rather than adding random plot.
+- Pacing can hold. If recent turns already contained a reveal, fight, kiss, departure, confession or major decision, prefer aftermath or ordinary life before another major beat unless the user explicitly accelerates.
+- Do not reward silence with spectacle every time. Sometimes initiative is a text, a practical choice, a topic change, showing up later, keeping a promise, choosing another obligation, or simply continuing what they were already doing.
+- The director is invisible. Never mention pacing, arcs, beats, development state, memory systems, scores or what the story “needs.”
+- If a scene has already delivered its purpose and no live user choice is pending, prefer a clean CLOSE or TURN over another loop of the same banter. If the scene is still emotionally active, HOLD without padding.
+
 STORY MOVEMENT
-- Give ${character.name} a private want and one plausible tactic. Add ONE earned answer, decision, invitation, reveal, interruption, action or consequence, then stop before deciding the user's response.
-- A meaningful change does NOT require a new prop or physical action every turn. A direct answer, admission, refusal, joke, invitation or decision can be the whole beat if it genuinely changes the interaction.
+- Give ${character.name} a private want and one plausible tactic, but do NOT force it to become a visible plot move every turn. In mundane/recovery beats, the tactic may simply shape what they choose to say, avoid, finish, postpone or keep doing.
+- When movement is earned, make ONE answer, decision, invitation, reveal, interruption, action or consequence and stop before deciding the user's response. When movement is not earned, let texture, conversation or aftermath be the beat.
+- A meaningful change does NOT require a new prop or physical action. A direct answer, admission, refusal, joke, invitation, decision, changed restraint, or choosing not to escalate can be enough.
 - Interest is proved through choices with cost: staying, rearranging plans, inviting, remembering and using a detail, risking embarrassment, sharing access, telling an inconvenient truth. Do not merely narrate that they care.
 - Keep side characters ordinary and independent. Preserve active calls, chats, games, arguments and tasks across silent turns.
 - Do not invent exact time spans, prior messages, promises, relatives, group chats, gifts, schedules, betrayal, illness, danger, exes or jealousy without visible support.
@@ -918,6 +1023,17 @@ ${userIdentity.name}; pronouns ${userIdentity.pronouns || "not specified"}; age/
 Background/personality: ${clean(`${userIdentity.background || ""} ${userIdentity.personality || ""}`, 460)}
 Preferences/boundaries: ${clean(`${userIdentity.preferences || ""} ${userIdentity.boundaries || ""}`, 420)}
 
+DEVELOPMENT STATE — CHANGE SLOWLY, BEHAVIOR FIRST
+${JSON.stringify(characterDevelopmentPromptView(developmentState, character.relationship)).slice(0, 2400)}
+- Treat this as accumulated evidence, not a personality replacement. Current phase affects expectations, not every sentence.
+- A turning point matters only if later choices reflect it. Do not announce growth or summarize the relationship unless asked.
+- Emotional residue changes tolerance, timing, access and word choice for several turns. It may fade unevenly; it does not require constant discussion.
+- Contradictions are playable tension inside the same person. Do not resolve them just because the next reply would be easier.
+- Relationship phases are descriptive, not a romance railroad. Friendship, distance, rivalry, repair or ambiguity can remain stable for a long time; never push toward romance or commitment just because a later phase exists.
+- Mood/posture fields are short-lived lenses; relationship signature, private patterns, rituals and sore spots require repeated or high-significance evidence. Do not create a “special relationship fact” from one cute line.
+- A setback must name what old defense is under pressure AND what prior growth remains. Never use setback_pressure as permission to erase canon development.
+- voice_shift records only slow, observable evolution in delivery or habits. A single emotional scene is not a new voice.
+
 SUPPORTING CAST
 ${castText}
 
@@ -943,8 +1059,19 @@ FRESHNESS
 Recent character openings: ${recentOpenings}
 Do not reuse their opening gesture, first-line construction, comeback rhythm or signature phrase unless repetition is meaningful.
 
+HIDDEN STATE OUTPUT
+- mind_update is ${character.name}'s SUBJECTIVE mind after this beat. know = supported facts only. believe may be wrong. misunderstand contains a plausible current error, or empty string. want/avoid/wont_admit/outside_priority and short/mid/long goals must describe this character, not the user. Goals should persist unless an on-page event changes them. attachment_pattern is behavioral shorthand only. microvoice changes slowly. emotion_trigger → emotion_interpretation → current_emotion → behavioral_pressure must form a supported causal chain. anticipated_next/private_intention/expected_outcome/feared_outcome are private forecasts, never guaranteed facts. behavioral_pattern and conflict_pattern require transcript evidence. public_private_mode describes context, not a new personality.
+- connection_updates only records relationships BETWEEN named characters that were evidenced or materially changed. Never invent a bond just to fill the array.
+- temporal_anchor records only supported story time. Use certainty=unknown when the duration is not established.
+- world_consequence records only practical/social fallout caused by a visible or already-canonical event.
+- offscreen_contact may be recorded only if the reply establishes it or it logically follows a canonical plan/relationship; otherwise record=false.
+- post_turn_reflection is invisible bookkeeping: changed, pending, avoid_repeat, affected and one plausible_consequence. Record only what this reply actually caused; do not force the plausible consequence later.
+- human_behavior_update is persistent HUMAN BEHAVIOR state. Update only fields evidenced by canon or this reply. rhythm_mode/detail_level describe this turn; humor_profile, initiative_profile and character_dna change rarely. argument_lesson/physical_boundary_state/romantic_expression may evolve from repeated or high-significance evidence. persistent_location and possession_updates must be physically grounded. social_reputation_update and information_flow must identify a plausible observer/source. relationship_self_view is the character's subjective view only; never fill relationship_user_view with invented user feelings. autonomous_plan and between_scene_motion may advance ordinary independent life, never off-screen user choices or major unsupported plot. memory_compression_anchor names what must survive long-story compression. naturalness_score is 0-100 and should be >=72 after silent self-repair.
+- quality_check is invisible. Check subtext, structural repetition, scene momentum, conversational rhythm, nonverbal restraint, romantic specificity, decision consistency, physical boundaries, social information flow, adaptive detail, character DNA and preserved contradictions in addition to canon/voice. Set drift_risk to "none" when identity is stable; naturalness_score must be 0-100. If any boolean would be false or naturalness_score < 72, silently fix the reply before returning the JSON.
+- story_drive.intensity_target is 1-10 and may DECREASE. season_signal is true only for a durable era change, never one emotional beat. scene_momentum is hold/turn/close. compression_reason is empty unless routine time can safely be compressed without skipping a live user choice.
+
 OUTPUT
-Start from the final visible physical state. Answer this beat directly, preserve character-specific voice, make one meaningful change, and stop. Put reply first. Hidden metadata may record only what the reply actually showed.`;
+Start from the final visible physical state. Answer this beat directly, preserve character-specific voice, follow the invisible director's beat classification, and stop before controlling the user. A mundane or recovery turn does not need a plot change. Put reply first. Hidden metadata may record only what the reply actually showed.`;
 }
 
 // Kept temporarily as a reference while the compact v2.12 prompt is proven in production.
@@ -975,7 +1102,17 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     editorial_banter_voice: "Remove mock-formal, legalistic, sitcom, and quote-card phrasing.",
     sarcastic_comeback_loop: "Change rhythm: use a plain, sincere, practical, amused, or quiet response instead of another comeback.",
     smug_comeback_tone: "Remove smug superiority and let the character answer like a person, not a scripted archetype.",
+    instant_personality_optimization: "Undo the instant self-improvement. Respect the user and any hard boundary, but preserve unresolved flaws, awkwardness, pride, disagreement or imperfect communication that has not changed through repeated on-page evidence.",
+    conflict_instant_reset: "Keep the conflict residue alive. Do not return to effortless warmth, flirtation or normal banter immediately after rupture; use an imperfect, character-specific repair step or let tension remain unresolved.",
+    explanatory_subtext_dump: "Remove the emotional self-analysis. Let one concrete choice, omission, unfinished sentence or changed behavior carry the subtext instead of explaining exactly why the character feels and acts this way.",
     generic_romance_cadence: "Replace stock AI-romance cadence with plain character-specific speech. Preserve attraction only if the beat earned it; do not use repeated lines like ‘there it is’, ‘careful’, ‘you’re impossible’, ‘don’t tempt me’, ‘you have no idea’, ‘that’s what I thought’, or similar canned tension phrases.",
+    structural_repetition_loop: "Change the RESPONSE SHAPE, not just vocabulary. Do not repeat the same gesture/dialogue/question template, paragraph count, opening mode or ending rhythm from recent turns.",
+    model_self_check_failed: "Rewrite until canon, user ownership, scene physics, knowledge boundaries, voice identity, subtext, rhythm, nonverbal restraint, romantic specificity, decision consistency, adaptive detail, character DNA, structural variety, scene momentum and contradiction checks all pass. Do not mention the check.",
+    naturalness_score_low: "Simplify the visible reply until it sounds like this exact person in this exact moment. Remove performance, generic romance choreography, repetitive structure and unnecessary explanation; vary rhythm naturally.",
+    mechanical_rhythm_loop: "Break the repeated response cadence. Change length, paragraph shape and ending pattern according to what this beat actually needs; do not add filler just to be different.",
+    decorative_nonverbal_overload: "Remove decorative body-language choreography. Keep at most one or two physical signals that carry real meaning or change the physical situation.",
+    identity_drift_risk: "Pull the character back toward their base motivation, defense, contradictions, values and voice. Keep earned growth, but remove generic softness, cruelty, flirtation, therapy language or emotional fluency that the profile/history did not earn.",
+    invented_scene_object_state: "Remove or ground the invented object. Track only objects established in prior scene state, the user's turn, or the visible character action in this reply.",
     stock_body_language_stack: "Keep at most one physical detail that adds new information; prioritize dialogue or action.",
     recycled_stock_gesture: "Change the opening and remove the repeated scoff, smirk, gaze, jaw, breath, or prop choreography.",
     silent_continue_stalled: "Continue the active scene with one concrete event, decision, exchange, or consequence.",
@@ -1100,9 +1237,14 @@ function parseModelEnvelope(raw): ModelEnvelope {
       continuity_update: parsed?.continuity_update && typeof parsed.continuity_update === "object" ? parsed.continuity_update : {},
       cast_updates: Array.isArray(parsed?.cast_updates) ? parsed.cast_updates.slice(0, 6) : [],
       memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 3) : [],
+      mind_update: parsed?.mind_update && typeof parsed.mind_update === "object" ? parsed.mind_update : {},
+      human_behavior_update: parsed?.human_behavior_update && typeof parsed.human_behavior_update === "object" ? parsed.human_behavior_update : {},
+      connection_updates: Array.isArray(parsed?.connection_updates) ? parsed.connection_updates.slice(0, 6) : [],
+      post_turn_reflection: parsed?.post_turn_reflection && typeof parsed.post_turn_reflection === "object" ? parsed.post_turn_reflection : {},
+      quality_check: parsed?.quality_check && typeof parsed.quality_check === "object" ? parsed.quality_check : {},
     };
   } catch {
-    return { reply: String(raw || "").trim(), story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [] };
+    return { reply: String(raw || "").trim(), story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
   }
 }
 
@@ -2444,7 +2586,7 @@ function normalizeCharacterDevelopment(value = {}, relationshipPremise = "", inc
     .slice(-12);
 
   const normalized = {
-    version: 1,
+    version: 2,
     turns_observed: Math.max(0, Number(source.turns_observed) || 0),
     relationship_phase: phase,
     phase_candidate: developmentText(source.phase_candidate, 40).toLowerCase(),
@@ -2452,6 +2594,24 @@ function normalizeCharacterDevelopment(value = {}, relationshipPremise = "", inc
     current_dynamic: developmentText(source.current_dynamic || relationshipPremise, 700),
     emotional_residue: residue,
     active_contradictions: developmentList(source.active_contradictions, 4, 260),
+    flaw_pressure: developmentText(source.flaw_pressure, 280),
+    independent_priority: developmentText(source.independent_priority, 280),
+    repair_progress: developmentText(source.repair_progress, 280),
+    current_mood: developmentText(source.current_mood, 160),
+    emotional_posture: developmentText(source.emotional_posture, 220),
+    guardedness: developmentText(source.guardedness, 180),
+    trust_direction: developmentText(source.trust_direction, 180),
+    vulnerability_window: developmentText(source.vulnerability_window, 220),
+    setback_pressure: developmentText(source.setback_pressure, 240),
+    retained_growth: developmentText(source.retained_growth, 260),
+    relationship_signature: developmentText(source.relationship_signature, 360),
+    private_patterns: developmentList(source.private_patterns, 6, 220),
+    sore_spots: developmentList(source.sore_spots, 5, 220),
+    shared_rituals: developmentList(source.shared_rituals, 5, 220),
+    memory_influence: developmentText(source.memory_influence, 300),
+    voice_shift: developmentText(source.voice_shift, 260),
+    conflict_aftertaste: developmentText(source.conflict_aftertaste, 260),
+    repair_debt: developmentText(source.repair_debt, 260),
     turning_points: turningPoints,
     learned_preferences: {
       encourage: developmentList(source.learned_preferences?.encourage, 8, 300),
@@ -2578,6 +2738,44 @@ function applyCharacterDevelopment({
 
     const contradiction = developmentText(proposal.active_contradiction, 260);
     if (contradiction) next.active_contradictions = developmentList([...state.active_contradictions, contradiction], 4, 260);
+
+    const flawPressure = developmentText(proposal.flaw_pressure, 280);
+    if (flawPressure) next.flaw_pressure = flawPressure;
+    const independentPriority = developmentText(proposal.independent_priority, 280);
+    if (independentPriority) next.independent_priority = independentPriority;
+    const repairProgress = developmentText(proposal.repair_progress, 280);
+    if (repairProgress) next.repair_progress = repairProgress;
+
+    const currentMood = developmentText(proposal.current_mood, 160);
+    if (currentMood) next.current_mood = currentMood;
+    const emotionalPosture = developmentText(proposal.emotional_posture, 220);
+    if (emotionalPosture) next.emotional_posture = emotionalPosture;
+    const guardedness = developmentText(proposal.guardedness, 180);
+    if (guardedness) next.guardedness = guardedness;
+    const trustDirection = developmentText(proposal.trust_direction, 180);
+    if (trustDirection) next.trust_direction = trustDirection;
+    const vulnerabilityWindow = developmentText(proposal.vulnerability_window, 220);
+    if (vulnerabilityWindow) next.vulnerability_window = vulnerabilityWindow;
+    const setbackPressure = developmentText(proposal.setback_pressure, 240);
+    if (setbackPressure) next.setback_pressure = setbackPressure;
+    const retainedGrowth = developmentText(proposal.retained_growth, 260);
+    if (retainedGrowth) next.retained_growth = retainedGrowth;
+    const relationshipSignature = developmentText(proposal.relationship_signature, 360);
+    if (relationshipSignature && ["medium", "high"].includes(significance)) next.relationship_signature = relationshipSignature;
+    const privatePattern = developmentText(proposal.private_pattern, 220);
+    if (privatePattern && ["medium", "high"].includes(significance)) next.private_patterns = developmentList([...(state.private_patterns || []), privatePattern], 6, 220);
+    const soreSpot = developmentText(proposal.sore_spot, 220);
+    if (soreSpot && ["medium", "high"].includes(significance)) next.sore_spots = developmentList([...(state.sore_spots || []), soreSpot], 5, 220);
+    const sharedRitual = developmentText(proposal.shared_ritual, 220);
+    if (sharedRitual && ["medium", "high"].includes(significance)) next.shared_rituals = developmentList([...(state.shared_rituals || []), sharedRitual], 5, 220);
+    const memoryInfluence = developmentText(proposal.memory_influence, 300);
+    if (memoryInfluence) next.memory_influence = memoryInfluence;
+    const voiceShift = developmentText(proposal.voice_shift, 260);
+    if (voiceShift && significance === "high") next.voice_shift = voiceShift;
+    const conflictAftertaste = developmentText(proposal.conflict_aftertaste, 260);
+    if (conflictAftertaste) next.conflict_aftertaste = conflictAftertaste;
+    const repairDebt = developmentText(proposal.repair_debt, 260);
+    if (repairDebt) next.repair_debt = repairDebt;
 
     if (["medium", "high"].includes(significance)) {
       const turningPoint = developmentText(proposal.turning_point, 320);
@@ -2738,6 +2936,27 @@ function hasGenericRomanceCadence(reply = "", recentReplies = [], character = {}
   if (currentHits === 0) return false;
   const recentHitTurns = (Array.isArray(recentReplies) ? recentReplies : []).slice(-4).filter((item) => hitCount(item) > 0).length;
   return recentHitTurns >= (heightenedProfile ? 3 : 2);
+}
+
+function replyStructureSignature(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "empty";
+  const first = raw.slice(0, 160);
+  const dialogueFirst = /^[\s*]*(?:["“]|[A-Za-z][^\n]{0,90}["”])/.test(first) && /["“”]/.test(first);
+  const narrationFirst = !dialogueFirst && !/^["“]/.test(first);
+  const endsQuestion = /\?\s*(?:["”'*])?\s*$/.test(raw);
+  const bodyGesture = /\b(?:gaze|eyes?|jaw|breath|shoulders?|smirk|scoff|eyebrow|lips?|mouth|hand|hands?)\b/i.test(stripDialogue(raw));
+  const paragraphBand = raw.split(/\n\s*\n/).filter(Boolean).length >= 3 ? "3p" : raw.split(/\n\s*\n/).filter(Boolean).length === 2 ? "2p" : "1p";
+  return `${dialogueFirst ? "D" : narrationFirst ? "N" : "M"}:${bodyGesture ? "G" : "-"}:${endsQuestion ? "Q" : "S"}:${paragraphBand}`;
+}
+function hasStructuralReplyLoop(reply = "", recentReplies = []) {
+  const signature = replyStructureSignature(reply);
+  const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-3).map(replyStructureSignature);
+  if (recent.length < 2) return false;
+  const repeated = recent.slice(-2).every((item) => item === signature);
+  if (!repeated) return false;
+  // Only flag recognizable AI templates, not two naturally short dialogue-only answers.
+  return /:(?:G):|:Q:|3p$/.test(signature);
 }
 
 function characterAllowsOrnateDialogue(character = {}) {
@@ -3281,6 +3500,7 @@ const CONTINUITY_GUARD_ISSUES = new Set([
   "absent_character_reappeared",
   "offscreen_character_heard_turn",
   "invented_plot_object",
+  "invented_scene_object_state",
   "latest_user_scene_not_applied",
   "latest_user_scene_ignored",
   "unsolicited_offscreen_lead_contact",
@@ -3325,6 +3545,13 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "latest_user_scene_not_applied",
   "latest_user_scene_ignored",
   "unsolicited_offscreen_lead_contact",
+  "model_self_check_failed",
+  "structural_repetition_loop",
+  "identity_drift_risk",
+  "naturalness_score_low",
+  "mechanical_rhythm_loop",
+  "decorative_nonverbal_overload",
+  "invented_scene_object_state",
 ]);
 
 // v2.11.0 NARRATIVE CORE REBUILD
@@ -3424,6 +3651,57 @@ function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = 
 function blockingNarrativeIssues(issues = []) {
   return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => BLOCKING_NARRATIVE_ISSUES.has(issue));
 }
+function replyRhythmSignature(text = "") {
+  const raw = String(text || "").trim();
+  const words = normalizeText(raw).split(/\s+/).filter(Boolean).length;
+  const paragraphs = raw.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean).length || 1;
+  const dialogueUnits = [...raw.matchAll(/["“]([^"”]{2,})["”]/g)].length;
+  const questions = (raw.match(/\?/g) || []).length;
+  return { words, paragraphs, dialogueUnits, questions };
+}
+function hasMechanicalRhythmLoop(reply = "", recentReplies = []) {
+  const current = replyRhythmSignature(reply);
+  if (current.words < 20 || !Array.isArray(recentReplies) || recentReplies.length < 3) return false;
+  const recent = recentReplies.slice(-3).map(replyRhythmSignature).filter((item) => item.words >= 20);
+  if (recent.length < 3) return false;
+  const all = [...recent, current];
+  const avg = all.reduce((sum, item) => sum + item.words, 0) / all.length;
+  if (!avg) return false;
+  const tightLength = all.every((item) => Math.abs(item.words - avg) / avg <= 0.14);
+  const sameParagraphs = new Set(all.map((item) => item.paragraphs)).size === 1;
+  const sameQuestionShape = new Set(all.map((item) => Math.min(1, item.questions))).size === 1;
+  return tightLength && sameParagraphs && sameQuestionShape;
+}
+function hasDecorativeNonverbalOverload(reply = "") {
+  const text = normalizeText(reply);
+  const words = text.split(/\s+/).filter(Boolean).length;
+  if (words < 35 || words > 220) return false;
+  const cues = [
+    /\b(?:gaze|eyes?|glance|looked|stared)\b/g,
+    /\b(?:jaw|breath|exhale|inhale|sigh|swallow)\b/g,
+    /\b(?:smirk|scoff|chuckle|grin|half smile|brow)\b/g,
+    /\b(?:leaned|stepped closer|moved closer|tilted (?:his|her|their) head|hands? in (?:his|her|their) pockets?)\b/g,
+  ];
+  let count = 0;
+  for (const pattern of cues) count += (text.match(pattern) || []).length;
+  return count >= 5;
+}
+function deterministicNaturalnessScore(reply = "", options = {}) {
+  let score = 100;
+  const recent = options.recentCharacterReplies || [];
+  const latest = String(options.latestUserMessage || "");
+  if (hasMechanicalRhythmLoop(reply, recent)) score -= 18;
+  if (hasStructuralReplyLoop(reply, recent)) score -= 20;
+  if (hasDecorativeNonverbalOverload(reply)) score -= 14;
+  if (hasGenericRomanceCadence(reply, recent, options.character || {})) score -= 18;
+  if (hasRhetoricalDialogueOveruse(reply, recent)) score -= 12;
+  if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
+  const sig = replyRhythmSignature(reply);
+  const latestWords = normalizeText(latest).split(/\s+/).filter(Boolean).length;
+  if (latestWords <= 8 && sig.words > 180 && !isSilentContinueText(latest)) score -= 10;
+  return Math.max(0, Math.min(100, score));
+}
+
 function repairTriggerIssues(issues = []) {
   return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => REPAIR_TRIGGER_ISSUES.has(issue));
 }
@@ -3440,6 +3718,8 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (controlsUserPOV(text, options.userName || "", options.latestUserMessage || "")) issues.push("controls_user_pov");
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
+  if (hasMechanicalRhythmLoop(text, options.recentCharacterReplies || [])) issues.push("mechanical_rhythm_loop");
+  if (hasDecorativeNonverbalOverload(text)) issues.push("decorative_nonverbal_overload");
   if (hasStockBodyLanguageStack(text)) issues.push("stock_body_language_stack");
   if (hasRecycledStockGesture(text, options.recentCharacterReplies || [])) issues.push("recycled_stock_gesture");
   if (hasUnsupportedMotiveEscalation(text, options.latestUserMessage || "")) issues.push("unsupported_motive_escalation");
@@ -3502,6 +3782,9 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasSpatialContinuityBreak(text, options.latestUserMessage || "")) issues.push("spatial_relationship_broken");
   if (hasSpatialProximityTeleport(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push("spatial_proximity_teleport");
   if (hasImmediatePoseRegression(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push("immediate_pose_regression");
+
+  const deterministicNaturalness = deterministicNaturalnessScore(text, options);
+  if (deterministicNaturalness < 72) issues.push("naturalness_score_low");
 
   const needsSocialBeat = ["reassurance", "affection", "direct_question", "challenge", "charged_nonverbal", "silent_continue", "return_main_pov", "digital_message", "interactive_thread", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 16) issues.push("underdeveloped_social_beat");
@@ -3576,6 +3859,21 @@ function validateContinuityEnvelope(result = {}, options = {}) {
   const oldObjects = compactTextList(previousIntelligence?.objects || [], 12, 180);
   const nextObjects = compactTextList(continuityUpdate?.objects_present || [], 12, 180);
   if (oldObjects.length && nextObjects.some((item) => !oldObjects.some((prior) => memorySimilarity(prior, item) >= 0.72) && !latest.includes(normalizeText(item)))) issues.push("invented_plot_object");
+  const priorObjectStates = Array.isArray(previousScene?.object_states) ? previousScene.object_states : [];
+  const proposedObjectStates = Array.isArray(sceneUpdate?.object_states) ? sceneUpdate.object_states : [];
+  for (const item of proposedObjectStates) {
+    const objectName = normalizeText(item?.object || "");
+    if (!objectName) continue;
+    const existed = priorObjectStates.some((prior) => memorySimilarity(prior?.object || "", item?.object || "") >= 0.72);
+    const groundedNow = latest.includes(objectName) || reply.includes(objectName);
+    if (!existed && !groundedNow) { issues.push("invented_scene_object_state"); break; }
+  }
+  if (hasStructuralReplyLoop(result?.reply || "", options.recentCharacterReplies || [])) issues.push("structural_repetition_loop");
+  const qc = result?.quality_check && typeof result.quality_check === "object" ? result.quality_check : {};
+  if ([qc.canon_ok, qc.user_control_ok, qc.physics_ok, qc.knowledge_ok, qc.voice_ok, qc.repetition_ok, qc.subtext_ok, qc.structure_repetition_ok, qc.scene_momentum_ok, qc.contradiction_ok, qc.rhythm_ok, qc.nonverbal_ok, qc.romantic_specificity_ok, qc.decision_consistency_ok, qc.boundary_ok, qc.social_information_ok, qc.adaptive_detail_ok, qc.dna_ok, qc.naturalness_ok].some((value) => value === false)) issues.push("model_self_check_failed");
+  if (Number.isFinite(Number(qc?.naturalness_score)) && Number(qc.naturalness_score) < 72) issues.push("naturalness_score_low");
+  const driftRisk = normalizeText(qc?.drift_risk || "none");
+  if (driftRisk && !/^(?:none|no|stable|low|minimal|ninguno|estable)$/.test(driftRisk)) issues.push("identity_drift_risk");
 
   return [...new Set(issues)];
 }
@@ -3609,6 +3907,11 @@ function applySceneContinuity({ previousScene = {}, previousCast = {}, sceneUpda
     time_label: cleanPromptValue(sceneUpdate?.time_label, 120) || cleanPromptValue(previousScene?.time_label, 120),
     present,
     heard_user_turn: compactSceneNames(sceneUpdate?.heard_user_turn || []),
+    activity: cleanPromptValue(sceneUpdate?.activity, 220) || cleanPromptValue(previousScene?.activity || previousScene?.current_activity, 220),
+    communication_medium: cleanPromptValue(sceneUpdate?.communication_medium, 80) || cleanPromptValue(previousScene?.communication_medium, 80) || "in_person",
+    spatial_notes: compactTextList(sceneUpdate?.spatial_notes?.length ? sceneUpdate.spatial_notes : previousScene?.spatial_notes, 8, 220),
+    object_states: (Array.isArray(sceneUpdate?.object_states) && sceneUpdate.object_states.length ? sceneUpdate.object_states : (Array.isArray(previousScene?.object_states) ? previousScene.object_states : []))
+      .slice(0, 8).map((item) => ({ object: cleanPromptValue(item?.object, 100), holder: cleanPromptValue(item?.holder, 100), location: cleanPromptValue(item?.location, 140), state: cleanPromptValue(item?.state, 160) })).filter((item) => item.object),
     last_scene_change: sceneChanged ? new Date().toISOString() : previousScene?.last_scene_change || null,
   };
   const cast = { ...(previousCast && typeof previousCast === "object" ? previousCast : {}) };
@@ -3654,30 +3957,118 @@ function compactTextList(value: any, limit = 12, itemLimit = 260) {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.map((item) => cleanPromptValue(item, itemLimit)).filter(Boolean))].slice(0, limit);
 }
-function applyIntelligenceContinuity(previous: any = {}, update: any = {}) {
+function applyIntelligenceContinuity(previous: any = {}, update: any = {}, mindUpdate: any = {}, storyDrive: any = {}, reflection: any = {}, humanBehaviorUpdate: any = {}) {
   const prior = previous && typeof previous === "object" ? previous : {};
   const resolved = compactTextList(update?.resolved_commitments, 8, 260);
   const proposedCommitments = compactTextList(update?.commitments, 8, 260);
   const commitments = compactTextList([...(prior.commitments || []), ...proposedCommitments], 12, 260)
     .filter((item) => !resolved.some((done) => memorySimilarity(item, done) >= 0.72));
   const knowledge = [...(Array.isArray(prior.knowledge) ? prior.knowledge : []), ...(Array.isArray(update?.knowledge_updates) ? update.knowledge_updates : [])]
-    .map((item) => ({ who: cleanPromptValue(item?.who, 80), knows: cleanPromptValue(item?.knows, 280), source: cleanPromptValue(item?.source, 180), status: ["known","suspected","rumor","forgotten"].includes(String(item?.status)) ? String(item.status) : "known" }))
+    .map((item) => ({ who: cleanPromptValue(item?.who, 80), subject: cleanPromptValue(item?.subject, 140), knows: cleanPromptValue(item?.knows, 280), source: cleanPromptValue(item?.source, 180), status: ["known","suspected","rumor","forgotten"].includes(String(item?.status)) ? String(item.status) : "known", secret: Boolean(item?.secret) }))
     .filter((item) => item.who && item.knows)
     .filter((item, index, all) => all.findLastIndex((other) => normalizeText(other.who) === normalizeText(item.who) && memorySimilarity(other.knows, item.knows) >= 0.76) === index)
     .slice(-24);
+  const priorMind = prior.character_mind && typeof prior.character_mind === "object" ? prior.character_mind : {};
+  const mind = {
+    know: cleanPromptValue(mindUpdate?.know, 420) || cleanPromptValue(priorMind?.know, 420),
+    believe: cleanPromptValue(mindUpdate?.believe, 420) || cleanPromptValue(priorMind?.believe, 420),
+    misunderstand: cleanPromptValue(mindUpdate?.misunderstand, 420) || cleanPromptValue(priorMind?.misunderstand, 420),
+    want: cleanPromptValue(mindUpdate?.want, 320) || cleanPromptValue(priorMind?.want, 320),
+    avoid: cleanPromptValue(mindUpdate?.avoid, 320) || cleanPromptValue(priorMind?.avoid, 320),
+    wont_admit: cleanPromptValue(mindUpdate?.wont_admit, 320) || cleanPromptValue(priorMind?.wont_admit, 320),
+    outside_priority: cleanPromptValue(mindUpdate?.outside_priority, 320) || cleanPromptValue(priorMind?.outside_priority, 320),
+    short_goal: cleanPromptValue(mindUpdate?.short_goal, 320) || cleanPromptValue(priorMind?.short_goal, 320),
+    mid_goal: cleanPromptValue(mindUpdate?.mid_goal, 320) || cleanPromptValue(priorMind?.mid_goal, 320),
+    long_goal: cleanPromptValue(mindUpdate?.long_goal, 320) || cleanPromptValue(priorMind?.long_goal, 320),
+    attachment_pattern: ["approach","withdraw","mixed","steady","unknown"].includes(String(mindUpdate?.attachment_pattern)) ? String(mindUpdate.attachment_pattern) : (priorMind?.attachment_pattern || "unknown"),
+    microvoice: cleanPromptValue(mindUpdate?.microvoice, 260) || cleanPromptValue(priorMind?.microvoice, 260),
+    energy: cleanPromptValue(mindUpdate?.energy, 160) || cleanPromptValue(priorMind?.energy, 160),
+    confidence: cleanPromptValue(mindUpdate?.confidence, 160) || cleanPromptValue(priorMind?.confidence, 160),
+    emotion_trigger: cleanPromptValue(mindUpdate?.emotion_trigger, 320) || cleanPromptValue(priorMind?.emotion_trigger, 320),
+    emotion_interpretation: cleanPromptValue(mindUpdate?.emotion_interpretation, 360) || cleanPromptValue(priorMind?.emotion_interpretation, 360),
+    current_emotion: cleanPromptValue(mindUpdate?.current_emotion, 180) || cleanPromptValue(priorMind?.current_emotion, 180),
+    behavioral_pressure: cleanPromptValue(mindUpdate?.behavioral_pressure, 320) || cleanPromptValue(priorMind?.behavioral_pressure, 320),
+    anticipated_next: cleanPromptValue(mindUpdate?.anticipated_next, 320) || cleanPromptValue(priorMind?.anticipated_next, 320),
+    public_private_mode: ["public","private","mixed","digital","unknown"].includes(String(mindUpdate?.public_private_mode)) ? String(mindUpdate.public_private_mode) : (priorMind?.public_private_mode || "unknown"),
+    behavioral_pattern: cleanPromptValue(mindUpdate?.behavioral_pattern, 360) || cleanPromptValue(priorMind?.behavioral_pattern, 360),
+    conflict_pattern: cleanPromptValue(mindUpdate?.conflict_pattern, 320) || cleanPromptValue(priorMind?.conflict_pattern, 320),
+    contradiction_in_play: cleanPromptValue(mindUpdate?.contradiction_in_play, 320) || cleanPromptValue(priorMind?.contradiction_in_play, 320),
+    private_intention: cleanPromptValue(mindUpdate?.private_intention, 320) || cleanPromptValue(priorMind?.private_intention, 320),
+    expected_outcome: cleanPromptValue(mindUpdate?.expected_outcome, 280) || cleanPromptValue(priorMind?.expected_outcome, 280),
+    feared_outcome: cleanPromptValue(mindUpdate?.feared_outcome, 280) || cleanPromptValue(priorMind?.feared_outcome, 280),
+  };
+  const priorBehavior = prior.human_behavior_state && typeof prior.human_behavior_state === "object" ? prior.human_behavior_state : {};
+  const keep = (key: string, limit = 360) => cleanPromptValue(humanBehaviorUpdate?.[key], limit) || cleanPromptValue(priorBehavior?.[key], limit);
+  const humanBehaviorState = {
+    rhythm_mode: ["terse","brief","natural","expanded","silent"].includes(String(humanBehaviorUpdate?.rhythm_mode)) ? String(humanBehaviorUpdate.rhythm_mode) : (priorBehavior?.rhythm_mode || "natural"),
+    rhythm_reason: keep("rhythm_reason", 260),
+    nonverbal_signal: keep("nonverbal_signal", 260), nonverbal_meaning: keep("nonverbal_meaning", 300),
+    humor_profile: keep("humor_profile", 320), humor_boundary: keep("humor_boundary", 260),
+    argument_lesson: keep("argument_lesson", 380), romantic_expression: keep("romantic_expression", 360), romantic_avoidance: keep("romantic_avoidance", 320),
+    physical_boundary_state: keep("physical_boundary_state", 420), decision_basis: keep("decision_basis", 420),
+    persistent_location: keep("persistent_location", 360), social_reputation_update: keep("social_reputation_update", 360), information_flow: keep("information_flow", 420),
+    relationship_self_view: keep("relationship_self_view", 320), relationship_user_view: keep("relationship_user_view", 240),
+    autonomous_plan: keep("autonomous_plan", 420), between_scene_motion: keep("between_scene_motion", 420), memory_compression_anchor: keep("memory_compression_anchor", 500),
+    initiative_profile: ["high","medium","low","reactive","variable","unknown"].includes(String(humanBehaviorUpdate?.initiative_profile)) ? String(humanBehaviorUpdate.initiative_profile) : (priorBehavior?.initiative_profile || "unknown"),
+    character_dna: keep("character_dna", 620), transition_style: keep("transition_style", 280),
+    detail_level: ["sparse","balanced","atmospheric"].includes(String(humanBehaviorUpdate?.detail_level)) ? String(humanBehaviorUpdate.detail_level) : (priorBehavior?.detail_level || "balanced"),
+    naturalness_score: Math.max(0, Math.min(100, Number(humanBehaviorUpdate?.naturalness_score) || Number(priorBehavior?.naturalness_score) || 80)),
+    naturalness_notes: keep("naturalness_notes", 300),
+  };
+  const possessionUpdates = Array.isArray(humanBehaviorUpdate?.possession_updates) ? humanBehaviorUpdate.possession_updates.slice(0, 5).map((item:any)=>({
+    object: cleanPromptValue(item?.object, 100), holder: cleanPromptValue(item?.holder, 100), location: cleanPromptValue(item?.location, 180), state: cleanPromptValue(item?.state, 180),
+  })).filter((item:any)=>item.object) : [];
+  const priorPossessions = Array.isArray(prior.possessions) ? prior.possessions : [];
+  const mergedPossessions = [...priorPossessions];
+  for (const item of possessionUpdates) {
+    const idx = mergedPossessions.findIndex((priorItem:any)=>memorySimilarity(priorItem?.object || "", item.object) >= 0.72);
+    if (idx >= 0) mergedPossessions[idx] = { ...mergedPossessions[idx], ...item }; else mergedPossessions.push(item);
+  }
+  const priorLocations = Array.isArray(prior.persistent_locations) ? prior.persistent_locations : [];
+  const locationMemory = humanBehaviorState.persistent_location ? [...priorLocations, humanBehaviorState.persistent_location] : priorLocations;
+  const uniqueLocations = [...new Set(locationMemory.map((item:any)=>cleanPromptValue(item, 360)).filter(Boolean))].slice(-8);
+  const temporal = update?.temporal_anchor && typeof update.temporal_anchor === "object" ? update.temporal_anchor : {};
+  const offscreen = update?.offscreen_contact && typeof update.offscreen_contact === "object" && update.offscreen_contact.record ? {
+    from: cleanPromptValue(update.offscreen_contact.from, 100), to: cleanPromptValue(update.offscreen_contact.to, 100), medium: cleanPromptValue(update.offscreen_contact.medium, 80),
+    content_hint: cleanPromptValue(update.offscreen_contact.content_hint, 280), reason: cleanPromptValue(update.offscreen_contact.reason, 280), at: new Date().toISOString(),
+  } : null;
+  const priorContacts = Array.isArray(prior.offscreen_contacts) ? prior.offscreen_contacts : [];
   return {
+    ...prior,
     objects: compactTextList(update?.objects_present?.length ? update.objects_present : prior.objects, 12, 180),
-    knowledge, commitments,
+    knowledge, commitments, character_mind: mind, human_behavior_state: humanBehaviorState,
+    persistent_locations: uniqueLocations, possessions: mergedPossessions.slice(-12),
+    social_reputation: { latest: humanBehaviorState.social_reputation_update || cleanPromptValue(prior?.social_reputation?.latest, 360), information_flow: humanBehaviorState.information_flow || cleanPromptValue(prior?.social_reputation?.information_flow, 420) },
+    autonomous_plan: { plan: humanBehaviorState.autonomous_plan || cleanPromptValue(prior?.autonomous_plan?.plan, 420), between_scene: humanBehaviorState.between_scene_motion || cleanPromptValue(prior?.autonomous_plan?.between_scene, 420) },
     stakes: cleanPromptValue(update?.stakes, 360) || cleanPromptValue(prior.stakes, 360),
+    story_now: cleanPromptValue(temporal?.story_now, 140) || cleanPromptValue(prior.story_now, 140),
+    elapsed_since_previous: cleanPromptValue(temporal?.elapsed_since_previous, 140) || cleanPromptValue(prior.elapsed_since_previous, 140),
+    time_certainty: ["exact","approximate","unknown"].includes(String(temporal?.certainty)) ? String(temporal.certainty) : (prior.time_certainty || "unknown"),
+    intensity_level: Math.max(1, Math.min(10, Number(storyDrive?.intensity_target) || Number(prior.intensity_level) || 4)),
+    offscreen_contacts: offscreen ? [...priorContacts, offscreen].slice(-8) : priorContacts.slice(-8),
+    season_signal: Boolean(storyDrive?.season_signal),
+    season_reason: cleanPromptValue(storyDrive?.season_reason, 280),
+    scene_momentum: ["hold","turn","close"].includes(String(storyDrive?.scene_momentum)) ? String(storyDrive.scene_momentum) : (prior.scene_momentum || "hold"),
+    compression_reason: cleanPromptValue(storyDrive?.compression_reason, 320),
+    emotional_causality: {
+      trigger: mind.emotion_trigger || "", interpretation: mind.emotion_interpretation || "", emotion: mind.current_emotion || "", behavioral_pressure: mind.behavioral_pressure || "",
+    },
+    anticipation: { next: mind.anticipated_next || "", expected: mind.expected_outcome || "", feared: mind.feared_outcome || "" },
+    behavioral_memory: { pattern: mind.behavioral_pattern || "", conflict_pattern: mind.conflict_pattern || "", contradiction: mind.contradiction_in_play || "" },
+    private_intention: { intention: mind.private_intention || "", expected: mind.expected_outcome || "", feared: mind.feared_outcome || "" },
+    last_reflection: {
+      changed: cleanPromptValue(reflection?.changed, 420), pending: cleanPromptValue(reflection?.pending, 420), avoid_repeat: cleanPromptValue(reflection?.avoid_repeat, 320), affected: compactTextList(reflection?.affected, 6, 100), plausible_consequence: cleanPromptValue(reflection?.plausible_consequence, 360),
+    },
     updated_at: new Date().toISOString(),
   };
 }
+
 function buildStoryRecap(timeline: any[] = [], previous = "") {
   const meaningful = (Array.isArray(timeline) ? timeline : []).filter((item) => Number(item?.importance || 0) >= 3 || item?.scene_changed).slice(-8);
   if (!meaningful.length) return cleanPromptValue(previous, 2200);
   return meaningful.map((item) => cleanPromptValue(item?.detail || item?.note || item?.label, 320)).filter(Boolean).join(" • ").slice(0, 2200);
 }
-function evolveStoryChapters({ chapters = [], activeChapter = {}, latestUserMessage = "", sceneUpdate = {}, timelineEvent = {}, savedMessage = {}, recap = "" }) {
+function evolveStoryChapters({ chapters = [], activeChapter = {}, latestUserMessage = "", sceneUpdate = {}, timelineEvent = {}, savedMessage = {}, recap = "", storyDrive = {} }) {
   const closed = Array.isArray(chapters) ? [...chapters] : [];
   let active = activeChapter && typeof activeChapter === "object" ? { ...activeChapter } : {};
   if (!active.title) {
@@ -3686,10 +4077,11 @@ function evolveStoryChapters({ chapters = [], activeChapter = {}, latestUserMess
   const text = `${latestUserMessage} ${sceneUpdate?.separator_label || ""}`.toLowerCase();
   const largeJump = /(?:next day|next morning|next week|next month|next year|the following day|days later|weeks later|months later|years later|later that week|time skip|al día siguiente|a la mañana siguiente|días después|semanas después|meses después|años después|tiempo después)/i.test(text);
   const majorSceneBreak = Boolean(sceneUpdate?.scene_changed) && Number(timelineEvent?.importance || 0) >= 4 && /later|after|next|following|después|siguiente/i.test(String(sceneUpdate?.separator_label || ""));
-  if ((largeJump || majorSceneBreak) && !String(active?.start_message_id || "").includes(String(savedMessage?.id || ""))) {
+  const durableSeasonShift = Boolean(storyDrive?.season_signal) && cleanPromptValue(storyDrive?.season_reason, 280).length >= 12 && Number(timelineEvent?.importance || 0) >= 4;
+  if ((largeJump || majorSceneBreak || durableSeasonShift) && !String(active?.start_message_id || "").includes(String(savedMessage?.id || ""))) {
     closed.push({ ...active, ended_at: savedMessage?.created_at || new Date().toISOString(), summary: cleanPromptValue(recap, 520) || active.summary || "Chapter completed." });
-    const title = cleanPromptValue(sceneUpdate?.separator_label, 80) || cleanPromptValue(timelineEvent?.label, 80) || `Chapter ${closed.length + 1}`;
-    active = { number: closed.length + 1, title, summary: cleanPromptValue(timelineEvent?.detail, 280) || "A new phase of the story begins.", started_at: savedMessage?.created_at || new Date().toISOString(), start_message_id: savedMessage?.id || "" };
+    const title = cleanPromptValue(sceneUpdate?.separator_label, 80) || cleanPromptValue(timelineEvent?.label, 80) || cleanPromptValue(storyDrive?.season_reason, 80) || `Season ${closed.length + 1}`;
+    active = { number: closed.length + 1, title, summary: cleanPromptValue(storyDrive?.season_reason, 360) || cleanPromptValue(timelineEvent?.detail, 280) || "A new phase of the story begins.", season_theme: cleanPromptValue(storyDrive?.season_reason, 260), started_at: savedMessage?.created_at || new Date().toISOString(), start_message_id: savedMessage?.id || "" };
   }
   return { chapters: closed.slice(-20), activeChapter: active, chapterNumber: Number(active.number || closed.length + 1) };
 }
@@ -3704,6 +4096,20 @@ function relationshipStateFromDevelopment(development = {}, previous = {}) {
     relationship_phase: cleanPromptValue(development?.relationship_phase, 60) || cleanPromptValue(previous?.relationship_phase, 60) || "baseline",
     active_contradictions: contradictions,
     emotional_residue: residue,
+    flaw_pressure: cleanPromptValue(development?.flaw_pressure, 280) || cleanPromptValue(previous?.flaw_pressure, 280),
+    independent_priority: cleanPromptValue(development?.independent_priority, 280) || cleanPromptValue(previous?.independent_priority, 280),
+    repair_progress: cleanPromptValue(development?.repair_progress, 280) || cleanPromptValue(previous?.repair_progress, 280),
+    current_mood: cleanPromptValue(development?.current_mood, 160) || cleanPromptValue(previous?.current_mood, 160),
+    emotional_posture: cleanPromptValue(development?.emotional_posture, 220) || cleanPromptValue(previous?.emotional_posture, 220),
+    guardedness: cleanPromptValue(development?.guardedness, 180) || cleanPromptValue(previous?.guardedness, 180),
+    trust_direction: cleanPromptValue(development?.trust_direction, 180) || cleanPromptValue(previous?.trust_direction, 180),
+    relationship_signature: cleanPromptValue(development?.relationship_signature, 360) || cleanPromptValue(previous?.relationship_signature, 360),
+    private_patterns: Array.isArray(development?.private_patterns) ? development.private_patterns.slice(-6) : (previous?.private_patterns || []),
+    sore_spots: Array.isArray(development?.sore_spots) ? development.sore_spots.slice(-5) : (previous?.sore_spots || []),
+    shared_rituals: Array.isArray(development?.shared_rituals) ? development.shared_rituals.slice(-5) : (previous?.shared_rituals || []),
+    voice_shift: cleanPromptValue(development?.voice_shift, 260) || cleanPromptValue(previous?.voice_shift, 260),
+    conflict_aftertaste: cleanPromptValue(development?.conflict_aftertaste, 260) || cleanPromptValue(previous?.conflict_aftertaste, 260),
+    repair_debt: cleanPromptValue(development?.repair_debt, 260) || cleanPromptValue(previous?.repair_debt, 260),
     turning_points: turningPoints,
     recent_shift: cleanPromptValue(latestTurning?.impact || latestTurning?.event, 320) || cleanPromptValue(previous?.recent_shift, 320),
     updated_at: new Date().toISOString(),
@@ -3969,7 +4375,7 @@ async function streamRoleplayV19({
         });
         update.scene_state = nextPhysicalState.scene;
         update.cast_state = nextPhysicalState.cast;
-        update.intelligence_state = applyIntelligenceContinuity(existingIntelligenceState, result.continuity_update);
+        update.intelligence_state = applyIntelligenceContinuity(existingIntelligenceState, result.continuity_update, result.mind_update, result.story_drive, result.post_turn_reflection, result.human_behavior_update);
         const resolvedCommitments = compactTextList(result.continuity_update?.resolved_commitments, 8, 260);
         const newCommitments = compactTextList(result.continuity_update?.commitments, 8, 260);
         update.unresolved_threads = compactTextList([...(Array.isArray(existingUnresolvedThreads) ? existingUnresolvedThreads.map((item) => typeof item === "string" ? item : item?.title || item?.detail) : []), ...newCommitments], 16, 320)
@@ -4005,6 +4411,7 @@ async function streamRoleplayV19({
           timelineEvent,
           savedMessage,
           recap: existingStoryRecap || "",
+          storyDrive: result.story_drive || {},
         });
         update.story_chapters = chapterState.chapters;
         update.active_chapter = chapterState.activeChapter;
@@ -4017,6 +4424,9 @@ async function streamRoleplayV19({
         await persistStoryCastMembers({
           supabase, userId, conversationId, castUpdates: result.cast_updates,
           previousMembers: persistentCast, scene: nextPhysicalState.scene,
+        });
+        await persistStoryConnections({
+          supabase, userId, conversationId, connectionUpdates: result.connection_updates,
         });
         await persistStoryDynamics({
           supabase, userId, conversationId, characterName: character.name,
@@ -4066,9 +4476,9 @@ async function persistStoryDynamics({ supabase, userId, conversationId, characte
   const knowledgeRows = (Array.isArray(continuityUpdate?.knowledge_updates) ? continuityUpdate.knowledge_updates : []).slice(0, 6).map((item) => ({
     user_id: userId, conversation_id: conversationId,
     character_name: cleanPromptValue(item?.who, 100) || characterName,
-    subject: cleanPromptValue(item?.knows, 140), knowledge: cleanPromptValue(item?.knows, 600),
-    status: ["known","suspected","rumor"].includes(String(item?.status)) ? item.status : "known",
-    source: cleanPromptValue(item?.source, 240), secret: false, updated_at: now,
+    subject: cleanPromptValue(item?.subject, 140) || cleanPromptValue(item?.knows, 140), knowledge: cleanPromptValue(item?.knows, 600),
+    status: String(item?.status) === "forgotten" ? "unknown" : (["known","suspected","rumor","unknown"].includes(String(item?.status)) ? item.status : "known"),
+    source: cleanPromptValue(item?.source, 240), secret: Boolean(item?.secret), updated_at: now,
   })).filter((item) => item.subject);
   if (knowledgeRows.length) {
     const { error } = await supabase.from("story_knowledge_entries").upsert(knowledgeRows, { onConflict: "conversation_id,character_name,subject" });
@@ -4082,9 +4492,22 @@ async function persistStoryDynamics({ supabase, userId, conversationId, characte
     const { error } = await supabase.from("story_consequences").upsert(row, { onConflict:"conversation_id,title,cause" });
     if (error && error.code !== "42P01") console.warn("[character-chat] consequence persistence failed", { message:error.message });
   }
+  const worldConsequence = continuityUpdate?.world_consequence && typeof continuityUpdate.world_consequence === "object" ? continuityUpdate.world_consequence : {};
+  if (worldConsequence?.record) {
+    const wcTitle = cleanPromptValue(worldConsequence?.title, 140), wcCause = cleanPromptValue(worldConsequence?.cause, 420), wcEffect = cleanPromptValue(worldConsequence?.effect, 520);
+    if (wcTitle && wcCause && wcEffect) {
+      const row = { user_id:userId, conversation_id:conversationId, title:wcTitle, cause:wcCause, effect:wcEffect, status:"active", weight:Math.max(1,Math.min(5,Number(worldConsequence?.weight)||2)), participants:compactSceneNames(worldConsequence?.participants || [characterName], 6), updated_at:now };
+      const { error } = await supabase.from("story_consequences").upsert(row, { onConflict:"conversation_id,title,cause" });
+      if (error && error.code !== "42P01") console.warn("[character-chat] explicit world consequence persistence failed", { message:error.message });
+    }
+  }
   const active = (Array.isArray(activeArcs) ? activeArcs : []).filter((arc) => arc?.status === "active" && arc?.id).slice(0, 1);
-  if (active.length && /\b(?:decid|admit|kiss|invite|arriv|interrupt|argu|fight|race|police|security|promise|reveal|leave|follow)\w*/i.test(String(reply))) {
-    const arc = active[0], progress = Math.min(100, Number(arc.progress || 0) + 4);
+  const eventImportance = Math.max(0, Math.min(5, Number(timelineEvent?.importance) || 0));
+  const arcWorthyEvent = Boolean(timelineEvent?.record) && eventImportance >= 2 && ["relationship","conflict","promise","reveal","decision"].includes(kind);
+  if (active.length && arcWorthyEvent) {
+    const arc = active[0];
+    const increment = eventImportance >= 5 ? 8 : eventImportance >= 4 ? 6 : eventImportance >= 3 ? 4 : 2;
+    const progress = Math.min(100, Number(arc.progress || 0) + increment);
     const { error } = await supabase.from("story_arcs").update({ progress, status:progress>=100?"resolved":"active", updated_at:now }).eq("id",arc.id).eq("user_id",userId);
     if (error && error.code !== "42P01") console.warn("[character-chat] arc progression failed", { message:error.message });
   }
@@ -4107,9 +4530,14 @@ async function persistStoryDynamics({ supabase, userId, conversationId, characte
     const conflict = {user_id:userId,conversation_id:conversationId,title,cause:detail,positions:"Both sides retain their own goals and interpretation until clarified on-page.",intensity:Math.max(1,Math.min(5,Number(timelineEvent?.importance)||2)),status:"active",resolution_need:"A concrete repair, changed action or mutually understood decision.",repair_attempts:0,participants:[characterName],updated_at:now};
     const {error}=await supabase.from("story_conflicts").upsert(conflict,{onConflict:"conversation_id,title"});
     if(error&&error.code!=="42P01")console.warn("[character-chat] conflict persistence failed",{message:error.message});
-  } else if (["relationship","decision"].includes(kind) && /\b(?:sorry|apolog|make it right|forgive|perd[oó]n|lo siento|arreglar)\b/i.test(reply)) {
-    for (const conflict of (Array.isArray(activeConflicts)?activeConflicts:[]).filter((item)=>item?.id&&item.status!=="resolved").slice(0,1)) {
-      await supabase.from("story_conflicts").update({status:"repairing",repair_attempts:Number(conflict.repair_attempts||0)+1,updated_at:now}).eq("id",conflict.id).eq("user_id",userId);
+  } else if (["relationship","decision"].includes(kind)) {
+    const apologyLanguage = /\b(?:sorry|apolog|make it right|forgive|perd[oó]n|lo siento|arreglar)\b/i.test(reply);
+    const concreteRepair = /\b(?:i(?:'ll| will) (?:change|fix|replace|return|tell|stop|show|come|call|pay|handle)|let me (?:fix|replace|return|show|handle)|i was wrong|that was on me|won'?t happen again|voy a (?:cambiar|arreglar|devolver)|fue culpa m[ií]a)\b/i.test(reply);
+    const repairEvent = Boolean(timelineEvent?.record) && eventImportance >= 3 && /\b(?:repair|amend|apolog|accountab|changed action|reconcile|arregl|repar|disculp)\w*/i.test(`${title} ${detail}`);
+    if ((apologyLanguage && concreteRepair) || repairEvent) {
+      for (const conflict of (Array.isArray(activeConflicts)?activeConflicts:[]).filter((item)=>item?.id&&item.status!=="resolved").slice(0,1)) {
+        await supabase.from("story_conflicts").update({status:"repairing",repair_attempts:Number(conflict.repair_attempts||0)+1,updated_at:now}).eq("id",conflict.id).eq("user_id",userId);
+      }
     }
   }
   const combined = `${latestUserMessage}\n${reply}\n${title}\n${detail}`;
@@ -4135,6 +4563,21 @@ async function persistStoryDynamics({ supabase, userId, conversationId, characte
   }
 }
 
+async function persistStoryConnections({ supabase, userId, conversationId, connectionUpdates = [] }) {
+  if (!Array.isArray(connectionUpdates) || !connectionUpdates.length) return;
+  const rows = connectionUpdates.slice(0, 6).map((item) => ({
+    user_id: userId, conversation_id: conversationId,
+    from_name: cleanPromptValue(item?.from_name, 100),
+    to_name: cleanPromptValue(item?.to_name, 100),
+    relationship: cleanPromptValue(item?.relationship, 420),
+    visibility: ["known","private","secret"].includes(String(item?.visibility)) ? String(item.visibility) : "known",
+    updated_at: new Date().toISOString(),
+  })).filter((row) => row.from_name && row.to_name && row.relationship && normalizeText(row.from_name) !== normalizeText(row.to_name));
+  if (!rows.length) return;
+  const { error } = await supabase.from("story_cast_connections").upsert(rows, { onConflict: "conversation_id,from_name,to_name" });
+  if (error && error.code !== "42P01") console.warn("[character-chat] relationship graph persistence failed", { message: error.message });
+}
+
 async function persistStoryCastMembers({ supabase, userId, conversationId, castUpdates = [], previousMembers = [], scene = {} }) {
   if (!Array.isArray(castUpdates) || !castUpdates.length) return;
   const previousByName = new Map((Array.isArray(previousMembers) ? previousMembers : []).map((item) => [normalizeText(item?.name), item]));
@@ -4149,8 +4592,8 @@ async function persistStoryCastMembers({ supabase, userId, conversationId, castU
       role: cleanPromptValue(item?.role, 180) || prior.role || "",
       personality_note: cleanPromptValue(item?.personality_note, 320) || prior.personality_note || "",
       relationship: cleanPromptValue(item?.relationship, 320) || prior.relationship || "",
-      current_dynamic: cleanPromptValue(item?.current_dynamic, 420) || prior.current_dynamic || "",
-      goals: cleanPromptValue(item?.goals, 320) || prior.goals || "",
+      current_dynamic: cleanPromptValue([item?.current_dynamic, item?.offscreen_motion ? `Off-screen: ${item.offscreen_motion}` : ""].filter(Boolean).join(" | "), 420) || prior.current_dynamic || "",
+      goals: cleanPromptValue([item?.goals, item?.next_intention ? `Next: ${item.next_intention}` : ""].filter(Boolean).join(" | "), 320) || prior.goals || "",
       knowledge: cleanPromptValue(item?.knows, 520) || prior.knowledge || "",
       last_interaction: cleanPromptValue(item?.last_interaction, 520) || prior.last_interaction || "",
       presence: present.has(normalizeText(name)) ? "present" : "off_scene",
@@ -4397,19 +4840,22 @@ async function streamGeminiEnvelopeWithFailover({
 function roleplayResponseSchema() {
   return {
     type: "object",
-    required: ["reply", "story_drive", "scene_update", "continuity_update", "development_update"],
-    propertyOrdering: ["reply", "story_drive", "scene_update", "continuity_update", "development_update", "cast_updates", "memory_updates"],
+    required: ["reply", "story_drive", "scene_update", "continuity_update", "development_update", "mind_update", "human_behavior_update", "post_turn_reflection", "quality_check"],
+    propertyOrdering: ["reply", "story_drive", "scene_update", "continuity_update", "development_update", "mind_update", "human_behavior_update", "connection_updates", "cast_updates", "memory_updates", "post_turn_reflection", "quality_check"],
     properties: {
       reply: { type: "string" },
-      story_drive: { type: "object", required: ["independent_want","chosen_action","cost_or_risk","visible_change","unresolved_hook"], properties: { independent_want:{type:"string"}, chosen_action:{type:"string"}, cost_or_risk:{type:"string"}, visible_change:{type:"string"}, unresolved_hook:{type:"string"} } },
+      story_drive: { type: "object", required: ["beat_mode","independent_want","chosen_tactic","chosen_action","cost_or_risk","visible_change","unresolved_hook","repetition_check","pacing_reason","intensity_target","season_signal","season_reason","scene_momentum","compression_reason"], properties: { beat_mode:{type:"string",enum:["mundane","connective","tension","conflict","repair","plot","recovery"]}, independent_want:{type:"string"}, chosen_tactic:{type:"string"}, chosen_action:{type:"string"}, cost_or_risk:{type:"string"}, visible_change:{type:"string"}, unresolved_hook:{type:"string"}, repetition_check:{type:"string"}, pacing_reason:{type:"string"}, intensity_target:{type:"integer"}, season_signal:{type:"boolean"}, season_reason:{type:"string"}, scene_momentum:{type:"string",enum:["hold","turn","close"]}, compression_reason:{type:"string"} } },
       scene_update: {
         type: "object",
-        required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn"],
+        required: ["scene_changed", "separator_label", "location", "time_label", "present", "exited", "heard_user_turn", "activity", "communication_medium", "spatial_notes", "object_states"],
         properties: {
           scene_changed: { type: "boolean" }, separator_label: { type: "string" }, location: { type: "string" }, time_label: { type: "string" },
           present: { type: "array", maxItems: 8, items: { type: "string" } },
           exited: { type: "array", maxItems: 6, items: { type: "string" } },
           heard_user_turn: { type: "array", maxItems: 8, items: { type: "string" } },
+          activity: { type: "string" }, communication_medium: { type: "string" },
+          spatial_notes: { type: "array", maxItems: 6, items: { type: "string" } },
+          object_states: { type: "array", maxItems: 6, items: { type: "object", required:["object","holder","location","state"], properties:{ object:{type:"string"}, holder:{type:"string"}, location:{type:"string"}, state:{type:"string"} } } },
         },
       },
       continuity_update: {
@@ -4417,19 +4863,27 @@ function roleplayResponseSchema() {
         required: ["objects_present", "knowledge_updates", "commitments", "resolved_commitments", "stakes", "timeline_event"],
         properties: {
           objects_present: { type: "array", maxItems: 8, items: { type: "string" } },
-          knowledge_updates: { type: "array", maxItems: 4, items: { type: "object", required: ["who", "knows", "source", "status"], properties: { who:{type:"string"}, knows:{type:"string"}, source:{type:"string"}, status:{type:"string", enum:["known","suspected","rumor","forgotten"]} } } },
+          knowledge_updates: { type: "array", maxItems: 5, items: { type: "object", required: ["who", "subject", "knows", "source", "status", "secret"], properties: { who:{type:"string"}, subject:{type:"string"}, knows:{type:"string"}, source:{type:"string"}, status:{type:"string", enum:["known","suspected","rumor","forgotten"]}, secret:{type:"boolean"} } } },
           commitments: { type: "array", maxItems: 5, items: { type: "string" } },
           resolved_commitments: { type: "array", maxItems: 5, items: { type: "string" } },
           stakes: { type: "string" },
           timeline_event: { type: "object", required: ["record", "label", "detail", "kind", "importance"], properties: { record:{type:"boolean"}, label:{type:"string"}, detail:{type:"string"}, kind:{type:"string", enum:["relationship","conflict","promise","reveal","decision","scene","other"]}, importance:{type:"integer"} } },
+          temporal_anchor: { type:"object", required:["story_now","elapsed_since_previous","certainty"], properties:{ story_now:{type:"string"}, elapsed_since_previous:{type:"string"}, certainty:{type:"string",enum:["exact","approximate","unknown"]} } },
+          world_consequence: { type:"object", required:["record","title","cause","effect","weight","participants"], properties:{ record:{type:"boolean"}, title:{type:"string"}, cause:{type:"string"}, effect:{type:"string"}, weight:{type:"integer"}, participants:{type:"array",maxItems:6,items:{type:"string"}} } },
+          offscreen_contact: { type:"object", required:["record","from","to","medium","content_hint","reason"], properties:{ record:{type:"boolean"}, from:{type:"string"}, to:{type:"string"}, medium:{type:"string"}, content_hint:{type:"string"}, reason:{type:"string"} } },
         },
       },
       development_update: {
         type: "object",
-        required: ["significance", "evidence", "relationship_phase", "relationship_dynamic", "emotional_residue", "active_contradiction", "behavioral_effect", "turning_point"],
-        properties: { significance:{type:"string"}, evidence:{type:"string"}, relationship_phase:{type:"string"}, relationship_dynamic:{type:"string"}, emotional_residue:{type:"string"}, active_contradiction:{type:"string"}, behavioral_effect:{type:"string"}, turning_point:{type:"string"} },
+        required: ["significance", "evidence", "relationship_phase", "relationship_dynamic", "emotional_residue", "active_contradiction", "behavioral_effect", "turning_point", "flaw_pressure", "independent_priority", "repair_progress", "current_mood", "emotional_posture", "guardedness", "trust_direction", "vulnerability_window", "setback_pressure", "retained_growth", "relationship_signature", "private_pattern", "sore_spot", "shared_ritual", "memory_influence", "voice_shift", "conflict_aftertaste", "repair_debt"],
+        properties: { significance:{type:"string"}, evidence:{type:"string"}, relationship_phase:{type:"string"}, relationship_dynamic:{type:"string"}, emotional_residue:{type:"string"}, active_contradiction:{type:"string"}, behavioral_effect:{type:"string"}, turning_point:{type:"string"}, flaw_pressure:{type:"string"}, independent_priority:{type:"string"}, repair_progress:{type:"string"}, current_mood:{type:"string"}, emotional_posture:{type:"string"}, guardedness:{type:"string"}, trust_direction:{type:"string"}, vulnerability_window:{type:"string"}, setback_pressure:{type:"string"}, retained_growth:{type:"string"}, relationship_signature:{type:"string"}, private_pattern:{type:"string"}, sore_spot:{type:"string"}, shared_ritual:{type:"string"}, memory_influence:{type:"string"}, voice_shift:{type:"string"}, conflict_aftertaste:{type:"string"}, repair_debt:{type:"string"} },
       },
-      cast_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["name", "relationship", "personality_note", "current_dynamic", "knows", "last_interaction"], properties: { name:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"} } } },
+      mind_update: { type:"object", required:["know","believe","misunderstand","want","avoid","wont_admit","outside_priority","short_goal","mid_goal","long_goal","attachment_pattern","microvoice","energy","confidence","emotion_trigger","emotion_interpretation","current_emotion","behavioral_pressure","anticipated_next","public_private_mode","behavioral_pattern","conflict_pattern","contradiction_in_play","private_intention","expected_outcome","feared_outcome"], properties:{ know:{type:"string"}, believe:{type:"string"}, misunderstand:{type:"string"}, want:{type:"string"}, avoid:{type:"string"}, wont_admit:{type:"string"}, outside_priority:{type:"string"}, short_goal:{type:"string"}, mid_goal:{type:"string"}, long_goal:{type:"string"}, attachment_pattern:{type:"string",enum:["approach","withdraw","mixed","steady","unknown"]}, microvoice:{type:"string"}, energy:{type:"string"}, confidence:{type:"string"}, emotion_trigger:{type:"string"}, emotion_interpretation:{type:"string"}, current_emotion:{type:"string"}, behavioral_pressure:{type:"string"}, anticipated_next:{type:"string"}, public_private_mode:{type:"string",enum:["public","private","mixed","digital","unknown"]}, behavioral_pattern:{type:"string"}, conflict_pattern:{type:"string"}, contradiction_in_play:{type:"string"}, private_intention:{type:"string"}, expected_outcome:{type:"string"}, feared_outcome:{type:"string"} } },
+      human_behavior_update: { type:"object", required:["rhythm_mode","rhythm_reason","nonverbal_signal","nonverbal_meaning","humor_profile","humor_boundary","argument_lesson","romantic_expression","romantic_avoidance","physical_boundary_state","decision_basis","persistent_location","possession_updates","social_reputation_update","information_flow","relationship_self_view","relationship_user_view","autonomous_plan","between_scene_motion","memory_compression_anchor","initiative_profile","character_dna","transition_style","detail_level","naturalness_score","naturalness_notes"], properties:{ rhythm_mode:{type:"string",enum:["terse","brief","natural","expanded","silent"]}, rhythm_reason:{type:"string"}, nonverbal_signal:{type:"string"}, nonverbal_meaning:{type:"string"}, humor_profile:{type:"string"}, humor_boundary:{type:"string"}, argument_lesson:{type:"string"}, romantic_expression:{type:"string"}, romantic_avoidance:{type:"string"}, physical_boundary_state:{type:"string"}, decision_basis:{type:"string"}, persistent_location:{type:"string"}, possession_updates:{type:"array",maxItems:5,items:{type:"object",required:["object","holder","location","state"],properties:{object:{type:"string"},holder:{type:"string"},location:{type:"string"},state:{type:"string"}}}}, social_reputation_update:{type:"string"}, information_flow:{type:"string"}, relationship_self_view:{type:"string"}, relationship_user_view:{type:"string"}, autonomous_plan:{type:"string"}, between_scene_motion:{type:"string"}, memory_compression_anchor:{type:"string"}, initiative_profile:{type:"string",enum:["high","medium","low","reactive","variable","unknown"]}, character_dna:{type:"string"}, transition_style:{type:"string"}, detail_level:{type:"string",enum:["sparse","balanced","atmospheric"]}, naturalness_score:{type:"integer"}, naturalness_notes:{type:"string"} } },
+      connection_updates: { type:"array", maxItems:5, items:{ type:"object", required:["from_name","to_name","relationship","visibility","evidence"], properties:{ from_name:{type:"string"}, to_name:{type:"string"}, relationship:{type:"string"}, visibility:{type:"string",enum:["known","private","secret"]}, evidence:{type:"string"} } } },
+      post_turn_reflection: { type:"object", required:["changed","pending","avoid_repeat","affected","plausible_consequence"], properties:{ changed:{type:"string"}, pending:{type:"string"}, avoid_repeat:{type:"string"}, affected:{type:"array",maxItems:6,items:{type:"string"}}, plausible_consequence:{type:"string"} } },
+      quality_check: { type:"object", required:["canon_ok","user_control_ok","physics_ok","knowledge_ok","voice_ok","repetition_ok","subtext_ok","structure_repetition_ok","scene_momentum_ok","contradiction_ok","rhythm_ok","nonverbal_ok","romantic_specificity_ok","decision_consistency_ok","boundary_ok","social_information_ok","adaptive_detail_ok","dna_ok","naturalness_ok","naturalness_score","drift_risk"], properties:{ canon_ok:{type:"boolean"}, user_control_ok:{type:"boolean"}, physics_ok:{type:"boolean"}, knowledge_ok:{type:"boolean"}, voice_ok:{type:"boolean"}, repetition_ok:{type:"boolean"}, subtext_ok:{type:"boolean"}, structure_repetition_ok:{type:"boolean"}, scene_momentum_ok:{type:"boolean"}, contradiction_ok:{type:"boolean"}, rhythm_ok:{type:"boolean"}, nonverbal_ok:{type:"boolean"}, romantic_specificity_ok:{type:"boolean"}, decision_consistency_ok:{type:"boolean"}, boundary_ok:{type:"boolean"}, social_information_ok:{type:"boolean"}, adaptive_detail_ok:{type:"boolean"}, dna_ok:{type:"boolean"}, naturalness_ok:{type:"boolean"}, naturalness_score:{type:"integer"}, drift_risk:{type:"string"} } },
+      cast_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["name", "role", "relationship", "personality_note", "current_dynamic", "goals", "knows", "last_interaction", "offscreen_motion", "next_intention"], properties: { name:{type:"string"}, role:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, goals:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"}, offscreen_motion:{type:"string"}, next_intention:{type:"string"} } } },
       memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content:{type:"string"}, category:{type:"string", enum:["fact","person","relationship","world","event","preference","boundary","promise","conflict"]}, importance:{type:"integer"}, scope:{type:"string", enum:["conversation","character"]}, reason:{type:"string"}, replaces:{type:"string"} } } },
     },
   };

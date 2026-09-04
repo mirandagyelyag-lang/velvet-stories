@@ -6,7 +6,7 @@ import { VELVET_VERSION } from "../config/version";
 
 const PWAContext = createContext(null);
 const INSTALL_DISMISSED_KEY = "velvet_install_prompt_dismissed";
-const UPDATE_PENDING_KEY = "velvet_update_pending_v269";
+const UPDATE_PENDING_KEY = "velvet_update_pending_v3171";
 
 export function PWAProvider({ children }) {
   if (Capacitor.isNativePlatform()) {
@@ -96,6 +96,19 @@ function WebPWAProvider({ children }) {
   });
 
   const serverUpdateAvailable = Boolean(serverVersion && compareVersions(serverVersion, VELVET_VERSION) > 0);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return undefined;
+    let reloading = false;
+    const onControllerChange = () => {
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    navigator.serviceWorker.getRegistration().then((registration) => registration?.update?.()).catch(() => {});
+    return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+  }, []);
 
   async function checkForUpdate({ silent = true } = {}) {
     if (!navigator.onLine) return { available: false, version: serverVersion || "" };

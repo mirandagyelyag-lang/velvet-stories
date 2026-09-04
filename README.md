@@ -1,50 +1,38 @@
-# Velvet Stories v3.7.16 — Pulse Redesign + Auto Diagnostics
+# Velvet Stories v3.21.0 — Human Behavior
 
-Private AI roleplay PWA built with React, Vite, Supabase and Gemini.
+This release layers a persistent Human Behavior engine on top of v3.20 Emotional Intelligence.
 
-This tree is the single source of truth. It intentionally excludes nested historical project copies, dependencies, build output, deployment links, local secrets, obsolete audio and patch-by-patch release notes.
+## Human Behavior systems
+1. Conversational Rhythm Engine
+2. Nonverbal Intelligence
+3. Personal Humor Engine
+4. Argument Memory
+5. Romantic Specificity
+6. Physical Boundary Memory
+7. Decision Consistency
+8. Persistent Locations
+9. Inventory & Possessions Lite
+10. Social Reputation
+11. Gossip & Information Flow
+12. Relationship Asymmetry
+13. Autonomous Plans
+14. Between-Scene Simulation
+15. Long-Story Memory Compression 2.0
+16. Character Initiative Profiles
+17. Naturalness Scorer
+18. Character DNA
+19. Cinematic Transitions
+20. Adaptive Detail
 
-## Install
+## Architecture
+- Persistent `human_behavior_state` is stored inside the existing conversation intelligence JSON state. No migration is required.
+- Deterministic server-side naturalness checks supplement the model's own hidden quality check.
+- User agency remains authoritative. Relationship asymmetry may store the character's subjective view, but never invents the user's feelings or interpretation.
+- PWA auto-update, no-store version polling, `skipWaiting`, `clientsClaim`, and Vercel anti-cache headers are preserved.
 
-```bash
-cp .env.example .env.local
-npm ci
-npm run dev
-```
+## Verification
+- `npm run verify:v3210`
+- `npm run verify:story`
+- `npm run verify:v34`
 
-Fill `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env.local`. Gemini and service-role secrets belong in Supabase Edge Function secrets, never in this repository.
-
-## Deploy
-
-```bash
-npx supabase link --project-ref YOUR_PROJECT_REF
-npx supabase db push
-npx supabase functions deploy character-chat
-npx vercel --prod
-```
-
-## Verification and cleanup
-
-```bash
-npm run verify:stability
-npm run build
-npm run clean
-```
-
-`npm run clean` removes only reproducible build/cache output. It preserves source code, migrations, media, `.env.local`, `.git` and `.vercel`.
-
-## Canonical structure
-
-- `src/`: application interface and state.
-- `public/`: PWA icons and the eight active ambience tracks.
-- `supabase/migrations/`: complete ordered database history.
-- `supabase/functions/character-chat/`: current story engine.
-- `scripts/`: automated source and behavior verification.
-
-Do not place extracted Velvet ZIPs, backups or `node_modules` inside this folder. `.gitignore` prevents them from becoming a second source of truth.
-
-
-Android 3.13.17 can recover the public Supabase client key from the existing Supabase CLI login if local env files are missing.
-
-## v3.14.8
-Fixes the cinematic splash PWA build by using a lossless WebP source under Workbox's precache threshold, while keeping the one-take native reveal unchanged.
+Deploy the frontend/PWA to Vercel and deploy `supabase/functions/character-chat` separately so one failure cannot block the other.

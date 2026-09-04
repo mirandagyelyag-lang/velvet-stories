@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const velvetVersion = pkg.version;
-const velvetRelease = "Android Launch Reset";
+const velvetRelease = "Human Behavior";
 const velvetBuildTime = new Date().toISOString();
 
 export default defineConfig(({ mode }) => {
@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => {
       },
       react(),
       !androidBuild && VitePWA({
-        registerType: "prompt",
+        registerType: "autoUpdate",
         injectRegister: "auto",
         includeAssets: [
           "velvet-vs-v4-favicon.png",
@@ -94,14 +94,14 @@ export default defineConfig(({ mode }) => {
           // Keep a little headroom for cinematic launch artwork while the source image stays optimized.
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
           cleanupOutdatedCaches: true,
-          clientsClaim: false,
-          skipWaiting: false,
+          clientsClaim: true,
+          skipWaiting: true,
           navigateFallback: "/index.html",
           globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2,mp3}"],
           runtimeCaching: [
             {
               urlPattern: ({ request, url }) =>
-                request.destination === "image" && !url.pathname.includes("velvet-vs-v4-"),
+                request.destination === "image" && !url.pathname.includes("velvet-vs-v4-") && !url.pathname.includes("velvet-loading-entry"),
               handler: "CacheFirst",
               options: {
                 cacheName: "velvet-images",
