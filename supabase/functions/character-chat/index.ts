@@ -514,7 +514,7 @@ async function handleCharacterAssist({ apiKey, draft, mode, focusFields = [] }) 
 
 async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
   const safeDraft = draft && typeof draft === "object" ? draft : {};
-  const prompt = `Write a short voice test for this private fictional roleplay character. Do not explain the character. Put them in the requested tiny situation and give 3 to 5 lines of dialogue/action that make their vocabulary, rhythm, humor, emotional defenses and social habits recognizable. Never write the user's dialogue or thoughts. Keep it under 140 words.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nSITUATION\n${String(situation || "A friend asks if they're okay after a difficult day.").slice(0, 600)}`;
+  const prompt = `Write a short voice test for this private fictional roleplay character. Do not explain the character. Put them in the requested tiny situation and give 3 to 5 lines of dialogue/action that make their vocabulary, sentence shape, rhythm, humor, emotional defenses, verbal tells and social habits recognizable. The sample should still sound identifiable if the character name is removed. Avoid canned AI-romance phrases, perfectly balanced one-liners and repeated rhetorical questions. Never write the user's dialogue or thoughts. Keep it under 140 words.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nSITUATION\n${String(situation || "A friend asks if they're okay after a difficult day.").slice(0, 600)}`;
   const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
   let lastError = "Velvet couldn't test this voice.";
   for (const model of models) {
@@ -537,7 +537,7 @@ async function handleCharacterVoiceLab({ apiKey, draft }) {
     maxOutputTokens: 1800,
     deadlineMs: 24000,
     temperature: 0.7,
-    prompt: `Build a blind-test voice fingerprint for this fictional character. Return only these schema fields: speechStyle, voiceVocabulary, humorStyle, conflictStyle, affectionStyle, verbalTells, voiceAvoidances and exampleDialogue. Make the voice sound like a specific human, not an archetype or therapist. exampleDialogue must contain five short labeled samples—CASUAL, ANGRY, FLIRTING, VULNERABLE, AWKWARD—each with one or two natural spoken lines. Vary syntax and emotional tactics; do not use generic smirk/jaw/gaze choreography, polished quote-card banter or rhetorical-question stacks. Preserve the creator's language and established characterization.\n\nPROFILE\n${profile}`,
+    prompt: `Build a blind-test voice fingerprint for this fictional character. Return only these schema fields: speechStyle, voiceVocabulary, humorStyle, conflictStyle, affectionStyle, verbalTells, voiceAvoidances and exampleDialogue. Make the voice sound like a specific human, not an archetype, therapist, or generic romance lead. Define observable speech mechanics rather than adjective-only labels: sentence length, contractions, fillers, directness, preferred vocabulary, avoidance patterns and what changes under stress. verbalTells must be sparse tells, not catchphrases. exampleDialogue must contain five short labeled samples—CASUAL, ANGRY, FLIRTING, VULNERABLE, AWKWARD—each with one or two natural spoken lines. Vary syntax and emotional tactics; do not use generic smirk/jaw/gaze choreography, polished quote-card banter or rhetorical-question stacks. Preserve the creator's language and established characterization.\n\nPROFILE\n${profile}`,
   });
   return json({ lab: {
     speechStyle: cleanPromptValue(lab.speechStyle, 900),
@@ -552,7 +552,7 @@ async function handleCharacterVoiceLab({ apiKey, draft }) {
 }
 
 async function handleCharacterLearningRoom({ apiKey, draft, situation }) {
-  const prompt = `Generate exactly 10 distinct, short, non-canonical response samples for a fictional character voice audition. Each sample must answer the SAME situation through a different plausible tactic while remaining the same person. Use natural dialogue, no user POV, no therapist language, no generic romance choreography, and no explanations inside samples. Preserve the profile language.\n\nPROFILE\n${JSON.stringify(draft || {}).slice(0,9000)}\n\nSITUATION\n${cleanPromptValue(situation || "A friend says they had a terrible day and does not want to talk.",700)}`;
+  const prompt = `Generate exactly 10 distinct, short, non-canonical response samples for a fictional character voice audition. Each sample must answer the SAME situation through a different plausible tactic while remaining the same person. Use natural dialogue, no user POV, no therapist language, no generic romance choreography, no canned AI-romance cadence, and no explanations inside samples. Some samples may be blunt, awkward, quiet or ordinary; do not make all ten maximally witty. Preserve the profile language.\n\nPROFILE\n${JSON.stringify(draft || {}).slice(0,9000)}\n\nSITUATION\n${cleanPromptValue(situation || "A friend says they had a terrible day and does not want to talk.",700)}`;
   const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
   let lastError = "Velvet couldn't open the Learning Room.";
   for (const model of models) {
@@ -598,7 +598,7 @@ async function handleCharacterGenerate({ apiKey, concept }) {
     temperature: 0.78,
     purpose: "character-generate",
     deadlineMs: 22000,
-    prompt: `Create one complete, original adult fictional roleplay character from the creator's request below. Honor any requested name exactly; if no name is supplied, invent a memorable full name. Build an independent person with a life, responsibilities, relationships, conflicts and ambitions beyond romance. Make the bond with the user specific and playable, the character voice unmistakable, and the opening scene immediately interactive. Avoid generic archetype dialogue, constant hostility, instant confessions and controlling the user's dialogue, thoughts, feelings or actions. The possible growth direction must be gradual rather than guaranteed. Example dialogue calibrates voice but is not a future script. Keep each supporting field to one or two precise sentences, Personality and Relationship below 130 words each, and the opening scene between 55 and 105 words so the complete draft arrives quickly. OPENING NATURALISM: use 0-2 short narration sentences and 1-4 spoken lines; prefer dialogue as the first visible sentence when plausible; the first spoken line must sound natural without relying on exposition; start with dialogue or a simple action when plausible; do not inventory weather, architecture, clothing, sounds, props, textures, or choreograph routine movement. Mention only details that change the interaction. Casual young-adult characters should sound like real people their age, with contractions, fragments and imperfect phrasing, not polished sitcom, legalistic, academic, or quote-card dialogue unless explicitly requested. Write every field and the opening scene in the language used by the creator; if the request has no language, use natural English. Return every field in the schema.\n\nCREATOR REQUEST\n${request}`,
+    prompt: `Create one complete, original adult fictional roleplay character from the creator's request below. Honor any requested name exactly; if no name is supplied, invent a memorable full name. Build an independent person with a life, responsibilities, relationships, conflicts and ambitions beyond romance. Make the bond with the user specific and playable, the character voice unmistakable, and the opening scene immediately interactive. Voice fields must describe observable speech mechanics, not just adjectives: cadence, sentence length, contractions/fillers, directness, vocabulary, humor tactic, conflict tactic, affection tactic, sparse verbal tells and concrete avoidances. Avoid generic archetype dialogue, constant hostility, instant confessions and controlling the user's dialogue, thoughts, feelings or actions. The possible growth direction must be gradual rather than guaranteed. Example dialogue calibrates voice but is not a future script. Keep each supporting field to one or two precise sentences, Personality and Relationship below 130 words each, and the opening scene between 55 and 105 words so the complete draft arrives quickly. OPENING NATURALISM: use 0-2 short narration sentences and 1-4 spoken lines; prefer dialogue as the first visible sentence when plausible; the first spoken line must sound natural without relying on exposition; start with dialogue or a simple action when plausible; do not inventory weather, architecture, clothing, sounds, props, textures, or choreograph routine movement. Mention only details that change the interaction. Casual young-adult characters should sound like real people their age, with contractions, fragments and imperfect phrasing, not polished sitcom, legalistic, academic, or quote-card dialogue unless explicitly requested. Write every field and the opening scene in the language used by the creator; if the request has no language, use natural English. Return every field in the schema.\n\nCREATOR REQUEST\n${request}`,
   });
   return json({ character });
 }
@@ -804,8 +804,18 @@ function buildNarrativePromptV3({
   ).join("\n") || "none";
   const loreText = loreEntries.slice(0, 4).map((entry) => `- ${clean(entry.name, 90)}: ${clean(entry.content, 320)}`).join("\n") || "none";
   const castText = supportingCast.slice(0, 6).map((member) =>
-    `${clean(member.name, 80)} — ${clean(member.role, 140)}; personality: ${clean(member.personality, 420)}; relation to ${userIdentity.name}: ${clean(member.relationship, 420)}; voice: ${clean(member.speech_style, 260)}`
+    `${clean(member.name, 80)} — ${clean(member.role, 140)}; personality: ${clean(member.personality, 360)}; relation to ${userIdentity.name}: ${clean(member.relationship, 360)}; voice: ${clean(member.speech_style, 220)}; humor: ${clean(member.humor_style, 150)}; tells: ${clean(member.verbal_tells, 150)}`
   ).join("\n") || "none";
+  const voiceFingerprint = [
+    `Cadence / delivery: ${clean(character.speech_style, 440)}`,
+    `Word choice / sentence shape: ${clean(character.voice_vocabulary, 340)}`,
+    `Humor: ${clean(character.humor_style, 260)}`,
+    `Conflict: ${clean(character.conflict_style, 300)}`,
+    `Affection: ${clean(character.affection_style, 300)}`,
+    `Verbal tells: ${clean(character.verbal_tells, 300)}`,
+    `Never drift into: ${clean(character.voice_avoidances || "generic archetype banter, therapy language, polished AI romance dialogue, or prestige-TV one-liners", 360)}`,
+    `Syntax sample only: ${clean(character.example_dialogue, 520)}`,
+  ].join("\n");
   const derivedContext = JSON.stringify({
     recap: cleanPromptValue(conversation.story_recap || conversation.summary || "", 650),
     scene: conversation.scene_state || {},
@@ -854,13 +864,20 @@ NON-NEGOTIABLE CANON
 - Answer the literal latest line or question before subtext. Clarifications name the concrete referent; preference questions give a real stance.
 
 VOICE + QUALITY
-- Sound like ${character.name}, not an archetype. Use their vocabulary, defenses, humor, affection and social confidence.
+- Sound like ${character.name}, not an archetype. Their identity must remain recognizable even if speaker names are removed.
+- Treat the VOICEPRINT below as operating constraints, not decorative adjectives. Sentence length, vocabulary, humor, conflict behavior, affection behavior and verbal tells should shape what they actually SAY.
 - DIALOGUE-FIRST NATURALISM: when the user just spoke, usually let the character answer within the first sentence or two. Prefer 1-4 spoken lines and only the narration needed to make them legible.
-- Prefer ordinary spoken language, contractions, fragments, uneven sentence lengths, interruptions and plain answers. Let a line be a little imperfect. Dialogue should DO something socially.
+- Prefer ordinary spoken language, contractions, fragments, uneven sentence lengths, interruptions, false starts and plain answers when they fit this person. Let a line be imperfect. Not every reply needs to be clever, quotable, flirtatious or emotionally loaded.
+- Let mundane conversation stay mundane. Established attraction may exist without appearing in every line. Do not convert neutral questions, jokes or practical exchanges into automatic romantic subtext.
+- Do not paraphrase the user's sentence before answering it. Do not explain the meaning of the character's own line after they say it. Trust short dialogue to stand on its own.
+- Questions deserve real answers. Avoid answering a direct question with another rhetorical question merely to preserve attitude.
+- Verbal tells are rare tells, not catchphrases. Use at most one recognizable tell in a turn, only when the emotional context earns it, and do not reuse it just because it is listed in the profile.
+- Emotional state modifies the established voice instead of replacing it. Angry, awkward, vulnerable and flirting versions of the same person should still share the same vocabulary and social instincts.
 - Narration is support, not the main event. In an ordinary turn, use at most 1-2 concrete physical details unless the user explicitly asks for a literary/immersive scene. If a detail can be removed without changing meaning, remove it.
 - NO PROP SOUP: do not inventory architecture, weather, temperature, clothing, sounds, boxes, papers, furniture, doors, vents, drinks, phones or other scenery just to make the prose feel cinematic. Mention a prop only when someone actually uses it or it changes access, stakes or meaning.
 - Collapse routine movement. Do not choreograph walking, adjusting clothes, setting objects down, looking over, breathing, shifting weight, or crossing a room step-by-step. One short clause is enough unless the movement itself is the point.
 - Vary rhythm. Do not loop smirks, scoffs, jaw/gaze/breath choreography, rhetorical questions, mock-formal logic, sitcom banter, dominance speeches, therapist language or polished quote-card lines.
+- Avoid stock AI-romance cadence such as repeated “there it is,” “careful,” “you're impossible,” “don't tempt me,” “you have no idea,” “that's what I thought,” “say that again,” “you know exactly what you're doing,” or “keep telling yourself that.” An occasional ordinary phrase is fine; a recurring cadence is not a voice.
 - Casual young-adult speech should sound age-appropriate and spontaneous. Do not make ordinary students/friends talk like professors, screenwriters, lawyers, or prestige-TV antiheroes unless the profile explicitly calls for that register.
 - Sarcasm is seasoning, not the whole meal. Popular does not automatically mean smug; guarded does not automatically mean cold.
 - If the user reveals a bad day or pain during conflict, let it land in one small character-specific beat. No counseling speech unless asked.
@@ -890,11 +907,9 @@ Personality: ${clean(character.personality, 760)}
 Relationship to ${userIdentity.name}: ${clean(character.relationship, 700)}
 World/situation: ${clean(character.scenario || character.world, 620)}
 Motivation / defense / contradiction: ${clean(character.core_motivation, 300)} / ${clean(character.emotional_defense, 300)} / ${clean(character.contradictions, 300)}
-Voice: ${clean(character.speech_style, 440)}
-Vocabulary: ${clean(character.voice_vocabulary, 340)}
-Humor / conflict / affection: ${clean(character.humor_style, 260)} / ${clean(character.conflict_style, 300)} / ${clean(character.affection_style, 300)}
-Avoid sounding like: ${clean(character.voice_avoidances || "generic archetype banter, therapy language, or polished AI dialogue", 320)}
-Example syntax only, never a script: ${clean(character.example_dialogue, 480)}
+VOICEPRINT — OPERATING CONSTRAINTS
+${voiceFingerprint}
+Use the example only to infer rhythm and lexical habits. Never recycle its wording, situation, punchline or emotional beat.
 Boundaries: ${clean(character.boundaries, 320)}
 Development: ${clean(characterDevelopmentPromptView(developmentState), 850)}
 
@@ -960,6 +975,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     editorial_banter_voice: "Remove mock-formal, legalistic, sitcom, and quote-card phrasing.",
     sarcastic_comeback_loop: "Change rhythm: use a plain, sincere, practical, amused, or quiet response instead of another comeback.",
     smug_comeback_tone: "Remove smug superiority and let the character answer like a person, not a scripted archetype.",
+    generic_romance_cadence: "Replace stock AI-romance cadence with plain character-specific speech. Preserve attraction only if the beat earned it; do not use repeated lines like ‘there it is’, ‘careful’, ‘you’re impossible’, ‘don’t tempt me’, ‘you have no idea’, ‘that’s what I thought’, or similar canned tension phrases.",
     stock_body_language_stack: "Keep at most one physical detail that adds new information; prioritize dialogue or action.",
     recycled_stock_gesture: "Change the opening and remove the repeated scoff, smirk, gaze, jaw, breath, or prop choreography.",
     silent_continue_stalled: "Continue the active scene with one concrete event, decision, exchange, or consequence.",
@@ -2692,6 +2708,38 @@ function hasSmugComebackTone(reply = "", latestUserMessage = "") {
 
 
 
+function hasGenericRomanceCadence(reply = "", recentReplies = [], character = {}) {
+  const text = normalizeText(reply);
+  if (!text) return false;
+  const profile = normalizeText(`${character?.speech_style || ""} ${character?.example_dialogue || ""} ${character?.voice_vocabulary || ""}`);
+  // Explicitly melodramatic/theatrical profiles may intentionally use heightened romance language,
+  // but still get caught if they repeat several stock beats across turns.
+  const heightenedProfile = /\b(?:theatrical|melodramatic|romance novel|dramatic flirt|campy|soap opera)\b/.test(profile);
+  const patterns = [
+    /\bthere it is\b/,
+    /\bcareful(?: now)?\b/,
+    /\byoure impossible\b/,
+    /\bdont tempt me\b/,
+    /\byou have no idea\b/,
+    /\bthats what i thought\b/,
+    /\bsay that again\b/,
+    /\byou know exactly what youre doing\b/,
+    /\bkeep telling yourself that\b/,
+    /\byoure trouble\b/,
+    /\bis that so\b/,
+    /\bgood to know\b/,
+    /\binteresting choice\b/,
+    /\bbold of you\b/,
+    /\bi can work with that\b/,
+  ];
+  const hitCount = (value) => patterns.filter((pattern) => pattern.test(normalizeText(value))).length;
+  const currentHits = hitCount(text);
+  if (currentHits >= (heightenedProfile ? 3 : 2)) return true;
+  if (currentHits === 0) return false;
+  const recentHitTurns = (Array.isArray(recentReplies) ? recentReplies : []).slice(-4).filter((item) => hitCount(item) > 0).length;
+  return recentHitTurns >= (heightenedProfile ? 3 : 2);
+}
+
 function characterAllowsOrnateDialogue(character = {}) {
   const style = normalizeText(`${character?.speech_style || ""} ${character?.voice_vocabulary || ""} ${character?.personality || ""}`);
   return /\b(?:formal|theatrical|academic|professor|poetic|eloquent|verbose|old fashioned|old-fashioned|literary|philosophical)\b/.test(style);
@@ -3401,6 +3449,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasRhetoricalDialogueOveruse(text, options.recentCharacterReplies || [])) issues.push("rhetorical_dialogue_overuse");
   if (hasSarcasticComebackLoop(text, options.recentCharacterReplies || [])) issues.push("sarcastic_comeback_loop");
   if (hasSmugComebackTone(text, options.latestUserMessage || "")) issues.push("smug_comeback_tone");
+  if (hasGenericRomanceCadence(text, options.recentCharacterReplies || [], options.character || {})) issues.push("generic_romance_cadence");
   if (hasOverwrittenBanter(text, options.latestUserMessage || "", options.character || {})) issues.push("overwritten_banter");
   if (hasOverwrittenNarration(text, options.latestUserMessage || "", options.character || {})) issues.push("overwritten_narration");
   if (hasEditorialBanterVoice(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("editorial_banter_voice");
@@ -3740,7 +3789,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice specific rather than archetypal. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, cinematic body-language chains or therapist speech. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice specific rather than archetypal. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains or therapist speech. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           temperature: getTemperature(character.creativity, isRegeneration),

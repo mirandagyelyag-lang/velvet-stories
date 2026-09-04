@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import velvetLogo from "../assets/velvet-logo.webp";
 import "../styles/welcome-splash.css";
 
 export default function WelcomeSplash() {
@@ -13,7 +12,7 @@ export default function WelcomeSplash() {
     const timer = window.setTimeout(() => {
       try { sessionStorage.setItem("velvet-splash-seen", "1"); } catch {}
       setVisible(false);
-    }, 900);
+    }, 2200);
     return () => window.clearTimeout(timer);
   }, [visible]);
 
@@ -21,15 +20,26 @@ export default function WelcomeSplash() {
 
   return (
     <div
-      className="velvet-splash"
+      className="velvet-splash velvet-splash--entry"
+      role="button"
+      tabIndex={0}
+      aria-label="Velvet Stories is loading. Tap to skip."
       onClick={() => {
         try { sessionStorage.setItem("velvet-splash-seen", "1"); } catch {}
         setVisible(false);
       }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          try { sessionStorage.setItem("velvet-splash-seen", "1"); } catch {}
+          setVisible(false);
+        }
+      }}
     >
-      <img src={velvetLogo} alt="" />
-      <h1>Velvet Stories</h1>
-      <p>Every story begins with you.</p>
+      <div className="velvet-splash__art" aria-hidden="true" />
+      <div className="velvet-splash__glow" aria-hidden="true" />
+      <div className="velvet-splash__sheen" aria-hidden="true" />
+      <span className="sr-only">Loading Velvet Stories</span>
     </div>
   );
 }

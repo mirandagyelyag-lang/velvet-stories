@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.16.0",
+  "version": "3.16.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -55,7 +55,7 @@
     "verify:v3157": "node scripts/verify-v3157-mirror-assembly.mjs",
     "verify:v3158": "node scripts/verify-v3158-true-mirror.mjs",
     "verify:v3159": "node scripts/verify-v3159-crystal-cinematic.mjs",
-    "verify:v3160": "node scripts/verify-v3160-real-vector-vs.mjs"
+    "verify:v3160": "node scripts/verify-v3160-voiceprint.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

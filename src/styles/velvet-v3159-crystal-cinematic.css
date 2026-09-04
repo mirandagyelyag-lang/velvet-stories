@@ -1,93 +1,76 @@
-/* Velvet Stories v3.15.9 · Crystal VS Cinematic
-   Uses the approved generated artwork itself. Fragments are clipped pieces of that exact image. */
-.velvet-native-launch-underlay{position:fixed;inset:0;z-index:2147480000;background:#050103}
+/* Velvet Stories v3.16.1 · Loading entry splash
+   Uses the approved welcome artwork as the native launch overlay. */
+.velvet-native-launch-underlay{
+  position:fixed;
+  inset:0;
+  z-index:2147480000;
+  background:#120307;
+}
 
 .velvet-crystal-launch{
-  position:fixed;inset:0;z-index:2147482000;overflow:hidden;isolation:isolate;
-  width:100%;height:100dvh;min-height:100dvh;background:#050103;color:#fff;
-  display:block;animation:vcr-shell-out .38s cubic-bezier(.22,.7,.18,1) 5.72s forwards;
-}
-.velvet-crystal-launch__base{
-  position:absolute;inset:-2%;z-index:0;
-  background-image:linear-gradient(rgba(4,0,3,.54),rgba(4,0,3,.54)),url('/velvet-crystal-vs.png');
-  background-size:cover;background-position:center;filter:blur(10px) saturate(.88) brightness(.58);
-  transform:scale(1.055);opacity:.66;animation:vcr-base 2.35s ease-out forwards;
-}
-.velvet-crystal-launch__scene{
-  position:absolute;inset:0;z-index:2;overflow:hidden;
-  transform-origin:50% 48%;animation:vcr-camera 5.55s cubic-bezier(.2,.64,.18,1) both;
-}
-.velvet-crystal-launch__fragments{position:absolute;inset:0;z-index:3}
-.velvet-crystal-launch__fragment{
-  position:absolute;inset:-.5%;display:block;
-  background:url('/velvet-crystal-vs.png') center/cover no-repeat;
-  clip-path:var(--clip);-webkit-clip-path:var(--clip);
-  opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(1.08);
-  transform-origin:50% 50%;filter:blur(1.8px) brightness(1.18) saturate(1.14);
-  will-change:transform,opacity,filter;
-  animation:
-    vcr-piece-in 1.62s cubic-bezier(.12,.79,.18,1) var(--d) forwards,
-    vcr-piece-out .78s cubic-bezier(.5,0,.84,.32) calc(4.82s + var(--d)) forwards;
-}
-.velvet-crystal-launch__hero{
-  position:absolute;inset:0;z-index:4;
-  background:url('/velvet-crystal-vs.png') center/cover no-repeat;
-  opacity:0;filter:brightness(1.01) saturate(1.03);
-  animation:vcr-hero-in .44s ease 2.02s forwards,vcr-hero-out .36s ease 4.83s forwards;
-}
-.velvet-crystal-launch__halo{
-  position:absolute;z-index:5;left:50%;top:49%;width:52vw;height:52vw;max-width:340px;max-height:340px;
-  border-radius:50%;transform:translate(-50%,-50%) scale(.72);opacity:0;pointer-events:none;
-  background:radial-gradient(circle,rgba(255,225,239,.15) 0,rgba(255,102,171,.085) 35%,transparent 68%);
-  filter:blur(10px);mix-blend-mode:screen;
-  animation:vcr-halo 2.1s ease 2.28s both;
-}
-.velvet-crystal-launch__sheen{
-  position:absolute;z-index:7;top:-35%;left:-42%;width:23%;height:175%;opacity:0;pointer-events:none;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),rgba(255,233,244,.82),rgba(255,122,181,.16),transparent);
-  filter:blur(3px);transform:rotate(17deg);mix-blend-mode:screen;
-  animation:vcr-sheen 1.15s cubic-bezier(.18,.68,.22,1) 2.68s forwards;
-}
-.velvet-crystal-launch__spark{
-  position:absolute;z-index:8;left:var(--x);top:var(--y);font:400 13px/1 Georgia,serif;color:#fff5fa;
-  opacity:0;transform:translate(-50%,-50%) scale(.2) rotate(0deg);text-shadow:0 0 8px #fff,0 0 18px #ff75b4,0 0 34px rgba(255,51,142,.8);
-  animation:vcr-spark 1.12s ease calc(2.2s + var(--sd)) both;pointer-events:none;
-}
-.velvet-crystal-launch__progress-glint{
-  position:absolute;z-index:9;left:32.2%;bottom:4.15%;width:2px;height:2px;border-radius:50%;opacity:0;
-  background:#fff;box-shadow:0 0 7px #fff,0 0 15px #ff79b5,0 0 28px rgba(255,61,148,.88);
-  animation:vcr-progress 2.45s cubic-bezier(.16,.7,.24,1) 2.56s forwards;
-}
-.velvet-crystal-launch__flash{
-  position:absolute;z-index:20;left:50%;top:48%;width:8px;height:8px;border-radius:50%;pointer-events:none;
-  background:#fff;opacity:0;transform:translate(-50%,-50%) scale(.1);
-  box-shadow:0 0 32px #fff,0 0 85px #ff9ac7,0 0 190px rgba(255,43,135,.84);
-  animation:vcr-flash .72s ease 5.08s forwards;
+  position:fixed;
+  inset:0;
+  z-index:2147482000;
+  overflow:hidden;
+  isolation:isolate;
+  width:100%;
+  height:100dvh;
+  min-height:100dvh;
+  background:#120307;
+  color:#fff;
+  display:block;
+  animation:vcr-shell-out .42s cubic-bezier(.22,.7,.18,1) 2.12s forwards;
 }
 
-@keyframes vcr-piece-in{
-  0%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(1.08);filter:blur(2px) brightness(1.3) saturate(1.2)}
-  55%{opacity:.93}
-  100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);filter:blur(0) brightness(1) saturate(1)}
+.velvet-crystal-launch__base,
+.velvet-crystal-launch__glow,
+.velvet-crystal-launch__sheen{
+  position:absolute;
+  inset:0;
 }
-@keyframes vcr-piece-out{
-  0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);filter:blur(0) brightness(1)}
-  100%{opacity:0;transform:translate(var(--ox),var(--oy)) rotate(var(--or)) scale(1.08);filter:blur(2.4px) brightness(1.5) saturate(1.12)}
+
+.velvet-crystal-launch__base{
+  background:
+    linear-gradient(180deg, rgba(6,0,2,.20), rgba(6,0,2,.10) 36%, rgba(6,0,2,.26) 100%),
+    url('/velvet-loading-entry.png') center/cover no-repeat;
+  transform:scale(1.055);
+  opacity:0;
+  animation:vcr-base 2.3s cubic-bezier(.18,.68,.22,1) forwards;
 }
-@keyframes vcr-hero-in{from{opacity:0}to{opacity:1}}
-@keyframes vcr-hero-out{from{opacity:1}to{opacity:0}}
-@keyframes vcr-base{from{opacity:.66;filter:blur(10px) saturate(.88) brightness(.58)}to{opacity:.22;filter:blur(14px) saturate(.82) brightness(.42)}}
-@keyframes vcr-camera{0%{transform:scale(1.015)}55%{transform:scale(1.035)}100%{transform:scale(1.055)}}
-@keyframes vcr-halo{0%{opacity:0;transform:translate(-50%,-50%) scale(.72)}38%{opacity:.85}100%{opacity:0;transform:translate(-50%,-50%) scale(1.34)}}
-@keyframes vcr-sheen{0%{left:-42%;opacity:0}18%{opacity:.8}72%{opacity:.42}100%{left:123%;opacity:0}}
-@keyframes vcr-spark{0%,100%{opacity:0;transform:translate(-50%,-50%) scale(.18) rotate(0)}38%{opacity:1;transform:translate(-50%,-50%) scale(1.35) rotate(24deg)}70%{opacity:.66}}
-@keyframes vcr-progress{0%{opacity:0;left:32.2%}12%{opacity:1}88%{opacity:1}100%{opacity:0;left:63.4%}}
-@keyframes vcr-flash{0%{opacity:0;transform:translate(-50%,-50%) scale(.1)}35%{opacity:.95}100%{opacity:0;transform:translate(-50%,-50%) scale(82)}}
+
+.velvet-crystal-launch__glow{
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255, 210, 200, 0.18), transparent 18%),
+    radial-gradient(circle at 50% 72%, rgba(255, 133, 173, 0.10), transparent 20%);
+  mix-blend-mode:screen;
+  opacity:.88;
+  animation:vcr-glow 1.9s ease-in-out infinite alternate;
+}
+
+.velvet-crystal-launch__sheen{
+  inset:-22% -45%;
+  background:linear-gradient(112deg, transparent 42%, rgba(255,255,255,.06) 48%, rgba(255,240,246,.24) 50%, rgba(255,255,255,.06) 52%, transparent 58%);
+  mix-blend-mode:screen;
+  filter:blur(8px);
+  opacity:.58;
+  transform:translateX(-45%) rotate(5deg);
+  animation:vcr-sheen 1.2s cubic-bezier(.18,.68,.22,1) .72s forwards;
+}
+
+@keyframes vcr-base{
+  0%{opacity:0;transform:scale(1.075)}
+  16%{opacity:1}
+  100%{opacity:1;transform:scale(1.018)}
+}
+@keyframes vcr-glow{from{opacity:.56}to{opacity:.92}}
+@keyframes vcr-sheen{0%{transform:translateX(-45%) rotate(5deg);opacity:0}20%{opacity:.52}100%{transform:translateX(52%) rotate(5deg);opacity:0}}
 @keyframes vcr-shell-out{to{opacity:0;visibility:hidden;transform:scale(1.012)}}
 
 @media (prefers-reduced-motion:reduce){
-  .velvet-crystal-launch *{animation-duration:.01ms!important;animation-delay:0ms!important}
-  .velvet-crystal-launch{animation:vcr-shell-out .2s ease 1.2s forwards!important}
-  .velvet-crystal-launch__hero{opacity:1!important}
-  .velvet-crystal-launch__fragment{display:none!important}
+  .velvet-crystal-launch,
+  .velvet-crystal-launch__base,
+  .velvet-crystal-launch__glow,
+  .velvet-crystal-launch__sheen{animation-duration:.01ms!important;animation-delay:0ms!important}
+  .velvet-crystal-launch{animation:vcr-shell-out .2s ease 1.1s forwards!important}
+  .velvet-crystal-launch__base{opacity:1!important;transform:none!important}
 }
