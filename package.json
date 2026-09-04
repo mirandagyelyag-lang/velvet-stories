@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.15.7",
+  "version": "3.15.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -52,7 +52,8 @@
     "verify:v3153": "node scripts/verify-v3153-portal-launch.mjs",
     "verify:v3154": "node scripts/verify-v3154-living-portal.mjs",
     "verify:v3156": "node scripts/verify-v3156-portal-reframe.mjs",
-    "verify:v3157": "node scripts/verify-v3157-mirror-assembly.mjs"
+    "verify:v3157": "node scripts/verify-v3157-mirror-assembly.mjs",
+    "verify:v3158": "node scripts/verify-v3158-true-mirror.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

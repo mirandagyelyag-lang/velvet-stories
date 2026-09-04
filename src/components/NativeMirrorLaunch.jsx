@@ -1,65 +1,89 @@
 import { useEffect } from "react";
 import { setNativeLaunchFullscreen } from "../native/velvetNative";
 
-const fragments = [
-  { clip:"polygon(0 0,100% 10%,78% 100%,8% 76%)", x:"-52vw", y:"-26vh", r:"-62deg", d:".04s", w:"27%", h:"26%", l:"8%", t:"7%" },
-  { clip:"polygon(12% 0,100% 0,82% 86%,0 100%)", x:"48vw", y:"-32vh", r:"51deg", d:".12s", w:"24%", h:"31%", l:"39%", t:"3%" },
-  { clip:"polygon(0 12%,92% 0,100% 100%,18% 80%)", x:"56vw", y:"-4vh", r:"89deg", d:".20s", w:"25%", h:"28%", l:"67%", t:"14%" },
-  { clip:"polygon(4% 0,100% 16%,72% 100%,0 84%)", x:"-58vw", y:"5vh", r:"-97deg", d:".10s", w:"28%", h:"29%", l:"1%", t:"34%" },
-  { clip:"polygon(20% 0,100% 15%,86% 100%,0 80%)", x:"42vw", y:"8vh", r:"73deg", d:".28s", w:"25%", h:"27%", l:"71%", t:"40%" },
-  { clip:"polygon(0 8%,85% 0,100% 91%,16% 100%)", x:"-50vw", y:"39vh", r:"-41deg", d:".22s", w:"28%", h:"27%", l:"9%", t:"66%" },
-  { clip:"polygon(8% 0,100% 20%,88% 100%,0 74%)", x:"14vw", y:"51vh", r:"34deg", d:".34s", w:"26%", h:"28%", l:"40%", t:"69%" },
-  { clip:"polygon(0 20%,88% 0,100% 84%,24% 100%)", x:"55vw", y:"44vh", r:"101deg", d:".17s", w:"25%", h:"28%", l:"67%", t:"65%" },
-  { clip:"polygon(0 0,100% 18%,70% 100%,10% 82%)", x:"-36vw", y:"-2vh", r:"-132deg", d:".38s", w:"20%", h:"21%", l:"28%", t:"28%" },
-  { clip:"polygon(18% 0,100% 10%,86% 100%,0 76%)", x:"35vw", y:"-12vh", r:"118deg", d:".31s", w:"20%", h:"22%", l:"51%", t:"26%" },
-  { clip:"polygon(0 10%,90% 0,100% 100%,14% 82%)", x:"-34vw", y:"20vh", r:"-74deg", d:".42s", w:"21%", h:"22%", l:"28%", t:"50%" },
-  { clip:"polygon(12% 0,100% 18%,84% 100%,0 76%)", x:"38vw", y:"24vh", r:"66deg", d:".46s", w:"21%", h:"22%", l:"51%", t:"51%" },
+const shards = [
+  { points:"150,12 88,48 109,126 150,100", cls:"a", x:"-48vw", y:"-28vh", r:"-72deg", d:".02s" },
+  { points:"150,12 212,48 191,126 150,100", cls:"b", x:"46vw", y:"-30vh", r:"66deg", d:".08s" },
+  { points:"88,48 32,124 109,126", cls:"c", x:"-60vw", y:"-8vh", r:"-108deg", d:".14s" },
+  { points:"212,48 268,124 191,126", cls:"d", x:"58vw", y:"-6vh", r:"102deg", d:".18s" },
+  { points:"32,124 109,126 150,190 64,214", cls:"e", x:"-58vw", y:"12vh", r:"-86deg", d:".22s" },
+  { points:"268,124 191,126 150,190 236,214", cls:"f", x:"60vw", y:"10vh", r:"84deg", d:".26s" },
+  { points:"109,126 150,100 150,190", cls:"g", x:"-24vw", y:"-42vh", r:"-146deg", d:".30s" },
+  { points:"191,126 150,100 150,190", cls:"h", x:"28vw", y:"-42vh", r:"142deg", d:".34s" },
+  { points:"64,214 150,190 140,280 52,302", cls:"i", x:"-62vw", y:"30vh", r:"-58deg", d:".38s" },
+  { points:"236,214 150,190 160,280 248,302", cls:"j", x:"62vw", y:"28vh", r:"62deg", d:".42s" },
+  { points:"52,302 140,280 150,392 84,360", cls:"k", x:"-38vw", y:"54vh", r:"-122deg", d:".46s" },
+  { points:"248,302 160,280 150,392 216,360", cls:"l", x:"40vw", y:"52vh", r:"118deg", d:".50s" },
 ];
 
 export default function NativeMirrorLaunch() {
   useEffect(() => {
     setNativeLaunchFullscreen(true);
-    return () => { setNativeLaunchFullscreen(false); };
+    return () => setNativeLaunchFullscreen(false);
   }, []);
 
   return (
-    <main className="app-loading app-loading--native velvet-mirror" aria-label="Velvet is opening">
-      <div className="velvet-mirror__ambient" aria-hidden="true"><i/><i/><i/></div>
+    <main className="app-loading app-loading--native velvet-true-mirror" aria-label="Velvet is opening">
+      <div className="velvet-true-mirror__aurora" aria-hidden="true"><i/><i/></div>
 
-      <div className="velvet-mirror__stage" aria-hidden="true">
-        <div className="velvet-mirror__halo" />
-        <div className="velvet-mirror__fragments">
-          {fragments.map((f, index) => (
-            <i
-              key={index}
-              className={`velvet-mirror__shard velvet-mirror__shard--${index + 1}`}
-              style={{
-                "--clip": f.clip,
-                "--x": f.x,
-                "--y": f.y,
-                "--r": f.r,
-                "--delay": f.d,
-                "--w": f.w,
-                "--h": f.h,
-                "--l": f.l,
-                "--t": f.t,
-              }}
-            />
-          ))}
-        </div>
+      <div className="velvet-true-mirror__stage" aria-hidden="true">
+        <svg className="velvet-true-mirror__glass" viewBox="0 0 300 404" role="presentation">
+          <defs>
+            <linearGradient id="vmA" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#fff7fb" stopOpacity=".86"/>
+              <stop offset=".2" stopColor="#ffc4dc" stopOpacity=".34"/>
+              <stop offset=".52" stopColor="#711f47" stopOpacity=".54"/>
+              <stop offset=".72" stopColor="#f690bd" stopOpacity=".26"/>
+              <stop offset="1" stopColor="#25101d" stopOpacity=".82"/>
+            </linearGradient>
+            <linearGradient id="vmB" x1="1" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#f7f2f5" stopOpacity=".72"/>
+              <stop offset=".25" stopColor="#a44a75" stopOpacity=".34"/>
+              <stop offset=".55" stopColor="#351120" stopOpacity=".74"/>
+              <stop offset=".78" stopColor="#ffafd0" stopOpacity=".25"/>
+              <stop offset="1" stopColor="#fff" stopOpacity=".5"/>
+            </linearGradient>
+            <linearGradient id="vmC" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stopColor="#200b16" stopOpacity=".82"/>
+              <stop offset=".38" stopColor="#8a315e" stopOpacity=".42"/>
+              <stop offset=".62" stopColor="#ffd8e8" stopOpacity=".58"/>
+              <stop offset="1" stopColor="#401328" stopOpacity=".76"/>
+            </linearGradient>
+            <filter id="vmGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#ee6ba5" floodOpacity=".28"/>
+            </filter>
+          </defs>
 
-        <div className="velvet-mirror__monogram">
-          <span>V</span><span>S</span>
-        </div>
-        <div className="velvet-mirror__sweep" />
-        <div className="velvet-mirror__crack velvet-mirror__crack--a" />
-        <div className="velvet-mirror__crack velvet-mirror__crack--b" />
+          <path className="velvet-true-mirror__outline" d="M150 12 88 48 32 124 52 302 84 360 150 392 216 360 248 302 268 124 212 48Z"/>
+
+          <g className="velvet-true-mirror__shards" filter="url(#vmGlow)">
+            {shards.map((s, index) => (
+              <polygon
+                key={s.cls}
+                className={`velvet-true-mirror__shard velvet-true-mirror__shard--${s.cls}`}
+                points={s.points}
+                fill={`url(#${index % 3 === 0 ? "vmA" : index % 3 === 1 ? "vmB" : "vmC"})`}
+                style={{ "--x": s.x, "--y": s.y, "--r": s.r, "--d": s.d }}
+              />
+            ))}
+          </g>
+
+          <g className="velvet-true-mirror__cracks">
+            <path d="M150 100 109 126 64 214 140 280 84 360"/>
+            <path d="M150 100 191 126 236 214 160 280 216 360"/>
+            <path d="M32 124 109 126 150 190 191 126 268 124"/>
+            <path d="M52 302 140 280 150 190 160 280 248 302"/>
+          </g>
+        </svg>
+
+        <div className="velvet-true-mirror__vs">VS</div>
+        <div className="velvet-true-mirror__glint" />
+        <div className="velvet-true-mirror__star velvet-true-mirror__star--1">✦</div>
+        <div className="velvet-true-mirror__star velvet-true-mirror__star--2">✦</div>
       </div>
 
-      <div className="velvet-mirror__progress" aria-hidden="true">
-        <i/><i/><i/><i/><i/>
-      </div>
-      <div className="velvet-mirror__exit-flash" aria-hidden="true" />
+      <div className="velvet-true-mirror__dots" aria-hidden="true"><i/><i/><i/></div>
+      <div className="velvet-true-mirror__flash" aria-hidden="true" />
     </main>
   );
 }
