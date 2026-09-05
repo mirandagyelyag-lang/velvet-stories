@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const edge = read("supabase/functions/character-chat/index.ts");
@@ -34,7 +35,9 @@ check("readable replies fail soft after bounded protection", edge.includes("prot
 check("edge keeps live streaming and bounded model failover", edge.includes("streamGenerateContent?alt=sse") && edge.includes("const hedgeDelays = [0, 1200, 3200]") && edge.includes("cancelLosers"));
 check("no narrative fallback fabricates prose", !/function\s+\w*Fallback\s*\(/.test(edge));
 
-const syntax = spawnSync(process.execPath, ["--experimental-strip-types", "--check", new URL("../supabase/functions/character-chat/index.ts", import.meta.url).pathname], { encoding: "utf8" });
+const characterChatPath = fileURLToPath(new URL("../supabase/functions/character-chat/index.ts", import.meta.url));
+const syntax = spawnSync(process.execPath, ["--experimental-strip-types", "--check", characterChatPath], { encoding: "utf8" });
+if (syntax.status !== 0 && syntax.stderr) console.error(syntax.stderr.trim());
 check("character-chat TypeScript syntax is valid", syntax.status === 0);
 
 for (const result of checks) console.log(`${result.ok ? "PASS" : "FAIL"} ${result.name}`);
