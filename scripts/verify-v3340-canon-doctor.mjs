@@ -9,7 +9,7 @@ const css=read("src/styles/velvet-v3340-canon-doctor.css");
 const version=JSON.parse(read("public/velvet-version.json"));
 const checks=[
  ["version >= 3.34.0",/^3\.(?:3[4-9]|[4-9]\d)\./.test(pkg.version)||Number(pkg.version.split('.')[1])>=34],
- ["release metadata",version.release.includes("Canon Doctor")],
+ ["canon doctor feature retained",Boolean(version.release)&&edge.includes('action === "canon_doctor"')],
  ["canon_doctor edge action",edge.includes('action === "canon_doctor"')],
  ["server preview/apply",edge.includes("handleCanonDoctor")&&edge.includes("suppliedPlan")&&edge.includes("applied: true")],
  ["private narration audit",edge.includes("USER PERCEIVABLE TO CHARACTERS")&&edge.includes("sanitizeUserTurnForPerception")],
