@@ -1,6 +1,7 @@
-import { Activity, ArrowLeft, Bug, Check, Clipboard, Cpu, Database, LoaderCircle, RefreshCw, Smartphone, Trash2, Wifi, XCircle, Volume2, Wrench } from "lucide-react";
+import { Activity, ArrowLeft, Bug, Check, Clipboard, Cpu, Database, Fingerprint, LoaderCircle, RefreshCw, Smartphone, Trash2, Wifi, XCircle, Volume2, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { supabase } from "../services/supabase";
+import { useCharacters } from "../context/CharactersContext";
 import { VELVET_BUILD_TIME, VELVET_RELEASE, VELVET_VERSION } from "../config/version";
 import { formatBugReport } from "../utils/bugReporter";
 import { auditAmbienceTracks } from "../utils/ambienceQuality";
@@ -9,6 +10,7 @@ import { readGenerationMetrics, summarizeGenerationMetrics } from "../utils/velv
 import "../styles/diagnostics.css";
 
 export default function Diagnostics({ onBack }) {
+  const { characters = [] } = useCharacters();
   const [checks, setChecks] = useState(null);
   const [running, setRunning] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -18,6 +20,10 @@ export default function Diagnostics({ onBack }) {
   const [safeMode, setSafeMode] = useState(() => isSafeModeEnabled());
   const [audioAudit, setAudioAudit] = useState(null);
   const [audioAuditRunning, setAudioAuditRunning] = useState(false);
+  const [cloneSituation, setCloneSituation] = useState("I had a terrible day. I don't really want to talk about it.");
+  const [cloneSelected, setCloneSelected] = useState([]);
+  const [cloneRunning, setCloneRunning] = useState(false);
+  const [cloneResult, setCloneResult] = useState(null);
   const sessionStats = useMemo(readSessionStats, [checks]);
   const performanceRows = useMemo(() => readGenerationMetrics(), [checks]);
   const performanceSummary = useMemo(() => summarizeGenerationMetrics(performanceRows), [performanceRows]);
@@ -67,6 +73,31 @@ export default function Diagnostics({ onBack }) {
     next.durationMs = Date.now() - startedAt;
     setChecks(next);
     setRunning(false);
+  }
+
+  function toggleCloneCharacter(id) {
+    setCloneSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : current.length >= 5 ? current : [...current, id]);
+  }
+
+  async function runCloneLab() {
+    const chosenIds = cloneSelected.length >= 2 ? cloneSelected : characters.slice(0, Math.min(4, characters.length)).map((item) => item.id);
+    const chosen = characters.filter((item) => chosenIds.includes(item.id)).slice(0, 5);
+    if (chosen.length < 2) {
+      setCloneResult({ error: "Create or choose at least two characters first." });
+      return;
+    }
+    setCloneRunning(true);
+    setCloneResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("character-chat", { body: { action: "character_clone_lab", characters: chosen, situation: cloneSituation } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setCloneResult(data || { error: "Clone Lab returned no result." });
+    } catch (error) {
+      setCloneResult({ error: normalizeInvokeError(error) });
+    } finally {
+      setCloneRunning(false);
+    }
   }
 
   async function runAudioAudit() {
@@ -126,6 +157,13 @@ export default function Diagnostics({ onBack }) {
     <section className="diagnostics-card"><header><Activity size={18}/><div><h2>Live checks</h2><p>The normal check does not spend a Gemini generation. “Test AI too” sends one tiny diagnostic request.</p></div></header>
       <div className="diagnostics-actions"><button onClick={()=>runChecks(false)} disabled={running}>{running?<LoaderCircle className="spin" size={16}/>:<RefreshCw size={16}/>}Run app checks</button><button onClick={()=>runChecks(true)} disabled={running}><Cpu size={16}/>Test AI too</button></div>
       {checks && <div className="diagnostics-status-list"><Status icon={Check} label="App version" data={checks.version}/><Status icon={Wifi} label="Browser/network" data={checks.browser}/><Status icon={Activity} label="Hosting / Vercel" data={checks.hosting}/><Status icon={Database} label="Supabase session" data={checks.supabase}/><Status icon={Activity} label="Edge Function" data={checks.edge}/><Status icon={Cpu} label="Gemini" data={checks.ai}/><Status icon={Smartphone} label="PWA / cache" data={checks.pwa}/><Status icon={Volume2} label="Audio engine" data={checks.audio}/>{checks.models && <div className="diagnostics-models"><small>Configured models</small><code>{[checks.models.primary, checks.models.fallback, checks.models.emergency].filter(Boolean).join(" → ") || "Unknown"}</code></div>}</div>}
+    </section>
+
+    <section className="diagnostics-card diagnostics-card--clone"><header><Fingerprint size={18}/><div><h2>Character Clone Lab</h2><p>Give several characters the exact same line. Velvet checks whether their reaction logic is actually distinguishable, not just their vocabulary.</p></div></header>
+      <label className="clone-lab-situation"><span>Same situation for everyone</span><textarea rows="3" maxLength="700" value={cloneSituation} onChange={(event)=>setCloneSituation(event.target.value)} /></label>
+      <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=cloneSelected.includes(character.id); return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>toggleCloneCharacter(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
+      <div className="diagnostics-actions"><button onClick={runCloneLab} disabled={cloneRunning || characters.length < 2}>{cloneRunning ? <LoaderCircle className="spin" size={16}/> : <Fingerprint size={16}/>}Run blind clone test</button><span className="clone-lab-hint">Choose 2-5, or leave none selected to test your first saved characters.</span></div>
+      {cloneResult && <div className="clone-lab-result">{cloneResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{cloneResult.error}</span></div> : <><div className="clone-lab-score"><strong>{cloneResult.score || 0}<small>/100</small></strong><div><b>{Number(cloneResult.score || 0) >= 80 ? "Distinct" : Number(cloneResult.score || 0) >= 60 ? "Some overlap" : "Clone risk"}</b><span>{cloneResult.verdict || "Blind test complete."}</span></div></div>{Array.isArray(cloneResult.collisions) && cloneResult.collisions.length > 0 && <div className="clone-lab-collisions"><small>Shared patterns detected</small>{cloneResult.collisions.map((item,index)=><span key={`${item}-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples">{(cloneResult.samples || []).map((sample)=><article key={sample.name}><header><strong>{sample.name}</strong><small>{sample.tactic}</small></header><p>{sample.reply}</p>{sample.whyDistinct && <em>{sample.whyDistinct}</em>}</article>)}</div></>}</div>}
     </section>
 
     <section className="diagnostics-card"><header><Cpu size={18}/><div><h2>Last AI activity</h2><p>Local session counters help separate a quota problem from a UI problem.</p></div></header><div className="diagnostics-grid"><Metric label="Last successful AI request" value={formatActivityTime(sessionStats.lastSuccessAt)}/><Metric label="Last model" value={sessionStats.lastModel || "None yet"}/><Metric label="Repairs" value={String(sessionStats.repairs)}/><Metric label="Last error" value={sessionStats.lastError || "None"}/><Metric label="Last error time" value={formatActivityTime(sessionStats.lastErrorAt)}/><Metric label="First reply text" value={sessionStats.firstTokenMs ? `${sessionStats.firstTokenMs} ms` : "—"}/><Metric label="Full response" value={sessionStats.lastDurationMs ? `${sessionStats.lastDurationMs} ms` : "—"}/></div></section>

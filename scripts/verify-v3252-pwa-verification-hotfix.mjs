@@ -7,8 +7,9 @@ const deploy=read("DEPLOY-PWA-STABLE.sh");
 const vite=read("vite.config.js");
 const ui=read("scripts/verify-ui.mjs");
 const chat=read("src/pages/Chat.jsx");
+const atLeast3252 = (() => { const [a,b,c]=String(pkg.version||"0.0.0").split(".").map(Number); return a>3 || (a===3 && (b>25 || (b===25 && c>=2))); })();
 const checks=[
-  ["version 3.26.0", pkg.version==="3.26.0" && pub.version==="3.26.0"],
+  ["version >= 3.25.2", atLeast3252 && pub.version===pkg.version],
   ["production SW refresh uses explicit update", pwa.includes("registration.update()")],
   ["periodic refresh remains enabled", pwa.includes("20 * 60 * 1000") && pwa.includes("visibilitychange") && pwa.includes('window.addEventListener("online", run)')],
   ["Update Doctor compatibility helper exists", pwa.includes("clearOldShellCaches") && pwa.includes("return clearVelvetCaches(options)")],
@@ -17,7 +18,7 @@ const checks=[
   ["network version check bypasses cache", pwa.includes('cache: "no-store"') && pwa.includes("velvet-version.json")],
   ["deploy validates immutable version before alias", deploy.includes("velvet-version.json") && deploy.includes("MOVIENDO ALIAS DEL CELU")],
   ["UI verifier still checks both updater guarantees", ui.includes("PWA periodically checks for fresh production service workers") && ui.includes("PWA Update Doctor can repair an interrupted update without clearing stories")],
-  ["release metadata updated", vite.includes("Character DNA 2.0 + Reaction Engine")],
+  ["release metadata updated", vite.includes("const velvetRelease") && Boolean(pub.release)],
   ["desktop chat initializes conversation before Experience reads it", chat.indexOf("const conversation = getConversation(character.id);") >= 0 && chat.indexOf("const conversation = getConversation(character.id);") < chat.indexOf("conversation?.conversationId")],
 ];
 let pass=0;

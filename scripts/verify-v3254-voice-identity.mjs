@@ -2,8 +2,9 @@ import fs from 'node:fs';
 const edge = fs.readFileSync('supabase/functions/character-chat/index.ts','utf8');
 const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
 const pub = JSON.parse(fs.readFileSync('public/velvet-version.json','utf8'));
+const atLeast3254 = (() => { const [a,b,c]=String(pkg.version||'0.0.0').split('.').map(Number); return a>3 || (a===3 && (b>25 || (b===25 && c>=4))); })();
 const checks = [
-  ['version 3.26.0', pkg.version === '3.26.0' && pub.version === '3.26.0'],
+  ['version >= 3.25.4', atLeast3254 && pub.version === pkg.version],
   ['blind voice test', edge.includes('BLIND VOICE TEST:')],
   ['plain question rule', edge.includes('PLAIN-QUESTION RULE:')],
   ['character-specific tactic', edge.includes('CHARACTER-SPECIFIC SOCIAL TACTIC:')],

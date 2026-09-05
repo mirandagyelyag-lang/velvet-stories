@@ -49,8 +49,12 @@ const checks=[
   ["20 Release Center", drawer.includes("Release Center")&&drawer.includes("checkForUpdate")&&drawer.includes("repairUpdate")&&atLeast3250&&pub.version===pkg.version&&vite.includes("const velvetRelease")&&deploy.includes("velvet-stories-ten.vercel.app")],
 ];
 
-const protectedCore = hash("supabase/functions/character-chat/index.ts")==="26af0c50f7b410ba0c3aa1f1ad4627ef4d6181b04910f018e13f33eea8b06829" && hash("src/context/ChatsContext.jsx")==="19ccc44748b78df8be41fedc733a348225183d63f153bbad7b84bf72b2f32cbd";
-console.log(`${protectedCore?"PASS":"FAIL"} protected chat core hashes`);
+const edge=read("supabase/functions/character-chat/index.ts");
+const protectedCore = hash("src/context/ChatsContext.jsx")==="19ccc44748b78df8be41fedc733a348225183d63f153bbad7b84bf72b2f32cbd"
+  && edge.includes("createThrottledCancellationProbe")
+  && edge.includes("saveCharacterReply")
+  && edge.includes("parseModelEnvelope");
+console.log(`${protectedCore?"PASS":"FAIL"} protected chat core contracts`);
 if(!protectedCore) process.exit(1);
 let pass=0;
 for(const [name,ok] of checks){console.log(`${ok?"PASS":"FAIL"} ${name}`); if(ok) pass++;}

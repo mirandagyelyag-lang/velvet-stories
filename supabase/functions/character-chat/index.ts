@@ -170,6 +170,10 @@ Deno.serve(async (request) => {
       return await handleCharacterLearningRoom({ apiKey, draft: body?.draft, situation: body?.situation });
     }
 
+    if (action === "character_clone_lab") {
+      return await handleCharacterCloneLab({ apiKey, characters: body?.characters, situation: body?.situation });
+    }
+
     if (action === "instant_story") {
       return await handleInstantStory({ apiKey, draft: body?.draft, idea: body?.idea });
     }
@@ -269,6 +273,7 @@ Deno.serve(async (request) => {
       storyConflicts: loaded.storyConflicts,
       storyMilestones: loaded.storyMilestones,
       recentMessages: messages.slice(-12),
+      memories: selectedMemories,
       intelligenceState: openingRegeneration ? {} : (loaded.conversation.intelligence_state || {}),
       developmentState,
       relationshipState: openingRegeneration ? {} : (loaded.conversation.relationship_state || {}),
@@ -372,7 +377,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "3.22.1",
+    version: "3.27.0",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -571,6 +576,18 @@ async function handleCharacterLearningRoom({ apiKey, draft, situation }) {
     } catch (error) { lastError=getErrorMessage(error); }
   }
   throw new Error(lastError);
+}
+
+async function handleCharacterCloneLab({ apiKey, characters, situation }) {
+  const cast = (Array.isArray(characters) ? characters : []).filter((item)=>item && typeof item === "object").slice(0,5).map((item)=>({
+    name: cleanPromptValue(item.name,120), role: cleanPromptValue(item.role,180), personality: cleanPromptValue(item.personality,1200), relationship: cleanPromptValue(item.relationship,900), world: cleanPromptValue(item.world || item.scenario,700), core_motivation: cleanPromptValue(item.core_motivation || item.coreMotivation,500), emotional_defense: cleanPromptValue(item.emotional_defense || item.emotionalDefense,500), speech_style: cleanPromptValue(item.speech_style || item.speechStyle,700), voice_vocabulary: cleanPromptValue(item.voice_vocabulary || item.voiceVocabulary,600), humor_style: cleanPromptValue(item.humor_style || item.humorStyle,500), conflict_style: cleanPromptValue(item.conflict_style || item.conflictStyle,500), affection_style: cleanPromptValue(item.affection_style || item.affectionStyle,500),
+  })).filter((item)=>item.name);
+  if (cast.length < 2) return json({ error: "Choose at least two characters for Clone Lab." }, 400);
+  const prompt = `Run a blind character distinctiveness test. Every fictional character receives the SAME user line. Generate one compact in-character response per character, then judge whether the response LOGIC is distinguishable even with the names removed. Distinctiveness must come from priorities, defenses, mistakes, emotional timing, social tactic and sentence mechanics, not merely slang. Do not make everyone witty, sarcastic, therapeutic, flirtatious, emotionally fluent or available. Return valid JSON only with: score (0-100), verdict, collisions (array of short shared-pattern warnings), and samples (array with name, tactic, reply, whyDistinct). Keep each reply under 70 words.\n\nSAME USER LINE\n${cleanPromptValue(situation || "I had a terrible day. I don't really want to talk about it.",700)}\n\nCHARACTERS\n${JSON.stringify(cast).slice(0,18000)}`;
+  const result = await requestCharacterJson({ apiKey, prompt, maxOutputTokens:2400, purpose:"character-clone-lab", deadlineMs:28000 });
+  const samples=(Array.isArray(result?.samples)?result.samples:[]).slice(0,cast.length).map((item)=>({ name:cleanPromptValue(item?.name,120), tactic:cleanPromptValue(item?.tactic,220), reply:cleanPromptValue(item?.reply,900), whyDistinct:cleanPromptValue(item?.whyDistinct,360) })).filter((item)=>item.name&&item.reply);
+  const collisions=(Array.isArray(result?.collisions)?result.collisions:[]).slice(0,8).map((item)=>cleanPromptValue(item,260)).filter(Boolean);
+  return json({ score:Math.max(0,Math.min(100,Number(result?.score)||0)), verdict:cleanPromptValue(result?.verdict,500), collisions, samples });
 }
 
 async function handleInstantStory({ apiKey, draft, idea }) {
@@ -849,6 +866,23 @@ function buildNarrativePromptV3({
     `Avoid repeating: ${clean(reactionEngine.avoidTactic, 160)}`,
     `Recent tactics: ${clean(Array.isArray(reactionEngine.recentTactics) ? reactionEngine.recentTactics.join(" → ") : "none", 320)}`,
   ].join("\n");
+  const autonomyText = [
+    `Agenda: ${clean(turnContract?.autonomousLifeEngine?.currentAgenda, 420)}`,
+    `Outside obligation: ${clean(turnContract?.autonomousLifeEngine?.outsideObligation, 420)}`,
+    `Private goal: ${clean(turnContract?.autonomousLifeEngine?.privateGoal, 420)}`,
+    `Time pressure: ${clean(turnContract?.autonomousLifeEngine?.timePressure, 260)}`,
+  ].join("\n");
+  const consequenceText = [
+    `Strongest unresolved consequence: ${clean(turnContract?.consequenceEngine?.strongestConsequence, 260)}`,
+    `Carry forward: ${clean(turnContract?.consequenceEngine?.carryForward, 520)}`,
+    `Residue: ${clean(Array.isArray(turnContract?.consequenceEngine?.activeResidue) ? turnContract.consequenceEngine.activeResidue.join(" | ") : "none", 700)}`,
+  ].join("\n");
+  const relationshipExpectationText = [
+    `Contact: ${clean(turnContract?.relationshipExpectations?.contact, 420)}`,
+    `Closeness: ${clean(turnContract?.relationshipExpectations?.closeness, 420)}`,
+    `Conflict: ${clean(turnContract?.relationshipExpectations?.conflict, 420)}`,
+    `Repair need: ${clean(turnContract?.relationshipExpectations?.repairNeed, 420)}`,
+  ].join("\n");
   const derivedContext = JSON.stringify({
     recap: cleanPromptValue(conversation.story_recap || conversation.summary || "", 650),
     scene: conversation.scene_state || {},
@@ -951,6 +985,16 @@ VOICE + QUALITY
 - If the user reveals a bad day or pain during conflict, let it land in one small character-specific beat. No counseling speech unless asked.
 
 DEEP CHARACTER ENGINE
+- AUTONOMOUS CHARACTER ENGINE 3.0: ${character.name} has a private agenda, current mood, outside obligations, unfinished business, plans and relationships that can continue without ${userIdentity.name}. Their next choice should emerge from the collision between the live user turn and that independent life.
+- CONSEQUENCE ENGINE 3.0: meaningful choices leave practical, social or emotional residue. A new scene, apology, joke, or romantic beat cannot zero out trust damage, awkwardness, missed obligations, changed access, reputation fallout or an unfinished promise.
+- SCENE RHYTHM ENGINE 3.0: scenes can OPEN, DEVELOP, TURN, LAND and CLOSE. Do not keep a scene alive with another question after its purpose has landed. Let people leave, get interrupted by real obligations, run out of time, or simply stop talking.
+- SELECTIVE MEMORY 3.0: remember asymmetrically. High-salience events alter later behavior; trivial details may fade. Memory should feel human, not like a database demonstrating recall.
+- RELATIONSHIP EXPECTATIONS 3.0: this character forms expectations about contact, closeness, conflict and repair based on history. Expectations can be disappointed or mistaken but NEVER become invented facts about the user's feelings.
+- HUMAN IMPERFECTION 3.0: allow character-specific mistakes, bad timing, incomplete answers, small forgetfulness, defensiveness and plausible misunderstandings. Do not optimize every person into perfect emotional intelligence.
+- NPC AUTONOMY 3.0: supporting characters keep goals, loyalties, grudges, friendships, romances and obligations that do not exist merely to affect the protagonist.
+- ROMANCE PROGRESSION 3.0: romance is a state machine driven by evidence and changed expectations, not by how intense the prose feels. Earn the next relational privilege before using it as normal.
+- LONG-TERM CHARACTER ARCS 3.0: durable growth requires repeated evidence across scenes. Flaws may soften unevenly, and stress may revive an older defense in a changed form.
+- CLONE LAB RULE: the response must survive a blind speaker test. If another character could make the same decision with the same emotional logic, change the underlying choice, not the thesaurus.
 - INTERNAL STATE IS CONTINUOUS, NOT A COSTUME CHANGE: current mood, guardedness, trust direction, stress and vulnerability alter timing and choices without replacing the core personality. A bad mood does not create a new person; a good moment does not erase a flaw.
 - RELATIONSHIP FINGERPRINT: let this specific relationship develop private rhythms that would not automatically exist with someone else: recurring jokes, tolerated silences, sore spots, rituals, forms of address, repair habits, shared places and tiny expectations. Never manufacture one merely to make the relationship seem special; earn it on-page and reuse it lightly.
 - MEMORY MUST CHANGE BEHAVIOR, NOT BECOME EXPOSITION: when a relevant remembered boundary, preference, promise, hurt or shared event matters, let it alter a choice, timing, access, wording or restraint. Do not announce “I remember” unless a real person would. Tentative memory never overrides the latest visible turn.
@@ -1068,6 +1112,49 @@ REACTION ENGINE — THIS TURN
 ${reactionText}
 Rule: ${clean(reactionEngine.instruction || "Use this character's own defense, priorities and likely mistakes to choose the reaction. Do not clone another character's emotional logic.", 700)}
 
+AUTONOMOUS LIFE — THIS PERSON EXISTS OFF-SCREEN
+${autonomyText}
+Rule: ${clean(turnContract?.autonomousLifeEngine?.instruction || "Keep an independent agenda and let obligations compete with the relationship.", 720)}
+
+CONSEQUENCE ENGINE — NOTHING IMPORTANT MAGICALLY RESETS
+${consequenceText}
+Rule: ${clean(turnContract?.consequenceEngine?.instruction || "Carry unresolved fallout until it is repaired on-page.", 720)}
+
+SCENE RHYTHM — ${clean(turnContract?.sceneRhythmEngine?.phase || "develop", 60).toUpperCase()}
+Target: ${clean(turnContract?.sceneRhythmEngine?.target, 420)}
+Rule: ${clean(turnContract?.sceneRhythmEngine?.instruction, 720)}
+
+RELATIONSHIP EXPECTATIONS — CHARACTER-OWNED, NOT USER FACTS
+${relationshipExpectationText}
+Rule: ${clean(turnContract?.relationshipExpectations?.instruction, 720)}
+
+SELECTIVE MEMORY
+High salience: ${clean(Array.isArray(turnContract?.selectiveMemoryEngine?.highSalience) ? turnContract.selectiveMemoryEngine.highSalience.join(" | ") : "none", 760)}
+Current focus: ${clean(turnContract?.selectiveMemoryEngine?.currentFocus, 320)}
+Rule: ${clean(turnContract?.selectiveMemoryEngine?.instruction, 720)}
+
+ROMANCE PROGRESSION
+Phase: ${clean(turnContract?.romanceProgressionEngine?.phase, 120)}
+Earned signals: ${clean(Array.isArray(turnContract?.romanceProgressionEngine?.earnedSignals) ? turnContract.romanceProgressionEngine.earnedSignals.join(" | ") : "none", 520)}
+Blocked by: ${clean(Array.isArray(turnContract?.romanceProgressionEngine?.blockedBy) ? turnContract.romanceProgressionEngine.blockedBy.join(" | ") : "none", 520)}
+Next earned beat: ${clean(turnContract?.romanceProgressionEngine?.nextEarnedBeat, 420)}
+Rule: ${clean(turnContract?.romanceProgressionEngine?.instruction, 760)}
+
+LONG-TERM ARC
+Current: ${clean(turnContract?.longTermArcEngine?.currentArc, 420)}
+Next pressure: ${clean(turnContract?.longTermArcEngine?.nextPressure, 420)}
+Change in progress: ${clean(turnContract?.longTermArcEngine?.changeInProgress, 420)}
+Relapse risk: ${clean(turnContract?.longTermArcEngine?.relapseRisk, 420)}
+Rule: ${clean(turnContract?.longTermArcEngine?.instruction, 760)}
+
+NPC AUTONOMY
+${clean(JSON.stringify(turnContract?.npcAutonomyEngine?.active || []).slice(0,1800), 1800)}
+Rule: ${clean(turnContract?.npcAutonomyEngine?.instruction, 720)}
+
+CLONE PROTECTION
+Signature: ${clean(turnContract?.cloneProtection?.identitySignature, 720)}
+Rule: ${clean(turnContract?.cloneProtection?.instruction, 760)}
+
 CHARACTER
 ${character.name} — ${clean(character.role, 150)}
 Personality: ${clean(character.personality, 760)}
@@ -1128,9 +1215,9 @@ HIDDEN STATE OUTPUT
 - world_consequence records only practical/social fallout caused by a visible or already-canonical event.
 - offscreen_contact may be recorded only if the reply establishes it or it logically follows a canonical plan/relationship; otherwise record=false.
 - post_turn_reflection is invisible bookkeeping: changed, pending, avoid_repeat, affected and one plausible_consequence. Record only what this reply actually caused; do not force the plausible consequence later.
-- human_behavior_update is persistent HUMAN BEHAVIOR state. Update only fields evidenced by canon or this reply. rhythm_mode/detail_level describe this turn; humor_profile, initiative_profile and character_dna change rarely. argument_lesson/physical_boundary_state/romantic_expression may evolve from repeated or high-significance evidence. persistent_location and possession_updates must be physically grounded. social_reputation_update and information_flow must identify a plausible observer/source. relationship_self_view is the character's subjective view only; never fill relationship_user_view with invented user feelings. autonomous_plan and between_scene_motion may advance ordinary independent life, never off-screen user choices or major unsupported plot. memory_compression_anchor names what must survive long-story compression. naturalness_score is 0-100 and should be >=72 after silent self-repair.
-- presence_update is persistent PRESENCE ENGINE state. Keep it compact. Fields: presence_action, conversation_mode, chemistry_fingerprint, jealousy_mode, scene_memory, relationship_milestone, unfinished_business_add, unfinished_business_resolve, texting_mode, supporting_cast_dynamics, social_consequence, emotional_residue, romantic_specificity, flirt_mode, bad_day_state, micro_conflict, voice_drift, narrative_camera, silence_mode, private_character_journal, director_check. Never invent user feelings. relationship_milestone/social_consequence use record=false unless a visible or canonical cause earned them. scene_memory records facts, not prose. flirt_mode is off/low/natural and should be off when romance does not belong in the beat. private_character_journal belongs only to the character and must never appear in reply.
-- quality_check is invisible. Check subtext, structural repetition, scene momentum, conversational rhythm, nonverbal restraint, romantic specificity, decision consistency, physical boundaries, social information flow, adaptive detail, character DNA and preserved contradictions in addition to canon/voice. Set drift_risk to "none" when identity is stable; naturalness_score must be 0-100. If any boolean would be false or naturalness_score < 72, silently fix the reply before returning the JSON.
+- human_behavior_update is persistent HUMAN BEHAVIOR state. Update only fields evidenced by canon or this reply. rhythm_mode/detail_level describe this turn; humor_profile, initiative_profile and character_dna change rarely. argument_lesson/physical_boundary_state/romantic_expression may evolve from repeated or high-significance evidence. persistent_location and possession_updates must be physically grounded. social_reputation_update and information_flow must identify a plausible observer/source. relationship_self_view is the character's subjective view only; never fill relationship_user_view with invented user feelings. autonomous_plan and between_scene_motion may advance ordinary independent life, never off-screen user choices or major unsupported plot. v3.27 persistent fields may include autonomy_agenda, outside_obligation, expectation_contact, expectation_closeness, expectation_conflict, expectation_repair, imperfection_pattern, imperfection_correction, selective_memory_focus, romance_progression, long_term_arc, long_term_arc_pressure, arc_change_in_progress and arc_relapse_risk. These fields belong to the CHARACTER, not the user, and change only from repeated or high-significance evidence. memory_compression_anchor names what must survive long-story compression. naturalness_score is 0-100 and should be >=72 after silent self-repair.
+- presence_update is persistent PRESENCE ENGINE state. Keep it compact. Fields: presence_action, conversation_mode, chemistry_fingerprint, jealousy_mode, scene_memory, relationship_milestone, unfinished_business_add, unfinished_business_resolve, texting_mode, supporting_cast_dynamics, social_consequence, emotional_residue, romantic_specificity, flirt_mode, bad_day_state, micro_conflict, voice_drift, narrative_camera, silence_mode, private_character_journal, director_check, scene_phase, consequence_residue, npc_autonomy, relationship_expectation_shift. Never invent user feelings. relationship_milestone/social_consequence use record=false unless a visible or canonical cause earned them. scene_memory records facts, not prose. scene_phase is open/develop/turn/land/close and may close naturally. consequence_residue names only fallout already caused. npc_autonomy records compact off-screen goals for established NPCs, never a fabricated major event. flirt_mode is off/low/natural and should be off when romance does not belong in the beat. private_character_journal belongs only to the character and must never appear in reply.
+- quality_check is invisible. Check subtext, structural repetition, scene momentum, conversational rhythm, nonverbal restraint, romantic specificity, decision consistency, physical boundaries, social information flow, adaptive detail, character DNA, autonomy, consequence carry-forward, selective-memory salience, relationship expectations, human imperfection, NPC autonomy, romance progression, long-term arc continuity, clone distinctiveness and preserved contradictions in addition to canon/voice. Optional booleans autonomy_ok, consequence_ok, memory_salience_ok, expectation_ok, imperfection_ok, npc_autonomy_ok, romance_progression_ok, arc_ok, scene_rhythm_ok and clone_ok must never be false in the final draft. Set drift_risk to "none" when identity is stable; naturalness_score must be 0-100. If any boolean would be false or naturalness_score < 72, silently fix the reply before returning the JSON.
 - story_drive.intensity_target is 1-10 and may DECREASE. season_signal is true only for a durable era change, never one emotional beat. scene_momentum is hold/turn/close. compression_reason is empty unless routine time can safely be compressed without skipping a live user choice.
 
 OUTPUT
@@ -1194,6 +1281,10 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     romantic_social_gravity_missing: "This profile explicitly establishes a heartthrob/heartbreaker/highly desired character in a public social scene, but the world treats them as romantically invisible. Add one organic compatible admirer interaction with unmistakable interest. Make it a real social beat, not background staring, and do not force the protagonist to feel jealous.",
     admirer_instantly_neutralized: "An admirer entered and was immediately ignored, rejected, humiliated, or removed solely to protect the central romance. Let the NPC participate and receive a profile-consistent response long enough to affect the scene.",
     profile_social_ecosystem_missing: "The character has a strong public identity, but the scene gives them generic or nonexistent attention. Add one organic NPC or world reaction whose type matches the actual source of reputation—racing, athletics, fame, wealth, leadership, beauty, desirability, notoriety, or another profile-established domain. Do not default every archetype to romantic flirting.",
+    autonomy_collapse: "Restore the character's independent agenda or obligation. Do not make them instantly available just to serve the romance or user request.",
+    consequence_reset: "Carry the unresolved consequence into this beat through access, trust, logistics, tone, reputation, or behavior. Do not reset the relationship to neutral.",
+    romance_phase_jump: "Pull the relationship back to its earned phase. Keep attraction if grounded, but remove unearned couple privileges, confession-level certainty, or replayed firsts.",
+    clone_logic_drift: "Change the underlying reaction logic—priority, defense, mistake, or tactic—until it is specific to this character rather than a generic Velvet response.",
   };
   const uniqueIssues = [...new Set(issues || [])];
   const directions = uniqueIssues.map((issue) => `- ${issue}: ${issueDirections[issue] || "Fix this continuity or naturalness failure while preserving the literal transcript."}`).join("\n");
@@ -4053,7 +4144,7 @@ function validateContinuityEnvelope(result = {}, options = {}) {
   }
   if (hasStructuralReplyLoop(result?.reply || "", options.recentCharacterReplies || [])) issues.push("structural_repetition_loop");
   const qc = result?.quality_check && typeof result.quality_check === "object" ? result.quality_check : {};
-  if ([qc.canon_ok, qc.user_control_ok, qc.physics_ok, qc.knowledge_ok, qc.voice_ok, qc.repetition_ok, qc.subtext_ok, qc.structure_repetition_ok, qc.scene_momentum_ok, qc.contradiction_ok, qc.rhythm_ok, qc.nonverbal_ok, qc.romantic_specificity_ok, qc.decision_consistency_ok, qc.boundary_ok, qc.social_information_ok, qc.adaptive_detail_ok, qc.dna_ok, qc.naturalness_ok].some((value) => value === false)) issues.push("model_self_check_failed");
+  if ([qc.canon_ok, qc.user_control_ok, qc.physics_ok, qc.knowledge_ok, qc.voice_ok, qc.repetition_ok, qc.subtext_ok, qc.structure_repetition_ok, qc.scene_momentum_ok, qc.contradiction_ok, qc.rhythm_ok, qc.nonverbal_ok, qc.romantic_specificity_ok, qc.decision_consistency_ok, qc.boundary_ok, qc.social_information_ok, qc.adaptive_detail_ok, qc.dna_ok, qc.naturalness_ok, qc.autonomy_ok, qc.consequence_ok, qc.memory_salience_ok, qc.expectation_ok, qc.imperfection_ok, qc.npc_autonomy_ok, qc.romance_progression_ok, qc.arc_ok, qc.scene_rhythm_ok, qc.clone_ok].some((value) => value === false)) issues.push("model_self_check_failed");
   if (Number.isFinite(Number(qc?.naturalness_score)) && Number(qc.naturalness_score) < 72) issues.push("naturalness_score_low");
   const driftRisk = normalizeText(qc?.drift_risk || "none");
   if (driftRisk && !/^(?:none|no|stable|low|minimal|ninguno|estable)$/.test(driftRisk)) issues.push("identity_drift_risk");
@@ -4197,6 +4288,11 @@ function applyIntelligenceContinuity(previous: any = {}, update: any = {}, mindU
     detail_level: ["sparse","balanced","atmospheric"].includes(String(humanBehaviorUpdate?.detail_level)) ? String(humanBehaviorUpdate.detail_level) : (priorBehavior?.detail_level || "balanced"),
     naturalness_score: Math.max(0, Math.min(100, Number(humanBehaviorUpdate?.naturalness_score) || Number(priorBehavior?.naturalness_score) || 80)),
     naturalness_notes: keep("naturalness_notes", 300),
+    autonomy_agenda: keep("autonomy_agenda", 420), outside_obligation: keep("outside_obligation", 420),
+    expectation_contact: keep("expectation_contact", 360), expectation_closeness: keep("expectation_closeness", 360), expectation_conflict: keep("expectation_conflict", 360), expectation_repair: keep("expectation_repair", 360),
+    imperfection_pattern: keep("imperfection_pattern", 360), imperfection_correction: keep("imperfection_correction", 360),
+    selective_memory_focus: keep("selective_memory_focus", 420), romance_progression: keep("romance_progression", 360),
+    long_term_arc: keep("long_term_arc", 500), long_term_arc_pressure: keep("long_term_arc_pressure", 420), arc_change_in_progress: keep("arc_change_in_progress", 420), arc_relapse_risk: keep("arc_relapse_risk", 420),
   };
   const priorPresence = prior.presence_engine_state && typeof prior.presence_engine_state === "object" ? prior.presence_engine_state : {};
   const pkeep = (key: string, limit = 360) => cleanPromptValue(presenceUpdate?.[key], limit) || cleanPromptValue(priorPresence?.[key], limit);
@@ -4248,7 +4344,11 @@ function applyIntelligenceContinuity(previous: any = {}, update: any = {}, mindU
     voice_drift: pkeep("voice_drift", 320),
     narrative_camera: ["lean","balanced","close","orienting"].includes(String(presenceUpdate?.narrative_camera)) ? String(presenceUpdate.narrative_camera) : (priorPresence?.narrative_camera || "balanced"),
     silence_mode: pkeep("silence_mode", 280),
-    director_check: pkeep("director_check", 420),
+    director_check: pkeep("director_check", 500),
+    scene_phase: ["open","develop","turn","land","close"].includes(String(presenceUpdate?.scene_phase)) ? String(presenceUpdate.scene_phase) : (priorPresence?.scene_phase || "develop"),
+    consequence_residue: pkeep("consequence_residue", 520),
+    npc_autonomy: pkeep("npc_autonomy", 720),
+    relationship_expectation_shift: pkeep("relationship_expectation_shift", 420),
   };
   const possessionUpdates = Array.isArray(humanBehaviorUpdate?.possession_updates) ? humanBehaviorUpdate.possession_updates.slice(0, 5).map((item:any)=>({
     object: cleanPromptValue(item?.object, 100), holder: cleanPromptValue(item?.holder, 100), location: cleanPromptValue(item?.location, 180), state: cleanPromptValue(item?.state, 180),
@@ -4431,7 +4531,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Use Presence Engine 2.0: natural conversation, relationship-specific chemistry, real silence, emotional residue and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 450 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.27 AUTONOMOUS LIFE: the character has an independent agenda, obligations, mood and relationships; unresolved consequences must persist; scenes may land or close; memory is selective; relationship expectations belong to the character and may be wrong; bounded human mistakes are allowed; NPCs have independent goals; romance progresses only through earned evidence; long-term growth is slow and nonlinear; run a blind clone test on the underlying reaction before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           isCancelled,
@@ -4755,6 +4855,12 @@ async function persistStoryDynamics({ supabase, userId, conversationId, characte
     const progress = Math.min(100, Number(arc.progress || 0) + increment);
     const { error } = await supabase.from("story_arcs").update({ progress, status:progress>=100?"resolved":"active", updated_at:now }).eq("id",arc.id).eq("user_id",userId);
     if (error && error.code !== "42P01") console.warn("[character-chat] arc progression failed", { message:error.message });
+  }
+  if (!active.length && Boolean(timelineEvent?.record) && eventImportance >= 4 && ["relationship","conflict","promise","reveal","decision"].includes(kind)) {
+    const arcTitle = cleanPromptValue(`Long arc · ${title || kind}`, 140);
+    const arcRow = { user_id:userId, conversation_id:conversationId, title:arcTitle, summary:detail || `A durable ${kind} changed the character's normal baseline.`, kind:kind === "conflict" ? "conflict" : "relationship", status:"active", progress:5, stakes:detail || title, next_pressure:"Test whether the changed behavior survives ordinary life or pressure without forcing immediate escalation.", participants:[characterName], updated_at:now };
+    const { error } = await supabase.from("story_arcs").upsert(arcRow,{onConflict:"conversation_id,title",ignoreDuplicates:true});
+    if(error&&error.code!=="42P01") console.warn("[character-chat] long-term arc seed failed",{message:error.message});
   }
   const commitments = compactTextList(continuityUpdate?.commitments, 6, 260);
   for (const commitment of commitments) {
@@ -5398,6 +5504,15 @@ function memorySimilarity(left = "", right = "") {
   return overlap / Math.max(1, Math.min(a.size, b.size));
 }
 
+function isLowSalienceAutomaticMemory(content = "", category = "fact", importance = 1, reason = "") {
+  if (["boundary","promise","conflict"].includes(String(category))) return false;
+  if (Number(importance) >= 4) return false;
+  const combined = normalizeText(`${content} ${reason}`);
+  const significance = /\b(?:first|promise|promised|boundary|never|always|important|hurt|fight|conflict|secret|fear|trauma|preference|favorite|hate|loves?|milestone|changed|because of this|remember this|means a lot)\b/.test(combined);
+  if (significance) return false;
+  return /\b(?:weather|rain|sunny|temperature|shirt|jacket|shoes|coffee|water|lunch|breakfast|dinner|snack|bus|walked|walking|homework|class today|sat down|stood up|looked at|phone battery|table|chair)\b/.test(combined) || content.split(/\s+/).length < 5;
+}
+
 async function mergeAutomaticMemories({ supabase, userId, conversationId, characterId, memoryUpdates = [], sourceMessageId = "", sourceExcerpt = "" }) {
   const allowedCategories = new Set(["fact", "person", "relationship", "world", "event", "preference", "boundary", "promise", "conflict"]);
   const { data: existingRows, error: existingError } = await supabase.from("memories")
@@ -5416,6 +5531,7 @@ async function mergeAutomaticMemories({ supabase, userId, conversationId, charac
     const importance = Math.max(1, Math.min(5, Number(item?.importance) || 2));
     if (importance < 3 && !["boundary", "promise", "conflict"].includes(category)) continue;
     const whyRemembered = cleanPromptValue(item?.reason, 320) || "Useful continuity for later turns.";
+    if (isLowSalienceAutomaticMemory(content, category, importance, whyRemembered)) continue;
     const replaces = cleanPromptValue(item?.replaces, 500);
 
     if (replaces) {

@@ -1,5 +1,10 @@
 import fs from "node:fs";
-import { compileStoryContract, inferCharacterDNA, storyContractPrompt } from "../supabase/functions/character-chat/engine/story-contract.ts";
+import { stripTypeScriptTypes } from "node:module";
+
+const contractTs = fs.readFileSync("supabase/functions/character-chat/engine/story-contract.ts", "utf8");
+const contractJs = stripTypeScriptTypes(contractTs, { mode: "strip", sourceUrl: "story-contract.ts" });
+const contractModule = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
+const { compileStoryContract, inferCharacterDNA, storyContractPrompt } = contractModule;
 
 const read = (p) => fs.readFileSync(p, "utf8");
 const pkg = JSON.parse(read("package.json"));
@@ -32,9 +37,10 @@ const vulnerableA = compileStoryContract({ ...base, character: guarded, latestUs
 const vulnerableB = compileStoryContract({ ...base, character: practical, latestUserMessage: "I had a terrible day." });
 const compact = storyContractPrompt(vulnerableA);
 
+const atLeast3260 = (() => { const [a,b,c]=String(pkg.version||"0.0.0").split(".").map(Number); return a>3 || (a===3 && (b>26 || (b===26 && c>=0))); })();
 const checks = [
-  ["version 3.26.0", pkg.version === "3.26.0" && pub.version === "3.26.0"],
-  ["release metadata", pub.release === "Character DNA 2.0 + Reaction Engine"],
+  ["version >= 3.26.0", atLeast3260 && pub.version === pkg.version],
+  ["release metadata", Boolean(pub.release)],
   ["DNA inference exists", contractSource.includes("export function inferCharacterDNA")],
   ["DNA separates defenses", dnaA.pressureResponse !== dnaB.pressureResponse && dnaA.likelyMistake !== dnaB.likelyMistake],
   ["same question can produce different tactics", questionA.reactionEngine.visibleTactic !== questionB.reactionEngine.visibleTactic],

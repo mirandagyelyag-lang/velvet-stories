@@ -18,6 +18,7 @@ export type StoryContractInput = {
   storyConflicts?: Array<Record<string, unknown>>;
   storyMilestones?: Array<Record<string, unknown>>;
   recentMessages?: Array<Record<string, unknown>>;
+  memories?: Array<Record<string, unknown>>;
   opening?: boolean;
   intelligenceState?: Record<string, unknown>;
   developmentState?: Record<string, unknown>;
@@ -66,6 +67,72 @@ export type StoryContract = {
     visibleTactic: string;
     avoidTactic: string;
     recentTactics: string[];
+    instruction: string;
+  };
+  autonomousLifeEngine: {
+    currentAgenda: string;
+    outsideObligation: string;
+    privateGoal: string;
+    timePressure: string;
+    freedomToLeave: boolean;
+    initiative: string;
+    instruction: string;
+  };
+  consequenceEngine: {
+    activeResidue: string[];
+    strongestConsequence: string;
+    carryForward: string;
+    cannotReset: boolean;
+    instruction: string;
+  };
+  sceneRhythmEngine: {
+    phase: "open" | "develop" | "turn" | "land" | "close";
+    recentShape: string;
+    target: string;
+    closeAllowed: boolean;
+    instruction: string;
+  };
+  selectiveMemoryEngine: {
+    highSalience: string[];
+    lowSalience: string[];
+    currentFocus: string;
+    instruction: string;
+  };
+  relationshipExpectations: {
+    contact: string;
+    closeness: string;
+    conflict: string;
+    repairNeed: string;
+    baseline: string;
+    instruction: string;
+  };
+  humanImperfectionEngine: {
+    likelyMistake: string;
+    misunderstandingRisk: "low" | "medium" | "high";
+    correctionStyle: string;
+    instruction: string;
+  };
+  npcAutonomyEngine: {
+    active: Array<Record<string, unknown>>;
+    instruction: string;
+  };
+  romanceProgressionEngine: {
+    phase: string;
+    earnedSignals: string[];
+    blockedBy: string[];
+    nextEarnedBeat: string;
+    instruction: string;
+  };
+  longTermArcEngine: {
+    currentArc: string;
+    nextPressure: string;
+    changeInProgress: string;
+    relapseRisk: string;
+    instruction: string;
+  };
+  cloneProtection: {
+    identitySignature: string;
+    forbiddenSharedPatterns: string[];
     instruction: string;
   };
   supportingCast: Array<Record<string, unknown>>;
@@ -439,6 +506,142 @@ function buildReactionEngine(character: Record<string, unknown>, latestUserMessa
   };
 }
 
+function compactStateText(value: unknown, fallback = "") {
+  const v = text(value);
+  return v || fallback;
+}
+
+export function inferAutonomousLife(character: Record<string, unknown> = {}, intelligence: Record<string, unknown> = {}, dueEvents: Array<Record<string, unknown>> = [], activePlans: Array<Record<string, unknown>> = []) {
+  const behavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
+  const mind = intelligence.character_mind && typeof intelligence.character_mind === "object" ? intelligence.character_mind as Record<string, unknown> : {};
+  const role = text(character.role);
+  const world = text(character.world || character.scenario);
+  const currentAgenda = compactStateText(behavior.autonomy_agenda || behavior.autonomous_plan || mind.short_goal, role ? `keep up with ${role.toLowerCase()} responsibilities` : "continue an independent personal priority");
+  const outsideObligation = compactStateText(behavior.outside_obligation || mind.outside_priority, dueEvents[0]?.title ? `upcoming: ${text(dueEvents[0]?.title)}` : activePlans[0]?.title ? `existing plan: ${text(activePlans[0]?.title)}` : world ? `responsibilities inside ${world}` : "none explicitly due right now");
+  const privateGoal = compactStateText(mind.short_goal || character.core_motivation, "protect one personal goal that does not exist only for the relationship");
+  const timePressure = dueEvents[0]?.story_time ? `${text(dueEvents[0]?.title)} · ${text(dueEvents[0]?.story_time)}` : activePlans.some((plan)=>text(plan?.status)==="accepted") ? "an accepted plan is still pending" : "no hard deadline established";
+  return {
+    currentAgenda,
+    outsideObligation,
+    privateGoal,
+    timePressure,
+    freedomToLeave: true,
+    initiative: "The character may choose, refuse, postpone, leave, return, change topic, prioritize another obligation, or create a plan when canon supports it. They do not need the user's permission to have a life, but they never decide the user's response.",
+    instruction: "Treat independent life as causal state, not decorative backstory. An obligation can make the character late, distracted, unavailable, conflicted, or forced to choose. Do not cancel every priority for romance, and do not invent fake busyness merely to manufacture distance.",
+  };
+}
+
+function buildConsequenceEngine(activeConsequences: Array<Record<string, unknown>>, activeConflicts: Array<Record<string, unknown>>, development: Record<string, unknown>, intelligence: Record<string, unknown>) {
+  const presence = intelligence.presence_engine_state && typeof intelligence.presence_engine_state === "object" ? intelligence.presence_engine_state as Record<string, unknown> : {};
+  const residue = [
+    ...activeConsequences.map((item)=>text(item?.effect || item?.title)).filter(Boolean),
+    ...activeConflicts.map((item)=>text(item?.resolution_need || item?.cause || item?.title)).filter(Boolean),
+    text(development.emotional_residue), text(development.conflict_aftertaste), text(presence.consequence_residue),
+  ].filter(Boolean).slice(0,8);
+  const strongest = activeConsequences.sort((a,b)=>Number(b?.weight||0)-Number(a?.weight||0))[0];
+  const carryForward = text(strongest?.effect || activeConflicts[0]?.resolution_need || development.emotional_residue || presence.consequence_residue || "none");
+  return {
+    activeResidue: residue,
+    strongestConsequence: text(strongest?.title || activeConflicts[0]?.title || "none"),
+    carryForward,
+    cannotReset: residue.length > 0,
+    instruction: residue.length
+      ? "Something is still unresolved. Let it alter access, tone, trust, logistics, reputation, expectations, or choices until repaired on-page. Do not reset everyone to normal because the scene changed or a new message arrived."
+      : "No unresolved consequence needs forced drama. New consequences require a visible cause and should outlive the beat that creates them.",
+  };
+}
+
+function buildSceneRhythmEngine(recentCharacterTurns: string[], boundaries: string[], activeConflicts: Array<Record<string, unknown>>, latestUserMessage: string) {
+  const recent = normalized(recentCharacterTurns.slice(-4).join(" "));
+  const questionDensity = (recent.match(/\?/g)||[]).length;
+  const longTurns = recentCharacterTurns.slice(-4).filter((turn)=>turn.split(/\s+/).length>90).length;
+  const userOpen = /\?|\b(?:why|how|what|tell me|wait|but|and then|so what)\b/i.test(latestUserMessage);
+  let phase: "open" | "develop" | "turn" | "land" | "close" = recentCharacterTurns.length <= 1 ? "open" : "develop";
+  if (boundaries.length) phase="close";
+  else if (activeConflicts.length) phase="turn";
+  else if (recentCharacterTurns.length>=5 && !userOpen) phase="land";
+  if (recentCharacterTurns.length>=7 && !userOpen) phase="close";
+  const recentShape = questionDensity>=5 ? "question loop" : longTurns>=2 ? "overlong replies" : /\b(?:smirk|scoff|gaze|eyebrow)\b/.test(recent) ? "gesture-led cadence" : "mixed";
+  const target = phase==="open" ? "establish one playable beat" : phase==="develop" ? "deepen the active exchange without escalating automatically" : phase==="turn" ? "change one fact, decision, access point, or emotional position" : phase==="land" ? "let the beat settle and expose one clean next option" : "end or transition naturally without dragging the scene";
+  return { phase, recentShape, target, closeAllowed: !userOpen, instruction: `Scene phase is ${phase}. ${target}. A scene may end because someone leaves, an obligation wins, the topic lands, or the moment simply runs out. Do not keep asking questions merely to prevent closure.` };
+}
+
+function buildSelectiveMemoryEngine(memories: Array<Record<string, unknown>>, latestUserMessage: string, intelligence: Record<string, unknown>) {
+  const high = (memories||[]).filter((m)=>Number(m?.importance||0)>=4 || Boolean(m?.is_canon) || Boolean(m?.is_pinned) || ["boundary","promise","conflict"].includes(text(m?.category))).map((m)=>text(m?.content)).filter(Boolean).slice(0,6);
+  const low = (memories||[]).filter((m)=>Number(m?.importance||0)<=2 && !m?.is_canon && !m?.is_pinned).map((m)=>text(m?.content)).filter(Boolean).slice(0,4);
+  const behavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
+  const currentFocus = text(behavior.selective_memory_focus || behavior.memory_compression_anchor || high[0] || "none");
+  return {
+    highSalience: high,
+    lowSalience: low,
+    currentFocus,
+    instruction: "Remember asymmetrically. Boundaries, promises, betrayals, firsts, repeated preferences, vulnerable admissions, and events that changed behavior deserve weight. Routine food, weather, clothing, transit, and one-off small talk usually fade unless they later matter. Never resurrect a low-salience detail just to prove memory.",
+  };
+}
+
+function buildRelationshipExpectations(character: Record<string, unknown>, development: Record<string, unknown>, intelligence: Record<string, unknown>, activeConflicts: Array<Record<string, unknown>>) {
+  const behavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
+  const profile = characterProfileBlob(character);
+  const phase = text(development.relationship_phase || "undefined");
+  const contact = text(behavior.expectation_contact) || (/avoid|guarded|independent|reserved/.test(profile) ? "does not expect constant contact and may go quiet without treating it as a crisis" : /affectionate|social|open|clingy/.test(profile) ? "notices prolonged distance and expects more regular contact once closeness is earned" : "expects contact to match the established relationship, not a universal romance schedule");
+  const closeness = text(behavior.expectation_closeness) || `current baseline is ${phase}; new closeness should feel like a change from that baseline, not the default`;
+  const conflict = text(behavior.expectation_conflict) || (activeConflicts.length ? "expects residue and altered behavior until the active conflict is addressed" : "does not assume disagreement means abandonment or instant reconciliation");
+  const repairNeed = text(behavior.expectation_repair) || text(activeConflicts[0]?.resolution_need || "repair must match the damage when damage exists");
+  return { contact, closeness, conflict, repairNeed, baseline: phase, instruction: "Expectations are character-owned beliefs, not facts about the user. They may be disappointed, surprised, or wrong. Never convert an expectation into invented user intent, guilt, consent, or obligation." };
+}
+
+function buildHumanImperfectionEngine(dna: ReturnType<typeof inferCharacterDNA>, character: Record<string, unknown>, intelligence: Record<string, unknown>) {
+  const behavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
+  const profile = characterProfileBlob(character);
+  const risk: "low"|"medium"|"high" = /impulsive|jealous|insecure|paranoid|hot.?headed|reckless|stubborn/.test(profile) ? "high" : /guarded|avoid|proud|sarcast|competitive|blunt/.test(profile) ? "medium" : "low";
+  return { likelyMistake: text(behavior.imperfection_pattern || dna.likelyMistake), misunderstandingRisk: risk, correctionStyle: text(behavior.imperfection_correction || dna.repairBehavior), instruction: "Allow bounded human imperfection: miss a hint, answer the wrong part, get defensive, forget a minor detail, assume too quickly, or regret wording when that fits this person. Imperfection must come from DNA and available information, never from stupidity, random cruelty, or violating explicit canon." };
+}
+
+function buildNpcAutonomyEngine(persistentCast: Array<Record<string, unknown>>, castConnections: Array<Record<string, unknown>>, present: string[]) {
+  const presentSet=new Set(present.map(normalized));
+  const active=(persistentCast||[]).filter((npc)=>npc?.name).slice(0,8).map((npc)=>({
+    name:text(npc.name), role:text(npc.role), relationship:text(npc.relationship), goal:text(npc.goals || npc.next_intention || npc.current_dynamic), presence:presentSet.has(normalized(npc.name))?"present":text(npc.presence||"off_scene"), connection:(castConnections||[]).filter((c)=>normalized(c?.from_name)===normalized(npc.name)||normalized(c?.to_name)===normalized(npc.name)).slice(0,2).map((c)=>text(c.relationship)).filter(Boolean).join("; "),
+  })).filter((npc)=>npc.goal || npc.relationship);
+  return { active, instruction: "NPCs have motives that can continue without the protagonist. A friend may be busy, disagree, form another bond, keep a secret, need help, leave, or pursue their own plan. Use at most the NPCs relevant to the beat. Never spawn people solely as jealousy props or make every NPC emotionally orbit the lead character." };
+}
+
+function normalizeRomancePhase(value: unknown) {
+  const p=normalized(value);
+  if (/committed|official|partner|relationship|engaged|married/.test(p)) return "committed";
+  if (/dating|seeing each other|together/.test(p)) return "dating";
+  if (/mutual|admitted|confessed|kiss|romantic/.test(p)) return "mutual_interest";
+  if (/tension|charged|flirt|crush|attract/.test(p)) return "charged";
+  if (/friend|close/.test(p)) return "friends";
+  if (/acquaint|classmate|coworker|neighbor/.test(p)) return "acquaintances";
+  return p || "undefined";
+}
+
+function buildRomanceProgressionEngine(character: Record<string, unknown>, development: Record<string, unknown>, chemistry: Record<string, unknown>, milestones: Array<Record<string, unknown>>, activeConflicts: Array<Record<string, unknown>>) {
+  const romantic = /romance|crush|attract|heartbreaker|dating|boyfriend|girlfriend|lover|love interest/.test(characterProfileBlob(character));
+  const phase=normalizeRomancePhase(development.relationship_phase);
+  const earnedSignals=(milestones||[]).slice(-8).map((m)=>text(m?.milestone_type || m?.title)).filter(Boolean);
+  if (Number(chemistry?.trust_score||0)>=55) earnedSignals.push("sustained trust");
+  if (Number(chemistry?.tension_score||0)>=45) earnedSignals.push("sustained tension");
+  const blockedBy=[...activeConflicts.map((c)=>text(c?.title)).filter(Boolean), text(development.repair_debt), text(development.conflict_aftertaste)].filter(Boolean).slice(0,4);
+  const nextMap:Record<string,string>={undefined:"establish specific personal interest before romantic escalation",acquaintances:"earn voluntary time, private familiarity, or a meaningful choice",friends:"let attraction alter one choice without erasing friendship",charged:"earn clearer mutual evidence before a confession or major first",mutual_interest:"let behavior stabilize before treating them as a couple",dating:"develop routines, expectations, conflict and reliability instead of racing to permanence",committed:"deepen shared life without replaying firsts or constant escalation"};
+  return { phase: romantic?phase:"not_romantic", earnedSignals:[...new Set(earnedSignals)].slice(0,6), blockedBy, nextEarnedBeat: romantic?(nextMap[phase]||nextMap.undefined):"none", instruction: romantic ? "Romance progresses through evidence and changed expectations, not intensity alone. Do not replay firsts, skip from tension to devotion, or make one vulnerable scene erase defenses. Conflict and incompatible obligations can slow progression without deleting attraction." : "Do not manufacture romance. Keep the relationship in its established non-romantic lane unless visible canon changes it." };
+}
+
+function buildLongTermArcEngine(character: Record<string, unknown>, activeArcs: Array<Record<string, unknown>>, development: Record<string, unknown>, intelligence: Record<string, unknown>) {
+  const behavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
+  const current=activeArcs[0]||{};
+  const currentArc=text(current.title || behavior.long_term_arc || character.growth_direction || "character remains in an ordinary-life arc until a durable pressure emerges");
+  const nextPressure=text(current.next_pressure || behavior.long_term_arc_pressure || development.flaw_pressure || "let the next meaningful pressure test an established flaw or priority");
+  const change=text(behavior.arc_change_in_progress || development.retained_growth || development.behavioral_effect || "no durable change proven yet");
+  const relapse=text(behavior.arc_relapse_risk || character.emotional_defense || "old defenses may return under pressure without erasing earned growth");
+  return { currentArc, nextPressure, changeInProgress:change, relapseRisk:relapse, instruction:"Long-term growth is slow, asymmetric, and testable. A character can improve in one domain while staying difficult in another. New behavior becomes durable only after repeated evidence across scenes. Under stress, old defenses may recur in a modified form rather than resetting the character to day one." };
+}
+
+function buildCloneProtection(character: Record<string, unknown>, dna: ReturnType<typeof inferCharacterDNA>) {
+  const signature=[dna.emotionalDefense,dna.decisionBias,dna.careBehavior,dna.likelyMistake,text(character.speech_style),text(character.humor_style)].filter(Boolean).join(" | ");
+  return { identitySignature: signature, forbiddenSharedPatterns:["tease → question as universal default","therapist reassurance","polished self-aware campus banter","cinematic smirk/gaze choreography","instant emotional fluency","automatic romantic availability"], instruction:"Before finalizing, imagine swapping the speaker name with another saved Velvet character. If the reaction logic still works unchanged, alter the decision, defense, mistake, priority, or social tactic until this person is identifiable without a name." };
+}
+
 export function socialEcosystemsFor(character: Record<string, unknown> = {}) {
   const profile = normalized([
     character.role, character.description, character.personality, character.relationship,
@@ -564,6 +767,18 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const characterDNA = inferCharacterDNA(input.character);
   const reactionEngine = buildReactionEngine(input.character, input.latestUserMessage, recentCharacterTurns, boundaries, characterDNA);
 
+  const priorBehavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
+  const autonomousLifeEngine = inferAutonomousLife(input.character, intelligence, dueCalendarEvents, activePlans);
+  const consequenceEngine = buildConsequenceEngine(activeConsequences, activeConflicts, development, intelligence);
+  const sceneRhythmEngine = buildSceneRhythmEngine(recentCharacterTurns, boundaries, activeConflicts, input.latestUserMessage);
+  const selectiveMemoryEngine = buildSelectiveMemoryEngine(input.memories || [], input.latestUserMessage, intelligence);
+  const relationshipExpectations = buildRelationshipExpectations(input.character, development, intelligence, activeConflicts);
+  const humanImperfectionEngine = buildHumanImperfectionEngine(characterDNA, input.character, intelligence);
+  const npcAutonomyEngine = buildNpcAutonomyEngine(persistent, input.castConnections || [], present);
+  const romanceProgressionEngine = buildRomanceProgressionEngine(input.character, development, chemistry, milestones, activeConflicts);
+  const longTermArcEngine = buildLongTermArcEngine(input.character, activeArcs, development, intelligence);
+  const cloneProtection = buildCloneProtection(input.character, characterDNA);
+
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
     : drama >= 60 && availablePressure.some((item) => item.startsWith("external complication"))
@@ -602,6 +817,16 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     },
     characterDNA,
     reactionEngine,
+    autonomousLifeEngine,
+    consequenceEngine,
+    sceneRhythmEngine,
+    selectiveMemoryEngine,
+    relationshipExpectations,
+    humanImperfectionEngine,
+    npcAutonomyEngine,
+    romanceProgressionEngine,
+    longTermArcEngine,
+    cloneProtection,
     supportingCast: [...castByName.values()].slice(0, 12),
     turnObjective: objective,
     conversationQuality: { recentPatterns, nextTurnAdjustments },
@@ -768,6 +993,16 @@ export function storyContractPrompt(contract: StoryContract) {
     },
     characterDNA: contract.characterDNA,
     reactionEngine: contract.reactionEngine,
+    autonomy: contract.autonomousLifeEngine,
+    consequences: contract.consequenceEngine,
+    sceneRhythm: contract.sceneRhythmEngine,
+    selectiveMemory: contract.selectiveMemoryEngine,
+    expectations: contract.relationshipExpectations,
+    imperfection: contract.humanImperfectionEngine,
+    npcAutonomy: { active: take(contract.npcAutonomyEngine.active, 4) },
+    romanceProgression: contract.romanceProgressionEngine,
+    longTermArc: contract.longTermArcEngine,
+    cloneProtection: contract.cloneProtection,
     supportingCast: take(contract.supportingCast, 4).map((item) => pick(item as Record<string, unknown>, ["name", "role", "relationship", "current_dynamic", "goals", "presence", "status"])),
     turnObjective: contract.turnObjective,
     conversationQuality: contract.conversationQuality,
@@ -826,5 +1061,5 @@ export function storyContractPrompt(contract: StoryContract) {
     },
   };
 
-  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → character voice → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use emotionalIntelligence.sceneMomentum to know when to hold, turn or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn.`;
+  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn.`;
 }
