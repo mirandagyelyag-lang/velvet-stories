@@ -1,3 +1,3 @@
-# Velvet Stories v3.31.2 — POV Privacy Lock
+# Velvet Stories v3.32.0 — Perception & Knowledge Realism
 
-Prevents characters from reading user narration or internal commentary as spoken dialogue. See `README-v3.31.2.txt`.
+See `README-v3.32.0.txt` for the release details.

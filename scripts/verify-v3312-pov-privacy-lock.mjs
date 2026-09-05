@@ -4,9 +4,10 @@ const pkg=JSON.parse(read("package.json"));
 const pub=JSON.parse(read("public/velvet-version.json"));
 const edge=read("supabase/functions/character-chat/index.ts");
 const old=read("scripts/verify-v3311-natural-voice-lock.mjs");
+const semverAtLeast=(value,minimum)=>{const a=String(value||"").split(".").map(Number),b=String(minimum||"").split(".").map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return true;};
 const checks=[
- ["version 3.31.2",pkg.version==="3.31.2"&&pub.version==="3.31.2"],
- ["release metadata",pub.release==="POV Privacy Lock"],
+ ["version >= 3.31.2",semverAtLeast(pkg.version,"3.31.2")&&semverAtLeast(pub.version,"3.31.2")],
+ ["release metadata present",typeof pub.release==="string"&&pub.release.trim().length>0],
  ["asterisk boundary prompt exists",edge.includes("USER POV PRIVACY / ASTERISK BOUNDARY — ABSOLUTE")],
  ["mixed action private clause example exists",edge.includes("I walk to our usual seat where we waste time")&&edge.includes("Waste of time?")],
  ["visible nod private wonder examples exist",edge.includes("*I nod*")&&edge.includes("*I wonder if he hates me*")],

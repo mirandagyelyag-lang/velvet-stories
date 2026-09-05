@@ -194,6 +194,16 @@ export type StoryContract = {
     forbiddenSharedPatterns: string[];
     instruction: string;
   };
+  perceptionRealismEngine: {
+    observableUserActions: string[];
+    privateNarrationCount: number;
+    leadPresent: boolean;
+    communicationMedium: string;
+    known: string[];
+    uncertain: string[];
+    blockedSecretCount: number;
+    instruction: string;
+  };
   supportingCast: Array<Record<string, unknown>>;
   turnObjective: string;
   conversationQuality: {
@@ -783,13 +793,47 @@ function buildSceneVarietyEngine(scene: Record<string, unknown>, recentCharacter
   return { recentSignatures: signatures, repeatedShape: repeated, avoidNext: [...new Set(avoidNext)].slice(0,5), preferredShift, transitionPermission: "scene changes require a visible exit, time jump, arrival, accepted plan, or established transition; do not move the user without authored action", instruction: "Avoid repeating the same scene skeleton, not just the same nouns. Rotate who initiates, whether the beat is private/social/digital/ordinary, whether dialogue or action leads, and whether the scene lands, turns, or ends. Never break physical continuity merely to chase novelty." };
 }
 
+function knowledgeVisibleToLead(item: Record<string, unknown>, leadName: string) {
+  const owner = normalized(item?.character_name);
+  const lead = normalized(leadName);
+  const isSecret = Boolean(item?.secret);
+  if (!isSecret) return true;
+  return Boolean(owner && lead && owner === lead);
+}
+
+function buildPerceptionRealismEngine(input: StoryContractInput, actions: string[], present: string[], mode: string) {
+  const leadName = text(input.character?.name);
+  const leadKey = normalized(leadName);
+  const presentKeys = new Set((present || []).map(normalized));
+  const isDigital = /digital|text|message|phone|call|dm|online/.test(normalized(mode));
+  const leadPresent = isDigital || !present.length || presentKeys.has(leadKey);
+  const privateMarkers = /\b(?:think|thought|thinking|wonder|wondering|hope|hoping|wish|wishing|feel|feeling|felt|because|since|remember|remembering|realize|realizing|know|knowing|want|wanting|decide|deciding|assume|assuming|guess|guessing|in my mind|to myself|internally|nervous|angry|upset|sad|jealous|embarrassed|scared|afraid|annoyed|bored|boring|hate|love)\b/i;
+  const asterisk = [...text(input.latestUserMessage).matchAll(/\*([^*]+)\*/g)].map((match)=>text(match[1])).filter(Boolean);
+  const privateNarrationCount = asterisk.filter((segment)=>privateMarkers.test(segment)).length;
+  const ledger = input.knowledgeLedger || [];
+  const leadRows = ledger.filter((item)=>normalized(item?.character_name)===leadKey && knowledgeVisibleToLead(item, leadName));
+  const known = leadRows.filter((item)=>normalized(item?.status||"known")==="known").map((item)=>`${text(item?.subject)}: ${text(item?.knowledge)}`).filter((item)=>item!==": ").slice(0,6);
+  const uncertain = leadRows.filter((item)=>/suspect|rumor/i.test(text(item?.status))).map((item)=>`${text(item?.status)} · ${text(item?.subject)}: ${text(item?.knowledge)}`).filter((item)=>item!==": ").slice(0,6);
+  const blockedSecretCount = ledger.filter((item)=>Boolean(item?.secret) && !knowledgeVisibleToLead(item, leadName)).length;
+  return {
+    observableUserActions: (actions||[]).slice(0,8),
+    privateNarrationCount,
+    leadPresent,
+    communicationMedium: mode,
+    known,
+    uncertain,
+    blockedSecretCount,
+    instruction: "PERCEPTION REALISM 3.32: observations are not mind-reading. The character may react to spoken words and externally observable action, but motives, thoughts, narrator commentary and hidden emotional causes belong to the user. Nonverbal cues are ambiguous: infer tentatively, never state the hidden cause as fact. Known facts may be used directly. Suspicions and rumors must stay hedged. Forgotten facts stay unavailable. Secret knowledge owned by another character is inaccessible until a plausible witness/message/source transfers it. In person, only present characters can hear/see the live beat; distance, closed rooms, noise and line-of-sight still matter. Digital contact transmits only what the medium actually carries."
+  };
+}
+
 function buildNpcSocialNetworkEngine(persistentCast: Array<Record<string, unknown>>, castConnections: Array<Record<string, unknown>>, knowledgeLedger: Array<Record<string, unknown>>, leadName: string, userName: string) {
   const bonds = (castConnections||[]).slice(0,24).map((c)=>({
     from: text(c?.from_name), to: text(c?.to_name), relationship: text(c?.relationship), visibility: text(c?.visibility || "known")
   })).filter((c)=>c.from && c.to && c.relationship);
   const lead = normalized(leadName), user = normalized(userName);
   const independentBonds = bonds.filter((b)=>![lead,user].includes(normalized(b.from)) && ![lead,user].includes(normalized(b.to))).map((b)=>`${b.from} ↔ ${b.to}: ${b.relationship}`).slice(0,6);
-  const rumorFlow = (knowledgeLedger||[]).filter((k)=>/rumor|suspect|secret|heard|told|saw|knows?/i.test(`${text(k?.status)} ${text(k?.knowledge)} ${text(k?.subject)}`)).map((k)=>`${text(k?.character_name)}: ${text(k?.subject)} → ${text(k?.knowledge || k?.status)}`).filter(Boolean).slice(0,6);
+  const rumorFlow = (knowledgeLedger||[]).filter((k)=>knowledgeVisibleToLead(k, leadName)).filter((k)=>/rumor|suspect|heard|told|saw|knows?/i.test(`${text(k?.status)} ${text(k?.knowledge)} ${text(k?.subject)}`)).map((k)=>`${text(k?.character_name)}: ${text(k?.subject)} → ${text(k?.knowledge || k?.status)}`).filter(Boolean).slice(0,6);
   const asymmetry: string[] = [];
   for (const bond of bonds) {
     const reverse = bonds.find((other)=>normalized(other.from)===normalized(bond.to) && normalized(other.to)===normalized(bond.from));
@@ -897,8 +941,30 @@ export function socialEcosystemsFor(character: Record<string, unknown> = {}) {
   return [...new Set(kinds)];
 }
 
+const observableAsteriskAction = /\b(?:walk|walked|walking|follow|followed|following|nod|nodded|roll(?:ed)? (?:my|her|his|their) eyes|look|looked|glance|glanced|stare|stared|sit|sat|stand|stood|move|moved|step|stepped|turn|turned|shrug|shrugged|smile|smiled|laugh|laughed|open|opened|close|closed|take|took|grab|grabbed|hold|held|raise|raised|lower|lowered|touch|touched|hug|hugged|kiss|kissed|lean|leaned|wave|waved|point|pointed|pull|pulled|push|pushed|run|ran|leave|left|enter|entered|exit|exited|go|went|come|came|approach|approached|stop|stopped|pause|paused|drink|drank|eat|ate|type|typed|write|wrote|text|texted)\b/i;
+const privateAsteriskMarker = /\b(?:because|since|while|thinking|think|thought|wondering|wonder|wondered|hoping|hope|hoped|wishing|wish|wished|remembering|remember|remembered|knowing|know|knew|feeling|feel|felt|wanting|want|wanted|hating|hate|hated|loving|love|loved|assuming|assume|assumed|guessing|guess|guessed|realizing|realize|realized|deciding|decide|decided|regretting|regret|regretted|pretending|pretend|pretended|in my head|to myself|internally)\b/i;
+
+function visibleAsteriskSegment(raw: string) {
+  const value=text(raw);
+  if (!value) return "";
+  const privateMatch=value.match(privateAsteriskMarker);
+  if (!privateMatch || !Number.isFinite(privateMatch.index)) return observableAsteriskAction.test(value) ? value : "";
+  const before=value.slice(0, privateMatch.index).replace(/[\s,;:—-]+$/g,"").trim();
+  if (observableAsteriskAction.test(before)) return before;
+  const after=value.slice(privateMatch.index).match(/\b(?:and then|then|and)\s+(.+)$/i)?.[1]?.trim() || "";
+  if (observableAsteriskAction.test(after)) return after;
+  return "";
+}
+
+export function sanitizeUserTurnForPerception(value: string) {
+  return text(value).replace(/\*([^*]+)\*/gs, (_match, inner) => {
+    const visible=visibleAsteriskSegment(String(inner||""));
+    return visible ? `*${visible}*` : "";
+  }).replace(/\s{2,}/g," ").trim();
+}
+
 export function extractUserActions(value: string) {
-  const source = text(value);
+  const source = sanitizeUserTurnForPerception(value);
   const actions = [...source.matchAll(/\*([^*]{2,500})\*/g)].map((match) => text(match[1]));
   return actions.slice(-8);
 }
@@ -914,7 +980,8 @@ export function extractBoundaries(value: string) {
 
 export function compileStoryContract(input: StoryContractInput): StoryContract {
   const scene = input.sceneState || {};
-  const actions = extractUserActions(input.latestUserMessage);
+  const perceptibleUserTurn = sanitizeUserTurnForPerception(input.latestUserMessage);
+  const actions = extractUserActions(perceptibleUserTurn);
   const movementIsExplicit = actions.some((action) => /\b(?:walk|step|move|leave|exit|turn|run|drive|pass|cross|enter|sit|stand|approach)/i.test(action));
   const present = list(scene.present);
   const persistent = (input.persistentCast || []).filter((member) => member && member.name);
@@ -925,7 +992,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     castByName.set(key, { ...(castByName.get(key) || {}), ...(typeof state === "object" && state ? state : {}), name });
   }
   const socialEcosystems = socialEcosystemsFor(input.character);
-  const boundaries = extractBoundaries(input.latestUserMessage);
+  const boundaries = extractBoundaries(perceptibleUserTurn);
   const recentCharacterTurns = (input.recentMessages || []).filter((message) => message?.sender === "character").slice(-5).map((message) => text(message.content));
   const recentActionCount = recentCharacterTurns.filter((turn) => /\*[^*]+\*|\b(?:arrived|entered|called|texted|invited|pulled up|knocked|interrupted|police|security|friend|teammate|crew|party|race|practice|plan)\b/i.test(turn)).length;
   const talkOnlyDrought = recentCharacterTurns.length >= 3 && recentActionCount <= 1;
@@ -960,7 +1027,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   if (activeConsequences.length) availablePressure.push("consequence pressure: let an unresolved choice materially affect access, trust, reputation, plans or safety");
   if (activeArcs.length) availablePressure.push("arc pressure: advance or complicate one active arc through its next pressure, not exposition");
   if (dueCalendarEvents.length) availablePressure.push("calendar pressure: prepare, interrupt, begin or complicate a due event without silently skipping story time");
-  const riskLicensed = /race|racing|car|motor|party|fraternity|club|bar|trespass|illegal|street|campus|noise|public/i.test([input.character.role,input.character.world,input.character.scenario,scene.location,input.latestUserMessage].map(text).join(" "));
+  const riskLicensed = /race|racing|car|motor|party|fraternity|club|bar|trespass|illegal|street|campus|noise|public/i.test([input.character.role,input.character.world,input.character.scenario,scene.location,perceptibleUserTurn].map(text).join(" "));
   if (drama >= 55 && riskLicensed) availablePressure.push("external complication: police, campus security, venue staff, rivals, traffic or authority may intervene only from a visible cause in this scene");
   const initiativeRequired = !boundaries.length && (initiative >= 55 || talkOnlyDrought || activeArcs.length > 0 || activeConsequences.length > 0);
   const chemistry = (input.chemistryProfiles || []).find((item) => normalized(item?.character_name) === normalized(input.character.name)) || {};
@@ -1004,26 +1071,27 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   }).slice(0, 8);
   const sceneMomentum: "hold" | "turn" | "close" = boundaries.length ? "close" : talkOnlyDrought ? "turn" : recentCharacterTurns.length >= 4 && recentActionCount <= 1 ? "turn" : "hold";
   const characterDNA = inferCharacterDNA(input.character);
-  const reactionEngine = buildReactionEngine(input.character, input.latestUserMessage, recentCharacterTurns, boundaries, characterDNA);
+  const reactionEngine = buildReactionEngine(input.character, perceptibleUserTurn, recentCharacterTurns, boundaries, characterDNA);
 
   const priorBehavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
   const autonomousLifeEngine = inferAutonomousLife(input.character, intelligence, dueCalendarEvents, activePlans);
   const consequenceEngine = buildConsequenceEngine(activeConsequences, activeConflicts, development, intelligence);
-  const sceneRhythmEngine = buildSceneRhythmEngine(recentCharacterTurns, boundaries, activeConflicts, input.latestUserMessage);
-  const selectiveMemoryEngine = buildSelectiveMemoryEngine(input.memories || [], input.latestUserMessage, intelligence);
+  const sceneRhythmEngine = buildSceneRhythmEngine(recentCharacterTurns, boundaries, activeConflicts, perceptibleUserTurn);
+  const selectiveMemoryEngine = buildSelectiveMemoryEngine(input.memories || [], perceptibleUserTurn, intelligence);
   const relationshipExpectations = buildRelationshipExpectations(input.character, development, intelligence, activeConflicts);
   const writingPreferences = input.writingPreferences && typeof input.writingPreferences === "object" ? input.writingPreferences : {};
   const relationshipIntelligenceEngine = buildRelationshipIntelligenceEngine(input.character, development, intelligence, chemistry, milestones, activeConflicts, selectiveMemoryEngine, writingPreferences);
   const emotionalContinuityEngine = buildEmotionalContinuityEngine(development, intelligence, activeConflicts, activeConsequences);
   const sceneVarietyEngine = buildSceneVarietyEngine(scene, recentCharacterTurns, intelligence, sceneRhythmEngine);
   const npcSocialNetworkEngine = buildNpcSocialNetworkEngine(persistent, input.castConnections || [], input.knowledgeLedger || [], text(input.character.name), input.userName);
-  const longTermMemoryEngine = buildLongTermMemory4Engine(input.memories || [], input.latestUserMessage);
+  const longTermMemoryEngine = buildLongTermMemory4Engine(input.memories || [], perceptibleUserTurn);
   const writingStyleDirector = buildWritingStyleDirector(writingPreferences, recentPatterns, sceneRhythmEngine);
   const humanImperfectionEngine = buildHumanImperfectionEngine(characterDNA, input.character, intelligence);
   const npcAutonomyEngine = buildNpcAutonomyEngine(persistent, input.castConnections || [], present);
   const romanceProgressionEngine = buildRomanceProgressionEngine(input.character, development, chemistry, milestones, activeConflicts);
   const longTermArcEngine = buildLongTermArcEngine(input.character, activeArcs, development, intelligence);
   const cloneProtection = buildCloneProtection(input.character, characterDNA);
+  const perceptionRealismEngine = buildPerceptionRealismEngine(input, actions, present, mode);
 
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
@@ -1049,7 +1117,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
       communicationMedium: mode,
     },
     userAuthored: {
-      literalTurn: text(input.latestUserMessage),
+      literalTurn: perceptibleUserTurn,
       stagedActions: actions,
       boundaries,
       movementIsExplicit,
@@ -1079,6 +1147,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     romanceProgressionEngine,
     longTermArcEngine,
     cloneProtection,
+    perceptionRealismEngine,
     supportingCast: [...castByName.values()].slice(0, 12),
     turnObjective: objective,
     conversationQuality: { recentPatterns, nextTurnAdjustments },
@@ -1271,6 +1340,7 @@ export function storyContractPrompt(contract: StoryContract) {
     romanceProgression: contract.romanceProgressionEngine,
     longTermArc: contract.longTermArcEngine,
     cloneProtection: contract.cloneProtection,
+    perceptionRealism: contract.perceptionRealismEngine,
     supportingCast: take(contract.supportingCast, 4).map((item) => pick(item as Record<string, unknown>, ["name", "role", "relationship", "current_dynamic", "goals", "presence", "status"])),
     turnObjective: contract.turnObjective,
     conversationQuality: contract.conversationQuality,
@@ -1283,7 +1353,7 @@ export function storyContractPrompt(contract: StoryContract) {
     },
     dynamics: {
       arcs: take(contract.storyDynamics.activeArcs, 4).map((item) => pick(item as Record<string, unknown>, ["title", "summary", "kind", "status", "stakes", "next_pressure", "participants"])),
-      knowledge: take(contract.storyDynamics.knowledgeLedger, 6).map((item) => pick(item as Record<string, unknown>, ["character_name", "subject", "knowledge", "status", "secret"])),
+      knowledge: [...contract.perceptionRealismEngine.known.map((knowledge)=>({ character_name:"lead", knowledge, status:"known", secret:false })), ...contract.perceptionRealismEngine.uncertain.map((knowledge)=>({ character_name:"lead", knowledge, status:"uncertain", secret:false }))].slice(0,6),
       consequences: take(contract.storyDynamics.activeConsequences, 4).map((item) => pick(item as Record<string, unknown>, ["title", "cause", "effect", "status", "weight", "participants"])),
       dueEvents: take(contract.storyDynamics.dueCalendarEvents, 3).map((item) => pick(item as Record<string, unknown>, ["title", "story_time", "details", "participants", "status"])),
     },

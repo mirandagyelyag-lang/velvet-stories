@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { compileStoryContract, storyContractPrompt } from "./engine/story-contract.ts";
+import { compileStoryContract, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -361,6 +361,7 @@ Deno.serve(async (request) => {
       existingStoryRecap: openingRegeneration ? "" : (loaded.conversation.story_recap || loaded.conversation.summary || ""),
       existingStoryChapters: openingRegeneration ? [] : (loaded.conversation.story_chapters || []),
       existingActiveChapter: openingRegeneration ? {} : (loaded.conversation.active_chapter || {}),
+      knowledgeLedger: loaded.knowledgeLedger,
       activeArcs: loaded.storyArcs,
       activePlans: loaded.storyPlans,
       activeConflicts: loaded.storyConflicts,
@@ -381,7 +382,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "3.31.2",
+    version: "3.32.0",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -891,14 +892,16 @@ function buildNarrativePromptV3({
   const clean = (value, limit = 700) => cleanPromptValue(value || "not specified", limit);
   const supportingCast = (Array.isArray(groupCharacters) ? groupCharacters : [])
     .filter((item) => item?.id && item.id !== character.id);
-  const latest = openingRegeneration ? "" : compactMessageForPrompt(latestUserRecord?.content || "", 4200);
+  const latest = openingRegeneration ? "" : compactMessageForPrompt(sanitizeUserTurnForPerception(latestUserRecord?.content || ""), 4200);
   const immediate = messages.slice(-6).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
-    return `${speaker}: ${compactMessageForPrompt(message.content, 900)}`;
+    const content = message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content;
+    return `${speaker}: ${compactMessageForPrompt(content, 900)}`;
   }).join("\n\n") || "none";
   const older = messages.slice(-10, -6).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : character.name;
-    return `${speaker}: ${compactMessageForPrompt(message.content, 280)}`;
+    const content = message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content;
+    return `${speaker}: ${compactMessageForPrompt(content, 280)}`;
   }).join("\n") || "none";
   const memoryNow = Date.now();
   const confirmedMemories = memories.slice(0, 9).map((memory) => {
@@ -1052,6 +1055,19 @@ NON-NEGOTIABLE CANON
 - A correction repairs the prior beat retroactively. Do not answer it as spoken dialogue.
 - Boundaries such as leave me alone / don't follow / don't touch are binding. Respect them without turning the character into a therapist or a different person.
 - Answer the literal latest line or question before subtext. Clarifications name the concrete referent; preference questions give a real stance.
+
+PERCEPTION + KNOWLEDGE REALISM 3.32
+- OBSERVATION ≠ INTERPRETATION. A smile, silence, crossed arms, looking away, a pause, a sigh or a blush is only an observable cue. Never convert it into a hidden motive/emotion as fact unless the user explicitly made that inner state public.
+- POV PRIVACY LOCK 2.0: in *asterisk narration*, perceive only externally visible/audible action. Thoughts, memories, motives, evaluations, narrator commentary, reasons and internal emotional labels remain inaccessible even when they appear in the same asterisk block as a visible action.
+- KNOWLEDGE HAS EPISTEMIC STATUS. known = usable fact; suspected = private hypothesis; rumor = heard claim; forgotten = unavailable. Never silently upgrade suspected/rumor to fact.
+- SECRET FIREWALL: a secret owned by another character is invisible here until a plausible witness, message, confession, overheard line or other canonical source transfers it. Never let the model-wide context act as telepathy.
+- HEARING + LINE OF SIGHT: present characters can perceive only what position, distance, room boundaries, noise and attention plausibly allow. Someone absent or in another room cannot hear the live turn merely because it exists in the transcript.
+- DIGITAL MEDIUM: text transmits typed words/images actually sent, not facial expressions, body language, room events or unsent thoughts. Calls transmit audible sound, not unseen action.
+- MISUNDERSTANDING IS ALLOWED. A character may guess wrong, hedge, ask, or stay uncertain. Human uncertainty is preferable to omniscience.
+- SOCIAL CONTEXT MATTERS. Private warmth, public restraint and who is physically watching may change behavior, but never reveal inaccessible knowledge.
+- INTERRUPTED TOPICS PERSIST: if an interruption happens, the prior topic may remain unfinished and return later; do not reset everyone's knowledge/emotional state.
+- RESPONSE WEIGHT MATCHING: tiny ordinary turns usually deserve tiny ordinary responses. Do not create a large interpretive monologue just because hidden context is available.
+- REALITY JUDGE: before returning, ask: could this speaker actually SEE it, HEAR it, KNOW it, REMEMBER it, or only INFER it? If only inferred, phrase it as uncertainty. If none, remove it.
 
 VOICE + QUALITY
 - Sound like ${character.name}, not an archetype. Their identity must remain recognizable even if speaker names are removed.
@@ -1403,7 +1419,7 @@ HIDDEN STATE OUTPUT
 - post_turn_reflection is invisible bookkeeping: changed, pending, avoid_repeat, affected and one plausible_consequence. Record only what this reply actually caused; do not force the plausible consequence later.
 - human_behavior_update is persistent HUMAN BEHAVIOR state. Update only fields evidenced by canon or this reply. rhythm_mode/detail_level describe this turn; humor_profile, initiative_profile and character_dna change rarely. argument_lesson/physical_boundary_state/romantic_expression may evolve from repeated or high-significance evidence. persistent_location and possession_updates must be physically grounded. social_reputation_update and information_flow must identify a plausible observer/source. relationship_self_view is the character's subjective view only; never fill relationship_user_view with invented user feelings. autonomous_plan and between_scene_motion may advance ordinary independent life, never off-screen user choices or major unsupported plot. v3.27 persistent fields may include autonomy_agenda, outside_obligation, expectation_contact, expectation_closeness, expectation_conflict, expectation_repair, imperfection_pattern, imperfection_correction, selective_memory_focus, romance_progression, long_term_arc, long_term_arc_pressure, arc_change_in_progress and arc_relapse_risk. v3.28 may additionally persist attachment_strategy, relationship_attraction, relationship_trust, relationship_comfort, relationship_commitment, mixed_signal_pattern, forgiveness_gate, emotional_continuity, scene_signature, scene_variety_avoid, npc_network_shift, memory_reactivation, writing_style_signature. v3.31 may additionally persist dialogue_genome_signature, question_habit, explanation_habit, topic_resistance and public_private_voice. These are character-owned speech tendencies learned only from profile, approved examples or repeated visible evidence. These fields belong to the CHARACTER/story state, not the user, and change only from repeated or high-significance evidence. memory_compression_anchor names what must survive long-story compression. naturalness_score is 0-100 and should be >=72 after silent self-repair.
 - presence_update is persistent PRESENCE ENGINE state. Keep it compact. Fields: presence_action, conversation_mode, chemistry_fingerprint, jealousy_mode, scene_memory, relationship_milestone, unfinished_business_add, unfinished_business_resolve, texting_mode, supporting_cast_dynamics, social_consequence, emotional_residue, romantic_specificity, flirt_mode, bad_day_state, micro_conflict, voice_drift, narrative_camera, silence_mode, private_character_journal, director_check, scene_phase, consequence_residue, npc_autonomy, relationship_expectation_shift. Never invent user feelings. relationship_milestone/social_consequence use record=false unless a visible or canonical cause earned them. scene_memory records facts, not prose. scene_phase is open/develop/turn/land/close and may close naturally. consequence_residue names only fallout already caused. npc_autonomy records compact off-screen goals for established NPCs, never a fabricated major event. flirt_mode is off/low/natural and should be off when romance does not belong in the beat. private_character_journal belongs only to the character and must never appear in reply.
-- quality_check is invisible. Check subtext, structural repetition, scene momentum, conversational rhythm, nonverbal restraint, romantic specificity, decision consistency, physical boundaries, social information flow, adaptive detail, character DNA, autonomy, consequence carry-forward, selective-memory salience, relationship expectations, Relationship Intelligence separation of attraction/trust/comfort/commitment, emotional continuity after conflict, scene variety, NPC social-network causality, Long-Term Memory 4.0 retrieval, Writing Style Director compliance, human imperfection, NPC autonomy, romance progression, long-term arc continuity, clone distinctiveness, Dialogue Genome compliance, question discipline, anti-therapist naturalism, selective answering and dialogue-drift stability in addition to canon/voice. Optional booleans autonomy_ok, consequence_ok, memory_salience_ok, expectation_ok, relationship_intelligence_ok, emotional_continuity_ok, scene_variety_ok, npc_network_ok, long_memory_ok, writing_style_ok, imperfection_ok, npc_autonomy_ok, romance_progression_ok, arc_ok, scene_rhythm_ok, clone_ok, dialogue_genome_ok, question_discipline_ok, anti_therapist_ok, selective_answering_ok and dialogue_drift_ok must never be false in the final draft. Set drift_risk to "none" when identity is stable; naturalness_score must be 0-100. If any boolean would be false or naturalness_score < 72, silently fix the reply before returning the JSON.
+- quality_check is invisible. Check subtext, structural repetition, scene momentum, conversational rhythm, nonverbal restraint, romantic specificity, decision consistency, physical boundaries, social information flow, adaptive detail, character DNA, autonomy, consequence carry-forward, selective-memory salience, relationship expectations, Relationship Intelligence separation of attraction/trust/comfort/commitment, emotional continuity after conflict, scene variety, NPC social-network causality, Long-Term Memory 4.0 retrieval, Writing Style Director compliance, human imperfection, NPC autonomy, romance progression, long-term arc continuity, clone distinctiveness, Dialogue Genome compliance, question discipline, anti-therapist naturalism, selective answering and dialogue-drift stability in addition to canon/voice. Optional booleans autonomy_ok, consequence_ok, memory_salience_ok, expectation_ok, relationship_intelligence_ok, emotional_continuity_ok, scene_variety_ok, npc_network_ok, long_memory_ok, writing_style_ok, imperfection_ok, npc_autonomy_ok, romance_progression_ok, arc_ok, scene_rhythm_ok, clone_ok, dialogue_genome_ok, question_discipline_ok, anti_therapist_ok, selective_answering_ok, dialogue_drift_ok, perception_ok, epistemic_status_ok, secret_boundary_ok, nonverbal_ambiguity_ok, causality_ok and response_weight_ok must never be false in the final draft. Set drift_risk to "none" when identity is stable; naturalness_score must be 0-100. If any boolean would be false or naturalness_score < 72, silently fix the reply before returning the JSON.
 - story_drive.intensity_target is 1-10 and may DECREASE. season_signal is true only for a durable era change, never one emotional beat. scene_momentum is hold/turn/close. compression_reason is empty unless routine time can safely be compressed without skipping a live user choice.
 
 OUTPUT
@@ -1415,6 +1431,11 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
   const issueDirections = {
     pov_violation: "Remove every invented user action, thought, feeling, motive, reaction, choice, and line of dialogue.",
     private_narration_leak: "The character read private user narration as if it were spoken. Keep only externally observable action from *asterisked* narration. Delete every response to, quote of, paraphrase of, or knowledge derived from the private/internal clause. Do not erase the visible physical action.",
+    private_causal_inference: "Remove every causal claim derived from the user's private narration. The character may observe the visible action but cannot know why the user did it unless the reason was spoken or canonically learned.",
+    ambiguous_nonverbal_mindread: "Downgrade certainty about the user's hidden emotion or motive. Keep the visible cue, then either leave it uninterpreted, hedge the guess, ask if this character would ask, or simply react without naming an inner state.",
+    secret_knowledge_leak: "Remove information this character has no plausible source for. A secret owned by another character is unavailable until an on-page witness, message, confession, overheard line or established source transfers it.",
+    epistemic_status_collapse: "Keep rumor/suspicion as rumor/suspicion. Replace certainty with character-appropriate uncertainty and never promote it to fact without new evidence.",
+    response_weight_mismatch: "Match the scale of the reply to the live beat. For a tiny mundane user turn, give a compact natural answer/action instead of an interpretive monologue.",
     unstaged_user_movement_inference: "Keep the user in their last visibly established position. Spoken intent or social closure is not movement; remove all departure and pursuit choreography.",
     unstaged_user_departure: "Delete the invented exit and every dependent action such as following, stopping, calling after, or watching them go.",
     unsupported_motive_escalation: "Remove the invented motive. React only to visible words and actions.",
@@ -3980,6 +4001,8 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "unfinished_reply",
   "controls_user_pov",
   "private_narration_leak",
+  "private_causal_inference",
+  "secret_knowledge_leak",
   "exposes_system_language",
   "user_staged_scene_retcon",
 ]);
@@ -4008,6 +4031,9 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "clarification_evasion",
   "direct_preference_evasion",
   "overwritten_narration",
+  "ambiguous_nonverbal_mindread",
+  "epistemic_status_collapse",
+  "response_weight_mismatch",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
   "unsupported_timeline_duration_claim",
@@ -4372,6 +4398,64 @@ function hasPrivateNarrationLeak(reply = "", latestUserMessage = "") {
   return false;
 }
 
+function hasAmbiguousNonverbalMindread(reply = "", latestUserMessage = "") {
+  const user = normalizeText(latestUserMessage);
+  const text = normalizeText(dialogueOnlyText(reply) || reply);
+  if (!user || !text) return false;
+  const cue = /\*(?:[^*]*\b(?:smile|smiles|smiled|look away|looks away|looked away|cross(?:es|ed)? (?:my|her|his|their) arms|sigh|sighs|sighed|shrug|shrugs|shrugged|frown|frowns|frowned|blush|blushes|blushed|stare|stares|stared|pause|pauses|paused|go quiet|goes quiet|went quiet|nod|nods|nodded)\b[^*]*)\*/i.test(String(latestUserMessage));
+  if (!cue) return false;
+  const explicitPublicEmotion = /(?:^|\n|\*)?\s*(?:i am|i'm|im|i feel|i felt|i was)\s+(?:angry|mad|upset|sad|nervous|jealous|embarrassed|scared|afraid|happy|annoyed|bored)\b/i.test(String(latestUserMessage).replace(/\*[^*]*\*/g," "));
+  if (explicitPublicEmotion) return false;
+  const certainty = /\b(?:you are|you re|you were|you must be|clearly you|obviously you|i know you re|i know you are|that means you re|that means you are|so you re|so you are)\b/;
+  const hiddenState = /\b(?:angry|mad|upset|sad|nervous|jealous|embarrassed|scared|afraid|happy|annoyed|bored|lying|hiding|avoiding|want me|wanting me|hate me|like me|love me)\b/;
+  return certainty.test(text) && hiddenState.test(text);
+}
+
+function hasPrivateCausalInference(reply = "", latestUserMessage = "") {
+  const privateClauses = privateClausesFromAsteriskNarration(latestUserMessage);
+  if (!privateClauses.length) return false;
+  const text = normalizeText(dialogueOnlyText(reply) || reply);
+  if (!text) return false;
+  return /\b(?:that s why you|that is why you|because you re|because you are|so that s why|i knew you were|i knew you d|you must have been|you only did that because)\b/.test(text);
+}
+
+function epistemicTokens(value = "") {
+  const stop = new Set(["the","and","that","this","with","from","have","your","you","their","they","them","about","because","just","really","know","known","heard","said","says","was","were","are","for","but","not","una","que","con","por","para","esto","esta","las","los","del"]);
+  return [...new Set(normalizeText(value).split(/\s+/).filter((token)=>token.length>=4 && !stop.has(token)))];
+}
+function knowledgeOverlap(reply = "", item = {}) {
+  const tokens = epistemicTokens(`${item?.subject || ""} ${item?.knowledge || ""}`);
+  if (tokens.length < 2) return 0;
+  const replyTokens = new Set(epistemicTokens(reply));
+  return tokens.filter((token)=>replyTokens.has(token)).length / tokens.length;
+}
+function hasSecretKnowledgeLeak(reply = "", knowledgeLedger = [], characterName = "", latestUserMessage = "") {
+  const lead = normalizeText(characterName);
+  const latest = normalizeText(latestUserMessage);
+  for (const item of Array.isArray(knowledgeLedger) ? knowledgeLedger : []) {
+    if (!item?.secret) continue;
+    if (normalizeText(item?.character_name) === lead) continue;
+    if (knowledgeOverlap(latest, item) >= 0.55) continue;
+    if (knowledgeOverlap(reply, item) >= 0.65) return true;
+  }
+  return false;
+}
+function hasEpistemicStatusCollapse(reply = "", knowledgeLedger = [], characterName = "") {
+  const lead = normalizeText(characterName);
+  const text = normalizeText(dialogueOnlyText(reply) || reply);
+  const certain = /\b(?:i know|i m sure|i am sure|definitely|clearly|obviously|no doubt|you did|you are|you were|it is true|that s true)\b/.test(text);
+  const hedged = /\b(?:maybe|might|could be|i think|i guess|i heard|apparently|probably|seems|looks like|sounds like|rumor|suspect)\b/.test(text);
+  if (!certain || hedged) return false;
+  return (Array.isArray(knowledgeLedger) ? knowledgeLedger : []).some((item)=>normalizeText(item?.character_name)===lead && /suspect|rumor/i.test(String(item?.status||"")) && knowledgeOverlap(reply,item)>=0.55);
+}
+function hasResponseWeightMismatch(reply = "", latestUserMessage = "") {
+  const visibleUser = String(latestUserMessage||"").replace(/\*[^*]*\*/g," ").trim();
+  const userWords = normalizeText(visibleUser).split(/\s+/).filter(Boolean).length;
+  const replyWords = normalizeText(reply).split(/\s+/).filter(Boolean).length;
+  const highImpact = /\b(?:kiss|kissed|slap|slapped|hit|hurt|bleed|blood|cry|crying|leave me|break up|died|dead|pregnant|marry|love you|hate you|don t touch|dont touch|stop|help|emergency)\b/i.test(String(latestUserMessage));
+  return !highImpact && userWords > 0 && userWords <= 5 && replyWords > 95;
+}
+
 function deterministicNaturalnessScore(reply = "", options = {}) {
   let score = 100;
   const recent = options.recentCharacterReplies || [];
@@ -4391,6 +4475,11 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (hasUnearnedNicknameAddress(reply, options.userName || "", options.recentUserMessages || [], recent, options.character || {})) score -= 20;
   if (hasUnsupportedSharedAcademicSpecificity(reply, options.recentUserMessages || [], recent, options.character || {})) score -= 24;
   if (hasDialogueGenomeDrift(reply, recent, options.character || {})) score -= 18;
+  if (hasPrivateCausalInference(reply, latest)) score -= 28;
+  if (hasAmbiguousNonverbalMindread(reply, latest)) score -= 22;
+  if (hasSecretKnowledgeLeak(reply, options.knowledgeLedger || [], options.characterName || "", latest)) score -= 30;
+  if (hasEpistemicStatusCollapse(reply, options.knowledgeLedger || [], options.characterName || "")) score -= 24;
+  if (hasResponseWeightMismatch(reply, latest)) score -= 16;
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
   const latestWords = normalizeText(latest).split(/\s+/).filter(Boolean).length;
@@ -4413,6 +4502,11 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (isLowInformationGenericReply(text)) issues.push("generic_acknowledgment");
   if (controlsUserPOV(text, options.userName || "", options.latestUserMessage || "")) issues.push("controls_user_pov");
   if (hasPrivateNarrationLeak(text, options.latestUserMessage || "")) issues.push("private_narration_leak");
+  if (hasPrivateCausalInference(text, options.latestUserMessage || "")) issues.push("private_causal_inference");
+  if (hasAmbiguousNonverbalMindread(text, options.latestUserMessage || "")) issues.push("ambiguous_nonverbal_mindread");
+  if (hasSecretKnowledgeLeak(text, options.knowledgeLedger || [], options.characterName || "", options.latestUserMessage || "")) issues.push("secret_knowledge_leak");
+  if (hasEpistemicStatusCollapse(text, options.knowledgeLedger || [], options.characterName || "")) issues.push("epistemic_status_collapse");
+  if (hasResponseWeightMismatch(text, options.latestUserMessage || "")) issues.push("response_weight_mismatch");
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
   if (hasMechanicalRhythmLoop(text, options.recentCharacterReplies || [])) issues.push("mechanical_rhythm_loop");
@@ -4580,7 +4674,7 @@ function validateContinuityEnvelope(result = {}, options = {}) {
   }
   if (hasStructuralReplyLoop(result?.reply || "", options.recentCharacterReplies || [])) issues.push("structural_repetition_loop");
   const qc = result?.quality_check && typeof result.quality_check === "object" ? result.quality_check : {};
-  if ([qc.canon_ok, qc.user_control_ok, qc.physics_ok, qc.knowledge_ok, qc.voice_ok, qc.repetition_ok, qc.subtext_ok, qc.structure_repetition_ok, qc.scene_momentum_ok, qc.contradiction_ok, qc.rhythm_ok, qc.nonverbal_ok, qc.romantic_specificity_ok, qc.decision_consistency_ok, qc.boundary_ok, qc.social_information_ok, qc.adaptive_detail_ok, qc.dna_ok, qc.naturalness_ok, qc.autonomy_ok, qc.consequence_ok, qc.memory_salience_ok, qc.expectation_ok, qc.relationship_intelligence_ok, qc.emotional_continuity_ok, qc.scene_variety_ok, qc.npc_network_ok, qc.long_memory_ok, qc.writing_style_ok, qc.imperfection_ok, qc.npc_autonomy_ok, qc.romance_progression_ok, qc.arc_ok, qc.scene_rhythm_ok, qc.clone_ok, qc.dialogue_genome_ok, qc.question_discipline_ok, qc.anti_therapist_ok, qc.selective_answering_ok, qc.dialogue_drift_ok].some((value) => value === false)) issues.push("model_self_check_failed");
+  if ([qc.canon_ok, qc.user_control_ok, qc.physics_ok, qc.knowledge_ok, qc.voice_ok, qc.repetition_ok, qc.subtext_ok, qc.structure_repetition_ok, qc.scene_momentum_ok, qc.contradiction_ok, qc.rhythm_ok, qc.nonverbal_ok, qc.romantic_specificity_ok, qc.decision_consistency_ok, qc.boundary_ok, qc.social_information_ok, qc.adaptive_detail_ok, qc.dna_ok, qc.naturalness_ok, qc.autonomy_ok, qc.consequence_ok, qc.memory_salience_ok, qc.expectation_ok, qc.relationship_intelligence_ok, qc.emotional_continuity_ok, qc.scene_variety_ok, qc.npc_network_ok, qc.long_memory_ok, qc.writing_style_ok, qc.imperfection_ok, qc.npc_autonomy_ok, qc.romance_progression_ok, qc.arc_ok, qc.scene_rhythm_ok, qc.clone_ok, qc.dialogue_genome_ok, qc.question_discipline_ok, qc.anti_therapist_ok, qc.selective_answering_ok, qc.dialogue_drift_ok, qc.perception_ok, qc.epistemic_status_ok, qc.secret_boundary_ok, qc.nonverbal_ambiguity_ok, qc.causality_ok, qc.response_weight_ok].some((value) => value === false)) issues.push("model_self_check_failed");
   if (Number.isFinite(Number(qc?.naturalness_score)) && Number(qc.naturalness_score) < 72) issues.push("naturalness_score_low");
   const driftRisk = normalizeText(qc?.drift_risk || "none");
   if (driftRisk && !/^(?:none|no|stable|low|minimal|ninguno|estable)$/.test(driftRisk)) issues.push("identity_drift_risk");
@@ -4931,6 +5025,7 @@ async function streamRoleplayV19({
   existingStoryRecap,
   existingStoryChapters,
   existingActiveChapter,
+  knowledgeLedger = [],
   activeArcs = [],
   activePlans = [],
   activeConflicts = [],
@@ -4977,7 +5072,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Asterisked user narration is NOT spoken dialogue: perceive only externally observable actions inside it and firewall all private thoughts, evaluations, motives, memories, labels and narrator commentary. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31.1 NATURAL VOICE LOCK: keep Dialogue Genome, but never perform personality for its own sake. Plain speech wins over cleverness. Enforce banter saturation, one-joke ceiling, nickname ownership, canon specificity and short-turn scale. Keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction, anti-performative-banter and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice only when the live beat earns movement; an ordinary turn may simply answer and continue the current activity. Never relocate the scene or invent an errand solely to create momentum. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Asterisked user narration is NOT spoken dialogue: perceive only externally observable actions inside it and firewall all private thoughts, evaluations, motives, memories, labels and narrator commentary. v3.32 PERCEPTION & KNOWLEDGE REALISM: observation is not interpretation; nonverbal cues never reveal hidden causes by default; known/suspected/rumor/forgotten remain distinct; secrets are character-scoped; information requires a plausible source; in-person hearing/line-of-sight and digital-medium limits are real; uncertainty and misunderstanding are allowed; run a final Reality Judge asking whether the speaker could actually see, hear, know, remember, or only infer each claimed fact. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31.1 NATURAL VOICE LOCK: keep Dialogue Genome, but never perform personality for its own sake. Plain speech wins over cleverness. Enforce banter saturation, one-joke ceiling, nickname ownership, canon specificity and short-turn scale. Keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction, anti-performative-banter and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice only when the live beat earns movement; an ordinary turn may simply answer and continue the current activity. Never relocate the scene or invent an errand solely to create momentum. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           isCancelled,
@@ -5017,6 +5112,7 @@ async function streamRoleplayV19({
           recentCharacterReplies,
           recentUserMessages,
           character,
+          knowledgeLedger,
         });
         validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
         const originalResult = result;
@@ -5081,6 +5177,7 @@ async function streamRoleplayV19({
             recentCharacterReplies,
             recentUserMessages,
             character,
+            knowledgeLedger,
           });
           repairedIssues.push(...validateContinuityEnvelope(repaired, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies }));
           const repairedFatal = blockingNarrativeIssues(repairedIssues);
@@ -5770,7 +5867,7 @@ function roleplayResponseSchema() {
       human_behavior_update: { type:"object", required:["rhythm_mode","rhythm_reason","nonverbal_signal","nonverbal_meaning","humor_profile","humor_boundary","argument_lesson","romantic_expression","romantic_avoidance","physical_boundary_state","decision_basis","persistent_location","possession_updates","social_reputation_update","information_flow","relationship_self_view","relationship_user_view","autonomous_plan","between_scene_motion","memory_compression_anchor","initiative_profile","character_dna","transition_style","detail_level","naturalness_score","naturalness_notes"], properties:{ rhythm_mode:{type:"string",enum:["terse","brief","natural","expanded","silent"]}, rhythm_reason:{type:"string"}, nonverbal_signal:{type:"string"}, nonverbal_meaning:{type:"string"}, humor_profile:{type:"string"}, humor_boundary:{type:"string"}, argument_lesson:{type:"string"}, romantic_expression:{type:"string"}, romantic_avoidance:{type:"string"}, physical_boundary_state:{type:"string"}, decision_basis:{type:"string"}, persistent_location:{type:"string"}, possession_updates:{type:"array",maxItems:5,items:{type:"object",required:["object","holder","location","state"],properties:{object:{type:"string"},holder:{type:"string"},location:{type:"string"},state:{type:"string"}}}}, social_reputation_update:{type:"string"}, information_flow:{type:"string"}, relationship_self_view:{type:"string"}, relationship_user_view:{type:"string"}, autonomous_plan:{type:"string"}, between_scene_motion:{type:"string"}, memory_compression_anchor:{type:"string"}, initiative_profile:{type:"string",enum:["high","medium","low","reactive","variable","unknown"]}, character_dna:{type:"string"}, transition_style:{type:"string"}, detail_level:{type:"string",enum:["sparse","balanced","atmospheric"]}, naturalness_score:{type:"integer"}, naturalness_notes:{type:"string"}, attachment_strategy:{type:"string"}, relationship_attraction:{type:"string"}, relationship_trust:{type:"string"}, relationship_comfort:{type:"string"}, relationship_commitment:{type:"string"}, mixed_signal_pattern:{type:"string"}, forgiveness_gate:{type:"string"}, emotional_continuity:{type:"string"}, scene_signature:{type:"string"}, scene_variety_avoid:{type:"string"}, npc_network_shift:{type:"string"}, memory_reactivation:{type:"string"}, writing_style_signature:{type:"string"}, dialogue_genome_signature:{type:"string"}, question_habit:{type:"string"}, explanation_habit:{type:"string"}, topic_resistance:{type:"string"}, public_private_voice:{type:"string"} } },
       connection_updates: { type:"array", maxItems:5, items:{ type:"object", required:["from_name","to_name","relationship","visibility","evidence"], properties:{ from_name:{type:"string"}, to_name:{type:"string"}, relationship:{type:"string"}, visibility:{type:"string",enum:["known","private","secret"]}, evidence:{type:"string"} } } },
       post_turn_reflection: { type:"object", required:["changed","pending","avoid_repeat","affected","plausible_consequence"], properties:{ changed:{type:"string"}, pending:{type:"string"}, avoid_repeat:{type:"string"}, affected:{type:"array",maxItems:6,items:{type:"string"}}, plausible_consequence:{type:"string"} } },
-      quality_check: { type:"object", required:["canon_ok","user_control_ok","physics_ok","knowledge_ok","voice_ok","repetition_ok","subtext_ok","structure_repetition_ok","scene_momentum_ok","contradiction_ok","rhythm_ok","nonverbal_ok","romantic_specificity_ok","decision_consistency_ok","boundary_ok","social_information_ok","adaptive_detail_ok","dna_ok","naturalness_ok","naturalness_score","drift_risk"], properties:{ canon_ok:{type:"boolean"}, user_control_ok:{type:"boolean"}, physics_ok:{type:"boolean"}, knowledge_ok:{type:"boolean"}, voice_ok:{type:"boolean"}, repetition_ok:{type:"boolean"}, subtext_ok:{type:"boolean"}, structure_repetition_ok:{type:"boolean"}, scene_momentum_ok:{type:"boolean"}, contradiction_ok:{type:"boolean"}, rhythm_ok:{type:"boolean"}, nonverbal_ok:{type:"boolean"}, romantic_specificity_ok:{type:"boolean"}, decision_consistency_ok:{type:"boolean"}, boundary_ok:{type:"boolean"}, social_information_ok:{type:"boolean"}, adaptive_detail_ok:{type:"boolean"}, dna_ok:{type:"boolean"}, naturalness_ok:{type:"boolean"}, naturalness_score:{type:"integer"}, drift_risk:{type:"string"}, autonomy_ok:{type:"boolean"}, consequence_ok:{type:"boolean"}, memory_salience_ok:{type:"boolean"}, expectation_ok:{type:"boolean"}, relationship_intelligence_ok:{type:"boolean"}, emotional_continuity_ok:{type:"boolean"}, scene_variety_ok:{type:"boolean"}, npc_network_ok:{type:"boolean"}, long_memory_ok:{type:"boolean"}, writing_style_ok:{type:"boolean"}, imperfection_ok:{type:"boolean"}, npc_autonomy_ok:{type:"boolean"}, romance_progression_ok:{type:"boolean"}, arc_ok:{type:"boolean"}, scene_rhythm_ok:{type:"boolean"}, clone_ok:{type:"boolean"}, dialogue_genome_ok:{type:"boolean"}, question_discipline_ok:{type:"boolean"}, anti_therapist_ok:{type:"boolean"}, selective_answering_ok:{type:"boolean"}, dialogue_drift_ok:{type:"boolean"} } },
+      quality_check: { type:"object", required:["canon_ok","user_control_ok","physics_ok","knowledge_ok","voice_ok","repetition_ok","subtext_ok","structure_repetition_ok","scene_momentum_ok","contradiction_ok","rhythm_ok","nonverbal_ok","romantic_specificity_ok","decision_consistency_ok","boundary_ok","social_information_ok","adaptive_detail_ok","dna_ok","naturalness_ok","naturalness_score","drift_risk"], properties:{ canon_ok:{type:"boolean"}, user_control_ok:{type:"boolean"}, physics_ok:{type:"boolean"}, knowledge_ok:{type:"boolean"}, voice_ok:{type:"boolean"}, repetition_ok:{type:"boolean"}, subtext_ok:{type:"boolean"}, structure_repetition_ok:{type:"boolean"}, scene_momentum_ok:{type:"boolean"}, contradiction_ok:{type:"boolean"}, rhythm_ok:{type:"boolean"}, nonverbal_ok:{type:"boolean"}, romantic_specificity_ok:{type:"boolean"}, decision_consistency_ok:{type:"boolean"}, boundary_ok:{type:"boolean"}, social_information_ok:{type:"boolean"}, adaptive_detail_ok:{type:"boolean"}, dna_ok:{type:"boolean"}, naturalness_ok:{type:"boolean"}, naturalness_score:{type:"integer"}, drift_risk:{type:"string"}, autonomy_ok:{type:"boolean"}, consequence_ok:{type:"boolean"}, memory_salience_ok:{type:"boolean"}, expectation_ok:{type:"boolean"}, relationship_intelligence_ok:{type:"boolean"}, emotional_continuity_ok:{type:"boolean"}, scene_variety_ok:{type:"boolean"}, npc_network_ok:{type:"boolean"}, long_memory_ok:{type:"boolean"}, writing_style_ok:{type:"boolean"}, imperfection_ok:{type:"boolean"}, npc_autonomy_ok:{type:"boolean"}, romance_progression_ok:{type:"boolean"}, arc_ok:{type:"boolean"}, scene_rhythm_ok:{type:"boolean"}, clone_ok:{type:"boolean"}, dialogue_genome_ok:{type:"boolean"}, question_discipline_ok:{type:"boolean"}, anti_therapist_ok:{type:"boolean"}, selective_answering_ok:{type:"boolean"}, dialogue_drift_ok:{type:"boolean"}, perception_ok:{type:"boolean"}, epistemic_status_ok:{type:"boolean"}, secret_boundary_ok:{type:"boolean"}, nonverbal_ambiguity_ok:{type:"boolean"}, causality_ok:{type:"boolean"}, response_weight_ok:{type:"boolean"} } },
       cast_updates: { type: "array", maxItems: 3, items: { type: "object", required: ["name", "role", "relationship", "personality_note", "current_dynamic", "goals", "knows", "last_interaction", "offscreen_motion", "next_intention"], properties: { name:{type:"string"}, role:{type:"string"}, relationship:{type:"string"}, personality_note:{type:"string"}, current_dynamic:{type:"string"}, goals:{type:"string"}, knows:{type:"string"}, last_interaction:{type:"string"}, offscreen_motion:{type:"string"}, next_intention:{type:"string"} } } },
       memory_updates: { type: "array", maxItems: 2, items: { type: "object", required: ["content", "category", "importance", "scope", "reason", "replaces"], properties: { content:{type:"string"}, category:{type:"string", enum:["fact","person","relationship","world","event","preference","boundary","promise","conflict"]}, importance:{type:"integer"}, scope:{type:"string", enum:["conversation","character"]}, reason:{type:"string"}, replaces:{type:"string"} } } },
     },
