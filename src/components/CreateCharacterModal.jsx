@@ -73,7 +73,7 @@ const generatedDraftFields = [
 ];
 
 function CreateCharacterModal({ onClose, onCreated, character = null, remixSource = null }) {
-  const { createCharacter, updateCharacter, enhanceCharacterDraft, enhanceCharacterFields, organizeCharacterDraft, generateCharacterDraft, testCharacterVoice, buildCharacterVoiceLab, openCharacterLearningRoom } = useCharacters();
+  const { createCharacter, updateCharacter, enhanceCharacterDraft, enhanceCharacterFields, organizeCharacterDraft, generateCharacterDraft, testCharacterVoice, buildCharacterVoiceLab, openCharacterLearningRoom, learnCharacterDialogueGenome } = useCharacters();
   const onCloseRef = useRef(onClose);
   const savingRef = useRef(false);
   const [form, setForm] = useState(() => character ? {
@@ -165,6 +165,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
   const [learningSamples, setLearningSamples] = useState([]);
   const [learningSelected, setLearningSelected] = useState([]);
   const [learningLoading, setLearningLoading] = useState(false);
+  const [genomeLearning, setGenomeLearning] = useState(false);
   const [toolNotice, setToolNotice] = useState("");
   const [studioStep, setStudioStep] = useState("essence");
   const draftStorageKey = useMemo(() => `velvet_character_draft_v18_${character?.id || (remixSource?.id ? `remix_${remixSource.id}` : "new")}`, [character?.id, remixSource?.id]);
@@ -235,7 +236,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
     return Math.round((filled / required.length) * 100);
   }, [form.name, form.role, form.personality, form.firstMessage]);
   const voiceFingerprintCount = voiceFingerprintFields.filter((field) => form[field]?.trim()).length;
-  const aiBusy = enhancing || Boolean(fieldPolishing) || organizing || generating || voiceLabLoading || learningLoading;
+  const aiBusy = enhancing || Boolean(fieldPolishing) || organizing || generating || voiceLabLoading || learningLoading || genomeLearning;
   const quickDraftReady = !character && completion === 100 && creatorStatus.startsWith("Complete draft");
 
   function updateField(event) {
@@ -428,11 +429,18 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
     catch (requestError) { setError(requestError.message || "Velvet couldn't open the Learning Room."); }
     finally { setLearningLoading(false); }
   }
-  function applyLearningRoom() {
+  async function applyLearningRoom() {
     const chosen=learningSelected.map((index)=>learningSamples[index]).filter(Boolean);
-    if (!chosen.length) return;
-    setForm((current)=>({...current,exampleDialogue:[current.exampleDialogue,...chosen].filter(Boolean).join("\n\n")}));
-    setToolNotice(`${chosen.length} non-canonical voice ${chosen.length===1?"sample":"samples"} saved as examples.`);
+    if (!chosen.length || genomeLearning) return;
+    try {
+      setGenomeLearning(true); setError("");
+      const genome = await learnCharacterDialogueGenome(form, chosen);
+      setForm((current)=>({...current,...genome,exampleDialogue:genome.exampleDialogue || [current.exampleDialogue,...chosen].filter(Boolean).join("\n\n")}));
+      setVoiceLab(genome);
+      setToolNotice(`${chosen.length} creator-approved voice ${chosen.length===1?"example":"examples"} learned into the Dialogue Genome.`);
+    } catch (requestError) {
+      setError(requestError.message || "Velvet couldn't learn these voice examples.");
+    } finally { setGenomeLearning(false); }
   }
 
   function validateCharacter() {
@@ -750,7 +758,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                 <StudioField label="Speech style"><textarea name="speechStyle" value={form.speechStyle} onChange={updateField} placeholder="Dry, concise, teasing without performing, rarely over-explains…" rows="4" disabled={saving} /></StudioField>
                 <StudioField label="Boundaries"><textarea name="boundaries" value={form.boundaries} onChange={updateField} placeholder="Things they should never do unless the story genuinely earns it." rows="4" disabled={saving} /></StudioField>
               </div>
-              <StudioField label="Example dialogue" hint="A few lines are enough. This is a voice sample, not a script.">
+              <StudioField label="Voice examples" hint="Paste 3-10 lines that genuinely sound like them. Velvet learns mechanics, not future scripts.">
                 <textarea name="exampleDialogue" value={form.exampleDialogue} onChange={updateField} placeholder={'"You called me. I came. Don\'t make it weird."'} rows="4" disabled={saving} />
               </StudioField>
               <div className="studio-voice-preview">
@@ -767,10 +775,10 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                 {voiceLab && <div className="studio-voice-lab__result"><blockquote>{voiceLab.exampleDialogue}</blockquote><button type="button" onClick={applyVoiceLab}>Apply this fingerprint</button></div>}
               </div>
               <div className="studio-learning-room">
-                <div><strong>Learning Room</strong><small>Creates ten auditions without adding anything to story canon. Select only the replies that genuinely sound right.</small></div>
+                <div><strong>Voice Examples Learning</strong><small>Creates ten non-canonical auditions. Pick the ones that genuinely sound right and Velvet learns their sentence rhythm, question habits, explanation level, humor timing and avoidances.</small></div>
                 <textarea rows="3" value={learningSituation} onChange={(event)=>setLearningSituation(event.target.value)} placeholder="Test situation"/>
                 <button type="button" onClick={runLearningRoom} disabled={saving||aiBusy}>{learningLoading?<LoaderCircle className="character-modal__spinner" size={16}/>:<MessageCircle size={16}/>}Generate 10 auditions</button>
-                {learningSamples.length>0&&<div className="studio-learning-room__samples">{learningSamples.map((sample,index)=><label key={index} className={learningSelected.includes(index)?"selected":""}><input type="checkbox" checked={learningSelected.includes(index)} onChange={()=>setLearningSelected((current)=>current.includes(index)?current.filter((item)=>item!==index):[...current,index])}/><span><small>OPTION {index+1}</small>{sample}</span></label>)}<button type="button" onClick={applyLearningRoom} disabled={!learningSelected.length}>Save selected voice examples</button></div>}
+                {learningSamples.length>0&&<div className="studio-learning-room__samples">{learningSamples.map((sample,index)=><label key={index} className={learningSelected.includes(index)?"selected":""}><input type="checkbox" checked={learningSelected.includes(index)} onChange={()=>setLearningSelected((current)=>current.includes(index)?current.filter((item)=>item!==index):[...current,index])}/><span><small>OPTION {index+1}</small>{sample}</span></label>)}<button type="button" onClick={applyLearningRoom} disabled={!learningSelected.length||genomeLearning}>{genomeLearning?<><LoaderCircle className="character-modal__spinner" size={16}/>Learning Dialogue Genome…</>:"Learn from selected examples"}</button></div>}
               </div>
               <details className="studio-voice-fingerprint">
                 <summary>

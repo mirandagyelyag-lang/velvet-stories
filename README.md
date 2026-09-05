@@ -1,3 +1,3 @@
-# Velvet Stories v3.30.0 — Interaction Reliability
+# Velvet Stories v3.31.0 — Dialogue Genome + Conversational Naturalism
 
-See `README-v3.30.0.txt`.
+See `README-v3.31.0.txt` for details.

@@ -335,6 +335,16 @@ export function CharactersProvider({ children }) {
     return Array.isArray(data?.samples) ? data.samples : [];
   }
 
+  async function learnCharacterDialogueGenome(characterData, samples = []) {
+    const { data, error } = await supabase.functions.invoke("character-chat", {
+      body: { action: "character_dialogue_genome", draft: characterDraftPayload(characterData), samples },
+      timeout: 32000,
+    });
+    if (error) throw new Error(await readCharacterFunctionError(error, "Velvet couldn't learn this Dialogue Genome."));
+    if (data?.error) throw new Error(data.error);
+    return data?.genome || {};
+  }
+
   async function toggleFavorite(characterId) {
     const character = characters.find((item) => item.id === characterId);
     if (!character) return null;
@@ -401,6 +411,7 @@ export function CharactersProvider({ children }) {
         testCharacterVoice,
         buildCharacterVoiceLab,
         openCharacterLearningRoom,
+        learnCharacterDialogueGenome,
         generateInstantStory,
         deleteCharacter,
         listTrashedCharacters,

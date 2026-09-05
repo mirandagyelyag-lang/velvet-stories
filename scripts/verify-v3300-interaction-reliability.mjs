@@ -2,14 +2,15 @@ import fs from "fs";
 const read=(p)=>fs.readFileSync(new URL(`../${p}`,import.meta.url),"utf8");
 const pkg=JSON.parse(read("package.json"));
 const pub=JSON.parse(read("public/velvet-version.json"));
+const semverAtLeast=(value,minimum)=>{const a=String(value||"").split(".").map(Number),b=String(minimum||"").split(".").map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false}return true};
 const main=read("src/main.jsx");
 const runtime=read("src/utils/interactionReliability.js");
 const chat=read("src/pages/Chat.jsx");
 const pwa=read("src/context/PWAContext.jsx");
 const css=read("src/styles/velvet-v3300-interaction-reliability.css");
 const checks=[
- ["version 3.30.0",pkg.version==="3.30.0"&&pub.version==="3.30.0"],
- ["release metadata",pub.release==="Interaction Reliability"],
+ ["version >= 3.30.0",semverAtLeast(pkg.version,"3.30.0")&&semverAtLeast(pub.version,"3.30.0")],
+ ["release metadata present",typeof pub.release==="string"&&pub.release.trim().length>0],
  ["interaction runtime exists",runtime.includes("installInteractionReliability")],
  ["visual viewport becomes CSS variables",runtime.includes("--velvet-visual-height")&&runtime.includes("--velvet-runtime-keyboard-inset")],
  ["network state is observable",runtime.includes("data")&&runtime.includes("velvetOnline")&&runtime.includes("navigator.onLine")],
