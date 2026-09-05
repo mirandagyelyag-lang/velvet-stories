@@ -1,3 +1,3 @@
-# Velvet Stories v3.31.1 — Natural Voice Lock
+# Velvet Stories v3.31.2 — POV Privacy Lock
 
-Hotfix for Dialogue Genome overperformance. See `README-v3.31.1.txt`.
+Prevents characters from reading user narration or internal commentary as spoken dialogue. See `README-v3.31.2.txt`.

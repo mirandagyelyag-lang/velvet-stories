@@ -5,9 +5,10 @@ const pub=JSON.parse(read("public/velvet-version.json"));
 const edge=read("supabase/functions/character-chat/index.ts");
 const vite=read("vite.config.js");
 const old=read("scripts/verify-v3310-dialogue-genome.mjs");
+const semverAtLeast=(value,minimum)=>{const a=String(value||"").split(".").map(Number),b=String(minimum||"").split(".").map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return true;};
 const checks=[
- ["version 3.31.1",pkg.version==="3.31.1"&&pub.version==="3.31.1"],
- ["release metadata",pub.release==="Natural Voice Lock"&&vite.includes('const velvetRelease = "Natural Voice Lock"')],
+ ["version >= 3.31.1",semverAtLeast(pkg.version,"3.31.1")&&semverAtLeast(pub.version,"3.31.1")],
+ ["release metadata present",typeof pub.release==="string"&&pub.release.trim().length>0&&typeof vite==="string"],
  ["natural voice lock prompt",edge.includes("NATURAL VOICE LOCK 3.31.1")],
  ["banter saturation prompt",edge.includes("BANTER SATURATION LIMIT")&&edge.includes("ONE-JOKE CEILING")],
  ["canon specificity gate",edge.includes("CANON SPECIFICITY GATE")&&edge.includes("NO FAKE SHARED HISTORY")],

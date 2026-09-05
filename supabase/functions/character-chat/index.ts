@@ -381,7 +381,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "3.28.0",
+    version: "3.31.2",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -1378,6 +1378,15 @@ ${older}
 RECENT VISIBLE TRANSCRIPT
 ${immediate}
 
+USER POV PRIVACY / ASTERISK BOUNDARY — ABSOLUTE
+- User text inside *asterisks* is NARRATION, not automatically spoken dialogue. Do not let characters hear the exact wording merely because it appears in the user turn.
+- Split asterisk narration into (A) externally observable physical action/result and (B) private narration: thoughts, motives, evaluations, memories, assumptions, labels, intentions, internal jokes, emotional interpretation, or narrator commentary.
+- Characters may react only to (A), using what could actually be seen/heard in the scene. They may NEVER quote, paraphrase, challenge, answer, or demonstrate knowledge of (B) unless the user separately says it aloud or canon already established it by another visible channel.
+- Example: *I walk to our usual seat where we waste time* → the character may observe the user walking to the usual seat. The words “where we waste time” are private narration. The character MUST NOT reply “Waste of time?” or otherwise reveal that they heard that phrase.
+- Example: *I nod* → the nod is observable. Example: *I wonder if he hates me* → entirely private; the character cannot react to the thought.
+- If one asterisk span mixes action + private commentary, preserve the visible action while firewalling the private clause.
+- Plain unasterisked user text is spoken dialogue unless the surrounding syntax clearly marks narration.
+
 LATEST USER TURN — HIGHEST AUTHORITY
 ${latest || "none; this is an opening"}
 
@@ -1405,6 +1414,7 @@ Start from the final visible physical state. Answer this beat directly, preserve
 async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
   const issueDirections = {
     pov_violation: "Remove every invented user action, thought, feeling, motive, reaction, choice, and line of dialogue.",
+    private_narration_leak: "The character read private user narration as if it were spoken. Keep only externally observable action from *asterisked* narration. Delete every response to, quote of, paraphrase of, or knowledge derived from the private/internal clause. Do not erase the visible physical action.",
     unstaged_user_movement_inference: "Keep the user in their last visibly established position. Spoken intent or social closure is not movement; remove all departure and pursuit choreography.",
     unstaged_user_departure: "Delete the invented exit and every dependent action such as following, stopping, calling after, or watching them go.",
     unsupported_motive_escalation: "Remove the invented motive. React only to visible words and actions.",
@@ -3969,6 +3979,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "truncated_by_model",
   "unfinished_reply",
   "controls_user_pov",
+  "private_narration_leak",
   "exposes_system_language",
   "user_staged_scene_retcon",
 ]);
@@ -4321,6 +4332,46 @@ function hasDialogueGenomeDrift(reply = "", recentReplies = [], character = {}) 
   return false;
 }
 
+function extractAsteriskNarrationSegments(value = "") {
+  return [...String(value || "").matchAll(/\*([^*]+)\*/gs)]
+    .map((match) => String(match[1] || "").trim())
+    .filter(Boolean);
+}
+
+function privateClausesFromAsteriskNarration(value = "") {
+  const segments = extractAsteriskNarrationSegments(value);
+  const observableAction = /\b(?:walk|walked|walking|follow|followed|following|nod|nodded|roll(?:ed)? my eyes|look|looked|glance|glanced|stare|stared|sit|sat|stand|stood|move|moved|step|stepped|turn|turned|shrug|shrugged|smile|smiled|laugh|laughed|open|opened|close|closed|take|took|grab|grabbed|hold|held|raise|raised|lower|lowered|touch|touched|hug|hugged|kiss|kissed|lean|leaned|wave|waved|point|pointed|pull|pulled|push|pushed|run|ran|leave|left|enter|entered|exit|exited|go|went|come|came|approach|approached|stop|stopped|pause|paused|drink|drank|eat|ate|type|typed|write|wrote|text|texted)\b/i;
+  const privateMarker = /\b(?:because|since|when|while|thinking|think|thought|wondering|wonder|wondered|hoping|hope|hoped|wishing|wish|wished|remembering|remember|remembered|knowing|know|knew|feeling|feel|felt|wanting|want|wanted|hating|hate|hated|loving|love|loved|assuming|assume|assumed|guessing|guess|guessed|realizing|realize|realized|deciding|decide|decided|regretting|regret|regretted|pretending|pretend|pretended|in my head|to myself)\b/i;
+  const out = [];
+  for (const raw of segments) {
+    const match = raw.match(privateMarker);
+    if (match && Number.isFinite(match.index)) {
+      out.push(raw.slice(match.index).trim());
+      continue;
+    }
+    if (!observableAction.test(raw)) out.push(raw.trim());
+  }
+  return out.filter(Boolean);
+}
+
+function hasPrivateNarrationLeak(reply = "", latestUserMessage = "") {
+  const privateClauses = privateClausesFromAsteriskNarration(latestUserMessage);
+  if (!privateClauses.length) return false;
+  const spoken = normalizeText(dialogueOnlyText(reply) || reply);
+  if (!spoken) return false;
+  const stop = new Set(["the","a","an","and","or","but","to","of","in","on","at","for","with","from","as","is","are","was","were","be","been","being","i","im","me","my","we","our","you","your","he","him","his","she","her","they","them","their","it","this","that","these","those","when","while","because","since","think","thought","thinking","wonder","wondering","feel","feeling","felt","want","wanting","wanted","know","knowing","knew","just","really","actually"]);
+  const spokenTokens = new Set(spoken.split(/\s+/).filter(Boolean));
+  for (const clause of privateClauses) {
+    const norm = normalizeText(clause);
+    const tokens = [...new Set(norm.split(/\s+/).filter((token) => token.length >= 3 && !stop.has(token)))];
+    if (!tokens.length) continue;
+    const overlap = tokens.filter((token) => spokenTokens.has(token));
+    if (tokens.length === 1 && tokens[0].length >= 6 && overlap.length === 1 && new RegExp(`\\b${tokens[0]}\\b[?!.,]?$`).test(spoken)) return true;
+    if (tokens.length >= 2 && overlap.length >= Math.max(2, Math.ceil(tokens.length * 0.6))) return true;
+  }
+  return false;
+}
+
 function deterministicNaturalnessScore(reply = "", options = {}) {
   let score = 100;
   const recent = options.recentCharacterReplies || [];
@@ -4361,6 +4412,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasUnclosedDialogue(text)) issues.push("unfinished_reply");
   if (isLowInformationGenericReply(text)) issues.push("generic_acknowledgment");
   if (controlsUserPOV(text, options.userName || "", options.latestUserMessage || "")) issues.push("controls_user_pov");
+  if (hasPrivateNarrationLeak(text, options.latestUserMessage || "")) issues.push("private_narration_leak");
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
   if (hasMechanicalRhythmLoop(text, options.recentCharacterReplies || [])) issues.push("mechanical_rhythm_loop");
@@ -4925,7 +4977,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31.1 NATURAL VOICE LOCK: keep Dialogue Genome, but never perform personality for its own sake. Plain speech wins over cleverness. Enforce banter saturation, one-joke ceiling, nickname ownership, canon specificity and short-turn scale. Keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction, anti-performative-banter and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice only when the live beat earns movement; an ordinary turn may simply answer and continue the current activity. Never relocate the scene or invent an errand solely to create momentum. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Asterisked user narration is NOT spoken dialogue: perceive only externally observable actions inside it and firewall all private thoughts, evaluations, motives, memories, labels and narrator commentary. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31.1 NATURAL VOICE LOCK: keep Dialogue Genome, but never perform personality for its own sake. Plain speech wins over cleverness. Enforce banter saturation, one-joke ceiling, nickname ownership, canon specificity and short-turn scale. Keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction, anti-performative-banter and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice only when the live beat earns movement; an ordinary turn may simply answer and continue the current activity. Never relocate the scene or invent an errand solely to create momentum. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           isCancelled,
