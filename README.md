@@ -1,7 +1,3 @@
-# Velvet Stories v3.28.0 — Relationship World + Story Intelligence
+# Velvet Stories v3.29.0 — UI Stability Sweep
 
-See `README-v3.28.0.txt` for the release details.
-
-# Velvet Stories v3.27.0
-
-Autonomous Life + Consequence Engine. See `README-v3.27.0.txt`.
+See `README-v3.29.0.txt` for the release details.

@@ -228,6 +228,15 @@ function App() {
   }, [characters]);
 
   useEffect(() => {
+    const pageName = creatorOpen ? "studio" : selectedCharacter ? "chat" : activePage;
+    document.body.dataset.velvetPage = pageName;
+    document.documentElement.dataset.velvetPage = pageName;
+    document.body.classList.toggle("velvet-page--chat", Boolean(selectedCharacter));
+    document.body.classList.toggle("velvet-page--studio", Boolean(creatorOpen));
+    return () => {};
+  }, [activePage, creatorOpen, selectedCharacter]);
+
+  useEffect(() => {
     if (authLoading || !user) return;
     const preload = () => {
       const likelyRoutes = activePage === "chats"

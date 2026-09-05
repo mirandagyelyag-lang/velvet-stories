@@ -143,3 +143,4 @@ import "./styles/velvet-v3110-experience.css";
 import "./styles/chat-header-overlay.css";
 import "./styles/velvet-v3120-never-lose-story.css";
 import "./styles/velvet-v3140-native-polish.css";
+import "./styles/velvet-v3290-ui-sweep.css";
