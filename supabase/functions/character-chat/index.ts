@@ -832,6 +832,13 @@ function buildDialogueGenome({ character = {}, recentReplies = [], developmentSt
   const avgDialogueWords = wordCounts.length ? Math.round(wordCounts.reduce((a,b)=>a+b,0)/wordCounts.length) : 0;
   const endingQuestions = recent.filter(dialogueEndsInQuestion).length;
   const questionMarks = recent.reduce((sum,item)=>sum + dialogueQuestionCount(item),0);
+  const recentBanterTurns = recent.filter((item)=>performativeBanterScore(item) > 0).length;
+  const explicitlyBanterHeavy = /\b(?:banter[- ]heavy|constant teasing|constantly teases|relentlessly sarcastic|always joking|rapid[- ]fire banter)\b/.test(profile);
+  const banterBudget = recentBanterTurns >= (explicitlyBanterHeavy ? 4 : 2)
+    ? "saturated: use zero performative quips this turn unless the latest user explicitly asks for one"
+    : recentBanterTurns >= 1
+      ? "light: at most one short joke; do not escalate the user's sarcasm"
+      : "available but optional: ordinary speech still wins unless humor is actually this person's first instinct";
   const explicitlyQuiet = /\b(?:terse|concise|brief|few words|rarely asks|doesn t ask|does not ask|not chatty|quiet|laconic|blunt)\b/.test(profile);
   const explicitlyTalkative = /\b(?:talkative|chatty|rambl|asks questions|curious|inquisitive|verbose|long stories|overshar)\b/.test(profile);
   const questionHabit = explicitlyQuiet ? "low" : explicitlyTalkative ? "high" : endingQuestions >= 4 ? "watch-high" : endingQuestions <= 1 ? "low-medium" : "medium";
@@ -847,6 +854,7 @@ function buildDialogueGenome({ character = {}, recentReplies = [], developmentSt
     sentenceArchitecture,
     questionHabit,
     questionBudget: questionHabit === "low" ? "usually 0; at most 1 only when genuinely needed" : questionHabit === "watch-high" ? "avoid another question unless the user explicitly invited one" : questionHabit === "high" ? "questions are allowed, but never stack or turn the exchange into an interview" : "0-1 is normal; do not automatically end on one",
+    banterBudget,
     explanationTolerance,
     topicResistance,
     therapistAllowed,
@@ -925,6 +933,7 @@ function buildNarrativePromptV3({
   const dialogueGenomeText = [
     `Sentence architecture: ${dialogueGenome.sentenceArchitecture}`,
     `Question habit: ${dialogueGenome.questionHabit}; budget this turn: ${dialogueGenome.questionBudget}`,
+    `Banter budget: ${dialogueGenome.banterBudget}`,
     `Explanation tolerance: ${dialogueGenome.explanationTolerance}`,
     `Topic resistance: ${dialogueGenome.topicResistance}`,
     `Public/private mode: ${dialogueGenome.publicPrivateMode}`,
@@ -1054,6 +1063,14 @@ VOICE + QUALITY
 - CONVERSATIONAL CARRYOVER: the character may keep pursuing something THEY were already talking or thinking about instead of resetting to the latest user sentence every turn. Do not use this to dodge the literal turn.
 - ANTI-THERAPIST ENGINE: unless therapy/counseling is genuinely part of this character's role and voice, avoid counselor/service phrases such as “you don’t have to talk about it,” “take all the time you need,” “your feelings are valid,” “I’m here if you need anything,” or “if you change your mind.” Care must sound like THIS person.
 - ANTI-PERFECT-REACTION: do not optimize the character into the ideal supportive partner. They can pause, answer only half of it, choose the wrong practical fix, joke badly, get defensive, need time, or repair imperfectly while still respecting boundaries.
+- NATURAL VOICE LOCK 3.31.1: do not PERFORM the character every turn. Voice identity is allowed to be quiet. A plain answer that only this person would phrase slightly differently is better than proving five personality traits at once.
+- BANTER SATURATION LIMIT: sarcasm from the user is NOT an instruction to escalate into a bigger joke. If the last two character replies already used teasing, mock-formal wit, hyperbole or a clever comeback, the next ordinary reply should contain zero performative quips unless the profile and the live beat strongly require one. Even a sarcastic character is not doing a bit every sentence.
+- ONE-JOKE CEILING: in a mundane exchange, use at most one brief joke/tease in a turn. Never stack setup + punchline + second metaphor + callback. After the joke lands, stop.
+- CANON SPECIFICITY GATE: never invent fake specificity to make dialogue feel alive. Do not fabricate prior texts, ignored messages, exact wait times, grades, exams, classes, seminars, labs, known employees, shared arguments, shared food habits, habitual seats, private jokes, schedules or academic details unless they exist in visible canon/profile/state. If the user asks a factual question and canon does not contain the detail, answer only from what is actually known.
+- NICKNAME OWNERSHIP GATE: never derive a nickname from the user's name on your own. A nickname may be used only if the character profile, creator-approved voice examples or visible canon already established that exact form.
+- IMMEDIATE STOP RULE: if the latest user explicitly tells the character to stop joking, teasing, saying bullshit, using a nickname, touching, following, or doing a behavior, the very next reply must not repeat that behavior as another joke. The character may react in-character, but the prohibited behavior stops immediately unless the user clearly frames the line as playful permission to continue.
+- SHORT-TURN SCALE: for a short casual user line, default to one compact answer and at most one meaningful action. Do not answer 4-12 user words with a 50-word comedy routine, fake anecdote, scene relocation or cinematic paragraph unless the transcript genuinely demands it.
+- NO FAKE SHARED HISTORY: a relationship can feel established through tone and comfortable silence without inventing memories. Never create a past event merely to prove closeness.
 - FALSE STARTS ARE OPTIONAL, NOT DECORATION: interruptions, corrections, fillers and unfinished sentences are allowed only when they belong to this person's speech or current pressure. Do not sprinkle em-dash stutters into everyone.
 - VOCABULARY OWNERSHIP: distinctive words, nicknames and verbal tells belong to this character only when grounded in their profile/examples. Do not spread one character's “bro,” “right,” pet names, slang or catchphrases across the cast.
 - PUBLIC / PRIVATE VOICE: social context can change openness, volume, formality, teasing and affection without changing core identity. Private warmth must not automatically leak into public scenes; public coolness must not erase private history.
@@ -1449,6 +1466,11 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     therapist_service_voice: "Remove counselor/customer-service reassurance. Show care, discomfort, distance or practicality through this character's own vocabulary and habits.",
     perfect_empathy_package: "Make the emotional response less optimized. Keep the boundary safe, but allow one character-specific imperfection, hesitation, partial answer, awkwardness or wrong-first-instinct.",
     canned_dialogue_genome_cadence: "Replace the stock romance/witty cadence with this character's saved sentence mechanics and ordinary vocabulary. Do not simply swap synonyms.",
+    banter_saturation_loop: "The conversation has become a comedy routine. Remove the performative quip. Give a plain, character-specific response and let the exchange breathe.",
+    short_turn_performance_monologue: "Scale the reply to the user's short turn. Use one compact answer and at most one meaningful action; remove the clever mini-monologue.",
+    immediate_behavior_stop_violation: "The user explicitly told the character to stop this behavior. Stop it now. React in-character without repeating the joke/tease as another bit.",
+    unearned_nickname_address: "Remove the invented nickname. Use the user's established name or no name unless that exact nickname already exists in canon/profile/examples.",
+    unsupported_shared_history_specificity: "Remove fabricated shared history or academic/social specificity. Keep only facts grounded in visible canon, profile, or persisted state.",
     dialogue_genome_drift: "Restore the established Dialogue Genome: sentence length, question habit, explanation level, topic resistance, humor timing and public/private voice.",
   };
   const uniqueIssues = [...new Set(issues || [])];
@@ -3652,6 +3674,10 @@ function repeatedPropChoreographyMotifs(value = "") {
     phone: /\b(?:phone|screen|device)\b/,
     drink: /\b(?:glass|cup|mug|bottle|drink)\b/,
     book: /\b(?:book|textbook|page|folio|notebook)\b/,
+    umbrella: /\b(?:umbrella|umbrella handle)\b/,
+    door: /\b(?:door|doorway|awning)\b/,
+    shoulder: /\b(?:shoulder|shoulders)\b/,
+    sleeve: /\b(?:sleeve|cuff)\b/,
   };
   const choreography = /\b(?:toss(?:es|ed|ing)?|catch(?:es|caught|ing)?|spin(?:s|spun|ning)?|twirl(?:s|ed|ing)?|tap(?:s|ped|ping)?|click(?:s|ed|ing)?|flip(?:s|ped|ping)?|roll(?:s|ed|ing)?|turn(?:s|ed|ing)?|pick(?:s|ed|ing)? up|set(?:s|ting)? down|put(?:s|ting)? down|slid(?:e|es|ing)?|pocket(?:s|ed|ing)?|unlock(?:s|ed|ing)?|lock(?:s|ed|ing)?|check(?:s|ed|ing)?|glanc(?:e|es|ed|ing)? at)\b/;
   if (!choreography.test(text)) return motifs;
@@ -3973,6 +3999,15 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "overwritten_narration",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
+  "unsupported_timeline_duration_claim",
+  "unsupported_shared_history_specificity",
+  "unearned_nickname_address",
+  "immediate_behavior_stop_violation",
+  "banter_saturation_loop",
+  "short_turn_performance_monologue",
+  "overwritten_banter",
+  "editorial_banter_voice",
+  "repeated_prop_choreography",
   "social_role_assignment_broken",
   "unsupported_social_plan_expansion",
   "latest_user_scene_not_applied",
@@ -3988,6 +4023,15 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "therapist_service_voice",
   "perfect_empathy_package",
   "canned_dialogue_genome_cadence",
+  "banter_saturation_loop",
+  "short_turn_performance_monologue",
+  "immediate_behavior_stop_violation",
+  "unearned_nickname_address",
+  "unsupported_shared_history_specificity",
+  "unsupported_timeline_duration_claim",
+  "overwritten_banter",
+  "editorial_banter_voice",
+  "repeated_prop_choreography",
   "dialogue_genome_drift",
   "reaction_clone_drift",
   "explanatory_subtext_dump",
@@ -4171,6 +4215,80 @@ function hasPerfectEmpathyPackage(reply = "", latestUserMessage = "", character 
   ];
   return packages.filter((pattern)=>pattern.test(dialogue)).length >= 3;
 }
+function performativeBanterScore(value = "") {
+  const dialogue = normalizeText(dialogueOnlyText(value));
+  if (!dialogue) return 0;
+  const markers = [
+    /\bi m a saint\b/, /\bthankless job\b/, /\bbroad shoulders\b/,
+    /\bapocalypse\b/, /\bworld (?:was|is) ending\b/, /\bsky (?:was|is) falling\b/,
+    /\bfan club\b/, /\byour highness\b/, /\bcalumny\b/, /\bpure slander\b/,
+    /\boption (?:two|three|four) is starvation\b/, /\bfood poisoning\b/,
+    /\bboring is my specialty\b/, /\bdazzle you\b/, /\bsacrifice (?:those|your) (?:boots|shoes)\b/,
+    /\bdon t rewrite history\b/, /\bexactly zero other people\b/,
+    /\b(?:survive|surviving) this (?:torrential )?(?:downpour|rain)\b/,
+    /\b(?:dry|good) turkey clubs?\b/, /\bgood rolls\b/,
+    /\b(?:obviously|apparently|naturally)\b/,
+  ];
+  return markers.reduce((count, pattern)=>count + (pattern.test(dialogue) ? 1 : 0), 0);
+}
+function characterExplicitlyBanterHeavy(character = {}) {
+  const profile = normalizeText(`${character?.speech_style || ""} ${character?.voice_vocabulary || ""} ${character?.humor_style || ""} ${character?.personality || ""}`);
+  return /\b(?:banter[- ]heavy|constant teasing|constantly teases|relentlessly sarcastic|always joking|rapid[- ]fire banter)\b/.test(profile);
+}
+function hasBanterSaturationLoop(reply = "", recentReplies = [], latestUserMessage = "", character = {}) {
+  if (characterAllowsOrnateDialogue(character)) return false;
+  const current = performativeBanterScore(reply);
+  if (!current) return false;
+  const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-4);
+  const recentBanter = recent.filter((item)=>performativeBanterScore(item) > 0).length;
+  const userWords = normalizeText(latestUserMessage).split(/\s+/).filter(Boolean).length;
+  const heavy = characterExplicitlyBanterHeavy(character);
+  if (userWords <= 16 && current >= (heavy ? 3 : 2)) return true;
+  return recentBanter >= (heavy ? 3 : 2);
+}
+function hasShortTurnPerformanceMonologue(reply = "", latestUserMessage = "", character = {}) {
+  if (characterAllowsOrnateDialogue(character)) return false;
+  const userWords = normalizeText(latestUserMessage).split(/\s+/).filter(Boolean).length;
+  if (!userWords || userWords > 16) return false;
+  const spokenWords = dialogueWordCount(reply);
+  const totalWords = normalizeText(reply).split(/\s+/).filter(Boolean).length;
+  const banter = performativeBanterScore(reply);
+  return (spokenWords >= 34 && banter >= 1) || (totalWords >= 75 && banter >= 1);
+}
+function hasImmediateBehaviorStopViolation(reply = "", latestUserMessage = "") {
+  const latest = normalizeText(latestUserMessage);
+  const stopBanter = /\b(?:stop (?:joking|teasing|with the jokes|saying bullshit|talking bullshit|doing that)|enough with (?:the )?(?:jokes|teasing|bullshit)|quit (?:joking|teasing|that))\b/.test(latest);
+  if (!stopBanter) return false;
+  return performativeBanterScore(reply) > 0 || /\b(?:just kidding|kidding|joking|teasing|your highness|fan club|slander|calumny|apocalypse)\b/.test(normalizeText(dialogueOnlyText(reply)));
+}
+function hasUnearnedNicknameAddress(reply = "", userName = "", recentUserMessages = [], recentCharacterReplies = [], character = {}) {
+  const first = normalizeText(String(userName || "").trim().split(/\s+/)[0] || "");
+  if (first.length < 5) return false;
+  const aliases = [...new Set([first.slice(0,4), first.length >= 6 ? first.slice(2,6) : ""].filter((item)=>item && item !== first && item.length >= 3))];
+  if (!aliases.length) return false;
+  const evidence = normalizeText([
+    ...(Array.isArray(recentUserMessages) ? recentUserMessages : []),
+    ...(Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []),
+    character?.relationship || "", character?.voice_vocabulary || "", character?.verbal_tells || "", character?.example_dialogue || "", character?.notes || ""
+  ].join(" "));
+  const dialogue = normalizeText(dialogueOnlyText(reply));
+  return aliases.some((alias)=>{
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`).test(dialogue) && !new RegExp(`\\b${escaped}\\b`).test(evidence);
+  });
+}
+function hasUnsupportedSharedAcademicSpecificity(reply = "", visibleUserMessages = [], visibleCharacterReplies = [], character = {}) {
+  const text = normalizeText(reply);
+  const evidence = normalizeText([...(Array.isArray(visibleUserMessages)?visibleUserMessages:[]), ...(Array.isArray(visibleCharacterReplies)?visibleCharacterReplies:[]), character?.background||"", character?.role||"", character?.notes||""].join(" "));
+  const claims = [
+    {claim:/\bphysics lab\b/, support:/\bphysics lab\b/},
+    {claim:/\bsociology seminar\b/, support:/\bsociology seminar\b/},
+    {claim:/\b(?:chemistry|biology|economics|history|math|law|computer science) (?:lab|seminar|class|lecture)\b/, support:/\b(?:chemistry|biology|economics|history|math|law|computer science) (?:lab|seminar|class|lecture)\b/},
+    {claim:/\byou got (?:an? )?[a-f]\b.{0,28}\b(?:midterm|exam|test)\b/, support:/\b(?:midterm|exam|test)\b/},
+    {claim:/\b(?:ignoring|ignored|didn t answer|did not answer|left) my (?:text|message|dm)\b/, support:/\b(?:text|message|dm)\b/},
+  ];
+  return claims.some(({claim,support})=>claim.test(text) && !support.test(evidence));
+}
 function hasCannedDialogueGenomeCadence(reply = "", recentReplies = [], character = {}) {
   const profile = normalizeText(`${character?.example_dialogue || ""} ${character?.voice_vocabulary || ""} ${character?.speech_style || ""}`);
   const patterns = [
@@ -4216,6 +4334,11 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (hasTherapistServiceVoice(reply, options.character || {})) score -= 20;
   if (hasPerfectEmpathyPackage(reply, latest, options.character || {})) score -= 14;
   if (hasCannedDialogueGenomeCadence(reply, recent, options.character || {})) score -= 16;
+  if (hasBanterSaturationLoop(reply, recent, latest, options.character || {})) score -= 22;
+  if (hasShortTurnPerformanceMonologue(reply, latest, options.character || {})) score -= 18;
+  if (hasImmediateBehaviorStopViolation(reply, latest)) score -= 24;
+  if (hasUnearnedNicknameAddress(reply, options.userName || "", options.recentUserMessages || [], recent, options.character || {})) score -= 20;
+  if (hasUnsupportedSharedAcademicSpecificity(reply, options.recentUserMessages || [], recent, options.character || {})) score -= 24;
   if (hasDialogueGenomeDrift(reply, recent, options.character || {})) score -= 18;
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
@@ -4257,6 +4380,11 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasTherapistServiceVoice(text, options.character || {})) issues.push("therapist_service_voice");
   if (hasPerfectEmpathyPackage(text, options.latestUserMessage || "", options.character || {})) issues.push("perfect_empathy_package");
   if (hasCannedDialogueGenomeCadence(text, options.recentCharacterReplies || [], options.character || {})) issues.push("canned_dialogue_genome_cadence");
+  if (hasBanterSaturationLoop(text, options.recentCharacterReplies || [], options.latestUserMessage || "", options.character || {})) issues.push("banter_saturation_loop");
+  if (hasShortTurnPerformanceMonologue(text, options.latestUserMessage || "", options.character || {})) issues.push("short_turn_performance_monologue");
+  if (hasImmediateBehaviorStopViolation(text, options.latestUserMessage || "")) issues.push("immediate_behavior_stop_violation");
+  if (hasUnearnedNicknameAddress(text, options.userName || "", options.recentUserMessages || [], options.recentCharacterReplies || [], options.character || {})) issues.push("unearned_nickname_address");
+  if (hasUnsupportedSharedAcademicSpecificity(text, options.recentUserMessages || [], options.recentCharacterReplies || [], options.character || {})) issues.push("unsupported_shared_history_specificity");
   if (hasDialogueGenomeDrift(text, options.recentCharacterReplies || [], options.character || {})) issues.push("dialogue_genome_drift");
   if (hasReactionCloneDrift(text, options.recentCharacterReplies || [])) issues.push("reaction_clone_drift");
   if (hasExplanatorySubtextDump(text, options.latestUserMessage || "")) issues.push("explanatory_subtext_dump");
@@ -4797,7 +4925,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31 DIALOGUE GENOME: keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31.1 NATURAL VOICE LOCK: keep Dialogue Genome, but never perform personality for its own sake. Plain speech wins over cleverness. Enforce banter saturation, one-joke ceiling, nickname ownership, canon specificity and short-turn scale. Keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction, anti-performative-banter and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice only when the live beat earns movement; an ordinary turn may simply answer and continue the current activity. Never relocate the scene or invent an errand solely to create momentum. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           isCancelled,

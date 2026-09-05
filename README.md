@@ -1,3 +1,3 @@
-# Velvet Stories v3.31.0 — Dialogue Genome + Conversational Naturalism
+# Velvet Stories v3.31.1 — Natural Voice Lock
 
-See `README-v3.31.0.txt` for details.
+Hotfix for Dialogue Genome overperformance. See `README-v3.31.1.txt`.

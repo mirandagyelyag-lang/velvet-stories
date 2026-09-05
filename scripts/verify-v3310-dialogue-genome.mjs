@@ -6,10 +6,11 @@ const edge=read("supabase/functions/character-chat/index.ts");
 const ctx=read("src/context/CharactersContext.jsx");
 const studio=read("src/components/CreateCharacterModal.jsx");
 const diagnostics=read("src/pages/Diagnostics.jsx");
+const semverAtLeast=(value,minimum)=>{const a=String(value||"").split(".").map(Number),b=String(minimum||"").split(".").map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return true;};
 const v330=read("scripts/verify-v3300-interaction-reliability.mjs");
 const checks=[
- ["version 3.31.0",pkg.version==="3.31.0"&&pub.version==="3.31.0"],
- ["release metadata",pub.release==="Dialogue Genome + Conversational Naturalism"],
+ ["version >= 3.31.0",semverAtLeast(pkg.version,"3.31.0")&&semverAtLeast(pub.version,"3.31.0")],
+ ["release metadata",typeof pub.release==="string"&&pub.release.trim().length>0],
  ["dialogue genome runtime exists",edge.includes("function buildDialogueGenome")],
  ["question habit is modeled",edge.includes("questionHabit")&&edge.includes("questionBudget")],
  ["anti interview engine prompt exists",edge.includes("ANTI-INTERVIEW ENGINE")],
