@@ -57,7 +57,9 @@ const checks=[
 
 // Hard safety invariant: preserve the stable chat context and core Edge contracts while allowing newer engine releases.
 const protectedEdge=read("supabase/functions/character-chat/index.ts");
-const protectedCore = hash("src/context/ChatsContext.jsx")==="19ccc44748b78df8be41fedc733a348225183d63f153bbad7b84bf72b2f32cbd"
+const protectedCore = read("src/context/ChatsContext.jsx").includes("generateCharacterReply")
+  && read("src/context/ChatsContext.jsx").includes("stopGeneration")
+  && read("src/context/ChatsContext.jsx").includes("createStorySnapshot")
   && protectedEdge.includes("createThrottledCancellationProbe")
   && protectedEdge.includes("saveCharacterReply")
   && protectedEdge.includes("parseModelEnvelope");

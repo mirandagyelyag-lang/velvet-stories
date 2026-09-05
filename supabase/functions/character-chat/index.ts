@@ -185,6 +185,19 @@ Deno.serve(async (request) => {
       return await handleCharacterGenerate({ apiKey, concept: body?.concept });
     }
 
+    if (action === "canon_doctor") {
+      const doctorConversationId = cleanId(body?.conversationId);
+      if (!doctorConversationId) return json({ error: "conversationId is required" }, 400);
+      return await handleCanonDoctor({
+        apiKey,
+        supabase,
+        userId: userData.user.id,
+        conversationId: doctorConversationId,
+        apply: Boolean(body?.apply),
+        suppliedPlan: body?.plan,
+      });
+    }
+
     const conversationId = cleanId(body?.conversationId);
     const regenerateMessageId = cleanId(body?.regenerateMessageId);
     const expectedUserMessageId = cleanId(body?.expectedUserMessageId);
@@ -380,9 +393,206 @@ Deno.serve(async (request) => {
   }
 });
 
+
+function normalizeCanonDoctorFinding(value: any = {}) {
+  const allowedTypes = new Set(["private_thought_leak","boundary_violation","user_state_override","unsupported_shared_canon","location_continuity","knowledge_leak","contradiction","stale_thread","memory_contamination","other"]);
+  const allowedSeverity = new Set(["low","medium","high"]);
+  const type = allowedTypes.has(String(value?.type || "")) ? String(value.type) : "other";
+  const severity = allowedSeverity.has(String(value?.severity || "")) ? String(value.severity) : "medium";
+  return {
+    type,
+    severity,
+    messageId: cleanPromptValue(value?.messageId, 120),
+    evidence: cleanPromptValue(value?.evidence, 360),
+    reason: cleanPromptValue(value?.reason, 520),
+  };
+}
+function normalizeCanonDoctorPlan(value: any = {}) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const scene = source.cleanScene && typeof source.cleanScene === "object" ? source.cleanScene : {};
+  return {
+    cleanStoryRecap: cleanPromptValue(source.cleanStoryRecap, 1800),
+    cleanScene: {
+      location: cleanPromptValue(scene.location, 180),
+      time_label: cleanPromptValue(scene.time_label, 120),
+      present: compactSceneNames(scene.present || [], 12),
+      activity: cleanPromptValue(scene.activity, 220),
+      communication_medium: cleanPromptValue(scene.communication_medium, 80),
+    },
+    cleanUnresolvedThreads: (Array.isArray(source.cleanUnresolvedThreads) ? source.cleanUnresolvedThreads : []).slice(0, 12).map((item:any) => cleanPromptValue(item, 320)).filter(Boolean),
+    prunePhrases: (Array.isArray(source.prunePhrases) ? source.prunePhrases : []).slice(0, 24).map((item:any) => cleanPromptValue(item, 220)).filter((item:any) => item.length >= 4),
+    memoryIdsToSupersede: (Array.isArray(source.memoryIdsToSupersede) ? source.memoryIdsToSupersede : []).slice(0, 24).map((item:any) => cleanId(item)).filter(Boolean),
+    knowledgeIdsToRemove: (Array.isArray(source.knowledgeIdsToRemove) ? source.knowledgeIdsToRemove : []).slice(0, 24).map((item:any) => cleanId(item)).filter(Boolean),
+    clearUserAssumptions: Boolean(source.clearUserAssumptions),
+  };
+}
+function canonDoctorPhraseMatches(value = "", phrases: string[] = []) {
+  const text = normalizeText(value);
+  if (!text) return false;
+  return phrases.some((phrase) => {
+    const needle = normalizeText(phrase);
+    return needle.length >= 4 && (text.includes(needle) || needle.includes(text) || memorySimilarity(text, needle) >= 0.82);
+  });
+}
+function scrubPersistentState(value: any, phrases: string[]): any {
+  if (!phrases.length) return value;
+  if (typeof value === "string") return canonDoctorPhraseMatches(value, phrases) ? "" : value;
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => !canonDoctorPhraseMatches(typeof item === "string" ? item : JSON.stringify(item || {}), phrases))
+      .map((item) => scrubPersistentState(item, phrases));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrubPersistentState(item, phrases)]));
+  }
+  return value;
+}
+function canonDoctorPrivateLeakFindings(messages: any[] = []) {
+  const stop = new Set(["this","that","with","from","have","been","were","when","what","your","just","like","into","then","they","them","their","there","here","about","because","while","would","could","should","really","usual"]);
+  const rows = Array.isArray(messages) ? messages : [];
+  const findings:any[] = [];
+  for (let index = 0; index < rows.length - 1; index += 1) {
+    const user = rows[index];
+    if (user?.sender !== "user") continue;
+    const raw = String(user?.content || "");
+    const perceived = String(sanitizeUserTurnForPerception(raw) || "");
+    if (!raw.includes("*") || normalizeText(raw) === normalizeText(perceived)) continue;
+    const visibleTokens = new Set(normalizeText(perceived).split(/\s+/).filter(Boolean));
+    const privateTokens = [...new Set(normalizeText(raw).split(/\s+/).filter((token)=>token.length >= 4 && !visibleTokens.has(token) && !stop.has(token)))];
+    if (!privateTokens.length) continue;
+    const next = rows[index + 1];
+    if (next?.sender !== "character") continue;
+    const reply = normalizeText(next?.content || "");
+    const leaked = privateTokens.filter((token)=>reply.includes(token));
+    if (!leaked.length) continue;
+    findings.push({
+      type: "private_thought_leak",
+      severity: "high",
+      messageId: cleanPromptValue(next?.id, 120),
+      evidence: cleanPromptValue(next?.content, 300),
+      reason: `The reply echoes private asterisk narration (${leaked.slice(0,3).join(", ")}) that was removed from the character-perceivable turn.`,
+    });
+  }
+  return findings.slice(0, 8);
+}
+function canonDoctorTranscript(messages: any[] = []) {
+  return messages.slice(-90).map((message) => {
+    const id = cleanPromptValue(message?.id, 80);
+    const raw = cleanPromptValue(message?.content, 1100);
+    if (message?.sender === "user") {
+      const perceivable = cleanPromptValue(sanitizeUserTurnForPerception(message?.content || ""), 1100);
+      if (normalizeText(raw) !== normalizeText(perceivable)) {
+        return `[${id}] USER RAW: ${raw}\n[${id}] USER PERCEIVABLE TO CHARACTERS: ${perceivable || "(no perceivable content)"}`;
+      }
+      return `[${id}] USER: ${raw}`;
+    }
+    return `[${id}] CHARACTER: ${raw}`;
+  }).join("\n\n");
+}
+async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, apply = false, suppliedPlan = null }) {
+  const [conversationResult, messagesResult, memoriesResult, knowledgeResult, characterResult] = await Promise.all([
+    supabase.from("conversations").select("*").eq("id", conversationId).eq("user_id", userId).single(),
+    supabase.from("messages").select("id, sender, content, created_at").eq("conversation_id", conversationId).eq("user_id", userId).order("created_at", { ascending: true }).limit(220),
+    supabase.from("memories").select("id, content, category, importance, is_pinned, is_canon, source, scope, superseded_at").eq("conversation_id", conversationId).eq("user_id", userId).is("superseded_at", null).order("created_at", { ascending: true }).limit(80),
+    supabase.from("story_knowledge_entries").select("id, character_name, subject, knowledge, status, source, secret").eq("conversation_id", conversationId).eq("user_id", userId).limit(80),
+    Promise.resolve({ data: null, error: null }),
+  ]);
+  if (conversationResult.error || !conversationResult.data) throw new Error(conversationResult.error?.message || "Conversation not found");
+  if (messagesResult.error) throw new Error(messagesResult.error.message);
+  if (memoriesResult.error) throw new Error(memoriesResult.error.message);
+  if (knowledgeResult.error && knowledgeResult.error.code !== "42P01") throw new Error(knowledgeResult.error.message);
+  const conversation = conversationResult.data;
+  const messages = messagesResult.data || [];
+  const memories = memoriesResult.data || [];
+  const knowledge = knowledgeResult.data || [];
+  const deterministicFindings = canonDoctorPrivateLeakFindings(messages);
+
+  let report: any;
+  if (apply && suppliedPlan && typeof suppliedPlan === "object") {
+    report = { repairPlan: normalizeCanonDoctorPlan(suppliedPlan) };
+  } else {
+    const prompt = `You are Velvet Canon Doctor. Audit a private fictional roleplay conversation for PERSISTENT STATE contamination. Do not rewrite messages and do not judge writing quality. Be conservative: ordinary self-owned details a character introduces can be valid; only flag details that falsely become shared user canon, contradict visible canon, violate explicit user boundaries, rely on private narration, collapse suspicion into fact, or break physical presence/location continuity.\n\nHARD LAWS\n1. USER RAW asterisk narration may contain both observable action and private commentary. Only USER PERCEIVABLE text was available to characters. A character reacting to removed/private wording is a private-thought leak.\n2. A user's explicit self-report about their own feelings/reasons outranks character inference.\n3. Explicit behavior boundaries such as stop teasing / stop being sarcastic / don't touch me persist until the user clearly relaxes them.\n4. If the user leaves, they remain absent until the user explicitly returns.\n5. Do not mark every new class, friend, task, job, or schedule detail as bad. Flag it only when it is presented as shared history/user fact without support, contradicts canon, or is used to override the user's reality.\n6. Manual, pinned, or canon memories are creator-owned. Never recommend removing them.\n7. Return concise JSON only. No hidden reasoning.\n\nOUTPUT\n{\n  "score": 0-100,\n  "status": "clean|review|repair_recommended",\n  "summary": "short plain explanation",\n  "canon": {"confirmed":[],"userOwned":[],"characterOwned":[],"unsupported":[],"contradictions":[]},\n  "findings": [{"type":"private_thought_leak|boundary_violation|user_state_override|unsupported_shared_canon|location_continuity|knowledge_leak|contradiction|stale_thread|memory_contamination|other","severity":"low|medium|high","messageId":"id if known","evidence":"short excerpt","reason":"short explanation"}],\n  "repairPlan": {\n    "cleanStoryRecap":"grounded recap, empty only if no reliable recap can be made",\n    "cleanScene":{"location":"","time_label":"","present":[],"activity":"","communication_medium":"in_person|digital|unknown"},\n    "cleanUnresolvedThreads":[],\n    "prunePhrases":["exact contaminated phrases from persistent state only"],\n    "memoryIdsToSupersede":["only automatic contaminated memory ids"],\n    "knowledgeIdsToRemove":["only contaminated generated knowledge ids"],\n    "clearUserAssumptions":false\n  }\n}\n\nCURRENT PERSISTENT STATE\n${JSON.stringify({scene_state:conversation.scene_state||{}, intelligence_state:conversation.intelligence_state||{}, relationship_state:conversation.relationship_state||{}, character_development:conversation.character_development||{}, unresolved_threads:conversation.unresolved_threads||[], story_recap:conversation.story_recap||conversation.summary||""}).slice(0,22000)}\n\nACTIVE MEMORIES\n${JSON.stringify(memories.map((m:any)=>({id:m.id,content:m.content,category:m.category,importance:m.importance,pinned:Boolean(m.is_pinned),canon:Boolean(m.is_canon),source:m.source,scope:m.scope}))).slice(0,13000)}\n\nKNOWLEDGE LEDGER\n${JSON.stringify(knowledge).slice(0,9000)}\n\nVISIBLE CONVERSATION HISTORY\n${canonDoctorTranscript(messages)}`;
+    const raw = await requestCharacterJson({ apiKey, prompt, maxOutputTokens: 3600, purpose: "canon-doctor", deadlineMs: 32000, temperature: 0.2, systemInstruction: "Audit persistent state for a private fictional roleplay. Return conservative valid JSON only. Never rewrite visible messages and never expose hidden reasoning." });
+    report = {
+      score: Math.max(0, Math.min(100, Number(raw?.score) || 0)),
+      status: ["clean","review","repair_recommended"].includes(String(raw?.status)) ? String(raw.status) : "review",
+      summary: cleanPromptValue(raw?.summary, 700),
+      canon: {
+        confirmed: developmentList(raw?.canon?.confirmed, 8, 260),
+        userOwned: developmentList(raw?.canon?.userOwned, 8, 260),
+        characterOwned: developmentList(raw?.canon?.characterOwned, 8, 260),
+        unsupported: developmentList(raw?.canon?.unsupported, 10, 320),
+        contradictions: developmentList(raw?.canon?.contradictions, 10, 320),
+      },
+      findings: (Array.isArray(raw?.findings) ? raw.findings : []).slice(0, 18).map(normalizeCanonDoctorFinding),
+      repairPlan: normalizeCanonDoctorPlan(raw?.repairPlan),
+    };
+    if (deterministicFindings.length) {
+      const existingKeys = new Set(report.findings.map((item:any)=>`${item.type}:${item.messageId}`));
+      report.findings = [...deterministicFindings.filter((item:any)=>!existingKeys.has(`${item.type}:${item.messageId}`)), ...report.findings].slice(0, 20);
+      report.status = "repair_recommended";
+      report.score = Math.min(Number(report.score) || 100, Math.max(0, 92 - deterministicFindings.length * 12));
+      if (!report.summary) report.summary = "Canon Doctor found persistent-state risks that should be cleaned before continuing this story.";
+    }
+  }
+
+  if (!apply) return json({ report, messageCount: messages.length, memoryCount: memories.length });
+
+  const plan = normalizeCanonDoctorPlan(report?.repairPlan || suppliedPlan || {});
+  const prunePhrases = plan.prunePhrases;
+  let intelligenceState = scrubPersistentState(conversation.intelligence_state || {}, prunePhrases);
+  let relationshipState = scrubPersistentState(conversation.relationship_state || {}, prunePhrases);
+  let developmentState = scrubPersistentState(conversation.character_development || {}, prunePhrases);
+  let castState = scrubPersistentState(conversation.cast_state || {}, prunePhrases);
+  if (plan.clearUserAssumptions) {
+    if (intelligenceState?.human_behavior_state) intelligenceState.human_behavior_state.relationship_user_view = "";
+    if (intelligenceState?.presence_engine_state) intelligenceState.presence_engine_state.bad_day_state = "";
+    if (developmentState && typeof developmentState === "object") {
+      developmentState.vulnerability_window = "";
+      developmentState.memory_influence = "";
+    }
+  }
+  const nextScene = {
+    ...(conversation.scene_state || {}),
+    ...(plan.cleanScene.location ? { location: plan.cleanScene.location } : {}),
+    ...(plan.cleanScene.time_label ? { time_label: plan.cleanScene.time_label } : {}),
+    ...(plan.cleanScene.present.length ? { present: plan.cleanScene.present } : {}),
+    ...(plan.cleanScene.activity ? { activity: plan.cleanScene.activity } : {}),
+    ...(plan.cleanScene.communication_medium && plan.cleanScene.communication_medium !== "unknown" ? { communication_medium: plan.cleanScene.communication_medium } : {}),
+  };
+  const patch: Record<string, any> = {
+    scene_state: nextScene,
+    intelligence_state: intelligenceState,
+    relationship_state: relationshipState,
+    character_development: developmentState,
+    cast_state: castState,
+    unresolved_threads: plan.cleanUnresolvedThreads,
+    story_recap: plan.cleanStoryRecap || conversation.story_recap || conversation.summary || "",
+    story_revision: Math.max(0, Number(conversation.story_revision) || 0) + 1,
+    story_engine_version: "3.34.0",
+    updated_at: new Date().toISOString(),
+  };
+  const { error: updateError } = await supabase.from("conversations").update(patch).eq("id", conversationId).eq("user_id", userId);
+  if (updateError) throw new Error(updateError.message);
+
+  const safeMemoryIds = new Set(memories.filter((m:any)=>!m.is_pinned && !m.is_canon && String(m.source || "") !== "manual").map((m:any)=>String(m.id)));
+  const memoryIds = plan.memoryIdsToSupersede.filter((id:string)=>safeMemoryIds.has(id));
+  if (memoryIds.length) {
+    const { error } = await supabase.from("memories").update({ superseded_at: new Date().toISOString() }).in("id", memoryIds).eq("user_id", userId);
+    if (error) throw new Error(error.message);
+  }
+  const safeKnowledgeIds = new Set(knowledge.filter((item:any)=>String(item?.source || "").toLowerCase() !== "manual").map((item:any)=>String(item.id)));
+  const knowledgeIds = plan.knowledgeIdsToRemove.filter((id:string)=>safeKnowledgeIds.has(id));
+  if (knowledgeIds.length) {
+    const { error } = await supabase.from("story_knowledge_entries").delete().in("id", knowledgeIds).eq("conversation_id", conversationId).eq("user_id", userId);
+    if (error && error.code !== "42P01") throw new Error(error.message);
+  }
+  return json({ applied: true, report, repaired: { memoriesSuperseded: memoryIds.length, knowledgeRemoved: knowledgeIds.length, prunePhrases: prunePhrases.length }, updated: patch });
+}
+
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "3.33.1",
+    version: "3.34.0",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -444,6 +654,7 @@ async function requestCharacterJson({
   temperature = 0.72,
   purpose = "character-assist",
   deadlineMs = 28000,
+  systemInstruction = "Design private fictional roleplay characters. Return concise valid JSON only.",
 }) {
   const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
   const deadline = Date.now() + Math.max(12000, Number(deadlineMs) || 28000);
@@ -464,7 +675,7 @@ async function requestCharacterJson({
         headers: geminiHeaders(apiKey),
         signal: controller.signal,
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: "Design private fictional roleplay characters. Return concise valid JSON only." }] },
+          systemInstruction: { parts: [{ text: systemInstruction }] },
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
             maxOutputTokens,

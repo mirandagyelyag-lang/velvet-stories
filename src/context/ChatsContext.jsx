@@ -1523,6 +1523,44 @@ export function ChatsProvider({
     });
   }
 
+  async function runCanonDoctor(characterId, options = {}) {
+    const conversation = chats[characterId];
+    if (!conversation?.conversationId) throw new Error("The conversation is not ready yet.");
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session?.access_token) throw new Error("Your session expired. Sign in again.");
+    const response = await fetch(getCharacterChatUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+        ...(getBrowserPublishableKey() ? { apikey: getBrowserPublishableKey() } : {}),
+      },
+      body: JSON.stringify({
+        action: "canon_doctor",
+        conversationId: conversation.conversationId,
+        apply: Boolean(options.apply),
+        plan: options.plan || null,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.error || `Canon Doctor failed with status ${response.status}.`);
+    if (payload?.applied) {
+      await refreshStoryMetadata(characterId);
+      setChats((current) => ({
+        ...current,
+        [characterId]: {
+          ...current[characterId],
+          sceneState: payload.updated?.scene_state || current[characterId]?.sceneState || {},
+          intelligenceState: payload.updated?.intelligence_state || current[characterId]?.intelligenceState || {},
+          relationshipState: payload.updated?.relationship_state || current[characterId]?.relationshipState || {},
+          storyRecap: payload.updated?.story_recap || current[characterId]?.storyRecap || "",
+          unfinishedThreads: Array.isArray(payload.updated?.unresolved_threads) ? payload.updated.unresolved_threads : (current[characterId]?.unfinishedThreads || []),
+        },
+      }));
+    }
+    return payload;
+  }
+
   async function updateConversationSettings(characterId, changes) {
     const conversation = chats[characterId];
     if (!conversation?.conversationId) throw new Error("The conversation is not ready yet.");
@@ -2457,25 +2495,28 @@ export function ChatsProvider({
     if (!conversation?.conversationId) throw new Error("The conversation is not ready yet.");
     const conversationId = conversation.conversationId;
 
-    const [conversationResult, messagesResult, memoriesResult, alternativesResult] = await Promise.all([
+    const [conversationResult, messagesResult, memoriesResult, alternativesResult, knowledgeResult] = await Promise.all([
       supabase.from("conversations").select("*").eq("id", conversationId).eq("user_id", user.id).single(),
       supabase.from("messages").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase.from("memories").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase.from("message_alternatives").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
+      supabase.from("story_knowledge_entries").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("updated_at", { ascending: true }),
     ]);
     if (conversationResult.error) throw conversationResult.error;
     if (messagesResult.error) throw messagesResult.error;
     if (memoriesResult.error) throw memoriesResult.error;
     if (alternativesResult.error) console.warn("Could not include response alternatives in snapshot:", alternativesResult.error);
+    if (knowledgeResult.error && knowledgeResult.error.code !== "42P01") console.warn("Could not include story knowledge in snapshot:", knowledgeResult.error);
 
     return {
-      schema: 1,
+      schema: 2,
       velvetVersion: "2.6.0",
       capturedAt: new Date().toISOString(),
       conversation: conversationResult.data,
       messages: messagesResult.data || [],
       memories: memoriesResult.data || [],
       alternatives: alternativesResult.data || [],
+      knowledge: knowledgeResult.error ? [] : (knowledgeResult.data || []),
     };
   }
 
@@ -2532,6 +2573,8 @@ export function ChatsProvider({
     const conversationId = conversation.conversationId;
     const { error: alternativesDeleteError } = await supabase.from("message_alternatives").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
     if (alternativesDeleteError) console.warn("Could not clear old alternatives:", alternativesDeleteError);
+    const { error: knowledgeDeleteError } = await supabase.from("story_knowledge_entries").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
+    if (knowledgeDeleteError && knowledgeDeleteError.code !== "42P01") console.warn("Could not clear old story knowledge:", knowledgeDeleteError);
     const { error: memoriesDeleteError } = await supabase.from("memories").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
     if (memoriesDeleteError) throw memoriesDeleteError;
     const { error: messagesDeleteError } = await supabase.from("messages").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
@@ -2565,6 +2608,16 @@ export function ChatsProvider({
       }));
       const { error } = await supabase.from("message_alternatives").insert(rows);
       if (error) console.warn("Could not restore response alternatives:", error);
+    }
+
+    if (Array.isArray(payload.knowledge) && payload.knowledge.length) {
+      const rows = payload.knowledge.map((row) => ({
+        ...row,
+        conversation_id: conversationId,
+        user_id: user.id,
+      }));
+      const { error } = await supabase.from("story_knowledge_entries").insert(rows);
+      if (error && error.code !== "42P01") console.warn("Could not restore story knowledge:", error);
     }
 
     const source = payload.conversation || {};
@@ -2719,6 +2772,7 @@ export function ChatsProvider({
         addMessage,
         generateCharacterReply,
         stopGeneration,
+        runCanonDoctor,
         updateConversationSettings,
         deleteMessage,
         updateMessage,

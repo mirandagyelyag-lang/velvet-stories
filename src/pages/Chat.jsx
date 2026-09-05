@@ -62,6 +62,7 @@ import AudioStatusPill from "../components/AudioStatusPill";
 import RelationshipDrawer from "../components/RelationshipDrawer";
 import StoryWorldDrawer from "../components/StoryWorldDrawer";
 import MessageQualitySheet from "../components/MessageQualitySheet";
+import CanonDoctorSheet from "../components/CanonDoctorSheet";
 import { useChats } from "../context/ChatsContext";
 import { useCharacters } from "../context/CharactersContext";
 import { usePersonas } from "../context/PersonasContext";
@@ -136,6 +137,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     addMessage,
     generateCharacterReply,
     stopGeneration,
+    runCanonDoctor,
     updateConversationSettings,
     deleteConversation,
     deleteMessage,
@@ -218,6 +220,12 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [safeStudioOpen, setSafeStudioOpen] = useState(false);
   const [livingWorldOpen, setLivingWorldOpen] = useState(false);
   const [experienceOpen, setExperienceOpen] = useState(false);
+  const [canonDoctorOpen, setCanonDoctorOpen] = useState(false);
+  const [canonDoctorReport, setCanonDoctorReport] = useState(null);
+  const [canonDoctorLoading, setCanonDoctorLoading] = useState(false);
+  const [canonDoctorApplying, setCanonDoctorApplying] = useState(false);
+  const [canonDoctorError, setCanonDoctorError] = useState("");
+  const [canonDoctorApplied, setCanonDoctorApplied] = useState(false);
   const [experienceState, setExperienceState] = useState(() => readExperience(conversationId || character.id));
   const [characterTint, setCharacterTint] = useState(() => { try { return localStorage.getItem(`velvet_character_tint_${character.id}`) || "balanced"; } catch { return "balanced"; } });
   const [refreshingTimeline, setRefreshingTimeline] = useState(false);
@@ -263,7 +271,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }, [visibleMessages.length]);
   const chatOverlayOpen = Boolean(
     menuOpen || directorNoteOpen || selectedMessage || controlsOpen || characterProfileOpen ||
-    memoryBookOpen || relationshipOpen || groupPeekCharacter || worldStudioOpen || timelineOpen || storyHubOpen || safeStudioOpen || livingWorldOpen || experienceOpen || catchUpOpen || qualityMessage
+    memoryBookOpen || relationshipOpen || groupPeekCharacter || worldStudioOpen || timelineOpen || storyHubOpen || safeStudioOpen || livingWorldOpen || experienceOpen || canonDoctorOpen || catchUpOpen || qualityMessage
   );
 
   useEffect(() => {
@@ -1952,6 +1960,47 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     setMenuOpen(false);
   }
 
+  async function scanCanonDoctor() {
+    if (!conversationReady || canonDoctorLoading || canonDoctorApplying) return;
+    setCanonDoctorLoading(true);
+    setCanonDoctorError("");
+    setCanonDoctorApplied(false);
+    try {
+      const payload = await runCanonDoctor(character.id, { apply: false });
+      setCanonDoctorReport(payload?.report || null);
+    } catch (error) {
+      setCanonDoctorError(error?.message || "Canon Doctor couldn't scan this story.");
+    } finally {
+      setCanonDoctorLoading(false);
+    }
+  }
+
+  async function openCanonDoctor() {
+    setMenuOpen(false);
+    setCanonDoctorOpen(true);
+    setCanonDoctorReport(null);
+    setCanonDoctorError("");
+    setCanonDoctorApplied(false);
+    window.setTimeout(() => { void scanCanonDoctor(); }, 0);
+  }
+
+  async function repairCanonDoctor() {
+    if (!canonDoctorReport?.repairPlan || canonDoctorApplying) return;
+    setCanonDoctorApplying(true);
+    setCanonDoctorError("");
+    try {
+      await createStorySnapshot(character.id, "Before Canon Doctor");
+      const payload = await runCanonDoctor(character.id, { apply: true, plan: canonDoctorReport.repairPlan });
+      setCanonDoctorReport(payload?.report || canonDoctorReport);
+      setCanonDoctorApplied(true);
+      setActionNotice("Story state repaired. Messages were left untouched.");
+    } catch (error) {
+      setCanonDoctorError(error?.message || "Canon Doctor couldn't repair this story.");
+    } finally {
+      setCanonDoctorApplying(false);
+    }
+  }
+
   const chatHeroImage = character.coverUrl || character.imageUrl;
 
   return (
@@ -2021,6 +2070,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); openDirector("next"); }} disabled={!conversationReady || busy}><Sparkles size={17} /> Guide the next beat</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><BookOpen size={17} /> Story Hub</button>
               <div className="chat__menu-section-label">WORLD & CONTINUITY</div>
+              <button className="chat__menu-controls" onClick={openCanonDoctor} disabled={!conversationReady || busy}><ShieldCheck size={17} /> Canon Doctor</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setWorldStudioOpen(true); }} disabled={!conversationReady}><Globe2 size={17} /> World Studio</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }} disabled={!conversationReady}><Clock3 size={17} /> Story timeline</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setSafeStudioOpen(true); }} disabled={!conversationReady}><ShieldCheck size={17} /> Safe Studio</button>
@@ -2408,6 +2458,18 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           </section>
         </div>
       ), document.body)}
+
+      <CanonDoctorSheet
+        open={canonDoctorOpen}
+        onClose={() => !canonDoctorApplying && setCanonDoctorOpen(false)}
+        report={canonDoctorReport}
+        loading={canonDoctorLoading}
+        applying={canonDoctorApplying}
+        error={canonDoctorError}
+        applied={canonDoctorApplied}
+        onRepair={repairCanonDoctor}
+        onRescan={scanCanonDoctor}
+      />
 
       <MessageQualitySheet open={Boolean(qualityMessage)} message={qualityMessage} character={character} onClose={()=>setQualityMessage(null)} onRate={rateQuality} />
 

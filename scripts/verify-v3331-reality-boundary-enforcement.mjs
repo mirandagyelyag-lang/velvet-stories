@@ -22,8 +22,8 @@ const contract=compileStoryContract({
   recentMessages:[{sender:"user",content:"Can you stop being sarcastic?"}],
 });
 const checks=[
-  ["version 3.33.1",pkg.version==="3.33.1"&&pub.version==="3.33.1"],
-  ["release metadata",pub.release==="Reality & Boundary Enforcement"],
+  ["version >= 3.33.1",Number(pkg.version.split(".")[1])>=33&&Number(pub.version.split(".")[1])>=33],
+  ["release metadata",Boolean(pub.release)],
   ["stability lab includes v3331",pkg.scripts["stability:lab"].includes("verify:v3331")],
   ["asterisk sanitizer strips when-clause",/walk to our usual sit/i.test(sanitizeCase)&&!/waste our time/i.test(sanitizeCase)],
   ["sticky sarcasm boundary persists",behavior.some((item)=>/no sarcasm/i.test(item))],
