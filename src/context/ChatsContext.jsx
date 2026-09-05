@@ -2806,6 +2806,36 @@ function createConversationTitle() {
   return `New story · ${date}, ${time}`;
 }
 
+function extractVisibleReplyFromStoredEnvelope(value = "") {
+  const text = String(value || "");
+  if (!text.trimStart().startsWith("{") || !/"reply"\s*:/.test(text)) return text;
+
+  try {
+    const parsed = JSON.parse(text);
+    if (typeof parsed?.reply === "string" && parsed.reply.trim()) return parsed.reply.trim();
+  } catch {}
+
+  const match = /"reply"\s*:\s*"/.exec(text);
+  if (!match) return text;
+  let raw = "";
+  let escaped = false;
+  for (let index = match.index + match[0].length; index < text.length; index += 1) {
+    const char = text[index];
+    if (!escaped && char === '"') break;
+    raw += char;
+    if (escaped) escaped = false;
+    else if (char === "\\") escaped = true;
+  }
+  if (/\\$/.test(raw)) raw = raw.slice(0, -1);
+  raw = raw.replace(/\\u[0-9a-fA-F]{0,3}$/u, "");
+  try {
+    const recovered = JSON.parse(`"${raw}"`);
+    return recovered.trim() || text;
+  } catch {
+    return text;
+  }
+}
+
 function convertDatabaseMessage(
   message
 ) {
@@ -2823,7 +2853,9 @@ function convertDatabaseMessage(
       message.sender,
 
     content:
-      message.content,
+      message.sender === "character"
+        ? extractVisibleReplyFromStoredEnvelope(message.content)
+        : message.content,
 
     createdAt:
       message.created_at,

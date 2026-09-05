@@ -372,7 +372,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "3.22.0",
+    version: "3.22.1",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -1091,7 +1091,7 @@ HIDDEN STATE OUTPUT
 - story_drive.intensity_target is 1-10 and may DECREASE. season_signal is true only for a durable era change, never one emotional beat. scene_momentum is hold/turn/close. compression_reason is empty unless routine time can safely be compressed without skipping a live user choice.
 
 OUTPUT
-Start from the final visible physical state. Answer this beat directly, preserve character-specific voice, follow the invisible director's beat classification, and stop before controlling the user. A mundane or recovery turn does not need a plot change. Put reply first. Hidden metadata may record only what the reply actually showed.`;
+Start from the final visible physical state. Answer this beat directly, preserve character-specific voice, follow the invisible director's beat classification, and stop before controlling the user. A mundane or recovery turn does not need a plot change. Put reply first. Hidden metadata may record only what the reply actually showed. OMIT unchanged/empty metadata and keep bookkeeping compact enough that the visible reply always finishes first.`;
 }
 
 // Kept temporarily as a reference while the compact v2.12 prompt is proven in production.
@@ -1257,31 +1257,47 @@ async function callGeminiWithFailover({
   if (quotaReached) throw new Error("Gemini is rate-limited right now. This can be a per-minute, token, or daily project limit. Wait a little and try again.");
   throw new Error(lastError);
 }
+function emptyModelEnvelope(reply = ""): ModelEnvelope {
+  return { reply: String(reply || "").trim(), story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, presence_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
+}
+
 function parseModelEnvelope(raw): ModelEnvelope {
   const clean = stripJsonFence(raw);
   try {
     const parsed = JSON.parse(clean);
+    const hidden = parsed?.hidden_metadata && typeof parsed.hidden_metadata === "object" ? parsed.hidden_metadata : {};
+    const read = (key) => parsed?.[key] ?? hidden?.[key];
     return {
       reply: String(parsed?.reply || "").trim(),
-      story_drive: parsed?.story_drive && typeof parsed.story_drive === "object" ? parsed.story_drive : {},
-      continuity_note: String(parsed?.continuity_note || "").trim().slice(0, 600),
-      development_update: parsed?.development_update && typeof parsed.development_update === "object"
-        ? parsed.development_update
-        : {},
-      voice_plan: parsed?.voice_plan && typeof parsed.voice_plan === "object" ? parsed.voice_plan : {},
-      scene_update: parsed?.scene_update && typeof parsed.scene_update === "object" ? parsed.scene_update : {},
-      continuity_update: parsed?.continuity_update && typeof parsed.continuity_update === "object" ? parsed.continuity_update : {},
-      cast_updates: Array.isArray(parsed?.cast_updates) ? parsed.cast_updates.slice(0, 6) : [],
-      memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 3) : [],
-      mind_update: parsed?.mind_update && typeof parsed.mind_update === "object" ? parsed.mind_update : {},
-      human_behavior_update: parsed?.human_behavior_update && typeof parsed.human_behavior_update === "object" ? parsed.human_behavior_update : {},
-      presence_update: parsed?.presence_update && typeof parsed.presence_update === "object" ? parsed.presence_update : {},
-      connection_updates: Array.isArray(parsed?.connection_updates) ? parsed.connection_updates.slice(0, 6) : [],
-      post_turn_reflection: parsed?.post_turn_reflection && typeof parsed.post_turn_reflection === "object" ? parsed.post_turn_reflection : {},
-      quality_check: parsed?.quality_check && typeof parsed.quality_check === "object" ? parsed.quality_check : {},
+      story_drive: read("story_drive") && typeof read("story_drive") === "object" ? read("story_drive") : {},
+      continuity_note: String(read("continuity_note") || "").trim().slice(0, 600),
+      development_update: read("development_update") && typeof read("development_update") === "object" ? read("development_update") : {},
+      voice_plan: read("voice_plan") && typeof read("voice_plan") === "object" ? read("voice_plan") : {},
+      scene_update: read("scene_update") && typeof read("scene_update") === "object" ? read("scene_update") : {},
+      continuity_update: read("continuity_update") && typeof read("continuity_update") === "object" ? read("continuity_update") : {},
+      cast_updates: Array.isArray(read("cast_updates")) ? read("cast_updates").slice(0, 6) : [],
+      memory_updates: Array.isArray(read("memory_updates")) ? read("memory_updates").slice(0, 3) : [],
+      mind_update: read("mind_update") && typeof read("mind_update") === "object" ? read("mind_update") : {},
+      human_behavior_update: read("human_behavior_update") && typeof read("human_behavior_update") === "object" ? read("human_behavior_update") : {},
+      presence_update: read("presence_update") && typeof read("presence_update") === "object" ? read("presence_update") : {},
+      connection_updates: Array.isArray(read("connection_updates")) ? read("connection_updates").slice(0, 6) : [],
+      post_turn_reflection: read("post_turn_reflection") && typeof read("post_turn_reflection") === "object" ? read("post_turn_reflection") : {},
+      quality_check: read("quality_check") && typeof read("quality_check") === "object" ? read("quality_check") : {},
     };
   } catch {
-    return { reply: String(raw || "").trim(), story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, presence_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
+    // Gemini can finish the visible reply and then hit MAX_TOKENS while writing
+    // hidden continuity metadata. Never expose the broken JSON envelope as prose.
+    const salvagedReply = extractPartialJsonStringField(clean, "reply");
+    if (salvagedReply.trim()) {
+      console.warn("[character-chat] salvaged visible reply from incomplete JSON envelope", { chars: salvagedReply.length });
+      return emptyModelEnvelope(salvagedReply);
+    }
+    // Only plain non-envelope text may fall back to raw prose. A JSON-looking
+    // payload without a recoverable reply is an invalid model envelope.
+    if (/^\s*[{[]/.test(clean) || /"(?:reply|hidden_metadata|mind_update|presence_update)"\s*:/.test(clean)) {
+      throw new Error("Gemini returned an incomplete structured response before the visible reply could be recovered.");
+    }
+    return emptyModelEnvelope(clean);
   }
 }
 
@@ -4285,7 +4301,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice specific rather than archetypal. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains or therapist speech. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Use Presence Engine 2.0: natural conversation, relationship-specific chemistry, real silence, emotional residue and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice specific rather than archetypal. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains or therapist speech. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Use Presence Engine 2.0: natural conversation, relationship-specific chemistry, real silence, emotional residue and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 450 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           isCancelled,

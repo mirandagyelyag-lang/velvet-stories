@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.22.0",
+  "version": "3.22.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -67,7 +67,8 @@
     "verify:v3212": "node scripts/verify-v3212-gemini-compat.mjs",
     "verify:chat-syntax": "node --experimental-strip-types --check supabase/functions/character-chat/index.ts",
     "verify:v3213": "node scripts/verify-v3213-gemini-no-schema.mjs",
-    "verify:v3220": "node scripts/verify-v3220-presence-engine.mjs"
+    "verify:v3220": "node scripts/verify-v3220-presence-engine.mjs",
+    "verify:v3221": "node scripts/verify-v3221-envelope-guard.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",
