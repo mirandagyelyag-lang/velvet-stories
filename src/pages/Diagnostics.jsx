@@ -36,7 +36,9 @@ export default function Diagnostics({ onBack }) {
       if (!versionResponse.ok) throw new Error(`Host returned ${versionResponse.status}`);
       const hostPayload = await versionResponse.json().catch(() => ({}));
       const host = window.location.hostname;
-      next.hosting = { ok: true, detail: `${/vercel\.app$/i.test(host) ? "Vercel" : host || "Current host"} · serving v${hostPayload?.version || VELVET_VERSION}` };
+      const servedVersion = String(hostPayload?.version || "");
+      const versionMatch = !servedVersion || servedVersion === String(VELVET_VERSION);
+      next.hosting = { ok: versionMatch, detail: `${/vercel\.app$/i.test(host) ? "Vercel" : host || "Current host"} · serving v${servedVersion || VELVET_VERSION}${versionMatch ? " · matches installed build" : ` · MISMATCH: installed v${VELVET_VERSION}`}` };
     } catch (error) {
       next.hosting = { ok: false, detail: error?.message || "Could not reach the deployed app shell" };
     }

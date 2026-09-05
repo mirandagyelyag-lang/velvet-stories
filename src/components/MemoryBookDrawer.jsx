@@ -47,6 +47,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
   const [workingId, setWorkingId] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [cleaning, setCleaning] = useState(false);
 
   useEffect(() => {
     if (open && character?.id) loadMemories();
@@ -124,6 +125,36 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
     automatic: filtered.filter((memory) => !memory.is_canon && !memory.is_pinned && memory.source === "automatic"),
     manual: filtered.filter((memory) => !memory.is_canon && !memory.is_pinned && memory.source !== "automatic"),
   }), [filtered]);
+
+  const duplicateAutomaticIds = useMemo(() => {
+    const seen = new Set();
+    const duplicateIds = [];
+    for (const memory of memories) {
+      if (memory.is_canon || memory.is_pinned || memory.source !== "automatic") continue;
+      const signature = String(memory.content || "").trim().toLowerCase().replace(/\s+/g, " ");
+      if (!signature) continue;
+      if (seen.has(signature)) duplicateIds.push(memory.id);
+      else seen.add(signature);
+    }
+    return duplicateIds;
+  }, [memories]);
+
+  async function cleanExactDuplicates() {
+    if (!duplicateAutomaticIds.length || cleaning) return;
+    setCleaning(true);
+    setError("");
+    try {
+      const { error: requestError } = await supabase.from("memories").delete().in("id", duplicateAutomaticIds);
+      if (requestError) throw requestError;
+      const next = memories.filter((memory) => !duplicateAutomaticIds.includes(memory.id));
+      setMemories(next);
+      onCountChange?.(next.length);
+    } catch (requestError) {
+      setError(requestError?.message || "Velvet couldn't clean duplicate memories.");
+    } finally {
+      setCleaning(false);
+    }
+  }
 
   function openCreate() {
     setEditingMemory(null);
@@ -264,7 +295,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
         <div className="memory-book__grab" />
         <header className="memory-book__header">
           <div>
-            <span><BookOpen size={16} />MEMORY BOOK</span>
+            <span><BookOpen size={16} />MEMORY BOOK 3.0</span>
             <h2>What {character?.name} remembers</h2>
             <p>Velvet learns automatically. Mark a memory as canon when it must never be contradicted.</p>
           </div>
@@ -272,6 +303,12 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
         </header>
 
         <div className="memory-book__scroll">
+        <div className="memory-book__v3-stats">
+          <span><b>{memories.filter((m)=>m.is_canon).length}</b>Canon</span>
+          <span><b>{memories.filter((m)=>m.is_pinned).length}</b>Pinned</span>
+          <span><b>{memories.filter((m)=>m.source === "automatic").length}</b>Learned</span>
+          <span><b>{duplicateAutomaticIds.length}</b>Duplicates</span>
+        </div>
         <div className="memory-book__tools">
           <label><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search memories..." /></label>
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
@@ -285,6 +322,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
         </div>
 
         <button className="memory-book__add" onClick={openCreate}><Plus size={17} />Add memory</button>
+        {duplicateAutomaticIds.length > 0 && <button className="memory-book__clean" onClick={cleanExactDuplicates} disabled={cleaning}><ShieldCheck size={16}/>{cleaning ? "Cleaning…" : `Clean ${duplicateAutomaticIds.length} exact duplicate${duplicateAutomaticIds.length===1?"":"s"}`}</button>}
         {error && <p className="memory-book__error">{error}</p>}
 
         {editorOpen ? (
@@ -347,6 +385,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
             <div className="memory-book__item-top">
               <span className="memory-book__source">{memory.is_canon ? "Canon" : memory.source === "automatic" ? "Learned automatically" : "Added by you"}</span>
               <span className="memory-book__scope">{memory.scope === "character" ? `All ${character?.name} stories` : "This story"}</span>
+              <span className="memory-book__scope">{memory.is_canon ? "Certain" : memory.is_pinned ? "High confidence" : memory.source === "manual" ? "User-confirmed" : "Learned"}</span>
             </div>
             <p>{memory.content}</p>
             {memory.why_remembered && <small className="memory-book__why"><SparkleDot />Why Velvet remembers this: {memory.why_remembered}</small>}

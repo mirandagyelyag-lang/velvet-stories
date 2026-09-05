@@ -893,6 +893,11 @@ NON-NEGOTIABLE CANON
 VOICE + QUALITY
 - Sound like ${character.name}, not an archetype. Their identity must remain recognizable even if speaker names are removed.
 - Treat the VOICEPRINT below as operating constraints, not decorative adjectives. Sentence length, vocabulary, humor, conflict behavior, affection behavior and verbal tells should shape what they actually SAY.
+- BLIND VOICE TEST: remove the name from the draft and ask whether the spoken lines could be pasted onto another Velvet character without anyone noticing. If yes, rewrite before returning. Distinct identity outranks generic charm.
+- PLAIN-QUESTION RULE: when the user asks a mundane question or gives a short ordinary answer, the character should normally answer plainly first in one short spoken clause. Do NOT inflate it into a polished mini-monologue, campus-life summary, cute metaphor, résumé sentence, or a second question just to sound interesting.
+- CHARACTER-SPECIFIC SOCIAL TACTIC: choose the response tactic this person actually uses when nothing dramatic is happening: blunt answer, deflection, teasing, practical detail, dry understatement, oversharing, silence, topic shift, awkward honesty, etc. Do not default every character to witty + self-aware + lightly sarcastic.
+- MISSING VOICE FIELDS ARE NOT PERMISSION TO GO GENERIC: if part of the VOICEPRINT is blank, infer a stable provisional speech mechanic from Personality + Relationship + established example dialogue for this character. Keep that mechanic consistent across the reply instead of falling back to Velvet's default prose voice.
+- GENERIC CAMPUS VOICE BAN: unless the profile explicitly uses that register, avoid stock lines about keeping a GPA from plummeting, mid-semester burnout, a brain being at X-percent capacity, being buried in lab reports, escaping the library, surviving on caffeine, or "dodging the inevitable." These are AI-college filler, not characterization.
 - DIALOGUE-FIRST NATURALISM: when the user just spoke, usually let the character answer within the first sentence or two. Prefer 1-4 spoken lines and only the narration needed to make them legible.
 - Prefer ordinary spoken language, contractions, fragments, uneven sentence lengths, interruptions, false starts and plain answers when they fit this person. Let a line be imperfect. Not every reply needs to be clever, quotable, flirtatious or emotionally loaded.
 - Let mundane conversation stay mundane. Established attraction may exist without appearing in every line. Do not convert neutral questions, jokes or practical exchanges into automatic romantic subtext.
@@ -1126,6 +1131,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     conflict_instant_reset: "Keep the conflict residue alive. Do not return to effortless warmth, flirtation or normal banter immediately after rupture; use an imperfect, character-specific repair step or let tension remain unresolved.",
     explanatory_subtext_dump: "Remove the emotional self-analysis. Let one concrete choice, omission, unfinished sentence or changed behavior carry the subtext instead of explaining exactly why the character feels and acts this way.",
     generic_romance_cadence: "Replace stock AI-romance cadence with plain character-specific speech. Preserve attraction only if the beat earned it; do not use repeated lines like ‘there it is’, ‘careful’, ‘you’re impossible’, ‘don’t tempt me’, ‘you have no idea’, ‘that’s what I thought’, or similar canned tension phrases.",
+    generic_ai_voice: "Rewrite the spoken lines so they sound uniquely like this character. Use a plain answer first when the user asked something ordinary. Remove campus-life filler, cute capacity metaphors, polished self-aware banter, generic burnout/GPA/library lines, and any sentence that could be swapped onto another Velvet character unchanged.",
     structural_repetition_loop: "Change the RESPONSE SHAPE, not just vocabulary. Do not repeat the same gesture/dialogue/question template, paragraph count, opening mode or ending rhythm from recent turns.",
     model_self_check_failed: "Rewrite until canon, user ownership, scene physics, knowledge boundaries, voice identity, subtext, rhythm, nonverbal restraint, romantic specificity, decision consistency, adaptive detail, character DNA, structural variety, scene momentum and contradiction checks all pass. Do not mention the check.",
     naturalness_score_low: "Simplify the visible reply until it sounds like this exact person in this exact moment. Remove performance, generic romance choreography, repetitive structure and unnecessary explanation; vary rhythm naturally.",
@@ -2991,6 +2997,39 @@ function hasGenericRomanceCadence(reply = "", recentReplies = [], character = {}
   return recentHitTurns >= (heightenedProfile ? 3 : 2);
 }
 
+function hasGenericAIVoice(reply = "", latestUserMessage = "", character = {}) {
+  if (characterAllowsOrnateDialogue(character)) return false;
+  const text = normalizeText(reply);
+  const user = normalizeText(latestUserMessage);
+  if (!text) return false;
+
+  const stock = [
+    /\bkeep(?:ing)? my gpa from (?:plummeting|dropping|tanking)\b/,
+    /\bmid semester burnout\b/,
+    /\bbrain (?:is )?(?:officially )?(?:at|running at) \d{1,3} percent capacity\b/,
+    /\bburied in (?:those )?(?:heavy duty )?(?:lab reports|assignments|papers|coursework)\b/,
+    /\b(?:actually )?manage(?:d)? to escape the library\b/,
+    /\bsurviv(?:e|ing) on caffeine\b/,
+    /\bdodg(?:e|ing) the inevitable\b/,
+    /\btrying to keep .{0,45} while dodging\b/,
+    /\bhow about you still .{0,80}\b/,
+  ];
+  if (stock.some((pattern) => pattern.test(text))) return true;
+
+  // Short, ordinary user turns should not trigger a polished lifestyle monologue.
+  const userWords = user.split(/\s+/).filter(Boolean).length;
+  if (userWords > 0 && userWords <= 12) {
+    const dialogue = [...String(reply || "").matchAll(/["“]([^"”]+)["”]/g)].map((m) => normalizeText(m[1])).join(" ");
+    const dialogueWords = dialogue.split(/\s+/).filter(Boolean).length;
+    const polishedFiller = [
+      /\bofficially\b/, /\binevitable\b/, /\bcapacity\b/, /\bburnout\b/,
+      /\bheavy duty\b/, /\bplummeting\b/, /\bdodging\b/, /\bhow about you\b/,
+    ].filter((pattern) => pattern.test(dialogue)).length;
+    if (dialogueWords >= 34 && polishedFiller >= 2) return true;
+  }
+  return false;
+}
+
 function replyStructureSignature(value = "") {
   const raw = String(value || "").trim();
   if (!raw) return "empty";
@@ -3603,6 +3642,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "identity_drift_risk",
   "naturalness_score_low",
   "mechanical_rhythm_loop",
+  "generic_ai_voice",
   "decorative_nonverbal_overload",
   "invented_scene_object_state",
 ]);
@@ -3783,6 +3823,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasSarcasticComebackLoop(text, options.recentCharacterReplies || [])) issues.push("sarcastic_comeback_loop");
   if (hasSmugComebackTone(text, options.latestUserMessage || "")) issues.push("smug_comeback_tone");
   if (hasGenericRomanceCadence(text, options.recentCharacterReplies || [], options.character || {})) issues.push("generic_romance_cadence");
+  if (hasGenericAIVoice(text, options.latestUserMessage || "", options.character || {})) issues.push("generic_ai_voice");
   if (hasOverwrittenBanter(text, options.latestUserMessage || "", options.character || {})) issues.push("overwritten_banter");
   if (hasOverwrittenNarration(text, options.latestUserMessage || "", options.character || {})) issues.push("overwritten_narration");
   if (hasEditorialBanterVoice(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("editorial_banter_voice");

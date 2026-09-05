@@ -6,7 +6,7 @@ import { VELVET_VERSION } from "../config/version";
 
 const PWAContext = createContext(null);
 const INSTALL_DISMISSED_KEY = "velvet_install_prompt_dismissed";
-const UPDATE_PENDING_KEY = "velvet_update_pending_v3171";
+const UPDATE_PENDING_KEY = "velvet_update_pending";
 
 export function PWAProvider({ children }) {
   if (Capacitor.isNativePlatform()) {
@@ -106,7 +106,7 @@ function WebPWAProvider({ children }) {
       window.location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
-    navigator.serviceWorker.getRegistration().then((registration) => registration?.update?.()).catch(() => {});
+    navigator.serviceWorker.getRegistration().then((registration) => { if (registration) return registration.update(); }).catch(() => {});
     return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
   }, []);
 
@@ -129,12 +129,7 @@ function WebPWAProvider({ children }) {
           clearSatisfiedPendingUpdate(remote);
         }
       }
-      if ("serviceWorker" in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.ready;
-          await registration.update();
-        } catch {}
-      }
+      try { await forceServiceWorkerNetworkCheck(); } catch {}
       return { available: Boolean(remote && compareVersions(remote, VELVET_VERSION) > 0), version: remote };
     } catch (error) {
       if (!silent) setUpdateProblem(error?.message || "Could not check for updates.");
@@ -144,11 +139,26 @@ function WebPWAProvider({ children }) {
     }
   }
 
-  async function clearOldShellCaches() {
+  async function clearVelvetCaches({ includeMedia = false } = {}) {
     if (!("caches" in window)) return;
     const keys = await caches.keys();
-    const staleShellKeys = keys.filter((key) => /workbox|precache|vite-pwa|velvet-shell/i.test(key));
-    await Promise.allSettled(staleShellKeys.map((key) => caches.delete(key)));
+    const velvetKeys = keys.filter((key) => {
+      if (/workbox|precache|vite-pwa|velvet-shell/i.test(key)) return true;
+      if (includeMedia && /velvet-images|velvet-fonts/i.test(key)) return true;
+      return false;
+    });
+    await Promise.allSettled(velvetKeys.map((key) => caches.delete(key)));
+  }
+
+  async function clearOldShellCaches(options = {}) {
+    // Compatibility name retained for Update Doctor and historical QA checks.
+    return clearVelvetCaches(options);
+  }
+
+  async function forceServiceWorkerNetworkCheck() {
+    if (!("serviceWorker" in navigator)) return;
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.allSettled(registrations.map((registration) => registration.update?.()));
   }
 
   async function updateApp() {
@@ -160,11 +170,8 @@ function WebPWAProvider({ children }) {
       localStorage.setItem(UPDATE_PENDING_KEY, JSON.stringify({ target, from: VELVET_VERSION, at: Date.now() }));
     } catch {}
     try {
-      if ("serviceWorker" in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        await registration.update();
-      }
-      await clearOldShellCaches();
+      await forceServiceWorkerNetworkCheck();
+      await clearVelvetCaches();
       await updateServiceWorker(true);
       setNeedRefresh(false);
       window.setTimeout(() => window.location.reload(), 1200);
@@ -179,7 +186,7 @@ function WebPWAProvider({ children }) {
     setUpdating(true);
     setUpdateProblem("");
     try {
-      await clearOldShellCaches();
+      await clearOldShellCaches({ includeMedia: true });
       if ("serviceWorker" in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
         await Promise.allSettled(registrations.map((registration) => registration.unregister()));
@@ -187,6 +194,7 @@ function WebPWAProvider({ children }) {
       try { localStorage.removeItem(UPDATE_PENDING_KEY); } catch {}
       const url = new URL(window.location.href);
       url.searchParams.set("velvet_repair", String(Date.now()));
+      url.searchParams.set("velvet_target", VELVET_VERSION);
       window.location.replace(url.toString());
     } catch (error) {
       setUpdating(false);

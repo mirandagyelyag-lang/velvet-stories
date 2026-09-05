@@ -8,7 +8,7 @@ const vite=read("vite.config.js");
 const ui=read("scripts/verify-ui.mjs");
 const chat=read("src/pages/Chat.jsx");
 const checks=[
-  ["version 3.25.3", pkg.version==="3.25.3" && pub.version==="3.25.3"],
+  ["version 3.25.4", pkg.version==="3.25.4" && pub.version==="3.25.4"],
   ["production SW refresh uses explicit update", pwa.includes("registration.update()")],
   ["periodic refresh remains enabled", pwa.includes("20 * 60 * 1000") && pwa.includes("visibilitychange") && pwa.includes('window.addEventListener("online", run)')],
   ["Update Doctor compatibility helper exists", pwa.includes("clearOldShellCaches") && pwa.includes("return clearVelvetCaches(options)")],
