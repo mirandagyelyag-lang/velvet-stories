@@ -40,6 +40,9 @@ export type StoryContract = {
     literalTurn: string;
     stagedActions: string[];
     boundaries: string[];
+    activeBehaviorBoundaries: string[];
+    selfReportLock: string;
+    userPresence: "present" | "absent" | "leaving" | "reentering" | "unknown";
     movementIsExplicit: boolean;
   };
   characterBehavior: {
@@ -957,7 +960,7 @@ export function socialEcosystemsFor(character: Record<string, unknown> = {}) {
 }
 
 const observableAsteriskAction = /\b(?:walk|walked|walking|follow|followed|following|nod|nodded|roll(?:ed)? (?:my|her|his|their) eyes|look|looked|glance|glanced|stare|stared|sit|sat|stand|stood|move|moved|step|stepped|turn|turned|shrug|shrugged|smile|smiled|laugh|laughed|open|opened|close|closed|take|took|grab|grabbed|hold|held|raise|raised|lower|lowered|touch|touched|hug|hugged|kiss|kissed|lean|leaned|wave|waved|point|pointed|pull|pulled|push|pushed|run|ran|leave|left|enter|entered|exit|exited|go|went|come|came|approach|approached|stop|stopped|pause|paused|drink|drank|eat|ate|type|typed|write|wrote|text|texted)\b/i;
-const privateAsteriskMarker = /\b(?:because|since|while|thinking|think|thought|wondering|wonder|wondered|hoping|hope|hoped|wishing|wish|wished|remembering|remember|remembered|knowing|know|knew|feeling|feel|felt|wanting|want|wanted|hating|hate|hated|loving|love|loved|assuming|assume|assumed|guessing|guess|guessed|realizing|realize|realized|deciding|decide|decided|regretting|regret|regretted|pretending|pretend|pretended|in my head|to myself|internally)\b/i;
+const privateAsteriskMarker = /\b(?:because|since|when|where|while|thinking|think|thought|wondering|wonder|wondered|hoping|hope|hoped|wishing|wish|wished|remembering|remember|remembered|knowing|know|knew|feeling|feel|felt|wanting|want|wanted|hating|hate|hated|loving|love|loved|assuming|assume|assumed|guessing|guess|guessed|realizing|realize|realized|deciding|decide|decided|regretting|regret|regretted|pretending|pretend|pretended|in my head|to myself|internally)\b/i;
 
 function visibleAsteriskSegment(raw: string) {
   const value=text(raw);
@@ -993,6 +996,56 @@ export function extractBoundaries(value: string) {
   return patterns.filter((pattern) => pattern.test(source)).map((pattern) => pattern.source);
 }
 
+
+
+export function extractStickyBehaviorBoundaries(recentMessages: Array<Record<string, unknown>> = [], latestUserMessage = "") {
+  const rawTurns = [...(recentMessages || []).filter((message)=>message?.sender === "user").map((message)=>text(message?.content)), text(latestUserMessage)].filter(Boolean).slice(-20);
+  const state: Record<string, string | null> = {
+    humor: null,
+    touch: null,
+    follow: null,
+    probing: null,
+    nickname: null,
+  };
+  for (const raw of rawTurns) {
+    const value = normalized(sanitizeUserTurnForPerception(raw).replace(/\*[^*]*\*/gs, " "));
+    if (!value) continue;
+    if (/\b(?:stop|quit|don t|do not|can you stop|could you stop|enough with)\b.{0,34}\b(?:sarcasm|sarcastic|joking|jokes|teasing|bullshit|being funny)\b/.test(value)) state.humor = "No sarcasm, teasing, performative jokes, or witty digs until the user clearly reopens that behavior.";
+    if (/\b(?:you can|it s fine to|you may|go ahead and)\b.{0,26}\b(?:joke|tease|be sarcastic|sarcasm)\b/.test(value)) state.humor = null;
+    if (/\b(?:don t|do not|stop|quit)\b.{0,20}\b(?:touch|touching|grab|grabbing|hold|holding)\b|\b(?:back off|give me space|get off me|let go)\b/.test(value)) state.touch = "No touching or closing physical distance unless the user explicitly reopens contact.";
+    if (/\b(?:you can|it s okay to|you may)\b.{0,20}\b(?:touch|hug|hold)\b/.test(value)) state.touch = null;
+    if (/\b(?:don t|do not|stop|quit)\b.{0,20}\b(?:follow|following|come after|chase)\b|\b(?:leave me alone|go away)\b/.test(value)) state.follow = "Do not follow, chase, block, call after, or engineer a workaround to the user's request for distance.";
+    if (/\b(?:come with me|follow me|you can follow|don t leave|stay with me)\b/.test(value)) state.follow = null;
+    if (/\b(?:stop asking|don t ask|do not ask|drop it|leave it|stop digging|quit digging|don t dig|do not dig)\b/.test(value)) state.probing = "Do not probe, psychoanalyze, or keep asking about the declined subject unless the user reopens it.";
+    if (/\b(?:we can talk about it|you can ask|ask me|i want to talk about it)\b/.test(value)) state.probing = null;
+    if (/\b(?:don t|do not|stop|quit)\b.{0,24}\b(?:call me|nickname|pet name)\b/.test(value)) state.nickname = "Do not use the rejected nickname or pet-name behavior until the user explicitly permits it again.";
+  }
+  return Object.values(state).filter(Boolean) as string[];
+}
+
+export function deriveUserSelfReportLock(recentMessages: Array<Record<string, unknown>> = [], latestUserMessage = "") {
+  const turns = [...(recentMessages || []).filter((message)=>message?.sender === "user").map((message)=>text(message?.content)), text(latestUserMessage)].filter(Boolean).slice(-6).reverse();
+  for (const raw of turns) {
+    const value = normalized(sanitizeUserTurnForPerception(raw).replace(/\*[^*]*\*/gs, " "));
+    if (/\b(?:i\'m|im|i am) (?:fine|okay|ok)\b|\bnothing(?: is|'s) wrong\b|\bi don\'t know what you\'re talking about\b/.test(value)) {
+      return "The user has most recently self-reported that they are fine/okay or rejected the hidden-problem framing. Treat that statement as authoritative. The character may privately remain uncertain, but must not diagnose a mask, hidden crisis, secret anger, or concealed motive as fact without NEW visible evidence.";
+    }
+    if (/\b(?:actually|okay,? i admit|fine,? i am|i\'m upset|i am upset|i\'m angry|i am angry|i\'m sad|i am sad|something is wrong)\b/.test(value)) return "";
+  }
+  return "";
+}
+
+function inferUserPresence(scene: Record<string, unknown>, userName: string, perceptibleUserTurn: string) {
+  const actions = extractUserActions(perceptibleUserTurn).map(normalized).join(" ");
+  const userKey = normalized(userName);
+  const present = list(scene.present).map(normalized);
+  const explicitExit = /\b(?:leave|left|walk away|walked away|head out|headed out|exit|exited|go home|went home|walk out|walked out)\b/.test(actions);
+  const explicitEntry = /\b(?:enter|entered|come back|came back|return|returned|walk in|walked in|come in|came in|join|joined|sit back down|sat back down)\b/.test(actions);
+  if (explicitExit) return "leaving" as const;
+  if (explicitEntry) return "reentering" as const;
+  if (!userKey || !present.length) return "unknown" as const;
+  return present.includes(userKey) ? "present" as const : "absent" as const;
+}
 
 function buildTurnTakingEngine(input: StoryContractInput, present: string[], perceptibleUserTurn: string) {
   const profile = characterProfileBlob(input.character);
@@ -1085,6 +1138,9 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   }
   const socialEcosystems = socialEcosystemsFor(input.character);
   const boundaries = extractBoundaries(perceptibleUserTurn);
+  const activeBehaviorBoundaries = extractStickyBehaviorBoundaries(input.recentMessages || [], input.latestUserMessage);
+  const selfReportLock = deriveUserSelfReportLock(input.recentMessages || [], input.latestUserMessage);
+  const userPresence = inferUserPresence(scene, input.userName, perceptibleUserTurn);
   const recentCharacterTurns = (input.recentMessages || []).filter((message) => message?.sender === "character").slice(-5).map((message) => text(message.content));
   const recentActionCount = recentCharacterTurns.filter((turn) => /\*[^*]+\*|\b(?:arrived|entered|called|texted|invited|pulled up|knocked|interrupted|police|security|friend|teammate|crew|party|race|practice|plan)\b/i.test(turn)).length;
   const talkOnlyDrought = recentCharacterTurns.length >= 3 && recentActionCount <= 1;
@@ -1213,6 +1269,9 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
       literalTurn: perceptibleUserTurn,
       stagedActions: actions,
       boundaries,
+      activeBehaviorBoundaries,
+      selfReportLock,
+      userPresence,
       movementIsExplicit,
     },
     characterBehavior: {
@@ -1494,5 +1553,5 @@ export function storyContractPrompt(contract: StoryContract) {
     },
   };
 
-  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; attachment defenses and mixed signals can create distance without erasing desire. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human Turn-Taking uses turnTaking.mode/responseScale/questionPolicy to allow partial answers, delayed answers, silence, interruptions, topic return/drop and sparse group speaker traffic; conversation completeness is never the goal. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn.`;
+  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; attachment defenses and mixed signals can create distance without erasing desire. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human Turn-Taking uses turnTaking.mode/responseScale/questionPolicy to allow partial answers, delayed answers, silence, interruptions, topic return/drop and sparse group speaker traffic; conversation completeness is never the goal. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn. ACTIVE behavior boundaries in userAuthored.activeBehaviorBoundaries persist across turns until the user explicitly reopens them; do not treat them as one-turn suggestions. userAuthored.selfReportLock prevents unsolicited psychoanalysis from overriding the user's latest self-report. userAuthored.userPresence is a hard physical-state signal: leaving/absent means the user cannot be addressed, observed, touched, handed objects, or silently respawned until an authored re-entry.`;
 }

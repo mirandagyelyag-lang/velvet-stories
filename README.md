@@ -1,3 +1,3 @@
-# Velvet Stories v3.33.0 — Human Turn-Taking + Conversation Rhythm
+# Velvet Stories v3.33.1 — Reality & Boundary Enforcement
 
-See `README-v3.33.0.txt` for release details.
+See `README-v3.33.1.txt`.

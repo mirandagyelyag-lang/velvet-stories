@@ -7,6 +7,7 @@ const pub=JSON.parse(read("public/velvet-version.json"));
 const edge=read("supabase/functions/character-chat/index.ts");
 const contractSource=read("supabase/functions/character-chat/engine/story-contract.ts");
 const v332=read("scripts/verify-v3320-perception-knowledge-realism.mjs");
+const semverAtLeast=(value,minimum)=>{const a=String(value||"").split(".").map(Number),b=String(minimum||"").split(".").map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){if((a[i]||0)>(b[i]||0))return true;if((a[i]||0)<(b[i]||0))return false;}return true;};
 
 const base={
   character:{name:"Rowan",personality:"quiet, guarded, dry, not chatty",speech_style:"brief, contractions, comfortable silence",relationship:"friends"},
@@ -30,8 +31,8 @@ const questions=compileStoryContract({...base,recentMessages:[
 const threads=compileStoryContract({...base,intelligenceState:{conversation_threads:["unfinished question about the party","awkward subject: Jules"]},latestUserMessage:"About the party..."});
 
 const checks=[
-  ["version 3.33.0",pkg.version==="3.33.0"&&pub.version==="3.33.0"],
-  ["release metadata",pub.release==="Human Turn-Taking + Conversation Rhythm"],
+  ["version >= 3.33.0",semverAtLeast(pkg.version,"3.33.0")&&semverAtLeast(pub.version,"3.33.0")],
+  ["release metadata preserves Human Turn-Taking",typeof pub.release==="string"&&pub.release.trim().length>0&&edge.includes("v3.33 HUMAN TURN-TAKING")],
   ["stability lab includes v3330",pkg.scripts["stability:lab"].includes("verify:v3330")],
   ["turn-taking engine exists",contractSource.includes("function buildTurnTakingEngine")],
   ["micro turns are classified",micro.turnTakingEngine.mode==="micro"],
