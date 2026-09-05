@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.21.0",
+  "version": "3.22.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -62,7 +62,12 @@
     "verify:v3190": "node scripts/verify-v3190-character-mind.mjs",
     "verify:v3200": "node scripts/verify-v3200-emotional-intelligence.mjs",
     "verify:v3210": "node scripts/verify-v3210-human-behavior.mjs",
-    "verify:v3210-release": "node scripts/verify-v3210-release.mjs"
+    "verify:v3210-release": "node scripts/verify-v3210-release.mjs",
+    "verify:v3211": "node scripts/verify-v3211-request-hotfix.mjs",
+    "verify:v3212": "node scripts/verify-v3212-gemini-compat.mjs",
+    "verify:chat-syntax": "node --experimental-strip-types --check supabase/functions/character-chat/index.ts",
+    "verify:v3213": "node scripts/verify-v3213-gemini-no-schema.mjs",
+    "verify:v3220": "node scripts/verify-v3220-presence-engine.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

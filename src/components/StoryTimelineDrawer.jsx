@@ -1,4 +1,4 @@
-import { BookOpen, Box, CheckCircle2, Clock3, Eye, HelpCircle, MapPin, RefreshCw, Sparkles, UsersRound, X } from "lucide-react";
+import { BookOpen, Box, CheckCircle2, Clock3, Eye, Heart, HelpCircle, MapPin, MessageCircle, RefreshCw, Sparkles, UsersRound, X } from "lucide-react";
 
 const KIND_LABELS = {
   relationship: "Relationship",
@@ -23,6 +23,10 @@ export default function StoryTimelineDrawer({ open, onClose, conversation, onRef
   const commitments = Array.isArray(intelligence.commitments) ? intelligence.commitments : [];
   const knowledge = Array.isArray(intelligence.knowledge) ? intelligence.knowledge : [];
   const recap = conversation?.storyRecap || conversation?.summary || "";
+  const sceneMemory = intelligence.scene_memory || {};
+  const presenceEngine = intelligence.presence_engine_state || {};
+  const unfinishedBusiness = Array.isArray(intelligence.unfinished_business) ? intelligence.unfinished_business : [];
+  const relationshipMoments = timeline.filter((item) => typeof item === "object" && item?.kind === "relationship").slice(-8);
 
   return (
     <div className="timeline-drawer-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -42,8 +46,22 @@ export default function StoryTimelineDrawer({ open, onClose, conversation, onRef
             <span><UsersRound size={15}/><b>Present</b><em>{present.length ? present.join(", ") : "Not established"}</em></span>
           </div>
           {intelligence.stakes && <p><strong>Current pressure:</strong> {intelligence.stakes}</p>}
+          {(scene.activity || sceneMemory.activity) && <p><strong>Current activity:</strong> {scene.activity || sceneMemory.activity}</p>}
+          {(scene.communication_medium || sceneMemory.medium) && <p><strong>Medium:</strong> {scene.communication_medium || sceneMemory.medium}</p>}
+          {Array.isArray(sceneMemory.spatial) && sceneMemory.spatial.length > 0 && <p><strong>Spatial memory:</strong> {sceneMemory.spatial.slice(0, 4).join(" · ")}</p>}
+          {Array.isArray(sceneMemory.objects) && sceneMemory.objects.length > 0 && <p><strong>Meaningful objects:</strong> {sceneMemory.objects.slice(0, 5).join(" · ")}</p>}
+          {sceneMemory.last_physical_state && <p><strong>Last physical state:</strong> {sceneMemory.last_physical_state}</p>}
           {absent.length > 0 && <small>Off-screen: {absent.join(", ")}</small>}
         </section>
+
+        {(presenceEngine.conversation_mode || presenceEngine.flirt_mode || presenceEngine.narrative_camera) && <section className="timeline-presence-engine">
+          <span><MessageCircle size={14}/> Presence Engine</span>
+          <div>
+            {presenceEngine.conversation_mode && <em>Conversation · {presenceEngine.conversation_mode}</em>}
+            {presenceEngine.flirt_mode && <em>Flirt · {presenceEngine.flirt_mode}</em>}
+            {presenceEngine.narrative_camera && <em>Camera · {presenceEngine.narrative_camera}</em>}
+          </div>
+        </section>}
 
         {(chapters.length > 0 || activeChapter?.title) && <section className="timeline-chapters-v250">
           <div className="timeline-events__title"><strong>Chapters</strong><span>{chapters.length + (activeChapter?.title ? 1 : 0)}</span></div>
@@ -57,6 +75,22 @@ export default function StoryTimelineDrawer({ open, onClose, conversation, onRef
           {objects.length > 0 && <div><span><Box size={14}/> Established objects</span><p>{objects.slice(0, 8).join(" · ")}</p></div>}
           {commitments.length > 0 && <div><span><CheckCircle2 size={14}/> Still unresolved</span><ul>{commitments.slice(0, 6).map((item, index)=><li key={`${item}-${index}`}>{typeof item === "string" ? item : item?.title || item?.detail}</li>)}</ul></div>}
           {knowledge.length > 0 && <div className="timeline-awareness"><span><Eye size={14}/> Who knows what</span><ul>{knowledge.slice(-10).map((item, index)=><li key={`${item?.who}-${index}`}><strong>{item?.who || "Someone"}:</strong> {item?.knows}<small className={`knowledge-status knowledge-status--${item?.status || "known"}`}>{knowledgeStatus(item)}{item?.source ? ` · ${item.source}` : ""}</small></li>)}</ul><p className="timeline-awareness__note"><HelpCircle size={13}/> Suspicions and rumors stay separate from confirmed knowledge.</p></div>}
+        </section>}
+
+        {relationshipMoments.length > 0 && <section className="timeline-relationship-v3220">
+          <div className="timeline-events__title"><strong><Heart size={14}/> Relationship timeline</strong><span>{relationshipMoments.length}</span></div>
+          <div className="timeline-relationship-v3220__rail">
+            {relationshipMoments.map((item, index) => <article key={`${item?.message_id || item?.label}-${index}`}>
+              <small>{item?.time_label || `Moment ${index + 1}`}</small>
+              <strong>{item?.label || "Relationship shift"}</strong>
+              {item?.detail && <p>{item.detail}</p>}
+            </article>)}
+          </div>
+        </section>}
+
+        {unfinishedBusiness.length > 0 && <section className="timeline-unfinished-v3220">
+          <div className="timeline-events__title"><strong><CheckCircle2 size={14}/> Unfinished business</strong><span>{unfinishedBusiness.length}</span></div>
+          <ul>{unfinishedBusiness.slice(-8).map((item, index)=><li key={`${item}-${index}`}>{item}</li>)}</ul>
         </section>}
 
         <section className="timeline-events">

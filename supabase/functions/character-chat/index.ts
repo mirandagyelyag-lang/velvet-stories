@@ -25,6 +25,7 @@ type ModelEnvelope = {
   memory_updates: Record<string, any>[];
   mind_update: Record<string, any>;
   human_behavior_update: Record<string, any>;
+  presence_update: Record<string, any>;
   connection_updates: Record<string, any>[];
   post_turn_reflection: Record<string, any>;
   quality_check: Record<string, any>;
@@ -371,7 +372,7 @@ Deno.serve(async (request) => {
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "3.19.0",
+    version: "3.22.0",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
@@ -387,7 +388,7 @@ async function handleDiagnostics({ apiKey, probeAi = false }) {
       headers: geminiHeaders(apiKey),
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: "Reply with exactly OK" }] }],
-        generationConfig: { maxOutputTokens: 12, temperature: 0, thinkingConfig: { thinkingLevel: "MINIMAL" } },
+        generationConfig: { maxOutputTokens: 12, thinkingConfig: { thinkingLevel: "LOW" } },
       }),
     });
     if (!response.ok) {
@@ -457,15 +458,8 @@ async function requestCharacterJson({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
             maxOutputTokens,
-            temperature,
-            topP: 0.9,
-            thinkingConfig: { thinkingLevel: "MINIMAL" },
+            thinkingConfig: { thinkingLevel: "LOW" },
             responseMimeType: "application/json",
-            responseJsonSchema: {
-              type: "object",
-              properties: characterDraftProperties,
-              ...(requireComplete ? { required: Object.keys(characterDraftProperties) } : {}),
-            },
           },
         }),
       });
@@ -515,7 +509,6 @@ async function handleCharacterAssist({ apiKey, draft, mode, focusFields = [] }) 
   const suggestions = await requestCharacterJson({
     apiKey,
     maxOutputTokens: organize ? 2500 : 2100,
-    temperature: organize ? 0.42 : 0.68,
     purpose: organize ? "character-organize" : "character-polish",
     prompt: `${instruction}\nSeparate stable identity from possible growth: motivation and defenses are present-day anchors, softening triggers are earned influences, and growth direction is only a possibility—not an instant transformation. Return field suggestions only.\n\nDRAFT\n${JSON.stringify(safeDraft).slice(0, 16000)}`,
   });
@@ -529,7 +522,7 @@ async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
   let lastError = "Velvet couldn't test this voice.";
   for (const model of models) {
     try {
-      const response = await fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 450, temperature: 0.8, thinkingConfig: { thinkingLevel: "MINIMAL" } } }) });
+      const response = await fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 450, thinkingConfig: { thinkingLevel: "LOW" } } }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) { lastError = data?.error?.message || lastError; continue; }
       const sample = extractCandidateText(data).trim();
@@ -546,7 +539,6 @@ async function handleCharacterVoiceLab({ apiKey, draft }) {
     purpose: "character-voice-lab",
     maxOutputTokens: 1800,
     deadlineMs: 24000,
-    temperature: 0.7,
     prompt: `Build a blind-test voice fingerprint for this fictional character. Return only these schema fields: speechStyle, voiceVocabulary, humorStyle, conflictStyle, affectionStyle, verbalTells, voiceAvoidances and exampleDialogue. Make the voice sound like a specific human, not an archetype, therapist, or generic romance lead. Define observable speech mechanics rather than adjective-only labels: sentence length, contractions, fillers, directness, preferred vocabulary, avoidance patterns and what changes under stress. verbalTells must be sparse tells, not catchphrases. exampleDialogue must contain five short labeled samples—CASUAL, ANGRY, FLIRTING, VULNERABLE, AWKWARD—each with one or two natural spoken lines. Vary syntax and emotional tactics; do not use generic smirk/jaw/gaze choreography, polished quote-card banter or rhetorical-question stacks. Preserve the creator's language and established characterization.\n\nPROFILE\n${profile}`,
   });
   return json({ lab: {
@@ -569,7 +561,7 @@ async function handleCharacterLearningRoom({ apiKey, draft, situation }) {
     try {
       const response = await fetch(modelEndpoint(model), { method:"POST", headers:geminiHeaders(apiKey), body:JSON.stringify({
         contents:[{role:"user",parts:[{text:prompt}]}],
-        generationConfig:{maxOutputTokens:1800,temperature:.92,topP:.94,thinkingConfig:{thinkingLevel:"MINIMAL"},responseMimeType:"application/json",responseJsonSchema:{type:"object",required:["samples"],properties:{samples:{type:"array",minItems:10,maxItems:10,items:{type:"string"}}}}},
+        generationConfig:{maxOutputTokens:1800,thinkingConfig:{thinkingLevel:"LOW"},responseMimeType:"application/json"},
       })});
       const data = await response.json().catch(()=>({}));
       if (!response.ok) { lastError=data?.error?.message||lastError; continue; }
@@ -588,7 +580,7 @@ async function handleInstantStory({ apiKey, draft, idea }) {
   let lastError = "Velvet couldn't open an instant story.";
   for (const model of models) {
     try {
-      const response = await fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 750, temperature: 0.88, thinkingConfig: { thinkingLevel: "MINIMAL" } } }) });
+      const response = await fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 750, thinkingConfig: { thinkingLevel: "LOW" } } }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) { lastError = data?.error?.message || lastError; continue; }
       const opening = extractCandidateText(data).trim();
@@ -605,7 +597,6 @@ async function handleCharacterGenerate({ apiKey, concept }) {
     apiKey,
     maxOutputTokens: 2300,
     requireComplete: true,
-    temperature: 0.78,
     purpose: "character-generate",
     deadlineMs: 22000,
     prompt: `Create one complete, original adult fictional roleplay character from the creator's request below. Honor any requested name exactly; if no name is supplied, invent a memorable full name. Build an independent person with a life, responsibilities, relationships, conflicts and ambitions beyond romance. Make the bond with the user specific and playable, the character voice unmistakable, and the opening scene immediately interactive. Voice fields must describe observable speech mechanics, not just adjectives: cadence, sentence length, contractions/fillers, directness, vocabulary, humor tactic, conflict tactic, affection tactic, sparse verbal tells and concrete avoidances. Avoid generic archetype dialogue, constant hostility, instant confessions and controlling the user's dialogue, thoughts, feelings or actions. The possible growth direction must be gradual rather than guaranteed. Example dialogue calibrates voice but is not a future script. Keep each supporting field to one or two precise sentences, Personality and Relationship below 130 words each, and the opening scene between 55 and 105 words so the complete draft arrives quickly. OPENING NATURALISM: use 0-2 short narration sentences and 1-4 spoken lines; prefer dialogue as the first visible sentence when plausible; the first spoken line must sound natural without relying on exposition; start with dialogue or a simple action when plausible; do not inventory weather, architecture, clothing, sounds, props, textures, or choreograph routine movement. Mention only details that change the interaction. Casual young-adult characters should sound like real people their age, with contractions, fragments and imperfect phrasing, not polished sitcom, legalistic, academic, or quote-card dialogue unless explicitly requested. Write every field and the opening scene in the language used by the creator; if the request has no language, use natural English. Return every field in the schema.\n\nCREATOR REQUEST\n${request}`,
@@ -849,6 +840,11 @@ function buildNarrativePromptV3({
     behavioral_memory: conversation.intelligence_state?.behavioral_memory || {},
     private_intention: conversation.intelligence_state?.private_intention || {},
     human_behavior_state: conversation.intelligence_state?.human_behavior_state || {},
+    presence_engine_state: conversation.intelligence_state?.presence_engine_state || {},
+    scene_memory: conversation.intelligence_state?.scene_memory || {},
+    unfinished_business: Array.isArray(conversation.intelligence_state?.unfinished_business) ? conversation.intelligence_state.unfinished_business.slice(-8) : [],
+    chemistry_fingerprint: conversation.intelligence_state?.chemistry_fingerprint || {},
+    private_character_journal: conversation.intelligence_state?.private_character_journal || {},
     persistent_locations: Array.isArray(conversation.intelligence_state?.persistent_locations) ? conversation.intelligence_state.persistent_locations.slice(-6) : [],
     possessions: Array.isArray(conversation.intelligence_state?.possessions) ? conversation.intelligence_state.possessions.slice(-8) : [],
     social_reputation: conversation.intelligence_state?.social_reputation || {},
@@ -978,6 +974,29 @@ EMOTIONAL INTELLIGENCE ENGINE
 - ANTI-AI REPETITION 2.0: vary STRUCTURE, not just words. Do not repeatedly use “physical gesture → sarcastic line → rhetorical question,” “silence stretched → gaze → confession,” or three-paragraph reaction templates. Change opening mode, sentence count, tactic and whether the turn ends on a question.
 - POST-TURN REFLECTION IS INVISIBLE: after drafting, record only what actually changed, what remains pending, what pattern should not repeat next turn, who was affected, and one plausible future consequence. Reflection is bookkeeping, not visible narration and not a command to force that consequence.
 
+
+PRESENCE ENGINE 2.0 — TWENTY LIVE SYSTEMS
+1. CHARACTER PRESENCE 2.0: make the character feel occupied by a real life, not staged for the user. Prefer contextual micro-actions with purpose: finishing a task, checking a notification, finding a seat, putting something away, replying while distracted. Never use body-language filler merely to decorate emotion.
+2. NATURAL CONVERSATION ENGINE: allow interruptions, fragments, unfinished thoughts, blunt answers, delayed answers, subject changes, overlap, awkward silence and uneven turn lengths. Not every exchange needs closure, wit or a dramatic final line.
+3. CHEMISTRY FINGERPRINT: preserve what is unique about THIS pair: humor rhythm, friction style, tolerated silence, private references, repair habits, conversational tempo, forms of address and ways attention is shown. Never copy chemistry from another character.
+4. JEALOUSY INTELLIGENCE: jealousy is character-specific and evidence-based. It may look like quietness, competitiveness, distance, extra normality, humor, topic changes, redirected attention or direct honesty. Never default to possessiveness, territorial claims or invented rivals.
+5. SCENE MEMORY VISUAL: silently maintain a compact snapshot of location, medium, present people, current activity, meaningful objects, spatial facts and the last physical state. Use it to prevent teleporting, disappearing props and impossible choreography.
+6. RELATIONSHIP TIMELINE: record only earned milestones that materially change access, trust, intimacy, conflict, vulnerability, routine or public/private behavior. Do not gamify the relationship or manufacture milestones to fill a timeline.
+7. UNFINISHED BUSINESS: preserve unanswered questions, borrowed items, deferred conversations, promises, unresolved arguments and emotionally loaded loose ends. Reintroduce them only when timing is plausible, not every turn.
+8. TEXTING MODE: when the established medium is digital, write like actual digital communication. Messages may be short, consecutive, delayed, corrected, left hanging or interrupted by a call. Do not invent read receipts, deleted messages, photos or missed calls unless canon establishes them or the character visibly creates them now.
+9. SUPPORTING CAST 2.0: supporting characters have relationships, plans, opinions and conflicts with each other. They may disagree with the lead or continue off-screen threads, but major unseen events require grounding.
+10. SOCIAL CONSEQUENCES: public actions can alter reputation, invitations, trust, group tension or information flow. Consequences must have a plausible witness/channel and should scale to the cause.
+11. EMOTIONAL RESIDUE: intense scenes leave texture across later turns: restraint, shorter answers, avoidance, awkward repair, defensive humor, caution or changed access. Residue fades or transforms through time and action; it does not reset after one apology.
+12. ROMANTIC SPECIFICITY 2.0: attraction must reference relationship-specific history, habits, risks and preferences. Avoid universal romance language and generic physical escalation.
+13. AUTOMATIC NO-FLIRT MODE: infer whether romance belongs in THIS beat. Neutral, practical, tired, public, conflict-recovery or mundane scenes can contain zero flirting even when attraction is established. Do not turn every interaction into chemistry display.
+14. CHARACTER BAD DAYS: the character can be tired, busy, irritable, worried or distracted by independent life. This changes bandwidth, not their entire personality, and it must not become unexplained cruelty.
+15. MICRO-CONFLICT ENGINE: allow small friction with ordinary causes: lateness, distraction, forgotten details, mismatched plans, interrupting, tone, cancelled plans or minor assumptions. Do not inflate every irritation into betrayal.
+16. VOICE DRIFT DETECTOR 2.0: compare this draft against Character DNA, voiceprint and recent replies. Repair generic diction, repeated cadence, accidental therapy-speak, excessive formality, canned romance and another character's voice before returning.
+17. NARRATIVE CAMERA: dynamically choose detail density. Dialogue-heavy beats stay lean; new/complex spaces get orientation; tension uses selective detail; conflict moves quickly; quiet intimacy may slow down without purple prose.
+18. REAL SILENCE: a user silence or minimal continuation does not require a speech. The character may wait, continue an activity, send one line, change topic, leave if already motivated, or let the silence remain. Never manufacture spectacle to reward '.'.
+19. PRIVATE CHARACTER JOURNAL: maintain an invisible first-person-adjacent private note for this character only: what they are focused on, what they believe, what they fear, what they are considering and what they refuse to admit. Never write hidden feelings for the user.
+20. VELVET DIRECTOR 2.0: before returning, ask silently: Did I answer the literal turn? Did I control the user? Does this sound uniquely like this character? Did I repeat the prior tactic? Is romance actually appropriate? Did the scene advance or intentionally breathe? Is the length earned? If not, repair before output.
+
 INVISIBLE DIRECTOR PASS
 - Before writing, silently classify the beat as one of: mundane, connective, tension, conflict, repair, plot, recovery. Pick what the transcript actually needs, not what is most dramatic.
 - Check the last several turns for repetition in tactic, emotional temperature, scene purpose and dialogue rhythm. If the same dynamic has repeated, vary ONE axis naturally rather than adding random plot.
@@ -1067,6 +1086,7 @@ HIDDEN STATE OUTPUT
 - offscreen_contact may be recorded only if the reply establishes it or it logically follows a canonical plan/relationship; otherwise record=false.
 - post_turn_reflection is invisible bookkeeping: changed, pending, avoid_repeat, affected and one plausible_consequence. Record only what this reply actually caused; do not force the plausible consequence later.
 - human_behavior_update is persistent HUMAN BEHAVIOR state. Update only fields evidenced by canon or this reply. rhythm_mode/detail_level describe this turn; humor_profile, initiative_profile and character_dna change rarely. argument_lesson/physical_boundary_state/romantic_expression may evolve from repeated or high-significance evidence. persistent_location and possession_updates must be physically grounded. social_reputation_update and information_flow must identify a plausible observer/source. relationship_self_view is the character's subjective view only; never fill relationship_user_view with invented user feelings. autonomous_plan and between_scene_motion may advance ordinary independent life, never off-screen user choices or major unsupported plot. memory_compression_anchor names what must survive long-story compression. naturalness_score is 0-100 and should be >=72 after silent self-repair.
+- presence_update is persistent PRESENCE ENGINE state. Keep it compact. Fields: presence_action, conversation_mode, chemistry_fingerprint, jealousy_mode, scene_memory, relationship_milestone, unfinished_business_add, unfinished_business_resolve, texting_mode, supporting_cast_dynamics, social_consequence, emotional_residue, romantic_specificity, flirt_mode, bad_day_state, micro_conflict, voice_drift, narrative_camera, silence_mode, private_character_journal, director_check. Never invent user feelings. relationship_milestone/social_consequence use record=false unless a visible or canonical cause earned them. scene_memory records facts, not prose. flirt_mode is off/low/natural and should be off when romance does not belong in the beat. private_character_journal belongs only to the character and must never appear in reply.
 - quality_check is invisible. Check subtext, structural repetition, scene momentum, conversational rhythm, nonverbal restraint, romantic specificity, decision consistency, physical boundaries, social information flow, adaptive detail, character DNA and preserved contradictions in addition to canon/voice. Set drift_risk to "none" when identity is stable; naturalness_score must be 0-100. If any boolean would be false or naturalness_score < 72, silently fix the reply before returning the JSON.
 - story_drive.intensity_target is 1-10 and may DECREASE. season_signal is true only for a durable era change, never one emotional beat. scene_momentum is hold/turn/close. compression_reason is empty unless routine time can safely be compressed without skipping a live user choice.
 
@@ -1137,7 +1157,6 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     systemInstruction: "Repair one rejected roleplay turn from literal visible canon. Return a complete alternative as valid JSON only.",
     prompt: repairPrompt,
     maxOutputTokens: getMaximumOutputTokens(character.response_length),
-    temperature: Math.min(1.02, getTemperature(character.creativity, true) + 0.04),
     isCancelled,
     interactionDeadlineMs: 9000,
   });
@@ -1173,25 +1192,42 @@ async function callGeminiWithFailover({
     })();
 
     try {
-      const response = await fetch(modelEndpoint(model), {
-        method: "POST",
-        headers: geminiHeaders(apiKey),
-        signal: controller.signal,
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens,
-            temperature,
-            topP: 0.92,
-            thinkingConfig: { thinkingLevel: "MINIMAL" },
-            responseMimeType: "application/json",
-            responseJsonSchema: roleplayResponseSchema(),
-          },
-        }),
-      });
+      const traceId = createGeminiTraceId();
+      const makeRequest = (mode: "json" | "bare" = "json") => {
+        const requestBody = mode === "bare"
+          ? {
+              // Compatibility floor: only the universally-required `contents`
+              // field. Fold the system instruction into the user text so a
+              // model/API change cannot reject optional request fields.
+              contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\n${prompt}` }] }],
+            }
+          : {
+              systemInstruction: { parts: [{ text: systemInstruction }] },
+              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              generationConfig: {
+                maxOutputTokens,
+                responseMimeType: "application/json",
+              },
+            };
+        return fetch(modelEndpoint(model), {
+          method: "POST",
+          headers: geminiHeaders(apiKey),
+          signal: controller.signal,
+          body: JSON.stringify(requestBody),
+        });
+      };
 
-      const data = await response.json().catch(() => ({}));
+      const runAttempt = async (mode: "json" | "bare") => {
+        const response = await makeRequest(mode);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) logGeminiAttemptFailure({ traceId, model, mode, status: response.status, error: data?.error });
+        return { response, data };
+      };
+
+      let { response, data } = await runAttempt("json");
+      if (!response.ok && response.status === 400) {
+        ({ response, data } = await runAttempt("bare"));
+      }
       if (!response.ok) {
         lastError = data?.error?.message || `Gemini returned ${response.status}`;
         quotaReached ||= response.status === 429;
@@ -1239,12 +1275,13 @@ function parseModelEnvelope(raw): ModelEnvelope {
       memory_updates: Array.isArray(parsed?.memory_updates) ? parsed.memory_updates.slice(0, 3) : [],
       mind_update: parsed?.mind_update && typeof parsed.mind_update === "object" ? parsed.mind_update : {},
       human_behavior_update: parsed?.human_behavior_update && typeof parsed.human_behavior_update === "object" ? parsed.human_behavior_update : {},
+      presence_update: parsed?.presence_update && typeof parsed.presence_update === "object" ? parsed.presence_update : {},
       connection_updates: Array.isArray(parsed?.connection_updates) ? parsed.connection_updates.slice(0, 6) : [],
       post_turn_reflection: parsed?.post_turn_reflection && typeof parsed.post_turn_reflection === "object" ? parsed.post_turn_reflection : {},
       quality_check: parsed?.quality_check && typeof parsed.quality_check === "object" ? parsed.quality_check : {},
     };
   } catch {
-    return { reply: String(raw || "").trim(), story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
+    return { reply: String(raw || "").trim(), story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, presence_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
   }
 }
 
@@ -3957,7 +3994,7 @@ function compactTextList(value: any, limit = 12, itemLimit = 260) {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.map((item) => cleanPromptValue(item, itemLimit)).filter(Boolean))].slice(0, limit);
 }
-function applyIntelligenceContinuity(previous: any = {}, update: any = {}, mindUpdate: any = {}, storyDrive: any = {}, reflection: any = {}, humanBehaviorUpdate: any = {}) {
+function applyIntelligenceContinuity(previous: any = {}, update: any = {}, mindUpdate: any = {}, storyDrive: any = {}, reflection: any = {}, humanBehaviorUpdate: any = {}, presenceUpdate: any = {}) {
   const prior = previous && typeof previous === "object" ? previous : {};
   const resolved = compactTextList(update?.resolved_commitments, 8, 260);
   const proposedCommitments = compactTextList(update?.commitments, 8, 260);
@@ -4015,6 +4052,58 @@ function applyIntelligenceContinuity(previous: any = {}, update: any = {}, mindU
     naturalness_score: Math.max(0, Math.min(100, Number(humanBehaviorUpdate?.naturalness_score) || Number(priorBehavior?.naturalness_score) || 80)),
     naturalness_notes: keep("naturalness_notes", 300),
   };
+  const priorPresence = prior.presence_engine_state && typeof prior.presence_engine_state === "object" ? prior.presence_engine_state : {};
+  const pkeep = (key: string, limit = 360) => cleanPromptValue(presenceUpdate?.[key], limit) || cleanPromptValue(priorPresence?.[key], limit);
+  const sceneMemoryInput = presenceUpdate?.scene_memory && typeof presenceUpdate.scene_memory === "object" ? presenceUpdate.scene_memory : {};
+  const previousSceneMemory = prior.scene_memory && typeof prior.scene_memory === "object" ? prior.scene_memory : {};
+  const sceneMemory = {
+    location: cleanPromptValue(sceneMemoryInput?.location, 180) || cleanPromptValue(previousSceneMemory?.location, 180),
+    medium: cleanPromptValue(sceneMemoryInput?.medium, 80) || cleanPromptValue(previousSceneMemory?.medium, 80),
+    activity: cleanPromptValue(sceneMemoryInput?.activity, 220) || cleanPromptValue(previousSceneMemory?.activity, 220),
+    present: compactSceneNames(sceneMemoryInput?.present?.length ? sceneMemoryInput.present : previousSceneMemory?.present, 12),
+    spatial: compactTextList(sceneMemoryInput?.spatial?.length ? sceneMemoryInput.spatial : previousSceneMemory?.spatial, 8, 180),
+    objects: compactTextList(sceneMemoryInput?.objects?.length ? sceneMemoryInput.objects : previousSceneMemory?.objects, 8, 180),
+    last_physical_state: cleanPromptValue(sceneMemoryInput?.last_physical_state, 320) || cleanPromptValue(previousSceneMemory?.last_physical_state, 320),
+  };
+  const unfinishedAdd = compactTextList(presenceUpdate?.unfinished_business_add, 6, 320);
+  const unfinishedResolve = compactTextList(presenceUpdate?.unfinished_business_resolve, 6, 320);
+  const unfinishedBusiness = compactTextList([...(Array.isArray(prior.unfinished_business) ? prior.unfinished_business : []), ...unfinishedAdd], 14, 320)
+    .filter((item) => !unfinishedResolve.some((resolvedItem) => memorySimilarity(item, resolvedItem) >= 0.68));
+  const chemistryInput = presenceUpdate?.chemistry_fingerprint && typeof presenceUpdate.chemistry_fingerprint === "object" ? presenceUpdate.chemistry_fingerprint : {};
+  const priorChemistry = prior.chemistry_fingerprint && typeof prior.chemistry_fingerprint === "object" ? prior.chemistry_fingerprint : {};
+  const chemistryFingerprint = {
+    humor_rhythm: cleanPromptValue(chemistryInput?.humor_rhythm, 260) || cleanPromptValue(priorChemistry?.humor_rhythm, 260),
+    friction_style: cleanPromptValue(chemistryInput?.friction_style, 280) || cleanPromptValue(priorChemistry?.friction_style, 280),
+    silence_style: cleanPromptValue(chemistryInput?.silence_style, 240) || cleanPromptValue(priorChemistry?.silence_style, 240),
+    repair_style: cleanPromptValue(chemistryInput?.repair_style, 280) || cleanPromptValue(priorChemistry?.repair_style, 280),
+    private_reference: cleanPromptValue(chemistryInput?.private_reference, 240) || cleanPromptValue(priorChemistry?.private_reference, 240),
+    attention_style: cleanPromptValue(chemistryInput?.attention_style, 260) || cleanPromptValue(priorChemistry?.attention_style, 260),
+  };
+  const journalInput = presenceUpdate?.private_character_journal && typeof presenceUpdate.private_character_journal === "object" ? presenceUpdate.private_character_journal : {};
+  const priorJournal = prior.private_character_journal && typeof prior.private_character_journal === "object" ? prior.private_character_journal : {};
+  const privateCharacterJournal = {
+    focus: cleanPromptValue(journalInput?.focus, 320) || cleanPromptValue(priorJournal?.focus, 320),
+    belief: cleanPromptValue(journalInput?.belief, 320) || cleanPromptValue(priorJournal?.belief, 320),
+    fear: cleanPromptValue(journalInput?.fear, 280) || cleanPromptValue(priorJournal?.fear, 280),
+    considering: cleanPromptValue(journalInput?.considering, 320) || cleanPromptValue(priorJournal?.considering, 320),
+    wont_admit: cleanPromptValue(journalInput?.wont_admit, 300) || cleanPromptValue(priorJournal?.wont_admit, 300),
+  };
+  const presenceEngineState = {
+    presence_action: pkeep("presence_action", 300),
+    conversation_mode: ["fragmented","brief","natural","extended","overlap","silent"].includes(String(presenceUpdate?.conversation_mode)) ? String(presenceUpdate.conversation_mode) : (priorPresence?.conversation_mode || "natural"),
+    jealousy_mode: pkeep("jealousy_mode", 280),
+    texting_mode: ["off","live","delayed","rapid","call_transition"].includes(String(presenceUpdate?.texting_mode)) ? String(presenceUpdate.texting_mode) : (priorPresence?.texting_mode || "off"),
+    supporting_cast_dynamics: compactTextList(presenceUpdate?.supporting_cast_dynamics?.length ? presenceUpdate.supporting_cast_dynamics : priorPresence?.supporting_cast_dynamics, 8, 300),
+    emotional_residue: pkeep("emotional_residue", 360),
+    romantic_specificity: pkeep("romantic_specificity", 320),
+    flirt_mode: ["off","low","natural"].includes(String(presenceUpdate?.flirt_mode)) ? String(presenceUpdate.flirt_mode) : (priorPresence?.flirt_mode || "off"),
+    bad_day_state: pkeep("bad_day_state", 300),
+    micro_conflict: pkeep("micro_conflict", 320),
+    voice_drift: pkeep("voice_drift", 320),
+    narrative_camera: ["lean","balanced","close","orienting"].includes(String(presenceUpdate?.narrative_camera)) ? String(presenceUpdate.narrative_camera) : (priorPresence?.narrative_camera || "balanced"),
+    silence_mode: pkeep("silence_mode", 280),
+    director_check: pkeep("director_check", 420),
+  };
   const possessionUpdates = Array.isArray(humanBehaviorUpdate?.possession_updates) ? humanBehaviorUpdate.possession_updates.slice(0, 5).map((item:any)=>({
     object: cleanPromptValue(item?.object, 100), holder: cleanPromptValue(item?.holder, 100), location: cleanPromptValue(item?.location, 180), state: cleanPromptValue(item?.state, 180),
   })).filter((item:any)=>item.object) : [];
@@ -4036,7 +4125,8 @@ function applyIntelligenceContinuity(previous: any = {}, update: any = {}, mindU
   return {
     ...prior,
     objects: compactTextList(update?.objects_present?.length ? update.objects_present : prior.objects, 12, 180),
-    knowledge, commitments, character_mind: mind, human_behavior_state: humanBehaviorState,
+    knowledge, commitments, character_mind: mind, human_behavior_state: humanBehaviorState, presence_engine_state: presenceEngineState,
+    scene_memory: sceneMemory, unfinished_business: unfinishedBusiness, chemistry_fingerprint: chemistryFingerprint, private_character_journal: privateCharacterJournal,
     persistent_locations: uniqueLocations, possessions: mergedPossessions.slice(-12),
     social_reputation: { latest: humanBehaviorState.social_reputation_update || cleanPromptValue(prior?.social_reputation?.latest, 360), information_flow: humanBehaviorState.information_flow || cleanPromptValue(prior?.social_reputation?.information_flow, 420) },
     autonomous_plan: { plan: humanBehaviorState.autonomous_plan || cleanPromptValue(prior?.autonomous_plan?.plan, 420), between_scene: humanBehaviorState.between_scene_motion || cleanPromptValue(prior?.autonomous_plan?.between_scene, 420) },
@@ -4195,10 +4285,9 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice specific rather than archetypal. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains or therapist speech. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice specific rather than archetypal. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains or therapist speech. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Use Presence Engine 2.0: natural conversation, relationship-specific chemistry, real silence, emotional residue and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
-          temperature: getTemperature(character.creativity, isRegeneration),
           isCancelled,
           onModel(model) {
             sendEvent(controller, { type: "model", model });
@@ -4375,17 +4464,27 @@ async function streamRoleplayV19({
         });
         update.scene_state = nextPhysicalState.scene;
         update.cast_state = nextPhysicalState.cast;
-        update.intelligence_state = applyIntelligenceContinuity(existingIntelligenceState, result.continuity_update, result.mind_update, result.story_drive, result.post_turn_reflection, result.human_behavior_update);
+        update.intelligence_state = applyIntelligenceContinuity(existingIntelligenceState, result.continuity_update, result.mind_update, result.story_drive, result.post_turn_reflection, result.human_behavior_update, result.presence_update);
         const resolvedCommitments = compactTextList(result.continuity_update?.resolved_commitments, 8, 260);
         const newCommitments = compactTextList(result.continuity_update?.commitments, 8, 260);
-        update.unresolved_threads = compactTextList([...(Array.isArray(existingUnresolvedThreads) ? existingUnresolvedThreads.map((item) => typeof item === "string" ? item : item?.title || item?.detail) : []), ...newCommitments], 16, 320)
-          .filter((item) => !resolvedCommitments.some((done) => memorySimilarity(item, done) >= 0.72))
-          .map((title, index) => ({ id: `commitment-${index}`, title, status: "open" }));
+        const presenceOpen = compactTextList(result.presence_update?.unfinished_business_add, 6, 320);
+        const presenceResolved = compactTextList(result.presence_update?.unfinished_business_resolve, 6, 320);
+        update.unresolved_threads = compactTextList([...(Array.isArray(existingUnresolvedThreads) ? existingUnresolvedThreads.map((item) => typeof item === "string" ? item : item?.title || item?.detail) : []), ...newCommitments, ...presenceOpen], 20, 320)
+          .filter((item) => ![...resolvedCommitments, ...presenceResolved].some((done) => memorySimilarity(item, done) >= 0.68))
+          .map((title, index) => ({ id: `thread-${index}`, title, status: "open" }));
 
         const note = cleanPromptValue(result.continuity_note, 600);
         const sceneChanged = Boolean(result.scene_update?.scene_changed);
         const separatorLabel = buildSceneSeparatorLabel(existingSceneState, result.scene_update);
-        const timelineEvent = result.continuity_update?.timeline_event || {};
+        const rawTimelineEvent = result.continuity_update?.timeline_event || {};
+        const relationshipMilestone = result.presence_update?.relationship_milestone && typeof result.presence_update.relationship_milestone === "object" ? result.presence_update.relationship_milestone : {};
+        const timelineEvent = Boolean(rawTimelineEvent?.record) ? rawTimelineEvent : (relationshipMilestone?.record ? {
+          record: true,
+          label: cleanPromptValue(relationshipMilestone?.label, 120) || "Relationship shift",
+          detail: cleanPromptValue(relationshipMilestone?.detail, 420),
+          kind: "relationship",
+          importance: Math.max(2, Math.min(5, Number(relationshipMilestone?.importance) || 3)),
+        } : rawTimelineEvent);
         const shouldRecordTimeline = Boolean(timelineEvent?.record) || sceneChanged || Boolean(separatorLabel);
         const timeline = Array.isArray(existingTimeline) ? existingTimeline : [];
         if (shouldRecordTimeline) {
@@ -4430,7 +4529,7 @@ async function streamRoleplayV19({
         });
         await persistStoryDynamics({
           supabase, userId, conversationId, characterName: character.name,
-          continuityUpdate: result.continuity_update, timelineEvent,
+          continuityUpdate: result.continuity_update, presenceUpdate: result.presence_update, timelineEvent,
           activeArcs, activePlans,
           activeConflicts, chemistryProfiles,
           latestUserMessage, reply: result.reply, sourceMessageId: savedMessage.id,
@@ -4471,7 +4570,7 @@ async function streamRoleplayV19({
   });
 }
 
-async function persistStoryDynamics({ supabase, userId, conversationId, characterName, continuityUpdate = {}, timelineEvent = {}, activeArcs = [], activePlans = [], activeConflicts = [], chemistryProfiles = [], latestUserMessage = "", reply = "", sourceMessageId = null, scene = {} }) {
+async function persistStoryDynamics({ supabase, userId, conversationId, characterName, continuityUpdate = {}, presenceUpdate = {}, timelineEvent = {}, activeArcs = [], activePlans = [], activeConflicts = [], chemistryProfiles = [], latestUserMessage = "", reply = "", sourceMessageId = null, scene = {} }) {
   const now = new Date().toISOString();
   const knowledgeRows = (Array.isArray(continuityUpdate?.knowledge_updates) ? continuityUpdate.knowledge_updates : []).slice(0, 6).map((item) => ({
     user_id: userId, conversation_id: conversationId,
@@ -4555,10 +4654,26 @@ async function persistStoryDynamics({ supabase, userId, conversationId, characte
     const {error}=await supabase.from("story_milestones").upsert(row,{onConflict:"conversation_id,milestone_type",ignoreDuplicates:true});
     if(error&&error.code!=="42P01")console.warn("[character-chat] milestone persistence failed",{message:error.message});
   }
+  const socialConsequence = presenceUpdate?.social_consequence && typeof presenceUpdate.social_consequence === "object" ? presenceUpdate.social_consequence : {};
+  if (socialConsequence?.record) {
+    const scTitle = cleanPromptValue(socialConsequence?.title, 140);
+    const scCause = cleanPromptValue(socialConsequence?.cause, 420);
+    const scEffect = cleanPromptValue(socialConsequence?.effect, 520);
+    const observer = cleanPromptValue(socialConsequence?.observer_or_channel, 180);
+    if (scTitle && scCause && scEffect && observer) {
+      const row = { user_id:userId, conversation_id:conversationId, title:scTitle, cause:`${scCause} [via ${observer}]`, effect:scEffect, status:"active", weight:Math.max(1,Math.min(5,Number(socialConsequence?.weight)||2)), participants:compactSceneNames(socialConsequence?.participants || [characterName],6), updated_at:now };
+      const { error } = await supabase.from("story_consequences").upsert(row,{onConflict:"conversation_id,title,cause"});
+      if(error&&error.code!=="42P01")console.warn("[character-chat] presence social consequence persistence failed",{message:error.message});
+    }
+  }
   const priorChemistry=(Array.isArray(chemistryProfiles)?chemistryProfiles:[]).find((item)=>normalizeText(item?.character_name)===normalizeText(characterName));
   const emotionalBeat=["relationship","conflict","reveal","promise"].includes(kind);
-  if(emotionalBeat){
-    const delta=kind==="conflict"?-2:3;const row={user_id:userId,conversation_id:conversationId,character_name:characterName,signature:priorChemistry?.signature||"",banter_style:priorChemistry?.banter_style||"",affection_style:priorChemistry?.affection_style||"",friction_triggers:priorChemistry?.friction_triggers||"",reconciliation_style:priorChemistry?.reconciliation_style||"",inside_jokes:priorChemistry?.inside_jokes||[],meaningful_places:priorChemistry?.meaningful_places||[],chemistry_score:Math.max(0,Math.min(100,Number(priorChemistry?.chemistry_score||25)+(kind==="relationship"?3:1))),trust_score:Math.max(0,Math.min(100,Number(priorChemistry?.trust_score||20)+delta)),tension_score:Math.max(0,Math.min(100,Number(priorChemistry?.tension_score||10)+(kind==="conflict"?8:-2))),updated_at:now};
+  const chemistryFingerprint = presenceUpdate?.chemistry_fingerprint && typeof presenceUpdate.chemistry_fingerprint === "object" ? presenceUpdate.chemistry_fingerprint : {};
+  const chemistryChanged = Object.values(chemistryFingerprint).some((value)=>cleanPromptValue(value,220));
+  if(emotionalBeat || chemistryChanged){
+    const delta=kind==="conflict"?-2:3;
+    const signatureParts=[chemistryFingerprint?.humor_rhythm,chemistryFingerprint?.silence_style,chemistryFingerprint?.attention_style].map((v)=>cleanPromptValue(v,160)).filter(Boolean);
+    const row={user_id:userId,conversation_id:conversationId,character_name:characterName,signature:signatureParts.join(" · ")||priorChemistry?.signature||"",banter_style:cleanPromptValue(chemistryFingerprint?.humor_rhythm,260)||priorChemistry?.banter_style||"",affection_style:cleanPromptValue(chemistryFingerprint?.attention_style,260)||priorChemistry?.affection_style||"",friction_triggers:cleanPromptValue(chemistryFingerprint?.friction_style,280)||priorChemistry?.friction_triggers||"",reconciliation_style:cleanPromptValue(chemistryFingerprint?.repair_style,280)||priorChemistry?.reconciliation_style||"",inside_jokes:priorChemistry?.inside_jokes||[],meaningful_places:priorChemistry?.meaningful_places||[],chemistry_score:Math.max(0,Math.min(100,Number(priorChemistry?.chemistry_score||25)+(kind==="relationship"?3:(emotionalBeat?1:0)))),trust_score:Math.max(0,Math.min(100,Number(priorChemistry?.trust_score||20)+(emotionalBeat?delta:0))),tension_score:Math.max(0,Math.min(100,Number(priorChemistry?.tension_score||10)+(kind==="conflict"?8:(emotionalBeat?-2:0)))),updated_at:now};
     const{error}=await supabase.from("story_chemistry_profiles").upsert(row,{onConflict:"conversation_id,character_name"});if(error&&error.code!=="42P01")console.warn("[character-chat] chemistry persistence failed",{message:error.message});
   }
 }
@@ -4699,23 +4814,48 @@ async function streamGeminiEnvelopeWithFailover({
     })();
 
     try {
-      const response = await fetch(modelStreamEndpoint(model), {
-        method: "POST",
-        headers: geminiHeaders(apiKey),
-        signal: controller.signal,
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens,
-            temperature,
-            topP: 0.92,
-            thinkingConfig: { thinkingLevel: "MINIMAL" },
-            responseMimeType: "application/json",
-            responseJsonSchema: roleplayResponseSchema(),
-          },
-        }),
-      });
+      const traceId = createGeminiTraceId();
+      const makeStreamRequest = (mode: "json" | "bare" = "json") => {
+        const requestBody = mode === "bare"
+          ? {
+              // True compatibility fallback: no systemInstruction,
+              // generationConfig, thinking config, MIME type, or schema.
+              contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\n${prompt}` }] }],
+            }
+          : {
+              systemInstruction: { parts: [{ text: systemInstruction }] },
+              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              generationConfig: {
+                maxOutputTokens,
+                responseMimeType: "application/json",
+              },
+            };
+        return fetch(modelStreamEndpoint(model), {
+          method: "POST",
+          headers: geminiHeaders(apiKey),
+          signal: controller.signal,
+          body: JSON.stringify(requestBody),
+        });
+      };
+
+      const runStreamAttempt = async (mode: "json" | "bare") => {
+        const response = await makeStreamRequest(mode);
+        if (response.ok) return { response, message: "" };
+        const errorText = await response.text().catch(() => "");
+        const diagnostic = extractGeminiHttpDiagnostic(errorText);
+        const message = diagnostic.message || `Gemini returned ${response.status}`;
+        logGeminiAttemptFailure({ traceId, model, mode, status: response.status, error: diagnostic });
+        return { response, message };
+      };
+
+      let { response, message } = await runStreamAttempt("json");
+      if (!response.ok && response.status === 400) {
+        ({ response, message } = await runStreamAttempt("bare"));
+      }
+      if (!response.ok) {
+        quotaReached ||= response.status === 429;
+        throw new Error(message || `Gemini returned ${response.status}`);
+      }
 
       if (!response.ok || !response.body) {
         const errorText = await response.text().catch(() => "");
@@ -4837,6 +4977,56 @@ async function streamGeminiEnvelopeWithFailover({
     void onReset;
   }
 }
+function isGeminiInvalidArgument(value = "") {
+  const text = String(value || "").toLowerCase();
+  return text.includes("invalid_argument") || text.includes("invalid argument");
+}
+
+function createGeminiTraceId() {
+  try { return crypto.randomUUID().slice(0, 8); } catch { return String(Date.now()).slice(-8); }
+}
+
+function sanitizeGeminiDiagnostic(value = "") {
+  return String(value || "")
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted-api-key]")
+    .replace(/[0-9A-Za-z_-]{48,}/g, "[redacted-token]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 520);
+}
+
+function extractGeminiHttpDiagnostic(text = "") {
+  try {
+    const parsed = JSON.parse(String(text || ""));
+    return {
+      code: String(parsed?.error?.code || ""),
+      status: String(parsed?.error?.status || ""),
+      message: sanitizeGeminiDiagnostic(parsed?.error?.message || ""),
+    };
+  } catch {
+    return { code: "", status: "", message: sanitizeGeminiDiagnostic(text) };
+  }
+}
+
+function logGeminiAttemptFailure({ traceId, model, mode, status, error }) {
+  const diagnostic = error && typeof error === "object"
+    ? {
+        code: String(error?.code || ""),
+        status: String(error?.status || ""),
+        message: sanitizeGeminiDiagnostic(error?.message || ""),
+      }
+    : { code: "", status: "", message: sanitizeGeminiDiagnostic(error) };
+  console.warn("[character-chat] Gemini attempt failed", {
+    traceId,
+    model,
+    mode,
+    httpStatus: Number(status || 0),
+    upstreamCode: diagnostic.code,
+    upstreamStatus: diagnostic.status,
+    message: diagnostic.message,
+  });
+}
+
 function roleplayResponseSchema() {
   return {
     type: "object",
