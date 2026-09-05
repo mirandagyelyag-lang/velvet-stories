@@ -25,6 +25,7 @@ export type StoryContractInput = {
   relationshipState?: Record<string, unknown>;
   storyChapters?: Array<Record<string, unknown>>;
   activeChapter?: Record<string, unknown>;
+  writingPreferences?: Record<string, unknown>;
 };
 
 export type StoryContract = {
@@ -104,6 +105,64 @@ export type StoryContract = {
     conflict: string;
     repairNeed: string;
     baseline: string;
+    instruction: string;
+  };
+  relationshipIntelligenceEngine: {
+    attachmentStrategy: string;
+    attraction: number;
+    trust: number;
+    comfort: number;
+    commitment: number;
+    mixedSignal: string;
+    privateInterpretation: string;
+    thresholdState: string[];
+    forgivenessGate: string;
+    romanticPace: string;
+    boundaryCarry: string;
+    forecast: string;
+    instruction: string;
+  };
+  emotionalContinuityEngine: {
+    unresolved: string[];
+    residueLevel: number;
+    emotionalDebt: string;
+    repairEvidence: string;
+    behavioralCarry: string;
+    instruction: string;
+  };
+  sceneVarietyEngine: {
+    recentSignatures: string[];
+    repeatedShape: string;
+    avoidNext: string[];
+    preferredShift: string;
+    transitionPermission: string;
+    instruction: string;
+  };
+  npcSocialNetworkEngine: {
+    bonds: Array<Record<string, unknown>>;
+    independentBonds: string[];
+    rumorFlow: string[];
+    socialAsymmetry: string[];
+    instruction: string;
+  };
+  longTermMemoryEngine: {
+    core: string[];
+    active: string[];
+    fading: string[];
+    behaviorChanging: string[];
+    reactivated: string[];
+    instruction: string;
+  };
+  writingStyleDirector: {
+    proseMode: string;
+    dialogueMode: string;
+    interiorMode: string;
+    romancePace: string;
+    proseDensity: string;
+    sentenceTexture: string;
+    cameraRule: string;
+    forbiddenCadence: string[];
+    customDirection: string;
     instruction: string;
   };
   humanImperfectionEngine: {
@@ -590,6 +649,186 @@ function buildRelationshipExpectations(character: Record<string, unknown>, devel
   return { contact, closeness, conflict, repairNeed, baseline: phase, instruction: "Expectations are character-owned beliefs, not facts about the user. They may be disappointed, surprised, or wrong. Never convert an expectation into invented user intent, guilt, consent, or obligation." };
 }
 
+
+function clamp100(value: unknown, fallback = 0) {
+  const raw = text(value);
+  if (!raw) return Math.max(0, Math.min(100, fallback));
+  const n = Number(raw);
+  return Math.max(0, Math.min(100, Number.isFinite(n) ? n : fallback));
+}
+
+function relationshipPhaseScore(phaseValue: unknown) {
+  const phase = normalizeRomancePhase(phaseValue);
+  const map: Record<string, number> = {
+    undefined: 8, acquaintances: 16, friends: 34, charged: 44,
+    mutual_interest: 58, dating: 74, committed: 90,
+  };
+  return map[phase] ?? 20;
+}
+
+function buildRelationshipIntelligenceEngine(
+  character: Record<string, unknown>,
+  development: Record<string, unknown>,
+  intelligence: Record<string, unknown>,
+  chemistry: Record<string, unknown>,
+  milestones: Array<Record<string, unknown>>,
+  activeConflicts: Array<Record<string, unknown>>,
+  selectiveMemory: { highSalience?: string[] } = {},
+  writingPreferences: Record<string, unknown> = {},
+) {
+  const profile = characterProfileBlob(character);
+  const priorMind = intelligence.character_mind && typeof intelligence.character_mind === "object" ? intelligence.character_mind as Record<string, unknown> : {};
+  const behavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
+  const phaseScore = relationshipPhaseScore(development.relationship_phase);
+  const trustFallback = clamp100(behavior.relationship_trust, /trust|safe|reliable/.test(normalized(development.relationship_dynamic)) ? Math.max(phaseScore, 48) : phaseScore);
+  const attractionFallback = clamp100(behavior.relationship_attraction, /attract|crush|romance|charged|flirt/.test(`${profile} ${normalized(development.relationship_dynamic)}`) ? Math.max(phaseScore, 42) : Math.max(0, phaseScore - 12));
+  const trust = clamp100(chemistry?.trust_score, trustFallback);
+  const attraction = clamp100(chemistry?.tension_score, attractionFallback);
+  const comfortEvidence = [development.shared_ritual, development.private_pattern, development.retained_growth, behavior.relationship_self_view].map(normalized).join(" ");
+  const comfort = clamp100(behavior.relationship_comfort, Math.max(10, Math.min(92, phaseScore + (/ritual|familiar|safe|ease|comfortable|routine/.test(comfortEvidence) ? 18 : 0) - (activeConflicts.length ? 15 : 0))));
+  const commitment = clamp100(behavior.relationship_commitment, Math.max(4, Math.min(96, phaseScore + (/commit|official|partner|dating|together/.test(normalized(development.relationship_phase)) ? 14 : 0) - (activeConflicts.length ? 8 : 0))));
+  const explicitAttachment = text(priorMind.attachment_pattern);
+  const attachmentStrategy = explicitAttachment && explicitAttachment !== "unknown"
+    ? explicitAttachment
+    : /avoid|withdraw|guarded|distant|independent|reserved/.test(profile) ? "withdraw under intimacy pressure"
+      : /cling|anxious|insecure|abandon/.test(profile) ? "seek reassurance when access feels uncertain"
+        : /steady|secure|direct|open|reliable/.test(profile) ? "approach conflict without making access the only proof of care"
+          : "mixed: approach when safe, defend when exposed";
+  const contradiction = text(development.active_contradiction || priorMind.contradiction_in_play);
+  const mixedSignal = attraction >= 45 && /withdraw|avoid|guarded|proud|mixed/.test(normalized(attachmentStrategy + " " + contradiction))
+    ? "desire and defense point in different directions; interest may increase while visible access decreases"
+    : activeConflicts.length && attraction >= 35
+      ? "attraction can remain while trust/access temporarily contracts"
+      : "no forced mixed signal; behavior should match current evidence unless a specific defense creates friction";
+  const privateInterpretation = text(priorMind.believe || priorMind.misunderstand || development.relationship_dynamic || "no private interpretation established");
+  const thresholds = (milestones || []).slice(-10).map((m) => text(m?.milestone_type || m?.title)).filter(Boolean);
+  if (trust >= 55) thresholds.push("trust threshold crossed");
+  if (comfort >= 60) thresholds.push("comfort threshold crossed");
+  if (commitment >= 70) thresholds.push("commitment threshold crossed");
+  const repairDebt = text(development.repair_debt || development.conflict_aftertaste || activeConflicts[0]?.resolution_need);
+  const forgivenessGate = repairDebt
+    ? `forgiveness is NOT complete; repair still needs evidence matching: ${repairDebt}`
+    : activeConflicts.length
+      ? "forgiveness is not presumed while an active conflict remains"
+      : "no active forgiveness debt; do not invent resentment";
+  const romanticPace = text(writingPreferences.romance_pacing || "medium_fast");
+  const boundaryCarry = (selectiveMemory.highSalience || []).find((item) => /boundary|don't|do not|stop|space|touch|leave|promise/i.test(item)) || text(behavior.physical_boundary_state || "respect only established boundaries; never invent consent");
+  const weakest = [["trust", trust], ["comfort", comfort], ["commitment", commitment], ["attraction", attraction]].sort((a,b)=>Number(a[1])-Number(b[1]))[0]?.[0] || "trust";
+  const forecast = activeConflicts.length
+    ? "progress requires repair evidence before a cleaner baseline can form"
+    : weakest === "trust" ? "next progress needs reliability, honesty, or follow-through rather than bigger flirting"
+      : weakest === "comfort" ? "next progress needs ordinary ease, private familiarity, or a shared routine"
+        : weakest === "commitment" ? "next progress needs an explicit choice, plan, or repeated prioritization"
+          : "next progress needs specific voluntary interest, not generic intensity";
+  return {
+    attachmentStrategy, attraction, trust, comfort, commitment, mixedSignal, privateInterpretation,
+    thresholdState: [...new Set(thresholds)].slice(-8), forgivenessGate, romanticPace, boundaryCarry, forecast,
+    instruction: "Treat attraction, trust, comfort and commitment as separate variables. A character can want closeness while defending against it, forgive partly without returning to the old baseline, or trust someone without being ready to commit. Threshold events permanently change expectations but do not instantly rewrite personality. Never infer the user's feelings from these axes."
+  };
+}
+
+function buildEmotionalContinuityEngine(development: Record<string, unknown>, intelligence: Record<string, unknown>, activeConflicts: Array<Record<string, unknown>>, activeConsequences: Array<Record<string, unknown>>) {
+  const prior = intelligence.emotional_causality && typeof intelligence.emotional_causality === "object" ? intelligence.emotional_causality as Record<string, unknown> : {};
+  const unfinished = Array.isArray(intelligence.unfinished_business) ? intelligence.unfinished_business.map(text).filter(Boolean) : [];
+  const unresolved = [
+    text(development.emotional_residue), text(development.conflict_aftertaste), text(development.repair_debt),
+    text(prior.emotion), text(prior.behavioral_pressure),
+    ...activeConflicts.map((c)=>text(c?.resolution_need || c?.cause || c?.title)),
+    ...activeConsequences.map((c)=>text(c?.effect || c?.title)), ...unfinished,
+  ].filter(Boolean);
+  const unique = [...new Set(unresolved)].slice(0, 10);
+  const weight = activeConsequences.reduce((max, item)=>Math.max(max, Number(item?.weight||0)), 0);
+  const residueLevel = Math.max(0, Math.min(100, unique.length * 9 + activeConflicts.length * 18 + weight * 8));
+  const emotionalDebt = text(development.repair_debt || activeConflicts[0]?.resolution_need || development.conflict_aftertaste || "none");
+  const repairEvidence = text(development.repair_progress || development.retained_growth || "no repair evidence established");
+  const behavioralCarry = residueLevel >= 65
+    ? "access, patience, warmth, humor, eye contact, timing, or willingness to stay should visibly differ from the old baseline"
+    : residueLevel >= 25
+      ? "leave a light aftertaste in timing, wording, access, or assumptions without making every line about the conflict"
+      : "do not force emotional residue when nothing meaningful remains unresolved";
+  return { unresolved: unique, residueLevel, emotionalDebt, repairEvidence, behavioralCarry, instruction: "Emotion persists through behavior, not repetitive exposition. A sincere apology can reduce pressure without instantly restoring trust, comfort, humor, physical access, or old routines. Reconciliation should have an after-period. New positive evidence can coexist with old soreness until enough behavior changes the baseline." };
+}
+
+function classifySceneShape(turn: string) {
+  const v = normalized(turn);
+  if (!v) return "empty";
+  const questions = (v.match(/\?/g)||[]).length;
+  if (questions >= 2) return "question-led";
+  if (/\b(?:rain|umbrella|library|hallway|caf[eé]|car|parking|dorm|classroom)\b/.test(v)) return "familiar-romance-location";
+  if (/\b(?:smirk|eyebrow|gaze|jaw|grip|shoulder brushed|hand brushed|accidentally touched)\b/.test(v)) return "cinematic-tension-beat";
+  if (/\b(?:left|walked away|headed out|gotta go|have to go)\b/.test(v)) return "departure-beat";
+  if (/\b(?:texted|called|phone|message)\b/.test(v)) return "digital-beat";
+  if (/\b(?:friend|group|teammate|roommate|sister|brother|party)\b/.test(v)) return "social-beat";
+  return "dialogue-beat";
+}
+
+function buildSceneVarietyEngine(scene: Record<string, unknown>, recentCharacterTurns: string[], intelligence: Record<string, unknown>, sceneRhythm: Record<string, unknown>) {
+  const history = Array.isArray(intelligence.scene_variety_history) ? intelligence.scene_variety_history.map(text).filter(Boolean).slice(-8) : [];
+  const currentLocation = text(scene.location || "unknown");
+  const currentShape = classifySceneShape(recentCharacterTurns.slice(-1)[0] || "");
+  const inferred = recentCharacterTurns.slice(-5).map(classifySceneShape).filter(Boolean);
+  const signatures = [...history, `${currentLocation} :: ${currentShape}`, ...inferred.map((shape)=>`shape :: ${shape}`)].slice(-10);
+  const counts = new Map<string, number>();
+  for (const sig of signatures) {
+    const key = normalized(sig.split("::").pop());
+    counts.set(key, (counts.get(key)||0)+1);
+  }
+  const repeated = [...counts.entries()].sort((a,b)=>b[1]-a[1]).find(([,count])=>count>=3)?.[0] || "none";
+  const avoidNext = [repeated, ...(/library|campus|hallway|caf[eé]|rain|umbrella/.test(normalized(signatures.join(" "))) ? ["default campus/rain/library loop"] : []), ...(/accidental|brushed|cinematic-tension/.test(normalized(signatures.join(" "))) ? ["accidental-touch tension beat"] : [])].filter((item)=>item && item!=="none");
+  const preferredShift = text(sceneRhythm?.phase)==="close" || text(sceneRhythm?.phase)==="land"
+    ? "allow a clean scene ending or a grounded transition to a different social/logistical context next"
+    : avoidNext.length
+      ? "keep continuity now, but make the NEXT available beat differ in location, activity, social composition, or conversational structure"
+      : "preserve the current scene until a real transition is earned; variety never means teleporting";
+  return { recentSignatures: signatures, repeatedShape: repeated, avoidNext: [...new Set(avoidNext)].slice(0,5), preferredShift, transitionPermission: "scene changes require a visible exit, time jump, arrival, accepted plan, or established transition; do not move the user without authored action", instruction: "Avoid repeating the same scene skeleton, not just the same nouns. Rotate who initiates, whether the beat is private/social/digital/ordinary, whether dialogue or action leads, and whether the scene lands, turns, or ends. Never break physical continuity merely to chase novelty." };
+}
+
+function buildNpcSocialNetworkEngine(persistentCast: Array<Record<string, unknown>>, castConnections: Array<Record<string, unknown>>, knowledgeLedger: Array<Record<string, unknown>>, leadName: string, userName: string) {
+  const bonds = (castConnections||[]).slice(0,24).map((c)=>({
+    from: text(c?.from_name), to: text(c?.to_name), relationship: text(c?.relationship), visibility: text(c?.visibility || "known")
+  })).filter((c)=>c.from && c.to && c.relationship);
+  const lead = normalized(leadName), user = normalized(userName);
+  const independentBonds = bonds.filter((b)=>![lead,user].includes(normalized(b.from)) && ![lead,user].includes(normalized(b.to))).map((b)=>`${b.from} ↔ ${b.to}: ${b.relationship}`).slice(0,6);
+  const rumorFlow = (knowledgeLedger||[]).filter((k)=>/rumor|suspect|secret|heard|told|saw|knows?/i.test(`${text(k?.status)} ${text(k?.knowledge)} ${text(k?.subject)}`)).map((k)=>`${text(k?.character_name)}: ${text(k?.subject)} → ${text(k?.knowledge || k?.status)}`).filter(Boolean).slice(0,6);
+  const asymmetry: string[] = [];
+  for (const bond of bonds) {
+    const reverse = bonds.find((other)=>normalized(other.from)===normalized(bond.to) && normalized(other.to)===normalized(bond.from));
+    if (reverse && normalized(reverse.relationship)!==normalized(bond.relationship)) asymmetry.push(`${bond.from} sees ${bond.to} as ${bond.relationship}; reverse view is ${reverse.relationship}`);
+  }
+  const named = (persistentCast||[]).map((npc)=>text(npc?.name)).filter(Boolean).slice(0,10);
+  if (named.length>=3 && !independentBonds.length) independentBonds.push(`network has ${named.length} established NPCs; do not force all of them into direct relationships with ${userName}`);
+  return { bonds: bonds.slice(0,12), independentBonds: [...new Set(independentBonds)].slice(0,6), rumorFlow, socialAsymmetry: [...new Set(asymmetry)].slice(0,5), instruction: "Treat the cast as a network, not spokes around the protagonist. NPCs may like each other, dislike each other, date, compete, protect secrets, share history, miscommunicate, or exchange information when canon supports it. Information travels only through plausible witnesses/messages. Different people can know different versions of the same event." };
+}
+
+function memoryKeywordOverlap(content: string, latest: string) {
+  const stop = new Set(["the","and","you","your","that","this","with","from","have","just","what","when","where","como","para","pero","que","una","por","con","del","las","los","esto","esta"]);
+  const a = normalized(content).split(/[^a-záéíóúüñ0-9]+/).filter((w)=>w.length>=4 && !stop.has(w));
+  const b = new Set(normalized(latest).split(/[^a-záéíóúüñ0-9]+/).filter((w)=>w.length>=4 && !stop.has(w)));
+  return a.filter((w)=>b.has(w)).length;
+}
+
+function buildLongTermMemory4Engine(memories: Array<Record<string, unknown>>, latestUserMessage: string) {
+  const core = (memories||[]).filter((m)=>Boolean(m?.is_canon)||Boolean(m?.is_pinned)||Number(m?.importance||0)>=5).map((m)=>text(m?.content)).filter(Boolean).slice(0,6);
+  const active = (memories||[]).filter((m)=>Number(m?.importance||0)>=3 && Number(m?.importance||0)<5 && !m?.is_canon && !m?.is_pinned).map((m)=>text(m?.content)).filter(Boolean).slice(0,8);
+  const fading = (memories||[]).filter((m)=>Number(m?.importance||0)<=2 && !m?.is_canon && !m?.is_pinned).map((m)=>text(m?.content)).filter(Boolean).slice(0,6);
+  const behaviorChanging = (memories||[]).filter((m)=>["boundary","promise","conflict","relationship"].includes(text(m?.category)) || /first|betray|lied|saved|defend|rejected|confess|promise|boundary|hurt|forgav/i.test(text(m?.content))).map((m)=>text(m?.content)).filter(Boolean).slice(0,8);
+  const candidates=[...core,...active,...fading].map((item)=>({item,score:memoryKeywordOverlap(item,latestUserMessage)})).filter((x)=>x.score>0).sort((a,b)=>b.score-a.score).map((x)=>x.item).slice(0,4);
+  return { core, active, fading, behaviorChanging, reactivated:candidates, instruction: "Memory retrieval is relevance + emotional consequence, not trivia flexing. Core canon stays durable. Active memories can guide choices. Fading memories should stay quiet unless the current turn naturally reactivates them. Behavior-changing memories matter because they altered trust, access, expectations, fear, habits, or boundaries. Never claim perfect recall." };
+}
+
+function buildWritingStyleDirector(writingPreferences: Record<string, unknown>, recentPatterns: string[], sceneRhythm: Record<string, unknown>) {
+  const proseMode = ["contemporary","literary","minimal"].includes(text(writingPreferences.prose)) ? text(writingPreferences.prose) : "contemporary";
+  const dialogueMode = ["dialogue_forward","balanced","narration_forward"].includes(text(writingPreferences.dialogue)) ? text(writingPreferences.dialogue) : "dialogue_forward";
+  const interiorMode = ["interior_visible","subtle","restrained"].includes(text(writingPreferences.emotional_interior)) ? text(writingPreferences.emotional_interior) : "subtle";
+  const romancePace = ["medium_fast","medium","slow"].includes(text(writingPreferences.romance_pacing)) ? text(writingPreferences.romance_pacing) : "medium_fast";
+  const proseDensity = proseMode==="minimal" ? "sparse: dialogue and only decisive sensory/action detail" : proseMode==="literary" ? "textured but disciplined: concrete image and rhythm without purple explanation" : "clean contemporary: natural dialogue, precise action, light atmosphere";
+  const sentenceTexture = proseMode==="minimal" ? "short/medium, fragments allowed, avoid decorative stacking" : proseMode==="literary" ? "mixed lengths with controlled cadence; image must reveal scene or character" : "uneven spoken rhythm with clear, readable narrative sentences";
+  const cameraRule = interiorMode==="restrained" ? "stay mostly external; infer emotion through behavior and subtext" : interiorMode==="interior_visible" ? "allow the character's interior pressure, never the user's, but do not explain every beat" : "show only the most useful interior beat; prefer subtext";
+  const forbiddenCadence=[...recentPatterns, "same opening structure three turns in a row", "question-tag ending by default", "cinematic micro-gesture chain", "therapy-summary after dialogue"];
+  const customDirection=text(writingPreferences.custom_instructions || "none").slice(0,320);
+  return { proseMode, dialogueMode, interiorMode, romancePace, proseDensity, sentenceTexture, cameraRule, forbiddenCadence:[...new Set(forbiddenCadence)].slice(0,8), customDirection, instruction:`Writing texture must be story-specific while character voice remains character-specific. ${dialogueMode==="dialogue_forward"?"Let spoken exchange carry most ordinary beats.":dialogueMode==="narration_forward"?"Narration may carry more weight when it adds real scene/character information.":"Balance dialogue and narration according to the beat."} Scene phase is ${text(sceneRhythm?.phase||"develop")}; style should support that phase rather than forcing every reply into the same length and cadence.` };
+}
+
 function buildHumanImperfectionEngine(dna: ReturnType<typeof inferCharacterDNA>, character: Record<string, unknown>, intelligence: Record<string, unknown>) {
   const behavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
   const profile = characterProfileBlob(character);
@@ -773,6 +1012,13 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const sceneRhythmEngine = buildSceneRhythmEngine(recentCharacterTurns, boundaries, activeConflicts, input.latestUserMessage);
   const selectiveMemoryEngine = buildSelectiveMemoryEngine(input.memories || [], input.latestUserMessage, intelligence);
   const relationshipExpectations = buildRelationshipExpectations(input.character, development, intelligence, activeConflicts);
+  const writingPreferences = input.writingPreferences && typeof input.writingPreferences === "object" ? input.writingPreferences : {};
+  const relationshipIntelligenceEngine = buildRelationshipIntelligenceEngine(input.character, development, intelligence, chemistry, milestones, activeConflicts, selectiveMemoryEngine, writingPreferences);
+  const emotionalContinuityEngine = buildEmotionalContinuityEngine(development, intelligence, activeConflicts, activeConsequences);
+  const sceneVarietyEngine = buildSceneVarietyEngine(scene, recentCharacterTurns, intelligence, sceneRhythmEngine);
+  const npcSocialNetworkEngine = buildNpcSocialNetworkEngine(persistent, input.castConnections || [], input.knowledgeLedger || [], text(input.character.name), input.userName);
+  const longTermMemoryEngine = buildLongTermMemory4Engine(input.memories || [], input.latestUserMessage);
+  const writingStyleDirector = buildWritingStyleDirector(writingPreferences, recentPatterns, sceneRhythmEngine);
   const humanImperfectionEngine = buildHumanImperfectionEngine(characterDNA, input.character, intelligence);
   const npcAutonomyEngine = buildNpcAutonomyEngine(persistent, input.castConnections || [], present);
   const romanceProgressionEngine = buildRomanceProgressionEngine(input.character, development, chemistry, milestones, activeConflicts);
@@ -822,6 +1068,12 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     sceneRhythmEngine,
     selectiveMemoryEngine,
     relationshipExpectations,
+    relationshipIntelligenceEngine,
+    emotionalContinuityEngine,
+    sceneVarietyEngine,
+    npcSocialNetworkEngine,
+    longTermMemoryEngine,
+    writingStyleDirector,
     humanImperfectionEngine,
     npcAutonomyEngine,
     romanceProgressionEngine,
@@ -998,6 +1250,22 @@ export function storyContractPrompt(contract: StoryContract) {
     sceneRhythm: contract.sceneRhythmEngine,
     selectiveMemory: contract.selectiveMemoryEngine,
     expectations: contract.relationshipExpectations,
+    relationshipIntelligence: contract.relationshipIntelligenceEngine,
+    emotionalContinuity: contract.emotionalContinuityEngine,
+    sceneVariety: contract.sceneVarietyEngine,
+    npcSocialNetwork: {
+      bonds: take(contract.npcSocialNetworkEngine.bonds, 8),
+      independentBonds: take(contract.npcSocialNetworkEngine.independentBonds, 5),
+      rumorFlow: take(contract.npcSocialNetworkEngine.rumorFlow, 5),
+      socialAsymmetry: take(contract.npcSocialNetworkEngine.socialAsymmetry, 4),
+    },
+    longTermMemory4: {
+      core: take(contract.longTermMemoryEngine.core, 5),
+      active: take(contract.longTermMemoryEngine.active, 5),
+      behaviorChanging: take(contract.longTermMemoryEngine.behaviorChanging, 5),
+      reactivated: take(contract.longTermMemoryEngine.reactivated, 3),
+    },
+    writingStyle: contract.writingStyleDirector,
     imperfection: contract.humanImperfectionEngine,
     npcAutonomy: { active: take(contract.npcAutonomyEngine.active, 4) },
     romanceProgression: contract.romanceProgressionEngine,
@@ -1061,5 +1329,5 @@ export function storyContractPrompt(contract: StoryContract) {
     },
   };
 
-  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn.`;
+  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; attachment defenses and mixed signals can create distance without erasing desire. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn.`;
 }

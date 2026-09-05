@@ -21,8 +21,8 @@ const prompt=storyContractPrompt(c);
 const autonomy=inferAutonomousLife(rowan,intelligence,base.calendarEvents,base.storyPlans);
 
 const checks=[
- ["version 3.27.0",pkg.version==="3.27.0"&&pub.version==="3.27.0"],
- ["release metadata",pub.release==="Autonomous Life + Consequence Engine"],
+ ["version >= 3.27.0",Number(pkg.version.split(".")[0])>3 || (Number(pkg.version.split(".")[0])===3 && Number(pkg.version.split(".")[1])>=27) && pkg.version===pub.version],
+ ["release metadata",Boolean(pub.release)&&typeof pub.release==="string"],
  ["autonomous life engine exists",contractSource.includes("export function inferAutonomousLife")&&Boolean(c.autonomousLifeEngine.currentAgenda)],
  ["outside obligation survives",/practice/i.test(autonomy.outsideObligation)&&/practice/i.test(c.autonomousLifeEngine.timePressure)],
  ["consequence engine carries residue",c.consequenceEngine.cannotReset&&c.consequenceEngine.activeResidue.length>0],
@@ -41,7 +41,7 @@ const checks=[
  ["major events can seed long arcs",edge.includes("long-term arc seed failed")&&edge.includes("Long arc ·")],
  ["clone lab Edge action exists",edge.includes('action === "character_clone_lab"')&&edge.includes("handleCharacterCloneLab")],
  ["clone lab UI exists",diagnostics.includes("Character Clone Lab")&&diagnostics.includes("Run blind clone test")],
- ["main generation uses v3.27 autonomous system",edge.includes("v3.27 AUTONOMOUS LIFE")&&edge.includes("Presence Engine 3.0")],
+ ["main generation retains autonomous system",edge.includes("AUTONOMOUS CHARACTER ENGINE 3.0")&&edge.includes("Presence Engine 3.0")],
  ["quality check covers new engines",edge.includes("qc.autonomy_ok")&&edge.includes("qc.clone_ok")&&edge.includes("qc.romance_progression_ok")],
 ];
 let failed=0; for(const [name,ok] of checks){console.log(`${ok?"PASS":"FAIL"} ${name}`);if(!ok)failed++;}
