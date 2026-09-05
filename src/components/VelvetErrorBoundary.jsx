@@ -42,6 +42,12 @@ class VelvetErrorBoundary extends Component {
               ? `Android startup error: ${message}`
               : "Your stories and account are still safe. Repair the app cache and reopen the newest build."}
           </p>
+          {!native && (
+            <details className="velvet-runtime-recovery__details">
+              <summary>Technical error</summary>
+              <code>{message}</code>
+            </details>
+          )}
           {native ? (
             <button type="button" onClick={() => window.location.reload()}>Reopen Velvet</button>
           ) : (

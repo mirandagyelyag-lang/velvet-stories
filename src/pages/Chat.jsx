@@ -45,6 +45,7 @@ import {
   UsersRound,
   WifiOff,
   Volume2,
+  WandSparkles,
   X,
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -52,6 +53,9 @@ import { createPortal } from "react-dom";
 import RoleplayText from "../components/RoleplayText";
 import MemoryBookDrawer from "../components/MemoryBookDrawer";
 import StoryTimelineDrawer from "../components/StoryTimelineDrawer";
+import StorySafeStudioDrawer from "../components/StorySafeStudioDrawer";
+import LivingWorldDrawer from "../components/LivingWorldDrawer";
+import VelvetExperienceDrawer from "../components/VelvetExperienceDrawer";
 import StoryHubDrawer from "../components/StoryHubDrawer";
 import StoryAmbience from "../components/StoryAmbience";
 import AudioStatusPill from "../components/AudioStatusPill";
@@ -72,9 +76,16 @@ import { clearBugReportPrivateContext, setBugReportPrivateContext } from "../uti
 import { buildLivingSceneHeader, continuityGuardLabel, continuityGuardTitle } from "../utils/livingScenes";
 import { suggestAmbienceForScene } from "../utils/ambienceIntelligence";
 import { STORY_THEMES, readStoryTheme, saveStoryTheme } from "../utils/velvetResilience";
+import { buildAdaptiveReplyHint, mergeDirectorHints } from "../utils/safeStoryUX";
+import { buildLivingWorldDirectorHint, readLivingWorld } from "../utils/livingWorldSafe";
+import { buildExperienceDirectorHint, readExperience } from "../utils/velvetExperience";
 import "../styles/chat.css";
 import "../styles/world-studio.css";
 import "../styles/velvet-v33-story-dynamics.css";
+import "../styles/velvet-v3230-safe-studio.css";
+import "../styles/velvet-v3240-living-world.css";
+import "../styles/velvet-v3241-stability.css";
+import "../styles/velvet-v3250-experience.css";
 
 const SILENT_CONTINUE_MESSAGE = "[SILENT_CONTINUE]";
 const RETURN_MAIN_POV_MESSAGE = "[RETURN_MAIN_POV]";
@@ -149,6 +160,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     flushOfflineQueue,
   } = useChats();
 
+  const conversation = getConversation(character.id);
+
   const [message, setMessage] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [directorNote, setDirectorNote] = useState("");
@@ -202,6 +215,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [silentCue, setSilentCue] = useState("");
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [storyHubOpen, setStoryHubOpen] = useState(false);
+  const [safeStudioOpen, setSafeStudioOpen] = useState(false);
+  const [livingWorldOpen, setLivingWorldOpen] = useState(false);
+  const [experienceOpen, setExperienceOpen] = useState(false);
+  const [experienceState, setExperienceState] = useState(() => readExperience(conversationId || character.id));
+  const [characterTint, setCharacterTint] = useState(() => { try { return localStorage.getItem(`velvet_character_tint_${character.id}`) || "balanced"; } catch { return "balanced"; } });
   const [refreshingTimeline, setRefreshingTimeline] = useState(false);
   const [backgroundBlur, setBackgroundBlur] = useState(0);
   const [backgroundDim, setBackgroundDim] = useState(42);
@@ -221,6 +239,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const textareaRef = useRef(null);
   const stoppedRef = useRef(false);
   const generationRunRef = useRef(0);
+  const variantGenerationLockRef = useRef(false);
   const chatExitGuardUntilRef = useRef(0);
   const actionNoticeTimerRef = useRef(null);
   const aiPhaseTimerRef = useRef(null);
@@ -234,8 +253,27 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
   const chatOverlayOpen = Boolean(
     menuOpen || directorNoteOpen || selectedMessage || controlsOpen || characterProfileOpen ||
-    memoryBookOpen || relationshipOpen || groupPeekCharacter || worldStudioOpen || timelineOpen || storyHubOpen || catchUpOpen || qualityMessage
+    memoryBookOpen || relationshipOpen || groupPeekCharacter || worldStudioOpen || timelineOpen || storyHubOpen || safeStudioOpen || livingWorldOpen || experienceOpen || catchUpOpen || qualityMessage
   );
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (event?.detail?.characterId === character.id) setCharacterTint(event.detail.value || "balanced");
+    };
+    window.addEventListener("velvet:character-tint", handler);
+    return () => window.removeEventListener("velvet:character-tint", handler);
+  }, [character.id]);
+
+  useEffect(() => {
+    const id = conversation?.conversationId || activeConversationId || conversationId || character.id;
+    setExperienceState(readExperience(id));
+    const handler = (event) => {
+      if (event?.detail?.conversationId && event.detail.conversationId !== id) return;
+      if (event?.detail?.value) setExperienceState(event.detail.value);
+    };
+    window.addEventListener("velvet:experience", handler);
+    return () => window.removeEventListener("velvet:experience", handler);
+  }, [conversation?.conversationId, activeConversationId, conversationId, character.id]);
 
   function armChatExitGuard(duration = 700) {
     chatExitGuardUntilRef.current = Date.now() + duration;
@@ -253,6 +291,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     setWorldStudioOpen(false);
     setTimelineOpen(false);
     setStoryHubOpen(false);
+    setSafeStudioOpen(false);
+    setLivingWorldOpen(false);
     setCatchUpOpen(false);
     if (selectedMessage) closeActionsAfterAction();
   }
@@ -350,7 +390,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     return () => window.clearTimeout(timer);
   }, [replacementUndo?.messageId, replacementUndo?.content]);
 
-  const conversation = getConversation(character.id);
   const conversationLoading = isConversationLoading(character.id);
   const characterStreaming = isCharacterStreaming(character.id);
   const generationState = getGenerationState(character.id);
@@ -852,7 +891,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+    const maxHeight = Math.max(110, Math.min(220, Number(experienceState?.composer?.maxHeight || 170)));
+    textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
   }
 
   async function handleSubmit(event) {
@@ -893,7 +933,20 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const runId = ++generationRunRef.current;
 
     const replyForThisMessage = replyTo;
-    const noteForThisGeneration = directorNote.trim();
+    const adaptiveReplyHint = buildAdaptiveReplyHint(messageToSend);
+    const currentConversationId = conversation?.conversationId || activeConversationId || character.id;
+    const livingWorldHint = buildLivingWorldDirectorHint(
+      readLivingWorld(currentConversationId),
+      { characterName: character.name, recentMessages: visibleMessages }
+    );
+    const experienceHint = buildExperienceDirectorHint(
+      readExperience(currentConversationId),
+      { characterName: character.name, groupMode: Boolean(conversation?.groupMode) }
+    );
+    const noteForThisGeneration = mergeDirectorHints(
+      mergeDirectorHints(mergeDirectorHints(directorNote.trim(), adaptiveReplyHint), livingWorldHint),
+      experienceHint
+    );
     const submittedDraft = cleanMessage;
     let userMessageSaved = false;
 
@@ -1477,7 +1530,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }
 
   async function regenerate() {
-    if (!selectedMessage || selectedMessage.sender !== "character") return;
+    if (!selectedMessage || selectedMessage.sender !== "character" || actionLoading || busy || variantGenerationLockRef.current) return;
     const latestMessage = [...(conversation?.messages || [])].filter((item) => !item.isStreaming).at(-1);
     if (latestMessage?.id !== selectedMessage.id) {
       rememberFeedback("negative", regenerationFeedback, selectedMessage.id);
@@ -1485,6 +1538,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       return;
     }
 
+    variantGenerationLockRef.current = true;
     try {
       const targetId = selectedMessage.id;
       const previousContent = selectedMessage.content;
@@ -1517,6 +1571,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       });
       setSendError(translateMessageError(error.message));
     } finally {
+      variantGenerationLockRef.current = false;
       setActionLoading(false);
       setIsTyping(false);
     }
@@ -1567,8 +1622,9 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }, [conversation?.conversationId, latestMessageContent, busy, conversationReady]);
 
   async function navigateResponseVersion(chatMessage, direction) {
-    if (!chatMessage || chatMessage.sender !== "character" || chatMessage.isStreaming || busy) return;
+    if (!chatMessage || chatMessage.sender !== "character" || chatMessage.isStreaming || busy || variantGenerationLockRef.current) return;
 
+    variantGenerationLockRef.current = true;
     try {
       setSendError("");
       let state = await loadResponseVersions(chatMessage);
@@ -1613,6 +1669,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       await reloadConversationMessages(character.id).catch(() => {});
       setSendError(translateMessageError(error.message));
     } finally {
+      variantGenerationLockRef.current = false;
       setIsTyping(false);
     }
   }
@@ -1622,7 +1679,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }
 
   async function quickRefineSelected(feedbackCode, instruction = "") {
-    if (!selectedMessage || selectedMessage.sender !== "character" || actionLoading || busy) return;
+    if (!selectedMessage || selectedMessage.sender !== "character" || actionLoading || busy || variantGenerationLockRef.current) return;
     const latestMessage = [...(conversation?.messages || [])].filter((item) => !item.isStreaming).at(-1);
     if (latestMessage?.id !== selectedMessage.id) {
       setSendError("Rewind to this response first before generating a new version from it.");
@@ -1632,6 +1689,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
     const targetId = selectedMessage.id;
     const previousContent = selectedMessage.content;
+    variantGenerationLockRef.current = true;
     try {
       const feedbackCodes = feedbackCode ? [feedbackCode] : [];
       rememberFeedback("negative", feedbackCodes, targetId);
@@ -1660,6 +1718,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       await reloadConversationMessages(character.id).catch(() => {});
       setSendError(translateMessageError(error.message));
     } finally {
+      variantGenerationLockRef.current = false;
       setActionLoading(false);
       setIsTyping(false);
     }
@@ -1856,6 +1915,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     <section
       className={`chat chat--story-${storyTheme}${readingMode ? " chat--reading" : ""}${compactMobileChat ? " chat--compact-mobile" : ""}${conversation?.ambientMode && conversation.ambientMode !== "none" ? ` chat--ambient-${conversation.ambientMode}` : ""}`}
       data-reading-width={settings.readingWidth || "comfortable"}
+      data-character-tint={characterTint}
       data-reading-font={settings.readingFont || "clean"}
       style={{
         "--character-presence-color": character.color || "var(--accent)",
@@ -1911,14 +1971,20 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                 <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Activity size={17}/><span>AI Status<small>Velvet Doctor</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Bug size={17}/><span>Report a problem<small>Private by default</small></span></button>
               </div>
+              <div className="chat__menu-section-label">STORY</div>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); onOpenMemories?.(); }}><Brain size={17} /> Memories 2.5</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setControlsOpen(true); }} disabled={!conversationReady}><SlidersHorizontal size={17} /> Story settings</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setReadingMode((current) => !current); }}><Eye size={17} /> {readingMode ? "Exit immersive mode" : "Immersive mode"}</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); openDirector("next"); }} disabled={!conversationReady || busy}><Sparkles size={17} /> Guide the next beat</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><BookOpen size={17} /> Story Hub</button>
+              <div className="chat__menu-section-label">WORLD & CONTINUITY</div>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setWorldStudioOpen(true); }} disabled={!conversationReady}><Globe2 size={17} /> World Studio</button>
-              <button className="chat__menu-controls" onClick={exportCurrentStory} disabled={!conversationReady || !visibleMessages.length}><Download size={17} /> Export this story</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }} disabled={!conversationReady}><Clock3 size={17} /> Story timeline</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setSafeStudioOpen(true); }} disabled={!conversationReady}><ShieldCheck size={17} /> Safe Studio</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setLivingWorldOpen(true); }} disabled={!conversationReady}><Globe2 size={17} /> Living World</button>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setExperienceOpen(true); }} disabled={!conversationReady}><Sparkles size={17} /> Velvet Experience</button>
+              <div className="chat__menu-section-label">TOOLS</div>
+              <button className="chat__menu-controls" onClick={exportCurrentStory} disabled={!conversationReady || !visibleMessages.length}><Download size={17} /> Export this story</button>
               <button className="chat__menu-danger" onClick={handleDeleteConversation} disabled={deleting}><Trash2 size={17} /> {deleting ? "Deleting..." : "Delete conversation"}</button>
             </section>
           </div>
@@ -1938,6 +2004,16 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           </div>
         </div>
       )}
+
+      {conversationReady && experienceState?.composer?.showContext && (() => {
+        const chips = [
+          conversation?.sceneState?.location,
+          conversation?.sceneState?.time_label || conversation?.sceneState?.time,
+          conversation?.intelligenceState?.character_mind?.current_emotion,
+          conversation?.groupMode ? "Group story" : null,
+        ].filter(Boolean).filter((value, index, array) => array.indexOf(value) === index).slice(0, 4);
+        return chips.length ? <div className="v325-context-chips" aria-label="Story context">{chips.map((chip)=><span key={chip}>{chip}</span>)}</div> : null;
+      })()}
 
       {conversationReady && conversation?.groupMode && (
         <div className="v311-group-presence" aria-label="Characters in this group story">
@@ -2057,7 +2133,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                 <span className="chat-message__avatar" style={{ "--character-color": character.color }}>
                   {character.imageUrl ? <img src={character.imageUrl} alt="" decoding="async" /> : character.initials}
                 </span>
-                <div className="typing-indicator"><small>{character.name} is writing…</small><span /><span /><span /></div>
+                <div className="typing-indicator typing-indicator--v3230"><small>{character.name} is writing…</small><span /><span /><span /></div>
               </article>
             )}
 
@@ -2112,7 +2188,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       {silentCue && <div className="chat__silent-cue" role="status"><Sparkles size={13}/><span>{silentCue}</span></div>}
 
       {typeof document !== "undefined" && createPortal((
-      <form className={`chat__composer${replyTo ? " chat__composer--replying" : ""}`} onSubmit={handleSubmit}>
+      <form className={`chat__composer${replyTo ? " chat__composer--replying" : ""}${experienceState?.composer?.compact ? " chat__composer--experience-compact" : ""}`} onSubmit={handleSubmit}>
         {replyTo && (
           <div className="chat__reply-draft">
             <Reply size={15} />
@@ -2140,6 +2216,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
             <button type="button" onClick={clearQueuedDirector} aria-label="Clear queued direction"><X size={12}/></button>
           </div>
         )}
+        {experienceState?.composer?.quickTools && <button type="button" className="chat__experience-trigger" onClick={()=>setExperienceOpen(true)} aria-label="Open Velvet Experience" title="Velvet Experience"><WandSparkles size={15}/><span>Studio</span></button>}
         <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>directorNoteOpen ? setDirectorNoteOpen(false) : openDirector("next")} aria-label="Open Scene Director" title="Scene Director"><Sparkles size={15}/><span>Direct</span></button>
         <textarea
           ref={textareaRef}
@@ -2208,6 +2285,46 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         onClose={() => setMemoryBookOpen(false)}
         character={character}
         conversationId={conversation?.conversationId}
+      />
+
+      <StorySafeStudioDrawer
+        open={safeStudioOpen}
+        onClose={() => setSafeStudioOpen(false)}
+        character={character}
+        conversation={conversation}
+        messages={visibleMessages}
+        sceneImages={sceneImages}
+        onJumpToMessage={(id) => { setSafeStudioOpen(false); jumpToStoryMessage(id); }}
+        onOpenMemoryBook={() => { setSafeStudioOpen(false); setMemoryBookOpen(true); }}
+        onOpenTimeline={() => { setSafeStudioOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }}
+      />
+
+      <LivingWorldDrawer
+        open={livingWorldOpen}
+        onClose={() => setLivingWorldOpen(false)}
+        character={character}
+        conversation={conversation}
+        messages={visibleMessages}
+        sceneImages={sceneImages}
+        offlineQueueSize={offlineQueueSize}
+        onOpenWorldStudio={() => { setLivingWorldOpen(false); setWorldStudioOpen(true); }}
+        onOpenStoryHub={() => { setLivingWorldOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }}
+        onOpenTimeline={() => { setLivingWorldOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }}
+        onOpenDiagnostics={() => { setLivingWorldOpen(false); onOpenDiagnostics?.(); }}
+      />
+
+      <VelvetExperienceDrawer
+        open={experienceOpen}
+        onClose={() => setExperienceOpen(false)}
+        character={character}
+        conversation={conversation}
+        messages={visibleMessages}
+        onJumpToMessage={(id) => { setExperienceOpen(false); jumpToStoryMessage(id); }}
+        onOpenMemoryBook={() => { setExperienceOpen(false); setMemoryBookOpen(true); }}
+        onOpenTimeline={() => { setExperienceOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }}
+        onOpenLivingWorld={() => { setExperienceOpen(false); setLivingWorldOpen(true); }}
+        onQueueDirector={(note) => { setExperienceOpen(false); setDirectorNote(note); setDirectorMode("next"); setDirectorNoteOpen(true); }}
+        onThemeChange={applyStoryTheme}
       />
 
       <StoryTimelineDrawer
@@ -2570,6 +2687,16 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                     </button>;
                   })}
                 </div>
+                {!feedbackOnly && <div className="message-sheet__style-presets" aria-label="Regeneration style presets">
+                  {[
+                    ["More dialogue", "Use more natural audible dialogue and less descriptive filler."],
+                    ["Less description", "Cut descriptive padding. Keep only concrete details that change the beat."],
+                    ["More tension", "Increase grounded interpersonal tension without melodrama, dominance speeches or forced romance."],
+                    ["Softer", "Make the response warmer and gentler without becoming sentimental or out of character."],
+                    ["More direct", "Answer more directly. Fewer rhetorical questions, evasive flourishes and scripted banter."],
+                    ["Continue naturally", "Continue from the exact physical and conversational beat with no reset, recap or forced escalation."],
+                  ].map(([label, instruction]) => <button type="button" key={label} onClick={() => setActionDraft(instruction)}>{label}</button>)}
+                </div>}
                 {!feedbackOnly && <textarea
                     value={actionDraft}
                     onChange={(event) => setActionDraft(event.target.value)}
