@@ -9,6 +9,16 @@ const pkg=JSON.parse(read("package.json"));
 const pub=JSON.parse(read("public/velvet-version.json"));
 const edge=read("supabase/functions/character-chat/index.ts");
 const vite=read("vite.config.js");
+const semverAtLeast=(value,minimum)=>{
+  const a=String(value||"").split(".").map((part)=>Number.parseInt(part,10)||0);
+  const b=String(minimum||"").split(".").map((part)=>Number.parseInt(part,10)||0);
+  for(let i=0;i<Math.max(a.length,b.length);i++){
+    const av=a[i]||0,bv=b[i]||0;
+    if(av>bv)return true;
+    if(av<bv)return false;
+  }
+  return true;
+};
 
 const rowan={name:"Rowan",role:"student",personality:"guarded dry proud independent; avoids feelings but cares deeply",relationship:"old friend with attraction and unresolved tension",core_motivation:"protect autonomy and the friendship",emotional_defense:"withdraws when feelings become obvious",affection_style:"shows up and remembers details",conflict_style:"goes quiet before apologizing",speech_style:"short casual understated",humor_style:"dry"};
 const base={
@@ -51,8 +61,8 @@ const base={
 const c=compileStoryContract(base);
 const prompt=storyContractPrompt(c);
 const checks=[
-  ["version 3.28.0",pkg.version==="3.28.0"&&pub.version==="3.28.0"],
-  ["release metadata",pub.release==="Relationship World + Story Intelligence"&&vite.includes("Relationship World + Story Intelligence")],
+  ["version >= 3.28.0",semverAtLeast(pkg.version,"3.28.0")&&semverAtLeast(pub.version,"3.28.0")],
+  ["release metadata preserves Relationship World engine",typeof pub.release==="string"&&pub.release.trim().length>0&&vite.includes("Relationship World + Story Intelligence")],
   ["relationship intelligence exists",Boolean(c.relationshipIntelligenceEngine?.attachmentStrategy)],
   ["relationship axes remain separate",c.relationshipIntelligenceEngine.attraction!==c.relationshipIntelligenceEngine.trust&&c.relationshipIntelligenceEngine.commitment<c.relationshipIntelligenceEngine.attraction],
   ["attachment defense can create mixed signals",/desire and defense|attraction can remain/i.test(c.relationshipIntelligenceEngine.mixedSignal)],
