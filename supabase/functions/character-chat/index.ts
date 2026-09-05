@@ -823,6 +823,32 @@ function buildNarrativePromptV3({
     `Never drift into: ${clean(character.voice_avoidances || "generic archetype banter, therapy language, polished AI romance dialogue, or prestige-TV one-liners", 360)}`,
     `Syntax sample only: ${clean(character.example_dialogue, 520)}`,
   ].join("\n");
+  const characterDNA = turnContract?.characterDNA && typeof turnContract.characterDNA === "object"
+    ? turnContract.characterDNA
+    : {};
+  const reactionEngine = turnContract?.reactionEngine && typeof turnContract.reactionEngine === "object"
+    ? turnContract.reactionEngine
+    : {};
+  const dnaText = [
+    `Core drive: ${clean(characterDNA.coreDrive, 420)}`,
+    `Defense: ${clean(characterDNA.emotionalDefense, 420)}`,
+    `Under pressure: ${clean(characterDNA.pressureResponse, 420)}`,
+    `Care behavior: ${clean(characterDNA.careBehavior, 420)}`,
+    `Vulnerability: ${clean(characterDNA.vulnerabilityBehavior, 420)}`,
+    `Repair style: ${clean(characterDNA.repairBehavior, 420)}`,
+    `Affection signal: ${clean(characterDNA.affectionSignal, 420)}`,
+    `Decision bias: ${clean(characterDNA.decisionBias, 420)}`,
+    `Likely human mistake: ${clean(characterDNA.likelyMistake, 420)}`,
+    `Stress leak: ${clean(characterDNA.stressLeak, 320)}`,
+  ].join("\n");
+  const reactionText = [
+    `Cue: ${clean(reactionEngine.cue, 120)}`,
+    `Interpretation bias: ${clean(reactionEngine.interpretationBias, 420)}`,
+    `First impulse: ${clean(reactionEngine.firstImpulse, 420)}`,
+    `Visible tactic: ${clean(reactionEngine.visibleTactic, 520)}`,
+    `Avoid repeating: ${clean(reactionEngine.avoidTactic, 160)}`,
+    `Recent tactics: ${clean(Array.isArray(reactionEngine.recentTactics) ? reactionEngine.recentTactics.join(" → ") : "none", 320)}`,
+  ].join("\n");
   const derivedContext = JSON.stringify({
     recap: cleanPromptValue(conversation.story_recap || conversation.summary || "", 650),
     scene: conversation.scene_state || {},
@@ -905,6 +931,11 @@ VOICE + QUALITY
 - Questions deserve real answers. Avoid answering a direct question with another rhetorical question merely to preserve attitude.
 - Verbal tells are rare tells, not catchphrases. Use at most one recognizable tell in a turn, only when the emotional context earns it, and do not reuse it just because it is listed in the profile.
 - Emotional state modifies the established voice instead of replacing it. Angry, awkward, vulnerable and flirting versions of the same person should still share the same vocabulary and social instincts.
+- CHARACTER DNA 2.0: voice is only the surface. The character's defense, values, care style, pride, likely mistakes, vulnerability threshold and decision bias must change WHAT THEY CHOOSE TO DO OR SAY. Do not solve differentiation by swapping slang on the same underlying reaction.
+- REACTION ENGINE: silently run this sequence before writing: literal cue → this character's interpretation → first impulse → defense/values filter → visible tactic. Never narrate the checklist. The visible choice must feel inevitable for this person but not interchangeable with another character.
+- HUMAN ERROR IS PART OF IDENTITY: characters are allowed to misread ambiguity, joke at the wrong time, withdraw too far, fix the wrong problem, protect pride, hesitate, answer incompletely, or need another beat. Do not optimize every personality into a perfectly attuned partner.
+- SUBTEXT, NOT EXPLANATION: when the character is hiding something, let the gap between impulse and visible behavior carry it. Do not routinely explain “I was jealous,” “I was scared,” “I didn't want you to know,” or narrate the entire emotional mechanism unless the character actually chooses to confess it.
+- SAME CUE ≠ SAME RESPONSE: if two Velvet characters receive the same user line, their first impulse, defense and visible tactic should often differ. If the draft could keep the same action and only change vocabulary, it fails Character DNA.
 - HUMAN IMPERFECTION: do not make the character instantly emotionally fluent because the user corrected them, disclosed a feeling, or because a conflict happened. They can hesitate, misunderstand ambiguity, answer badly, protect pride, need time, or make an incomplete repair while still respecting hard boundaries.
 - DEVELOPMENT IS ASYMMETRIC: growth in trust does not automatically improve apology skills, patience, jealousy, vulnerability, communication and self-awareness all at once. Preserve specific flaws that have not been changed on-page.
 - RELAPSE WITHOUT RESET: under stress, old defenses or habits may reappear briefly. Show the difference created by prior growth, but do not reset the relationship to its opening dynamic and do not announce the relapse.
@@ -1030,6 +1061,13 @@ Feedback: ${feedback}
 Creator style: ${creatorStyle}
 ${groupRules}
 
+CHARACTER DNA 2.0 — DECISION LOGIC
+${dnaText}
+
+REACTION ENGINE — THIS TURN
+${reactionText}
+Rule: ${clean(reactionEngine.instruction || "Use this character's own defense, priorities and likely mistakes to choose the reaction. Do not clone another character's emotional logic.", 700)}
+
 CHARACTER
 ${character.name} — ${clean(character.role, 150)}
 Personality: ${clean(character.personality, 760)}
@@ -1132,6 +1170,8 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     explanatory_subtext_dump: "Remove the emotional self-analysis. Let one concrete choice, omission, unfinished sentence or changed behavior carry the subtext instead of explaining exactly why the character feels and acts this way.",
     generic_romance_cadence: "Replace stock AI-romance cadence with plain character-specific speech. Preserve attraction only if the beat earned it; do not use repeated lines like ‘there it is’, ‘careful’, ‘you’re impossible’, ‘don’t tempt me’, ‘you have no idea’, ‘that’s what I thought’, or similar canned tension phrases.",
     generic_ai_voice: "Rewrite the spoken lines so they sound uniquely like this character. Use a plain answer first when the user asked something ordinary. Remove campus-life filler, cute capacity metaphors, polished self-aware banter, generic burnout/GPA/library lines, and any sentence that could be swapped onto another Velvet character unchanged.",
+    reaction_clone_drift: "Change the character's underlying REACTION, not only the phrasing. Choose a different character-specific tactic from the recent pattern using their defense, values, care style, pride and likely mistakes. Do not default again to tease→question, reassurance, cinematic banter, or another generic conversational loop.",
+    explanatory_subtext_dump: "Remove the emotional self-analysis. Keep the feeling private unless the character deliberately confesses it. Let one choice, omission, interruption, practical act, awkward line, retreat, or change in tone carry the subtext.",
     structural_repetition_loop: "Change the RESPONSE SHAPE, not just vocabulary. Do not repeat the same gesture/dialogue/question template, paragraph count, opening mode or ending rhythm from recent turns.",
     model_self_check_failed: "Rewrite until canon, user ownership, scene physics, knowledge boundaries, voice identity, subtext, rhythm, nonverbal restraint, romantic specificity, decision consistency, adaptive detail, character DNA, structural variety, scene momentum and contradiction checks all pass. Do not mention the check.",
     naturalness_score_low: "Simplify the visible reply until it sounds like this exact person in this exact moment. Remove performance, generic romance choreography, repetitive structure and unnecessary explanation; vary rhythm naturally.",
@@ -3030,6 +3070,51 @@ function hasGenericAIVoice(reply = "", latestUserMessage = "", character = {}) {
   return false;
 }
 
+function reactionStyleSignature(value = "") {
+  const text = normalizeText(value);
+  if (!text) return "silence";
+  const questionCount = (text.match(/\?/g) || []).length;
+  if (/\b(?:i understand|give you space|if you need anything|i'm here if|im here if|you deserve|your feelings are valid)\b/.test(text)) return "therapeutic_reassurance";
+  if (/\b(?:kidding|joking|relax|dramatic|funny|cute|adorable)\b/.test(text) && questionCount) return "tease_then_question";
+  if (/\b(?:fine|whatever|forget it|doesn't matter|doesnt matter|never mind|nevermind)\b/.test(text)) return "withdrawal";
+  if (/\b(?:i'll|ill|let me|we should|i can|i'll get|ill get|i'll call|ill call|i'll handle|ill handle)\b/.test(text)) return "practical_action";
+  if (questionCount >= 2) return "question_back";
+  if (/\b(?:sorry|my fault|i was wrong|shouldn't have|shouldnt have)\b/.test(text)) return "repair_admission";
+  if (/\b(?:miss you|want you|like you|love you|kiss|date)\b/.test(text)) return "affection_forward";
+  if (text.split(/\s+/).length > 120) return "long_explanation";
+  if (/\b(?:smirk|scoff|raised an eyebrow|tilted (?:his|her|their) head|gaze|jaw)\b/.test(text) && questionCount) return "cinematic_banter";
+  return questionCount ? "direct_then_question" : "plain_direct";
+}
+
+function hasReactionCloneDrift(reply = "", recentReplies = []) {
+  const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-4).map(reactionStyleSignature);
+  if (recent.length < 3) return false;
+  const current = reactionStyleSignature(reply);
+  const cloneProne = new Set(["therapeutic_reassurance", "tease_then_question", "question_back", "long_explanation", "cinematic_banter", "direct_then_question"]);
+  if (!cloneProne.has(current)) return false;
+  return recent.slice(-2).every((item) => item === current) || recent.filter((item) => item === current).length >= 3;
+}
+
+function hasExplanatorySubtextDump(reply = "", latestUserMessage = "") {
+  const text = normalizeText(reply);
+  const user = normalizeText(latestUserMessage);
+  if (!text || text.split(/\s+/).length < 28) return false;
+  const mundaneUser = user.split(/\s+/).filter(Boolean).length <= 16 && !/\b(?:why|explain|tell me how you feel|what are you feeling|what do you feel|be honest|say it)\b/.test(user);
+  if (!mundaneUser) return false;
+  const explanatory = [
+    /\bi (?:was|am) jealous because\b/,
+    /\bi (?:was|am) scared because\b/,
+    /\bi didn'?t want you to know (?:that|how)\b/,
+    /\bthe truth (?:was|is),? i\b/,
+    /\bpart of me (?:wanted|wants|was|is)\b/,
+    /\bi hated how much\b/,
+    /\bi couldn'?t admit\b/,
+    /\bi was trying to protect myself\b/,
+    /\bthat was why i\b/,
+  ];
+  return explanatory.filter((pattern) => pattern.test(text)).length >= 2;
+}
+
 function replyStructureSignature(value = "") {
   const raw = String(value || "").trim();
   if (!raw) return "empty";
@@ -3643,6 +3728,8 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "naturalness_score_low",
   "mechanical_rhythm_loop",
   "generic_ai_voice",
+  "reaction_clone_drift",
+  "explanatory_subtext_dump",
   "decorative_nonverbal_overload",
   "invented_scene_object_state",
 ]);
@@ -3824,6 +3911,8 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasSmugComebackTone(text, options.latestUserMessage || "")) issues.push("smug_comeback_tone");
   if (hasGenericRomanceCadence(text, options.recentCharacterReplies || [], options.character || {})) issues.push("generic_romance_cadence");
   if (hasGenericAIVoice(text, options.latestUserMessage || "", options.character || {})) issues.push("generic_ai_voice");
+  if (hasReactionCloneDrift(text, options.recentCharacterReplies || [])) issues.push("reaction_clone_drift");
+  if (hasExplanatorySubtextDump(text, options.latestUserMessage || "")) issues.push("explanatory_subtext_dump");
   if (hasOverwrittenBanter(text, options.latestUserMessage || "", options.character || {})) issues.push("overwritten_banter");
   if (hasOverwrittenNarration(text, options.latestUserMessage || "", options.character || {})) issues.push("overwritten_narration");
   if (hasEditorialBanterVoice(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("editorial_banter_voice");
@@ -4342,7 +4431,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice specific rather than archetypal. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains or therapist speech. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Use Presence Engine 2.0: natural conversation, relationship-specific chemistry, real silence, emotional residue and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 450 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice that moves the scene without forcing the user's response. Side characters remain ordinary people with their own goals. Use Presence Engine 2.0: natural conversation, relationship-specific chemistry, real silence, emotional residue and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 450 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           isCancelled,

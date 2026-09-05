@@ -46,6 +46,28 @@ export type StoryContract = {
     independence: number;
     initiative: number;
   };
+  characterDNA: {
+    coreDrive: string;
+    emotionalDefense: string;
+    pressureResponse: string;
+    careBehavior: string;
+    vulnerabilityBehavior: string;
+    repairBehavior: string;
+    affectionSignal: string;
+    decisionBias: string;
+    likelyMistake: string;
+    stressLeak: string;
+    antiCloneRule: string;
+  };
+  reactionEngine: {
+    cue: string;
+    interpretationBias: string;
+    firstImpulse: string;
+    visibleTactic: string;
+    avoidTactic: string;
+    recentTactics: string[];
+    instruction: string;
+  };
   supportingCast: Array<Record<string, unknown>>;
   turnObjective: string;
   conversationQuality: {
@@ -149,6 +171,273 @@ export type StoryContract = {
 const text = (value: unknown) => String(value ?? "").trim();
 const normalized = (value: unknown) => text(value).toLowerCase().replace(/[’']/g, "'");
 const list = (value: unknown) => Array.isArray(value) ? value.map(text).filter(Boolean) : [];
+
+function stableChoice(seed: string, options: string[]) {
+  if (!options.length) return "";
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return options[Math.abs(hash >>> 0) % options.length];
+}
+
+function characterProfileBlob(character: Record<string, unknown> = {}) {
+  return normalized([
+    character.name, character.role, character.description, character.personality,
+    character.relationship, character.scenario, character.world, character.core_motivation,
+    character.emotional_defense, character.character_values, character.habits,
+    character.conflict_style, character.affection_style, character.humor_style,
+    character.speech_style, character.voice_vocabulary,
+  ].filter(Boolean).join(" | "));
+}
+
+export function inferCharacterDNA(character: Record<string, unknown> = {}) {
+  const profile = characterProfileBlob(character);
+  const seed = `${text(character.name)}|${profile}`;
+  const explicitDefense = text(character.emotional_defense || character.conflict_style);
+  const explicitCare = text(character.affection_style);
+  const coreDrive = text(character.core_motivation || character.character_values || character.goals || "protect what matters without becoming a generic romance lead");
+
+  let emotionalDefense = explicitDefense;
+  if (!emotionalDefense) {
+    if (/avoid|withdraw|distant|reserved|guarded|cold|closed off|keeps? people out/.test(profile)) emotionalDefense = "pull back, shorten speech, and protect private feelings";
+    else if (/sarcast|teas|jok|humou?r|deflect/.test(profile)) emotionalDefense = "use humor or deflection before admitting emotional pressure";
+    else if (/proud|competitive|control|stubborn|dominant|perfection/.test(profile)) emotionalDefense = "protect pride and control; resist being cornered into a confession";
+    else if (/impulsive|hot.?headed|reckless|volatile|quick temper/.test(profile)) emotionalDefense = "act or speak before fully processing, then deal with the consequence";
+    else if (/protective|caretaker|practical|responsible|reliable/.test(profile)) emotionalDefense = "solve the concrete problem before naming the feeling";
+    else if (/honest|direct|blunt|straightforward|open/.test(profile)) emotionalDefense = "say the concrete truth, sometimes more sharply than intended";
+    else emotionalDefense = stableChoice(seed, [
+      "go quiet and understate what matters",
+      "deflect once before answering honestly",
+      "stay practical and avoid emotional labels",
+      "protect pride with a short, direct response",
+    ]);
+  }
+
+  let pressureResponse = "";
+  if (/withdraw|pull back|quiet|distant|avoid/.test(normalized(emotionalDefense))) pressureResponse = "retreat half a step socially: fewer words, more distance, no instant emotional explanation";
+  else if (/humor|deflect|sarcast|teas/.test(normalized(emotionalDefense))) pressureResponse = "deflect once with character-specific humor, then decide whether to answer or escape the topic";
+  else if (/pride|control|cornered|stubborn/.test(normalized(emotionalDefense))) pressureResponse = "protect pride first: controlled tone, selective honesty, resistance to being read too easily";
+  else if (/act|before fully processing|impulsive/.test(normalized(emotionalDefense))) pressureResponse = "react quickly and concretely; emotion leaks through action before language catches up";
+  else if (/solve|concrete problem|practical/.test(normalized(emotionalDefense))) pressureResponse = "turn pressure into a practical choice or task instead of a speech";
+  else pressureResponse = "answer the concrete pressure directly, with one imperfect human edge left intact";
+
+  let careBehavior = explicitCare;
+  if (!careBehavior) {
+    if (/protective|practical|reliable|responsible|acts of service|fix/.test(profile)) careBehavior = "care through useful action, remembering details, showing up, or quietly removing friction";
+    else if (/teas|sarcast|playful|banter/.test(profile)) careBehavior = "care through familiar teasing that softens at the exact moment it matters";
+    else if (/reserved|guarded|quiet|cold/.test(profile)) careBehavior = "care through presence and small choices rather than explicit reassurance";
+    else if (/affectionate|warm|touchy|physical|cuddly/.test(profile)) careBehavior = "care openly through warmth and proximity, while still respecting consent and scene physics";
+    else if (/verbal|honest|direct|communicat/.test(profile)) careBehavior = "care through plain verbal truth rather than decorative gestures";
+    else careBehavior = stableChoice(seed, [
+      "care through practical follow-through instead of speeches",
+      "care by staying present without trying to fix everything",
+      "care through one specific remembered detail",
+      "care through brief, direct honesty",
+    ]);
+  }
+
+  const vulnerabilityBehavior = /withdraw|quiet|reserved|guarded|cold/.test(profile)
+    ? "vulnerability arrives in fragments: one concrete truth, then discomfort or retreat"
+    : /sarcast|teas|jok|deflect/.test(profile)
+      ? "vulnerability often slips out after a joke fails to fully cover it"
+      : /proud|control|stubborn|competitive/.test(profile)
+        ? "vulnerability is selective and costly; admitting one fact does not produce instant emotional fluency"
+        : /impulsive|reckless|hot.?headed/.test(profile)
+          ? "vulnerability may surface accidentally in a fast reaction, followed by defensiveness"
+          : /open|honest|emotionally aware|communicat/.test(profile)
+            ? "vulnerability can be direct, but should stay specific rather than therapist-polished"
+            : stableChoice(seed, [
+              "vulnerability shows through what is omitted as much as what is said",
+              "vulnerability comes out as one awkwardly specific admission",
+              "vulnerability appears only after a practical or ordinary beat lowers the pressure",
+            ]);
+
+  const repairBehavior = /apolog|honest|direct/.test(profile)
+    ? "repair with one concrete admission plus changed behavior; do not over-explain"
+    : /proud|stubborn|guarded/.test(profile)
+      ? "repair indirectly at first: fix something, return, or concede one point before a full apology"
+      : /practical|responsible|protective/.test(profile)
+        ? "repair the tangible damage first, then attempt the emotional part imperfectly"
+        : /sarcast|teas|jok/.test(profile)
+          ? "repair by dropping the joke when it stops working and offering one unusually sincere line"
+          : "repair in the character's own vocabulary, with residue left after the attempt";
+
+  const affectionSignal = /touch|physical|affectionate|cuddly/.test(profile)
+    ? "voluntary proximity or touch only when established and consent-compatible"
+    : /reserved|guarded|cold|quiet/.test(profile)
+      ? "time, presence, remembered details, and unusually unguarded access"
+      : /teas|banter|playful/.test(profile)
+        ? "familiarity, selective softness, and teasing that stops when the stakes become real"
+        : /protective|practical|responsible/.test(profile)
+          ? "reliability, concrete help, and inconvenient choices made on purpose"
+          : "specific attention and choices, not generic romantic intensity";
+
+  const decisionBias = /loyal|protect|family|responsib|duty/.test(profile)
+    ? "loyalty and responsibility beat convenience"
+    : /ambitious|career|win|competitive|success|control/.test(profile)
+      ? "goals, competence, and pride compete strongly with intimacy"
+      : /freedom|independent|autonomy|rebell|reckless/.test(profile)
+        ? "autonomy and immediate freedom beat social approval"
+        : /kind|empathetic|gentle|caring/.test(profile)
+          ? "other people's concrete wellbeing matters, but not at the cost of erasing personal wants"
+          : stableChoice(seed, [
+            "protect autonomy before social smoothness",
+            "protect loyalty before personal comfort",
+            "protect competence and pride before emotional ease",
+            "protect the relationship without surrendering an independent goal",
+          ]);
+
+  const likelyMistake = /sarcast|teas|jok|deflect/.test(profile)
+    ? "joke at the wrong moment or use humor to dodge a needed answer"
+    : /proud|stubborn|control|competitive/.test(profile)
+      ? "double down too long because backing off feels like losing"
+      : /reserved|guarded|avoid|distant|cold/.test(profile)
+        ? "withdraw so far that care becomes hard to read"
+        : /protective|practical|responsible|fix/.test(profile)
+          ? "solve the problem when the other person wanted recognition, not optimization"
+          : /impulsive|reckless|hot.?headed/.test(profile)
+            ? "act before checking the full context and have to live with the consequence"
+            : "misread ambiguity through the character's existing priorities instead of responding perfectly";
+
+  const stressLeak = /reserved|guarded|cold|quiet/.test(profile)
+    ? "shorter sentences, fewer questions, accidental bluntness"
+    : /sarcast|teas|jok/.test(profile)
+      ? "humor gets sharper or abruptly disappears"
+      : /proud|competitive|control/.test(profile)
+        ? "speech becomes precise, clipped, and harder to negotiate with"
+        : /impulsive|reckless|hot.?headed/.test(profile)
+          ? "interruptions, unfinished thoughts, fast decisions"
+          : /warm|affectionate|open/.test(profile)
+            ? "more direct concern, but not instant wisdom"
+            : stableChoice(seed, ["sentence length shrinks", "questions disappear", "plain words replace polished ones", "one habitual tell leaks out"]);
+
+  return {
+    coreDrive,
+    emotionalDefense,
+    pressureResponse,
+    careBehavior,
+    vulnerabilityBehavior,
+    repairBehavior,
+    affectionSignal,
+    decisionBias,
+    likelyMistake,
+    stressLeak,
+    antiCloneRule: "If another character could make the same choice with the same emotional logic, change the CHOICE or defense pattern, not just the wording.",
+  };
+}
+
+function classifyReactionCue(latestUserMessage: string, boundaries: string[]) {
+  const raw = text(latestUserMessage);
+  const value = normalized(raw);
+  if (boundaries.length) return "boundary";
+  if (!raw || value === "." || value === "…" || value === "...") return "silence_or_hold";
+  if (/\b(?:i love you|i like you|i miss you|love you|missed you|i care about you)\b/.test(value)) return "affection";
+  if (/\b(?:i'm sad|im sad|i'm hurt|im hurt|bad day|terrible day|i cried|i'm scared|im scared|i feel awful|i'm not okay|im not okay)\b/.test(value)) return "vulnerability";
+  if (/\b(?:leave|liar|hate you|you lied|you hurt|your fault|what is wrong with you|seriously\??|are you serious|whatever)\b/.test(value)) return "conflict_or_challenge";
+  if (/\b(?:come with me|want to go|do you want to|can you|could you|will you|let's|lets)\b/.test(value)) return "request_or_invitation";
+  if (/\b(?:cute|handsome|pretty|beautiful|hot|good job|proud of you|you look good|you look nice)\b/.test(value)) return "compliment";
+  if (/\?|^(?:what|why|how|where|when|who|which|do|did|are|is|can|could|would|will|have|has)\b/.test(value)) return "direct_question";
+  if (/\*[^*]+\*/.test(raw) && raw.replace(/\*[^*]+\*/g, "").trim().length < 8) return "action_only";
+  if (value.split(/\s+/).filter(Boolean).length <= 12) return "mundane_short_turn";
+  return "ordinary";
+}
+
+function reactionTacticSignature(value: string) {
+  const t = normalized(value);
+  if (!t) return "silence";
+  if (/\b(?:i understand|give you space|if you need anything|i'm here if|im here if)\b/.test(t)) return "therapeutic_reassurance";
+  if (/\b(?:kidding|joking|joke|teasing|relax|dramatic|funny)\b/.test(t)) return "humor_deflection";
+  if (/\b(?:fine|whatever|forget it|doesn't matter|doesnt matter|never mind|nevermind)\b/.test(t)) return "withdrawal";
+  if (/\b(?:i'll|ill|let me|we should|i can|i'll get|ill get|i'll call|ill call|i'll handle|ill handle)\b/.test(t)) return "practical_action";
+  if ((t.match(/\?/g) || []).length >= 2) return "question_back";
+  if (/\b(?:sorry|my fault|i was wrong|shouldn't have|shouldnt have)\b/.test(t)) return "repair_admission";
+  if (/\b(?:come here|miss you|want you|like you|love you|date|kiss)\b/.test(t)) return "affection_forward";
+  if (t.split(/\s+/).length > 115) return "long_explanation";
+  return "plain_direct";
+}
+
+function buildReactionEngine(character: Record<string, unknown>, latestUserMessage: string, recentCharacterTurns: string[], boundaries: string[], dna: ReturnType<typeof inferCharacterDNA>) {
+  const cue = classifyReactionCue(latestUserMessage, boundaries);
+  const recentTactics = recentCharacterTurns.map(reactionTacticSignature).filter(Boolean).slice(-4);
+  const recentCounts = recentTactics.reduce<Record<string, number>>((acc, item) => ({ ...acc, [item]: (acc[item] || 0) + 1 }), {});
+  const avoidTactic = Object.entries(recentCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "none";
+  const defense = normalized(dna.emotionalDefense);
+  const care = normalized(dna.careBehavior);
+  const seed = `${text(character.name)}|${cue}|${dna.emotionalDefense}`;
+
+  let interpretationBias = "take the user's literal meaning first; subtext is secondary and uncertain";
+  let firstImpulse = dna.pressureResponse;
+  let visibleTactic = "answer directly, then let one DNA trait shape the next beat";
+  if (cue === "boundary") {
+    interpretationBias = "the boundary is literal and binding; hurt, pride, attraction, or curiosity cannot reinterpret it";
+    firstImpulse = /pride|control|stubborn/.test(defense) ? "contain the reaction and protect pride without pursuing" : "stop the blocked tactic immediately";
+    visibleTactic = "respect the boundary now; let personality appear only in brevity, distance, tone, or an independent next action";
+  } else if (cue === "direct_question") {
+    interpretationBias = "this is a question, not an invitation to perform a persona";
+    firstImpulse = "give the actual answer before managing image or tension";
+    visibleTactic = /humor|deflect|sarcast|teas/.test(defense)
+      ? "answer in one plain clause, then allow one small deflection or tease only if it sounds specific to this character"
+      : /withdraw|quiet|reserved/.test(defense)
+        ? "answer briefly and truthfully; do not add a second question merely to keep the exchange alive"
+        : "answer plainly first; add only one earned character-specific beat";
+  } else if (cue === "vulnerability") {
+    interpretationBias = "the disclosure matters, but it does not magically make the character emotionally skilled";
+    firstImpulse = /practical|solve|concrete/.test(care) ? "do something small and useful" : /humor|deflect/.test(defense) ? "almost joke, then decide whether the moment can carry it" : dna.pressureResponse;
+    visibleTactic = /withdraw|quiet|reserved/.test(defense)
+      ? "stay present with one short honest line or concrete act; no counselor speech"
+      : /humor|deflect|sarcast|teas/.test(defense)
+        ? "let the humor soften or fail; respond briefly without turning into a therapist"
+        : /practical|solve|concrete/.test(care)
+          ? "offer one grounded action or fact, not a menu of support options"
+          : "respond in the character's existing emotional vocabulary, including imperfect timing or uncertainty";
+  } else if (cue === "affection" || cue === "compliment") {
+    interpretationBias = "affection is evidence, not a command to escalate intensity";
+    firstImpulse = dna.vulnerabilityBehavior;
+    visibleTactic = /guarded|withdraw|quiet|pride|control/.test(defense)
+      ? "show the impact indirectly or admit one small thing; do not jump to a polished confession"
+      : /humor|deflect|sarcast|teas/.test(defense)
+        ? "deflect once if natural, but let one sincere leak remain visible"
+        : "receive it in the character's own register and stop before over-explaining the feeling";
+  } else if (cue === "conflict_or_challenge") {
+    interpretationBias = "protect the character's stakes and pride without inventing cruelty or instantly resolving the conflict";
+    firstImpulse = dna.pressureResponse;
+    visibleTactic = /withdraw|quiet|reserved/.test(defense)
+      ? "shorten, withhold, or step back socially while leaving the conflict residue alive"
+      : /humor|deflect|sarcast|teas/.test(defense)
+        ? "use at most one defensive joke; then either answer, refuse, or change the practical situation"
+        : /pride|control|stubborn/.test(defense)
+          ? "hold the line on the actual disagreement; concede only what this character would truly concede"
+          : "react imperfectly but specifically; conflict does not produce instant mutual understanding";
+  } else if (cue === "request_or_invitation") {
+    interpretationBias = "the character has their own schedule, wants, and limits; yes/no/maybe must come from those, not romance convenience";
+    firstImpulse = dna.decisionBias;
+    visibleTactic = "make a real decision or ask one necessary practical question; do not auto-accept just to keep the scene moving";
+  } else if (cue === "silence_or_hold" || cue === "action_only") {
+    interpretationBias = "silence/action is not permission to narrate the user's feelings or force a plot twist";
+    firstImpulse = dna.pressureResponse;
+    visibleTactic = "let the character choose one small, readable behavior consistent with DNA; silence may remain silence";
+  } else if (cue === "mundane_short_turn") {
+    interpretationBias = "ordinary conversation is allowed to be ordinary";
+    firstImpulse = stableChoice(seed, ["answer the literal content", "offer one concrete personal detail", "let the topic breathe"]);
+    visibleTactic = "use a short human response shaped by this character's speech mechanics; no résumé summary, metaphor, or automatic flirt escalation";
+  }
+
+  if (avoidTactic !== "none" && recentCounts[avoidTactic] >= 2 && reactionTacticSignature(visibleTactic) === avoidTactic) {
+    visibleTactic = "choose a different visible tactic from the recent pattern while preserving the same Character DNA; vary the choice, not just the wording";
+  }
+
+  return {
+    cue,
+    interpretationBias,
+    firstImpulse,
+    visibleTactic,
+    avoidTactic,
+    recentTactics,
+    instruction: "Run the reaction in this order silently: literal cue → character-specific interpretation → first impulse → defense/values filter → visible tactic. Do not narrate this checklist. Two characters receiving the same cue should often make different choices because their defenses, priorities, care style, and likely mistakes differ.",
+  };
+}
 
 export function socialEcosystemsFor(character: Record<string, unknown> = {}) {
   const profile = normalized([
@@ -272,6 +561,8 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     return present.some((name) => normalized(name) === from || normalized(name) === to);
   }).slice(0, 8);
   const sceneMomentum: "hold" | "turn" | "close" = boundaries.length ? "close" : talkOnlyDrought ? "turn" : recentCharacterTurns.length >= 4 && recentActionCount <= 1 ? "turn" : "hold";
+  const characterDNA = inferCharacterDNA(input.character);
+  const reactionEngine = buildReactionEngine(input.character, input.latestUserMessage, recentCharacterTurns, boundaries, characterDNA);
 
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
@@ -309,6 +600,8 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
       independence: Number(input.character.character_independence || 80),
       initiative,
     },
+    characterDNA,
+    reactionEngine,
     supportingCast: [...castByName.values()].slice(0, 12),
     turnObjective: objective,
     conversationQuality: { recentPatterns, nextTurnAdjustments },
@@ -473,6 +766,8 @@ export function storyContractPrompt(contract: StoryContract) {
       independence: contract.characterBehavior.independence,
       initiative: contract.characterBehavior.initiative,
     },
+    characterDNA: contract.characterDNA,
+    reactionEngine: contract.reactionEngine,
     supportingCast: take(contract.supportingCast, 4).map((item) => pick(item as Record<string, unknown>, ["name", "role", "relationship", "current_dynamic", "goals", "presence", "status"])),
     turnObjective: contract.turnObjective,
     conversationQuality: contract.conversationQuality,

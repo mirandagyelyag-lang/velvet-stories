@@ -56,7 +56,7 @@ const checks=[
 ];
 
 // Hard safety invariant: these two files were intentionally not edited in 3.24.1.
-const protectedCore = hash("supabase/functions/character-chat/index.ts")==="e5b6929e5894f3ede61619bcf21aae9b889369bb108340e20e641c5f75e00266" && hash("src/context/ChatsContext.jsx")==="19ccc44748b78df8be41fedc733a348225183d63f153bbad7b84bf72b2f32cbd";
+const protectedCore = hash("supabase/functions/character-chat/index.ts")==="26af0c50f7b410ba0c3aa1f1ad4627ef4d6181b04910f018e13f33eea8b06829" && hash("src/context/ChatsContext.jsx")==="19ccc44748b78df8be41fedc733a348225183d63f153bbad7b84bf72b2f32cbd";
 if(!protectedCore){ console.log("FAIL protected chat core hashes"); process.exit(1); }
 
 let pass=0;

@@ -3,7 +3,7 @@ const edge = fs.readFileSync('supabase/functions/character-chat/index.ts','utf8'
 const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
 const pub = JSON.parse(fs.readFileSync('public/velvet-version.json','utf8'));
 const checks = [
-  ['version 3.25.4', pkg.version === '3.25.4' && pub.version === '3.25.4'],
+  ['version 3.26.0', pkg.version === '3.26.0' && pub.version === '3.26.0'],
   ['blind voice test', edge.includes('BLIND VOICE TEST:')],
   ['plain question rule', edge.includes('PLAIN-QUESTION RULE:')],
   ['character-specific tactic', edge.includes('CHARACTER-SPECIFIC SOCIAL TACTIC:')],
