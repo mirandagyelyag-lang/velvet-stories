@@ -6,7 +6,7 @@ const edge=read("supabase/functions/character-chat/index.ts");
 const diag=read("src/pages/Diagnostics.jsx");
 const old=read("scripts/verify-v3341-canon-doctor-repair.mjs");
 const checks=[
- ["version 3.35.0",pkg.version==="3.35.0"&&pub.version==="3.35.0"],
+ ["version 3.35.x descendant",pkg.version.startsWith("3.35.")&&pub.version.startsWith("3.35.")],
  ["release metadata",pub.release.includes("Conversational Naturalism")],
  ["live naturalism director",edge.includes("buildConversationalNaturalismDirector")&&edge.includes("CONVERSATIONAL NATURALISM 2.0 / v3.35 — LIVE SPEECH DIRECTOR")],
  ["sentence DNA",edge.includes("Sentence DNA:")&&edge.includes("sentenceDna")],
@@ -27,7 +27,7 @@ const checks=[
  ["naturalism failures repairable",edge.includes('"support_ticket_conversation"')&&edge.includes('"generic_attractive_guy_cadence"')&&edge.includes('"vocabulary_ownership_violation"')],
  ["slow speech state persisted",edge.includes("conversational_naturalism_signature")&&edge.includes("question_personality")&&edge.includes("thought_carryover_style")],
  ["v3341 regression still present",old.includes("UUID story revision rotation")],
- ["stability lab starts with v3350",pkg.scripts["stability:lab"].startsWith("npm run verify:v3350")],
+ ["stability lab retains v3350",pkg.scripts["stability:lab"].includes("npm run verify:v3350")],
 ];
 let pass=0;for(const [name,ok] of checks){console.log(`${ok?"PASS":"FAIL"} ${name}`);if(ok)pass++;}
 console.log(`\n${pass}/${checks.length} Conversational Naturalism 2.0 checks passed.`);if(pass!==checks.length)process.exit(1);

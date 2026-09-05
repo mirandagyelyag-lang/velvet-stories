@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
+import { groundedRealityIssues, sanitizeGroundedRealityReply } from "./engine/grounded-reality-lock.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1438,6 +1439,8 @@ REALITY + BOUNDARY ENFORCEMENT 3.33.1
 - NO UNSOLICITED PSYCHOANALYSIS: a correction like “stop being sarcastic” is about the behavior named. Do not transform it into “what’s really wrong with you?” unless the user independently introduced an emotional problem.
 - USER PRESENCE LOCK: userAuthored.userPresence=leaving/absent means the user is physically gone from that in-person scene. Do not speak to “you,” look at them, hand them something, continue a shared activity, or respawn them during silent continuation. Only an authored return/entry can restore physical presence.
 - GROUNDED SPECIFICITY ONLY: autonomy may use established obligations and NPCs, but cannot invent a professor, seminar, study group, lab check-in, grade, prior text, employee relationship, appointment, or shared routine merely to make the world feel detailed. When canon lacks the detail, stay general.
+- GROUNDED REALITY HARD LOCK / v3.35.1: observation is not diagnosis. Keep user complaints semantically scoped to what they named; never turn “I’m tired of this” into “you want space.” A self-report such as “I’m fine” cannot be treated as disproven by an eye-roll, shrug, silence, or vibe. New NPCs may enter lightly, but cannot arrive carrying unsupported schedules, named obligations, authority figures, or retroactive history. Words such as “again,” “like last time,” “as usual,” and “I heard you the first time” require a visible/canonical antecedent.
+- NARRATIVE NATURALISM 1.0: ordinary beats do not need cinematic proof of depth. Prefer one meaningful action or plain sentence over stacked weight-shifts, curling fingers, caught breaths, half-a-lifetime reflexes, or explanatory introspection.
 - PRIVATE NARRATION FIREWALL IS PRE-MODEL: asterisk clauses introduced by because/since/when/where/thinking/etc. are narrator-only unless the remaining clause is externally observable. Never answer their wording.
 
 VOICE + QUALITY
@@ -1919,6 +1922,12 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     therapist_care_package_v2: "Remove the counseling/customer-service care package. Keep any care through character-specific wording, silence, practical action, awkwardness or imperfect support.",
     vocabulary_ownership_violation: "Remove slang, pet names or signature words not owned by this character's profile/examples/canon. Do not borrow another character's verbal tell.",
     voice_performance_stack: "Stop performing five personality markers at once. Keep one natural character-specific speech choice and cut the stacked joke, slang, pet name, rhetorical hook or decorative gesture.",
+    declared_state_disbelief: "The user explicitly self-reported their state. Remove disbelief-as-fact, skeptical gotcha wording, and any line that treats a later eye-roll or shrug as proof that the self-report was false. Observation is not diagnosis.",
+    semantic_scope_overreach: "Keep the user's complaint scoped to the thing they actually named. ‘I’m tired of this/it’ does NOT authorize ‘you need space,’ ‘you want me gone,’ or a relationship-level conclusion unless the user said that.",
+    inference_distance_exceeded: "Reduce inference distance. React only to the observable cue itself. Do not jump from eye-roll/shrug/silence to hidden emotional truth, deception, or a desire for distance.",
+    specificity_escalation: "Delete unsupported concrete lore. New NPCs may enter lightly, but named people, named obligations, schedules, authority roles, and retroactive history require existing canon. Use a generic grounded detail instead.",
+    invisible_history_claim: "Remove words that presuppose unseen repetition/history such as ‘again,’ ‘like last time,’ ‘as usual,’ or ‘I heard you the first time’ unless the visible transcript actually contains that antecedent.",
+    narrative_naturalism_overwrite: "Cut ornamental introspection and stock cinematic body prose. Prefer one simple meaningful action or a shorter sentence. Do not intensify ordinary beats to sound literary.",
   };
   const uniqueIssues = [...new Set(issues || [])];
   const directions = uniqueIssues.map((issue) => `- ${issue}: ${issueDirections[issue] || "Fix this continuity or naturalness failure while preserving the literal transcript."}`).join("\n");
@@ -4378,7 +4387,8 @@ function sanitizeSocialRoleAssignment(reply = "", binding = null) {
 }
 
 function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
-  const canSanitize = issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted", "unsolicited_offscreen_lead_contact", "social_role_assignment_broken", "unsupported_social_plan_expansion"].includes(issue));
+  const groundedHard = ["declared_state_disbelief", "semantic_scope_overreach", "inference_distance_exceeded", "specificity_escalation", "invisible_history_claim", "unsupported_concrete_canon_invention", "narrative_naturalism_overwrite"];
+  const canSanitize = issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted", "unsolicited_offscreen_lead_contact", "social_role_assignment_broken", "unsupported_social_plan_expansion", ...groundedHard].includes(issue));
   if (!canSanitize) return { result, issues };
   let reply = String(result?.reply || "");
   if (issues.includes("user_motive_overwritten") || issues.includes("rejected_pursuit_framing_persisted")) {
@@ -4394,9 +4404,22 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   if (issues.includes("unsupported_social_plan_expansion")) {
     reply = sanitizeUnsupportedSocialPlanExpansion(reply);
   }
-  const nextResult = { ...result, reply };
+  if (issues.some((issue) => groundedHard.includes(issue))) {
+    reply = sanitizeGroundedRealityReply(reply, issues);
+  }
+  let nextResult = { ...result, reply };
   let nextIssues = validateNarrativeReply(nextResult.reply, options);
   if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];
+
+  // If the model repair still carries a grounded-reality violation, never surface it.
+  // Deterministic minimal fallback is intentionally plain: awkward is safer than invented canon.
+  const stubbornGrounded = nextIssues.filter((issue) => groundedHard.includes(issue));
+  if (stubbornGrounded.length || !String(nextResult.reply || "").trim()) {
+    const fallback = hasExplicitUserExit(options.latestUserMessage || "") ? "A beat passed." : '"Okay."';
+    nextResult = { ...nextResult, reply: fallback };
+    nextIssues = validateNarrativeReply(nextResult.reply, options);
+    if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];
+  }
   return { result: nextResult, issues: nextIssues };
 }
 const CONTINUITY_GUARD_ISSUES = new Set([
@@ -4427,6 +4450,12 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "secret_knowledge_leak",
   "exposes_system_language",
   "user_staged_scene_retcon",
+  "declared_state_disbelief",
+  "semantic_scope_overreach",
+  "inference_distance_exceeded",
+  "specificity_escalation",
+  "invisible_history_claim",
+  "unsupported_concrete_canon_invention",
 ]);
 // VELVET_SPEED_REPAIR_BUDGET_V282
 // VELVET_QUICK_REPLY_LANE_V21029: style-only issues never spend the second model call.
@@ -4462,6 +4491,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "answer_before_flourish_violation",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
+  "unsupported_concrete_canon_invention",
   "unsupported_timeline_duration_claim",
   "unsupported_shared_history_specificity",
   "unsupported_concrete_canon_invention",
@@ -4507,6 +4537,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "therapist_care_package_v2",
   "vocabulary_ownership_violation",
   "voice_performance_stack",
+  "narrative_naturalism_overwrite",
   "reaction_clone_drift",
   "explanatory_subtext_dump",
   "decorative_nonverbal_overload",
@@ -5035,6 +5066,13 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (hasVocabularyOwnershipViolationV2(reply, options.character || {})) score -= 18;
   if (hasVoicePerformanceStackV2(reply, latest, options.character || {})) score -= 14;
   if (hasForcedTopicShift(reply, latest)) score -= 14;
+  const groundedIssues = groundedRealityIssues({ reply, latestUserMessage: latest, recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: recent, character: options.character || {} });
+  if (groundedIssues.includes("declared_state_disbelief")) score -= 34;
+  if (groundedIssues.includes("semantic_scope_overreach")) score -= 30;
+  if (groundedIssues.includes("inference_distance_exceeded")) score -= 26;
+  if (groundedIssues.includes("specificity_escalation")) score -= 34;
+  if (groundedIssues.includes("invisible_history_claim")) score -= 32;
+  if (groundedIssues.includes("narrative_naturalism_overwrite")) score -= 18;
   if (hasAnswerBeforeFlourishViolation(reply, latest, options.turnIntent || {})) score -= 16;
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
@@ -5069,6 +5107,13 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasCompulsoryFollowupQuestion(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("compulsory_followup_question");
   if (hasForcedTopicShift(text, options.latestUserMessage || "")) issues.push("forced_topic_shift");
   if (hasAnswerBeforeFlourishViolation(text, options.latestUserMessage || "", turnIntent)) issues.push("answer_before_flourish_violation");
+  for (const issue of groundedRealityIssues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    character: options.character || {},
+  })) issues.push(issue);
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
   if (hasMechanicalRhythmLoop(text, options.recentCharacterReplies || [])) issues.push("mechanical_rhythm_loop");
@@ -5641,9 +5686,10 @@ async function streamRoleplayV19({
           sendEvent(controller, { type: "chunk", content: chunk });
         }
       };
-      // v2.11.18 INSTANT LIVE REPLY: foreground prose always paints optimistically.
-      // Guards still validate and may replace the draft, but never quarantine first text.
-      const guardedDraft = false;
+      // v3.35.1 GROUNDED REALITY HARD LOCK: no raw model prose reaches the chat
+      // before deterministic reality/canon validation. Hard-lock correctness outranks
+      // optimistic token painting; accepted drafts still stream immediately after validation.
+      const guardedDraft = true;
       try {
         // Flush headers/UI state before the model has finished its first token.
         sendEvent(controller, {
@@ -5662,7 +5708,7 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Asterisked user narration is NOT spoken dialogue: perceive only externally observable actions inside it and firewall all private thoughts, evaluations, motives, memories, labels and narrator commentary. v3.32 PERCEPTION & KNOWLEDGE REALISM: observation is not interpretation; nonverbal cues never reveal hidden causes by default; known/suspected/rumor/forgotten remain distinct; secrets are character-scoped; information requires a plausible source; in-person hearing/line-of-sight and digital-medium limits are real; uncertainty and misunderstanding are allowed; run a final Reality Judge asking whether the speaker could actually see, hear, know, remember, or only infer each claimed fact. v3.33 HUMAN TURN-TAKING: direct questions answer before flourish; micro turns may stay micro; silence may remain silence; never append a compulsory follow-up question; partial/delayed answers and topic drop/return are allowed; interrupted threads remain available; group scenes use sparse speaker traffic instead of making every NPC answer. v3.33.1 REALITY & BOUNDARY ENFORCEMENT: active user behavior boundaries persist until explicitly reopened; never override the user's self-report with unsolicited psychoanalysis; user departure/absence is physical canon and cannot be silently undone; autonomy may use only grounded concrete obligations/NPC details; private asterisk commentary is removed before perception. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31.1 NATURAL VOICE LOCK: keep Dialogue Genome, but never perform personality for its own sake. Plain speech wins over cleverness. Enforce banter saturation, one-joke ceiling, nickname ownership, canon specificity and short-turn scale. v3.35 CONVERSATIONAL NATURALISM 2.0: preserve character-specific sentence DNA, question personality, selective answering, thought carryover, vocabulary ownership, public/private bandwidth and conflict/affection voice; reject support-ticket replies, generic attractive-guy cadence, unowned slang, therapist care packages and personality overperformance. Keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction, anti-performative-banter and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice only when the live beat earns movement; an ordinary turn may simply answer and continue the current activity. Never relocate the scene or invent an errand solely to create momentum. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
+          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Asterisked user narration is NOT spoken dialogue: perceive only externally observable actions inside it and firewall all private thoughts, evaluations, motives, memories, labels and narrator commentary. v3.32 PERCEPTION & KNOWLEDGE REALISM: observation is not interpretation; nonverbal cues never reveal hidden causes by default; known/suspected/rumor/forgotten remain distinct; secrets are character-scoped; information requires a plausible source; in-person hearing/line-of-sight and digital-medium limits are real; uncertainty and misunderstanding are allowed; run a final Reality Judge asking whether the speaker could actually see, hear, know, remember, or only infer each claimed fact. v3.33 HUMAN TURN-TAKING: direct questions answer before flourish; micro turns may stay micro; silence may remain silence; never append a compulsory follow-up question; partial/delayed answers and topic drop/return are allowed; interrupted threads remain available; group scenes use sparse speaker traffic instead of making every NPC answer. v3.33.1 REALITY & BOUNDARY ENFORCEMENT: active user behavior boundaries persist until explicitly reopened; never override the user's self-report with unsolicited psychoanalysis; user departure/absence is physical canon and cannot be silently undone; autonomy may use only grounded concrete obligations/NPC details; private asterisk commentary is removed before perception. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31.1 NATURAL VOICE LOCK: keep Dialogue Genome, but never perform personality for its own sake. Plain speech wins over cleverness. Enforce banter saturation, one-joke ceiling, nickname ownership, canon specificity and short-turn scale. v3.35.1 GROUNDED REALITY HARD LOCK: deterministic validation owns semantic scope, declared-state authority, inference distance, canon specificity, invisible history, NPC retroactive lore and narrative naturalism; when in doubt stay less specific rather than inventing evidence. v3.35 CONVERSATIONAL NATURALISM 2.0: preserve character-specific sentence DNA, question personality, selective answering, thought carryover, vocabulary ownership, public/private bandwidth and conflict/affection voice; reject support-ticket replies, generic attractive-guy cadence, unowned slang, therapist care packages and personality overperformance. Keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction, anti-performative-banter and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice only when the live beat earns movement; an ordinary turn may simply answer and continue the current activity. Never relocate the scene or invent an errand solely to create momentum. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
           prompt,
           maxOutputTokens: getMaximumOutputTokens(character.response_length),
           isCancelled,

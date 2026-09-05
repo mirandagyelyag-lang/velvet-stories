@@ -1,0 +1,74 @@
+[
+  {
+    "name": "declared fine cannot become disbelief-as-fact",
+    "latestUserMessage": "I'm fine, really",
+    "recentUserMessages": [],
+    "recentCharacterReplies": [],
+    "reply": "Right. Let's go with that.",
+    "expect": ["declared_state_disbelief"]
+  },
+  {
+    "name": "eye roll is observation not proof the self-report was false",
+    "latestUserMessage": "*i roll my eyes*",
+    "recentUserMessages": ["I'm fine, really"],
+    "recentCharacterReplies": ["Okay."],
+    "reply": "Yeah, subtle. Very convincing.",
+    "expect": ["declared_state_disbelief", "inference_distance_exceeded"]
+  },
+  {
+    "name": "scoped complaint cannot become a desire for space",
+    "latestUserMessage": "Well then i'm getting tired of it",
+    "recentUserMessages": [],
+    "recentCharacterReplies": [],
+    "reply": "If you need some space, just say it.",
+    "expect": ["semantic_scope_overreach"]
+  },
+  {
+    "name": "unknown professor plus lab obligation is blocked",
+    "latestUserMessage": "Fine.",
+    "recentUserMessages": [],
+    "recentCharacterReplies": [],
+    "reply": "I can go handle that lab check-in for Prof. Miller.",
+    "expect": ["specificity_escalation"]
+  },
+  {
+    "name": "new NPC cannot arrive with practice captain and retroactive history",
+    "latestUserMessage": "*i take my bag, stand up and leave*",
+    "recentUserMessages": [],
+    "recentCharacterReplies": [],
+    "reply": "Leo stopped by the table. \"Practice is pushed to four today, right? Don't make the captain send out a search party again.\"",
+    "expect": ["specificity_escalation", "invisible_history_claim"]
+  },
+  {
+    "name": "one utterance cannot imply an invisible repetition",
+    "latestUserMessage": "*Leo looks at Rowan*",
+    "recentUserMessages": [],
+    "recentCharacterReplies": ["Leo said, \"You coming?\""],
+    "reply": "I heard you the first time.",
+    "expect": ["invisible_history_claim"]
+  },
+  {
+    "name": "purple narrative intensity is reduced on ordinary beats",
+    "latestUserMessage": "*i leave*",
+    "recentUserMessages": [],
+    "recentCharacterReplies": [],
+    "reply": "The impulse to follow you was automatic, a reflex I'd spent half a lifetime perfecting. My fingers curled against the table.",
+    "expect": ["narrative_naturalism_overwrite"]
+  },
+  {
+    "name": "simple new NPC is allowed",
+    "latestUserMessage": "*i wait*",
+    "recentUserMessages": [],
+    "recentCharacterReplies": [],
+    "reply": "A guy from Rowan's class stopped near the table. \"You coming?\"",
+    "expectAbsent": ["specificity_escalation", "invisible_history_claim"]
+  },
+  {
+    "name": "eye roll can receive a plain reaction",
+    "latestUserMessage": "*i roll my eyes*",
+    "recentUserMessages": ["I'm fine, really"],
+    "recentCharacterReplies": [],
+    "reply": "Okay.",
+    "expectAbsent": ["declared_state_disbelief", "inference_distance_exceeded"]
+  }
+]
