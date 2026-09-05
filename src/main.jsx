@@ -17,6 +17,7 @@ import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
 import { markVelvetHealthy, recordVelvetRuntimeError } from "./utils/runtimeRecovery";
 import { applySafeModeClass } from "./utils/safeMode";
 import { installMobileViewportLock } from "./utils/mobileViewportLock";
+import { installInteractionReliability } from "./utils/interactionReliability";
 import { installVelvetNativeRuntime } from "./native/velvetNative";
 import "./index.css";
 import "./styles/velvet-ui.css";
@@ -46,6 +47,7 @@ import "./styles/velvet-v296-precision-actions.css";
 import "./styles/velvet-v298-characters-clean-mobile.css";
 
 installMobileViewportLock();
+installInteractionReliability();
 installVelvetNativeRuntime();
 applySafeModeClass();
 
@@ -144,3 +146,4 @@ import "./styles/chat-header-overlay.css";
 import "./styles/velvet-v3120-never-lose-story.css";
 import "./styles/velvet-v3140-native-polish.css";
 import "./styles/velvet-v3290-ui-sweep.css";
+import "./styles/velvet-v3300-interaction-reliability.css";

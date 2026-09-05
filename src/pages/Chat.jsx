@@ -251,6 +251,16 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const previousConversationRef = useRef("");
   const messages = getCharacterMessages(character.id);
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
+
+  useEffect(() => {
+    const longChat = visibleMessages.length >= 250;
+    document.documentElement.classList.toggle("velvet-long-chat", longChat);
+    document.body.classList.toggle("velvet-long-chat", longChat);
+    return () => {
+      document.documentElement.classList.remove("velvet-long-chat");
+      document.body.classList.remove("velvet-long-chat");
+    };
+  }, [visibleMessages.length]);
   const chatOverlayOpen = Boolean(
     menuOpen || directorNoteOpen || selectedMessage || controlsOpen || characterProfileOpen ||
     memoryBookOpen || relationshipOpen || groupPeekCharacter || worldStudioOpen || timelineOpen || storyHubOpen || safeStudioOpen || livingWorldOpen || experienceOpen || catchUpOpen || qualityMessage
@@ -593,28 +603,61 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   useEffect(() => {
     const id = conversation?.conversationId;
     if (!id) return;
-    if (message) {
-      localStorage.setItem(`velvet_draft_${id}`, message);
-      setDraftSavedAt(Date.now());
-    } else {
-      localStorage.removeItem(`velvet_draft_${id}`);
-      setDraftSavedAt(0);
+    try {
+      if (message) {
+        localStorage.setItem(`velvet_draft_${id}`, message);
+        setDraftSavedAt(Date.now());
+      } else {
+        localStorage.removeItem(`velvet_draft_${id}`);
+        setDraftSavedAt(0);
+      }
+    } catch (error) {
+      console.debug("Velvet draft storage unavailable:", error);
     }
   }, [message, conversation?.conversationId]);
 
   useEffect(() => {
     const id = conversation?.conversationId;
     if (!id) return;
-    if (replyTo?.id) localStorage.setItem(`velvet_reply_draft_${id}`, JSON.stringify(replyTo));
-    else localStorage.removeItem(`velvet_reply_draft_${id}`);
+    try {
+      if (replyTo?.id) localStorage.setItem(`velvet_reply_draft_${id}`, JSON.stringify(replyTo));
+      else localStorage.removeItem(`velvet_reply_draft_${id}`);
+    } catch (error) {
+      console.debug("Velvet reply draft storage unavailable:", error);
+    }
   }, [replyTo, conversation?.conversationId]);
 
   useEffect(() => {
     const id = conversation?.conversationId;
     if (!id) return;
-    if (directorNote.trim()) localStorage.setItem(`velvet_director_note_${id}`, directorNote);
-    else localStorage.removeItem(`velvet_director_note_${id}`);
+    try {
+      if (directorNote.trim()) localStorage.setItem(`velvet_director_note_${id}`, directorNote);
+      else localStorage.removeItem(`velvet_director_note_${id}`);
+    } catch (error) {
+      console.debug("Velvet director-note storage unavailable:", error);
+    }
   }, [directorNote, conversation?.conversationId]);
+
+
+  useEffect(() => {
+    const id = conversation?.conversationId;
+    if (!id) return undefined;
+    const persistCriticalDraft = () => {
+      try {
+        if (message) localStorage.setItem(`velvet_draft_${id}`, message);
+        if (replyTo?.id) localStorage.setItem(`velvet_reply_draft_${id}`, JSON.stringify(replyTo));
+        if (directorNote.trim()) localStorage.setItem(`velvet_director_note_${id}`, directorNote);
+      } catch {}
+    };
+    window.addEventListener("pagehide", persistCriticalDraft);
+    const onVisibility = () => { if (document.visibilityState === "hidden") persistCriticalDraft(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      persistCriticalDraft();
+      window.removeEventListener("pagehide", persistCriticalDraft);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [conversation?.conversationId, message, replyTo, directorNote]);
 
   useEffect(() => {
     const id = conversation?.conversationId;

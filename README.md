@@ -1,3 +1,3 @@
-# Velvet Stories v3.29.0 — UI Stability Sweep
+# Velvet Stories v3.30.0 — Interaction Reliability
 
-See `README-v3.29.0.txt` for the release details.
+See `README-v3.30.0.txt`.

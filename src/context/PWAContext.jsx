@@ -102,6 +102,12 @@ function WebPWAProvider({ children }) {
     let reloading = false;
     const onControllerChange = () => {
       if (reloading) return;
+      const guardKey = `velvet:sw-controller-reload:${VELVET_VERSION}`;
+      try {
+        const lastReload = Number(sessionStorage.getItem(guardKey) || 0);
+        if (Date.now() - lastReload < 8000) return;
+        sessionStorage.setItem(guardKey, String(Date.now()));
+      } catch {}
       reloading = true;
       window.location.reload();
     };

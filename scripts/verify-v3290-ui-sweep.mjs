@@ -4,7 +4,7 @@ const main = fs.readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8"
 const app = fs.readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
 const css = fs.readFileSync(new URL("../src/styles/velvet-v3290-ui-sweep.css", import.meta.url), "utf8");
 const checks = [
-  ["version 3.29.0", pkg.version === "3.29.0"],
+  ["version >= 3.29.0", Number(pkg.version.split(".")[0]) > 3 || (Number(pkg.version.split(".")[0]) === 3 && Number(pkg.version.split(".")[1]) >= 29)],
   ["UI sweep verifier wired", pkg.scripts["verify:v3290"]?.includes("verify-v3290-ui-sweep.mjs")],
   ["stability lab includes v3290", pkg.scripts["stability:lab"]?.includes("verify:v3290")],
   ["main imports UI sweep stylesheet", main.includes('"./styles/velvet-v3290-ui-sweep.css"')],
