@@ -20,6 +20,8 @@ export default function CanonDoctorSheet({ open, onClose, report, loading, apply
   const findings = Array.isArray(report?.findings) ? report.findings : [];
   const high = findings.filter((item) => item.severity === "high").length;
   const medium = findings.filter((item) => item.severity === "medium").length;
+  const repairStats = applied && typeof applied === "object" ? applied : {};
+  const repairedCount = Number(repairStats.memoriesSuperseded || 0) + Number(repairStats.knowledgeRemoved || 0) + Number(repairStats.prunePhrases || 0);
   return createPortal(
     <div className="canon-doctor-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !applying && onClose?.()}>
       <section className="canon-doctor" role="dialog" aria-modal="true" aria-label="Canon Doctor">
@@ -30,7 +32,9 @@ export default function CanonDoctorSheet({ open, onClose, report, loading, apply
 
         {loading ? <div className="canon-doctor__loading"><LoaderCircle className="spin" size={24}/><strong>Auditing this story…</strong><span>Checking POV privacy, boundaries, canon, memories and physical continuity.</span></div> : null}
         {error ? <div className="canon-doctor__error"><AlertTriangle size={18}/><span>{error}</span></div> : null}
-        {applied ? <div className="canon-doctor__success"><CheckCircle2 size={19}/><div><strong>Story state repaired</strong><span>Your visible messages were not changed. A safety snapshot was created first.</span></div></div> : null}
+        {applied ? <div className="canon-doctor__success"><CheckCircle2 size={19}/><div><strong>Story state repaired</strong><span>{repairedCount > 0
+          ? `Cleaned ${Number(repairStats.memoriesSuperseded || 0)} memories, ${Number(repairStats.knowledgeRemoved || 0)} knowledge entries and ${Number(repairStats.prunePhrases || 0)} contaminated state phrases.`
+          : "Persistent state was normalized and a fresh story revision was created. No saved contaminated entries needed deletion."}</span><small>Your visible messages were not changed. A safety snapshot was created first.</small></div></div> : null}
 
         {!loading && report ? <>
           <div className="canon-doctor__score">
@@ -53,8 +57,8 @@ export default function CanonDoctorSheet({ open, onClose, report, loading, apply
 
         <footer>
           <button type="button" onClick={onRescan} disabled={loading || applying}><Sparkles size={16}/> Scan again</button>
-          <button type="button" className="primary" onClick={onRepair} disabled={!report || loading || applying || report.status === "clean"}>
-            {applying ? <LoaderCircle className="spin" size={16}/> : <ShieldCheck size={16}/>} {applying ? "Repairing…" : "Repair Story State"}
+          <button type="button" className="primary" onClick={onRepair} disabled={!report || loading || applying || report.status === "clean" || Boolean(applied)}>
+            {applying ? <LoaderCircle className="spin" size={16}/> : <ShieldCheck size={16}/>} {applying ? "Repairing…" : applied ? "Repaired ✓" : "Repair Story State"}
           </button>
         </footer>
       </section>

@@ -25,7 +25,7 @@ const checks=[
  ["scene cleanup",edge.includes("cleanScene")&&edge.includes("scene_state: nextScene")],
  ["story recap cleanup",edge.includes("cleanStoryRecap")&&edge.includes("story_recap")],
  ["unresolved thread cleanup",edge.includes("cleanUnresolvedThreads")&&edge.includes("unresolved_threads")],
- ["stale generation invalidation",edge.includes('story_engine_version: "3.34.0"')&&edge.includes("story_revision")],
+ ["stale generation invalidation",edge.includes("story_revision: crypto.randomUUID()")&&!edge.includes('story_engine_version: "3.34.0"')],
  ["ChatsContext API",ctx.includes("runCanonDoctor")&&ctx.includes('action: "canon_doctor"')],
  ["chat menu entry",chat.includes("> Canon Doctor</button>")],
  ["preview sheet",sheet.includes("Repair Story State")&&sheet.includes("Messages stay untouched")],

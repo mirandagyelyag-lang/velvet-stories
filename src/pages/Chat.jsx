@@ -1992,7 +1992,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       await createStorySnapshot(character.id, "Before Canon Doctor");
       const payload = await runCanonDoctor(character.id, { apply: true, plan: canonDoctorReport.repairPlan });
       setCanonDoctorReport(payload?.report || canonDoctorReport);
-      setCanonDoctorApplied(true);
+      setCanonDoctorApplied({
+        ...(payload?.repaired || {}),
+        storyRevision: payload?.updated?.story_revision || null,
+      });
       setActionNotice("Story state repaired. Messages were left untouched.");
     } catch (error) {
       setCanonDoctorError(error?.message || "Canon Doctor couldn't repair this story.");

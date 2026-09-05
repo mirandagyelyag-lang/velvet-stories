@@ -568,11 +568,17 @@ async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, app
     cast_state: castState,
     unresolved_threads: plan.cleanUnresolvedThreads,
     story_recap: plan.cleanStoryRecap || conversation.story_recap || conversation.summary || "",
-    story_revision: Math.max(0, Number(conversation.story_revision) || 0) + 1,
-    story_engine_version: "3.34.0",
+    // story_revision is a UUID in the live schema. Rotate it to invalidate stale generations.
+    story_revision: crypto.randomUUID(),
     updated_at: new Date().toISOString(),
   };
-  const { error: updateError } = await supabase.from("conversations").update(patch).eq("id", conversationId).eq("user_id", userId);
+  const { data: updatedConversation, error: updateError } = await supabase
+    .from("conversations")
+    .update(patch)
+    .eq("id", conversationId)
+    .eq("user_id", userId)
+    .select("id, story_revision, story_engine_version, story_recap, unresolved_threads, scene_state, intelligence_state, relationship_state, character_development, cast_state, updated_at")
+    .single();
   if (updateError) throw new Error(updateError.message);
 
   const safeMemoryIds = new Set(memories.filter((m:any)=>!m.is_pinned && !m.is_canon && String(m.source || "") !== "manual").map((m:any)=>String(m.id)));
@@ -587,12 +593,22 @@ async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, app
     const { error } = await supabase.from("story_knowledge_entries").delete().in("id", knowledgeIds).eq("conversation_id", conversationId).eq("user_id", userId);
     if (error && error.code !== "42P01") throw new Error(error.message);
   }
-  return json({ applied: true, report, repaired: { memoriesSuperseded: memoryIds.length, knowledgeRemoved: knowledgeIds.length, prunePhrases: prunePhrases.length }, updated: patch });
+  return json({
+    applied: true,
+    report,
+    repaired: {
+      memoriesSuperseded: memoryIds.length,
+      knowledgeRemoved: knowledgeIds.length,
+      prunePhrases: prunePhrases.length,
+      threadsRebuilt: plan.cleanUnresolvedThreads.length,
+    },
+    updated: updatedConversation || patch,
+  });
 }
 
 async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
-    version: "3.34.0",
+    version: "3.34.1",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
     models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },

@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.34.0",
+  "version": "3.34.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -72,7 +72,7 @@
     "verify:v3230": "node scripts/verify-v3230-safe-studio.mjs",
     "verify:v3240": "node scripts/verify-v3240-living-world.mjs",
     "verify:v3241": "node scripts/verify-v3241-stability-sweep.mjs",
-    "stability:lab": "npm run verify:v3340 && npm run verify:v3331 && npm run verify:v3330 && npm run verify:v3320 && npm run verify:v3312 && npm run verify:v3311 && npm run verify:v3310 && npm run verify:v3300 && npm run verify:v3290 && npm run verify:v3280 && npm run verify:v3270 && npm run verify:v3260 && npm run verify:v3254 && npm run verify:v3252 && npm run verify:v3250 && npm run verify:v3241 && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v34 && npm run verify:chat-syntax",
+    "stability:lab": "npm run verify:v3341 && npm run verify:v3340 && npm run verify:v3331 && npm run verify:v3330 && npm run verify:v3320 && npm run verify:v3312 && npm run verify:v3311 && npm run verify:v3310 && npm run verify:v3300 && npm run verify:v3290 && npm run verify:v3280 && npm run verify:v3270 && npm run verify:v3260 && npm run verify:v3254 && npm run verify:v3252 && npm run verify:v3250 && npm run verify:v3241 && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v34 && npm run verify:chat-syntax",
     "deploy:pwa": "bash DEPLOY-PWA-STABLE.sh",
     "verify:v3250": "node scripts/verify-v3250-experience.mjs",
     "verify:v3251": "node scripts/verify-v3251-update-fix.mjs",
@@ -89,7 +89,8 @@
     "verify:v3320": "node --experimental-strip-types scripts/verify-v3320-perception-knowledge-realism.mjs",
     "verify:v3330": "node --experimental-strip-types scripts/verify-v3330-human-turn-taking.mjs",
     "verify:v3331": "node --experimental-strip-types scripts/verify-v3331-reality-boundary-enforcement.mjs",
-    "verify:v3340": "node --experimental-strip-types scripts/verify-v3340-canon-doctor.mjs"
+    "verify:v3340": "node --experimental-strip-types scripts/verify-v3340-canon-doctor.mjs",
+    "verify:v3341": "node --experimental-strip-types scripts/verify-v3341-canon-doctor-repair.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",
