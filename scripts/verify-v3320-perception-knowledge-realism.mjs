@@ -8,12 +8,13 @@ const read=(p)=>fs.readFileSync(path.join(root,p),"utf8");
 const pkg=JSON.parse(read("package.json"));
 const pub=JSON.parse(read("public/velvet-version.json"));
 const edge=read("supabase/functions/character-chat/index.ts");
+const semverAtLeast=(value,minimum)=>{ const a=String(value||"").split(".").map((x)=>Number.parseInt(x,10)||0); const b=String(minimum||"").split(".").map((x)=>Number.parseInt(x,10)||0); for(let i=0;i<Math.max(a.length,b.length);i++){ if((a[i]||0)>(b[i]||0)) return true; if((a[i]||0)<(b[i]||0)) return false; } return true; };
 const contractSource=read("supabase/functions/character-chat/engine/story-contract.ts");
 const vite=read("vite.config.js");
 
 const checks=[
- ["version 3.32.0",pkg.version==="3.32.0"&&pub.version==="3.32.0"],
- ["release metadata",pub.release==="Perception & Knowledge Realism"&&vite.includes("Perception & Knowledge Realism")],
+ ["version >= 3.32.0",semverAtLeast(pkg.version,"3.32.0")&&semverAtLeast(pub.version,"3.32.0")],
+ ["release metadata present",typeof pub.release==="string"&&pub.release.trim().length>0&&vite.includes("const velvetRelease")],
  ["perception engine typed",contractSource.includes("perceptionRealismEngine")&&contractSource.includes("privateNarrationCount")],
  ["observation is not interpretation",edge.includes("OBSERVATION ≠ INTERPRETATION")],
  ["POV privacy lock 2",edge.includes("POV PRIVACY LOCK 2.0")],

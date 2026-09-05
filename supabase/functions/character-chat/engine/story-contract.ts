@@ -204,6 +204,21 @@ export type StoryContract = {
     blockedSecretCount: number;
     instruction: string;
   };
+  turnTakingEngine: {
+    mode: "micro" | "ordinary" | "direct_answer" | "action_only" | "silence" | "group" | "interrupted";
+    dominance: "low" | "medium" | "high";
+    silenceTolerance: "low" | "medium" | "high";
+    topicStamina: "low" | "medium" | "high";
+    interruptionStyle: string;
+    responseScale: string;
+    questionPolicy: string;
+    activeThreads: string[];
+    returnThread: string;
+    dropPermission: string;
+    maxSpeakers: number;
+    overlapAllowed: boolean;
+    instruction: string;
+  };
   supportingCast: Array<Record<string, unknown>>;
   turnObjective: string;
   conversationQuality: {
@@ -978,6 +993,83 @@ export function extractBoundaries(value: string) {
   return patterns.filter((pattern) => pattern.test(source)).map((pattern) => pattern.source);
 }
 
+
+function buildTurnTakingEngine(input: StoryContractInput, present: string[], perceptibleUserTurn: string) {
+  const profile = characterProfileBlob(input.character);
+  const recent = (input.recentMessages || []).slice(-10);
+  const recentCharacterTurns = recent.filter((message) => message?.sender === "character").map((message) => text(message?.content));
+  const priorBehavior = input.intelligenceState?.human_behavior_state && typeof input.intelligenceState.human_behavior_state === "object"
+    ? input.intelligenceState.human_behavior_state as Record<string, unknown>
+    : {};
+  const priorThreads = list((input.intelligenceState as Record<string, unknown> | undefined)?.conversation_threads || priorBehavior.conversation_threads).slice(-8);
+  const plainVisible = text(perceptibleUserTurn.replace(/\*[^*]*\*/gs, " ")).replace(/\s+/g, " ");
+  const visibleWords = plainVisible.split(/\s+/).filter(Boolean).length;
+  const hasAction = /\*[^*]+\*/.test(perceptibleUserTurn);
+  const kind = text(input.turnIntent?.kind || "ordinary");
+  const isQuestion = Boolean(input.turnIntent?.isQuestion) || /\?\s*$/.test(plainVisible);
+  const group = present.length >= 3;
+  const interrupted = /\b(?:wait|hold on|hang on|sorry|what were you saying|you were saying|continue|go on)\b/i.test(plainVisible)
+    || recentCharacterTurns.slice(-1).some((turn) => /(?:—|\.\.\.)\s*$/.test(turn.trim()));
+
+  let mode: StoryContract["turnTakingEngine"]["mode"] = "ordinary";
+  if (["silent_continue","return_main_pov"].includes(kind) || (!plainVisible && !hasAction)) mode = "silence";
+  else if (!plainVisible && hasAction) mode = "action_only";
+  else if (group) mode = "group";
+  else if (interrupted) mode = "interrupted";
+  else if (isQuestion) mode = "direct_answer";
+  else if (visibleWords <= 5) mode = "micro";
+
+  const dominance: "low"|"medium"|"high" = /\b(?:quiet|laconic|reserved|terse|few words|soft-spoken|soft spoken|withdrawn|not chatty)\b/.test(profile)
+    ? "low" : /\b(?:talkative|chatty|dominant|assertive|outspoken|leader|commanding|verbose|rambl)\b/.test(profile) ? "high" : "medium";
+  const silenceTolerance: "low"|"medium"|"high" = /\b(?:comfortable silence|quiet|laconic|reserved|guarded|patient|observant)\b/.test(profile)
+    ? "high" : /\b(?:fills silence|hates silence|talkative|chatty|nervous talker|rambl)\b/.test(profile) ? "low" : "medium";
+  const topicStamina: "low"|"medium"|"high" = /\b(?:stubborn|persistent|insistent|curious|inquisitive|won t let go|will not let go)\b/.test(profile)
+    ? "high" : /\b(?:evasive|avoidant|changes? the subject|withdraw|deflect|private|guarded)\b/.test(profile) ? "low" : "medium";
+  const interruptionStyle = /\b(?:interrupt|cuts? people off|impatient|blunt)\b/.test(profile)
+    ? "may cut in when it fits the established voice; interruptions should be short and motivated"
+    : /\b(?:patient|polite|careful listener|reserved|quiet)\b/.test(profile)
+      ? "usually lets the other person finish; may answer after a beat rather than overlapping"
+      : "interruptions are occasional and context-driven, never a default quirk";
+
+  const recentQuestionEnds = recentCharacterTurns.slice(-4).filter((turn) => /\?\s*["”']?\s*$/.test(turn.trim())).length;
+  const questionPolicy = recentQuestionEnds >= 2
+    ? "0 questions preferred this turn; do not manufacture a follow-up merely to keep the exchange alive"
+    : mode === "direct_answer"
+      ? "answer first; at most one follow-up question only if this character genuinely needs it"
+      : "0-1 question; statements, gestures, silence and topic endings are equally valid";
+
+  let responseScale = "one natural turn; length must be earned by the beat";
+  if (mode === "micro") responseScale = "usually 1-3 short spoken lines or one small action; roughly 10-55 words unless the moment is high-impact";
+  if (mode === "action_only") responseScale = "0-2 spoken lines plus only the action needed to respond; do not reward a tiny action with a monologue";
+  if (mode === "silence") responseScale = silenceTolerance === "high" ? "silence may remain silence; a gesture-only beat is valid" : "one small reaction is enough; do not force a speech";
+  if (mode === "direct_answer") responseScale = "the first spoken clause should answer the literal question; explanation comes only if this person would actually give it";
+  if (mode === "group") responseScale = "keep speaker traffic sparse; usually the addressed/relevant person plus at most one second speaker";
+
+  const latestUserLower = normalized(plainVisible);
+  const matchingThread = priorThreads.find((thread) => {
+    const tokens = normalized(thread).split(/\s+/).filter((token) => token.length >= 5);
+    return tokens.some((token) => latestUserLower.includes(token));
+  }) || "";
+  const returnThread = matchingThread || (interrupted && priorThreads.length ? priorThreads.at(-1) || "" : "");
+  const maxSpeakers = group ? (/\b(?:everyone|all of you|you guys|guys)\b/i.test(plainVisible) ? 3 : 2) : 1;
+
+  return {
+    mode,
+    dominance,
+    silenceTolerance,
+    topicStamina,
+    interruptionStyle,
+    responseScale,
+    questionPolicy,
+    activeThreads: priorThreads,
+    returnThread,
+    dropPermission: topicStamina === "high" ? "may keep one live topic active, but must not badger after a clear refusal" : "may let an exhausted topic die without replacing it with a new question",
+    maxSpeakers,
+    overlapAllowed: group || interrupted,
+    instruction: "Human turn-taking beats completeness. Do not answer every clause like a form. A character may answer partially, delay, misunderstand, interrupt, let a subject die, return to an older thread, respond with a gesture, or say almost nothing when that is natural. Answer-before-flourish for direct questions. Never add a compulsory follow-up question. In groups, only characters with a reason to speak get a turn; silence from the rest is normal. Keep open conversation threads in hidden state without mentioning them until the moment naturally reactivates one.",
+  };
+}
+
 export function compileStoryContract(input: StoryContractInput): StoryContract {
   const scene = input.sceneState || {};
   const perceptibleUserTurn = sanitizeUserTurnForPerception(input.latestUserMessage);
@@ -1092,6 +1184,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const longTermArcEngine = buildLongTermArcEngine(input.character, activeArcs, development, intelligence);
   const cloneProtection = buildCloneProtection(input.character, characterDNA);
   const perceptionRealismEngine = buildPerceptionRealismEngine(input, actions, present, mode);
+  const turnTakingEngine = buildTurnTakingEngine(input, present, perceptibleUserTurn);
 
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
@@ -1148,6 +1241,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     longTermArcEngine,
     cloneProtection,
     perceptionRealismEngine,
+    turnTakingEngine,
     supportingCast: [...castByName.values()].slice(0, 12),
     turnObjective: objective,
     conversationQuality: { recentPatterns, nextTurnAdjustments },
@@ -1341,6 +1435,7 @@ export function storyContractPrompt(contract: StoryContract) {
     longTermArc: contract.longTermArcEngine,
     cloneProtection: contract.cloneProtection,
     perceptionRealism: contract.perceptionRealismEngine,
+    turnTaking: contract.turnTakingEngine,
     supportingCast: take(contract.supportingCast, 4).map((item) => pick(item as Record<string, unknown>, ["name", "role", "relationship", "current_dynamic", "goals", "presence", "status"])),
     turnObjective: contract.turnObjective,
     conversationQuality: contract.conversationQuality,
@@ -1399,5 +1494,5 @@ export function storyContractPrompt(contract: StoryContract) {
     },
   };
 
-  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; attachment defenses and mixed signals can create distance without erasing desire. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn.`;
+  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; attachment defenses and mixed signals can create distance without erasing desire. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human Turn-Taking uses turnTaking.mode/responseScale/questionPolicy to allow partial answers, delayed answers, silence, interruptions, topic return/drop and sparse group speaker traffic; conversation completeness is never the goal. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn.`;
 }

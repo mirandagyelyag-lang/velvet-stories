@@ -1,3 +1,3 @@
-# Velvet Stories v3.32.0 — Perception & Knowledge Realism
+# Velvet Stories v3.33.0 — Human Turn-Taking + Conversation Rhythm
 
-See `README-v3.32.0.txt` for the release details.
+See `README-v3.33.0.txt` for release details.
