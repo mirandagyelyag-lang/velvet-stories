@@ -95,6 +95,17 @@ export type StoryContract = {
     closurePolicy: string;
     instruction: string;
   };
+  scenePhysicsEngine: {
+    bodyStates: Array<Record<string, unknown>>;
+    objectStates: Array<Record<string, unknown>>;
+    spatialRelations: Array<Record<string, unknown>>;
+    visibility: Array<Record<string, unknown>>;
+    elapsedMinutes: number;
+    doorState: string;
+    recentActionFingerprints: string[];
+    interactionLimits: string[];
+    instruction: string;
+  };
   consequenceEngine: {
     activeResidue: string[];
     strongestConsequence: string;
@@ -660,6 +671,38 @@ function buildAgencyMomentumEngine(input: StoryContractInput, autonomousLifeEngi
     closureAllowed: Boolean(sceneRhythmEngine.closeAllowed),
     closurePolicy: sceneRhythmEngine.closeAllowed ? "Closure is a valid outcome. End on a completed beat, silence, departure, or ordinary final action. No teaser is required." : "Keep the live exchange open only because the current turn genuinely leaves something active, not because every reply needs a hook.",
     instruction: `Character agency is choice under constraints. Preserve active intent across interruptions, but do not force it into every turn. Use at most ${microInitiativeBudget} meaningful initiative beat(s) unless the user explicitly causes a larger change. Prefer an existing action, refusal, pause, topic choice, unfinished thread, or grounded obligation. Never create a phone buzz, door knock, surprise arrival, new errand, sudden deadline, or retroactive relationship merely to create momentum. A scene is allowed to end.`
+  };
+}
+
+function buildScenePhysicsEngine(input: StoryContractInput, present: string[], userPresence: "present" | "absent" | "leaving" | "reentering" | "unknown") {
+  const scene = input.sceneState && typeof input.sceneState === "object" ? input.sceneState : {};
+  const bodyStates = Array.isArray(scene.body_states) ? scene.body_states.slice(-8) as Array<Record<string, unknown>> : [];
+  const objectStates = Array.isArray(scene.object_states) ? scene.object_states.slice(-12) as Array<Record<string, unknown>> : [];
+  const spatialRelations = Array.isArray(scene.spatial_relations) ? scene.spatial_relations.slice(-8) as Array<Record<string, unknown>> : [];
+  const visibility = Array.isArray(scene.visibility) ? scene.visibility.slice(-8) as Array<Record<string, unknown>> : [];
+  const recentActionFingerprints = list(scene.recent_action_fingerprints).map(text).filter(Boolean).slice(-8);
+  const elapsedMinutes = Math.max(0, Number(scene.elapsed_minutes || 0) || 0);
+  const doorState = text(scene.door_state || "unknown");
+  const userKey = normalized(input.userName), charKey = normalized(input.character.name);
+  const relation = spatialRelations.find((item) => {
+    const from=normalized(item?.from), to=normalized(item?.to);
+    return (from===userKey&&to===charKey)||(from===charKey&&to===userKey);
+  }) || {};
+  const sight = visibility.find((item) => {
+    const from=normalized(item?.from), to=normalized(item?.to);
+    return (from===userKey&&to===charKey)||(from===charKey&&to===userKey);
+  }) || {};
+  const interactionLimits:string[] = [];
+  if (userPresence === "absent" || userPresence === "leaving") interactionLimits.push("user is not available for touch, visual reaction, handoff or local dialogue until authored re-entry");
+  if (sight?.can_see === false) interactionLimits.push("line of sight is blocked; no visual micro-expression claims");
+  if (relation?.can_touch === false || /far|across|different room|offscreen/i.test(text(relation?.distance || relation?.state || relation?.note))) interactionLimits.push("distance forbids touch unless locomotion is shown first");
+  if (relation?.can_whisper === false) interactionLimits.push("distance forbids whisper-range interaction unless distance is closed on-page");
+  if (relation?.micro_expression_visible === false) interactionLimits.push("micro-expressions are not perceptible at the established distance");
+  if (doorState === "closed") interactionLimits.push("closed door remains closed until someone explicitly opens it");
+  return {
+    bodyStates, objectStates, spatialRelations, visibility, elapsedMinutes, doorState, recentActionFingerprints,
+    interactionLimits,
+    instruction: "SCENE PHYSICS 3.35.3: treat posture, anchor, possession, distance, visibility, door state and elapsed time as state, not decoration. A body cannot stand twice without sitting between; a prop cannot jump from table/pocket/another person's hand into yours; touching/whispering/micro-expression reading requires compatible geometry or an explicit movement bridge; closed doors and exits block perception; precise clock time or long elapsed duration needs visible support. Recent action fingerprints are a repetition budget: if a gesture already recurred, choose a character-specific alternative or do nothing. Doing nothing is valid."
   };
 }
 
@@ -1287,6 +1330,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const perceptionRealismEngine = buildPerceptionRealismEngine(input, actions, present, mode);
   const turnTakingEngine = buildTurnTakingEngine(input, present, perceptibleUserTurn);
   const agencyMomentumEngine = buildAgencyMomentumEngine(input, autonomousLifeEngine, turnTakingEngine, sceneRhythmEngine, perceptibleUserTurn, userPresence);
+  const scenePhysicsEngine = buildScenePhysicsEngine(input, present, userPresence);
 
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
@@ -1331,6 +1375,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     reactionEngine,
     autonomousLifeEngine,
     agencyMomentumEngine,
+    scenePhysicsEngine,
     consequenceEngine,
     sceneRhythmEngine,
     selectiveMemoryEngine,
@@ -1516,6 +1561,7 @@ export function storyContractPrompt(contract: StoryContract) {
     reactionEngine: contract.reactionEngine,
     autonomy: contract.autonomousLifeEngine,
     agencyMomentum: contract.agencyMomentumEngine,
+    scenePhysics: contract.scenePhysicsEngine,
     consequences: contract.consequenceEngine,
     sceneRhythm: contract.sceneRhythmEngine,
     selectiveMemory: contract.selectiveMemoryEngine,
@@ -1601,5 +1647,5 @@ export function storyContractPrompt(contract: StoryContract) {
     },
   };
 
-  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; attachment defenses and mixed signals can create distance without erasing desire. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human Turn-Taking uses turnTaking.mode/responseScale/questionPolicy to allow partial answers, delayed answers, silence, interruptions, topic return/drop and sparse group speaker traffic; conversation completeness is never the goal. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn. ACTIVE behavior boundaries in userAuthored.activeBehaviorBoundaries persist across turns until the user explicitly reopens them; do not treat them as one-turn suggestions. userAuthored.selfReportLock prevents unsolicited psychoanalysis from overriding the user's latest self-report. userAuthored.userPresence is a hard physical-state signal: leaving/absent means the user cannot be addressed, observed, touched, handed objects, or silently respawned until an authored re-entry.`;
+  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; attachment defenses and mixed signals can create distance without erasing desire. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human Turn-Taking uses turnTaking.mode/responseScale/questionPolicy to allow partial answers, delayed answers, silence, interruptions, topic return/drop and sparse group speaker traffic; conversation completeness is never the goal. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn. ACTIVE behavior boundaries in userAuthored.activeBehaviorBoundaries persist across turns until the user explicitly reopens them; do not treat them as one-turn suggestions. userAuthored.selfReportLock prevents unsolicited psychoanalysis from overriding the user's latest self-report. userAuthored.userPresence is a hard physical-state signal: leaving/absent means the user cannot be addressed, observed, touched, handed objects, or silently respawned until an authored re-entry. SCENE PHYSICS is binding: preserve body posture, spatial anchor, prop holder/location/state, distance, line of sight, door state and elapsed-time evidence. Never use a repeated gesture merely to fill narration; silence or dialogue-only beats are valid.`;
 }
