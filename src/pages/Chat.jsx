@@ -259,6 +259,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const previousConversationRef = useRef("");
   const messages = getCharacterMessages(character.id);
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
+  const canonicalTurnMessages = messages.filter((item) => !item.isStreaming);
+  const latestUserMessageIndex = canonicalTurnMessages.map((item) => item.sender).lastIndexOf("user");
+  const latestCharacterMessageIndex = canonicalTurnMessages.map((item) => item.sender).lastIndexOf("character");
+  const currentTurnHasCompletedReply = latestUserMessageIndex >= 0 && latestCharacterMessageIndex > latestUserMessageIndex;
+  const visibleSendError = sendError && isReplyGenerationErrorMessage(sendError) && currentTurnHasCompletedReply ? "" : sendError;
 
   useEffect(() => {
     const longChat = visibleMessages.length >= 250;
@@ -2228,8 +2233,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
               </article>
             )}
 
-            {sendError && (
-              <div className="chat__send-error"><AlertCircle size={16} /><span>{sendError}</span><button onClick={retryGeneration} disabled={busy}><RefreshCw size={14} />Retry</button></div>
+            {visibleSendError && (
+              <div className="chat__send-error"><AlertCircle size={16} /><span>{visibleSendError}</span><button onClick={retryGeneration} disabled={busy}><RefreshCw size={14} />Retry</button></div>
             )}
             {replacementUndo && (
               <div className="chat__replacement-undo" role="status">
@@ -2999,6 +3004,7 @@ function MessageBubble({
   const versionIndex = Number.isInteger(versionState?.index) ? versionState.index : 0;
   const versionCount = Math.max(1, versionItems.length || 1);
   const canGoPrevious = versionState?.loaded ? versionIndex > 0 : true;
+  const hasMultipleVersions = Boolean(versionState?.loaded && versionCount > 1);
 
   return (
     <article
@@ -3033,26 +3039,41 @@ function MessageBubble({
             </div>
           )}
           {!message.isStreaming && message.sender === "character" && versionNavigationEnabled && (
-            <div className="chat-message__version-nav" onPointerDown={(event) => event.stopPropagation()}>
-              <button
-                type="button"
-                className="chat-message__version-arrow"
-                onClick={(event) => { event.stopPropagation(); onVersionNavigate(message, -1); }}
-                aria-label="Previous response"
-                disabled={swipeDisabled || versionState?.loading || (versionState?.loaded && !canGoPrevious)}
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="chat-message__version-count">{versionIndex + 1} / {versionCount}</span>
-              <button
-                type="button"
-                className="chat-message__version-arrow"
-                onClick={(event) => { event.stopPropagation(); onVersionNavigate(message, 1); }}
-                aria-label={versionState?.loaded && versionIndex < versionCount - 1 ? "Next response" : "Generate another response"}
-                disabled={swipeDisabled || versionState?.loading}
-              >
-                {versionState?.loading ? <LoaderCircle className="spin" size={14} /> : <ChevronRight size={16} />}
-              </button>
+            <div className={`chat-message__version-nav${hasMultipleVersions ? " is-multiple" : " is-single"}`} onPointerDown={(event) => event.stopPropagation()}>
+              {hasMultipleVersions ? (
+                <>
+                  <button
+                    type="button"
+                    className="chat-message__version-arrow"
+                    onClick={(event) => { event.stopPropagation(); onVersionNavigate(message, -1); }}
+                    aria-label="Previous response"
+                    disabled={swipeDisabled || versionState?.loading || !canGoPrevious}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="chat-message__version-count">{versionIndex + 1} / {versionCount}</span>
+                  <button
+                    type="button"
+                    className="chat-message__version-arrow"
+                    onClick={(event) => { event.stopPropagation(); onVersionNavigate(message, 1); }}
+                    aria-label={versionIndex < versionCount - 1 ? "Next response" : "Generate another response"}
+                    disabled={swipeDisabled || versionState?.loading}
+                  >
+                    {versionState?.loading ? <LoaderCircle className="spin" size={14} /> : <ChevronRight size={16} />}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="chat-message__version-arrow chat-message__version-arrow--new"
+                  onClick={(event) => { event.stopPropagation(); onVersionNavigate(message, 1); }}
+                  aria-label="Generate another response"
+                  title="Another response"
+                  disabled={swipeDisabled || versionState?.loading}
+                >
+                  {versionState?.loading ? <LoaderCircle className="spin" size={14} /> : <RefreshCw size={14} />}
+                </button>
+              )}
               <button className="chat-message__actions chat-message__actions--inline" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onOpenActions(message); }} aria-label="Message options">
                 <MoreHorizontal size={16} />
               </button>
@@ -3097,6 +3118,20 @@ function isSilentContinuation(message) {
     content.startsWith("[SILENT_CONTINUE") ||
     content.startsWith("[RETURN_MAIN_POV") ||
     content.includes("Treat this as silence from the user")
+  );
+}
+
+function isReplyGenerationErrorMessage(value = "") {
+  const text = String(value || "").toLowerCase();
+  return (
+    text.includes("couldn't finish this reply") ||
+    text.includes("couldn’t finish this reply") ||
+    text.includes("lost the connection before the reply finished") ||
+    text.includes("response stream stalled") ||
+    text.includes("response ended before it could be saved") ||
+    text.includes("character couldn't respond") ||
+    text.includes("character couldn’t respond") ||
+    text.includes("still finishing this reply in the background")
   );
 }
 

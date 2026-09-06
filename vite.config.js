@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const velvetVersion = pkg.version;
-const velvetRelease = "Generation Recovery + Complete Reply Salvage · Fourth Recovery Lane";
+const velvetRelease = "Chat Recovery + Clean Chat UI · Turn Success Authority";
 const velvetBuildTime = new Date().toISOString();
 
 export default defineConfig(({ mode }) => {

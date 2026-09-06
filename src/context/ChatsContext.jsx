@@ -919,6 +919,68 @@ export function ChatsProvider({
       return new DOMException("Generation cancelled", "AbortError");
     }
 
+    // v3.49.5 TURN-SUCCESS AUTHORITY
+    // The durable conversation order is the source of truth. If the server
+    // already saved a canonical character reply after the expected user message,
+    // a late SSE/provider error is post-reply bookkeeping and must not turn the
+    // successful turn into a visible Retry card.
+    function findPersistedReplyForThisTurn(messageList = []) {
+      const rows = Array.isArray(messageList) ? messageList.filter((item) => !item?.isStreaming) : [];
+
+      if (options.regenerateMessageId) {
+        const replacement = rows.find((item) =>
+          item.id === options.regenerateMessageId &&
+          item.sender === "character" &&
+          String(item.content || "") !== String(regenerationMessage?.content || "")
+        );
+        return replacement || null;
+      }
+
+      const expectedIndex = expectedUserMessageId
+        ? rows.findIndex((item) => item.id === expectedUserMessageId)
+        : -1;
+
+      if (expectedIndex >= 0) {
+        return rows.slice(expectedIndex + 1).find((item) => item.sender === "character") || null;
+      }
+
+      return [...rows].reverse().find((item) =>
+        item.sender === "character" &&
+        new Date(item.createdAt || 0).getTime() >= requestStartedAt - 1500
+      ) || null;
+    }
+
+    async function recoverPersistedReplyForThisTurn(reason = "recovery") {
+      try {
+        const refreshedMessages = await reloadConversationMessages(characterId);
+        const recoveredMessage = findPersistedReplyForThisTurn(refreshedMessages);
+        if (!recoveredMessage) return null;
+
+        cleanupStreamingBubble();
+        finalMessage = recoveredMessage;
+        const recoveredDurationMs = Date.now() - requestStartedAt;
+        recordAiSession({
+          success: 1,
+          lastSuccessAt: new Date().toISOString(),
+          lastModel: diagnosticModel || reason,
+          lastDurationMs: recoveredDurationMs,
+          lastError: "",
+        });
+        recordGenerationMetric({
+          status: "success",
+          model: diagnosticModel || reason,
+          firstTokenMs: diagnosticFirstTokenMs,
+          durationMs: recoveredDurationMs,
+          fallbackUsed: Boolean(diagnosticPrimaryModel && diagnosticModel && diagnosticPrimaryModel !== diagnosticModel),
+          repairUsed: diagnosticRepair,
+        });
+        return { message: recoveredMessage, learnedMemoryCount };
+      } catch (recoveryError) {
+        console.warn("[Velvet] persisted reply recovery unavailable:", recoveryError);
+        return null;
+      }
+    }
+
     try {
       const {
         data: sessionData,
@@ -1331,31 +1393,22 @@ export function ChatsProvider({
         throw cancellationError();
       }
 
-      if (streamError) {
+      // v3.49.5: a late error event is not allowed to invalidate a reply that
+      // already completed. Some providers close their hidden JSON/metadata tail
+      // after the visible prose and can emit an error after `done`.
+      if (streamError && !finalMessage) {
+        const recovered = await recoverPersistedReplyForThisTurn("stream-error-recovery");
+        if (recovered) return recovered;
         throw new Error(streamError);
       }
 
       if (!finalMessage) {
-        // Mobile networks can occasionally close the SSE connection after the
-        // Edge Function has already saved the reply but before the final
-        // `done` event reaches the browser. Recover from the database instead
-        // of leaving the UI in a broken/busy state.
-        cleanupStreamingBubble();
-
-        const refreshedMessages = await reloadConversationMessages(characterId);
-        const recoveredMessage = [...refreshedMessages]
-          .reverse()
-          .find(
-            (item) =>
-              item.sender === "character" &&
-              new Date(item.createdAt || 0).getTime() >= requestStartedAt - 1500
-          );
-
-        if (recoveredMessage) {
-          finalMessage = recoveredMessage;
-        } else {
-          throw new Error("The response ended before it could be saved.");
-        }
+        // Mobile networks can close SSE after the Edge Function saved the reply
+        // but before the browser receives `done`. Recover by durable turn order,
+        // never by merely grabbing an older character message.
+        const recovered = await recoverPersistedReplyForThisTurn("sse-close-recovery");
+        if (recovered) return recovered;
+        throw new Error("The response ended before it could be saved.");
       }
 
       const finalDurationMs = Date.now() - requestStartedAt;
@@ -1389,6 +1442,12 @@ export function ChatsProvider({
       if (requestWasCancelled() || error?.name === "AbortError") {
         throw cancellationError();
       }
+
+      // Final safety net: network/provider failures can race the DB write. If a
+      // canonical reply for THIS user turn exists, report success and keep the
+      // chat fluid instead of surfacing a false Retry banner.
+      const recoveredAfterFailure = await recoverPersistedReplyForThisTurn("post-error-recovery");
+      if (recoveredAfterFailure) return recoveredAfterFailure;
 
       const failedDurationMs = Date.now() - requestStartedAt;
       recordAiSession({ failed: 1, lastErrorAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: failedDurationMs, lastError: String(error?.message || "Generation failed").slice(0, 220) });

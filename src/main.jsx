@@ -148,3 +148,5 @@ import "./styles/velvet-v3140-native-polish.css";
 import "./styles/velvet-v3290-ui-sweep.css";
 import "./styles/velvet-v3300-interaction-reliability.css";
 import "./styles/velvet-v3493-seamless-generation.css";
+
+import "./styles/velvet-v3495-chat-recovery-clean-ui.css";

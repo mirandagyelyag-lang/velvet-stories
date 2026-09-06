@@ -6874,6 +6874,10 @@ async function streamRoleplayV19({
       let repairUsed = false;
       let streamedReply = "";
       let modelDraftReply = "";
+      // v3.49.5: once the canonical assistant message is committed, the turn is
+      // successful. Secondary timeline/memory/social persistence may degrade, but
+      // it can never retroactively turn a visible saved reply into a Retry error.
+      let committedReplyMessage: any = null;
       const streamFinalReply = async (reply = "", reason = "finalize") => {
         const clean = String(reply || "");
         if (!clean || streamedReply === clean) return;
@@ -7079,6 +7083,7 @@ async function streamRoleplayV19({
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: result.reply })
           : await saveCharacterReply({ supabase, conversationId, userId, reply: result.reply, latestUserMessageId });
+        committedReplyMessage = savedMessage;
 
         const update = { updated_at: new Date().toISOString() } as Record<string, any>;
         update.character_development = applyCharacterDevelopment({
@@ -7193,10 +7198,26 @@ async function streamRoleplayV19({
         sendEvent(controller, { type: "done", message: savedMessage, learnedMemoryCount: (result.memory_updates || []).filter((item) => Number(item?.importance || 0) >= 3 || ["boundary","promise","conflict"].includes(String(item?.category))).length, model: result.model, repairUsed, liveStreaming: true, sceneState: update.scene_state, castState: update.cast_state, characterDevelopment: update.character_development, relationshipState: update.relationship_state, continuityGuard: { status: repairUsed && continuityIssuesBeforeRepair.length ? "repaired" : "stable", protected: continuityIssuesBeforeRepair }, intelligenceState: update.intelligence_state, storyTimeline: update.story_timeline || existingTimeline, storyRecap: update.story_recap || existingStoryRecap || "", storyChapters: update.story_chapters || existingStoryChapters || [], activeChapter: update.active_chapter || existingActiveChapter || {}, unfinishedThreads: update.unresolved_threads || existingUnresolvedThreads });
       } catch (error) {
         if (getErrorName(error) !== "AbortError") {
-          console.error("[character-chat] live stream failed", { message: getErrorMessage(error) });
           const rawError = getErrorMessage(error);
-          const transient = /(?:high demand|overload|unavailable|rate.?limit|resource_exhausted|Gemini returned (?:429|500|502|503|504)|temporarily unavailable)/i.test(rawError);
-          sendEvent(controller, { type: "error", error: transient ? "Velvet couldn't finish this reply right now. Retry in a moment." : rawError });
+
+          if (committedReplyMessage) {
+            // The reply itself is already durable. Report a successful turn with
+            // degraded enrichment instead of exposing an error card to the user.
+            console.warn("[character-chat] post-reply enrichment degraded; preserving committed reply", { message: rawError });
+            sendEvent(controller, {
+              type: "done",
+              message: committedReplyMessage,
+              learnedMemoryCount: 0,
+              model: "committed-recovery",
+              repairUsed,
+              liveStreaming: true,
+              enrichmentDegraded: true,
+            });
+          } else {
+            console.error("[character-chat] live stream failed", { message: rawError });
+            const transient = /(?:high demand|overload|unavailable|rate.?limit|resource_exhausted|Gemini returned (?:429|500|502|503|504)|temporarily unavailable)/i.test(rawError);
+            sendEvent(controller, { type: "error", error: transient ? "Velvet couldn't finish this reply right now. Retry in a moment." : rawError });
+          }
         }
       } finally {
         try { controller.close(); } catch { /* client may have disconnected; persistence already continues */ }
@@ -7695,7 +7716,9 @@ async function streamGeminiEnvelopeWithFailover({
     for (const controller of controllers.values()) {
       if (!controller.signal.aborted) controller.abort();
     }
-    if (!winnerModel) {
+    // If no complete candidate was salvageable, always settle the hedge. A
+    // transient winner flag must never leave resultPromise hanging.
+    if (!settled) {
       settled = true;
       rejectResult(new Error("Velvet couldn't finish this reply right now. Retry in a moment."));
     }
