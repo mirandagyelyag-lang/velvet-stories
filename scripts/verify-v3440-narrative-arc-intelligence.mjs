@@ -19,9 +19,9 @@ const syntax=read('scripts/verify-chat-syntax.mjs');
 let pass=0,total=0;
 function check(name,fn){total++;try{fn();pass++;console.log(`✅ ${name}`)}catch(e){console.error(`❌ ${name}: ${e.message}`);process.exitCode=1;}}
 
-check('version 3.44.0',()=>assert.equal(pkg.version,'3.44.0'));
-check('release metadata',()=>assert.equal(meta.release,'Narrative Arc Intelligence + Story Evolution'));
-check('v3440 is first stability gate',()=>assert.match(pkg.scripts['stability:lab'],/^npm run verify:v3440/));
+check('version 3.44.0+ descendant',()=>{const [M,m]=String(pkg.version||'0.0.0').split('.').map(Number);assert.ok(M>3||(M===3&&m>=44));});
+check('release metadata remains coherent in descendants',()=>{assert.equal(meta.version,pkg.version);assert.ok(String(meta.release||'').trim().length>0);});
+check('v3440 remains in stability chain',()=>assert.match(pkg.scripts['stability:lab'],/npm run verify:v3440/));
 check('v3430 remains in stability chain',()=>assert.match(pkg.scripts['stability:lab'],/verify:v3430/));
 check('arc engine imported by story contract',()=>assert.match(contract,/deriveNarrativeArcIntelligenceV344/));
 check('arc validator imported by edge',()=>assert.match(edge,/narrativeArcIntelligenceV344Issues/));

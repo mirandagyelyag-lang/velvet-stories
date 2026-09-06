@@ -15,6 +15,10 @@ const causalTimelineTs=read("supabase/functions/character-chat/engine/world-cons
 const sceneDirectorTs = fs.readFileSync("supabase/functions/character-chat/engine/scene-director-v342.ts", "utf8");
 const longStoryMemoryTs = fs.readFileSync("supabase/functions/character-chat/engine/long-story-memory-v343.ts", "utf8");
 const narrativeArcTs = fs.readFileSync("supabase/functions/character-chat/engine/narrative-arc-intelligence-v344.ts", "utf8");
+const proseTs = fs.readFileSync("supabase/functions/character-chat/engine/prose-intelligence-v345.ts", "utf8");
+const orchestratorTs = fs.readFileSync("supabase/functions/character-chat/engine/generation-orchestrator-v346.ts", "utf8");
+const recoveryTs = fs.readFileSync("supabase/functions/character-chat/engine/recovery-integrity-v347.ts", "utf8");
+const performanceTs = fs.readFileSync("supabase/functions/character-chat/engine/performance-mobile-v348.ts", "utf8");
 const socialJs=stripTypeScriptTypes(socialTs,{mode:"strip",sourceUrl:"social-gravity-world-identity.ts"});
 const socialUrl=`data:text/javascript;base64,${Buffer.from(socialJs).toString("base64")}`;
 const chemistryJs=stripTypeScriptTypes(chemistryTs,{mode:"strip",sourceUrl:"relationship-chemistry-v2.ts"});
@@ -39,6 +43,14 @@ const longStoryMemoryJs = stripTypeScriptTypes(longStoryMemoryTs, { mode: "strip
 const longStoryMemoryUrl = `data:text/javascript;base64,${Buffer.from(longStoryMemoryJs).toString("base64")}`;
 const narrativeArcJs = stripTypeScriptTypes(narrativeArcTs, { mode: "strip", sourceUrl: "narrative-arc-intelligence-v344.ts" });
 const narrativeArcUrl = `data:text/javascript;base64,${Buffer.from(narrativeArcJs).toString("base64")}`;
+const proseJs = stripTypeScriptTypes(proseTs, { mode: "strip", sourceUrl: "prose-intelligence-v345.ts" });
+const proseUrl = `data:text/javascript;base64,${Buffer.from(proseJs).toString("base64")}`;
+const orchestratorJs = stripTypeScriptTypes(orchestratorTs, { mode: "strip", sourceUrl: "generation-orchestrator-v346.ts" });
+const orchestratorUrl = `data:text/javascript;base64,${Buffer.from(orchestratorJs).toString("base64")}`;
+const recoveryJs = stripTypeScriptTypes(recoveryTs, { mode: "strip", sourceUrl: "recovery-integrity-v347.ts" });
+const recoveryUrl = `data:text/javascript;base64,${Buffer.from(recoveryJs).toString("base64")}`;
+const performanceJs = stripTypeScriptTypes(performanceTs, { mode: "strip", sourceUrl: "performance-mobile-v348.ts" });
+const performanceUrl = `data:text/javascript;base64,${Buffer.from(performanceJs).toString("base64")}`;
 const contractJs=stripTypeScriptTypes(contractTs,{mode:"strip",sourceUrl:"story-contract.ts"})
   .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl))
   .replace('"./relationship-chemistry-v2.ts"', JSON.stringify(chemistryUrl))
@@ -51,7 +63,11 @@ const contractJs=stripTypeScriptTypes(contractTs,{mode:"strip",sourceUrl:"story-
   .replace('"./world-consequences-causal-timeline.ts"', JSON.stringify(causalTimelineUrl))
   .replace('"./scene-director-v342.ts"', JSON.stringify(sceneDirectorUrl))
   .replace('"./long-story-memory-v343.ts"', JSON.stringify(longStoryMemoryUrl))
-  .replace('"./narrative-arc-intelligence-v344.ts"', JSON.stringify(narrativeArcUrl));
+  .replace('"./narrative-arc-intelligence-v344.ts"', JSON.stringify(narrativeArcUrl))
+  .replace('"./prose-intelligence-v345.ts"', JSON.stringify(proseUrl))
+  .replace('"./generation-orchestrator-v346.ts"', JSON.stringify(orchestratorUrl))
+  .replace('"./recovery-integrity-v347.ts"', JSON.stringify(recoveryUrl))
+  .replace('"./performance-mobile-v348.ts"', JSON.stringify(performanceUrl));
 const { compileStoryContract, storyContractPrompt } = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
 const pkg=JSON.parse(read("package.json"));
 const pub=JSON.parse(read("public/velvet-version.json"));

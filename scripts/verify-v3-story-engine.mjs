@@ -32,7 +32,7 @@ check("scene choreography is continuity-first, not prose-first", contract.includ
 check("openings are shorter and mobile-natural", edge.includes("opening scene, 55-105 words") && edge.includes("OPENING NATURALISM"));
 check("severe overwritten narration can trigger one bounded repair", edge.includes("hasOverwrittenNarration") && edge.includes('"overwritten_narration"'));
 check("readable replies fail soft after bounded protection", edge.includes("protected reply remained imperfect; keeping readable live reply"));
-check("edge keeps live streaming and bounded model failover", edge.includes("streamGenerateContent?alt=sse") && edge.includes("const hedgeDelays = [0, 1200, 3200]") && edge.includes("cancelLosers"));
+check("edge keeps live streaming and bounded model failover", edge.includes("streamGenerateContent?alt=sse") && (edge.includes("const hedgeDelays = [0, 1200, 3200]") || edge.includes("performancePlan?.hedgeDelaysMs")) && edge.includes("cancelLosers"));
 check("no narrative fallback fabricates prose", !/function\s+\w*Fallback\s*\(/.test(edge));
 
 const characterChatPath = fileURLToPath(new URL("../supabase/functions/character-chat/index.ts", import.meta.url));

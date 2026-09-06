@@ -10,6 +10,10 @@ import { deriveWorldConsequencesCausalTimeline } from "./world-consequences-caus
 import { deriveSceneDirectorV342 } from "./scene-director-v342.ts";
 import { deriveLongStoryMemoryV343 } from "./long-story-memory-v343.ts";
 import { deriveNarrativeArcIntelligenceV344 } from "./narrative-arc-intelligence-v344.ts";
+import { deriveProseIntelligenceV345 } from "./prose-intelligence-v345.ts";
+import { deriveGenerationOrchestratorV346 } from "./generation-orchestrator-v346.ts";
+import { buildRecoveryCheckpointV347 } from "./recovery-integrity-v347.ts";
+import { derivePerformanceMobileV348 } from "./performance-mobile-v348.ts";
 
 export type StoryContractInput = {
   character: Record<string, unknown>;
@@ -390,6 +394,10 @@ export type StoryContract = {
   };
   longStoryMemoryV343: ReturnType<typeof deriveLongStoryMemoryV343>;
   narrativeArcIntelligenceV344: ReturnType<typeof deriveNarrativeArcIntelligenceV344>;
+  proseIntelligenceV345: ReturnType<typeof deriveProseIntelligenceV345>;
+  generationOrchestratorV346: ReturnType<typeof deriveGenerationOrchestratorV346>;
+  recoveryIntegrityV347: ReturnType<typeof buildRecoveryCheckpointV347>;
+  performanceMobileV348: ReturnType<typeof derivePerformanceMobileV348>;
   longTermCharacterEvolution: {
     coreIdentity: string[];
     mutableDefenses: string[];
@@ -1862,6 +1870,45 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     sceneDirector: sceneDirectorV342,
   });
 
+  const proseIntelligenceV345 = deriveProseIntelligenceV345({
+    latestUserMessage: perceptibleUserTurn,
+    recentCharacterReplies: perceptibleRecentMessages.filter((message) => message?.sender === "character").map((message) => text(message?.content)),
+    writingStyleDirector,
+    turnTaking: turnTakingEngine,
+    sceneDirector: sceneDirectorV342,
+    characterIntent: characterIntentEngine,
+    character: input.character,
+  });
+  const generationOrchestratorV346 = deriveGenerationOrchestratorV346({
+    latestUserMessage: perceptibleUserTurn,
+    recentMessages: perceptibleRecentMessages,
+    turnTaking: turnTakingEngine,
+    sceneDirector: sceneDirectorV342,
+    longStoryMemory: longStoryMemoryV343,
+    narrativeArc: narrativeArcIntelligenceV344,
+    npcEcosystem: npcEcosystemSocialNetworkV3,
+    calendarLifeSimulation,
+    causalTimeline: worldConsequencesCausalTimeline,
+    relationshipChemistry: relationshipChemistryV2,
+    embodied: embodiedAwarenessSalience,
+    sceneState: scene,
+  });
+  const recoveryIntegrityV347 = buildRecoveryCheckpointV347({
+    sceneState: scene,
+    relationshipState: input.relationshipState || {},
+    developmentState: input.developmentState || {},
+    intelligenceState: intelligence,
+    unresolvedThreads: input.unresolvedThreads || [],
+    storyRecap: input.storyRecap || "",
+    latestUserMessage: perceptibleUserTurn,
+  });
+  const performanceMobileV348 = derivePerformanceMobileV348({
+    orchestrator: generationOrchestratorV346,
+    turnTaking: turnTakingEngine,
+    recentMessageCount: perceptibleRecentMessages.length,
+    memoryRetrievalCount: longStoryMemoryV343.retrievalSet.length,
+  });
+
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
     : drama >= 60 && availablePressure.some((item) => item.startsWith("external complication"))
@@ -1940,6 +1987,10 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     sceneDirectorV342,
     longStoryMemoryV343,
     narrativeArcIntelligenceV344,
+    proseIntelligenceV345,
+    generationOrchestratorV346,
+    recoveryIntegrityV347,
+    performanceMobileV348,
     longTermMemoryEngine,
     writingStyleDirector,
     humanImperfectionEngine,
@@ -2198,6 +2249,29 @@ export function storyContractPrompt(contract: StoryContract) {
       payoffPolicy: contract.narrativeArcIntelligenceV344.payoffPolicy,
       stagnationPolicy: contract.narrativeArcIntelligenceV344.stagnationPolicy,
     },
+    proseIntelligence345: contract.proseIntelligenceV345,
+    orchestrator346: {
+      mode: contract.generationOrchestratorV346.mode,
+      activeModules: take(contract.generationOrchestratorV346.activeModules, 12),
+      sleepingModules: take(contract.generationOrchestratorV346.sleepingModules, 12),
+      contextBudgetChars: contract.generationOrchestratorV346.contextBudgetChars,
+      immediateMessageCount: contract.generationOrchestratorV346.immediateMessageCount,
+      olderMessageCount: contract.generationOrchestratorV346.olderMessageCount,
+      memorySlots: contract.generationOrchestratorV346.memorySlots,
+      loreSlots: contract.generationOrchestratorV346.loreSlots,
+      castSlots: contract.generationOrchestratorV346.castSlots,
+      responseTokenCeiling: contract.generationOrchestratorV346.responseTokenCeiling,
+      priorityOrder: contract.generationOrchestratorV346.priorityOrder,
+    },
+    recovery347: {
+      checkpointId: contract.recoveryIntegrityV347.checkpointId,
+      stateFingerprint: contract.recoveryIntegrityV347.stateFingerprint,
+      userDigest: contract.recoveryIntegrityV347.userDigest,
+      idempotencyPolicy: contract.recoveryIntegrityV347.idempotencyPolicy,
+      rewindPolicy: contract.recoveryIntegrityV347.rewindPolicy,
+      recoveryPolicy: contract.recoveryIntegrityV347.recoveryPolicy,
+    },
+    performance348: contract.performanceMobileV348,
     consequences: contract.consequenceEngine,
     sceneRhythm: contract.sceneRhythmEngine,
     selectiveMemory: contract.selectiveMemoryEngine,
@@ -2362,5 +2436,5 @@ export function storyContractPrompt(contract: StoryContract) {
     },
   };
 
-  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: LONG-STORY MEMORY 3.43 → NARRATIVE ARC INTELLIGENCE 3.44 → visible canon → user ownership → physical reality → DISCOURSE COHERENCE → EMBODIED SALIENCE → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Long-Story Memory 3.43 progressively compresses old scenes while preserving meaning, separates objective history from character/public/scoped knowledge, keeps open/dormant/resolved threads distinct, and forbids unsupported remembered events or false shared history. Narrative Arc Intelligence 3.44 reads that history as progression evidence: multiple arcs may move independently; repeated scene skeletons trigger stagnation warnings; resolved arcs cannot be reopened without a new cause; relationship milestones require prerequisites; regression preserves retained growth; and payoff permission never becomes a railroad. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Discourse Coherence + Event Truth 3.37.1 binds local conversational reality: definite past-event labels require evidence for that specific event, pronouns such as it/that/this must resolve to a real antecedent before use, clarification requests answer first, and a distinctive recent line cannot be repeated as new dialogue. Banter is not retroactively an argument. When discourseCoherence.socialBeatHold is true, optional social-gravity cameos wait; fame is a living-world property, not a periodic quota. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; Relationship Chemistry 2.0 additionally keeps attachment, reciprocity, affection language, jealousy style, vulnerability hangover, conflict residue, repair style, trajectory and asymmetric beliefs causally distinct. Desire and defense may point in opposite directions without either disappearing. Embodied Awareness 3.36.1 outranks relationship performance for the immediate beat when the user's bodily/energy state becomes persistent or escalating: do not keep flirting, joking or pursuing the old scene objective while the user is visibly/authorially fading, unwell, cold, shaky, distressed, uncomfortable or losing focus. A private asterisked bodily label may shape pacing, but the character must react tentatively to plausible outward presentation rather than quote hidden wording as knowledge. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human Turn-Taking uses turnTaking.mode/responseScale/questionPolicy to allow partial answers, delayed answers, silence, interruptions, topic return/drop and sparse group speaker traffic; conversation completeness is never the goal. Character Intent + Subtext treats characterIntent.sceneObjective/immediateWant/concealedWant/conversationTactic/resistance/subtextThread/admissionStage as persistent causal state: a brief topic shift does not erase what the character wanted, serious answers do not require a banter tag, random ambient incidents cannot substitute for motive, narration POV stays stable, and low-signal gestures obey the turn budget. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-Term Character Evolution 3.38.0 follows the rule "same person, different history": preserve core identity while allowing defenses, learned behavior and relationship-specific habits to change only through accumulated evidence. Growth must appear as changed choices before exposition; one warm scene cannot rewrite personality. Proven growth can regress under pressure without resetting to chapter one, and romance never replaces the character with a generic softer personality. Beliefs may be challenged gradually, milestones record first behavior-changing shifts, and off-screen change needs an established life/arc cause. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn. ACTIVE behavior boundaries in userAuthored.activeBehaviorBoundaries persist across turns until the user explicitly reopens them; do not treat them as one-turn suggestions. userAuthored.selfReportLock prevents unsolicited psychoanalysis from overriding the user's latest self-report. userAuthored.userPresence is a hard physical-state signal: leaving/absent means the user cannot be addressed, observed, touched, handed objects, or silently respawned until an authored re-entry. SCENE PHYSICS is binding: preserve body posture, spatial anchor, prop holder/location/state, distance, line of sight, door state and elapsed-time evidence. Never use a repeated gesture merely to fill narration; silence or dialogue-only beats are valid.`;
+  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: GENERATION ORCHESTRATOR 3.46 → LONG-STORY MEMORY 3.43 → NARRATIVE ARC INTELLIGENCE 3.44 → PROSE INTELLIGENCE 3.45 → visible canon → user ownership → physical reality → DISCOURSE COHERENCE → EMBODIED SALIENCE → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Long-Story Memory 3.43 progressively compresses old scenes while preserving meaning, separates objective history from character/public/scoped knowledge, keeps open/dormant/resolved threads distinct, and forbids unsupported remembered events or false shared history. Generation Orchestrator 3.46 activates only context that can materially change this turn; sleeping systems stay authoritative but do not dump their state into prose. Prose Intelligence 3.45 adapts length, dialogue density, interiority, gestures and sentence architecture to the beat, and rejects stock cinematic AI cadence or explanation after subtext has already been shown. Recovery Integrity 3.47 treats a normal retry of the same user turn as idempotent and protects branch truth across rewind/background/network recovery. Performance + Mobile 3.48 may reduce prompt bulk, response ceiling and hedge timing, but never weakens canon, privacy, physics, validation or persistence. Narrative Arc Intelligence 3.44 reads that history as progression evidence: multiple arcs may move independently; repeated scene skeletons trigger stagnation warnings; resolved arcs cannot be reopened without a new cause; relationship milestones require prerequisites; regression preserves retained growth; and payoff permission never becomes a railroad. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Discourse Coherence + Event Truth 3.37.1 binds local conversational reality: definite past-event labels require evidence for that specific event, pronouns such as it/that/this must resolve to a real antecedent before use, clarification requests answer first, and a distinctive recent line cannot be repeated as new dialogue. Banter is not retroactively an argument. When discourseCoherence.socialBeatHold is true, optional social-gravity cameos wait; fame is a living-world property, not a periodic quota. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; Relationship Chemistry 2.0 additionally keeps attachment, reciprocity, affection language, jealousy style, vulnerability hangover, conflict residue, repair style, trajectory and asymmetric beliefs causally distinct. Desire and defense may point in opposite directions without either disappearing. Embodied Awareness 3.36.1 outranks relationship performance for the immediate beat when the user's bodily/energy state becomes persistent or escalating: do not keep flirting, joking or pursuing the old scene objective while the user is visibly/authorially fading, unwell, cold, shaky, distressed, uncomfortable or losing focus. A private asterisked bodily label may shape pacing, but the character must react tentatively to plausible outward presentation rather than quote hidden wording as knowledge. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human Turn-Taking uses turnTaking.mode/responseScale/questionPolicy to allow partial answers, delayed answers, silence, interruptions, topic return/drop and sparse group speaker traffic; conversation completeness is never the goal. Character Intent + Subtext treats characterIntent.sceneObjective/immediateWant/concealedWant/conversationTactic/resistance/subtextThread/admissionStage as persistent causal state: a brief topic shift does not erase what the character wanted, serious answers do not require a banter tag, random ambient incidents cannot substitute for motive, narration POV stays stable, and low-signal gestures obey the turn budget. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-Term Character Evolution 3.38.0 follows the rule "same person, different history": preserve core identity while allowing defenses, learned behavior and relationship-specific habits to change only through accumulated evidence. Growth must appear as changed choices before exposition; one warm scene cannot rewrite personality. Proven growth can regress under pressure without resetting to chapter one, and romance never replaces the character with a generic softer personality. Beliefs may be challenged gradually, milestones record first behavior-changing shifts, and off-screen change needs an established life/arc cause. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn. ACTIVE behavior boundaries in userAuthored.activeBehaviorBoundaries persist across turns until the user explicitly reopens them; do not treat them as one-turn suggestions. userAuthored.selfReportLock prevents unsolicited psychoanalysis from overriding the user's latest self-report. userAuthored.userPresence is a hard physical-state signal: leaving/absent means the user cannot be addressed, observed, touched, handed objects, or silently respawned until an authored re-entry. SCENE PHYSICS is binding: preserve body posture, spatial anchor, prop holder/location/state, distance, line of sight, door state and elapsed-time evidence. Never use a repeated gesture merely to fill narration; silence or dialogue-only beats are valid.`;
 }

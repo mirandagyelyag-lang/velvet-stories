@@ -16,6 +16,10 @@ import { worldConsequencesCausalTimelineIssues, sanitizeWorldConsequencesCausalT
 import { sceneDirectorV342Issues, sanitizeSceneDirectorV342Reply } from "./engine/scene-director-v342.ts";
 import { automaticMemoryGroundingIssues, longStoryMemoryV343Issues, sanitizeLongStoryMemoryV343Reply, selectLongStoryMemories } from "./engine/long-story-memory-v343.ts";
 import { narrativeArcIntelligenceV344Issues, sanitizeNarrativeArcIntelligenceV344Reply } from "./engine/narrative-arc-intelligence-v344.ts";
+import { proseIntelligenceV345Issues, sanitizeProseIntelligenceV345Reply } from "./engine/prose-intelligence-v345.ts";
+import { generationOrchestratorV346Issues, sanitizeGenerationOrchestratorV346Reply } from "./engine/generation-orchestrator-v346.ts";
+import { recoveryIntegrityV347Issues, sanitizeRecoveryIntegrityV347Reply } from "./engine/recovery-integrity-v347.ts";
+import { performanceMobileV348Issues } from "./engine/performance-mobile-v348.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -370,7 +374,7 @@ Deno.serve(async (request) => {
     // Do not put a Supabase round trip in front of every Gemini SSE chunk. The
     // browser AbortController still stops immediately; the server-side probe is
     // a safety net and only needs to poll a few times per second.
-    const isCancelled = createThrottledCancellationProbe(rawIsCancelled, 420);
+    const isCancelled = createThrottledCancellationProbe(rawIsCancelled, Math.max(350, Number(turnContract?.performanceMobileV348?.cancellationPollMs || 500)));
 
     console.log("[character-chat] generation started", {
       conversationId,
@@ -1568,19 +1572,25 @@ function buildNarrativePromptV3({
   const clean = (value, limit = 700) => cleanPromptValue(value || "not specified", limit);
   const supportingCast = (Array.isArray(groupCharacters) ? groupCharacters : [])
     .filter((item) => item?.id && item.id !== character.id);
+  const orchestrator = turnContract?.generationOrchestratorV346 || {};
+  const immediateCount = Math.max(3, Number(orchestrator.immediateMessageCount || 6));
+  const olderCount = Math.max(0, Number(orchestrator.olderMessageCount || 4));
+  const memorySlots = Math.max(3, Number(orchestrator.memorySlots || 9));
+  const loreSlots = Math.max(1, Number(orchestrator.loreSlots || 4));
+  const castSlots = Math.max(2, Number(orchestrator.castSlots || 6));
   const latest = openingRegeneration ? "" : compactMessageForPrompt(sanitizeUserTurnForPerception(latestUserRecord?.content || ""), 4200);
-  const immediate = messages.slice(-6).map((message) => {
+  const immediate = messages.slice(-immediateCount).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
     const content = message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content;
     return `${speaker}: ${compactMessageForPrompt(content, 900)}`;
   }).join("\n\n") || "none";
-  const older = messages.slice(-10, -6).map((message) => {
+  const older = olderCount ? messages.slice(-(immediateCount + olderCount), -immediateCount).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : character.name;
     const content = message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content;
     return `${speaker}: ${compactMessageForPrompt(content, 280)}`;
-  }).join("\n") || "none";
+  }).join("\n") || "none" : "none";
   const memoryNow = Date.now();
-  const confirmedMemories = memories.slice(0, 9).map((memory) => {
+  const confirmedMemories = memories.slice(0, memorySlots).map((memory) => {
     const importance = Math.max(1, Math.min(5, Number(memory?.importance) || 1));
     const created = Date.parse(String(memory?.updated_at || memory?.created_at || ""));
     const ageDays = Number.isFinite(created) ? Math.max(0, (memoryNow - created) / 86400000) : 0;
@@ -1588,8 +1598,8 @@ function buildNarrativePromptV3({
     const tier = authority === "CANON" ? "CORE" : importance >= 4 ? "ACTIVE" : importance >= 2 && ageDays < 45 ? "SOFT" : "FADING";
     return `- ${authority}/${tier} · importance ${importance}: ${clean(memory.content, 300)}`;
   }).join("\n") || "none";
-  const loreText = loreEntries.slice(0, 4).map((entry) => `- ${clean(entry.name, 90)}: ${clean(entry.content, 320)}`).join("\n") || "none";
-  const castText = supportingCast.slice(0, 6).map((member) =>
+  const loreText = loreEntries.slice(0, loreSlots).map((entry) => `- ${clean(entry.name, 90)}: ${clean(entry.content, 320)}`).join("\n") || "none";
+  const castText = supportingCast.slice(0, castSlots).map((member) =>
     `${clean(member.name, 80)} — ${clean(member.role, 140)}; personality: ${clean(member.personality, 360)}; relation to ${userIdentity.name}: ${clean(member.relationship, 360)}; current dynamic: ${clean(member.current_dynamic, 260)}; own goals: ${clean(member.goals, 260)}; knows: ${clean(member.knowledge, 260)}; last interaction: ${clean(member.last_interaction, 220)}; voice: ${clean(member.speech_style, 220)}; humor: ${clean(member.humor_style, 150)}; tells: ${clean(member.verbal_tells, 150)}`
   ).join("\n") || "none";
   const voiceFingerprint = [
@@ -2515,6 +2525,16 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     unresolved_reference_claim: "Resolve every pronoun or shorthand to a real antecedent before speaking. Do not say ‘you started it’, ‘that again’, or ‘the whole thing’ when no identifiable event/topic exists.",
     clarification_reference_unresolved: "The user asked what/who/when/which. Name the actual referent directly. If the prior wording had no valid referent, admit the wording was wrong instead of inventing one.",
     social_gravity_priority_intrusion: "Remove the optional admirer/wave/recognition cameo from this beat. Clarification or embodied salience outranks social-gravity quota behavior; fame can surface later when causally relevant.",
+    adaptive_prose_overwritten: "Scale the reply to the beat. Remove padding and keep only dialogue/actions that materially belong here.",
+    ai_prose_stack_v345: "Remove stock cinematic body-language and polished AI-romance cadence. Prefer plain, character-owned wording.",
+    narration_swallowed_dialogue_v345: "Let the conversation speak. Replace explanatory narration with the character's actual spoken response or silence.",
+    subtext_explained_after_showing_v345: "Cut the explanation after the subtext. If the action/dialogue already shows it, stop there.",
+    repeated_prose_structure_v345: "Change the reply architecture, not just synonyms. Avoid the same opening/gesture/dialogue cadence as recent turns.",
+    gesture_choreography_overbudget_v345: "Use at most one meaningful low-signal gesture. Delete decorative gaze/jaw/finger choreography.",
+    orchestrator_system_exposure: "Remove all mention of engines, validators, prompts, budgets, scores or hidden context.",
+    context_dump_exposition_v346: "Do not dump continuity. Retrieve only the one or two old facts that actually matter to this beat.",
+    recovery_internal_exposure_v347: "Remove checkpoint, retry, database or idempotency language from visible prose.",
+    performance_internal_exposure_v348: "Remove latency, failover, streaming or performance-plan language from visible prose.",
     narrative_naturalism_overwrite: "Cut ornamental introspection and stock cinematic body prose. Prefer one simple meaningful action or a shorter sentence. Do not intensify ordinary beats to sound literary.",
   };
   const uniqueIssues = [...new Set(issues || [])];
@@ -5075,7 +5095,9 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const sceneDirectorHard = ["scene_thread_dump_overload", "dormant_thread_forced_onscreen", "ungrounded_scene_interruption", "user_momentum_hijacked", "cooldown_escalation_spike", "romance_gravity_monopoly", "director_forced_cliffhanger", "group_scene_roll_call", "background_actor_overactivation", "screen_time_selection_bypassed", "scene_pattern_recycled"];
   const longStoryMemoryHard = ["false_memory_claim", "resolved_thread_reactivated", "perspective_memory_leak", "memory_conflict_overclaim"];
   const narrativeArcHard = ["relationship_pace_jump", "arc_forced_progression", "resolved_arc_reopened_without_cause", "arc_growth_total_reset", "arc_personality_replacement", "payoff_without_setup", "drama_escalation_for_progress", "arc_stagnation_replay", "arc_progress_exposition"];
-  const canSanitize = issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted", "unsolicited_offscreen_lead_contact", "social_role_assignment_broken", "unsupported_social_plan_expansion", ...groundedHard, ...agencyHard, ...physicsRepair, ...intentHard, ...chemistryHard, ...embodiedHard, ...sceneIntelligenceHard, ...discourseHard, ...evolutionHard, ...npcEcosystemHard, ...calendarLifeHard, ...causalTimelineHard, ...sceneDirectorHard, ...longStoryMemoryHard, ...narrativeArcHard].includes(issue));
+  const proseHard = ["adaptive_prose_overwritten", "ai_prose_stack_v345", "narration_swallowed_dialogue_v345", "subtext_explained_after_showing_v345", "repeated_prose_structure_v345", "gesture_choreography_overbudget_v345"];
+  const orchestrationHard = ["orchestrator_system_exposure", "context_dump_exposition_v346", "recovery_internal_exposure_v347", "performance_internal_exposure_v348"];
+  const canSanitize = issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted", "unsolicited_offscreen_lead_contact", "social_role_assignment_broken", "unsupported_social_plan_expansion", ...groundedHard, ...agencyHard, ...physicsRepair, ...intentHard, ...chemistryHard, ...embodiedHard, ...sceneIntelligenceHard, ...discourseHard, ...evolutionHard, ...npcEcosystemHard, ...calendarLifeHard, ...causalTimelineHard, ...sceneDirectorHard, ...longStoryMemoryHard, ...narrativeArcHard, ...proseHard, ...orchestrationHard].includes(issue));
   if (!canSanitize) return { result, issues };
   let reply = String(result?.reply || "");
   if (issues.includes("user_motive_overwritten") || issues.includes("rejected_pursuit_framing_persisted")) {
@@ -5136,6 +5158,13 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   if (issues.some((issue) => narrativeArcHard.includes(issue))) {
     reply = sanitizeNarrativeArcIntelligenceV344Reply(reply, issues);
   }
+  if (issues.some((issue) => proseHard.includes(issue))) {
+    reply = sanitizeProseIntelligenceV345Reply(reply, issues);
+  }
+  if (issues.some((issue) => orchestrationHard.includes(issue))) {
+    reply = sanitizeGenerationOrchestratorV346Reply(reply, issues);
+    reply = sanitizeRecoveryIntegrityV347Reply(reply, issues);
+  }
   let nextResult = { ...result, reply };
   let nextIssues = validateNarrativeReply(nextResult.reply, options);
   if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];
@@ -5157,7 +5186,9 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const stubbornSceneDirector = nextIssues.filter((issue) => sceneDirectorHard.includes(issue));
   const stubbornLongStoryMemory = nextIssues.filter((issue) => longStoryMemoryHard.includes(issue));
   const stubbornNarrativeArc = nextIssues.filter((issue) => narrativeArcHard.includes(issue));
-  if (stubbornGrounded.length || stubbornAgency.length || stubbornPhysics.length || stubbornIntent.length || stubbornChemistry.length || stubbornEmbodied.length || stubbornSceneIntelligence.length || stubbornDiscourse.length || stubbornEvolution.length || stubbornNpcEcosystem.length || stubbornCalendarLife.length || stubbornCausalTimeline.length || stubbornSceneDirector.length || stubbornLongStoryMemory.length || stubbornNarrativeArc.length || !String(nextResult.reply || "").trim()) {
+  const stubbornProse = nextIssues.filter((issue) => proseHard.includes(issue));
+  const stubbornOrchestration = nextIssues.filter((issue) => orchestrationHard.includes(issue));
+  if (stubbornGrounded.length || stubbornAgency.length || stubbornPhysics.length || stubbornIntent.length || stubbornChemistry.length || stubbornEmbodied.length || stubbornSceneIntelligence.length || stubbornDiscourse.length || stubbornEvolution.length || stubbornNpcEcosystem.length || stubbornCalendarLife.length || stubbornCausalTimeline.length || stubbornSceneDirector.length || stubbornLongStoryMemory.length || stubbornNarrativeArc.length || stubbornProse.length || stubbornOrchestration.length || !String(nextResult.reply || "").trim()) {
     const embodied = options.turnContract?.embodiedAwarenessSalience || {};
     const fallback = hasExplicitUserExit(options.latestUserMessage || "") ? "A beat passed."
       : embodied?.recognitionDue ? sanitizeEmbodiedAwarenessReply("", ["embodied_state_ignored"], embodied)
@@ -5253,6 +5284,15 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "major_offscreen_event_without_causal_window",
   "consequence_budget_overflow",
   "minor_event_overcanonized",
+  "adaptive_prose_overwritten",
+  "ai_prose_stack_v345",
+  "narration_swallowed_dialogue_v345",
+  "subtext_explained_after_showing_v345",
+  "repeated_prose_structure_v345",
+  "gesture_choreography_overbudget_v345",
+  "orchestrator_system_exposure",
+  "recovery_internal_exposure_v347",
+  "performance_internal_exposure_v348",
 ]);
 // VELVET_SPEED_REPAIR_BUDGET_V282
 // VELVET_QUICK_REPLY_LANE_V21029: style-only issues never spend the second model call.
@@ -5263,6 +5303,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
+  "context_dump_exposition_v346",
   // SPEED + QUALITY: second model calls are reserved for mistakes the user
   // would experience as broken canon, broken agency, or a direct non-answer.
   "distance_boundary_override",
@@ -5375,6 +5416,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
 // surface/save the rejected draft merely because the one repair call timed out.
 const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
+  "context_dump_exposition_v346",
   "user_staged_scene_retcon",
   "distance_boundary_override",
   "spatial_relationship_broken",
@@ -5946,6 +5988,13 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (groundedIssues.includes("specificity_escalation")) score -= 34;
   if (groundedIssues.includes("invisible_history_claim")) score -= 32;
   if (groundedIssues.includes("narrative_naturalism_overwrite")) score -= 18;
+  const proseIssuesForScore = proseIntelligenceV345Issues({ reply, engine: options.turnContract?.proseIntelligenceV345 || {}, recentCharacterReplies: recent });
+  if (proseIssuesForScore.includes("adaptive_prose_overwritten")) score -= 18;
+  if (proseIssuesForScore.includes("ai_prose_stack_v345")) score -= 22;
+  if (proseIssuesForScore.includes("narration_swallowed_dialogue_v345")) score -= 18;
+  if (proseIssuesForScore.includes("subtext_explained_after_showing_v345")) score -= 16;
+  if (proseIssuesForScore.includes("repeated_prose_structure_v345")) score -= 14;
+  if (proseIssuesForScore.includes("gesture_choreography_overbudget_v345")) score -= 14;
   if (hasAnswerBeforeFlourishViolation(reply, latest, options.turnIntent || {})) score -= 16;
   const intentIssuesForScore = intentSubtextIssues({
     reply,
@@ -6094,6 +6143,14 @@ function validateNarrativeReply(reply = "", options = {}) {
     latestUserMessage:options.latestUserMessage || "",
     recentCharacterReplies:options.recentCharacterReplies || [],
   })) issues.push(issue);
+  for (const issue of proseIntelligenceV345Issues({
+    reply:text,
+    engine:options.turnContract?.proseIntelligenceV345 || {},
+    recentCharacterReplies:options.recentCharacterReplies || [],
+  })) issues.push(issue);
+  for (const issue of generationOrchestratorV346Issues({ reply:text })) issues.push(issue);
+  for (const issue of recoveryIntegrityV347Issues({ reply:text })) issues.push(issue);
+  for (const issue of performanceMobileV348Issues({ reply:text })) issues.push(issue);
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
   if (hasMechanicalRhythmLoop(text, options.recentCharacterReplies || [])) issues.push("mechanical_rhythm_loop");
@@ -6718,6 +6775,7 @@ async function streamRoleplayV19({
           model: GEMINI_MODEL,
           repairUsed: false,
           liveStreaming: true,
+          recoveryCheckpoint: turnContract?.recoveryIntegrityV347?.checkpointId || null,
           memoryCount: memories.length,
           pinnedMemoryCount: memories.filter((memory) => memory.is_pinned).length,
           memoryItems: memories.map((memory) => ({ id: memory.id, content: memory.content, category: memory.category, pinned: Boolean(memory.is_pinned) })),
@@ -6728,9 +6786,10 @@ async function streamRoleplayV19({
         const firstDraftStartedAt = Date.now();
         let result = await streamGeminiEnvelopeWithFailover({
           apiKey,
-          systemInstruction: "Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Asterisked user narration is NOT spoken dialogue: perceive only externally observable actions inside it and firewall all private thoughts, evaluations, motives, memories, labels and narrator commentary. v3.32 PERCEPTION & KNOWLEDGE REALISM: observation is not interpretation; nonverbal cues never reveal hidden causes by default; known/suspected/rumor/forgotten remain distinct; secrets are character-scoped; information requires a plausible source; in-person hearing/line-of-sight and digital-medium limits are real; uncertainty and misunderstanding are allowed; run a final Reality Judge asking whether the speaker could actually see, hear, know, remember, or only infer each claimed fact. v3.33 HUMAN TURN-TAKING: direct questions answer before flourish; micro turns may stay micro; silence may remain silence; never append a compulsory follow-up question; partial/delayed answers and topic drop/return are allowed; interrupted threads remain available; group scenes use sparse speaker traffic instead of making every NPC answer. v3.33.1 REALITY & BOUNDARY ENFORCEMENT: active user behavior boundaries persist until explicitly reopened; never override the user's self-report with unsolicited psychoanalysis; user departure/absence is physical canon and cannot be silently undone; autonomy may use only grounded concrete obligations/NPC details; private asterisk commentary is removed before perception. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31.1 NATURAL VOICE LOCK: keep Dialogue Genome, but never perform personality for its own sake. Plain speech wins over cleverness. Enforce banter saturation, one-joke ceiling, nickname ownership, canon specificity and short-turn scale. v3.35.1 GROUNDED REALITY HARD LOCK: deterministic validation owns semantic scope, declared-state authority, inference distance, canon specificity, invisible history, NPC retroactive lore and narrative naturalism; when in doubt stay less specific rather than inventing evidence. v3.35.4 CHARACTER INTENT + SUBTEXT: every live scene carries a character-owned objective/want/tactic/resistance; preserve it across small interruptions instead of spawning random activity. v3.35.5 SOCIAL GRAVITY + WORLD IDENTITY: creator-defined fame, fear, respect, wealth, desirability, sport/status and domain reputation are hard canon; the world must react in relevant places often enough that the character never becomes socially anonymous. v3.43 LONG-STORY MEMORY + CANON COMPRESSION: memory is layered and selective. Hard canon, creator/pinned memories, boundaries, promises, firsts, milestones and behavior-changing history survive long stories. Old scenes compress from detail to summary to event memory to historical fact without changing meaning. Retrieve by current people/domain/relationship/thread instead of dumping all memories. Objective history, character knowledge, public knowledge and secret/scoped knowledge remain separate. Open, dormant and resolved threads are distinct. Never invent a remembered event, false shared history, or past intimacy to make continuity feel richer; false memories are hard-rejected. v3.42 SCENE INTELLIGENCE + DYNAMIC STORY DIRECTION: events compete for screen time. The user's visible momentum owns first priority; foreground at most two live purposes/threads and leave the rest background/dormant without deleting them. Importance alone does not grant a scene. New interruptions/entrants need availability + location + motive + causal path. Group scenes use sparse attention, recent intensity may cool instead of escalating, romance does not automatically own the camera, and a scene may end cleanly without a teaser. Never move or decide for the user to reach a preferred plot. v3.41 WORLD CONSEQUENCES + CAUSAL TIMELINE: effects require visible or stored causes; active consequences persist until resolved; resolved/cancelled effects stop constraining the present; institutions remember only within scoped evidence; rumors remain beliefs, not facts; off-screen events require time + availability + motive + domain access; minor beats have a strict consequence budget; cross-system fallout needs a causal bridge at every hop. v3.40 CALENDAR + LIFE SIMULATION: story time is persistent canon. Keep explicit day/date/daypart/time relations stable; if exact time is unknown, keep it unknown. Message count never equals elapsed time. Broad routines do not license precise appointments. Explicit plans remain live until completed/cancelled/rescheduled. Availability, schedule collisions and travel order are real; a character cannot be magically free or in two places at once. Ordinary off-screen routine may progress, but major milestones cannot be silently completed. Temporal words such as yesterday, tomorrow, Friday, three hours later and exact clock times require evidence. v3.39 NPC ECOSYSTEM + SOCIAL NETWORK 3.0: recurring NPCs keep stable identities, goals, availability, relationships to each other and asymmetric knowledge. Reuse established minor characters when their role returns. Group scenes use sparse speaker traffic. Information needs witnesses/messages/public sources; rumors do not become universal truth. Friends can disagree with the lead. Past flirting/dating/rivalry persists until visibly changed. Cross-domain collisions require a causal bridge and the world must never collapse into protagonist orbit. v3.38 LONG-TERM PERSONALITY EVOLUTION: preserve core temperament, values, voice, social identity and decision style while allowing defenses and learned behavior to change only through repeated grounded evidence. Relationship-specific growth does not automatically globalize. Show growth through changed choices before exposition. Regression under stress can revive an old defense without erasing retained growth. Beliefs change gradually. Off-screen growth needs an established life/arc cause. Romance never replaces a guarded, intimidating, sarcastic or difficult character with a generic softer personality. v3.37.1 DISCOURSE COHERENCE + EVENT TRUTH LOCK: definite past-event labels need visible/canonical evidence for that specific event; banter is not retroactively an argument; pronouns and shorthand must resolve to a real antecedent before use; clarification requests answer first; do not repeat a distinctive recent line as new dialogue; optional social-gravity cameos wait when clarification or embodied salience has priority. v3.37 SCENE INTELLIGENCE + DYNAMIC WORLD: every live scene has a purpose, phase, location-specific behavior, meaningful-silence permission, closure intelligence and transient scene memory. Environment must have consequence rather than wallpaper. A stagnant scene gets one causally licensed action or a natural landing, never a random incident. The world does not orbit the protagonist, but cross-domain NPCs/obligations require established causal paths. New scenes reset transient choreography while durable canon and emotional residue survive. Story time comes from evidence, not message count. v3.36 RELATIONSHIP CHEMISTRY 2.0: attraction, trust, comfort, attachment and commitment are separate axes; preserve desire-versus-defense, reciprocity, vulnerability hangover, conflict residue, character-specific affection/jealousy/repair style, trajectory and asymmetric beliefs. Never infer the user's feelings, never force jealousy without witnessed/canonical evidence, never use a romantic milestone to erase unresolved conflict, and never collapse every character into jaw-tightening possessive romance. Let earned progression move when the relationship has evidence, but do not manufacture a kiss/confession from one pleasant exchange. Keep fame domain-scoped, allow outside people to approach independently of the protagonist, never auto-delete admirers to protect a ship, and keep the character's established area/work active off-screen without inventing named obligations. Hidden wants remain subtext until the character chooses a gradual admission. Do not use waiter/tray/phone/NPC incidents as silence filler, do not append a compulsory banter punchline after serious honesty, keep narration first/third-person POV consistent with recent turns, and limit low-signal gestures on short turns. v3.44 NARRATIVE ARC INTELLIGENCE + STORY EVOLUTION: let accumulated history alter future choices, detect stagnation, preserve resolved arcs, enforce relationship prerequisites, allow regression without total reset, and never create drama or a milestone merely to move an arc. v3.35.3 SCENE PHYSICS + CONTINUITY LOCK: posture, spatial anchor, object holder/location/state, distance, line of sight, door state and elapsed-time evidence are binding physical canon; bodies cannot stand twice without an intervening sit, props cannot teleport, touch/whisper/micro-expression reading needs compatible geometry or an explicit movement bridge, closed doors and exits block perception, precise clock/duration claims need support, and recently repeated gestures should be replaced or omitted because doing nothing is valid. v3.35.2 CHARACTER AGENCY + SCENE MOMENTUM: preserve character-owned intent, unresolved threads and commitments; initiative is one causally licensed choice, not random event generation; no gratuitous phone buzz, knock, surprise arrival, sudden obligation, forced pursuit, commitment reversal or teaser ending; quiet closure is valid. v3.35 CONVERSATIONAL NATURALISM 2.0: preserve character-specific sentence DNA, question personality, selective answering, thought carryover, vocabulary ownership, public/private bandwidth and conflict/affection voice; reject support-ticket replies, generic attractive-guy cadence, unowned slang, therapist care packages and personality overperformance. Keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction, anti-performative-banter and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice only when the live beat earns movement; an ordinary turn may simply answer and continue the current activity. Never relocate the scene or invent an errand solely to create momentum. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
+          systemInstruction: "v3.45 PROSE INTELLIGENCE: adapt prose length, dialogue ratio, interiority, gestures and sentence architecture to the live beat; plain dialogue or silence may stand alone; reject stock cinematic AI cadence and never explain subtext after already showing it. v3.46 GENERATION ORCHESTRATOR: only context capable of changing this turn should be foregrounded; hidden engines, scores and context budgets never enter visible prose. v3.47 RECOVERY INTEGRITY: normal retry of the same user turn is idempotent, rewind branch truth is protected, and recovery mechanics are invisible. v3.48 PERFORMANCE + MOBILE: optimize prompt bulk, token ceiling, hedge timing and cancellation polling without weakening validation, canon, privacy, physics, persistence or branch checks. Write one grounded, natural roleplay turn. Visible canon and user ownership are absolute: never invent the user's dialogue, thoughts, feelings, motives, reactions or unstaged movement. Asterisked user narration is NOT spoken dialogue: perceive only externally observable actions inside it and firewall all private thoughts, evaluations, motives, memories, labels and narrator commentary. v3.32 PERCEPTION & KNOWLEDGE REALISM: observation is not interpretation; nonverbal cues never reveal hidden causes by default; known/suspected/rumor/forgotten remain distinct; secrets are character-scoped; information requires a plausible source; in-person hearing/line-of-sight and digital-medium limits are real; uncertainty and misunderstanding are allowed; run a final Reality Judge asking whether the speaker could actually see, hear, know, remember, or only infer each claimed fact. v3.33 HUMAN TURN-TAKING: direct questions answer before flourish; micro turns may stay micro; silence may remain silence; never append a compulsory follow-up question; partial/delayed answers and topic drop/return are allowed; interrupted threads remain available; group scenes use sparse speaker traffic instead of making every NPC answer. v3.33.1 REALITY & BOUNDARY ENFORCEMENT: active user behavior boundaries persist until explicitly reopened; never override the user's self-report with unsolicited psychoanalysis; user departure/absence is physical canon and cannot be silently undone; autonomy may use only grounded concrete obligations/NPC details; private asterisk commentary is removed before perception. Answer the literal latest turn first, preserve physical and social continuity, and keep every character's established voice AND reaction logic specific rather than archetypal. Character DNA controls the underlying choice: defense, values, care style, pride, vulnerability, likely mistakes and decision bias must change how this person reacts, not merely the slang they use. Silently process cue → interpretation → impulse → defense/values → visible tactic, then write only the lived result. v3.31.1 NATURAL VOICE LOCK: keep Dialogue Genome, but never perform personality for its own sake. Plain speech wins over cleverness. Enforce banter saturation, one-joke ceiling, nickname ownership, canon specificity and short-turn scale. v3.35.1 GROUNDED REALITY HARD LOCK: deterministic validation owns semantic scope, declared-state authority, inference distance, canon specificity, invisible history, NPC retroactive lore and narrative naturalism; when in doubt stay less specific rather than inventing evidence. v3.35.4 CHARACTER INTENT + SUBTEXT: every live scene carries a character-owned objective/want/tactic/resistance; preserve it across small interruptions instead of spawning random activity. v3.35.5 SOCIAL GRAVITY + WORLD IDENTITY: creator-defined fame, fear, respect, wealth, desirability, sport/status and domain reputation are hard canon; the world must react in relevant places often enough that the character never becomes socially anonymous. v3.43 LONG-STORY MEMORY + CANON COMPRESSION: memory is layered and selective. Hard canon, creator/pinned memories, boundaries, promises, firsts, milestones and behavior-changing history survive long stories. Old scenes compress from detail to summary to event memory to historical fact without changing meaning. Retrieve by current people/domain/relationship/thread instead of dumping all memories. Objective history, character knowledge, public knowledge and secret/scoped knowledge remain separate. Open, dormant and resolved threads are distinct. Never invent a remembered event, false shared history, or past intimacy to make continuity feel richer; false memories are hard-rejected. v3.42 SCENE INTELLIGENCE + DYNAMIC STORY DIRECTION: events compete for screen time. The user's visible momentum owns first priority; foreground at most two live purposes/threads and leave the rest background/dormant without deleting them. Importance alone does not grant a scene. New interruptions/entrants need availability + location + motive + causal path. Group scenes use sparse attention, recent intensity may cool instead of escalating, romance does not automatically own the camera, and a scene may end cleanly without a teaser. Never move or decide for the user to reach a preferred plot. v3.41 WORLD CONSEQUENCES + CAUSAL TIMELINE: effects require visible or stored causes; active consequences persist until resolved; resolved/cancelled effects stop constraining the present; institutions remember only within scoped evidence; rumors remain beliefs, not facts; off-screen events require time + availability + motive + domain access; minor beats have a strict consequence budget; cross-system fallout needs a causal bridge at every hop. v3.40 CALENDAR + LIFE SIMULATION: story time is persistent canon. Keep explicit day/date/daypart/time relations stable; if exact time is unknown, keep it unknown. Message count never equals elapsed time. Broad routines do not license precise appointments. Explicit plans remain live until completed/cancelled/rescheduled. Availability, schedule collisions and travel order are real; a character cannot be magically free or in two places at once. Ordinary off-screen routine may progress, but major milestones cannot be silently completed. Temporal words such as yesterday, tomorrow, Friday, three hours later and exact clock times require evidence. v3.39 NPC ECOSYSTEM + SOCIAL NETWORK 3.0: recurring NPCs keep stable identities, goals, availability, relationships to each other and asymmetric knowledge. Reuse established minor characters when their role returns. Group scenes use sparse speaker traffic. Information needs witnesses/messages/public sources; rumors do not become universal truth. Friends can disagree with the lead. Past flirting/dating/rivalry persists until visibly changed. Cross-domain collisions require a causal bridge and the world must never collapse into protagonist orbit. v3.38 LONG-TERM PERSONALITY EVOLUTION: preserve core temperament, values, voice, social identity and decision style while allowing defenses and learned behavior to change only through repeated grounded evidence. Relationship-specific growth does not automatically globalize. Show growth through changed choices before exposition. Regression under stress can revive an old defense without erasing retained growth. Beliefs change gradually. Off-screen growth needs an established life/arc cause. Romance never replaces a guarded, intimidating, sarcastic or difficult character with a generic softer personality. v3.37.1 DISCOURSE COHERENCE + EVENT TRUTH LOCK: definite past-event labels need visible/canonical evidence for that specific event; banter is not retroactively an argument; pronouns and shorthand must resolve to a real antecedent before use; clarification requests answer first; do not repeat a distinctive recent line as new dialogue; optional social-gravity cameos wait when clarification or embodied salience has priority. v3.37 SCENE INTELLIGENCE + DYNAMIC WORLD: every live scene has a purpose, phase, location-specific behavior, meaningful-silence permission, closure intelligence and transient scene memory. Environment must have consequence rather than wallpaper. A stagnant scene gets one causally licensed action or a natural landing, never a random incident. The world does not orbit the protagonist, but cross-domain NPCs/obligations require established causal paths. New scenes reset transient choreography while durable canon and emotional residue survive. Story time comes from evidence, not message count. v3.36 RELATIONSHIP CHEMISTRY 2.0: attraction, trust, comfort, attachment and commitment are separate axes; preserve desire-versus-defense, reciprocity, vulnerability hangover, conflict residue, character-specific affection/jealousy/repair style, trajectory and asymmetric beliefs. Never infer the user's feelings, never force jealousy without witnessed/canonical evidence, never use a romantic milestone to erase unresolved conflict, and never collapse every character into jaw-tightening possessive romance. Let earned progression move when the relationship has evidence, but do not manufacture a kiss/confession from one pleasant exchange. Keep fame domain-scoped, allow outside people to approach independently of the protagonist, never auto-delete admirers to protect a ship, and keep the character's established area/work active off-screen without inventing named obligations. Hidden wants remain subtext until the character chooses a gradual admission. Do not use waiter/tray/phone/NPC incidents as silence filler, do not append a compulsory banter punchline after serious honesty, keep narration first/third-person POV consistent with recent turns, and limit low-signal gestures on short turns. v3.44 NARRATIVE ARC INTELLIGENCE + STORY EVOLUTION: let accumulated history alter future choices, detect stagnation, preserve resolved arcs, enforce relationship prerequisites, allow regression without total reset, and never create drama or a milestone merely to move an arc. v3.35.3 SCENE PHYSICS + CONTINUITY LOCK: posture, spatial anchor, object holder/location/state, distance, line of sight, door state and elapsed-time evidence are binding physical canon; bodies cannot stand twice without an intervening sit, props cannot teleport, touch/whisper/micro-expression reading needs compatible geometry or an explicit movement bridge, closed doors and exits block perception, precise clock/duration claims need support, and recently repeated gestures should be replaced or omitted because doing nothing is valid. v3.35.2 CHARACTER AGENCY + SCENE MOMENTUM: preserve character-owned intent, unresolved threads and commitments; initiative is one causally licensed choice, not random event generation; no gratuitous phone buzz, knock, surprise arrival, sudden obligation, forced pursuit, commitment reversal or teaser ending; quiet closure is valid. v3.35 CONVERSATIONAL NATURALISM 2.0: preserve character-specific sentence DNA, question personality, selective answering, thought carryover, vocabulary ownership, public/private bandwidth and conflict/affection voice; reject support-ticket replies, generic attractive-guy cadence, unowned slang, therapist care packages and personality overperformance. Keep every prior Relationship World and Autonomous Life rule, then make dialogue identity measurable through sentence architecture, question habits, explanation tolerance, topic resistance, lexical ownership, public/private shifts, mood shifts and earned relationship-language drift. Run anti-interview, anti-therapist, anti-perfect-reaction, anti-performative-banter and dialogue-drift checks before returning. Preserve v3.28 RELATIONSHIP WORLD: separate attraction/trust/comfort/commitment, preserve emotional residue, scene variety, NPC social networks, long-term memory and Writing Style Director behavior; run a blind clone test on both reaction logic and sentence mechanics before returning. Make sentence shape, vocabulary, humor, conflict style, affection style and verbal tells materially audible in the dialogue. Vary the opening, gesture vocabulary and conversational tactic from recent replies; do not default to sarcasm, rhetorical questions, canned AI-romance cadence, cinematic body-language chains, therapist speech, or emotionally perfect responses. Let subtext remain subtext unless the character chooses to confess it. Let the character make one plausible choice only when the live beat earns movement; an ordinary turn may simply answer and continue the current activity. Never relocate the scene or invent an errand solely to create momentum. Side characters remain ordinary people with their own goals. Use Presence Engine 3.0: natural conversation, relationship-specific chemistry, real silence, consequence residue, autonomous NPCs, scene rhythm and adaptive narration. Put reply first. Hidden metadata must be brief and may record only events actually shown in the reply. OMIT unchanged, empty, unknown, false-by-default, or irrelevant metadata instead of filling every field. Keep hidden metadata under roughly 500 tokens. Do not spend the reply budget completing bookkeeping. Metadata fields may be top-level; never let metadata completion replace or repeat the visible reply. Return valid JSON only.",
           prompt,
-          maxOutputTokens: getMaximumOutputTokens(character.response_length),
+          maxOutputTokens: getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling),
+          performancePlan: turnContract?.performanceMobileV348 || {},
           isCancelled,
           onModel(model) {
             sendEvent(controller, { type: "model", model });
@@ -6897,7 +6956,7 @@ async function streamRoleplayV19({
 
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: result.reply })
-          : await saveCharacterReply({ supabase, conversationId, userId, reply: result.reply });
+          : await saveCharacterReply({ supabase, conversationId, userId, reply: result.reply, latestUserMessageId });
 
         const update = { updated_at: new Date().toISOString() } as Record<string, any>;
         update.character_development = applyCharacterDevelopment({
@@ -7211,6 +7270,7 @@ async function streamGeminiEnvelopeWithFailover({
   onModel,
   onReply,
   onReset,
+  performancePlan = {},
 }): Promise<ModelResult> {
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
   if (!models.length) throw new Error("No Gemini model is configured.");
@@ -7220,8 +7280,10 @@ async function streamGeminiEnvelopeWithFailover({
   // fallback in parallel. The first model that produces actual reply prose wins;
   // slower requests are cancelled. A slow first token is never itself a user-facing
   // failure and never clears an already visible bubble.
-  const hedgeDelays = [0, 1200, 3200];
-  const overallDeadlineMs = 22000;
+  const rawHedges = Array.isArray(performancePlan?.hedgeDelaysMs) ? performancePlan.hedgeDelaysMs : [0, 1200, 3200];
+  const hedgeDelays = rawHedges.map((value) => Math.max(0, Math.min(8000, Number(value) || 0))).slice(0, models.length);
+  while (hedgeDelays.length < models.length) hedgeDelays.push(3200 + hedgeDelays.length * 1200);
+  const overallDeadlineMs = Math.max(12000, Math.min(35000, Number(performancePlan?.overallDeadlineMs) || 22000));
   const deadlineAt = Date.now() + overallDeadlineMs;
   const controllers = new Map<string, AbortController>();
   const launched = new Set<string>();
@@ -7651,7 +7713,7 @@ async function streamAndPersist({
 
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply })
-          : await saveCharacterReply({ supabase, conversationId, userId, reply });
+          : await saveCharacterReply({ supabase, conversationId, userId, reply, latestUserMessageId });
 
         const update = { updated_at: new Date().toISOString() } as Record<string, any>;
         update.character_development = applyCharacterDevelopment({
@@ -7812,7 +7874,27 @@ async function mergeAutomaticMemories({ supabase, userId, conversationId, charac
   }
 }
 
-async function saveCharacterReply({ supabase, conversationId, userId, reply }) {
+async function findExistingReplyForUserTurn({ supabase, conversationId, userId, latestUserMessageId }) {
+  if (!latestUserMessageId) return null;
+  const { data, error } = await supabase.from("messages")
+    .select("id,sender,content,created_at")
+    .eq("conversation_id", conversationId)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(6);
+  if (error || !Array.isArray(data) || !data.length) return null;
+  if (data[0]?.sender !== "character") return null;
+  const userIndex = data.findIndex((row) => String(row?.id || "") === String(latestUserMessageId));
+  if (userIndex > 0) return data[0];
+  return null;
+}
+
+async function saveCharacterReply({ supabase, conversationId, userId, reply, latestUserMessageId = null }) {
+  const recovered = await findExistingReplyForUserTurn({ supabase, conversationId, userId, latestUserMessageId });
+  if (recovered) {
+    console.log("[character-chat] v3.47 recovered existing canonical reply", { conversationId, latestUserMessageId, messageId: recovered.id });
+    return { ...recovered, __velvetRecovered: true };
+  }
   const { data, error } = await supabase.from("messages")
     .insert({ conversation_id: conversationId, user_id: userId, sender: "character", content: reply })
     .select().single();
@@ -7967,10 +8049,11 @@ function getLengthGuidance(length, kind) {
   if (length === "long") return "100–250 words, only when the moment genuinely needs room.";
   return "45–140 words. Shorter is better when the social beat already lands.";
 }
-function getMaximumOutputTokens(length) {
-  if (length === "short") return 800;
-  if (length === "long") return 1700;
-  return 1200;
+function getMaximumOutputTokens(length, orchestratedCeiling = null) {
+  const base = length === "short" ? 800 : length === "long" ? 1700 : 1200;
+  const ceiling = Number(orchestratedCeiling);
+  if (!Number.isFinite(ceiling) || ceiling < 500) return base;
+  return Math.max(600, Math.min(base, Math.round(ceiling)));
 }
 function getTemperature(creativity, regeneration) {
   const value = clampNumber(creativity, 0.2, 1.2, 0.84);
