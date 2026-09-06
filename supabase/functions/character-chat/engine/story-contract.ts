@@ -6,6 +6,7 @@ import { deriveDiscourseCoherenceEventTruth } from "./discourse-coherence-event-
 import { deriveLongTermCharacterEvolution } from "./long-term-character-evolution.ts";
 import { deriveNpcEcosystemSocialNetworkV3 } from "./npc-ecosystem-social-network-v3.ts";
 import { deriveCalendarLifeSimulation } from "./calendar-life-simulation.ts";
+import { deriveWorldConsequencesCausalTimeline } from "./world-consequences-causal-timeline.ts";
 
 export type StoryContractInput = {
   character: Record<string, unknown>;
@@ -328,6 +329,26 @@ export type StoryContract = {
     travelPolicy: string;
     offscreenLifePolicy: string;
     temporalLanguagePolicy: string;
+    instruction: string;
+  };
+  worldConsequencesCausalTimeline: {
+    activeChains: Array<{ title:string; cause:string; effect:string; weight:number; status:string; participants:string[]; permanence:"scene"|"temporary"|"medium"|"historical"; decay:string }>;
+    causalLedger: string[];
+    institutionalMemory: Array<{ domain:string; memory:string; evidence:string; status:string }>;
+    liveCommitmentEffects: string[];
+    cancelledOrResolved: string[];
+    rumorBeliefs: Array<{ holder:string; subject:string; belief:string; source:string }>;
+    parallelLifeWindows: string[];
+    currentEventImportance: number;
+    consequenceBudget: number;
+    causeEffectPolicy: string;
+    consequencePersistencePolicy: string;
+    consequenceDecayPolicy: string;
+    institutionalMemoryPolicy: string;
+    beliefFactPolicy: string;
+    offscreenCausalityPolicy: string;
+    crossSystemPolicy: string;
+    minorEventPolicy: string;
     instruction: string;
   };
   longTermCharacterEvolution: {
@@ -1706,6 +1727,21 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     intelligenceState: intelligence,
     persistentCast: persistent,
   });
+  const worldConsequencesCausalTimeline = deriveWorldConsequencesCausalTimeline({
+    character: input.character,
+    latestUserMessage: input.latestUserMessage,
+    recentMessages: input.recentMessages || [],
+    sceneState: scene,
+    storyConsequences: input.storyConsequences || [],
+    calendarEvents: input.calendarEvents || [],
+    storyPlans: input.storyPlans || [],
+    storyArcs: input.storyArcs || [],
+    storyConflicts: input.storyConflicts || [],
+    knowledgeLedger: input.knowledgeLedger || [],
+    castConnections: input.castConnections || [],
+    npcEcosystem: npcEcosystemSocialNetworkV3,
+    calendarLifeSimulation,
+  });
   const longTermMemoryEngine = buildLongTermMemory4Engine(input.memories || [], perceptibleUserTurn);
   const writingStyleDirector = buildWritingStyleDirector(writingPreferences, recentPatterns, sceneRhythmEngine);
   const humanImperfectionEngine = buildHumanImperfectionEngine(characterDNA, input.character, intelligence);
@@ -1798,6 +1834,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     npcSocialNetworkEngine,
     npcEcosystemSocialNetworkV3,
     calendarLifeSimulation,
+    worldConsequencesCausalTimeline,
     longTermMemoryEngine,
     writingStyleDirector,
     humanImperfectionEngine,
@@ -2057,6 +2094,25 @@ export function storyContractPrompt(contract: StoryContract) {
       travelPolicy: contract.calendarLifeSimulation.travelPolicy,
       offscreenLifePolicy: contract.calendarLifeSimulation.offscreenLifePolicy,
       temporalLanguagePolicy: contract.calendarLifeSimulation.temporalLanguagePolicy,
+    },
+    causalTimeline: {
+      activeChains: take(contract.worldConsequencesCausalTimeline.activeChains, 8),
+      causalLedger: take(contract.worldConsequencesCausalTimeline.causalLedger, 8),
+      institutionalMemory: take(contract.worldConsequencesCausalTimeline.institutionalMemory, 6),
+      liveCommitmentEffects: take(contract.worldConsequencesCausalTimeline.liveCommitmentEffects, 6),
+      cancelledOrResolved: take(contract.worldConsequencesCausalTimeline.cancelledOrResolved, 6),
+      rumorBeliefs: take(contract.worldConsequencesCausalTimeline.rumorBeliefs, 5),
+      parallelLifeWindows: take(contract.worldConsequencesCausalTimeline.parallelLifeWindows, 6),
+      currentEventImportance: contract.worldConsequencesCausalTimeline.currentEventImportance,
+      consequenceBudget: contract.worldConsequencesCausalTimeline.consequenceBudget,
+      causeEffectPolicy: contract.worldConsequencesCausalTimeline.causeEffectPolicy,
+      consequencePersistencePolicy: contract.worldConsequencesCausalTimeline.consequencePersistencePolicy,
+      consequenceDecayPolicy: contract.worldConsequencesCausalTimeline.consequenceDecayPolicy,
+      institutionalMemoryPolicy: contract.worldConsequencesCausalTimeline.institutionalMemoryPolicy,
+      beliefFactPolicy: contract.worldConsequencesCausalTimeline.beliefFactPolicy,
+      offscreenCausalityPolicy: contract.worldConsequencesCausalTimeline.offscreenCausalityPolicy,
+      crossSystemPolicy: contract.worldConsequencesCausalTimeline.crossSystemPolicy,
+      minorEventPolicy: contract.worldConsequencesCausalTimeline.minorEventPolicy,
     },
     longTermMemory4: {
       core: take(contract.longTermMemoryEngine.core, 5),

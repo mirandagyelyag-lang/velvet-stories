@@ -11,6 +11,7 @@ const discourseTs=read("supabase/functions/character-chat/engine/discourse-coher
 const evolutionTs = fs.readFileSync("supabase/functions/character-chat/engine/long-term-character-evolution.ts", "utf8");
 const npcEcosystemTs=read("supabase/functions/character-chat/engine/npc-ecosystem-social-network-v3.ts");
 const calendarLifeTs=read("supabase/functions/character-chat/engine/calendar-life-simulation.ts");
+const causalTimelineTs=read("supabase/functions/character-chat/engine/world-consequences-causal-timeline.ts");
 const socialJs=stripTypeScriptTypes(socialTs,{mode:"strip",sourceUrl:"social-gravity-world-identity.ts"});
 const socialUrl=`data:text/javascript;base64,${Buffer.from(socialJs).toString("base64")}`;
 const chemistryJs=stripTypeScriptTypes(chemistryTs,{mode:"strip",sourceUrl:"relationship-chemistry-v2.ts"});
@@ -27,6 +28,8 @@ const npcEcosystemJs=stripTypeScriptTypes(npcEcosystemTs,{mode:"strip",sourceUrl
 const npcEcosystemUrl=`data:text/javascript;base64,${Buffer.from(npcEcosystemJs).toString("base64")}`;
 const calendarLifeJs=stripTypeScriptTypes(calendarLifeTs,{mode:"strip",sourceUrl:"calendar-life-simulation.ts"});
 const calendarLifeUrl=`data:text/javascript;base64,${Buffer.from(calendarLifeJs).toString("base64")}`;
+const causalTimelineJs=stripTypeScriptTypes(causalTimelineTs,{mode:"strip",sourceUrl:"world-consequences-causal-timeline.ts"});
+const causalTimelineUrl=`data:text/javascript;base64,${Buffer.from(causalTimelineJs).toString("base64")}`;
 const contractJs=stripTypeScriptTypes(contractTs,{mode:"strip",sourceUrl:"story-contract.ts"})
   .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl))
   .replace('"./relationship-chemistry-v2.ts"', JSON.stringify(chemistryUrl))
@@ -35,7 +38,8 @@ const contractJs=stripTypeScriptTypes(contractTs,{mode:"strip",sourceUrl:"story-
   .replace('"./discourse-coherence-event-truth.ts"', JSON.stringify(discourseUrl))
   .replace('"./long-term-character-evolution.ts"', JSON.stringify(evolutionUrl))
   .replace('"./npc-ecosystem-social-network-v3.ts"', JSON.stringify(npcEcosystemUrl))
-  .replace('"./calendar-life-simulation.ts"', JSON.stringify(calendarLifeUrl));
+  .replace('"./calendar-life-simulation.ts"', JSON.stringify(calendarLifeUrl))
+  .replace('"./world-consequences-causal-timeline.ts"', JSON.stringify(causalTimelineUrl));
 const { compileStoryContract, storyContractPrompt } = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
 const pkg=JSON.parse(read("package.json"));
 const pub=JSON.parse(read("public/velvet-version.json"));

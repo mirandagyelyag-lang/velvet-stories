@@ -40,6 +40,10 @@ export default function Diagnostics({ onBack }) {
   const [timelineLabCharacterId, setTimelineLabCharacterId] = useState("");
   const [timelineLabRunning, setTimelineLabRunning] = useState(false);
   const [timelineLabResult, setTimelineLabResult] = useState(null);
+  const [causalityLabSituation, setCausalityLabSituation] = useState("Friday: Roman damages his car during an established race. Saturday: it has not been repaired. One student hears a rumor about the race but did not witness it. Monday: Roman needs to get to campus. Keep rumor ≠ fact and preserve only grounded consequences.");
+  const [causalityLabCharacterId, setCausalityLabCharacterId] = useState("");
+  const [causalityLabRunning, setCausalityLabRunning] = useState(false);
+  const [causalityLabResult, setCausalityLabResult] = useState(null);
   const sessionStats = useMemo(readSessionStats, [checks]);
   const performanceRows = useMemo(() => readGenerationMetrics(), [checks]);
   const performanceSummary = useMemo(() => summarizeGenerationMetrics(performanceRows), [performanceRows]);
@@ -185,6 +189,18 @@ export default function Diagnostics({ onBack }) {
     finally { setTimelineLabRunning(false); }
   }
 
+  async function runCausalityLab() {
+    const chosen = characters.find((item) => item.id === causalityLabCharacterId) || characters[0];
+    if (!chosen) { setCausalityLabResult({ error:"Create a character first." }); return; }
+    setCausalityLabRunning(true); setCausalityLabResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("character-chat", { body: { action:"causality_lab", character:chosen, situation:causalityLabSituation } });
+      if (error) throw error; if (data?.error) throw new Error(data.error);
+      setCausalityLabResult(data || { error:"Causality Lab returned no result." });
+    } catch (error) { setCausalityLabResult({ error:normalizeInvokeError(error) }); }
+    finally { setCausalityLabRunning(false); }
+  }
+
   async function runAudioAudit() {
     setAudioAuditRunning(true);
     try {
@@ -282,6 +298,13 @@ export default function Diagnostics({ onBack }) {
       <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=(timelineLabCharacterId || characters[0]?.id)===character.id; return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>setTimelineLabCharacterId(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
       <div className="diagnostics-actions"><button onClick={runTimelineLab} disabled={timelineLabRunning || characters.length < 1}>{timelineLabRunning ? <LoaderCircle className="spin" size={16}/> : <Clock3 size={16}/>}Run timeline test</button><span className="clone-lab-hint">Checks exact-time invention, recurring-routine overprecision, plan persistence, availability, travel order, double-booking and message-count time jumps.</span></div>
       {timelineLabResult && <div className="clone-lab-result">{timelineLabResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{timelineLabResult.error}</span></div> : <><div className="clone-lab-score"><strong>{timelineLabResult.score || 0}<small>/100</small></strong><div><b>{Number(timelineLabResult.score || 0) >= 82 ? "Temporal world feels alive" : Number(timelineLabResult.score || 0) >= 65 ? "Timeline needs tuning" : "Time continuity risk"}</b><span>{timelineLabResult.verdict || "Timeline test complete."}</span></div></div>{timelineLabResult.story_clock && <div className="clone-lab-collisions"><small>Story clock</small><span>{timelineLabResult.story_clock.now || timelineLabResult.story_clock.raw || "Unknown"} · confidence {timelineLabResult.story_clock.confidence || "unknown"}</span></div>}{Array.isArray(timelineLabResult.conflicts)&&timelineLabResult.conflicts.length>0&&<div className="clone-lab-collisions"><small>Schedule conflicts</small>{timelineLabResult.conflicts.map((item,index)=><span key={`tlc-${index}`}>{item}</span>)}</div>}{Array.isArray(timelineLabResult.warnings)&&timelineLabResult.warnings.length>0&&<div className="clone-lab-collisions"><small>Warnings</small>{timelineLabResult.warnings.map((item,index)=><span key={`tlw-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>Time-aware sample</strong><small>calendar + life simulation</small></header><p>{timelineLabResult.sample || ""}</p>{timelineLabResult.why && <em>{timelineLabResult.why}</em>}</article></div></>}</div>}
+    </section>
+
+    <section className="diagnostics-card diagnostics-card--causality-lab"><header><Activity size={18}/><div><h2>Causality Lab</h2><p>Stress-test cause → effect, consequence persistence, institutional memory, rumor truth and off-screen life windows.</p></div></header>
+      <label className="clone-lab-situation"><span>Causal history / scenario</span><textarea rows="4" maxLength="1400" value={causalityLabSituation} onChange={(event)=>setCausalityLabSituation(event.target.value)} /></label>
+      <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=(causalityLabCharacterId || characters[0]?.id)===character.id; return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>setCausalityLabCharacterId(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
+      <div className="diagnostics-actions"><button onClick={runCausalityLab} disabled={causalityLabRunning || characters.length < 1}>{causalityLabRunning ? <LoaderCircle className="spin" size={16}/> : <Activity size={16}/>}Run causality test</button><span className="clone-lab-hint">Checks unsupported effects, magical resets, cancelled-event resurrection, rumor→fact drift, off-screen milestones and consequence overkill.</span></div>
+      {causalityLabResult && <div className="clone-lab-result">{causalityLabResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{causalityLabResult.error}</span></div> : <><div className="clone-lab-score"><strong>{causalityLabResult.score || 0}<small>/100</small></strong><div><b>{Number(causalityLabResult.score || 0) >= 82 ? "Causality grounded" : Number(causalityLabResult.score || 0) >= 65 ? "Chains need tuning" : "Causal hallucination risk"}</b><span>{causalityLabResult.verdict || "Causality test complete."}</span></div></div>{Array.isArray(causalityLabResult.warnings)&&causalityLabResult.warnings.length>0&&<div className="clone-lab-collisions"><small>Warnings</small>{causalityLabResult.warnings.map((item,index)=><span key={`clw-${index}`}>{item}</span>)}</div>}{Array.isArray(causalityLabResult.rejected_inventions)&&causalityLabResult.rejected_inventions.length>0&&<div className="clone-lab-collisions"><small>Rejected inventions</small>{causalityLabResult.rejected_inventions.map((item,index)=><span key={`clr-${index}`}>{item}</span>)}</div>}{Array.isArray(causalityLabResult.causal_chain)&&causalityLabResult.causal_chain.length>0&&<div className="clone-lab-collisions"><small>Causal chain</small>{causalityLabResult.causal_chain.map((item,index)=><span key={`clc-${index}`}>{item.cause || "cause"} → {item.effect || "effect"} · {item.status || "active"}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>Causal sample</strong><small>world consequences</small></header><p>{causalityLabResult.sample || ""}</p>{causalityLabResult.why && <em>{causalityLabResult.why}</em>}</article></div></>}</div>}
     </section>
 
     <section className="diagnostics-card"><header><Cpu size={18}/><div><h2>Last AI activity</h2><p>Local session counters help separate a quota problem from a UI problem.</p></div></header><div className="diagnostics-grid"><Metric label="Last successful AI request" value={formatActivityTime(sessionStats.lastSuccessAt)}/><Metric label="Last model" value={sessionStats.lastModel || "None yet"}/><Metric label="Repairs" value={String(sessionStats.repairs)}/><Metric label="Last error" value={sessionStats.lastError || "None"}/><Metric label="Last error time" value={formatActivityTime(sessionStats.lastErrorAt)}/><Metric label="First reply text" value={sessionStats.firstTokenMs ? `${sessionStats.firstTokenMs} ms` : "—"}/><Metric label="Full response" value={sessionStats.lastDurationMs ? `${sessionStats.lastDurationMs} ms` : "—"}/></div></section>
