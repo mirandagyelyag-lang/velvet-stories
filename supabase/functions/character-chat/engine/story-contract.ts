@@ -4,6 +4,7 @@ import { deriveEmbodiedAwarenessSalience } from "./embodied-awareness-salience.t
 import { deriveSceneIntelligenceDynamicWorld } from "./scene-intelligence-dynamic-world.ts";
 import { deriveDiscourseCoherenceEventTruth } from "./discourse-coherence-event-truth.ts";
 import { deriveLongTermCharacterEvolution } from "./long-term-character-evolution.ts";
+import { deriveNpcEcosystemSocialNetworkV3 } from "./npc-ecosystem-social-network-v3.ts";
 
 export type StoryContractInput = {
   character: Record<string, unknown>;
@@ -287,6 +288,23 @@ export type StoryContract = {
     independentBonds: string[];
     rumorFlow: string[];
     socialAsymmetry: string[];
+    instruction: string;
+  };
+  npcEcosystemSocialNetworkV3: {
+    nodes: Array<{ name:string; role:string; circle:string; availability:string; recurring:boolean; currentGoal:string }>;
+    edges: Array<{ from:string; to:string; relationship:string; visibility:string; evidence:string }>;
+    independentEdges: string[];
+    circles: Array<{ name:string; members:string[]; domain:string }>;
+    recurringCandidates: string[];
+    activeNpcThreads: string[];
+    informationRoutes: string[];
+    groupTraffic: { presentCount:number; maxActiveSpeakers:number; quietMembersAllowed:boolean; policy:string };
+    recurrencePolicy: string;
+    relationshipContinuityPolicy: string;
+    informationFlowPolicy: string;
+    availabilityPolicy: string;
+    crossCirclePolicy: string;
+    antiOrbitPolicy: string;
     instruction: string;
   };
   longTermCharacterEvolution: {
@@ -1646,6 +1664,15 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const emotionalContinuityEngine = buildEmotionalContinuityEngine(development, intelligence, activeConflicts, activeConsequences);
   const sceneVarietyEngine = buildSceneVarietyEngine(scene, recentCharacterTurns, intelligence, sceneRhythmEngine);
   const npcSocialNetworkEngine = buildNpcSocialNetworkEngine(persistent, input.castConnections || [], input.knowledgeLedger || [], text(input.character.name), input.userName);
+  const npcEcosystemSocialNetworkV3 = deriveNpcEcosystemSocialNetworkV3({
+    persistentCast:persistent,
+    castConnections:input.castConnections || [],
+    knowledgeLedger:input.knowledgeLedger || [],
+    recentMessages:input.recentMessages || [],
+    sceneState:scene,
+    leadName:text(input.character.name),
+    userName:input.userName,
+  });
   const longTermMemoryEngine = buildLongTermMemory4Engine(input.memories || [], perceptibleUserTurn);
   const writingStyleDirector = buildWritingStyleDirector(writingPreferences, recentPatterns, sceneRhythmEngine);
   const humanImperfectionEngine = buildHumanImperfectionEngine(characterDNA, input.character, intelligence);
@@ -1735,6 +1762,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     emotionalContinuityEngine,
     sceneVarietyEngine,
     npcSocialNetworkEngine,
+    npcEcosystemSocialNetworkV3,
     longTermMemoryEngine,
     writingStyleDirector,
     humanImperfectionEngine,
@@ -1957,6 +1985,22 @@ export function storyContractPrompt(contract: StoryContract) {
       independentBonds: take(contract.npcSocialNetworkEngine.independentBonds, 5),
       rumorFlow: take(contract.npcSocialNetworkEngine.rumorFlow, 5),
       socialAsymmetry: take(contract.npcSocialNetworkEngine.socialAsymmetry, 4),
+    },
+    npcEcosystemV3: {
+      nodes: take(contract.npcEcosystemSocialNetworkV3.nodes, 10),
+      edges: take(contract.npcEcosystemSocialNetworkV3.edges, 12),
+      independentEdges: take(contract.npcEcosystemSocialNetworkV3.independentEdges, 8),
+      circles: take(contract.npcEcosystemSocialNetworkV3.circles, 7),
+      recurringCandidates: take(contract.npcEcosystemSocialNetworkV3.recurringCandidates, 7),
+      activeNpcThreads: take(contract.npcEcosystemSocialNetworkV3.activeNpcThreads, 8),
+      informationRoutes: take(contract.npcEcosystemSocialNetworkV3.informationRoutes, 8),
+      groupTraffic: contract.npcEcosystemSocialNetworkV3.groupTraffic,
+      recurrencePolicy: contract.npcEcosystemSocialNetworkV3.recurrencePolicy,
+      relationshipContinuityPolicy: contract.npcEcosystemSocialNetworkV3.relationshipContinuityPolicy,
+      informationFlowPolicy: contract.npcEcosystemSocialNetworkV3.informationFlowPolicy,
+      availabilityPolicy: contract.npcEcosystemSocialNetworkV3.availabilityPolicy,
+      crossCirclePolicy: contract.npcEcosystemSocialNetworkV3.crossCirclePolicy,
+      antiOrbitPolicy: contract.npcEcosystemSocialNetworkV3.antiOrbitPolicy,
     },
     longTermMemory4: {
       core: take(contract.longTermMemoryEngine.core, 5),

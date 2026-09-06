@@ -32,6 +32,10 @@ export default function Diagnostics({ onBack }) {
   const [evolutionLabCharacterId, setEvolutionLabCharacterId] = useState("");
   const [evolutionLabRunning, setEvolutionLabRunning] = useState(false);
   const [evolutionLabResult, setEvolutionLabResult] = useState(null);
+  const [socialGraphSituation, setSocialGraphSituation] = useState("Several recurring characters cross paths on campus after separate obligations. Keep their own relationships active and do not make everyone orbit one person.");
+  const [socialGraphSelected, setSocialGraphSelected] = useState([]);
+  const [socialGraphRunning, setSocialGraphRunning] = useState(false);
+  const [socialGraphResult, setSocialGraphResult] = useState(null);
   const sessionStats = useMemo(readSessionStats, [checks]);
   const performanceRows = useMemo(() => readGenerationMetrics(), [checks]);
   const performanceSummary = useMemo(() => summarizeGenerationMetrics(performanceRows), [performanceRows]);
@@ -148,6 +152,23 @@ export default function Diagnostics({ onBack }) {
     }
   }
 
+  function toggleSocialGraphCharacter(id) {
+    setSocialGraphSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : current.length >= 8 ? current : [...current, id]);
+  }
+
+  async function runSocialGraphLab() {
+    const chosenIds = socialGraphSelected.length >= 2 ? socialGraphSelected : characters.slice(0, Math.min(6, characters.length)).map((item) => item.id);
+    const chosen = characters.filter((item) => chosenIds.includes(item.id)).slice(0, 8);
+    if (chosen.length < 2) { setSocialGraphResult({ error: "Create or choose at least two characters first." }); return; }
+    setSocialGraphRunning(true); setSocialGraphResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("character-chat", { body: { action: "npc_social_graph_lab", characters: chosen, situation: socialGraphSituation } });
+      if (error) throw error; if (data?.error) throw new Error(data.error);
+      setSocialGraphResult(data || { error: "Social Graph Lab returned no result." });
+    } catch (error) { setSocialGraphResult({ error: normalizeInvokeError(error) }); }
+    finally { setSocialGraphRunning(false); }
+  }
+
   async function runAudioAudit() {
     setAudioAuditRunning(true);
     try {
@@ -230,6 +251,13 @@ export default function Diagnostics({ onBack }) {
       </div>
       <div className="diagnostics-actions"><button onClick={runEvolutionLab} disabled={evolutionLabRunning || characters.length < 1}>{evolutionLabRunning ? <LoaderCircle className="spin" size={16}/> : <Fingerprint size={16}/>}Run evolution test</button><span className="clone-lab-hint">Checks core identity, earned behavior change, relationship-specific growth, regression and personality-replacement risk.</span></div>
       {evolutionLabResult && <div className="clone-lab-result">{evolutionLabResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{evolutionLabResult.error}</span></div> : <><div className="clone-lab-score"><strong>{evolutionLabResult.score || 0}<small>/100</small></strong><div><b>{Number(evolutionLabResult.score || 0) >= 82 ? "Same person, real growth" : Number(evolutionLabResult.score || 0) >= 65 ? "Growth needs tuning" : "Personality drift risk"}</b><span>{evolutionLabResult.verdict || "Evolution test complete."}</span></div></div>{Array.isArray(evolutionLabResult.preserved) && evolutionLabResult.preserved.length > 0 && <div className="clone-lab-collisions"><small>Preserved identity</small>{evolutionLabResult.preserved.map((item,index)=><span key={`p-${index}`}>{item}</span>)}</div>}{Array.isArray(evolutionLabResult.evolved) && evolutionLabResult.evolved.length > 0 && <div className="clone-lab-collisions"><small>Earned evolution</small>{evolutionLabResult.evolved.map((item,index)=><span key={`e-${index}`}>{item}</span>)}</div>}{Array.isArray(evolutionLabResult.warnings) && evolutionLabResult.warnings.length > 0 && <div className="clone-lab-collisions"><small>Warnings</small>{evolutionLabResult.warnings.map((item,index)=><span key={`w-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>Chapter one</strong><small>{evolutionLabResult.character || "Character"}</small></header><p>{evolutionLabResult.baseline || ""}</p></article><article><header><strong>Later history</strong><small>earned change</small></header><p>{evolutionLabResult.later || ""}</p>{evolutionLabResult.why && <em>{evolutionLabResult.why}</em>}</article></div></>}</div>}
+    </section>
+
+    <section className="diagnostics-card diagnostics-card--social-graph-lab"><header><Activity size={18}/><div><h2>Social Graph Lab</h2><p>Stress-test whether recurring characters have lives and relationships with each other instead of forming a wheel around one protagonist.</p></div></header>
+      <label className="clone-lab-situation"><span>Social situation</span><textarea rows="3" maxLength="1100" value={socialGraphSituation} onChange={(event)=>setSocialGraphSituation(event.target.value)} /></label>
+      <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=socialGraphSelected.includes(character.id); return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>toggleSocialGraphCharacter(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
+      <div className="diagnostics-actions"><button onClick={runSocialGraphLab} disabled={socialGraphRunning || characters.length < 2}>{socialGraphRunning ? <LoaderCircle className="spin" size={16}/> : <Activity size={16}/>}Run social graph test</button><span className="clone-lab-hint">Choose 2-8. Checks NPC↔NPC bonds, recurring identity, availability, sparse group traffic, information routes, circles and anti-orbit behavior.</span></div>
+      {socialGraphResult && <div className="clone-lab-result">{socialGraphResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{socialGraphResult.error}</span></div> : <><div className="clone-lab-score"><strong>{socialGraphResult.score || 0}<small>/100</small></strong><div><b>{Number(socialGraphResult.score || 0) >= 82 ? "Living social world" : Number(socialGraphResult.score || 0) >= 65 ? "Network needs tuning" : "Protagonist-orbit risk"}</b><span>{socialGraphResult.verdict || "Social graph test complete."}</span></div></div>{Array.isArray(socialGraphResult.warnings)&&socialGraphResult.warnings.length>0&&<div className="clone-lab-collisions"><small>Warnings</small>{socialGraphResult.warnings.map((item,index)=><span key={`sgw-${index}`}>{item}</span>)}</div>}{Array.isArray(socialGraphResult.edges)&&socialGraphResult.edges.length>0&&<div className="clone-lab-collisions"><small>NPC ↔ NPC edges</small>{socialGraphResult.edges.slice(0,10).map((edge,index)=><span key={`sge-${index}`}>{edge.from} ↔ {edge.to}: {edge.relationship}</span>)}</div>}{Array.isArray(socialGraphResult.information_flow)&&socialGraphResult.information_flow.length>0&&<div className="clone-lab-collisions"><small>Information routes</small>{socialGraphResult.information_flow.map((item,index)=><span key={`sgi-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>Network sample</strong><small>independent social beat</small></header><p>{socialGraphResult.sample || ""}</p>{socialGraphResult.why && <em>{socialGraphResult.why}</em>}</article></div></>}</div>}
     </section>
 
     <section className="diagnostics-card"><header><Cpu size={18}/><div><h2>Last AI activity</h2><p>Local session counters help separate a quota problem from a UI problem.</p></div></header><div className="diagnostics-grid"><Metric label="Last successful AI request" value={formatActivityTime(sessionStats.lastSuccessAt)}/><Metric label="Last model" value={sessionStats.lastModel || "None yet"}/><Metric label="Repairs" value={String(sessionStats.repairs)}/><Metric label="Last error" value={sessionStats.lastError || "None"}/><Metric label="Last error time" value={formatActivityTime(sessionStats.lastErrorAt)}/><Metric label="First reply text" value={sessionStats.firstTokenMs ? `${sessionStats.firstTokenMs} ms` : "—"}/><Metric label="Full response" value={sessionStats.lastDurationMs ? `${sessionStats.lastDurationMs} ms` : "—"}/></div></section>

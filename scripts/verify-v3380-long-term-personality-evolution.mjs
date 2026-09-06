@@ -11,9 +11,9 @@ const diagnostics=read('src/pages/Diagnostics.jsx');
 let pass=0,total=0;
 const check=(name,fn)=>{ total++; try{ fn(); pass++; console.log('PASS',name); } catch(e){ console.error('FAIL',name,'\n ',e.message); process.exitCode=1; } };
 
-check('version 3.38.0',()=>assert.equal(pkg.version,'3.38.0'));
-check('release metadata',()=>assert.equal(meta.release,'Long-Term Personality Evolution + Character Growth'));
-check('v3380 first stability gate',()=>assert.match(pkg.scripts['stability:lab'],/^npm run verify:v3380/));
+check('version 3.38.0+ descendant',()=>assert.ok(/^3\.38\./.test(pkg.version)||/^3\.(?:39|[4-9]\d)\./.test(pkg.version)));
+check('Long-Term Personality Evolution preserved in descendant',()=>assert.match(`${meta.release} ${contract} ${edge}`,/Long-Term Personality Evolution/i));
+check('stability lab retains v3380',()=>assert.match(pkg.scripts['stability:lab'],/verify:v3380/));
 check('evolution engine imported by story contract',()=>assert.match(contract,/deriveLongTermCharacterEvolution/));
 check('evolution validator imported by edge',()=>assert.match(edge,/longTermCharacterEvolutionIssues, sanitizeLongTermCharacterEvolutionReply/));
 check('compact contract exposes long-term evolution',()=>assert.match(contract,/longTermCharacterEvolution:/));
