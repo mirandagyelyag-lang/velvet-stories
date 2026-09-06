@@ -1,3 +1,5 @@
+import { deriveSocialWorldIdentity, domainLifeFootprint, isPublicSocialScene, outsideApproachFootprint, socialWorldFootprint } from "./social-gravity-world-identity.ts";
+
 export type StoryContractInput = {
   character: Record<string, unknown>;
   userName: string;
@@ -110,6 +112,24 @@ export type StoryContract = {
     gestureBudget: number;
     fillerPolicy: string;
     banterExitPolicy: string;
+    instruction: string;
+  };
+  socialGravityWorldIdentityEngine: {
+    identitySignature: string;
+    recognitionLevel: "ordinary" | "known" | "well-known" | "campus-famous" | "domain-famous" | "public-figure";
+    reputation: string[];
+    domains: Array<Record<string, unknown>>;
+    approachTypes: string[];
+    socialEffects: string[];
+    lifeDomains: string[];
+    publicScene: boolean;
+    relevantDomains: string[];
+    manifestationDue: boolean;
+    approachWindowDue: boolean;
+    lifeContinuityDue: boolean;
+    manifestationPolicy: string;
+    outsideAttentionPolicy: string;
+    domainLifePolicy: string;
     instruction: string;
   };
   scenePhysicsEngine: {
@@ -1318,6 +1338,84 @@ function buildTurnTakingEngine(input: StoryContractInput, present: string[], per
   };
 }
 
+
+function buildSocialGravityWorldIdentityEngine(input: StoryContractInput, scene: Record<string, unknown> = {}) {
+  const identity = deriveSocialWorldIdentity(input.character);
+  const recentCharacterReplies = (input.recentMessages || [])
+    .filter((item) => String(item?.sender || item?.role || "") !== "user")
+    .slice(-8)
+    .map((item) => text(item?.content || item?.message || item?.text))
+    .filter(Boolean);
+  const recentUserTurns = (input.recentMessages || [])
+    .filter((item) => String(item?.sender || item?.role || "") === "user")
+    .slice(-6)
+    .map((item) => text(item?.content || item?.message || item?.text))
+    .filter(Boolean);
+  const sceneContext = [
+    text(scene.location), text(scene.activity || scene.current_activity),
+    input.latestUserMessage, ...recentUserTurns.slice(-2), ...recentCharacterReplies.slice(-2),
+  ].filter(Boolean).join(" ");
+  const publicScene = isPublicSocialScene(sceneContext);
+  const relevantDomains = identity.domains.filter((domain) => {
+    const key = String(domain.key || "");
+    const ctx = normalized(sceneContext);
+    if (key === "campus") return /\b(?:campus|university|uni|college|student|library|class|lecture|cafeteria|quad|hallway|party|fraternity|sorority)\b/.test(ctx);
+    if (key === "racing") return /\b(?:race|racing|track|circuit|garage|car meet|warehouse|street|underground|paddock|workshop)\b/.test(ctx);
+    if (key === "athletics") return /\b(?:campus|university|gym|field|stadium|practice|game|match|training|locker room)\b/.test(ctx);
+    if (key === "wealth") return publicScene || /\b(?:gala|hotel|restaurant|office|boardroom|vip|party)\b/.test(ctx);
+    if (key === "public_fame") return publicScene;
+    if (key === "power") return publicScene;
+    if (key === "desirability") return publicScene;
+    return publicScene;
+  });
+  const recentWindow = recentCharacterReplies.slice(-4).join(" ");
+  const substantialRecent = recentCharacterReplies.slice(-5).filter((value) => value.split(/\s+/).length >= 10);
+  const socialSeen = socialWorldFootprint(recentWindow);
+  const approachSeen = outsideApproachFootprint(recentWindow);
+  const privateOrCrisis = /\b(?:alone|private|bedroom|bathroom|hospital|funeral|emergency|panic|crying|leave me alone|go away|do not want to talk|don't want to talk)\b/.test(normalized(input.latestUserMessage));
+  const manifestationDue = Boolean(identity.strongGravity && publicScene && relevantDomains.length && !privateOrCrisis && substantialRecent.length >= 2 && !socialSeen);
+  const racingRelevant = relevantDomains.some((domain) => String(domain.key || "") === "racing");
+  const approachFriendly = identity.romanticMagnetism
+    || (!identity.fearedRespect && identity.approachTypes.some((item) => /flirt|attention|network|fan|status-seeking/i.test(item)))
+    || (identity.fearedRespect && racingRelevant && identity.approachTypes.some((item) => /rival|crew|driver/i.test(item)));
+  const approachWindowDue = Boolean(approachFriendly && publicScene && !privateOrCrisis && substantialRecent.length >= 3 && !approachSeen);
+  const turnKind = normalized(input.turnIntent?.kind);
+  const lifeQuestion = /\b(?:what have you been up to|what have you been doing|what do you do|what are you doing lately|where have you been|why were you busy|why are you busy|what keeps you busy|how was practice|how was the race|how is work|how's work)\b/.test(normalized(input.latestUserMessage));
+  const longGap = ["time_skip","return_main_pov"].includes(turnKind);
+  const primaryLifeDomains = identity.domains.filter((domain) => !["campus","desirability"].includes(String(domain.key || "")));
+  const priorityLifeMarkers = primaryLifeDomains.length
+    ? [...new Set(primaryLifeDomains.flatMap((domain) => Array.isArray(domain.lifeMarkers) ? domain.lifeMarkers : []))]
+    : identity.lifeDomains;
+  const roleLife = priorityLifeMarkers.length > 0;
+  const recentLife = priorityLifeMarkers.some((marker) => new RegExp(`\\b${String(marker).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\b`).test(normalized([...recentUserTurns.slice(-4), ...recentCharacterReplies.slice(-5)].join(" "))));
+  const lifeContinuityDue = Boolean(roleLife && (lifeQuestion || longGap || input.opening) && !recentLife);
+
+  return {
+    identitySignature: identity.identitySignature,
+    recognitionLevel: identity.recognitionLevel,
+    reputation: identity.reputation.slice(0, 8),
+    domains: identity.domains.slice(0, 8),
+    approachTypes: identity.approachTypes.slice(0, 10),
+    socialEffects: identity.socialEffects.slice(0, 10),
+    lifeDomains: priorityLifeMarkers.slice(0, 12),
+    publicScene,
+    relevantDomains: relevantDomains.map((domain) => String(domain.label || domain.key || "")).filter(Boolean).slice(0, 6),
+    manifestationDue,
+    approachWindowDue,
+    lifeContinuityDue,
+    manifestationPolicy: identity.strongGravity
+      ? "The world must remember this identity. In relevant public scenes, show one small domain-appropriate consequence often enough that anonymity never becomes the default; one footprint is enough and crowd spectacle is not required."
+      : "No special public reaction is required unless canon earns it.",
+    outsideAttentionPolicy: identity.romanticMagnetism
+      ? "Other people may notice, approach, flirt, invite, message or seek this character independently of the protagonist. Do not erase or instantly neutralize outside attention just to protect the central ship; the lead may respond according to personality and relationship."
+      : "Outside approaches should match the actual reputation domain, not default to flirting.",
+    domainLifePolicy: roleLife
+      ? "Their work/status/domain continues off-screen. Let canonical roles create ordinary obligations, contacts and consequences without inventing named events, schedules or people that the profile never established."
+      : "Do not manufacture a profession or public life.",
+    instruction: "PUBLIC IDENTITY IS HARD CANON, NOT DECORATION. The character does not become socially anonymous when romance starts. Fame, fear, respect, wealth, athletic status, desirability, leadership and domain reputation must change how the surrounding world behaves only where that domain is relevant. Domain fame is scoped: a street racer may be huge in racing circles and merely known on campus; a campus heartthrob may be ordinary in another city. Use small organic evidence—recognition, greetings, approaches, deference, rivals, teammates, staff behavior, invitations, social access—rather than exposition. Never make every room a fan event. Never glue the lead permanently beside the protagonist. Other people can approach or flirt; let the lead choose a character-specific response instead of deleting the opportunity. Their occupation/area remains active off-screen and should reappear naturally after time passes or when the user asks about their life.",
+  };
+}
+
 export function compileStoryContract(input: StoryContractInput): StoryContract {
   const scene = input.sceneState || {};
   const perceptibleUserTurn = sanitizeUserTurnForPerception(input.latestUserMessage);
@@ -1438,6 +1536,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const turnTakingEngine = buildTurnTakingEngine(input, present, perceptibleUserTurn);
   const agencyMomentumEngine = buildAgencyMomentumEngine(input, autonomousLifeEngine, turnTakingEngine, sceneRhythmEngine, perceptibleUserTurn, userPresence);
   const characterIntentEngine = buildCharacterIntentEngine(input, agencyMomentumEngine, characterDNA, perceptibleUserTurn);
+  const socialGravityWorldIdentityEngine = buildSocialGravityWorldIdentityEngine(input, scene);
   const scenePhysicsEngine = buildScenePhysicsEngine(input, present, userPresence);
 
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
@@ -1453,7 +1552,9 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     ? "Establish one active, playable situation without inventing a user response."
     : "Answer the literal latest turn, advance one earned beat, and stop.";
   if (boundaries.length) objective = "Honor the boundary immediately while preserving the character's recognizable personality; no therapy script or pursuit workaround.";
+  else if (socialGravityWorldIdentityEngine.manifestationDue || socialGravityWorldIdentityEngine.approachWindowDue) objective += " This public beat is due for one SMALL domain-appropriate social-gravity manifestation. Make the world remember who this person is without turning the scene into spectacle.";
   else if (socialEcosystems.length) objective += " In a relevant public scene, let the established social ecosystem exist organically without forcing jealousy or stealing the scene.";
+  if (!boundaries.length && socialGravityWorldIdentityEngine.lifeContinuityDue) objective += " Re-anchor one canonical life/domain thread because the story is at a life-question/time-gap boundary; do not invent named obligations.";
 
   return {
     authority: ["latest explicit canon correction", "latest visible user turn", "story bible canon", "visible transcript", "confirmed memory", "stored derived state"],
@@ -1484,6 +1585,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     autonomousLifeEngine,
     agencyMomentumEngine,
     characterIntentEngine,
+    socialGravityWorldIdentityEngine,
     scenePhysicsEngine,
     consequenceEngine,
     sceneRhythmEngine,
@@ -1671,6 +1773,19 @@ export function storyContractPrompt(contract: StoryContract) {
     autonomy: contract.autonomousLifeEngine,
     agencyMomentum: contract.agencyMomentumEngine,
     characterIntent: contract.characterIntentEngine,
+    socialWorldIdentity: {
+      identitySignature: contract.socialGravityWorldIdentityEngine.identitySignature,
+      recognitionLevel: contract.socialGravityWorldIdentityEngine.recognitionLevel,
+      reputation: take(contract.socialGravityWorldIdentityEngine.reputation, 5),
+      domains: take(contract.socialGravityWorldIdentityEngine.domains, 5).map((item) => pick(item as Record<string, unknown>, ["key","label","recognition","knownFor","approachTypes","socialEffects"])),
+      relevantDomains: take(contract.socialGravityWorldIdentityEngine.relevantDomains, 4),
+      manifestationDue: contract.socialGravityWorldIdentityEngine.manifestationDue,
+      approachWindowDue: contract.socialGravityWorldIdentityEngine.approachWindowDue,
+      lifeContinuityDue: contract.socialGravityWorldIdentityEngine.lifeContinuityDue,
+      manifestationPolicy: contract.socialGravityWorldIdentityEngine.manifestationPolicy,
+      outsideAttentionPolicy: contract.socialGravityWorldIdentityEngine.outsideAttentionPolicy,
+      domainLifePolicy: contract.socialGravityWorldIdentityEngine.domainLifePolicy,
+    },
     scenePhysics: contract.scenePhysicsEngine,
     consequences: contract.consequenceEngine,
     sceneRhythm: contract.sceneRhythmEngine,

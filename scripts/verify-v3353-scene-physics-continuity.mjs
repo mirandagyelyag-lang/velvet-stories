@@ -12,7 +12,7 @@ let pass=0,total=0;
 const check=(name,ok)=>{total++; console.log(`${ok?"PASS":"FAIL"} ${name}`); if(ok) pass++;};
 
 check("version 3.35.3+ descendant",/^3\.35\.(?:3|[4-9]|[1-9]\d+)$/.test(pkg.version)&&/^3\.35\.(?:3|[4-9]|[1-9]\d+)$/.test(pub.version));
-check("release metadata",/Scene Physics \+ Continuity Lock/i.test(pub.release));
+check("Scene Physics + Continuity preserved",edge.includes("SCENE PHYSICS + CONTINUITY LOCK"));
 check("deterministic scene physics imported",edge.includes("scenePhysicsIssues")&&edge.includes("deriveScenePhysicsState")&&edge.includes("sanitizeScenePhysicsReply"));
 check("scene physics contract exists",contractSource.includes("scenePhysicsEngine")&&contractSource.includes("interactionLimits")&&contractSource.includes("recentActionFingerprints"));
 check("hard physics issue classes",["body_state_redundant_transition","spatial_anchor_teleport","object_possession_break","object_state_rewind","line_of_sight_violation","interaction_geometry_violation","precise_time_invention","unsupported_elapsed_time_claim","door_state_continuity_break"].every((x)=>edge.includes(`\"${x}\"`)));

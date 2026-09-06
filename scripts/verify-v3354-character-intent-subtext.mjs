@@ -19,10 +19,10 @@ const contractSource=read("supabase/functions/character-chat/engine/story-contra
 let pass=0,total=0;
 const check=(name,ok)=>{ total++; console.log(`${ok?"PASS":"FAIL"} ${name}`); if(ok) pass++; };
 
-check("version 3.35.4",pkg.version==="3.35.4"&&pub.version==="3.35.4");
-check("release names Character Intent + Subtext",/Character Intent \+ Subtext/i.test(pub.release));
+check("version 3.35.4+ descendant",/^3\.35\.(?:4|[5-9]|[1-9]\\d+)$/.test(pkg.version)&&/^3\.35\.(?:4|[5-9]|[1-9]\\d+)$/.test(pub.version));
+check("Character Intent + Subtext preserved",edge.includes("CHARACTER INTENT + SUBTEXT 3.35.4"));
 check("deterministic intent lock imported",edge.includes("intentSubtextIssues")&&edge.includes("sanitizeIntentSubtextReply"));
-check("v3354 is first stability gate",pkg.scripts["stability:lab"].startsWith("npm run verify:v3354"));
+check("stability lab retains v3354",pkg.scripts["stability:lab"].includes("npm run verify:v3354"));
 check("hard intent issue classes wired",["narration_pov_flip","random_activity_filler","fake_shared_day_history","gesture_budget_overflow","obligatory_banter_exit","intent_thread_abandoned"].every((x)=>edge.includes(`\"${x}\"`)));
 check("quality self-check includes new intent booleans",["character_intent_ok","subtext_persistence_ok","pov_consistency_ok","filler_restraint_ok","gesture_budget_ok","banter_exit_ok"].every((x)=>edge.includes(x)));
 

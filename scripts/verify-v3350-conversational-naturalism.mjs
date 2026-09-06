@@ -7,7 +7,7 @@ const diag=read("src/pages/Diagnostics.jsx");
 const old=read("scripts/verify-v3341-canon-doctor-repair.mjs");
 const checks=[
  ["version 3.35.x descendant",pkg.version.startsWith("3.35.")&&pub.version.startsWith("3.35.")],
- ["release metadata",pub.release.includes("Conversational Naturalism")],
+ ["Conversational Naturalism preserved",edge.includes("CONVERSATIONAL NATURALISM 2.0")],
  ["live naturalism director",edge.includes("buildConversationalNaturalismDirector")&&edge.includes("CONVERSATIONAL NATURALISM 2.0 / v3.35 — LIVE SPEECH DIRECTOR")],
  ["sentence DNA",edge.includes("Sentence DNA:")&&edge.includes("sentenceDna")],
  ["question personality",edge.includes("QUESTION PERSONALITY")&&edge.includes("hasQuestionPersonalityMismatchV2")],

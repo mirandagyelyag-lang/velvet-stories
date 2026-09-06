@@ -2,7 +2,11 @@ import fs from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 
 const contractTs = fs.readFileSync("supabase/functions/character-chat/engine/story-contract.ts", "utf8");
-const contractJs = stripTypeScriptTypes(contractTs, { mode: "strip", sourceUrl: "story-contract.ts" });
+const socialTs = fs.readFileSync("supabase/functions/character-chat/engine/social-gravity-world-identity.ts", "utf8");
+const socialJs = stripTypeScriptTypes(socialTs, { mode: "strip", sourceUrl: "social-gravity-world-identity.ts" });
+const socialUrl = `data:text/javascript;base64,${Buffer.from(socialJs).toString("base64")}`;
+const contractJs = stripTypeScriptTypes(contractTs, { mode: "strip", sourceUrl: "story-contract.ts" })
+  .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl));
 const contractModule = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
 const { compileStoryContract, inferCharacterDNA, storyContractPrompt } = contractModule;
 

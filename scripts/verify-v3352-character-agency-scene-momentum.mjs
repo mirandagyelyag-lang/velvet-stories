@@ -12,7 +12,7 @@ let pass=0,total=0;
 const check=(name,ok)=>{total++; console.log(`${ok?"PASS":"FAIL"} ${name}`); if(ok) pass++;};
 
 check("version 3.35.x descendant",pkg.version.startsWith("3.35.")&&pub.version.startsWith("3.35."));
-check("release metadata",/Character Agency \+ Scene Momentum/i.test(pub.release));
+check("Character Agency + Scene Momentum preserved",edge.includes("CHARACTER AGENCY + SCENE MOMENTUM"));
 check("deterministic agency lock imported",edge.includes("agencyMomentumIssues")&&edge.includes("sanitizeAgencyMomentumReply"));
 check("agency hard failures",["agency_commitment_inertia_break","gratuitous_external_hook","initiative_budget_overflow","forced_scene_continuation_hook"].every((x)=>edge.includes(`\"${x}\"`)));
 check("decision frame exists",contractSource.includes("agencyMomentumEngine")&&contractSource.includes("microInitiativeBudget")&&contractSource.includes("closurePolicy"));

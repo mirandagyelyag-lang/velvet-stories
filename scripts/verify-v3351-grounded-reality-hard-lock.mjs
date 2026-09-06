@@ -11,7 +11,7 @@ let pass=0, total=0;
 const check=(name,ok)=>{ total++; console.log(`${ok?"PASS":"FAIL"} ${name}`); if(ok) pass++; };
 
 check("version 3.35.x descendant", pkg.version.startsWith("3.35.") && pub.version.startsWith("3.35."));
-check("release metadata", /Grounded Reality Hard Lock/i.test(pub.release));
+check("Grounded Reality Hard Lock preserved", edge.includes("GROUNDED REALITY HARD LOCK"));
 check("deterministic lock imported", edge.includes('groundedRealityIssues') && edge.includes('sanitizeGroundedRealityReply'));
 check("raw prose quarantined", edge.includes("const guardedDraft = true"));
 check("hard lock issue classes", ["declared_state_disbelief","semantic_scope_overreach","inference_distance_exceeded","specificity_escalation","invisible_history_claim","unsupported_concrete_canon_invention"].every((x)=>edge.includes(`\"${x}\"`)));
