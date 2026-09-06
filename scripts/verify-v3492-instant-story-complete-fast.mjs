@@ -13,8 +13,8 @@ const cut=`“You’ve been staring at that menu for ten minutes. It’`;
 const noPunctuation=`Roman catches you outside class and slows down instead of passing. He looks at you for a second, clearly deciding whether to say it. “I wanted to ask you something before everyone gets out of class and starts hovering”`;
 const unbalanced=`Roman stops beside you after class, lowering his voice. “I wanted to ask you something before everyone else gets here. It’s not dramatic, I just want your actual opinion. You’ve got a minute?`;
 
-ok("version 3.49.2",pkg.version==="3.49.2"&&pub.version==="3.49.2");
-ok("release names complete Instant Story hotfix",/Instant Story Complete Output \+ Fast Hedged Generation/.test(pub.release||""));
+ok("version 3.49.2 lineage",/^3\.49\.(?:[2-9]|[1-9]\d+)$/.test(pkg.version)&&/^3\.49\.(?:[2-9]|[1-9]\d+)$/.test(pub.version));
+ok("complete Instant Story hotfix retained",fs.existsSync("README-v3.49.2-INSTANT-STORY-COMPLETE-FAST.txt")&&fs.existsSync("supabase/functions/character-chat/engine/instant-story-v3492.ts"));
 ok("cut user report is rejected",!instantStoryLooksComplete(cut,"STOP"));
 ok("MAX_TOKENS is rejected even with long text",!instantStoryLooksComplete(complete,"MAX_TOKENS"));
 ok("complete STOP opening is accepted",instantStoryLooksComplete(complete,"STOP"));
@@ -35,7 +35,7 @@ ok("client timeout tightened",characters.includes("setTimeout(() => controller.a
 ok("client independently rejects cut output",characters.includes("const visiblyComplete")&&characters.includes("cut-off Instant Story"));
 ok("syntax verifier includes 3.49.2 helper",syntax.includes("instant-story-v3492.ts"));
 ok("3.49.1 remains in regression chain",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3491"));
-ok("3.49.2 runs first in Stability Lab",(pkg.scripts?.["stability:lab"]||"").startsWith("npm run verify:v3492"));
+ok("3.49.2 remains in Stability Lab",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3492"));
 
 let failed=0;
 for(const [name,value] of checks){console.log(`${value?"PASS":"FAIL"} ${name}`);if(!value)failed++;}

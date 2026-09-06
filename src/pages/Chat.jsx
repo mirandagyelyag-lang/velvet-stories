@@ -506,11 +506,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   // Never lock sending merely because a stale temporary bubble exists.
   // The context generation manager is the authoritative busy state.
   const busy = sending || characterGenerating;
-  const aiStatusLabel = aiPhaseOverride || (
-    sending ? "Sending" :
-    characterStreaming ? "Writing" :
-    (isTyping || generationState === "generating") ? "Thinking" : ""
-  );
+  // v3.49.3 SINGLE GENERATION SURFACE
+  // Normal send/retry already has the typing indicator + streamed bubble. Do not
+  // stack a second floating "Thinking/Writing" pill on top of that. Explicit
+  // one-off phases remain available for non-generation tools only.
+  const aiStatusLabel = actionNotice ? "" : aiPhaseOverride;
   const activeSceneImage = sceneImages[activeSceneImageIndex] || "";
   const sceneMarkers = useMemo(() => {
     const map = new Map();
@@ -1048,7 +1048,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         directorInstruction: noteForThisGeneration,
         expectedUserMessageId: savedUserMessage.id,
       });
-      showAiPhase("Finishing", 420);
       if (generationResult?.learnedMemoryCount) {
         setMemoryCaptureNotice(generationResult.learnedMemoryCount);
         window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
@@ -1093,7 +1092,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     setIsTyping(false);
     setSilentCue("");
     setSendError("");
-    showAiPhase("Stopped", 900);
     showActionNotice("Generation stopped", "neutral", 1200);
     window.requestAnimationFrame(() => {
       try { textareaRef.current?.focus({ preventScroll: true }); } catch { textareaRef.current?.focus(); }
@@ -1108,10 +1106,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       setSendError("");
       setSilentCue("");
       setIsTyping(true);
-      showAiPhase("Retrying", 900);
-      showActionNotice("Retrying…", "working", 1200);
       await generateCharacterReply(character.id);
-      showAiPhase("Finishing", 420);
     } catch (error) {
       if (
         generationRunRef.current === runId &&
@@ -3162,8 +3157,9 @@ function translateMessageError(message = "") {
   const error = message.toLowerCase();
   if (error.includes("row-level security") || error.includes("permission")) return "Your account doesn't have permission for this action.";
   if (error.includes("authentication") || error.includes("invalid session") || error.includes("jwt")) return "Your session expired. Sign in again.";
-  if (error.includes("quota") || error.includes("rate limit") || error.includes("rate-limited") || error.includes("resource_exhausted")) return "Gemini is rate-limited right now. It may be a per-minute, token, or daily project limit. Wait a little and try again.";
-  if (error.includes("network") || error.includes("failed to fetch")) return "We couldn't connect to the AI service.";
+  if (error.includes("quota") || error.includes("rate limit") || error.includes("rate-limited") || error.includes("resource_exhausted")) return "Velvet couldn't finish this reply right now. Retry in a moment.";
+  if (error.includes("high demand") || error.includes("overload") || error.includes("unavailable") || error.includes("503") || error.includes("502") || error.includes("504")) return "Velvet couldn't finish this reply right now. Retry in a moment.";
+  if (error.includes("network") || error.includes("failed to fetch")) return "Velvet lost the connection before the reply finished. Retry.";
   if (error.includes("protected interaction beat") || error.includes("valid protected reply") || error.includes("repair still violated")) return "Velvet couldn't finish that reply cleanly. Try again.";
   return message || "The character couldn't respond.";
 }

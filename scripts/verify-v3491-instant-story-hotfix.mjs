@@ -10,7 +10,7 @@ const chats=fs.readFileSync("src/context/ChatsContext.jsx","utf8");
 const css=fs.readFileSync("src/styles/character-detail.css","utf8");
 
 ok("version 3.49.1 lineage",/^3\.49\.[1-9]\d*$/.test(pkg.version)&&/^3\.49\.[1-9]\d*$/.test(pub.version));
-ok("release retains Instant Story hotfix lineage",/Instant Story|Narrative Core/.test(pub.release||""));
+ok("release retains Instant Story hotfix lineage",fs.existsSync("README-v3.49.1.txt")||fs.existsSync("README-v3.49.2-INSTANT-STORY-COMPLETE-FAST.txt"));
 ok("dedicated compact Instant Story draft",edge.includes("function compactInstantStoryDraft")&&edge.includes('personality: field("personality", 1200)'));
 ok("Instant Story prompt uses compact draft",edge.includes("const safeDraft = compactInstantStoryDraft(draft)")&&edge.includes("${JSON.stringify(safeDraft)}"));
 ok("production model first",edge.includes("[GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL]"));
@@ -31,7 +31,7 @@ ok("fresh conversations skip empty message SELECT",chats.includes("if (!conversa
 ok("default persona lookup becomes conditional",chats.includes("if (!options.personaId)")&&chats.includes("defaultPersonaId"));
 ok("Instant error styling exists",css.includes(".character-profile__instant-error"));
 ok("legacy Narrative Core verifier retained",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3490"));
-ok("hotfix remains at front of Stability Lab",/^npm run verify:v349[12]/.test(pkg.scripts?.["stability:lab"]||""));
+ok("hotfix remains in Stability Lab",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3491"));
 
 let failed=0;
 for(const [name,value] of checks){console.log(`${value?"PASS":"FAIL"} ${name}`);if(!value)failed++;}

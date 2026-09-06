@@ -311,7 +311,7 @@ check("v2.8 chat polish stylesheet is final", main.includes('import "./styles/ve
 check("chat actions give immediate quiet feedback", chat.includes("VELVET_CHAT_POLISH_V280") && chat.includes("Next beat queued ✓") && chat.includes("Reply rewritten ✓") && chat.includes("Rewound ✓"));
 check("rewind has a real temporary undo snapshot", chat.includes('createStorySnapshot(character.id, "Temporary rewind undo")') && chat.includes("restoreStorySnapshot(character.id, snapshotId, { safetySnapshot: false })") && chat.includes("armRewindUndo"));
 check("composer restores a draft if its save fails", chat.includes("if (!userMessageSaved && submittedDraft)") && chat.includes("setMessage((current) => current.trim() ? current : submittedDraft)"));
-check("AI phases are compact and explicit", chat.includes('"Sending"') && chat.includes('"Writing"') && chat.includes('"Thinking"') && chat.includes('"Finishing"') && chat.includes('"Stopped"'));
+check("AI status uses one compact generation surface", (chat.includes('"Sending"') && chat.includes('"Writing"') && chat.includes('"Thinking"')) || (chat.includes('SINGLE GENERATION SURFACE') && chat.includes('const aiStatusLabel = actionNotice ? "" : aiPhaseOverride;')));
 check("response versions refresh after regeneration", chat.includes("regeneratedVersions") && chat.includes("rewrittenVersions") && chat.includes("refinedVersions"));
 check("stream paints adapt to touch devices", chatsContextV260.includes("VELVET_STREAM_POLISH_V2") && chatsContextV260.includes("targetCadence"));
 
