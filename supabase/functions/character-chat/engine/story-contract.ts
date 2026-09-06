@@ -7,6 +7,7 @@ import { deriveLongTermCharacterEvolution } from "./long-term-character-evolutio
 import { deriveNpcEcosystemSocialNetworkV3 } from "./npc-ecosystem-social-network-v3.ts";
 import { deriveCalendarLifeSimulation } from "./calendar-life-simulation.ts";
 import { deriveWorldConsequencesCausalTimeline } from "./world-consequences-causal-timeline.ts";
+import { deriveSceneDirectorV342 } from "./scene-director-v342.ts";
 
 export type StoryContractInput = {
   character: Record<string, unknown>;
@@ -349,6 +350,38 @@ export type StoryContract = {
     offscreenCausalityPolicy: string;
     crossSystemPolicy: string;
     minorEventPolicy: string;
+    instruction: string;
+  };
+  sceneDirectorV342: {
+    scenePurpose: string;
+    purposeBudget: number;
+    direction: "continue"|"land"|"shift_small"|"surface_one_thread"|"quiet";
+    candidateThreads: Array<Record<string, unknown>>;
+    foregroundThreads: Array<Record<string, unknown>>;
+    mentionThreads: Array<Record<string, unknown>>;
+    backgroundThreads: Array<Record<string, unknown>>;
+    dormantThreads: Array<Record<string, unknown>>;
+    userMomentumLock: boolean;
+    userMomentum: string;
+    interruptionBudget: number;
+    allowedEntrants: string[];
+    foregroundActors: string[];
+    backgroundActors: string[];
+    maxActiveSpeakers: number;
+    cooldownActive: boolean;
+    cooldownReason: string;
+    tensionMode: "cool"|"steady"|"rising"|"landing";
+    romanceMonopolyGuard: boolean;
+    noveltyAvoid: string[];
+    naturalEndingAllowed: boolean;
+    naturalEndingDue: boolean;
+    sceneSelectionPolicy: string;
+    interruptionPolicy: string;
+    entryExitPolicy: string;
+    attentionPolicy: string;
+    pacingPolicy: string;
+    romancePolicy: string;
+    closurePolicy: string;
     instruction: string;
   };
   longTermCharacterEvolution: {
@@ -1767,6 +1800,23 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     scenePhysics: scenePhysicsEngine,
     embodied: embodiedAwarenessSalience,
   });
+  const sceneDirectorV342 = deriveSceneDirectorV342({
+    character: input.character,
+    userName: input.userName,
+    // v3.42 must direct from the perceptible user turn, never private narration.
+    latestUserMessage: perceptibleUserTurn,
+    recentMessages: input.recentMessages || [],
+    sceneState: scene,
+    sceneIntelligence: sceneIntelligenceDynamicWorld,
+    sceneVariety: sceneVarietyEngine,
+    calendarLifeSimulation,
+    causalTimeline: worldConsequencesCausalTimeline,
+    npcEcosystem: npcEcosystemSocialNetworkV3,
+    relationshipChemistry: relationshipChemistryV2,
+    activeArcs,
+    activeConflicts,
+    activePlans,
+  });
 
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
@@ -1787,6 +1837,11 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   else if (socialGravityWorldIdentityEngine.manifestationDue || socialGravityWorldIdentityEngine.approachWindowDue) objective += " This public beat is due for one SMALL domain-appropriate social-gravity manifestation. Make the world remember who this person is without turning the scene into spectacle.";
   else if (socialEcosystems.length) objective += " In a relevant public scene, let the established social ecosystem exist organically without forcing jealousy or stealing the scene.";
   if (!boundaries.length && socialGravityWorldIdentityEngine.lifeContinuityDue) objective += " Re-anchor one canonical life/domain thread because the story is at a life-question/time-gap boundary; do not invent named obligations.";
+  if (!boundaries.length && !discourseCoherenceEventTruth.clarificationDue && !embodiedAwarenessSalience.recognitionDue) {
+    if (sceneDirectorV342.userMomentumLock) objective += " The user's visible action/question owns the camera; do not hijack it with another thread or interruption.";
+    else if (sceneDirectorV342.naturalEndingDue) objective += " Let the beat land cleanly if it has finished; no teaser or rescue hook.";
+    else if (sceneDirectorV342.direction === "surface_one_thread") objective += " Surface at most ONE director-selected grounded thread and leave the rest off-screen.";
+  }
 
   return {
     authority: ["latest explicit canon correction", "latest visible user turn", "story bible canon", "visible transcript", "confirmed memory", "stored derived state"],
@@ -1835,6 +1890,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     npcEcosystemSocialNetworkV3,
     calendarLifeSimulation,
     worldConsequencesCausalTimeline,
+    sceneDirectorV342,
     longTermMemoryEngine,
     writingStyleDirector,
     humanImperfectionEngine,
@@ -2029,6 +2085,34 @@ export function storyContractPrompt(contract: StoryContract) {
     scenePhysics: contract.scenePhysicsEngine,
     discourseCoherence: contract.discourseCoherenceEventTruth,
     sceneIntelligence: contract.sceneIntelligenceDynamicWorld,
+    sceneDirector342: {
+      scenePurpose: contract.sceneDirectorV342.scenePurpose,
+      purposeBudget: contract.sceneDirectorV342.purposeBudget,
+      direction: contract.sceneDirectorV342.direction,
+      foregroundThreads: take(contract.sceneDirectorV342.foregroundThreads, 2),
+      mentionThreads: take(contract.sceneDirectorV342.mentionThreads, 2),
+      backgroundThreads: take(contract.sceneDirectorV342.backgroundThreads, 5),
+      dormantThreads: take(contract.sceneDirectorV342.dormantThreads, 6),
+      userMomentumLock: contract.sceneDirectorV342.userMomentumLock,
+      userMomentum: contract.sceneDirectorV342.userMomentum,
+      interruptionBudget: contract.sceneDirectorV342.interruptionBudget,
+      allowedEntrants: take(contract.sceneDirectorV342.allowedEntrants, 6),
+      foregroundActors: take(contract.sceneDirectorV342.foregroundActors, 3),
+      backgroundActors: take(contract.sceneDirectorV342.backgroundActors, 6),
+      maxActiveSpeakers: contract.sceneDirectorV342.maxActiveSpeakers,
+      cooldownActive: contract.sceneDirectorV342.cooldownActive,
+      tensionMode: contract.sceneDirectorV342.tensionMode,
+      romanceMonopolyGuard: contract.sceneDirectorV342.romanceMonopolyGuard,
+      noveltyAvoid: take(contract.sceneDirectorV342.noveltyAvoid, 5),
+      naturalEndingAllowed: contract.sceneDirectorV342.naturalEndingAllowed,
+      naturalEndingDue: contract.sceneDirectorV342.naturalEndingDue,
+      sceneSelectionPolicy: contract.sceneDirectorV342.sceneSelectionPolicy,
+      interruptionPolicy: contract.sceneDirectorV342.interruptionPolicy,
+      attentionPolicy: contract.sceneDirectorV342.attentionPolicy,
+      pacingPolicy: contract.sceneDirectorV342.pacingPolicy,
+      romancePolicy: contract.sceneDirectorV342.romancePolicy,
+      closurePolicy: contract.sceneDirectorV342.closurePolicy,
+    },
     consequences: contract.consequenceEngine,
     sceneRhythm: contract.sceneRhythmEngine,
     selectiveMemory: contract.selectiveMemoryEngine,

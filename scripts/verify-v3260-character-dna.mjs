@@ -11,6 +11,7 @@ const evolutionTs = fs.readFileSync("supabase/functions/character-chat/engine/lo
 const npcEcosystemTs = fs.readFileSync("supabase/functions/character-chat/engine/npc-ecosystem-social-network-v3.ts", "utf8");
 const calendarLifeTs = fs.readFileSync("supabase/functions/character-chat/engine/calendar-life-simulation.ts", "utf8");
 const causalTimelineTs = fs.readFileSync("supabase/functions/character-chat/engine/world-consequences-causal-timeline.ts", "utf8");
+const sceneDirectorTs = fs.readFileSync("supabase/functions/character-chat/engine/scene-director-v342.ts", "utf8");
 const socialJs = stripTypeScriptTypes(socialTs, { mode: "strip", sourceUrl: "social-gravity-world-identity.ts" });
 const chemistryJs = stripTypeScriptTypes(chemistryTs, { mode: "strip", sourceUrl: "relationship-chemistry-v2.ts" });
 const socialUrl = `data:text/javascript;base64,${Buffer.from(socialJs).toString("base64")}`;
@@ -29,6 +30,8 @@ const calendarLifeJs = stripTypeScriptTypes(calendarLifeTs, { mode: "strip", sou
 const calendarLifeUrl = `data:text/javascript;base64,${Buffer.from(calendarLifeJs).toString("base64")}`;
 const causalTimelineJs = stripTypeScriptTypes(causalTimelineTs, { mode: "strip", sourceUrl: "world-consequences-causal-timeline.ts" });
 const causalTimelineUrl = `data:text/javascript;base64,${Buffer.from(causalTimelineJs).toString("base64")}`;
+const sceneDirectorJs = stripTypeScriptTypes(sceneDirectorTs, { mode: "strip", sourceUrl: "scene-director-v342.ts" });
+const sceneDirectorUrl = `data:text/javascript;base64,${Buffer.from(sceneDirectorJs).toString("base64")}`;
 const contractJs = stripTypeScriptTypes(contractTs, { mode: "strip", sourceUrl: "story-contract.ts" })
   .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl))
   .replace('"./relationship-chemistry-v2.ts"', JSON.stringify(chemistryUrl))
@@ -38,7 +41,8 @@ const contractJs = stripTypeScriptTypes(contractTs, { mode: "strip", sourceUrl: 
   .replace('"./long-term-character-evolution.ts"', JSON.stringify(evolutionUrl))
   .replace('"./npc-ecosystem-social-network-v3.ts"', JSON.stringify(npcEcosystemUrl))
   .replace('"./calendar-life-simulation.ts"', JSON.stringify(calendarLifeUrl))
-  .replace('"./world-consequences-causal-timeline.ts"', JSON.stringify(causalTimelineUrl));
+  .replace('"./world-consequences-causal-timeline.ts"', JSON.stringify(causalTimelineUrl))
+  .replace('"./scene-director-v342.ts"', JSON.stringify(sceneDirectorUrl));
 const contractModule = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
 const { compileStoryContract, inferCharacterDNA, storyContractPrompt } = contractModule;
 

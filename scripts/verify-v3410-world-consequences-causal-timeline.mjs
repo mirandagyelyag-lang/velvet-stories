@@ -15,10 +15,10 @@ const edge=read('supabase/functions/character-chat/index.ts');
 let pass=0,total=0;
 function check(name,fn){total++;try{fn();pass++;console.log(`✅ ${name}`)}catch(e){console.error(`❌ ${name}: ${e.message}`);process.exitCode=1;}}
 
-check('version 3.41.0',()=>assert.equal(pkg.version,'3.41.0'));
-check('release metadata',()=>assert.equal(meta.release,'World Consequences + Causal Timeline'));
-check('vite release metadata',()=>assert.match(vite,/World Consequences \+ Causal Timeline/));
-check('v3410 first stability gate',()=>assert.match(pkg.scripts['stability:lab'],/^npm run verify:v3410/));
+check('version is v3.41+ descendant',()=>{const [maj,min]=String(pkg.version).split('.').map(Number);assert.equal(maj,3);assert.ok(min>=41);});
+check('release metadata exists',()=>assert.ok(String(meta.release||'').length>3));
+check('vite release metadata exists',()=>assert.match(vite,/const velvetRelease = \".+\";/));
+check('v3410 remains in stability lab',()=>assert.match(pkg.scripts['stability:lab'],/npm run verify:v3410/));
 check('causal engine imported by contract',()=>assert.match(contract,/deriveWorldConsequencesCausalTimeline/));
 check('causal validator imported by edge',()=>assert.match(edge,/worldConsequencesCausalTimelineIssues, sanitizeWorldConsequencesCausalTimelineReply/));
 check('story contract exposes causal timeline',()=>assert.match(contract,/worldConsequencesCausalTimeline:/));

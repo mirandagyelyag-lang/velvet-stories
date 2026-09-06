@@ -81,7 +81,7 @@ ok('prompt explicitly enforces no protagonist orbit',()=>assert.match(edge,/NO P
 ok('Scene Intelligence Lab edge action exists',()=>assert.match(edge,/action === "scene_intelligence_lab"/));
 ok('Scene Intelligence Lab handler exists',()=>assert.match(edge,/handleSceneIntelligenceLab/));
 const diagnostics=fs.readFileSync(new URL('../src/pages/Diagnostics.jsx',import.meta.url),'utf8');
-ok('Scene Intelligence Lab UI exists',()=>assert.match(diagnostics,/Scene Intelligence Lab/));
-ok('Scene Lab checks living-world dimensions',()=>assert.match(edge,/scene purpose persists[\s\S]{0,1400}no protagonist-orbit bubble/i));
+ok('Scene Intelligence Lab UI exists',()=>assert.match(diagnostics,/Scene (?:Intelligence|Director) Lab/));
+ok('Scene Lab checks living-world dimensions',()=>assert.ok(/scene purpose persists[\s\S]{0,1400}no protagonist-orbit bubble/i.test(edge) || /SCENE DIRECTOR 3\.42 lab[\s\S]{0,2200}current scene purpose[\s\S]{0,2200}(?:user's visible momentum|user momentum)[\s\S]{0,2200}(?:dormant\/off-screen|dormant_threads)/i.test(edge)));
 
 if(!process.exitCode) console.log(`\n${pass}/${pass} Scene Intelligence + Dynamic World checks passed.`);
