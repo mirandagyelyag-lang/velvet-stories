@@ -95,6 +95,23 @@ export type StoryContract = {
     closurePolicy: string;
     instruction: string;
   };
+  characterIntentEngine: {
+    sceneObjective: string;
+    immediateWant: string;
+    concealedWant: string;
+    conversationTactic: string;
+    resistance: string;
+    subtextThread: string;
+    admissionStage: "guarded" | "partial" | "plain" | "honest";
+    admissionLadder: string;
+    intentPersistence: string;
+    initiativeThreshold: string;
+    povMode: "first" | "third" | "unknown";
+    gestureBudget: number;
+    fillerPolicy: string;
+    banterExitPolicy: string;
+    instruction: string;
+  };
   scenePhysicsEngine: {
     bodyStates: Array<Record<string, unknown>>;
     objectStates: Array<Record<string, unknown>>;
@@ -671,6 +688,96 @@ function buildAgencyMomentumEngine(input: StoryContractInput, autonomousLifeEngi
     closureAllowed: Boolean(sceneRhythmEngine.closeAllowed),
     closurePolicy: sceneRhythmEngine.closeAllowed ? "Closure is a valid outcome. End on a completed beat, silence, departure, or ordinary final action. No teaser is required." : "Keep the live exchange open only because the current turn genuinely leaves something active, not because every reply needs a hook.",
     instruction: `Character agency is choice under constraints. Preserve active intent across interruptions, but do not force it into every turn. Use at most ${microInitiativeBudget} meaningful initiative beat(s) unless the user explicitly causes a larger change. Prefer an existing action, refusal, pause, topic choice, unfinished thread, or grounded obligation. Never create a phone buzz, door knock, surprise arrival, new errand, sudden deadline, or retroactive relationship merely to create momentum. A scene is allowed to end.`
+  };
+}
+
+
+function narrationOutsideDialogue(value = "") {
+  return String(value || "").replace(/[“\"][^”\"]*[”\"]/gs, " ").replace(/\s+/g, " ").trim();
+}
+
+function inferContractNarrationMode(recentMessages: Array<Record<string, unknown>> = [], characterName = "") {
+  const replies = (recentMessages || []).filter((message)=>message?.sender === "character").map((message)=>text(message?.content)).filter(Boolean).slice(-6);
+  let first = 0, third = 0;
+  for (const reply of replies) {
+    const narration = narrationOutsideDialogue(reply);
+    const value = normalized(narration);
+    if (/\bi (?:look|looked|turn|turned|shift|shifted|lean|leaned|sit|sat|stand|stood|walk|walked|move|moved|push|pushed|pull|pulled|take|took|grab|grabbed|nod|nodded|smile|smiled|say|said|ask|asked|mutter|muttered|give|gave)\b|\bmy (?:hand|hands|eyes|shoulders?|voice|fingers|head|chair|cup|menu|phone)\b/.test(value)) first += 1;
+    if (/\b(?:he|she) (?:look|looked|turn|turned|shift|shifted|lean|leaned|sit|sat|stand|stood|walk|walked|move|moved|push|pushed|pull|pulled|take|took|grab|grabbed|nod|nodded|smile|smiled|say|said|ask|asked|mutter|muttered|gave)\b|\b(?:his|her) (?:hand|hands|eyes|shoulders?|voice|fingers|head|chair|cup|menu|phone)\b/.test(value)) third += 1;
+    if (characterName && new RegExp(`\\b${characterName.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&")}\\s+(?:didn'?t|did not|looked|turned|leaned|sat|stood|walked|moved|pushed|pulled|took|grabbed|nodded|smiled|said|asked|muttered)\\b`, "i").test(narration)) third += 2;
+  }
+  if (first > third && first) return "first" as const;
+  if (third > first && third) return "third" as const;
+  return "unknown" as const;
+}
+
+function buildCharacterIntentEngine(input: StoryContractInput, agency: ReturnType<typeof buildAgencyMomentumEngine>, characterDNA: ReturnType<typeof buildCharacterDNA>, perceptibleUserTurn: string) {
+  const intelligence = input.intelligenceState && typeof input.intelligenceState === "object" ? input.intelligenceState : {};
+  const behavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
+  const mind = intelligence.character_mind && typeof intelligence.character_mind === "object" ? intelligence.character_mind as Record<string, unknown> : {};
+  const latestSpoken = text(perceptibleUserTurn.replace(/\*[^*]*\*/gs, " ")).replace(/\s+/g, " ").trim();
+  const latestNorm = normalized(latestSpoken);
+  const profile = characterProfileBlob(input.character);
+  const recentUsers = (input.recentMessages || []).filter((message)=>message?.sender === "user").map((message)=>normalized(text(message?.content).replace(/\*[^*]*\*/gs, " "))).filter(Boolean).slice(-6);
+  const asksWhyInitiated = /\bwhy did you (?:call|invite|ask|bring|want) me\b|\bwhy (?:did|do) you want me here\b/.test(latestNorm);
+  const skepticalFollowup = /^(?:(?:hmm+|hm+)(?:,? (?:right|okay|ok|sure|yeah|mhm|i see))?|right|okay|ok|sure|yeah|mhm|i see)[,.! ]*$/.test(latestNorm) || /\b(?:really|that'?s it|is that why|are you sure)\b/.test(latestNorm);
+  const pressureCount = recentUsers.filter((turn)=>/\bwhy did you (?:call|invite|ask|bring|want) me\b|\bwhy (?:did|do) you want me here\b|\b(?:really|that'?s it|is that why|are you sure)\b/.test(turn)).length + (skepticalFollowup ? 1 : 0);
+
+  const priorSceneObjective = text(behavior.scene_objective || behavior.active_intent || agency.activeIntent);
+  const privateIntent = text(mind.private_intention);
+  const mindWant = text(mind.want);
+  const immediateWant = text(behavior.immediate_want || mindWant || agency.currentWant || "continue the present interaction on this character's terms");
+  const concealedWantRaw = text(behavior.concealed_want || mind.wont_admit || privateIntent);
+  const concealedWant = concealedWantRaw && normalized(concealedWantRaw) !== normalized(immediateWant) ? concealedWantRaw : "none established";
+  let sceneObjective = text(behavior.scene_objective || priorSceneObjective || privateIntent || mindWant);
+  if (!sceneObjective || sceneObjective === "none") {
+    sceneObjective = asksWhyInitiated
+      ? "Give one modest present-tense reason this character chose to initiate this contact or meeting. The reason belongs to the character and must fit profile/relationship state; do not invent the user's habits, prior incidents, schedules, or shared history."
+      : "Stay engaged with the current beat for a character-owned reason instead of waiting for the user to manufacture the plot.";
+  }
+
+  let conversationTactic = text(behavior.conversation_tactic);
+  if (!conversationTactic) {
+    if (/guarded|evasive|avoidant|private|withdraw|proud|closed off/.test(profile)) conversationTactic = "understate or deflect once, then offer a smaller truthful piece if the user presses; do not replace the answer with sarcasm";
+    else if (/direct|blunt|straightforward|honest|frank/.test(profile)) conversationTactic = "answer plainly first; withhold only what this person would genuinely protect";
+    else if (/playful|teas|sarcas|banter|joking/.test(profile)) conversationTactic = "humor may soften the answer once, but it cannot become the answer or the compulsory final line";
+    else if (/quiet|reserved|laconic|few words|terse/.test(profile)) conversationTactic = "use a short answer, tolerate silence, and reveal by omission/timing rather than explanation";
+    else conversationTactic = "answer the live point in ordinary language and reveal only the amount this person would actually volunteer";
+  }
+
+  const resistance = text(behavior.resistance || mind.avoid || characterDNA.emotionalDefense || "none beyond ordinary privacy");
+  const subtextThread = text(behavior.subtext_thread || (concealedWant !== "none established" ? concealedWant : privateIntent || sceneObjective));
+  let admissionStage: "guarded" | "partial" | "plain" | "honest" = ["guarded","partial","plain","honest"].includes(text(behavior.admission_stage)) ? text(behavior.admission_stage) as any : "guarded";
+  if (asksWhyInitiated && admissionStage === "guarded") admissionStage = "partial";
+  if ((asksWhyInitiated || skepticalFollowup) && pressureCount >= 2 && admissionStage === "partial") admissionStage = "plain";
+  if ((asksWhyInitiated || skepticalFollowup) && pressureCount >= 3 && admissionStage === "plain" && concealedWant !== "none established") admissionStage = "honest";
+
+  const initiative = Number(input.character?.initiative || input.character?.character_independence || 65);
+  const initiativeThreshold = initiative >= 78 ? "low threshold: may make one small self-directed move when the beat stalls" : initiative <= 45 ? "high threshold: usually reacts first and moves only when motive/stakes clearly justify it" : "medium threshold: contribute one purposeful choice when it follows the scene objective";
+  const persistedPov = text(behavior.pov_narration_mode);
+  const inferredPov = inferContractNarrationMode(input.recentMessages || [], text(input.character.name));
+  const povMode = ["first", "third"].includes(persistedPov) ? persistedPov as "first" | "third" : inferredPov;
+  const gestureBudget = latestSpoken.split(/\s+/).filter(Boolean).length <= 16 ? 1 : 2;
+  const admissionLadder = concealedWant !== "none established"
+    ? `Current stage ${admissionStage}. Possible progression is guarded/deflect → partial truth → plain answer → honest admission. Advance only when pressure, trust, stakes, or this character's own choice earns it; never jump stages merely to create romance.`
+    : `Current stage ${admissionStage}. No hidden confession is required. A simple motive may stay simple; the ladder exists to preserve honesty when subtext is actually present.`;
+
+  return {
+    sceneObjective,
+    immediateWant,
+    concealedWant,
+    conversationTactic,
+    resistance,
+    subtextThread: subtextThread || "none",
+    admissionStage,
+    admissionLadder,
+    intentPersistence: "Brief replies, a waiter, a noise, a joke, or a small topic shift do not erase the scene objective. Hold it across turns until it is satisfied, explicitly abandoned, blocked by a boundary, or materially changed on-page. Return to it naturally instead of restarting the scene brain every message.",
+    initiativeThreshold,
+    povMode,
+    gestureBudget,
+    fillerPolicy: "No random activity filler. Do not create a tray crash, waiter interruption, phone buzz, door event, passerby, sudden NPC, or scenery incident merely because the conversation paused. External activity must be already grounded or causally necessary to the live objective.",
+    banterExitPolicy: "A serious or vulnerable answer does not need a joke at the end. Do not append a teasing payment line, smug tag, rhetorical jab, or cute punchline just to restore personality after honesty.",
+    instruction: `Write from WANT, not from emptiness. ${asksWhyInitiated ? "The user directly asked why the character initiated this interaction: answer that question from character-owned motive before decoration. " : ""}${skepticalFollowup ? "The user's skeptical/minimal response leaves the prior motive alive; do not dodge it by spawning background activity. " : ""}Use the conversation tactic, preserve resistance, and let subtext survive without explaining it. If the motive is concealed, visible behavior/dialogue may reveal only the current admission stage. Keep narration in ${povMode === "unknown" ? "the already-established POV once one is evident" : `${povMode}-person`} mode; do not alternate first/third person. On this turn use at most ${gestureBudget} low-signal gesture beat(s); dialogue or stillness is allowed.`
   };
 }
 
@@ -1330,6 +1437,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const perceptionRealismEngine = buildPerceptionRealismEngine(input, actions, present, mode);
   const turnTakingEngine = buildTurnTakingEngine(input, present, perceptibleUserTurn);
   const agencyMomentumEngine = buildAgencyMomentumEngine(input, autonomousLifeEngine, turnTakingEngine, sceneRhythmEngine, perceptibleUserTurn, userPresence);
+  const characterIntentEngine = buildCharacterIntentEngine(input, agencyMomentumEngine, characterDNA, perceptibleUserTurn);
   const scenePhysicsEngine = buildScenePhysicsEngine(input, present, userPresence);
 
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
@@ -1375,6 +1483,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     reactionEngine,
     autonomousLifeEngine,
     agencyMomentumEngine,
+    characterIntentEngine,
     scenePhysicsEngine,
     consequenceEngine,
     sceneRhythmEngine,
@@ -1561,6 +1670,7 @@ export function storyContractPrompt(contract: StoryContract) {
     reactionEngine: contract.reactionEngine,
     autonomy: contract.autonomousLifeEngine,
     agencyMomentum: contract.agencyMomentumEngine,
+    characterIntent: contract.characterIntentEngine,
     scenePhysics: contract.scenePhysicsEngine,
     consequences: contract.consequenceEngine,
     sceneRhythm: contract.sceneRhythmEngine,
@@ -1647,5 +1757,5 @@ export function storyContractPrompt(contract: StoryContract) {
     },
   };
 
-  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; attachment defenses and mixed signals can create distance without erasing desire. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human Turn-Taking uses turnTaking.mode/responseScale/questionPolicy to allow partial answers, delayed answers, silence, interruptions, topic return/drop and sparse group speaker traffic; conversation completeness is never the goal. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn. ACTIVE behavior boundaries in userAuthored.activeBehaviorBoundaries persist across turns until the user explicitly reopens them; do not treat them as one-turn suggestions. userAuthored.selfReportLock prevents unsolicited psychoanalysis from overriding the user's latest self-report. userAuthored.userPresence is a hard physical-state signal: leaving/absent means the user cannot be addressed, observed, touched, handed objects, or silently respawned until an authored re-entry. SCENE PHYSICS is binding: preserve body posture, spatial anchor, prop holder/location/state, distance, line of sight, door state and elapsed-time evidence. Never use a repeated gesture merely to fill narration; silence or dialogue-only beats are valid.`;
+  return `TURN CONTRACT — compact canon and story pressure\n${JSON.stringify(compact)}\n\nUse this order: visible canon → user ownership → physical reality → character mind/perception → independent agenda → consequence residue → relationship expectations → Character DNA → one earned story beat. Answer the latest turn before subtext. If initiative.required is true, MAKE ONE CONCRETE CHOICE IN THIS REPLY without deciding the user's response. Dialogue can satisfy initiative when it contains a real decision, invitation, refusal, reveal, request or commitment; empty banter cannot. Autonomy means the character may have somewhere else to be, another priority, another relationship, or a reason to leave; it never means inventing fake distance. Consequences survive scene changes until repaired. Scene rhythm may land or close instead of stretching every exchange. Selective memory privileges boundaries, promises, firsts, repeated preferences and behavior-changing events over trivia. Relationship expectations belong to the character and may be wrong; never invent the user's feelings to satisfy them. Relationship Intelligence keeps attraction, trust, comfort and commitment separate; attachment defenses and mixed signals can create distance without erasing desire. Emotional continuity carries residue after apologies until behavior earns a new baseline. Scene Variety avoids repeating the same location/structure/tension skeleton while respecting physical continuity. NPC Social Network treats side characters as a web with independent bonds and uneven information. Long-Term Memory 4.0 retrieves by relevance and behavioral consequence, not perfect recall. Writing Style Director varies prose texture, dialogue density, interiority and cadence without changing character identity. Human Turn-Taking uses turnTaking.mode/responseScale/questionPolicy to allow partial answers, delayed answers, silence, interruptions, topic return/drop and sparse group speaker traffic; conversation completeness is never the goal. Character Intent + Subtext treats characterIntent.sceneObjective/immediateWant/concealedWant/conversationTactic/resistance/subtextThread/admissionStage as persistent causal state: a brief topic shift does not erase what the character wanted, serious answers do not require a banter tag, random ambient incidents cannot substitute for motive, narration POV stays stable, and low-signal gestures obey the turn budget. Human imperfection is allowed when it follows DNA. NPCs keep goals and relationships of their own. Romance progresses through evidence and changed expectations, never intensity alone. Long-term arcs require repeated proof and can include relapse under pressure. Run the clone test on reaction logic, not just vocabulary. If living.interestProofRequired is true, prove interest through a voluntary choice with a real cost, not staring or narration. If living.sceneChangeRequired is true, something materially changes on-page. Jealousy needs listed evidence. Plans are not accepted until the user accepts them. Active conflicts retain residue until repaired. Achieved milestones are never replayed as firsts. Treat mind.believe and mind.misunderstand as SUBJECTIVE, never as canon. Track time literally, let intensity rise and fall, and protect identity from drift. Emotional causality must be event → interpretation → feeling → pressure, not mood roulette. Prefer subtext over self-explanation when the character would protect pride. Respect public/private mode, learned behavioral patterns, conflict personality and contradictions. Use sceneRhythm.phase and emotionalIntelligence.sceneMomentum to know when to hold, turn, land or close a scene, but never skip a pending user choice. Vary response STRUCTURE as well as wording. Stored state never overrides the latest visible user turn. ACTIVE behavior boundaries in userAuthored.activeBehaviorBoundaries persist across turns until the user explicitly reopens them; do not treat them as one-turn suggestions. userAuthored.selfReportLock prevents unsolicited psychoanalysis from overriding the user's latest self-report. userAuthored.userPresence is a hard physical-state signal: leaving/absent means the user cannot be addressed, observed, touched, handed objects, or silently respawned until an authored re-entry. SCENE PHYSICS is binding: preserve body posture, spatial anchor, prop holder/location/state, distance, line of sight, door state and elapsed-time evidence. Never use a repeated gesture merely to fill narration; silence or dialogue-only beats are valid.`;
 }
