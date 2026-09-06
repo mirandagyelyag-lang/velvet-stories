@@ -3,10 +3,14 @@ import { stripTypeScriptTypes } from "node:module";
 
 const contractTs = fs.readFileSync("supabase/functions/character-chat/engine/story-contract.ts", "utf8");
 const socialTs = fs.readFileSync("supabase/functions/character-chat/engine/social-gravity-world-identity.ts", "utf8");
+const chemistryTs = fs.readFileSync("supabase/functions/character-chat/engine/relationship-chemistry-v2.ts", "utf8");
 const socialJs = stripTypeScriptTypes(socialTs, { mode: "strip", sourceUrl: "social-gravity-world-identity.ts" });
+const chemistryJs = stripTypeScriptTypes(chemistryTs, { mode: "strip", sourceUrl: "relationship-chemistry-v2.ts" });
 const socialUrl = `data:text/javascript;base64,${Buffer.from(socialJs).toString("base64")}`;
+const chemistryUrl = `data:text/javascript;base64,${Buffer.from(chemistryJs).toString("base64")}`;
 const contractJs = stripTypeScriptTypes(contractTs, { mode: "strip", sourceUrl: "story-contract.ts" })
-  .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl));
+  .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl))
+  .replace('"./relationship-chemistry-v2.ts"', JSON.stringify(chemistryUrl));
 const contractModule = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
 const { compileStoryContract, inferAutonomousLife, storyContractPrompt } = contractModule;
 

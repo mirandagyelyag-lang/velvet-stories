@@ -6,7 +6,7 @@ const edge=read("supabase/functions/character-chat/index.ts");
 const diag=read("src/pages/Diagnostics.jsx");
 const old=read("scripts/verify-v3341-canon-doctor-repair.mjs");
 const checks=[
- ["version 3.35.x descendant",pkg.version.startsWith("3.35.")&&pub.version.startsWith("3.35.")],
+ ["version 3.35.x descendant",/^3\.(?:35|3[6-9]|[4-9]\d)\./.test(pkg.version)&&/^3\.(?:35|3[6-9]|[4-9]\d)\./.test(pub.version)],
  ["Conversational Naturalism preserved",edge.includes("CONVERSATIONAL NATURALISM 2.0")],
  ["live naturalism director",edge.includes("buildConversationalNaturalismDirector")&&edge.includes("CONVERSATIONAL NATURALISM 2.0 / v3.35 — LIVE SPEECH DIRECTOR")],
  ["sentence DNA",edge.includes("Sentence DNA:")&&edge.includes("sentenceDna")],

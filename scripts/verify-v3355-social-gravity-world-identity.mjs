@@ -11,9 +11,9 @@ const socialSource=read("supabase/functions/character-chat/engine/social-gravity
 let pass=0,total=0;
 const check=(name,ok)=>{total++;console.log(`${ok?"PASS":"FAIL"} ${name}`);if(ok)pass++;};
 
-check("version 3.35.5",pkg.version==="3.35.5"&&pub.version==="3.35.5");
-check("release metadata",/Social Gravity \+ World Identity/i.test(pub.release));
-check("v3355 is first stability gate",pkg.scripts["stability:lab"].startsWith("npm run verify:v3355"));
+check("version 3.35.5+ descendant",(/^3\.35\.(?:5|[6-9]|[1-9]\d+)$/.test(pkg.version)||/^3\.(?:3[6-9]|[4-9]\d)\./.test(pkg.version))&&(/^3\.35\.(?:5|[6-9]|[1-9]\d+)$/.test(pub.version)||/^3\.(?:3[6-9]|[4-9]\d)\./.test(pub.version)));
+check("Social Gravity release preserved",edge.includes("v3.35.5 SOCIAL GRAVITY + WORLD IDENTITY"));
+check("stability lab retains v3355",pkg.scripts["stability:lab"].includes("npm run verify:v3355"));
 check("social identity engine imported by story contract",contractSource.includes("deriveSocialWorldIdentity")&&contractSource.includes("socialGravityWorldIdentityEngine"));
 check("validator imported by edge",edge.includes("socialGravityIssues")&&edge.includes("social-gravity-world-identity.ts"));
 check("repair triggers promoted",["social_gravity_missing","romantic_social_gravity_missing","admirer_instantly_neutralized","profile_social_ecosystem_missing","world_identity_manifestation_missing","outside_attention_missing","domain_life_continuity_missing","ship_bubble_auto_neutralization"].every((x)=>edge.includes(`\"${x}\"`)));

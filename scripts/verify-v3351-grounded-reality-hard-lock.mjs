@@ -10,7 +10,7 @@ const fixture=JSON.parse(read("scripts/fixtures/v3351-grounded-reality-regressio
 let pass=0, total=0;
 const check=(name,ok)=>{ total++; console.log(`${ok?"PASS":"FAIL"} ${name}`); if(ok) pass++; };
 
-check("version 3.35.x descendant", pkg.version.startsWith("3.35.") && pub.version.startsWith("3.35."));
+check("version 3.35.x descendant", /^3\.(?:35|3[6-9]|[4-9]\d)\./.test(pkg.version) && /^3\.(?:35|3[6-9]|[4-9]\d)\./.test(pub.version));
 check("Grounded Reality Hard Lock preserved", edge.includes("GROUNDED REALITY HARD LOCK"));
 check("deterministic lock imported", edge.includes('groundedRealityIssues') && edge.includes('sanitizeGroundedRealityReply'));
 check("raw prose quarantined", edge.includes("const guardedDraft = true"));

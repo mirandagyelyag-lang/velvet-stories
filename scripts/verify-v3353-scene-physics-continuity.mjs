@@ -11,7 +11,7 @@ const fixture=JSON.parse(read("scripts/fixtures/v3353-scene-physics-regression.j
 let pass=0,total=0;
 const check=(name,ok)=>{total++; console.log(`${ok?"PASS":"FAIL"} ${name}`); if(ok) pass++;};
 
-check("version 3.35.3+ descendant",/^3\.35\.(?:3|[4-9]|[1-9]\d+)$/.test(pkg.version)&&/^3\.35\.(?:3|[4-9]|[1-9]\d+)$/.test(pub.version));
+check("version 3.35.3+ descendant",(/^3\.35\.(?:3|[4-9]|[1-9]\d+)$/.test(pkg.version)||/^3\.(?:3[6-9]|[4-9]\d)\./.test(pkg.version))&&(/^3\.35\.(?:3|[4-9]|[1-9]\d+)$/.test(pub.version)||/^3\.(?:3[6-9]|[4-9]\d)\./.test(pub.version)));
 check("Scene Physics + Continuity preserved",edge.includes("SCENE PHYSICS + CONTINUITY LOCK"));
 check("deterministic scene physics imported",edge.includes("scenePhysicsIssues")&&edge.includes("deriveScenePhysicsState")&&edge.includes("sanitizeScenePhysicsReply"));
 check("scene physics contract exists",contractSource.includes("scenePhysicsEngine")&&contractSource.includes("interactionLimits")&&contractSource.includes("recentActionFingerprints"));

@@ -19,7 +19,7 @@ const contractSource=read("supabase/functions/character-chat/engine/story-contra
 let pass=0,total=0;
 const check=(name,ok)=>{ total++; console.log(`${ok?"PASS":"FAIL"} ${name}`); if(ok) pass++; };
 
-check("version 3.35.4+ descendant",/^3\.35\.(?:4|[5-9]|[1-9]\\d+)$/.test(pkg.version)&&/^3\.35\.(?:4|[5-9]|[1-9]\\d+)$/.test(pub.version));
+check("version 3.35.4+ descendant",(/^3\.35\.(?:4|[5-9]|[1-9]\d+)$/.test(pkg.version)||/^3\.(?:3[6-9]|[4-9]\d)\./.test(pkg.version))&&(/^3\.35\.(?:4|[5-9]|[1-9]\d+)$/.test(pub.version)||/^3\.(?:3[6-9]|[4-9]\d)\./.test(pub.version)));
 check("Character Intent + Subtext preserved",edge.includes("CHARACTER INTENT + SUBTEXT 3.35.4"));
 check("deterministic intent lock imported",edge.includes("intentSubtextIssues")&&edge.includes("sanitizeIntentSubtextReply"));
 check("stability lab retains v3354",pkg.scripts["stability:lab"].includes("npm run verify:v3354"));
