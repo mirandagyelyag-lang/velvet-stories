@@ -266,12 +266,52 @@ export function CharactersProvider({ children }) {
   }
 
   async function generateInstantStory(characterData, idea = "") {
-    const { data, error } = await supabase.functions.invoke("character-chat", {
-      body: { action: "instant_story", draft: characterDraftPayload(characterData), idea },
-      timeout: 24000,
-    });
-    if (error) throw new Error(await readCharacterFunctionError(error, "Velvet couldn't open an instant story."));
-    return data?.opening || "";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 14500);
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (sessionError || !accessToken) throw new Error("Your session expired. Sign in again.");
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || supabase.supabaseUrl;
+      const publishableKey =
+        import.meta.env.VITE_SUPABASE_ANON_KEY ||
+        import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+        supabase.supabaseKey ||
+        "";
+      if (!supabaseUrl) throw new Error("Velvet couldn't reach Instant Story.");
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/character-chat`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          ...(publishableKey ? { apikey: publishableKey } : {}),
+        },
+        body: JSON.stringify({
+          action: "instant_story",
+          draft: characterDraftPayload(characterData),
+          idea: String(idea || "").slice(0, 700),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || `Instant Story failed with status ${response.status}.`);
+      }
+      const opening = String(data?.opening || "").trim();
+      if (!opening) throw new Error("Velvet returned an empty Instant Story. Try again.");
+      return opening;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        throw new Error("Instant Story took too long and was stopped. Try once more.");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   async function deleteCharacter(characterId) {

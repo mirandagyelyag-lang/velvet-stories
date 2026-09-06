@@ -6,7 +6,7 @@ import { buildRecoveryCheckpointV347 } from "../supabase/functions/character-cha
 import { derivePerformanceMobileV348 } from "../supabase/functions/character-chat/engine/performance-mobile-v348.ts";
 const checks=[];const ok=(n,v)=>checks.push([n,!!v]);
 const pkg=JSON.parse(fs.readFileSync("package.json","utf8")); const pub=JSON.parse(fs.readFileSync("public/velvet-version.json","utf8"));
-ok("version 3.49.0",pkg.version==="3.49.0"&&pub.version==="3.49.0");
+ok("version 3.49.x lineage",/^3\.49\./.test(pkg.version)&&pkg.version===pub.version);
 const character={name:"Roman",personality:"feared and respected underground racer; blunt, practical, independent",speech_style:"short, dry, practical",relationship:"friends; attraction does not erase independence",character_independence:90};
 const recent=[{sender:"user",content:"*I put my bag on the chair.* Fine."},{sender:"character",content:'"Fine." He stayed where he was.'},{sender:"user",content:"I have class in ten minutes."}];
 const c=compileStoryContract({character,userName:"Anto",latestUserMessage:"okay",turnIntent:{medium:"in_person"},sceneState:{location:"campus cafeteria",present:["Anto","Roman"]},recentMessages:recent,memories:[{content:"Roman races underground",is_canon:true,importance:5}],storyArcs:[{title:"trust",status:"active"}],calendarEvents:[{title:"class",status:"active",time_label:"in ten minutes"}],unresolvedThreads:["talk later"]});

@@ -185,6 +185,7 @@ export function ChatsProvider({
 
     try {
       let conversation = null;
+      let conversationWasCreated = false;
 
       if (options.requestedConversationId) {
         conversation = await findConversationById(
@@ -204,24 +205,24 @@ export function ChatsProvider({
           groupCharacterIds: options.groupCharacterIds,
           groupTitle: options.groupTitle,
         });
+        conversationWasCreated = true;
       }
 
-      const messagePage = await loadConversationMessages(conversation.id);
-      let messages = messagePage.messages;
-      let hasMoreMessages = messagePage.hasMore;
+      let messages = [];
+      let hasMoreMessages = false;
 
-      if (
-        messages.length === 0
-      ) {
-        const firstMessage =
-          await createFirstMessage(
-            conversation.id,
-            character
-          );
+      // A freshly inserted conversation cannot already contain messages.
+      // Skipping the empty SELECT removes one serial network round-trip from
+      // Instant Story and every explicit New Story without changing persistence.
+      if (!conversationWasCreated) {
+        const messagePage = await loadConversationMessages(conversation.id);
+        messages = messagePage.messages;
+        hasMoreMessages = messagePage.hasMore;
+      }
 
-        messages = [
-          firstMessage,
-        ];
+      if (messages.length === 0) {
+        const firstMessage = await createFirstMessage(conversation.id, character);
+        messages = [firstMessage];
         hasMoreMessages = false;
       }
 
@@ -389,11 +390,16 @@ export function ChatsProvider({
   }
 
   async function createConversation(character, options = {}) {
-    const { data: defaultPersona } = await supabase
-      .from("personas")
-      .select("id")
-      .eq("is_default", true)
-      .maybeSingle();
+    let defaultPersonaId = "";
+    if (!options.personaId) {
+      const { data: defaultPersona, error: defaultPersonaError } = await supabase
+        .from("personas")
+        .select("id")
+        .eq("is_default", true)
+        .maybeSingle();
+      if (defaultPersonaError) throw defaultPersonaError;
+      defaultPersonaId = defaultPersona?.id || "";
+    }
 
     const groupIds = [...new Set((options.groupCharacterIds || []).filter(Boolean))];
     if (groupIds.length && !groupIds.includes(character.id)) groupIds.unshift(character.id);
@@ -405,7 +411,7 @@ export function ChatsProvider({
         user_id: user.id,
         character_id: character.id,
         title: options.title?.trim() || options.groupTitle?.trim() || (options.isAdditional ? createConversationTitle() : character.name),
-        persona_id: options.personaId || defaultPersona?.id || null,
+        persona_id: options.personaId || defaultPersonaId || null,
         lorebook_id: options.lorebookId || null,
         group_mode: groupMode,
         group_character_ids: groupMode ? groupIds : [],

@@ -1184,21 +1184,109 @@ ${cleanPromptValue(situation || "For months, the character used to leave wheneve
   });
 }
 
-async function handleInstantStory({ apiKey, draft, idea }) {
-  const safeDraft = draft && typeof draft === "object" ? draft : {};
-  const prompt = `Open a fresh private roleplay timeline for this character. Write only the opening scene, 55-105 words, immediately playable and specific. Preserve the character's established voice and relationship but choose a NEW concrete situation rather than repeating their stored first message. Do not control the user's dialogue, actions, thoughts or feelings. MOBILE NATURALISM: use 0-2 short narration sentences around 1-4 natural spoken lines. Prefer the first visible sentence to be dialogue when that fits the character. The first spoken line must sound normal if copied out of the scene, not like exposition disguised as dialogue. Start with dialogue or one simple action when plausible. Do not inventory the room, weather, clothing, sounds, props, textures, or routine movements. Mention at most one environmental detail if it changes the interaction. Collapse mundane movement into one clause. Casual young-adult characters should sound casual and age-appropriate, not perfectly witty, literary, legalistic, or academic unless their profile explicitly requires that voice. Favor actual interaction and dialogue over decorative setup. End on a clean conversational opening, choice, request, interruption, or action the user can answer immediately. Do not manufacture a dramatic cliffhanger just to end the paragraph. Use the language of the idea/profile.\n\nCHARACTER\n${JSON.stringify(safeDraft).slice(0, 14000)}\n\nOPTIONAL IDEA\n${String(idea || "Surprise me with a plausible scene that fits their life.").slice(0, 700)}`;
-  const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
-  let lastError = "Velvet couldn't open an instant story.";
-  for (const model of models) {
-    try {
-      const response = await fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 750, thinkingConfig: { thinkingLevel: "LOW" } } }) });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { lastError = data?.error?.message || lastError; continue; }
-      const opening = extractCandidateText(data).trim();
-      if (opening) return json({ opening });
-    } catch (error) { lastError = getErrorMessage(error); }
+function compactInstantStoryDraft(draft) {
+  const source = draft && typeof draft === "object" ? draft : {};
+  const field = (key, limit) => cleanPromptValue(source?.[key], limit);
+  return {
+    name: field("name", 90),
+    role: field("role", 180),
+    description: field("description", 480),
+    personality: field("personality", 1200),
+    relationship: field("relationship", 900),
+    world: field("world", 700),
+    scenario: field("scenario", 700),
+    speechStyle: field("speechStyle", 520),
+    voiceVocabulary: field("voiceVocabulary", 360),
+    humorStyle: field("humorStyle", 320),
+    conflictStyle: field("conflictStyle", 320),
+    affectionStyle: field("affectionStyle", 320),
+    verbalTells: field("verbalTells", 260),
+    voiceAvoidances: field("voiceAvoidances", 320),
+    boundaries: field("boundaries", 420),
+    exampleDialogue: field("exampleDialogue", 650),
+    firstMessage: field("firstMessage", 520),
+  };
+}
+
+function instantStoryFallbackOpening(draft, idea = "") {
+  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
+  const name = cleanPromptValue(draft?.name, 70) || "They";
+  const cleanIdea = cleanPromptValue(idea, 180);
+
+  if (cleanIdea) {
+    return `${name} looks over, already focused on the situation at hand. “Okay. I’m listening.” A beat passes. “What do you want to do?”`;
   }
-  throw new Error(lastError);
+  if (/race|racing|racer|garage|car|track|circuit|street race/.test(profile)) {
+    return `The garage is quieter than usual when ${name} looks up from the car. “You’re here. Good.” They step aside just enough to clear the view. “Tell me if this looks wrong to you.”`;
+  }
+  if (/athlete|captain|team|practice|training|football|soccer|basketball|polo|sport/.test(profile)) {
+    return `${name} catches you just after practice, still carrying the restless energy of it. “You heading out?” They glance toward the exit, then back at you. “Walk with me for a minute.”`;
+  }
+  if (/student|university|college|campus|class|professor/.test(profile)) {
+    return `${name} spots you outside class and slows instead of passing by. “Hey.” They shift their bag higher on one shoulder. “You got a minute before you disappear?”`;
+  }
+  if (/business|ceo|company|wealth|millionaire|billionaire|family empire|executive/.test(profile)) {
+    return `${name} steps away from the noise around them and gives you their full attention. “There you are.” Their phone goes dark in their hand. “I need a second opinion.”`;
+  }
+  return `${name} catches your attention before the moment can pass. “Hey. Got a minute?” They wait, clearly expecting an actual answer instead of filling the silence for you.`;
+}
+
+async function handleInstantStory({ apiKey, draft, idea }) {
+  const safeDraft = compactInstantStoryDraft(draft);
+  const cleanIdea = cleanPromptValue(idea || "", 420);
+  const prompt = `Write one fresh opening beat for a private roleplay with this character. 45-90 words. It must be immediately playable, specific to the character, and DIFFERENT from their stored first message. Preserve voice and established relationship. Do not write the user's dialogue, thoughts, feelings, decisions, or actions. Use 0-2 short narration sentences and 1-4 natural spoken lines. Prefer dialogue first when natural. No room inventory, weather montage, outfit inventory, cinematic body-language padding, exposition disguised as dialogue, or forced cliffhanger. End with a clean opening the user can answer. Use the language of the profile or idea.\n\nCHARACTER\n${JSON.stringify(safeDraft)}\n\nIDEA\n${cleanIdea || "Choose a plausible ordinary situation from the character's established life."}`;
+
+  // v3.49.1: Instant Story is latency-sensitive and must never sit on one model
+  // indefinitely. Try the production model first, then quick fallbacks, with a
+  // hard per-attempt timeout and a short global deadline. If providers are down,
+  // return a grounded deterministic opening instead of leaving the button dead.
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
+  const deadlineAt = Date.now() + 10500;
+  let lastError = "Velvet couldn't open an instant story.";
+
+  for (const model of models) {
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs < 900) break;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), Math.min(4200, remainingMs));
+    const startedAt = Date.now();
+
+    try {
+      const response = await fetch(modelEndpoint(model), {
+        method: "POST",
+        headers: geminiHeaders(apiKey),
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: 420,
+            temperature: 0.86,
+            thinkingConfig: { thinkingLevel: "LOW" },
+          },
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        lastError = data?.error?.message || `Gemini returned ${response.status}`;
+        console.warn("[character-chat] instant story model failed", { model, status: response.status, durationMs: Date.now() - startedAt });
+        continue;
+      }
+      const opening = extractCandidateText(data).trim();
+      if (opening.length >= 20) {
+        console.log("[character-chat] instant story completed", { model, durationMs: Date.now() - startedAt });
+        return json({ opening, source: "ai" });
+      }
+      lastError = "Gemini returned an empty instant story.";
+    } catch (error) {
+      lastError = getErrorName(error) === "AbortError" ? "Instant Story model attempt timed out." : getErrorMessage(error);
+      console.warn("[character-chat] instant story attempt ended", { model, error: lastError, durationMs: Date.now() - startedAt });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  console.warn("[character-chat] instant story using local fallback", { error: lastError });
+  return json({ opening: instantStoryFallbackOpening(safeDraft, cleanIdea), source: "local_fallback" });
 }
 
 async function handleCharacterGenerate({ apiKey, concept }) {

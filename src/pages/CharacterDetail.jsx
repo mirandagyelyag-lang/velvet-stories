@@ -45,6 +45,7 @@ export default function CharacterDetail({
   const { lorebooks } = useLorebooks();
   const { theme } = useTheme();
   const [instantLoading, setInstantLoading] = useState(false);
+  const [instantError, setInstantError] = useState("");
   const [loading, setLoading] = useState(true);
   const [storySetupOpen, setStorySetupOpen] = useState(false);
   const [storyOpening, setStoryOpening] = useState("");
@@ -197,9 +198,19 @@ export default function CharacterDetail({
     if (instantLoading) return;
     try {
       setInstantLoading(true);
+      setInstantError("");
       const opening = await generateInstantStory(character);
-      if (opening) await onInstantStory?.({ ...character, firstMessage: opening });
-    } finally { setInstantLoading(false); }
+      const defaultPersonaId = personas.find((item) => item.isDefault)?.id || "";
+      await onInstantStory?.(
+        { ...character, firstMessage: opening },
+        { personaId: defaultPersonaId, instantStory: true }
+      );
+    } catch (error) {
+      console.error("Instant Story failed:", error);
+      setInstantError(error?.message || "Velvet couldn't open an instant story. Try again.");
+    } finally {
+      setInstantLoading(false);
+    }
   }
 
   const tags = character.tags || [];
@@ -275,7 +286,8 @@ export default function CharacterDetail({
               <MessageCircle size={18} />
               <span>{latestStory ? "Continue latest story" : "Begin story"}</span>
             </button>
-            <button className="character-profile__new" type="button" onClick={openStorySetup} aria-label="Start a new story"><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
+            <button className="character-profile__new" type="button" onClick={openStorySetup} aria-label="Start a new story"><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" type="button" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
+            {instantError && <p className="character-profile__instant-error" role="status">{instantError}</p>}
           </div>
         </div>
       </section>
