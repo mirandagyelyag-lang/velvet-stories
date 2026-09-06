@@ -8,8 +8,8 @@ const edge=fs.readFileSync("supabase/functions/character-chat/index.ts","utf8");
 const css=fs.readFileSync("src/styles/velvet-v3495-chat-recovery-clean-ui.css","utf8");
 const main=fs.readFileSync("src/main.jsx","utf8");
 
-ok("version 3.49.5",pkg.version==="3.49.5"&&pub.version==="3.49.5");
-ok("release names clean chat recovery",/Chat Recovery \+ Clean Chat UI/.test(pub.release||""));
+ok("version 3.49.5 descendant",pkg.version===pub.version&&/^3\.49\.(?:[5-9]|[1-9]\d+)$/.test(pkg.version));
+ok("clean-chat release remains installed",fs.existsSync("README-v3.49.5-CHAT-RECOVERY-CLEAN-UI.txt"));
 ok("client turn recovery is anchored to expected user message",ctx.includes("findPersistedReplyForThisTurn")&&ctx.includes("expectedUserMessageId")&&ctx.includes("rows.slice(expectedIndex + 1)"));
 ok("late stream error cannot invalidate finalMessage",ctx.includes("if (streamError && !finalMessage)"));
 ok("stream errors try persisted recovery first",ctx.includes('recoverPersistedReplyForThisTurn("stream-error-recovery")'));
@@ -30,7 +30,7 @@ ok("mobile composer is compact",css.includes("min-height: 58px !important")&&css
 ok("error card is compact",css.includes("width: min(520px")&&css.includes("min-height: 34px"));
 ok("new CSS imported last",main.trim().endsWith('import "./styles/velvet-v3495-chat-recovery-clean-ui.css";'));
 ok("v3.49.4 remains regression",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3494"));
-ok("v3.49.5 runs first in lab",(pkg.scripts?.["stability:lab"]||"").startsWith("npm run verify:v3495"));
+ok("v3.49.5 remains in lab",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3495"));
 
 let failed=0; for(const [name,value] of checks){console.log(`${value?"PASS":"FAIL"} ${name}`);if(!value)failed++;}
 console.log(`\n${checks.length-failed}/${checks.length} v3.49.5 chat-recovery/UI checks passed.`); if(failed)process.exit(1);

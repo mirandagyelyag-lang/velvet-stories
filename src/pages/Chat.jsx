@@ -172,6 +172,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [isTyping, setIsTyping] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
+  const [failedGeneration, setFailedGeneration] = useState(null);
+  const [retryingGeneration, setRetryingGeneration] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
@@ -247,6 +249,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const textareaRef = useRef(null);
   const stoppedRef = useRef(false);
   const generationRunRef = useRef(0);
+  const failedGenerationRef = useRef(null);
+  const retryInFlightRef = useRef(false);
   const variantGenerationLockRef = useRef(false);
   const chatExitGuardUntilRef = useRef(0);
   const actionNoticeTimerRef = useRef(null);
@@ -260,10 +264,19 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const messages = getCharacterMessages(character.id);
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
   const canonicalTurnMessages = messages.filter((item) => !item.isStreaming);
-  const latestUserMessageIndex = canonicalTurnMessages.map((item) => item.sender).lastIndexOf("user");
-  const latestCharacterMessageIndex = canonicalTurnMessages.map((item) => item.sender).lastIndexOf("character");
-  const currentTurnHasCompletedReply = latestUserMessageIndex >= 0 && latestCharacterMessageIndex > latestUserMessageIndex;
-  const visibleSendError = sendError && isReplyGenerationErrorMessage(sendError) && currentTurnHasCompletedReply ? "" : sendError;
+  const visibleCanonicalTurnMessages = visibleMessages.filter((item) => !item.isStreaming);
+  const latestVisibleUserMessageIndex = visibleCanonicalTurnMessages.map((item) => item.sender).lastIndexOf("user");
+  const latestVisibleCharacterMessageIndex = visibleCanonicalTurnMessages.map((item) => item.sender).lastIndexOf("character");
+  const currentTurnHasCompletedReply = latestVisibleUserMessageIndex >= 0 && latestVisibleCharacterMessageIndex > latestVisibleUserMessageIndex;
+  const failedTurnHasCompletedReply = (() => {
+    if (!failedGeneration || failedGeneration.mode === "regenerate" || !failedGeneration.expectedUserMessageId) return false;
+    const expectedIndex = canonicalTurnMessages.findIndex((item) => item.id === failedGeneration.expectedUserMessageId);
+    return expectedIndex >= 0 && canonicalTurnMessages.slice(expectedIndex + 1).some((item) => item.sender === "character");
+  })();
+  const resolvedGenerationError = failedGeneration?.mode === "regenerate"
+    ? false
+    : (failedTurnHasCompletedReply || (!failedGeneration && currentTurnHasCompletedReply));
+  const visibleSendError = sendError && isReplyGenerationErrorMessage(sendError) && resolvedGenerationError ? "" : sendError;
 
   useEffect(() => {
     const longChat = visibleMessages.length >= 250;
@@ -274,6 +287,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       document.body.classList.remove("velvet-long-chat");
     };
   }, [visibleMessages.length]);
+
+  useEffect(() => {
+    if (!sendError || !isReplyGenerationErrorMessage(sendError)) return;
+    if (resolvedGenerationError) clearGenerationFailure();
+  }, [sendError, resolvedGenerationError]);
   const chatOverlayOpen = Boolean(
     menuOpen || directorNoteOpen || selectedMessage || controlsOpen || characterProfileOpen ||
     memoryBookOpen || relationshipOpen || groupPeekCharacter || worldStudioOpen || timelineOpen || storyHubOpen || safeStudioOpen || livingWorldOpen || experienceOpen || canonDoctorOpen || catchUpOpen || qualityMessage
@@ -300,6 +318,27 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
   function armChatExitGuard(duration = 700) {
     chatExitGuardUntilRef.current = Date.now() + duration;
+  }
+
+  function clearGenerationFailure() {
+    failedGenerationRef.current = null;
+    setFailedGeneration(null);
+    setSendError("");
+  }
+
+  function rememberGenerationFailure(error, context = {}) {
+    const next = {
+      mode: context.mode === "regenerate" ? "regenerate" : "reply",
+      expectedUserMessageId: context.expectedUserMessageId || "",
+      regenerateMessageId: context.regenerateMessageId || "",
+      instruction: context.instruction || "",
+      feedbackCodes: Array.isArray(context.feedbackCodes) ? [...context.feedbackCodes] : [],
+      source: context.source || "generation",
+      failedAt: Date.now(),
+    };
+    failedGenerationRef.current = next;
+    setFailedGeneration(next);
+    setSendError(translateMessageError(error?.message || String(error || "Generation failed")));
   }
 
   function closeChatOverlaysForBack() {
@@ -1005,12 +1044,13 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     );
     const submittedDraft = cleanMessage;
     let userMessageSaved = false;
+    let savedUserMessageId = "";
 
     try {
       stoppedRef.current = false;
       setSending(true);
       setIsTyping(true);
-      setSendError("");
+      clearGenerationFailure();
 
       // VELVET_FAST_SEND_V1
       // The composer clears immediately. ChatsContext paints an optimistic user
@@ -1036,6 +1076,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         directorInstruction: noteForThisGeneration,
       });
       userMessageSaved = true;
+      savedUserMessageId = savedUserMessage?.id || "";
 
       if (savedUserMessage?.isOfflinePending) {
         setSending(false);
@@ -1053,6 +1094,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         directorInstruction: noteForThisGeneration,
         expectedUserMessageId: savedUserMessage.id,
       });
+      clearGenerationFailure();
       if (generationResult?.learnedMemoryCount) {
         setMemoryCaptureNotice(generationResult.learnedMemoryCount);
         window.setTimeout(() => setMemoryCaptureNotice(0), 3200);
@@ -1070,7 +1112,15 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         if (replyForThisMessage) setReplyTo(replyForThisMessage);
         window.requestAnimationFrame(() => resizeComposer());
       }
-      setSendError(translateMessageError(error.message));
+      if (userMessageSaved) {
+        rememberGenerationFailure(error, {
+          mode: "reply",
+          expectedUserMessageId: savedUserMessageId,
+          source: "send",
+        });
+      } else {
+        setSendError(translateMessageError(error.message));
+      }
     } finally {
       // Critical: an older stopped request must not turn off the Stop button
       // or typing state belonging to a newer request.
@@ -1096,7 +1146,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     setSending(false);
     setIsTyping(false);
     setSilentCue("");
-    setSendError("");
+    clearGenerationFailure();
     showActionNotice("Generation stopped", "neutral", 1200);
     window.requestAnimationFrame(() => {
       try { textareaRef.current?.focus({ preventScroll: true }); } catch { textareaRef.current?.focus(); }
@@ -1104,24 +1154,84 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }
 
   async function retryGeneration() {
-    if (busy || !conversationReady) return;
+    if (busy || !conversationReady || retryInFlightRef.current) return;
+
+    retryInFlightRef.current = true;
     const runId = ++generationRunRef.current;
+    const remembered = failedGenerationRef.current || failedGeneration;
+    const canonical = (conversation?.messages || []).filter((item) => !item.isStreaming);
+    const latestVisibleUser = [...canonical].reverse().find((item) => item.sender === "user") || null;
+    const latestCharacter = [...canonical].reverse().find((item) => item.sender === "character") || null;
+    const latestUserIndex = canonical.map((item) => item.sender).lastIndexOf("user");
+    const latestCharacterIndex = canonical.map((item) => item.sender).lastIndexOf("character");
+    const legacyLooksLikeRegeneration = Boolean(
+      latestCharacter &&
+      isReplyGenerationErrorMessage(sendError) &&
+      latestCharacterIndex > latestUserIndex
+    );
+    const inferredFailure = remembered || (
+      legacyLooksLikeRegeneration
+        ? { mode: "regenerate", regenerateMessageId: latestCharacter.id, instruction: "", feedbackCodes: [], source: "legacy-error" }
+        : { mode: "reply", expectedUserMessageId: latestVisibleUser?.id || "", source: "legacy-error" }
+    );
+
     try {
       stoppedRef.current = false;
-      setSendError("");
-      setSilentCue("");
+      setRetryingGeneration(true);
+      setSending(true);
       setIsTyping(true);
-      await generateCharacterReply(character.id);
+      setSilentCue("");
+      setSendError("");
+
+      if (inferredFailure?.mode === "regenerate" && inferredFailure.regenerateMessageId) {
+        const targetId = inferredFailure.regenerateMessageId;
+        const result = await regenerateCharacterReply(
+          character.id,
+          targetId,
+          inferredFailure.instruction || "",
+          inferredFailure.feedbackCodes || []
+        );
+        const regeneratedContent = result?.message?.content || "";
+        const rows = await getMessageAlternatives(targetId).catch(() => []);
+        if (regeneratedContent || rows.length) {
+          const versions = normalizeVersionRows(rows, regeneratedContent);
+          versions.index = Math.max(0, versions.items.findIndex((item) => item.content === regeneratedContent));
+          setResponseVersions((current) => ({ ...current, [targetId]: versions }));
+        }
+      } else {
+        const expectedUserMessageId = inferredFailure?.expectedUserMessageId || latestVisibleUser?.id || "";
+        if (!expectedUserMessageId) throw new Error("There is no message to retry yet.");
+
+        // First reconcile with Supabase. If the reply actually finished while
+        // the phone was offline, Retry becomes an instant recovery instead of
+        // sending a duplicate generation request.
+        const refreshed = await reloadConversationMessages(character.id).catch(() => []);
+        const expectedIndex = refreshed.findIndex((item) => item.id === expectedUserMessageId);
+        const alreadyFinished = expectedIndex >= 0
+          ? refreshed.slice(expectedIndex + 1).find((item) => item.sender === "character" && !item.isStreaming)
+          : null;
+
+        if (!alreadyFinished) {
+          await generateCharacterReply(character.id, { expectedUserMessageId });
+        }
+      }
+
+      clearGenerationFailure();
     } catch (error) {
       if (
         generationRunRef.current === runId &&
         !stoppedRef.current &&
         error.name !== "AbortError"
       ) {
-        setSendError(translateMessageError(error.message));
+        rememberGenerationFailure(error, inferredFailure || {});
       }
     } finally {
-      if (generationRunRef.current === runId) setIsTyping(false);
+      retryInFlightRef.current = false;
+      if (generationRunRef.current === runId) {
+        setRetryingGeneration(false);
+        setSending(false);
+        setIsTyping(false);
+      }
     }
   }
 
@@ -1546,17 +1656,22 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
   async function saveEditedMessage() {
     if (!selectedMessage || !actionDraft.trim() || busy) return;
+    let updatedUserMessageId = "";
 
     try {
       setActionLoading(true);
+      clearGenerationFailure();
       const updatedUserMessage = await editMessageAndRemoveFollowing(character.id, selectedMessage.id, actionDraft);
+      updatedUserMessageId = updatedUserMessage?.id || "";
       closeActionsAfterAction();
       setIsTyping(true);
       await generateCharacterReply(character.id, { expectedUserMessageId: updatedUserMessage.id });
+      clearGenerationFailure();
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Message edit failed:", error);
-      setSendError(translateMessageError(error.message));
+      if (updatedUserMessageId) rememberGenerationFailure(error, { mode: "reply", expectedUserMessageId: updatedUserMessageId, source: "edit-user" });
+      else setSendError(translateMessageError(error.message));
     } finally {
       setActionLoading(false);
       setIsTyping(false);
@@ -1589,18 +1704,19 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       return;
     }
 
+    const targetId = selectedMessage.id;
+    const previousContent = selectedMessage.content;
+    const instruction = actionDraft.trim();
+    const feedbackCodes = [...regenerationFeedback];
     variantGenerationLockRef.current = true;
     try {
-      const targetId = selectedMessage.id;
-      const previousContent = selectedMessage.content;
-      const instruction = actionDraft.trim();
-      const feedbackCodes = [...regenerationFeedback];
       rememberFeedback("negative", feedbackCodes, targetId);
       setActionLoading(true);
       closeActionsAfterAction();
       setIsTyping(true);
       showAiPhase("Rewriting", 1100);
       showActionNotice("Generating another response…", "working", 5000);
+      clearGenerationFailure();
       const regenerationResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
       const regeneratedContent = regenerationResult?.message?.content || previousContent;
       setReplacementUndo({ messageId: regenerationResult?.message?.id || targetId, content: previousContent, label: "Regenerate" });
@@ -1620,7 +1736,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       await reloadConversationMessages(character.id).catch((reloadError) => {
         console.error("Could not restore messages:", reloadError);
       });
-      setSendError(translateMessageError(error.message));
+      rememberGenerationFailure(error, { mode: "regenerate", regenerateMessageId: targetId, instruction, feedbackCodes, source: "regenerate" });
     } finally {
       variantGenerationLockRef.current = false;
       setActionLoading(false);
@@ -1676,6 +1792,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     if (!chatMessage || chatMessage.sender !== "character" || chatMessage.isStreaming || busy || variantGenerationLockRef.current) return;
 
     variantGenerationLockRef.current = true;
+    let retryContext = null;
     try {
       setSendError("");
       let state = await loadResponseVersions(chatMessage);
@@ -1706,6 +1823,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       setIsTyping(true);
       showAiPhase("Rewriting", 1100);
       showActionNotice("Generating another response…", "working", 5000);
+      retryContext = { mode: "regenerate", regenerateMessageId: chatMessage.id, instruction: "", feedbackCodes: [], source: "next-version" };
+      clearGenerationFailure();
       const result = await regenerateCharacterReply(character.id, chatMessage.id, "");
       const currentContent = result?.message?.content || chatMessage.content;
       const rows = await getMessageAlternatives(chatMessage.id);
@@ -1718,7 +1837,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Response version navigation failed:", error);
       await reloadConversationMessages(character.id).catch(() => {});
-      setSendError(translateMessageError(error.message));
+      if (retryContext) rememberGenerationFailure(error, retryContext);
+      else setSendError(translateMessageError(error.message));
     } finally {
       variantGenerationLockRef.current = false;
       setIsTyping(false);
@@ -1750,6 +1870,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       setIsTyping(true);
       showAiPhase("Rewriting", 1100);
       showActionNotice("Refining response…", "working", 5000);
+      clearGenerationFailure();
       const refinementResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
       setReplacementUndo({ messageId: refinementResult?.message?.id || targetId, content: previousContent, label: "Refine" });
       const refinedContent = refinementResult?.message?.content || previousContent;
@@ -1767,7 +1888,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Quick refinement failed:", error);
       await reloadConversationMessages(character.id).catch(() => {});
-      setSendError(translateMessageError(error.message));
+      rememberGenerationFailure(error, { mode: "regenerate", regenerateMessageId: targetId, instruction, feedbackCodes: feedbackCode ? [feedbackCode] : [], source: "refine" });
     } finally {
       variantGenerationLockRef.current = false;
       setActionLoading(false);
@@ -1902,6 +2023,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
       // Important: this is a regeneration of the same character message, not a
       // new turn. The previous response is replaced immediately in-place.
+      clearGenerationFailure();
       const rewriteResult = await regenerateCharacterReply(character.id, targetId, instruction, []);
       const rewrittenContent = rewriteResult?.message?.content || previousContent;
       setReplacementUndo({ messageId: rewriteResult?.message?.id || targetId, content: previousContent, label: "Rewrite" });
@@ -1915,7 +2037,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       if (error?.name === "AbortError" || stoppedRef.current) return;
       console.error("Scene Director regeneration failed:", error);
       await reloadConversationMessages(character.id).catch(() => {});
-      setSendError(translateMessageError(error.message));
+      rememberGenerationFailure(error, { mode: "regenerate", regenerateMessageId: targetId, instruction, feedbackCodes: [], source: "director-rewrite" });
     } finally {
       setActionLoading(false);
       setIsTyping(false);
@@ -2234,7 +2356,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
             )}
 
             {visibleSendError && (
-              <div className="chat__send-error"><AlertCircle size={16} /><span>{visibleSendError}</span><button onClick={retryGeneration} disabled={busy}><RefreshCw size={14} />Retry</button></div>
+              <div className="chat__send-error"><AlertCircle size={16} /><span>{visibleSendError}</span><button onClick={retryGeneration} disabled={busy || retryingGeneration}>{retryingGeneration ? <LoaderCircle className="spin" size={14} /> : <RefreshCw size={14} />}{retryingGeneration ? "Retrying…" : "Retry"}</button></div>
             )}
             {replacementUndo && (
               <div className="chat__replacement-undo" role="status">
