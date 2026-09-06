@@ -14,6 +14,7 @@ const calendarLifeTs=read("supabase/functions/character-chat/engine/calendar-lif
 const causalTimelineTs=read("supabase/functions/character-chat/engine/world-consequences-causal-timeline.ts");
 const sceneDirectorTs = fs.readFileSync("supabase/functions/character-chat/engine/scene-director-v342.ts", "utf8");
 const longStoryMemoryTs = fs.readFileSync("supabase/functions/character-chat/engine/long-story-memory-v343.ts", "utf8");
+const narrativeArcTs = fs.readFileSync("supabase/functions/character-chat/engine/narrative-arc-intelligence-v344.ts", "utf8");
 const socialJs=stripTypeScriptTypes(socialTs,{mode:"strip",sourceUrl:"social-gravity-world-identity.ts"});
 const socialUrl=`data:text/javascript;base64,${Buffer.from(socialJs).toString("base64")}`;
 const chemistryJs=stripTypeScriptTypes(chemistryTs,{mode:"strip",sourceUrl:"relationship-chemistry-v2.ts"});
@@ -36,6 +37,8 @@ const sceneDirectorJs = stripTypeScriptTypes(sceneDirectorTs, { mode: "strip", s
 const sceneDirectorUrl = `data:text/javascript;base64,${Buffer.from(sceneDirectorJs).toString("base64")}`;
 const longStoryMemoryJs = stripTypeScriptTypes(longStoryMemoryTs, { mode: "strip", sourceUrl: "long-story-memory-v343.ts" });
 const longStoryMemoryUrl = `data:text/javascript;base64,${Buffer.from(longStoryMemoryJs).toString("base64")}`;
+const narrativeArcJs = stripTypeScriptTypes(narrativeArcTs, { mode: "strip", sourceUrl: "narrative-arc-intelligence-v344.ts" });
+const narrativeArcUrl = `data:text/javascript;base64,${Buffer.from(narrativeArcJs).toString("base64")}`;
 const contractJs=stripTypeScriptTypes(contractTs,{mode:"strip",sourceUrl:"story-contract.ts"})
   .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl))
   .replace('"./relationship-chemistry-v2.ts"', JSON.stringify(chemistryUrl))
@@ -47,7 +50,8 @@ const contractJs=stripTypeScriptTypes(contractTs,{mode:"strip",sourceUrl:"story-
   .replace('"./calendar-life-simulation.ts"', JSON.stringify(calendarLifeUrl))
   .replace('"./world-consequences-causal-timeline.ts"', JSON.stringify(causalTimelineUrl))
   .replace('"./scene-director-v342.ts"', JSON.stringify(sceneDirectorUrl))
-  .replace('"./long-story-memory-v343.ts"', JSON.stringify(longStoryMemoryUrl));
+  .replace('"./long-story-memory-v343.ts"', JSON.stringify(longStoryMemoryUrl))
+  .replace('"./narrative-arc-intelligence-v344.ts"', JSON.stringify(narrativeArcUrl));
 const { compileStoryContract, storyContractPrompt } = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
 const pkg=JSON.parse(read("package.json"));
 const pub=JSON.parse(read("public/velvet-version.json"));

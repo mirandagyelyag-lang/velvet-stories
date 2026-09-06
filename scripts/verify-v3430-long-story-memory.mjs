@@ -9,9 +9,9 @@ const here=path.dirname(fileURLToPath(import.meta.url)); const root=path.resolve
 const pkg=JSON.parse(read('package.json')); const meta=JSON.parse(read('public/velvet-version.json')); const edge=read('supabase/functions/character-chat/index.ts'); const contract=read('supabase/functions/character-chat/engine/story-contract.ts'); const syntax=read('scripts/verify-chat-syntax.mjs');
 let pass=0,total=0; function check(name,fn){total++;try{fn();pass++;console.log(`✅ ${name}`)}catch(e){console.error(`❌ ${name}: ${e.message}`);process.exitCode=1;}}
 
-check('version 3.43.0',()=>assert.equal(pkg.version,'3.43.0'));
-check('release metadata',()=>assert.equal(meta.release,'Long-Story Memory + Canon Compression Architecture'));
-check('v3430 first stability gate',()=>assert.match(pkg.scripts['stability:lab'],/^npm run verify:v3430/));
+check('version 3.43.0+ descendant',()=>assert.ok(/^3\.43\./.test(pkg.version)||/^3\.(?:44|4[5-9]|[5-9]\d)\./.test(pkg.version)));
+check('Long-Story Memory release preserved in descendant',()=>assert.match(`${meta.release} ${contract} ${edge}`,/Long-Story Memory|Canon Compression/i));
+check('stability lab retains v3430',()=>assert.match(pkg.scripts['stability:lab'],/verify:v3430/));
 check('memory engine imported by story contract',()=>assert.match(contract,/deriveLongStoryMemoryV343/));
 check('memory validator imported by edge',()=>assert.match(edge,/longStoryMemoryV343Issues/));
 check('automatic memory write gate imported',()=>assert.match(edge,/automaticMemoryGroundingIssues/));

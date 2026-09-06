@@ -32,6 +32,10 @@ export default function Diagnostics({ onBack }) {
   const [evolutionLabCharacterId, setEvolutionLabCharacterId] = useState("");
   const [evolutionLabRunning, setEvolutionLabRunning] = useState(false);
   const [evolutionLabResult, setEvolutionLabResult] = useState(null);
+  const [storyEvolutionSituation, setStoryEvolutionSituation] = useState("For months, the character used to leave whenever conflict became emotionally personal. Across several later scenes, they learned to stay long enough to answer one honest question and repaired two arguments without disappearing. A new argument now puts that old defense under pressure. Detect progress, stagnation risk and what shift is actually earned.");
+  const [storyEvolutionCharacterId, setStoryEvolutionCharacterId] = useState("");
+  const [storyEvolutionRunning, setStoryEvolutionRunning] = useState(false);
+  const [storyEvolutionResult, setStoryEvolutionResult] = useState(null);
   const [socialGraphSituation, setSocialGraphSituation] = useState("Several recurring characters cross paths on campus after separate obligations. Keep their own relationships active and do not make everyone orbit one person.");
   const [socialGraphSelected, setSocialGraphSelected] = useState([]);
   const [socialGraphRunning, setSocialGraphRunning] = useState(false);
@@ -160,6 +164,18 @@ export default function Diagnostics({ onBack }) {
     }
   }
 
+  async function runStoryEvolutionLab() {
+    const chosen = characters.find((item) => item.id === storyEvolutionCharacterId) || characters[0];
+    if (!chosen) { setStoryEvolutionResult({ error: "Create a character first." }); return; }
+    setStoryEvolutionRunning(true); setStoryEvolutionResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("character-chat", { body: { action:"story_evolution_lab", character:chosen, situation:storyEvolutionSituation } });
+      if (error) throw error; if (data?.error) throw new Error(data.error);
+      setStoryEvolutionResult(data || { error:"Story Evolution Lab returned no result." });
+    } catch (error) { setStoryEvolutionResult({ error:normalizeInvokeError(error) }); }
+    finally { setStoryEvolutionRunning(false); }
+  }
+
   function toggleSocialGraphCharacter(id) {
     setSocialGraphSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : current.length >= 8 ? current : [...current, id]);
   }
@@ -283,6 +299,15 @@ export default function Diagnostics({ onBack }) {
       </div>
       <div className="diagnostics-actions"><button onClick={runEvolutionLab} disabled={evolutionLabRunning || characters.length < 1}>{evolutionLabRunning ? <LoaderCircle className="spin" size={16}/> : <Fingerprint size={16}/>}Run evolution test</button><span className="clone-lab-hint">Checks core identity, earned behavior change, relationship-specific growth, regression and personality-replacement risk.</span></div>
       {evolutionLabResult && <div className="clone-lab-result">{evolutionLabResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{evolutionLabResult.error}</span></div> : <><div className="clone-lab-score"><strong>{evolutionLabResult.score || 0}<small>/100</small></strong><div><b>{Number(evolutionLabResult.score || 0) >= 82 ? "Same person, real growth" : Number(evolutionLabResult.score || 0) >= 65 ? "Growth needs tuning" : "Personality drift risk"}</b><span>{evolutionLabResult.verdict || "Evolution test complete."}</span></div></div>{Array.isArray(evolutionLabResult.preserved) && evolutionLabResult.preserved.length > 0 && <div className="clone-lab-collisions"><small>Preserved identity</small>{evolutionLabResult.preserved.map((item,index)=><span key={`p-${index}`}>{item}</span>)}</div>}{Array.isArray(evolutionLabResult.evolved) && evolutionLabResult.evolved.length > 0 && <div className="clone-lab-collisions"><small>Earned evolution</small>{evolutionLabResult.evolved.map((item,index)=><span key={`e-${index}`}>{item}</span>)}</div>}{Array.isArray(evolutionLabResult.warnings) && evolutionLabResult.warnings.length > 0 && <div className="clone-lab-collisions"><small>Warnings</small>{evolutionLabResult.warnings.map((item,index)=><span key={`w-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>Chapter one</strong><small>{evolutionLabResult.character || "Character"}</small></header><p>{evolutionLabResult.baseline || ""}</p></article><article><header><strong>Later history</strong><small>earned change</small></header><p>{evolutionLabResult.later || ""}</p>{evolutionLabResult.why && <em>{evolutionLabResult.why}</em>}</article></div></>}</div>}
+    </section>
+
+    <section className="diagnostics-card diagnostics-card--story-evolution-lab"><header><Activity size={18}/><div><h2>Story Evolution Lab</h2><p>Checks whether long-running arcs are actually changing, stalling, rushing milestones, or resetting earned growth.</p></div></header>
+      <div className="clone-lab-controls">
+        <label><span>History / arc test</span><textarea rows="4" maxLength="1600" value={storyEvolutionSituation} onChange={(event)=>setStoryEvolutionSituation(event.target.value)} /></label>
+        <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=(storyEvolutionCharacterId || characters[0]?.id)===character.id; return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>setStoryEvolutionCharacterId(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
+      </div>
+      <div className="diagnostics-actions"><button onClick={runStoryEvolutionLab} disabled={storyEvolutionRunning || characters.length < 1}>{storyEvolutionRunning ? <LoaderCircle className="spin" size={16}/> : <Activity size={16}/>}Run story evolution test</button><span className="clone-lab-hint">Checks parallel arcs, anti-stagnation, relationship pace, prerequisites, regression-without-reset, payoff readiness and personality preservation.</span></div>
+      {storyEvolutionResult && <div className="clone-lab-result">{storyEvolutionResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{storyEvolutionResult.error}</span></div> : <><div className="clone-lab-score"><strong>{storyEvolutionResult.score || 0}<small>/100</small></strong><div><b>{Number(storyEvolutionResult.score || 0) >= 82 ? "Story is evolving" : Number(storyEvolutionResult.score || 0) >= 65 ? "Arc needs tuning" : "Stagnation / pacing risk"}</b><span>{storyEvolutionResult.verdict || "Story evolution test complete."}</span></div></div>{Array.isArray(storyEvolutionResult.stagnation_warnings)&&storyEvolutionResult.stagnation_warnings.length>0&&<div className="clone-lab-collisions"><small>Stagnation warnings</small>{storyEvolutionResult.stagnation_warnings.map((item,index)=><span key={`sew-${index}`}>{item}</span>)}</div>}{Array.isArray(storyEvolutionResult.payoff_candidates)&&storyEvolutionResult.payoff_candidates.length>0&&<div className="clone-lab-collisions"><small>Payoff candidates</small>{storyEvolutionResult.payoff_candidates.map((item,index)=><span key={`sep-${index}`}>{item}</span>)}</div>}{Array.isArray(storyEvolutionResult.preserved_identity)&&storyEvolutionResult.preserved_identity.length>0&&<div className="clone-lab-collisions"><small>Identity to preserve</small>{storyEvolutionResult.preserved_identity.map((item,index)=><span key={`sei-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>{storyEvolutionResult.character || "Character"}</strong><small>earned next beat</small></header><p>{storyEvolutionResult.sample_next_beat || ""}</p>{storyEvolutionResult.why && <em>{storyEvolutionResult.why}</em>}</article></div></>}</div>}
     </section>
 
     <section className="diagnostics-card diagnostics-card--social-graph-lab"><header><Activity size={18}/><div><h2>Social Graph Lab</h2><p>Stress-test whether recurring characters have lives and relationships with each other instead of forming a wheel around one protagonist.</p></div></header>
