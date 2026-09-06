@@ -9,9 +9,9 @@ const edge=fs.readFileSync(new URL('../supabase/functions/character-chat/index.t
 let pass=0;
 const ok=(name,fn)=>{ try{ fn(); console.log('PASS',name); pass++; }catch(e){ console.error('FAIL',name,'\n ',e.message); process.exitCode=1; } };
 
-ok('version 3.37.1',()=>assert.equal(pkg.version,'3.37.1'));
-ok('release metadata',()=>assert.equal(meta.release,'Discourse Coherence + Event Truth Lock'));
-ok('v3371 first stability gate',()=>assert.match(pkg.scripts['stability:lab'],/^npm run verify:v3371/));
+ok('version 3.37.1+ descendant',()=>assert.ok(/^3\.37\.[1-9]\d*$/.test(pkg.version)||/^3\.(?:3[8-9]|[4-9]\d)\./.test(pkg.version)));
+ok('Discourse Coherence release preserved in descendant',()=>assert.match(`${meta.release} ${contract} ${edge}`,/Discourse Coherence \+ Event Truth/i));
+ok('stability lab retains v3371',()=>assert.match(pkg.scripts['stability:lab'],/verify:v3371/));
 ok('discourse engine imported by story contract',()=>assert.match(contract,/deriveDiscourseCoherenceEventTruth/));
 ok('discourse validator imported by edge',()=>assert.match(edge,/discourseCoherenceIssues, sanitizeDiscourseCoherenceReply/));
 ok('compact contract exposes discourse coherence',()=>assert.match(contract,/discourseCoherence: contract\.discourseCoherenceEventTruth/));

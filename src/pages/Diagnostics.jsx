@@ -28,6 +28,10 @@ export default function Diagnostics({ onBack }) {
   const [sceneLabCharacterId, setSceneLabCharacterId] = useState("");
   const [sceneLabRunning, setSceneLabRunning] = useState(false);
   const [sceneLabResult, setSceneLabResult] = useState(null);
+  const [evolutionLabSituation, setEvolutionLabSituation] = useState("Six months of repeated earned trust: they have learned that leaving every difficult conversation damages the relationship. A new argument now puts that old defense under pressure.");
+  const [evolutionLabCharacterId, setEvolutionLabCharacterId] = useState("");
+  const [evolutionLabRunning, setEvolutionLabRunning] = useState(false);
+  const [evolutionLabResult, setEvolutionLabResult] = useState(null);
   const sessionStats = useMemo(readSessionStats, [checks]);
   const performanceRows = useMemo(() => readGenerationMetrics(), [checks]);
   const performanceSummary = useMemo(() => summarizeGenerationMetrics(performanceRows), [performanceRows]);
@@ -124,6 +128,26 @@ export default function Diagnostics({ onBack }) {
     }
   }
 
+  async function runEvolutionLab() {
+    const chosen = characters.find((item) => item.id === evolutionLabCharacterId) || characters[0];
+    if (!chosen) {
+      setEvolutionLabResult({ error: "Create a character first." });
+      return;
+    }
+    setEvolutionLabRunning(true);
+    setEvolutionLabResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("character-chat", { body: { action: "character_evolution_lab", character: chosen, situation: evolutionLabSituation } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setEvolutionLabResult(data || { error: "Character Evolution Lab returned no result." });
+    } catch (error) {
+      setEvolutionLabResult({ error: normalizeInvokeError(error) });
+    } finally {
+      setEvolutionLabRunning(false);
+    }
+  }
+
   async function runAudioAudit() {
     setAudioAuditRunning(true);
     try {
@@ -197,6 +221,15 @@ export default function Diagnostics({ onBack }) {
       </div>
       <div className="diagnostics-actions"><button onClick={runSceneLab} disabled={sceneLabRunning || characters.length < 1}>{sceneLabRunning ? <LoaderCircle className="spin" size={16}/> : <Activity size={16}/>}Run scene intelligence test</button><span className="clone-lab-hint">Checks purpose, progression, environment consequence, social gravity, scene memory, world independence and closure.</span></div>
       {sceneLabResult && <div className="clone-lab-result">{sceneLabResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{sceneLabResult.error}</span></div> : <><div className="clone-lab-score"><strong>{sceneLabResult.score || 0}<small>/100</small></strong><div><b>{Number(sceneLabResult.score || 0) >= 82 ? "Living scene" : Number(sceneLabResult.score || 0) >= 65 ? "Needs tuning" : "Scene feels synthetic"}</b><span>{sceneLabResult.verdict || "Scene test complete."}</span></div></div>{Array.isArray(sceneLabResult.warnings) && sceneLabResult.warnings.length > 0 && <div className="clone-lab-collisions"><small>Scene warnings</small>{sceneLabResult.warnings.map((item,index)=><span key={`${item}-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>{sceneLabResult.character || "Character"}</strong><small>{sceneLabResult.phase || "scene"}</small></header><p>{sceneLabResult.sample || ""}</p>{sceneLabResult.why && <em>{sceneLabResult.why}</em>}</article></div></>}</div>}
+    </section>
+
+    <section className="diagnostics-card diagnostics-card--evolution-lab"><header><Fingerprint size={18}/><div><h2>Character Evolution Lab</h2><p>Compare chapter-one behavior with earned long-term growth while checking that the character stays recognizably themselves.</p></div></header>
+      <div className="clone-lab-controls">
+        <label><span>History / pressure test</span><textarea rows="3" maxLength="1000" value={evolutionLabSituation} onChange={(event)=>setEvolutionLabSituation(event.target.value)} /></label>
+        <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=(evolutionLabCharacterId || characters[0]?.id)===character.id; return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>setEvolutionLabCharacterId(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
+      </div>
+      <div className="diagnostics-actions"><button onClick={runEvolutionLab} disabled={evolutionLabRunning || characters.length < 1}>{evolutionLabRunning ? <LoaderCircle className="spin" size={16}/> : <Fingerprint size={16}/>}Run evolution test</button><span className="clone-lab-hint">Checks core identity, earned behavior change, relationship-specific growth, regression and personality-replacement risk.</span></div>
+      {evolutionLabResult && <div className="clone-lab-result">{evolutionLabResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{evolutionLabResult.error}</span></div> : <><div className="clone-lab-score"><strong>{evolutionLabResult.score || 0}<small>/100</small></strong><div><b>{Number(evolutionLabResult.score || 0) >= 82 ? "Same person, real growth" : Number(evolutionLabResult.score || 0) >= 65 ? "Growth needs tuning" : "Personality drift risk"}</b><span>{evolutionLabResult.verdict || "Evolution test complete."}</span></div></div>{Array.isArray(evolutionLabResult.preserved) && evolutionLabResult.preserved.length > 0 && <div className="clone-lab-collisions"><small>Preserved identity</small>{evolutionLabResult.preserved.map((item,index)=><span key={`p-${index}`}>{item}</span>)}</div>}{Array.isArray(evolutionLabResult.evolved) && evolutionLabResult.evolved.length > 0 && <div className="clone-lab-collisions"><small>Earned evolution</small>{evolutionLabResult.evolved.map((item,index)=><span key={`e-${index}`}>{item}</span>)}</div>}{Array.isArray(evolutionLabResult.warnings) && evolutionLabResult.warnings.length > 0 && <div className="clone-lab-collisions"><small>Warnings</small>{evolutionLabResult.warnings.map((item,index)=><span key={`w-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>Chapter one</strong><small>{evolutionLabResult.character || "Character"}</small></header><p>{evolutionLabResult.baseline || ""}</p></article><article><header><strong>Later history</strong><small>earned change</small></header><p>{evolutionLabResult.later || ""}</p>{evolutionLabResult.why && <em>{evolutionLabResult.why}</em>}</article></div></>}</div>}
     </section>
 
     <section className="diagnostics-card"><header><Cpu size={18}/><div><h2>Last AI activity</h2><p>Local session counters help separate a quota problem from a UI problem.</p></div></header><div className="diagnostics-grid"><Metric label="Last successful AI request" value={formatActivityTime(sessionStats.lastSuccessAt)}/><Metric label="Last model" value={sessionStats.lastModel || "None yet"}/><Metric label="Repairs" value={String(sessionStats.repairs)}/><Metric label="Last error" value={sessionStats.lastError || "None"}/><Metric label="Last error time" value={formatActivityTime(sessionStats.lastErrorAt)}/><Metric label="First reply text" value={sessionStats.firstTokenMs ? `${sessionStats.firstTokenMs} ms` : "—"}/><Metric label="Full response" value={sessionStats.lastDurationMs ? `${sessionStats.lastDurationMs} ms` : "—"}/></div></section>

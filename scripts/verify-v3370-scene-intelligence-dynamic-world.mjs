@@ -9,7 +9,7 @@ const edge=fs.readFileSync(new URL('../supabase/functions/character-chat/index.t
 let pass=0;
 const ok=(name,fn)=>{ try{ fn(); console.log('PASS',name); pass++; }catch(e){ console.error('FAIL',name,'\n ',e.message); process.exitCode=1; } };
 
-ok('version 3.37.0+ descendant',()=>assert.ok(/^3\.37\./.test(pkg.version)));
+ok('version 3.37.0+ descendant',()=>assert.ok(/^3\.37\./.test(pkg.version)||/^3\.(?:3[8-9]|[4-9]\d)\./.test(pkg.version)));
 ok('Scene Intelligence release preserved',()=>assert.match(`${meta.release} ${contract} ${edge}`,/Scene Intelligence \+ Dynamic World/i));
 ok('stability lab retains v3370',()=>assert.match(pkg.scripts['stability:lab'],/verify:v3370/));
 ok('engine imported by story contract',()=>assert.match(contract,/deriveSceneIntelligenceDynamicWorld/));

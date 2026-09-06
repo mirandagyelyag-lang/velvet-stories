@@ -13,6 +13,7 @@ for (const file of [
   "supabase/functions/character-chat/engine/embodied-awareness-salience.ts",
   "supabase/functions/character-chat/engine/scene-intelligence-dynamic-world.ts",
   "supabase/functions/character-chat/engine/discourse-coherence-event-truth.ts",
+  "supabase/functions/character-chat/engine/long-term-character-evolution.ts",
 ]) {
   const source = fs.readFileSync(file, "utf8");
   stripTypeScriptTypes(source, { mode: "strip", sourceUrl: file });
