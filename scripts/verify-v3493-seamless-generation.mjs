@@ -8,8 +8,8 @@ const css=fs.readFileSync("src/styles/velvet-v3493-seamless-generation.css","utf
 const perf=fs.readFileSync("supabase/functions/character-chat/engine/performance-mobile-v348.ts","utf8");
 const main=fs.readFileSync("src/main.jsx","utf8");
 
-ok("version 3.49.3",pkg.version==="3.49.3"&&pub.version==="3.49.3");
-ok("release names seamless generation",/Seamless Generation \+ Silent Failover/.test(pub.release||""));
+ok("version 3.49.3 descendant",pkg.version===pub.version&&/^3\.49\.(?:[3-9]|[1-9]\d+)$/.test(pkg.version));
+ok("seamless generation release remains installed",fs.existsSync("README-v3.49.3-SEAMLESS-GENERATION-SILENT-FAILOVER.txt"));
 ok("normal AI phase chip removed",chat.includes('const aiStatusLabel = actionNotice ? "" : aiPhaseOverride;'));
 ok("retry has no duplicate status toast",!chat.includes('showActionNotice("Retrying…"')&&!chat.includes('showAiPhase("Retrying"'));
 ok("normal send has no finishing pill",!chat.includes('showAiPhase("Finishing", 420);\n      if (generationResult?.learnedMemoryCount)'));
@@ -27,7 +27,7 @@ ok("retry button cannot collapse vertically",css.includes("white-space: nowrap !
 ok("mobile retry gets its own row",css.includes("grid-column: 2")&&css.includes("min-height: 34px"));
 ok("new CSS imported",main.includes('velvet-v3493-seamless-generation.css'));
 ok("3.49.2 remains regression",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3492"));
-ok("3.49.3 runs first in lab",(pkg.scripts?.["stability:lab"]||"").startsWith("npm run verify:v3493"));
+ok("3.49.3 remains directly after newer hotfixes",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3494 && npm run verify:v3493"));
 
 let failed=0;
 for(const [name,value] of checks){console.log(`${value?"PASS":"FAIL"} ${name}`);if(!value)failed++;}

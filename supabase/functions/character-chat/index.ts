@@ -32,6 +32,7 @@ const encoder = new TextEncoder();
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
 const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
 const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini-3.1-flash-lite";
+const GEMINI_RECOVERY_MODEL = Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-3.5-flash";
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
 
 type ModelEnvelope = {
@@ -658,7 +659,7 @@ async function handleDiagnostics({ apiKey, probeAi = false }) {
   const payload: Record<string, any> = {
     version: "3.34.1",
     edge: { ok: true, detail: "character-chat Edge Function reachable" },
-    models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL },
+    models: { primary: GEMINI_MODEL, fallback: GEMINI_FALLBACK_MODEL, emergency: GEMINI_EMERGENCY_MODEL, recovery: GEMINI_RECOVERY_MODEL },
     ai: { ok: null, detail: "Not probed. Normal diagnostics spend no Gemini generation." },
     timestamp: new Date().toISOString(),
   };
@@ -2714,6 +2715,7 @@ async function callGeminiWithFailover({
               contents: [{ role: "user", parts: [{ text: prompt }] }],
               generationConfig: {
                 maxOutputTokens,
+                thinkingConfig: { thinkingLevel: "LOW" },
                 responseMimeType: "application/json",
               },
             };
@@ -7394,7 +7396,7 @@ async function streamGeminiEnvelopeWithFailover({
   onReset,
   performancePlan = {},
 }): Promise<ModelResult> {
-  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_RECOVERY_MODEL].filter(Boolean))];
   if (!models.length) throw new Error("No Gemini model is configured.");
 
   // v2.11.19 NO-RETRY HEDGED START:
@@ -7402,9 +7404,12 @@ async function streamGeminiEnvelopeWithFailover({
   // fallback in parallel. The first model that produces actual reply prose wins;
   // slower requests are cancelled. A slow first token is never itself a user-facing
   // failure and never clears an already visible bubble.
-  const rawHedges = Array.isArray(performancePlan?.hedgeDelaysMs) ? performancePlan.hedgeDelaysMs : [0, 1200, 3200];
+  const rawHedges = Array.isArray(performancePlan?.hedgeDelaysMs) ? performancePlan.hedgeDelaysMs : [0, 650, 1450, 2600];
   const hedgeDelays = rawHedges.map((value) => Math.max(0, Math.min(8000, Number(value) || 0))).slice(0, models.length);
-  while (hedgeDelays.length < models.length) hedgeDelays.push(3200 + hedgeDelays.length * 1200);
+  while (hedgeDelays.length < models.length) {
+    const previous = hedgeDelays.length ? hedgeDelays[hedgeDelays.length - 1] : 0;
+    hedgeDelays.push(Math.min(5200, previous + 1150));
+  }
   const overallDeadlineMs = Math.max(11000, Math.min(30000, Number(performancePlan?.overallDeadlineMs) || 18000));
   const deadlineAt = Date.now() + overallDeadlineMs;
   // v3.49.3: a model does not win merely because it emitted the first fragment.
@@ -7416,6 +7421,7 @@ async function streamGeminiEnvelopeWithFailover({
   const launched = new Set<string>();
   const finished = new Set<string>();
   const errors: string[] = [];
+  const recoverableReplies = new Map<string, { reply: string; finishReason: string; updatedAt: number }>();
   let quotaReached = false;
   let winnerModel = "";
   let settled = false;
@@ -7440,6 +7446,35 @@ async function streamGeminiEnvelopeWithFailover({
     onModel?.(model);
     cancelLosers(model);
     return true;
+  };
+
+  const liveReplyLooksComplete = (value = "") => {
+    const reply = String(value || "").trim();
+    if (reply.length < 18) return false;
+    if (/[\-–—,:;\/]|[’'][A-Za-z]?$/u.test(reply.slice(-1))) return false;
+    if (!/[.!?…\)\]}'"’”*]$/u.test(reply)) return false;
+    const doubleQuotes = (reply.match(/"/g) || []).length;
+    if (doubleQuotes % 2 !== 0) return false;
+    return true;
+  };
+
+  const resolveRecoveredReply = (model: string, reply: string, finishReason = "RECOVERED_REPLY") => {
+    const clean = String(reply || "").trim();
+    if (settled || !liveReplyLooksComplete(clean)) return false;
+    chooseWinner(model);
+    if (winnerModel !== model || settled) return false;
+    if (completeWinnerOnly) onReply?.(clean);
+    settled = true;
+    resolveResult({ ...emptyModelEnvelope(clean), finishReason, model });
+    return true;
+  };
+
+  const bestRecoverableReply = () => {
+    for (const model of models) {
+      const candidate = recoverableReplies.get(model);
+      if (candidate && liveReplyLooksComplete(candidate.reply)) return { model, ...candidate };
+    }
+    return null;
   };
 
   const maybeFinishWithoutWinner = () => {
@@ -7495,6 +7530,7 @@ async function streamGeminiEnvelopeWithFailover({
               contents: [{ role: "user", parts: [{ text: prompt }] }],
               generationConfig: {
                 maxOutputTokens,
+                thinkingConfig: { thinkingLevel: "LOW" },
                 responseMimeType: "application/json",
               },
             };
@@ -7569,6 +7605,7 @@ async function streamGeminiEnvelopeWithFailover({
           const partialReply = extractPartialJsonStringField(structured, "reply");
           if (partialReply.length <= latestReply.length) continue;
           latestReply = partialReply;
+          recoverableReplies.set(model, { reply: latestReply, finishReason, updatedAt: Date.now() });
           if (!completeWinnerOnly && chooseWinner(model)) onReply?.(latestReply);
         }
       };
@@ -7607,13 +7644,20 @@ async function streamGeminiEnvelopeWithFailover({
       const abortedBecauseAnotherModelWon = getErrorName(error) === "AbortError" && winnerModel && winnerModel !== model;
       if (abortedBecauseAnotherModelWon) return;
 
-      // Once prose is visible, never erase it because metadata/completion was slow.
-      if (!completeWinnerOnly && winnerModel === model && latestReply.trim() && !settled) {
-        console.warn("[character-chat] winning stream ended after visible reply; salvaging live prose", {
+      // v3.49.4 RECOVER COMPLETED REPLY: if the provider/network dies after the
+      // visible `reply` field is already complete, keep that grounded prose instead
+      // of discarding it merely because hidden metadata or the SSE tail failed.
+      if (latestReply.trim() && !settled && liveReplyLooksComplete(latestReply)) {
+        console.warn("[character-chat] salvaging complete reply after stream failure", {
           model,
           reason: getErrorName(error) === "AbortError" ? "timeout" : getErrorMessage(error),
           chars: latestReply.length,
         });
+        if (resolveRecoveredReply(model, latestReply, finishReason || "RECOVERED_STREAM")) return;
+      }
+
+      // Legacy optimistic mode may still salvage any readable partial prose.
+      if (!completeWinnerOnly && winnerModel === model && latestReply.trim() && !settled) {
         const envelope = parseModelEnvelope(JSON.stringify({ reply: latestReply.trim() }));
         settled = true;
         resolveResult({ ...envelope, finishReason: finishReason || "LIVE_PARTIAL", model });
@@ -7642,8 +7686,12 @@ async function streamGeminiEnvelopeWithFailover({
 
   const deadlineTimer = setTimeout(() => {
     if (settled) return;
-    // No special "start quickly enough" failure. Cancel outstanding work and
-    // report only a genuine service timeout after every automatic hedge was tried.
+    // v3.49.4: a deadline may arrive after one model already completed the visible
+    // reply but before its hidden JSON tail/metadata closed. Salvage that reply
+    // first. Only surface a final failure when no complete candidate exists.
+    const salvage = bestRecoverableReply();
+    if (salvage && resolveRecoveredReply(salvage.model, salvage.reply, salvage.finishReason || "RECOVERED_DEADLINE")) return;
+
     for (const controller of controllers.values()) {
       if (!controller.signal.aborted) controller.abort();
     }
