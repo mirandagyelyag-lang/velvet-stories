@@ -82,6 +82,19 @@ export type StoryContract = {
     initiative: string;
     instruction: string;
   };
+  agencyMomentumEngine: {
+    activeIntent: string;
+    intentStatus: "active" | "interrupted" | "resumable" | "held" | "none";
+    unresolvedThread: string;
+    changedThisTurn: string;
+    currentWant: string;
+    avoidNow: string;
+    legitimateActions: string[];
+    microInitiativeBudget: number;
+    closureAllowed: boolean;
+    closurePolicy: string;
+    instruction: string;
+  };
   consequenceEngine: {
     activeResidue: string[];
     strongestConsequence: string;
@@ -615,6 +628,38 @@ export function inferAutonomousLife(character: Record<string, unknown> = {}, int
     freedomToLeave: true,
     initiative: "The character may choose, refuse, postpone, leave, return, change topic, prioritize another obligation, or create a plan when canon supports it. They do not need the user's permission to have a life, but they never decide the user's response.",
     instruction: "Treat independent life as causal state, not decorative backstory. An obligation can make the character late, distracted, unavailable, conflicted, or forced to choose. Do not cancel every priority for romance, and do not invent fake busyness merely to manufacture distance.",
+  };
+}
+
+function buildAgencyMomentumEngine(input: StoryContractInput, autonomousLifeEngine: ReturnType<typeof inferAutonomousLife>, turnTakingEngine: ReturnType<typeof buildTurnTakingEngine>, sceneRhythmEngine: ReturnType<typeof buildSceneRhythmEngine>, perceptibleUserTurn: string, userPresence: "present" | "absent" | "leaving" | "reentering" | "unknown") {
+  const intelligence = input.intelligenceState && typeof input.intelligenceState === "object" ? input.intelligenceState : {};
+  const behavior = intelligence.human_behavior_state && typeof intelligence.human_behavior_state === "object" ? intelligence.human_behavior_state as Record<string, unknown> : {};
+  const mind = intelligence.character_mind && typeof intelligence.character_mind === "object" ? intelligence.character_mind as Record<string, unknown> : {};
+  const priorIntent = text(behavior.active_intent || behavior.autonomous_plan || mind.private_intention || autonomousLifeEngine.currentAgenda);
+  const returnThread = text(turnTakingEngine.returnThread || "");
+  const latest = text(perceptibleUserTurn).slice(0, 300);
+  const latestWords = latest.split(/\s+/).filter(Boolean).length;
+  const interrupted = /[—-]\s*$|\b(?:wait|hold on|stop|no,|actually,)\b/i.test(latest);
+  const held = userPresence === "leaving" || userPresence === "absent";
+  const intentStatus: "active" | "interrupted" | "resumable" | "held" | "none" = held ? "held" : interrupted && priorIntent ? "interrupted" : returnThread ? "resumable" : priorIntent ? "active" : "none";
+  const legitimateActions = ["answer or react to the literal visible turn", "continue the already-established scene activity", "do nothing for a beat when silence is natural"];
+  if (returnThread) legitimateActions.push(`resume established thread: ${returnThread}`);
+  if (autonomousLifeEngine.outsideObligation && !/none explicitly|responsibilities inside|independent personal priority/i.test(autonomousLifeEngine.outsideObligation)) legitimateActions.push(`act on grounded obligation: ${autonomousLifeEngine.outsideObligation}`);
+  if (sceneRhythmEngine.closeAllowed) legitimateActions.push("let the scene end cleanly without manufacturing a hook");
+  if (userPresence === "leaving" || userPresence === "absent") legitimateActions.push("remain in the character's own scene without reintroducing or controlling the absent user");
+  const microInitiativeBudget = latestWords <= 10 ? 1 : latestWords <= 28 ? 2 : 3;
+  return {
+    activeIntent: priorIntent || "none",
+    intentStatus,
+    unresolvedThread: returnThread || "none",
+    changedThisTurn: latest || "no new visible user information",
+    currentWant: text(mind.want || mind.short_goal || autonomousLifeEngine.privateGoal || autonomousLifeEngine.currentAgenda || "continue the present beat"),
+    avoidNow: text(mind.avoid || input.character.emotional_defense || "do not invent a problem merely to stay active"),
+    legitimateActions: [...new Set(legitimateActions)].slice(0, 6),
+    microInitiativeBudget,
+    closureAllowed: Boolean(sceneRhythmEngine.closeAllowed),
+    closurePolicy: sceneRhythmEngine.closeAllowed ? "Closure is a valid outcome. End on a completed beat, silence, departure, or ordinary final action. No teaser is required." : "Keep the live exchange open only because the current turn genuinely leaves something active, not because every reply needs a hook.",
+    instruction: `Character agency is choice under constraints. Preserve active intent across interruptions, but do not force it into every turn. Use at most ${microInitiativeBudget} meaningful initiative beat(s) unless the user explicitly causes a larger change. Prefer an existing action, refusal, pause, topic choice, unfinished thread, or grounded obligation. Never create a phone buzz, door knock, surprise arrival, new errand, sudden deadline, or retroactive relationship merely to create momentum. A scene is allowed to end.`
   };
 }
 
@@ -1241,6 +1286,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const cloneProtection = buildCloneProtection(input.character, characterDNA);
   const perceptionRealismEngine = buildPerceptionRealismEngine(input, actions, present, mode);
   const turnTakingEngine = buildTurnTakingEngine(input, present, perceptibleUserTurn);
+  const agencyMomentumEngine = buildAgencyMomentumEngine(input, autonomousLifeEngine, turnTakingEngine, sceneRhythmEngine, perceptibleUserTurn, userPresence);
 
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
@@ -1284,6 +1330,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     characterDNA,
     reactionEngine,
     autonomousLifeEngine,
+    agencyMomentumEngine,
     consequenceEngine,
     sceneRhythmEngine,
     selectiveMemoryEngine,
@@ -1468,6 +1515,7 @@ export function storyContractPrompt(contract: StoryContract) {
     characterDNA: contract.characterDNA,
     reactionEngine: contract.reactionEngine,
     autonomy: contract.autonomousLifeEngine,
+    agencyMomentum: contract.agencyMomentumEngine,
     consequences: contract.consequenceEngine,
     sceneRhythm: contract.sceneRhythmEngine,
     selectiveMemory: contract.selectiveMemoryEngine,

@@ -1,0 +1,73 @@
+[
+  {
+    "name": "stay commitment does not randomly flip",
+    "latestUserMessage": "Okay.",
+    "recentCharacterReplies": ["I'm staying. Finish your coffee."],
+    "reply": "I got up and left without another word.",
+    "expect": ["agency_commitment_inertia_break"]
+  },
+  {
+    "name": "explicit new invitation can change stay commitment",
+    "latestUserMessage": "Come with me.",
+    "recentCharacterReplies": ["I'm staying. Finish your coffee."],
+    "reply": "I got up and followed you.",
+    "forbid": ["agency_commitment_inertia_break"]
+  },
+  {
+    "name": "quiet scene does not get a random phone hook",
+    "latestUserMessage": "Yeah.",
+    "recentCharacterReplies": ["I nodded once and went back to my coffee."],
+    "reply": "Then my phone buzzed. A notification lit the screen.",
+    "expect": ["gratuitous_external_hook", "forced_scene_continuation_hook"]
+  },
+  {
+    "name": "established phone context can be used",
+    "latestUserMessage": "Your phone keeps buzzing.",
+    "recentUserMessages": ["Your phone keeps buzzing."],
+    "recentCharacterReplies": [],
+    "reply": "My phone buzzed again. I finally checked it.",
+    "forbid": ["gratuitous_external_hook"]
+  },
+  {
+    "name": "micro turn cannot trigger action avalanche",
+    "latestUserMessage": "Mhm.",
+    "recentCharacterReplies": [],
+    "reply": "I stood up. I grabbed my jacket. I checked my phone. I walked to the door. I headed outside.",
+    "expect": ["initiative_budget_overflow"]
+  },
+  {
+    "name": "one small choice is enough",
+    "latestUserMessage": "Mhm.",
+    "recentCharacterReplies": [],
+    "reply": "I nodded and stayed where I was.",
+    "forbid": ["initiative_budget_overflow", "forced_scene_continuation_hook"]
+  },
+  {
+    "name": "user exit is not permission to pursue",
+    "latestUserMessage": "*I take my bag, stand up and leave*",
+    "recentCharacterReplies": ["I stayed at the table."],
+    "reply": "I followed you into the hallway.",
+    "expect": ["agency_commitment_inertia_break"]
+  },
+  {
+    "name": "user exit can leave character behind",
+    "latestUserMessage": "*I take my bag, stand up and leave*",
+    "recentCharacterReplies": [],
+    "reply": "I watched the door close. Then I looked back at my coffee.",
+    "forbid": ["agency_commitment_inertia_break", "gratuitous_external_hook", "forced_scene_continuation_hook"]
+  },
+  {
+    "name": "trailer bait is rejected",
+    "latestUserMessage": "Fine.",
+    "recentCharacterReplies": [],
+    "reply": "I let the silence sit. Little did I know what happened next would change everything.",
+    "expect": ["forced_scene_continuation_hook"]
+  },
+  {
+    "name": "scene can simply end",
+    "latestUserMessage": "Okay, bye.",
+    "recentCharacterReplies": [],
+    "reply": "\"Bye.\" I stayed there after you left.",
+    "forbid": ["forced_scene_continuation_hook", "initiative_budget_overflow"]
+  }
+]

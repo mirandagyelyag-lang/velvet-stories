@@ -10,14 +10,14 @@ const fixture=JSON.parse(read("scripts/fixtures/v3351-grounded-reality-regressio
 let pass=0, total=0;
 const check=(name,ok)=>{ total++; console.log(`${ok?"PASS":"FAIL"} ${name}`); if(ok) pass++; };
 
-check("version 3.35.1", pkg.version==="3.35.1" && pub.version==="3.35.1");
+check("version 3.35.x descendant", pkg.version.startsWith("3.35.") && pub.version.startsWith("3.35."));
 check("release metadata", /Grounded Reality Hard Lock/i.test(pub.release));
 check("deterministic lock imported", edge.includes('groundedRealityIssues') && edge.includes('sanitizeGroundedRealityReply'));
 check("raw prose quarantined", edge.includes("const guardedDraft = true"));
 check("hard lock issue classes", ["declared_state_disbelief","semantic_scope_overreach","inference_distance_exceeded","specificity_escalation","invisible_history_claim","unsupported_concrete_canon_invention"].every((x)=>edge.includes(`\"${x}\"`)));
 check("narrative naturalism repair", edge.includes('"narrative_naturalism_overwrite"'));
 check("repair directions exist", edge.includes("Observation is not diagnosis") && edge.includes("Keep the user's complaint scoped"));
-check("stability lab starts with v3351", pkg.scripts["stability:lab"].startsWith("npm run verify:v3351"));
+check("stability lab retains v3351", pkg.scripts["stability:lab"].includes("npm run verify:v3351"));
 
 for (const test of fixture) {
   const issues=groundedRealityIssues({
