@@ -6,6 +6,7 @@ const socialTs = fs.readFileSync("supabase/functions/character-chat/engine/socia
 const chemistryTs = fs.readFileSync("supabase/functions/character-chat/engine/relationship-chemistry-v2.ts", "utf8");
 const embodiedTs = fs.readFileSync("supabase/functions/character-chat/engine/embodied-awareness-salience.ts", "utf8");
 const sceneIntelligenceTs = fs.readFileSync("supabase/functions/character-chat/engine/scene-intelligence-dynamic-world.ts", "utf8");
+const discourseTs = fs.readFileSync("supabase/functions/character-chat/engine/discourse-coherence-event-truth.ts", "utf8");
 const socialJs = stripTypeScriptTypes(socialTs, { mode: "strip", sourceUrl: "social-gravity-world-identity.ts" });
 const chemistryJs = stripTypeScriptTypes(chemistryTs, { mode: "strip", sourceUrl: "relationship-chemistry-v2.ts" });
 const socialUrl = `data:text/javascript;base64,${Buffer.from(socialJs).toString("base64")}`;
@@ -14,11 +15,14 @@ const embodiedJs = stripTypeScriptTypes(embodiedTs, { mode: "strip", sourceUrl: 
 const embodiedUrl = `data:text/javascript;base64,${Buffer.from(embodiedJs).toString("base64")}`;
 const sceneIntelligenceJs = stripTypeScriptTypes(sceneIntelligenceTs, { mode: "strip", sourceUrl: "scene-intelligence-dynamic-world.ts" });
 const sceneIntelligenceUrl = `data:text/javascript;base64,${Buffer.from(sceneIntelligenceJs).toString("base64")}`;
+const discourseJs = stripTypeScriptTypes(discourseTs, { mode: "strip", sourceUrl: "discourse-coherence-event-truth.ts" });
+const discourseUrl = `data:text/javascript;base64,${Buffer.from(discourseJs).toString("base64")}`;
 const contractJs = stripTypeScriptTypes(contractTs, { mode: "strip", sourceUrl: "story-contract.ts" })
   .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl))
   .replace('"./relationship-chemistry-v2.ts"', JSON.stringify(chemistryUrl))
   .replace('"./embodied-awareness-salience.ts"', JSON.stringify(embodiedUrl))
-  .replace('"./scene-intelligence-dynamic-world.ts"', JSON.stringify(sceneIntelligenceUrl));
+  .replace('"./scene-intelligence-dynamic-world.ts"', JSON.stringify(sceneIntelligenceUrl))
+  .replace('"./discourse-coherence-event-truth.ts"', JSON.stringify(discourseUrl));
 const contractModule = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
 const { compileStoryContract, inferAutonomousLife, storyContractPrompt } = contractModule;
 

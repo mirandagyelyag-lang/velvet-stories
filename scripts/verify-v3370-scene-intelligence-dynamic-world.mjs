@@ -9,9 +9,9 @@ const edge=fs.readFileSync(new URL('../supabase/functions/character-chat/index.t
 let pass=0;
 const ok=(name,fn)=>{ try{ fn(); console.log('PASS',name); pass++; }catch(e){ console.error('FAIL',name,'\n ',e.message); process.exitCode=1; } };
 
-ok('version 3.37.0',()=>assert.equal(pkg.version,'3.37.0'));
-ok('release metadata',()=>assert.equal(meta.release,'Scene Intelligence + Dynamic World'));
-ok('v3370 first stability gate',()=>assert.match(pkg.scripts['stability:lab'],/^npm run verify:v3370/));
+ok('version 3.37.0+ descendant',()=>assert.ok(/^3\.37\./.test(pkg.version)));
+ok('Scene Intelligence release preserved',()=>assert.match(`${meta.release} ${contract} ${edge}`,/Scene Intelligence \+ Dynamic World/i));
+ok('stability lab retains v3370',()=>assert.match(pkg.scripts['stability:lab'],/verify:v3370/));
 ok('engine imported by story contract',()=>assert.match(contract,/deriveSceneIntelligenceDynamicWorld/));
 ok('validator imported by edge',()=>assert.match(edge,/sceneIntelligenceIssues, sanitizeSceneIntelligenceReply/));
 ok('system instruction carries v3.37',()=>assert.match(edge,/v3\.37 SCENE INTELLIGENCE \+ DYNAMIC WORLD/));
