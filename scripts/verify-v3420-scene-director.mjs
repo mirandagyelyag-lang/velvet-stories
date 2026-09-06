@@ -16,10 +16,10 @@ const diagnostics=read('src/pages/Diagnostics.jsx');
 let pass=0,total=0;
 function check(name,fn){total++;try{fn();pass++;console.log(`✅ ${name}`)}catch(e){console.error(`❌ ${name}: ${e.message}`);process.exitCode=1;}}
 
-check('version 3.42.0',()=>assert.equal(pkg.version,'3.42.0'));
-check('release metadata',()=>assert.equal(meta.release,'Scene Intelligence + Dynamic Story Direction'));
-check('vite release metadata',()=>assert.match(vite,/Scene Intelligence \+ Dynamic Story Direction/));
-check('v3420 first stability gate',()=>assert.match(pkg.scripts['stability:lab'],/^npm run verify:v3420/));
+check('version 3.42.0 or descendant',()=>{const [M,m]=pkg.version.split('.').map(Number);assert.ok(M>3||(M===3&&m>=42));});
+check('release metadata remains coherent in descendants',()=>{assert.equal(meta.version,pkg.version);assert.ok(String(meta.release||'').trim().length>0);});
+check('vite release metadata matches current release',()=>assert.ok(vite.includes(String(meta.release))));
+check('v3420 remains before v3410 in stability gate',()=>{const lab=pkg.scripts['stability:lab'];assert.ok(lab.includes('npm run verify:v3420'));assert.ok(lab.indexOf('verify:v3420')<lab.indexOf('verify:v3410'));});
 check('director engine imported by contract',()=>assert.match(contract,/deriveSceneDirectorV342/));
 check('director validator imported by edge',()=>assert.match(edge,/sceneDirectorV342Issues, sanitizeSceneDirectorV342Reply/));
 check('story contract exposes director',()=>assert.match(contract,/sceneDirectorV342:/));

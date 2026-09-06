@@ -18,6 +18,7 @@ for (const file of [
   "supabase/functions/character-chat/engine/calendar-life-simulation.ts",
   "supabase/functions/character-chat/engine/world-consequences-causal-timeline.ts",
   "supabase/functions/character-chat/engine/scene-director-v342.ts",
+  "supabase/functions/character-chat/engine/long-story-memory-v343.ts",
 ]) {
   const source = fs.readFileSync(file, "utf8");
   stripTypeScriptTypes(source, { mode: "strip", sourceUrl: file });
