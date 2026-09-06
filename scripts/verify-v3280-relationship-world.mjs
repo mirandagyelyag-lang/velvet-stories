@@ -10,6 +10,7 @@ const sceneIntelligenceTs=read("supabase/functions/character-chat/engine/scene-i
 const discourseTs=read("supabase/functions/character-chat/engine/discourse-coherence-event-truth.ts");
 const evolutionTs = fs.readFileSync("supabase/functions/character-chat/engine/long-term-character-evolution.ts", "utf8");
 const npcEcosystemTs=read("supabase/functions/character-chat/engine/npc-ecosystem-social-network-v3.ts");
+const calendarLifeTs=read("supabase/functions/character-chat/engine/calendar-life-simulation.ts");
 const socialJs=stripTypeScriptTypes(socialTs,{mode:"strip",sourceUrl:"social-gravity-world-identity.ts"});
 const socialUrl=`data:text/javascript;base64,${Buffer.from(socialJs).toString("base64")}`;
 const chemistryJs=stripTypeScriptTypes(chemistryTs,{mode:"strip",sourceUrl:"relationship-chemistry-v2.ts"});
@@ -24,6 +25,8 @@ const evolutionJs = stripTypeScriptTypes(evolutionTs, { mode: "strip", sourceUrl
 const evolutionUrl = `data:text/javascript;base64,${Buffer.from(evolutionJs).toString("base64")}`;
 const npcEcosystemJs=stripTypeScriptTypes(npcEcosystemTs,{mode:"strip",sourceUrl:"npc-ecosystem-social-network-v3.ts"});
 const npcEcosystemUrl=`data:text/javascript;base64,${Buffer.from(npcEcosystemJs).toString("base64")}`;
+const calendarLifeJs=stripTypeScriptTypes(calendarLifeTs,{mode:"strip",sourceUrl:"calendar-life-simulation.ts"});
+const calendarLifeUrl=`data:text/javascript;base64,${Buffer.from(calendarLifeJs).toString("base64")}`;
 const contractJs=stripTypeScriptTypes(contractTs,{mode:"strip",sourceUrl:"story-contract.ts"})
   .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl))
   .replace('"./relationship-chemistry-v2.ts"', JSON.stringify(chemistryUrl))
@@ -31,7 +34,8 @@ const contractJs=stripTypeScriptTypes(contractTs,{mode:"strip",sourceUrl:"story-
   .replace('"./scene-intelligence-dynamic-world.ts"', JSON.stringify(sceneIntelligenceUrl))
   .replace('"./discourse-coherence-event-truth.ts"', JSON.stringify(discourseUrl))
   .replace('"./long-term-character-evolution.ts"', JSON.stringify(evolutionUrl))
-  .replace('"./npc-ecosystem-social-network-v3.ts"', JSON.stringify(npcEcosystemUrl));
+  .replace('"./npc-ecosystem-social-network-v3.ts"', JSON.stringify(npcEcosystemUrl))
+  .replace('"./calendar-life-simulation.ts"', JSON.stringify(calendarLifeUrl));
 const { compileStoryContract, storyContractPrompt } = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
 const pkg=JSON.parse(read("package.json"));
 const pub=JSON.parse(read("public/velvet-version.json"));

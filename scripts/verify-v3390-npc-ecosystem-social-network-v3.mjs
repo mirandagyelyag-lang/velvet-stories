@@ -11,9 +11,9 @@ const diagnostics=read('src/pages/Diagnostics.jsx');
 let pass=0,total=0;
 const check=(name,fn)=>{ total++; try{ fn(); pass++; console.log('PASS',name); }catch(e){ console.error('FAIL',name,'\n ',e.message); process.exitCode=1; } };
 
-check('version 3.39.0',()=>assert.equal(pkg.version,'3.39.0'));
-check('release metadata',()=>assert.equal(meta.release,'NPC Ecosystem + Social Network 3.0'));
-check('v3390 is first stability gate',()=>assert.match(pkg.scripts['stability:lab'],/^npm run verify:v3390/));
+check('version 3.39.0+ descendant',()=>assert.ok(Number(pkg.version.split('.')[0])>3 || (Number(pkg.version.split('.')[0])===3 && Number(pkg.version.split('.')[1])>=39)));
+check('NPC Ecosystem release preserved',()=>assert.match(read('README-v3.39.0.txt'),/NPC ECOSYSTEM \+ SOCIAL NETWORK 3\.0/i));
+check('stability lab retains v3390',()=>assert.match(pkg.scripts['stability:lab'],/verify:v3390/));
 check('engine imported by story contract',()=>assert.match(contract,/deriveNpcEcosystemSocialNetworkV3/));
 check('validator imported by edge',()=>assert.match(edge,/npcEcosystemIssues, sanitizeNpcEcosystemReply/));
 check('compact contract exposes NPC ecosystem v3',()=>assert.match(contract,/npcEcosystemV3:/));

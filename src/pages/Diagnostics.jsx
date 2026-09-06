@@ -1,4 +1,4 @@
-import { Activity, ArrowLeft, Bug, Check, Clipboard, Cpu, Database, Fingerprint, LoaderCircle, RefreshCw, Smartphone, Trash2, Wifi, XCircle, Volume2, Wrench } from "lucide-react";
+import { Activity, ArrowLeft, Bug, Check, Clipboard, Clock3, Cpu, Database, Fingerprint, LoaderCircle, RefreshCw, Smartphone, Trash2, Wifi, XCircle, Volume2, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { supabase } from "../services/supabase";
 import { useCharacters } from "../context/CharactersContext";
@@ -36,6 +36,10 @@ export default function Diagnostics({ onBack }) {
   const [socialGraphSelected, setSocialGraphSelected] = useState([]);
   const [socialGraphRunning, setSocialGraphRunning] = useState(false);
   const [socialGraphResult, setSocialGraphResult] = useState(null);
+  const [timelineLabSituation, setTimelineLabSituation] = useState("Monday, 1:10 PM: lunch on campus. The character has an established evening training routine and previously agreed to meet the user again Friday, but no exact Friday time was set.");
+  const [timelineLabCharacterId, setTimelineLabCharacterId] = useState("");
+  const [timelineLabRunning, setTimelineLabRunning] = useState(false);
+  const [timelineLabResult, setTimelineLabResult] = useState(null);
   const sessionStats = useMemo(readSessionStats, [checks]);
   const performanceRows = useMemo(() => readGenerationMetrics(), [checks]);
   const performanceSummary = useMemo(() => summarizeGenerationMetrics(performanceRows), [performanceRows]);
@@ -169,6 +173,18 @@ export default function Diagnostics({ onBack }) {
     finally { setSocialGraphRunning(false); }
   }
 
+  async function runTimelineLab() {
+    const chosen = characters.find((item) => item.id === timelineLabCharacterId) || characters[0];
+    if (!chosen) { setTimelineLabResult({ error:"Create a character first." }); return; }
+    setTimelineLabRunning(true); setTimelineLabResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("character-chat", { body: { action:"timeline_life_simulation_lab", character:chosen, situation:timelineLabSituation } });
+      if (error) throw error; if (data?.error) throw new Error(data.error);
+      setTimelineLabResult(data || { error:"Timeline Lab returned no result." });
+    } catch (error) { setTimelineLabResult({ error:normalizeInvokeError(error) }); }
+    finally { setTimelineLabRunning(false); }
+  }
+
   async function runAudioAudit() {
     setAudioAuditRunning(true);
     try {
@@ -258,6 +274,14 @@ export default function Diagnostics({ onBack }) {
       <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=socialGraphSelected.includes(character.id); return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>toggleSocialGraphCharacter(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
       <div className="diagnostics-actions"><button onClick={runSocialGraphLab} disabled={socialGraphRunning || characters.length < 2}>{socialGraphRunning ? <LoaderCircle className="spin" size={16}/> : <Activity size={16}/>}Run social graph test</button><span className="clone-lab-hint">Choose 2-8. Checks NPC↔NPC bonds, recurring identity, availability, sparse group traffic, information routes, circles and anti-orbit behavior.</span></div>
       {socialGraphResult && <div className="clone-lab-result">{socialGraphResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{socialGraphResult.error}</span></div> : <><div className="clone-lab-score"><strong>{socialGraphResult.score || 0}<small>/100</small></strong><div><b>{Number(socialGraphResult.score || 0) >= 82 ? "Living social world" : Number(socialGraphResult.score || 0) >= 65 ? "Network needs tuning" : "Protagonist-orbit risk"}</b><span>{socialGraphResult.verdict || "Social graph test complete."}</span></div></div>{Array.isArray(socialGraphResult.warnings)&&socialGraphResult.warnings.length>0&&<div className="clone-lab-collisions"><small>Warnings</small>{socialGraphResult.warnings.map((item,index)=><span key={`sgw-${index}`}>{item}</span>)}</div>}{Array.isArray(socialGraphResult.edges)&&socialGraphResult.edges.length>0&&<div className="clone-lab-collisions"><small>NPC ↔ NPC edges</small>{socialGraphResult.edges.slice(0,10).map((edge,index)=><span key={`sge-${index}`}>{edge.from} ↔ {edge.to}: {edge.relationship}</span>)}</div>}{Array.isArray(socialGraphResult.information_flow)&&socialGraphResult.information_flow.length>0&&<div className="clone-lab-collisions"><small>Information routes</small>{socialGraphResult.information_flow.map((item,index)=><span key={`sgi-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>Network sample</strong><small>independent social beat</small></header><p>{socialGraphResult.sample || ""}</p>{socialGraphResult.why && <em>{socialGraphResult.why}</em>}</article></div></>}</div>}
+    </section>
+
+
+    <section className="diagnostics-card diagnostics-card--timeline-lab"><header><Clock3 size={18}/><div><h2>Timeline + Life Simulation Lab</h2><p>Stress-test story clock, routines, plans, availability, travel and schedule collisions without inventing precision.</p></div></header>
+      <label className="clone-lab-situation"><span>Timeline / scenario</span><textarea rows="4" maxLength="1200" value={timelineLabSituation} onChange={(event)=>setTimelineLabSituation(event.target.value)} /></label>
+      <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=(timelineLabCharacterId || characters[0]?.id)===character.id; return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>setTimelineLabCharacterId(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
+      <div className="diagnostics-actions"><button onClick={runTimelineLab} disabled={timelineLabRunning || characters.length < 1}>{timelineLabRunning ? <LoaderCircle className="spin" size={16}/> : <Clock3 size={16}/>}Run timeline test</button><span className="clone-lab-hint">Checks exact-time invention, recurring-routine overprecision, plan persistence, availability, travel order, double-booking and message-count time jumps.</span></div>
+      {timelineLabResult && <div className="clone-lab-result">{timelineLabResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{timelineLabResult.error}</span></div> : <><div className="clone-lab-score"><strong>{timelineLabResult.score || 0}<small>/100</small></strong><div><b>{Number(timelineLabResult.score || 0) >= 82 ? "Temporal world feels alive" : Number(timelineLabResult.score || 0) >= 65 ? "Timeline needs tuning" : "Time continuity risk"}</b><span>{timelineLabResult.verdict || "Timeline test complete."}</span></div></div>{timelineLabResult.story_clock && <div className="clone-lab-collisions"><small>Story clock</small><span>{timelineLabResult.story_clock.now || timelineLabResult.story_clock.raw || "Unknown"} · confidence {timelineLabResult.story_clock.confidence || "unknown"}</span></div>}{Array.isArray(timelineLabResult.conflicts)&&timelineLabResult.conflicts.length>0&&<div className="clone-lab-collisions"><small>Schedule conflicts</small>{timelineLabResult.conflicts.map((item,index)=><span key={`tlc-${index}`}>{item}</span>)}</div>}{Array.isArray(timelineLabResult.warnings)&&timelineLabResult.warnings.length>0&&<div className="clone-lab-collisions"><small>Warnings</small>{timelineLabResult.warnings.map((item,index)=><span key={`tlw-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>Time-aware sample</strong><small>calendar + life simulation</small></header><p>{timelineLabResult.sample || ""}</p>{timelineLabResult.why && <em>{timelineLabResult.why}</em>}</article></div></>}</div>}
     </section>
 
     <section className="diagnostics-card"><header><Cpu size={18}/><div><h2>Last AI activity</h2><p>Local session counters help separate a quota problem from a UI problem.</p></div></header><div className="diagnostics-grid"><Metric label="Last successful AI request" value={formatActivityTime(sessionStats.lastSuccessAt)}/><Metric label="Last model" value={sessionStats.lastModel || "None yet"}/><Metric label="Repairs" value={String(sessionStats.repairs)}/><Metric label="Last error" value={sessionStats.lastError || "None"}/><Metric label="Last error time" value={formatActivityTime(sessionStats.lastErrorAt)}/><Metric label="First reply text" value={sessionStats.firstTokenMs ? `${sessionStats.firstTokenMs} ms` : "—"}/><Metric label="Full response" value={sessionStats.lastDurationMs ? `${sessionStats.lastDurationMs} ms` : "—"}/></div></section>

@@ -5,6 +5,7 @@ import { deriveSceneIntelligenceDynamicWorld } from "./scene-intelligence-dynami
 import { deriveDiscourseCoherenceEventTruth } from "./discourse-coherence-event-truth.ts";
 import { deriveLongTermCharacterEvolution } from "./long-term-character-evolution.ts";
 import { deriveNpcEcosystemSocialNetworkV3 } from "./npc-ecosystem-social-network-v3.ts";
+import { deriveCalendarLifeSimulation } from "./calendar-life-simulation.ts";
 
 export type StoryContractInput = {
   character: Record<string, unknown>;
@@ -305,6 +306,28 @@ export type StoryContract = {
     availabilityPolicy: string;
     crossCirclePolicy: string;
     antiOrbitPolicy: string;
+    instruction: string;
+  };
+  calendarLifeSimulation: {
+    storyClock: { raw:string; date:string; time:string; weekday:string; daypart:string; season:string; confidence:"low"|"medium"|"high" };
+    temporalAnchors: string[];
+    upcomingEvents: Array<{ title:string; storyTime:string; participants:string[]; status:string; dueState:string; details:string }>;
+    recurringRoutines: string[];
+    lifeDomains: string[];
+    availability: { state:"available"|"occupied"|"unknown"; reason:string; policy:string };
+    activePlans: string[];
+    dueCommitments: string[];
+    scheduleConflicts: string[];
+    travelConstraints: string[];
+    elapsedContinuity: { recent:string; policy:string };
+    sceneDuration: { expected:string; policy:string };
+    calendarPolicy: string;
+    recurringRoutinePolicy: string;
+    availabilityPolicy: string;
+    planCommitmentPolicy: string;
+    travelPolicy: string;
+    offscreenLifePolicy: string;
+    temporalLanguagePolicy: string;
     instruction: string;
   };
   longTermCharacterEvolution: {
@@ -1673,6 +1696,16 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     leadName:text(input.character.name),
     userName:input.userName,
   });
+  const calendarLifeSimulation = deriveCalendarLifeSimulation({
+    character: input.character,
+    latestUserMessage: input.latestUserMessage,
+    recentMessages: input.recentMessages || [],
+    sceneState: scene,
+    calendarEvents: input.calendarEvents || [],
+    storyPlans: input.storyPlans || [],
+    intelligenceState: intelligence,
+    persistentCast: persistent,
+  });
   const longTermMemoryEngine = buildLongTermMemory4Engine(input.memories || [], perceptibleUserTurn);
   const writingStyleDirector = buildWritingStyleDirector(writingPreferences, recentPatterns, sceneRhythmEngine);
   const humanImperfectionEngine = buildHumanImperfectionEngine(characterDNA, input.character, intelligence);
@@ -1714,6 +1747,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   if (boundaries.length) objective = "Honor the boundary immediately while preserving the character's recognizable personality; no therapy script or pursuit workaround.";
   else if (discourseCoherenceEventTruth.clarificationDue) objective = "Answer the user's clarification request immediately and literally. Resolve the actual prior referent before banter, atmosphere, social gravity, or a repeated callback. If the prior wording had no supported referent, admit the wording was wrong instead of inventing an event.";
   else if (embodiedAwarenessSalience.recognitionDue) objective = "Respond to the user's current embodied/energy change before old banter, flirt momentum, decorative activity or the previous scene objective. Adapt in character without claiming private wording as knowledge or taking control of the user. Then resume only what still fits.";
+  else if (calendarLifeSimulation.dueCommitments.length) objective += " Preserve the due commitment/time pressure in this beat. Do not erase it, invent a conflicting precise schedule, or make the character magically free.";
   else if (socialGravityWorldIdentityEngine.manifestationDue || socialGravityWorldIdentityEngine.approachWindowDue) objective += " This public beat is due for one SMALL domain-appropriate social-gravity manifestation. Make the world remember who this person is without turning the scene into spectacle.";
   else if (socialEcosystems.length) objective += " In a relevant public scene, let the established social ecosystem exist organically without forcing jealousy or stealing the scene.";
   if (!boundaries.length && socialGravityWorldIdentityEngine.lifeContinuityDue) objective += " Re-anchor one canonical life/domain thread because the story is at a life-question/time-gap boundary; do not invent named obligations.";
@@ -1763,6 +1797,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     sceneVarietyEngine,
     npcSocialNetworkEngine,
     npcEcosystemSocialNetworkV3,
+    calendarLifeSimulation,
     longTermMemoryEngine,
     writingStyleDirector,
     humanImperfectionEngine,
@@ -1824,10 +1859,10 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
       energy: mindFrom("energy", "steady"),
     },
     temporalEngine: {
-      storyNow: text(scene.time_label || "unknown"),
-      recentElapsed: text(intelligence.elapsed_since_previous || "unspecified"),
-      upcoming: dueCalendarEvents.slice(0, 5),
-      instruction: "Treat story time as canon. Distinguish minutes, days, weeks and long absences when the transcript/calendar establishes them. Never call something yesterday, months ago, or soon unless supported. Upcoming commitments may pressure choices, but do not silently jump time or complete them off-screen.",
+      storyNow: calendarLifeSimulation.storyClock.raw || text(scene.time_label || "unknown"),
+      recentElapsed: calendarLifeSimulation.elapsedContinuity.recent || text(intelligence.elapsed_since_previous || "unspecified"),
+      upcoming: calendarLifeSimulation.upcomingEvents.slice(0, 5),
+      instruction: calendarLifeSimulation.instruction,
     },
     intensityDirector: {
       recentLevel: recentIntensity,
@@ -2002,6 +2037,27 @@ export function storyContractPrompt(contract: StoryContract) {
       crossCirclePolicy: contract.npcEcosystemSocialNetworkV3.crossCirclePolicy,
       antiOrbitPolicy: contract.npcEcosystemSocialNetworkV3.antiOrbitPolicy,
     },
+    calendarLifeSimulation: {
+      storyClock: contract.calendarLifeSimulation.storyClock,
+      temporalAnchors: take(contract.calendarLifeSimulation.temporalAnchors, 10),
+      upcomingEvents: take(contract.calendarLifeSimulation.upcomingEvents, 8),
+      recurringRoutines: take(contract.calendarLifeSimulation.recurringRoutines, 6),
+      lifeDomains: take(contract.calendarLifeSimulation.lifeDomains, 6),
+      availability: contract.calendarLifeSimulation.availability,
+      activePlans: take(contract.calendarLifeSimulation.activePlans, 6),
+      dueCommitments: take(contract.calendarLifeSimulation.dueCommitments, 6),
+      scheduleConflicts: take(contract.calendarLifeSimulation.scheduleConflicts, 5),
+      travelConstraints: take(contract.calendarLifeSimulation.travelConstraints, 4),
+      elapsedContinuity: contract.calendarLifeSimulation.elapsedContinuity,
+      sceneDuration: contract.calendarLifeSimulation.sceneDuration,
+      calendarPolicy: contract.calendarLifeSimulation.calendarPolicy,
+      recurringRoutinePolicy: contract.calendarLifeSimulation.recurringRoutinePolicy,
+      availabilityPolicy: contract.calendarLifeSimulation.availabilityPolicy,
+      planCommitmentPolicy: contract.calendarLifeSimulation.planCommitmentPolicy,
+      travelPolicy: contract.calendarLifeSimulation.travelPolicy,
+      offscreenLifePolicy: contract.calendarLifeSimulation.offscreenLifePolicy,
+      temporalLanguagePolicy: contract.calendarLifeSimulation.temporalLanguagePolicy,
+    },
     longTermMemory4: {
       core: take(contract.longTermMemoryEngine.core, 5),
       active: take(contract.longTermMemoryEngine.active, 5),
@@ -2039,7 +2095,14 @@ export function storyContractPrompt(contract: StoryContract) {
       options: take(contract.initiativePlan.availablePressure, 2),
     },
     mind: contract.characterMind,
-    temporal: { storyNow: contract.temporalEngine.storyNow, recentElapsed: contract.temporalEngine.recentElapsed, upcoming: take(contract.temporalEngine.upcoming, 3).map((item) => pick(item as Record<string, unknown>, ["title", "story_time", "details", "participants", "status"])) },
+    temporal: {
+      storyNow: contract.temporalEngine.storyNow,
+      recentElapsed: contract.temporalEngine.recentElapsed,
+      upcoming: take(contract.calendarLifeSimulation.upcomingEvents, 4),
+      dueCommitments: take(contract.calendarLifeSimulation.dueCommitments, 4),
+      availability: contract.calendarLifeSimulation.availability,
+      scheduleConflicts: take(contract.calendarLifeSimulation.scheduleConflicts, 3),
+    },
     intensity: contract.intensityDirector,
     drift: contract.driftProtection,
     season: contract.storySeason,
