@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const velvetVersion = pkg.version;
-const velvetRelease = "Instant Story Reliability + Latency Hotfix · Narrative Core Completion";
+const velvetRelease = "Instant Story Complete Output + Fast Hedged Generation · Narrative Core Completion";
 const velvetBuildTime = new Date().toISOString();
 
 export default defineConfig(({ mode }) => {

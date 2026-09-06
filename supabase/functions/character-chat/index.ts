@@ -20,6 +20,7 @@ import { proseIntelligenceV345Issues, sanitizeProseIntelligenceV345Reply } from 
 import { generationOrchestratorV346Issues, sanitizeGenerationOrchestratorV346Reply } from "./engine/generation-orchestrator-v346.ts";
 import { recoveryIntegrityV347Issues, sanitizeRecoveryIntegrityV347Reply } from "./engine/recovery-integrity-v347.ts";
 import { performanceMobileV348Issues } from "./engine/performance-mobile-v348.ts";
+import { instantStoryLooksComplete } from "./engine/instant-story-v3492.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1214,42 +1215,49 @@ function instantStoryFallbackOpening(draft, idea = "") {
   const cleanIdea = cleanPromptValue(idea, 180);
 
   if (cleanIdea) {
-    return `${name} looks over, already focused on the situation at hand. “Okay. I’m listening.” A beat passes. “What do you want to do?”`;
+    return `${name} looks over, already focused on what is happening instead of filling the silence for you. “Okay. I’m listening.” A brief pause follows, patient rather than awkward. “Start wherever you want. What happened?”`;
   }
   if (/race|racing|racer|garage|car|track|circuit|street race/.test(profile)) {
-    return `The garage is quieter than usual when ${name} looks up from the car. “You’re here. Good.” They step aside just enough to clear the view. “Tell me if this looks wrong to you.”`;
+    return `The garage has thinned out by the time ${name} looks up from the car, attention sharpening when they notice you. “You’re here. Good.” They move just enough to clear the view beside them. “Come look at this and tell me if I’m imagining it.”`;
   }
   if (/athlete|captain|team|practice|training|football|soccer|basketball|polo|sport/.test(profile)) {
-    return `${name} catches you just after practice, still carrying the restless energy of it. “You heading out?” They glance toward the exit, then back at you. “Walk with me for a minute.”`;
+    return `${name} catches you just after practice, still carrying the restless energy of it while everyone else starts scattering. “You heading out?” They glance toward the exit, then back at you. “Walk with me for a minute. I need your opinion on something.”`;
   }
   if (/student|university|college|campus|class|professor/.test(profile)) {
-    return `${name} spots you outside class and slows instead of passing by. “Hey.” They shift their bag higher on one shoulder. “You got a minute before you disappear?”`;
+    return `${name} spots you outside class and actually slows instead of disappearing into the crowd. “Hey.” Their attention settles on you, direct and unhurried. “You got a few minutes before your next thing? I wanted to ask you something without half the campus listening.”`;
   }
   if (/business|ceo|company|wealth|millionaire|billionaire|family empire|executive/.test(profile)) {
-    return `${name} steps away from the noise around them and gives you their full attention. “There you are.” Their phone goes dark in their hand. “I need a second opinion.”`;
+    return `${name} steps away from the conversation around them and gives you their full attention, phone going dark in their hand. “There you are.” Their tone drops a little. “I need a second opinion, and everyone in that room is telling me what they think I want to hear.”`;
   }
-  return `${name} catches your attention before the moment can pass. “Hey. Got a minute?” They wait, clearly expecting an actual answer instead of filling the silence for you.`;
+  return `${name} catches your attention before the moment can pass and gives you a small, expectant look. “Hey. Got a minute?” They wait instead of answering for you. “I’ve been meaning to ask you something, but I’d rather hear the real answer than the polite one.”`;
 }
 
 async function handleInstantStory({ apiKey, draft, idea }) {
   const safeDraft = compactInstantStoryDraft(draft);
   const cleanIdea = cleanPromptValue(idea || "", 420);
-  const prompt = `Write one fresh opening beat for a private roleplay with this character. 45-90 words. It must be immediately playable, specific to the character, and DIFFERENT from their stored first message. Preserve voice and established relationship. Do not write the user's dialogue, thoughts, feelings, decisions, or actions. Use 0-2 short narration sentences and 1-4 natural spoken lines. Prefer dialogue first when natural. No room inventory, weather montage, outfit inventory, cinematic body-language padding, exposition disguised as dialogue, or forced cliffhanger. End with a clean opening the user can answer. Use the language of the profile or idea.\n\nCHARACTER\n${JSON.stringify(safeDraft)}\n\nIDEA\n${cleanIdea || "Choose a plausible ordinary situation from the character's established life."}`;
+  const prompt = `Write one fresh opening beat for a private roleplay with this character. 45-85 words. It must be immediately playable, specific to the character, and DIFFERENT from their stored first message. Preserve voice and established relationship. Do not write the user's dialogue, thoughts, feelings, decisions, or actions. Use 0-2 short narration sentences and 1-4 natural spoken lines. Prefer dialogue first when natural. No room inventory, weather montage, outfit inventory, cinematic body-language padding, exposition disguised as dialogue, or forced cliffhanger. End with a clean opening the user can answer. IMPORTANT: finish every sentence and every quotation. Never stop mid-word or mid-sentence. Use the language of the profile or idea.\n\nCHARACTER\n${JSON.stringify(safeDraft)}\n\nIDEA\n${cleanIdea || "Choose a plausible ordinary situation from the character's established life."}`;
 
-  // v3.49.1: Instant Story is latency-sensitive and must never sit on one model
-  // indefinitely. Try the production model first, then quick fallbacks, with a
-  // hard per-attempt timeout and a short global deadline. If providers are down,
-  // return a grounded deterministic opening instead of leaving the button dead.
+  // v3.49.2: race compact model attempts instead of waiting serially. A response
+  // only wins if it is a complete opening; MAX_TOKENS, dangling quotes, unfinished
+  // contractions, tiny fragments and missing terminal punctuation are rejected.
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  const deadlineAt = Date.now() + 10500;
-  let lastError = "Velvet couldn't open an instant story.";
+  const globalDeadlineMs = 6800;
+  const attemptTimeoutMs = 5000;
+  const hedgeDelaysMs = [0, 650, 1350];
+  const controllers = new Set<AbortController>();
+  const startedAt = Date.now();
+  let closed = false;
 
-  for (const model of models) {
-    const remainingMs = deadlineAt - Date.now();
-    if (remainingMs < 900) break;
+  const attempt = async (model, delayMs) => {
+    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    if (closed) throw new Error("Instant Story already settled.");
+    const remainingMs = globalDeadlineMs - (Date.now() - startedAt);
+    if (remainingMs < 900) throw new Error("Instant Story global deadline reached.");
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), Math.min(4200, remainingMs));
-    const startedAt = Date.now();
+    controllers.add(controller);
+    const timeoutId = setTimeout(() => controller.abort(), Math.min(attemptTimeoutMs, remainingMs));
+    const attemptStartedAt = Date.now();
 
     try {
       const response = await fetch(modelEndpoint(model), {
@@ -1259,33 +1267,57 @@ async function handleInstantStory({ apiKey, draft, idea }) {
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
-            maxOutputTokens: 420,
-            temperature: 0.86,
+            maxOutputTokens: 900,
+            temperature: 0.82,
             thinkingConfig: { thinkingLevel: "LOW" },
           },
         }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        lastError = data?.error?.message || `Gemini returned ${response.status}`;
-        console.warn("[character-chat] instant story model failed", { model, status: response.status, durationMs: Date.now() - startedAt });
-        continue;
-      }
+      if (!response.ok) throw new Error(data?.error?.message || `Gemini returned ${response.status}`);
+
+      const candidate = data?.candidates?.[0] || {};
       const opening = extractCandidateText(data).trim();
-      if (opening.length >= 20) {
-        console.log("[character-chat] instant story completed", { model, durationMs: Date.now() - startedAt });
-        return json({ opening, source: "ai" });
+      const finishReason = String(candidate?.finishReason || "");
+      if (!instantStoryLooksComplete(opening, finishReason)) {
+        console.warn("[character-chat] instant story rejected incomplete output", {
+          model,
+          finishReason,
+          words: opening.split(/\s+/).filter(Boolean).length,
+          durationMs: Date.now() - attemptStartedAt,
+        });
+        throw new Error(`Incomplete Instant Story (${finishReason || "unknown finish"}).`);
       }
-      lastError = "Gemini returned an empty instant story.";
-    } catch (error) {
-      lastError = getErrorName(error) === "AbortError" ? "Instant Story model attempt timed out." : getErrorMessage(error);
-      console.warn("[character-chat] instant story attempt ended", { model, error: lastError, durationMs: Date.now() - startedAt });
+
+      return { opening, model, finishReason, durationMs: Date.now() - attemptStartedAt };
     } finally {
       clearTimeout(timeoutId);
+      controllers.delete(controller);
     }
+  };
+
+  const attempts = models.map((model, index) => attempt(model, hedgeDelaysMs[index] ?? 1350));
+  const deadline = new Promise((resolve) => setTimeout(() => resolve(null), globalDeadlineMs));
+
+  try {
+    const winner = await Promise.race([
+      Promise.any(attempts).catch(() => null),
+      deadline,
+    ]);
+    if (winner?.opening) {
+      console.log("[character-chat] instant story completed", {
+        model: winner.model,
+        finishReason: winner.finishReason,
+        durationMs: Date.now() - startedAt,
+      });
+      return json({ opening: winner.opening, source: "ai" });
+    }
+  } finally {
+    closed = true;
+    controllers.forEach((controller) => controller.abort());
   }
 
-  console.warn("[character-chat] instant story using local fallback", { error: lastError });
+  console.warn("[character-chat] instant story using complete local fallback", { durationMs: Date.now() - startedAt });
   return json({ opening: instantStoryFallbackOpening(safeDraft, cleanIdea), source: "local_fallback" });
 }
 

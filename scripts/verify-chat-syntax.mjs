@@ -24,6 +24,7 @@ for (const file of [
   "supabase/functions/character-chat/engine/generation-orchestrator-v346.ts",
   "supabase/functions/character-chat/engine/recovery-integrity-v347.ts",
   "supabase/functions/character-chat/engine/performance-mobile-v348.ts",
+  "supabase/functions/character-chat/engine/instant-story-v3492.ts",
 ]) {
   const source = fs.readFileSync(file, "utf8");
   stripTypeScriptTypes(source, { mode: "strip", sourceUrl: file });

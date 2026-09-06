@@ -267,7 +267,7 @@ export function CharactersProvider({ children }) {
 
   async function generateInstantStory(characterData, idea = "") {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 14500);
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
 
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -302,7 +302,12 @@ export function CharactersProvider({ children }) {
         throw new Error(data?.error || data?.message || `Instant Story failed with status ${response.status}.`);
       }
       const opening = String(data?.opening || "").trim();
+      const instantWords = opening.split(/\s+/).filter(Boolean);
+      const visiblyComplete = /[.!?…][\"'”’)]?$/.test(opening) && !/[’'][A-Za-z]{0,2}$/.test(opening);
       if (!opening) throw new Error("Velvet returned an empty Instant Story. Try again.");
+      if (instantWords.length < 30 || !visiblyComplete) {
+        throw new Error("Velvet received a cut-off Instant Story instead of a complete opening. Try again.");
+      }
       return opening;
     } catch (error) {
       if (error?.name === "AbortError") {
