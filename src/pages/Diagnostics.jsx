@@ -24,6 +24,10 @@ export default function Diagnostics({ onBack }) {
   const [cloneSelected, setCloneSelected] = useState([]);
   const [cloneRunning, setCloneRunning] = useState(false);
   const [cloneResult, setCloneResult] = useState(null);
+  const [sceneLabSituation, setSceneLabSituation] = useState("The character and the user are eating lunch on campus. Keep the scene ordinary unless their established life makes something relevant.");
+  const [sceneLabCharacterId, setSceneLabCharacterId] = useState("");
+  const [sceneLabRunning, setSceneLabRunning] = useState(false);
+  const [sceneLabResult, setSceneLabResult] = useState(null);
   const sessionStats = useMemo(readSessionStats, [checks]);
   const performanceRows = useMemo(() => readGenerationMetrics(), [checks]);
   const performanceSummary = useMemo(() => summarizeGenerationMetrics(performanceRows), [performanceRows]);
@@ -100,6 +104,26 @@ export default function Diagnostics({ onBack }) {
     }
   }
 
+  async function runSceneLab() {
+    const chosen = characters.find((item) => item.id === sceneLabCharacterId) || characters[0];
+    if (!chosen) {
+      setSceneLabResult({ error: "Create a character first." });
+      return;
+    }
+    setSceneLabRunning(true);
+    setSceneLabResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("character-chat", { body: { action: "scene_intelligence_lab", character: chosen, situation: sceneLabSituation } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setSceneLabResult(data || { error: "Scene Lab returned no result." });
+    } catch (error) {
+      setSceneLabResult({ error: normalizeInvokeError(error) });
+    } finally {
+      setSceneLabRunning(false);
+    }
+  }
+
   async function runAudioAudit() {
     setAudioAuditRunning(true);
     try {
@@ -164,6 +188,15 @@ export default function Diagnostics({ onBack }) {
       <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=cloneSelected.includes(character.id); return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>toggleCloneCharacter(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
       <div className="diagnostics-actions"><button onClick={runCloneLab} disabled={cloneRunning || characters.length < 2}>{cloneRunning ? <LoaderCircle className="spin" size={16}/> : <Fingerprint size={16}/>}Run same-scene blind test</button><span className="clone-lab-hint">Choose 2-5, or leave none selected to test your first saved characters.</span></div>
       {cloneResult && <div className="clone-lab-result">{cloneResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{cloneResult.error}</span></div> : <><div className="clone-lab-score"><strong>{cloneResult.score || 0}<small>/100</small></strong><div><b>{Number(cloneResult.score || 0) >= 80 ? "Distinct" : Number(cloneResult.score || 0) >= 60 ? "Some overlap" : "Clone risk"}</b><span>{cloneResult.verdict || "Blind test complete."}</span></div></div>{Array.isArray(cloneResult.collisions) && cloneResult.collisions.length > 0 && <div className="clone-lab-collisions"><small>Shared patterns detected</small>{cloneResult.collisions.map((item,index)=><span key={`${item}-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples">{(cloneResult.samples || []).map((sample)=><article key={sample.name}><header><strong>{sample.name}</strong><small>{sample.tactic}</small></header><p>{sample.reply}</p>{sample.whyDistinct && <em>{sample.whyDistinct}</em>}</article>)}</div></>}</div>}
+    </section>
+
+    <section className="diagnostics-card diagnostics-card--scene-lab"><header><Activity size={18}/><div><h2>Scene Intelligence Lab</h2><p>Stress-test whether one character can inhabit a real place without wallpaper, protagonist-orbit, frozen props or random plot hooks.</p></div></header>
+      <div className="clone-lab-controls">
+        <label><span>Scene</span><textarea rows="3" maxLength="900" value={sceneLabSituation} onChange={(event)=>setSceneLabSituation(event.target.value)} /></label>
+        <div className="clone-lab-cast">{characters.slice(0,12).map((character)=>{ const selected=(sceneLabCharacterId || characters[0]?.id)===character.id; return <button type="button" key={character.id} className={selected?"is-selected":""} onClick={()=>setSceneLabCharacterId(character.id)}><span>{character.name}</span><small>{character.role || "Character"}</small></button>; })}</div>
+      </div>
+      <div className="diagnostics-actions"><button onClick={runSceneLab} disabled={sceneLabRunning || characters.length < 1}>{sceneLabRunning ? <LoaderCircle className="spin" size={16}/> : <Activity size={16}/>}Run scene intelligence test</button><span className="clone-lab-hint">Checks purpose, progression, environment consequence, social gravity, scene memory, world independence and closure.</span></div>
+      {sceneLabResult && <div className="clone-lab-result">{sceneLabResult.error ? <div className="clone-lab-error"><XCircle size={16}/><span>{sceneLabResult.error}</span></div> : <><div className="clone-lab-score"><strong>{sceneLabResult.score || 0}<small>/100</small></strong><div><b>{Number(sceneLabResult.score || 0) >= 82 ? "Living scene" : Number(sceneLabResult.score || 0) >= 65 ? "Needs tuning" : "Scene feels synthetic"}</b><span>{sceneLabResult.verdict || "Scene test complete."}</span></div></div>{Array.isArray(sceneLabResult.warnings) && sceneLabResult.warnings.length > 0 && <div className="clone-lab-collisions"><small>Scene warnings</small>{sceneLabResult.warnings.map((item,index)=><span key={`${item}-${index}`}>{item}</span>)}</div>}<div className="clone-lab-samples"><article><header><strong>{sceneLabResult.character || "Character"}</strong><small>{sceneLabResult.phase || "scene"}</small></header><p>{sceneLabResult.sample || ""}</p>{sceneLabResult.why && <em>{sceneLabResult.why}</em>}</article></div></>}</div>}
     </section>
 
     <section className="diagnostics-card"><header><Cpu size={18}/><div><h2>Last AI activity</h2><p>Local session counters help separate a quota problem from a UI problem.</p></div></header><div className="diagnostics-grid"><Metric label="Last successful AI request" value={formatActivityTime(sessionStats.lastSuccessAt)}/><Metric label="Last model" value={sessionStats.lastModel || "None yet"}/><Metric label="Repairs" value={String(sessionStats.repairs)}/><Metric label="Last error" value={sessionStats.lastError || "None"}/><Metric label="Last error time" value={formatActivityTime(sessionStats.lastErrorAt)}/><Metric label="First reply text" value={sessionStats.firstTokenMs ? `${sessionStats.firstTokenMs} ms` : "—"}/><Metric label="Full response" value={sessionStats.lastDurationMs ? `${sessionStats.lastDurationMs} ms` : "—"}/></div></section>

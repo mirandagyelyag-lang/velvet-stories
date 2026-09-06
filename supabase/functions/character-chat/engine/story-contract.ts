@@ -1,6 +1,7 @@
 import { deriveSocialWorldIdentity, domainLifeFootprint, isPublicSocialScene, outsideApproachFootprint, socialWorldFootprint } from "./social-gravity-world-identity.ts";
 import { deriveRelationshipChemistryV2 } from "./relationship-chemistry-v2.ts";
 import { deriveEmbodiedAwarenessSalience } from "./embodied-awareness-salience.ts";
+import { deriveSceneIntelligenceDynamicWorld } from "./scene-intelligence-dynamic-world.ts";
 
 export type StoryContractInput = {
   character: Record<string, unknown>;
@@ -186,6 +187,31 @@ export type StoryContract = {
     romanticPace: string;
     boundaryCarry: string;
     forecast: string;
+    instruction: string;
+  };
+  sceneIntelligenceDynamicWorld: {
+    purpose: string;
+    purposeStatus: "active" | "fulfilled" | "abandoned" | "unclear";
+    phase: "arrival" | "settle" | "develop" | "change" | "land" | "close";
+    location: string;
+    activity: string;
+    reentryDetected: boolean;
+    reentryPolicy: string;
+    meaningfulSilenceAllowed: boolean;
+    closureAllowed: boolean;
+    closureDue: boolean;
+    closureReasons: string[];
+    stagnationScore: number;
+    stagnationNatural: boolean;
+    progressionNeed: "none" | "small" | "clear";
+    environmentPolicy: string;
+    initiativePolicy: string;
+    timePolicy: string;
+    noProtagonistOrbitPolicy: string;
+    worldCollisionEligible: boolean;
+    worldCollisionPolicy: string;
+    locationIdentityPolicy: string;
+    sceneMemory: { objects: string[]; spatial: string[]; unfinished: string[] };
     instruction: string;
   };
   embodiedAwarenessSalience: {
@@ -1583,6 +1609,18 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const characterIntentEngine = buildCharacterIntentEngine(input, agencyMomentumEngine, characterDNA, perceptibleUserTurn);
   const socialGravityWorldIdentityEngine = buildSocialGravityWorldIdentityEngine(input, scene);
   const scenePhysicsEngine = buildScenePhysicsEngine(input, present, userPresence);
+  const sceneIntelligenceDynamicWorld = deriveSceneIntelligenceDynamicWorld({
+    latestUserMessage: input.latestUserMessage,
+    recentMessages: input.recentMessages || [],
+    sceneState: scene,
+    intelligenceState: intelligence,
+    character: input.character,
+    socialGravity: socialGravityWorldIdentityEngine,
+    agency: agencyMomentumEngine,
+    intent: characterIntentEngine,
+    scenePhysics: scenePhysicsEngine,
+    embodied: embodiedAwarenessSalience,
+  });
 
   const livingMode: StoryContract["livingStoryEngine"]["mode"] = activeConsequences.length || activeConflicts.length
     ? "aftermath"
@@ -1633,6 +1671,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     characterIntentEngine,
     socialGravityWorldIdentityEngine,
     scenePhysicsEngine,
+    sceneIntelligenceDynamicWorld,
     consequenceEngine,
     sceneRhythmEngine,
     selectiveMemoryEngine,
@@ -1835,6 +1874,7 @@ export function storyContractPrompt(contract: StoryContract) {
       domainLifePolicy: contract.socialGravityWorldIdentityEngine.domainLifePolicy,
     },
     scenePhysics: contract.scenePhysicsEngine,
+    sceneIntelligence: contract.sceneIntelligenceDynamicWorld,
     consequences: contract.consequenceEngine,
     sceneRhythm: contract.sceneRhythmEngine,
     selectiveMemory: contract.selectiveMemoryEngine,
