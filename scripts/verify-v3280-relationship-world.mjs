@@ -5,13 +5,17 @@ const read=(p)=>fs.readFileSync(p,"utf8");
 const contractTs=read("supabase/functions/character-chat/engine/story-contract.ts");
 const socialTs=read("supabase/functions/character-chat/engine/social-gravity-world-identity.ts");
 const chemistryTs=read("supabase/functions/character-chat/engine/relationship-chemistry-v2.ts");
+const embodiedTs=read("supabase/functions/character-chat/engine/embodied-awareness-salience.ts");
 const socialJs=stripTypeScriptTypes(socialTs,{mode:"strip",sourceUrl:"social-gravity-world-identity.ts"});
 const socialUrl=`data:text/javascript;base64,${Buffer.from(socialJs).toString("base64")}`;
 const chemistryJs=stripTypeScriptTypes(chemistryTs,{mode:"strip",sourceUrl:"relationship-chemistry-v2.ts"});
 const chemistryUrl=`data:text/javascript;base64,${Buffer.from(chemistryJs).toString("base64")}`;
+const embodiedJs=stripTypeScriptTypes(embodiedTs,{mode:"strip",sourceUrl:"embodied-awareness-salience.ts"});
+const embodiedUrl=`data:text/javascript;base64,${Buffer.from(embodiedJs).toString("base64")}`;
 const contractJs=stripTypeScriptTypes(contractTs,{mode:"strip",sourceUrl:"story-contract.ts"})
   .replace('"./social-gravity-world-identity.ts"', JSON.stringify(socialUrl))
-  .replace('"./relationship-chemistry-v2.ts"', JSON.stringify(chemistryUrl));
+  .replace('"./relationship-chemistry-v2.ts"', JSON.stringify(chemistryUrl))
+  .replace('"./embodied-awareness-salience.ts"', JSON.stringify(embodiedUrl));
 const { compileStoryContract, storyContractPrompt } = await import(`data:text/javascript;base64,${Buffer.from(contractJs).toString("base64")}`);
 const pkg=JSON.parse(read("package.json"));
 const pub=JSON.parse(read("public/velvet-version.json"));

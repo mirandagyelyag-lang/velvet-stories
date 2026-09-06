@@ -10,6 +10,7 @@ for (const file of [
   "supabase/functions/character-chat/engine/intent-subtext-lock.ts",
   "supabase/functions/character-chat/engine/social-gravity-world-identity.ts",
   "supabase/functions/character-chat/engine/relationship-chemistry-v2.ts",
+  "supabase/functions/character-chat/engine/embodied-awareness-salience.ts",
 ]) {
   const source = fs.readFileSync(file, "utf8");
   stripTypeScriptTypes(source, { mode: "strip", sourceUrl: file });
