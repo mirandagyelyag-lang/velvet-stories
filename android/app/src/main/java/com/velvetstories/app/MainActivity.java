@@ -16,6 +16,26 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     private OnBackPressedCallback velvetBackCallback;
 
+    private void emitVelvetLifecycleEvent(String eventName) {
+        if (bridge == null || bridge.getWebView() == null) return;
+        bridge.getWebView().post(() -> bridge.getWebView().evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('" + eventName + "',{detail:{at:Date.now()}}));",
+            null
+        ));
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        emitVelvetLifecycleEvent("velvet:native-resume");
+    }
+
+    @Override
+    public void onPause() {
+        emitVelvetLifecycleEvent("velvet:native-pause");
+        super.onPause();
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(VelvetNativePlugin.class);

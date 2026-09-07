@@ -34,9 +34,11 @@ function NativePWAProvider({ children }) {
     const relock = () => { if (document.visibilityState === "visible") void lockVelvetPortrait(); };
     document.addEventListener("visibilitychange", relock);
     window.addEventListener("orientationchange", relock);
+    window.addEventListener("velvet:app-resume", relock);
     return () => {
       document.removeEventListener("visibilitychange", relock);
       window.removeEventListener("orientationchange", relock);
+      window.removeEventListener("velvet:app-resume", relock);
     };
   }, []);
 
@@ -227,8 +229,12 @@ function WebPWAProvider({ children }) {
 
   useEffect(() => {
     let timer = 0;
+    let lastRun = 0;
     const run = () => {
       if (!navigator.onLine || document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastRun < 2500) return;
+      lastRun = now;
       void checkForUpdate({ silent: true });
     };
     window.setTimeout(run, 1600);
@@ -236,10 +242,14 @@ function WebPWAProvider({ children }) {
     const onVisible = () => { if (document.visibilityState === "visible") run(); };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", run);
+    window.addEventListener("velvet:app-resume", run);
+    window.addEventListener("velvet:connectivity-restored", run);
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", run);
+      window.removeEventListener("velvet:app-resume", run);
+      window.removeEventListener("velvet:connectivity-restored", run);
     };
   }, []);
 

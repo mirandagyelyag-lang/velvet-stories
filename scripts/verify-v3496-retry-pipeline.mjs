@@ -5,7 +5,7 @@ const pub=JSON.parse(fs.readFileSync("public/velvet-version.json","utf8"));
 const chat=fs.readFileSync("src/pages/Chat.jsx","utf8");
 
 ok("version 3.49.6 descendant",pkg.version===pub.version&&/^3\.49\.(?:[6-9]|[1-9]\d+)$/.test(pkg.version));
-ok("release preserves retry lineage",/Retry Pipeline Fix|Five-Fix Polish Sweep|Invisible Reliability/.test(pub.release||""));
+ok("release preserves retry lineage",/Retry Pipeline Fix|Five-Fix Polish Sweep|Invisible Reliability|Mobile Experience/.test(pub.release||""));
 ok("failed generation has explicit state",chat.includes("failedGenerationRef")&&chat.includes("failedGeneration"));
 ok("retry has immediate in-flight lock",chat.includes("retryInFlightRef.current")&&chat.includes("if (busy || !conversationReady || retryInFlightRef.current) return"));
 ok("normal retry anchors exact user turn",chat.includes("expectedUserMessageId: savedUserMessageId")&&chat.includes("mode: \"reply\""));

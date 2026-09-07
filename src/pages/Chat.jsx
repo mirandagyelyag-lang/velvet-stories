@@ -80,6 +80,8 @@ import { STORY_THEMES, readStoryTheme, saveStoryTheme } from "../utils/velvetRes
 import { buildAdaptiveReplyHint, mergeDirectorHints } from "../utils/safeStoryUX";
 import { buildLivingWorldDirectorHint, readLivingWorld } from "../utils/livingWorldSafe";
 import { buildExperienceDirectorHint, readExperience } from "../utils/velvetExperience";
+import { captureChatAnchor, mobileComposerMaxHeight, persistChatAnchor, readChatAnchor, restoreChatAnchor, shouldOpenMessageActionsOnTap } from "../utils/chatMobileV3499";
+import { velvetHaptic } from "../native/velvetNative";
 import "../styles/chat.css";
 import "../styles/world-studio.css";
 import "../styles/velvet-v33-story-dynamics.css";
@@ -202,6 +204,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [controlDraft, setControlDraft] = useState({ title: "", responseLengthOverride: "", narrationStyleOverride: "", creativity: 0.84, personaId: "", lorebookId: "", romanceIntensity: 35, initiative: 65, drama: 45, flirting: 30, humor: 45, descriptionLevel: 55, characterIndependence: 80, dialogueFrequency: 55, narrativeCamera: "balanced", innerThoughts: "rare", pacingMode: "natural", matureMode: false });
   const [savingControls, setSavingControls] = useState(false);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const [unreadWhileReading, setUnreadWhileReading] = useState(0);
+  const [chatResumeRevision, setChatResumeRevision] = useState(0);
   const [characterProfileOpen, setCharacterProfileOpen] = useState(false);
   const [controlsMode, setControlsMode] = useState("simple");
   const [sceneImages, setSceneImages] = useState([]);
@@ -263,6 +267,9 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const preserveScrollOnKeyboardRef = useRef(null);
   const keyboardOpenRef = useRef(false);
   const previousConversationRef = useRef("");
+  const previousVisibleMessageCountRef = useRef(0);
+  const resumeReloadAtRef = useRef(0);
+  const scrollAnchorRestoreRef = useRef("");
   const messages = getCharacterMessages(character.id);
   const visibleMessages = messages.filter((item) => !isSilentContinuation(item));
   const canonicalTurnMessages = messages.filter((item) => !item.isStreaming);
@@ -831,6 +838,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       const distanceFromBottom = Math.max(0, owner.scrollHeight - owner.scrollTop - owner.clientHeight);
       stickToBottomRef.current = distanceFromBottom < 170;
       setShowJumpToBottom(distanceFromBottom > 360);
+      if (distanceFromBottom < 170) setUnreadWhileReading(0);
     }
 
     trackScrollPosition();
@@ -846,24 +854,32 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const id = conversation?.conversationId;
     const owner = scrollContainerRef.current;
     if (!id || conversationLoading || !owner) return undefined;
-    const key = `velvet_scroll_v380_${id}`;
     let frame = 0;
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(key) || "null");
-      if (saved && saved.mode === "reading" && Number.isFinite(saved.top)) {
-        requestAnimationFrame(() => owner.scrollTo({ top: saved.top, behavior: "auto" }));
-      }
-    } catch {}
+
+    // v3.49.9: restore the first visible message + pixel offset, not just a raw
+    // scrollTop. This survives font/image/layout changes and full app restarts.
+    if (scrollAnchorRestoreRef.current !== id) {
+      scrollAnchorRestoreRef.current = id;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const restored = restoreChatAnchor(id, owner);
+        if (restored) {
+          stickToBottomRef.current = false;
+          setShowJumpToBottom(true);
+        }
+      }));
+    }
+
     const save = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const distance = Math.max(0, owner.scrollHeight - owner.scrollTop - owner.clientHeight);
-        try { sessionStorage.setItem(key, JSON.stringify({ top: owner.scrollTop, mode: distance > 220 ? "reading" : "latest", at: Date.now() })); } catch {}
-      });
+      frame = requestAnimationFrame(() => persistChatAnchor(id, owner));
     };
     owner.addEventListener("scroll", save, { passive: true });
-    return () => { save(); cancelAnimationFrame(frame); owner.removeEventListener("scroll", save); };
-  }, [conversation?.conversationId, conversationLoading]);
+    return () => {
+      save();
+      cancelAnimationFrame(frame);
+      owner.removeEventListener("scroll", save);
+    };
+  }, [conversation?.conversationId, conversationLoading, chatResumeRevision]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -919,6 +935,64 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }, [messages.length, latestMessageContent, isTyping, conversationLoading, characterStreaming, conversation?.conversationId]);
 
   useEffect(() => {
+    const previous = previousVisibleMessageCountRef.current;
+    const current = visibleMessages.length;
+    previousVisibleMessageCountRef.current = current;
+    if (!previous || current <= previous || stickToBottomRef.current) return;
+    const added = visibleMessages.slice(previous);
+    const characterAdds = added.filter((item) => item.sender === "character" && !item.isStreaming).length;
+    if (characterAdds > 0) {
+      setUnreadWhileReading((value) => Math.min(99, value + characterAdds));
+      setShowJumpToBottom(true);
+    }
+  }, [visibleMessages.length]);
+
+  useEffect(() => {
+    const id = conversation?.conversationId;
+    if (!id || !conversationReady) return undefined;
+    let hiddenAt = 0;
+    const persistNow = () => {
+      if (scrollContainerRef.current) persistChatAnchor(id, scrollContainerRef.current);
+    };
+    const onPause = () => {
+      hiddenAt = Date.now();
+      persistNow();
+    };
+    const onResume = async () => {
+      const now = Date.now();
+      if (now - resumeReloadAtRef.current < 700) return;
+      resumeReloadAtRef.current = now;
+      const wasReading = !stickToBottomRef.current;
+      const saved = wasReading ? captureChatAnchor(scrollContainerRef.current) : null;
+      if (wasReading && scrollContainerRef.current) persistChatAnchor(id, scrollContainerRef.current);
+      try { await reloadConversationMessages(character.id); } catch {}
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (wasReading && saved && scrollContainerRef.current) {
+          const anchor = readChatAnchor(id) || saved;
+          if (anchor?.mode === "reading") restoreChatAnchor(id, scrollContainerRef.current, { force: true });
+        } else if (stickToBottomRef.current) {
+          messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+        }
+        setChatResumeRevision((value) => value + 1);
+      }));
+      hiddenAt = 0;
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") onPause();
+      else if (!hiddenAt || Date.now() - hiddenAt > 700) void onResume();
+    };
+    window.addEventListener("velvet:app-pause", onPause);
+    window.addEventListener("velvet:app-resume", onResume);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      persistNow();
+      window.removeEventListener("velvet:app-pause", onPause);
+      window.removeEventListener("velvet:app-resume", onResume);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [conversation?.conversationId, conversationReady, character.id]);
+
+  useEffect(() => {
     if (!focusMessageId || !conversationReady || conversationLoading) return;
     let cancelled = false;
     (async () => {
@@ -964,6 +1038,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
   function jumpToBottom() {
     stickToBottomRef.current = true;
+    setUnreadWhileReading(0);
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
@@ -1000,7 +1075,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = "auto";
-    const maxHeight = Math.max(110, Math.min(220, Number(experienceState?.composer?.maxHeight || 170)));
+    const maxHeight = mobileComposerMaxHeight(experienceState?.composer?.maxHeight || 170);
     textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
   }
 
@@ -2391,7 +2466,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                   character={character}
                   onOpenActions={openActions}
                   onOpenFeedback={openMessageFeedback}
-                  onOpenQuality={openQualityMonitor}
                   onVersionNavigate={navigateResponseVersion}
                   versionState={responseVersions[chatMessage.id]}
                   versionNavigationEnabled={index === visibleMessages.length - 1 && chatMessage.sender === "character"}
@@ -2435,8 +2509,9 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       </div>
 
       {showJumpToBottom && (
-        <button className="chat__jump-bottom" onClick={jumpToBottom} aria-label="Jump to latest message" title="Jump to latest message">
+        <button className={`chat__jump-bottom${unreadWhileReading ? " has-new" : ""}`} onClick={jumpToBottom} aria-label={unreadWhileReading ? `${unreadWhileReading} new message${unreadWhileReading === 1 ? "" : "s"}. Jump to latest.` : "Jump to latest message"} title="Jump to latest message">
           <ChevronDown size={20}/>
+          {unreadWhileReading > 0 && <span>{unreadWhileReading > 9 ? "9+" : unreadWhileReading}</span>}
         </button>
       )}
 
@@ -2828,8 +2903,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       )}
 
       {selectedMessage && typeof document !== "undefined" && createPortal((
-        <div className="message-sheet-backdrop" onMouseDown={(event) => event.target === event.currentTarget && closeActions()}>
-          <section className="message-sheet" role="dialog" aria-modal="true" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+        <div className="message-sheet-backdrop" onPointerDown={(event) => event.target === event.currentTarget && closeActions()}>
+          <section className="message-sheet" data-action-mode={actionMode} role="dialog" aria-modal="true" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
             <header>
               <div>
                 <small>{selectedMessage.sender === "user" ? "YOUR MESSAGE" : character.name.toUpperCase()}</small>
@@ -2839,7 +2914,18 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
             </header>
 
             {actionMode === "menu" && (
-              <div className="message-sheet__refine-menu">
+              <div className="message-sheet__refine-menu v34910-message-actions">
+                <div className="v34910-message-actions__handle" aria-hidden="true" />
+                <div className="v34910-message-actions__quick" aria-label="Quick message actions">
+                  <button type="button" onClick={() => runAction("copy")}><Copy size={17}/><span>Copy</span></button>
+                  {selectedMessage.sender === "user" ? (
+                    <button type="button" onClick={() => { setActionDraft(selectedMessage.content); setActionMode("edit"); }}><Pencil size={17}/><span>Edit</span></button>
+                  ) : (
+                    <button type="button" disabled={busy} onClick={() => { setActionDraft(""); setRegenerationFeedback([]); setFeedbackOnly(false); setActionMode("regenerate"); }}><RefreshCw size={17}/><span>Regenerate</span></button>
+                  )}
+                  <button type="button" onClick={() => runAction("memory")}><BookmarkPlus size={17}/><span>Memory</span></button>
+                  <button type="button" onClick={() => setActionMode("more")}><MoreHorizontal size={17}/><span>More</span></button>
+                </div>
                 {!conversation?.groupMode && (
                   <button type="button" className="message-sheet__branch-feature message-sheet__open-character" onClick={openCharacterFromMessageActions}>
                     <UserRound size={19} />
@@ -2913,6 +2999,9 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                 )}
                 <button onClick={() => runAction("memory")}><BookmarkPlus size={17} /><span>Save to memory</span></button>
                 <button onClick={() => runAction("bookmark")}><Star size={17} /><span>{selectedMessage.isBookmarked ? "Remove saved moment" : "Save moment"}</span></button>
+                {selectedMessage.sender === "character" && (
+                  <button onClick={() => { const message = selectedMessage; closeActionsAfterAction(); openQualityMonitor(message); }}><Sparkles size={17}/><span>Quality check</span></button>
+                )}
                 <button onClick={() => { setActionDraft(""); setActionMode("correct-canon"); }}><ShieldCheck size={17}/><span>Correct canon</span></button>
                 <button onClick={() => runAction("quote")}><MessageSquareQuote size={17} /><span>Quote</span></button>
                 <button onClick={() => { setActionDraft(`${conversation?.title || character.name} · branch`); setActionMode("branch"); }}><GitBranch size={17} /><span>Branch from here</span></button>
@@ -3041,7 +3130,6 @@ function MessageBubble({
   character,
   onOpenActions,
   onOpenFeedback,
-  onOpenQuality,
   onVersionNavigate,
   versionState,
   versionNavigationEnabled = false,
@@ -3064,7 +3152,7 @@ function MessageBubble({
     !message.isStreaming &&
     versionNavigationEnabled &&
     !swipeDisabled;
-  const canLongPress = message.sender === "character" && !message.isStreaming;
+  const canLongPress = !message.isStreaming;
 
   function resetSwipeGesture() {
     swipeGestureRef.current = null;
@@ -3097,9 +3185,10 @@ function MessageBubble({
       window.clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = window.setTimeout(() => {
         suppressTapRef.current = true;
-        onOpenQuality?.(message);
-        window.setTimeout(() => { suppressTapRef.current = false; }, 320);
-      }, 480);
+        velvetHaptic("selection");
+        onOpenActions(message);
+        window.setTimeout(() => { suppressTapRef.current = false; }, 360);
+      }, 430);
     }
   }
 
@@ -3170,6 +3259,7 @@ function MessageBubble({
 
   function handleMessageTap(event) {
     if (suppressTapRef.current || message.isStreaming || shouldIgnoreSwipeTarget(event.target)) return;
+    if (!shouldOpenMessageActionsOnTap()) return;
     event.stopPropagation();
     onOpenActions(message);
   }
@@ -3187,6 +3277,7 @@ function MessageBubble({
   return (
     <article
       data-message-id={message.id}
+      data-hold-actions={!message.isStreaming ? "true" : "false"}
       className={`chat-message chat-message--${message.sender}${message.isStreaming ? " chat-message--streaming" : ""}${message.isBookmarked ? " chat-message--bookmarked" : ""}${message.isOfflinePending ? " chat-message--offline-pending" : message.isPending ? " chat-message--pending" : ""}${canSwipe ? " chat-message--swipeable" : ""}`}
       onTouchStart={(canSwipe || canLongPress) ? handleTouchStart : undefined}
       onTouchMove={(canSwipe || canLongPress) ? handleTouchMove : undefined}

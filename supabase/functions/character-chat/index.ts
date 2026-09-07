@@ -21,6 +21,7 @@ import { generationOrchestratorV346Issues, sanitizeGenerationOrchestratorV346Rep
 import { recoveryIntegrityV347Issues, sanitizeRecoveryIntegrityV347Reply } from "./engine/recovery-integrity-v347.ts";
 import { performanceMobileV348Issues } from "./engine/performance-mobile-v348.ts";
 import { instantStoryLooksComplete } from "./engine/instant-story-v3492.ts";
+import { buildVoiceAuditDirectiveV34911, voiceAuditV34911Issues } from "./engine/character-voice-audit-v34911.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1763,6 +1764,11 @@ function buildNarrativePromptV3({
     publicPrivateMode: conversation.intelligence_state?.character_mind?.public_private_mode || "unknown",
   });
   const naturalismDirectorText = conversationalNaturalismPrompt(naturalismDirector);
+  const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
+    character,
+    recentReplies: recentCharacterRepliesForVoice,
+    cast: supportingCast,
+  });
   const characterDNA = turnContract?.characterDNA && typeof turnContract.characterDNA === "object"
     ? turnContract.characterDNA
     : {};
@@ -2127,6 +2133,9 @@ ${groupRules}
 
 DIALOGUE GENOME 3.31 — HOW THIS PERSON ACTUALLY TALKS
 ${dialogueGenomeText}
+
+CHARACTER VOICE AUDIT 2.0 / v3.49.11
+${voiceAuditDirectiveV34911}
 Rules:
 - Match the genome unless the current mood/public-private context has a grounded reason to bend it.
 - Do not automatically end on a question. Obey the question budget above.
@@ -2635,6 +2644,12 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     therapist_care_package_v2: "Remove the counseling/customer-service care package. Keep any care through character-specific wording, silence, practical action, awkwardness or imperfect support.",
     vocabulary_ownership_violation: "Remove slang, pet names or signature words not owned by this character's profile/examples/canon. Do not borrow another character's verbal tell.",
     voice_performance_stack: "Stop performing five personality markers at once. Keep one natural character-specific speech choice and cut the stacked joke, slang, pet name, rhetorical hook or decorative gesture.",
+    voice_clone_generic_cadence_v34911: "Fail the name-removal clone test. Rebuild the response logic, sentence architecture and social tactic from this character's own voice fingerprint; do not fix it by swapping slang or one adjective.",
+    voice_length_identity_drift_v34911: "Restore this character's native response bandwidth. If they are terse or laconic, compress the spoken reply instead of turning them into a narrator or explainer.",
+    voice_question_identity_drift_v34911: "Restore this character's question habit. Remove engagement-bait questions that this low-question character would not naturally ask.",
+    voice_emotional_fluency_drift_v34911: "Remove unearned emotional fluency. Let guardedness, awkwardness, deflection, practical behavior or partial honesty carry the beat unless this character has earned direct confession language.",
+    voice_opening_shape_repeat_v34911: "Change the opening tactic and sentence shape. Do not begin another reply with the same four-word cadence or equivalent stock setup from recent turns.",
+    voice_register_drift_v34911: "Restore the established conversational register, including contractions and ordinary phrasing. Do not suddenly become formal or polished without a scene-specific reason.",
     declared_state_disbelief: "The user explicitly self-reported their state. Remove disbelief-as-fact, skeptical gotcha wording, and any line that treats a later eye-roll or shrug as proof that the self-report was false. Observation is not diagnosis.",
     semantic_scope_overreach: "Keep the user's complaint scoped to the thing they actually named. ‘I’m tired of this/it’ does NOT authorize ‘you need space,’ ‘you want me gone,’ or a relationship-level conclusion unless the user said that.",
     inference_distance_exceeded: "Reduce inference distance. React only to the observable cue itself. Do not jump from eye-roll/shrug/silence to hidden emotional truth, deception, or a desire for distance.",
@@ -5495,6 +5510,12 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "therapist_service_voice",
   "perfect_empathy_package",
   "canned_dialogue_genome_cadence",
+  "voice_clone_generic_cadence_v34911",
+  "voice_length_identity_drift_v34911",
+  "voice_question_identity_drift_v34911",
+  "voice_emotional_fluency_drift_v34911",
+  "voice_opening_shape_repeat_v34911",
+  "voice_register_drift_v34911",
   "banter_saturation_loop",
   "short_turn_performance_monologue",
   "immediate_behavior_stop_violation",
@@ -6118,6 +6139,13 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (proseIssuesForScore.includes("repeated_prose_structure_v345")) score -= 14;
   if (proseIssuesForScore.includes("gesture_choreography_overbudget_v345")) score -= 14;
   if (hasAnswerBeforeFlourishViolation(reply, latest, options.turnIntent || {})) score -= 16;
+  const voiceAuditScoreIssuesV34911 = voiceAuditV34911Issues({ reply, character: options.character || {}, recentReplies: recent });
+  if (voiceAuditScoreIssuesV34911.includes("voice_clone_generic_cadence_v34911")) score -= 22;
+  if (voiceAuditScoreIssuesV34911.includes("voice_length_identity_drift_v34911")) score -= 16;
+  if (voiceAuditScoreIssuesV34911.includes("voice_question_identity_drift_v34911")) score -= 16;
+  if (voiceAuditScoreIssuesV34911.includes("voice_emotional_fluency_drift_v34911")) score -= 20;
+  if (voiceAuditScoreIssuesV34911.includes("voice_opening_shape_repeat_v34911")) score -= 12;
+  if (voiceAuditScoreIssuesV34911.includes("voice_register_drift_v34911")) score -= 12;
   const intentIssuesForScore = intentSubtextIssues({
     reply,
     latestUserMessage: latest,
@@ -6273,6 +6301,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of generationOrchestratorV346Issues({ reply:text })) issues.push(issue);
   for (const issue of recoveryIntegrityV347Issues({ reply:text })) issues.push(issue);
   for (const issue of performanceMobileV348Issues({ reply:text })) issues.push(issue);
+  for (const issue of voiceAuditV34911Issues({ reply:text, character:options.character || {}, recentReplies:options.recentCharacterReplies || [] })) issues.push(issue);
   if (/\b(?:as an ai|language model|cannot continue|try the continuation again|validator|validation failed)\b/i.test(text)) issues.push("exposes_system_language");
   if (hasRepeatedRecentSignature(text, options.recentCharacterReplies || [])) issues.push("repeated_recent_signature");
   if (hasMechanicalRhythmLoop(text, options.recentCharacterReplies || [])) issues.push("mechanical_rhythm_loop");

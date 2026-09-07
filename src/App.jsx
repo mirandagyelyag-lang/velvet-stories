@@ -190,8 +190,13 @@ function App() {
 
   useEffect(() => {
     if (!nativeRuntime) return undefined;
-    const timer = window.setTimeout(() => setNativeLaunchVisible(false), 6200);
-    return () => window.clearTimeout(timer);
+    const finish = () => window.setTimeout(() => setNativeLaunchVisible(false), 180);
+    const watchdog = window.setTimeout(() => setNativeLaunchVisible(false), 5200);
+    window.addEventListener("velvet:boot-ready", finish, { once: true });
+    return () => {
+      window.clearTimeout(watchdog);
+      window.removeEventListener("velvet:boot-ready", finish);
+    };
   }, [nativeRuntime]);
 
   useEffect(() => {
@@ -235,6 +240,29 @@ function App() {
     document.body.classList.toggle("velvet-page--studio", Boolean(creatorOpen));
     return () => {};
   }, [activePage, creatorOpen, selectedCharacter]);
+
+  useEffect(() => {
+    const persistCurrentLocation = () => {
+      if (selectedCharacter?.id) {
+        persistVelvetLocation({ mode: "chat", page: "chats", characterId: selectedCharacter.id, conversationId: selectedConversationId, messageId: selectedMessageId });
+      } else if (previewCharacter?.id) {
+        persistVelvetLocation({ mode: "character", page: activePage, characterId: previewCharacter.id, conversationId: null, messageId: null });
+      } else {
+        persistVelvetLocation({ mode: "page", page: activePage, characterId: null, conversationId: null, messageId: null });
+      }
+    };
+    const warmCurrentRoute = () => {
+      persistCurrentLocation();
+      const loader = selectedCharacter ? routeImports.chat : (routeImports[activePage] || routeImports.stories);
+      loader?.().catch(() => {});
+    };
+    window.addEventListener("velvet:app-pause", persistCurrentLocation);
+    window.addEventListener("velvet:app-resume", warmCurrentRoute);
+    return () => {
+      window.removeEventListener("velvet:app-pause", persistCurrentLocation);
+      window.removeEventListener("velvet:app-resume", warmCurrentRoute);
+    };
+  }, [activePage, selectedCharacter?.id, selectedConversationId, selectedMessageId, previewCharacter?.id]);
 
   useEffect(() => {
     if (authLoading || !user) return;

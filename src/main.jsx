@@ -19,6 +19,7 @@ import { applySafeModeClass } from "./utils/safeMode";
 import { installMobileViewportLock } from "./utils/mobileViewportLock";
 import { installInteractionReliability } from "./utils/interactionReliability";
 import { installVelvetNativeRuntime } from "./native/velvetNative";
+import { installAppResumeRecoveryV34912 } from "./utils/appResumeRecoveryV34912";
 import "./index.css";
 import "./styles/velvet-ui.css";
 import "./styles/velvet-v18.css";
@@ -49,6 +50,7 @@ import "./styles/velvet-v298-characters-clean-mobile.css";
 installMobileViewportLock();
 installInteractionReliability();
 installVelvetNativeRuntime();
+installAppResumeRecoveryV34912();
 applySafeModeClass();
 
 const nativeRuntime = __VELVET_ANDROID_BUILD__ || Capacitor.isNativePlatform();
@@ -117,6 +119,8 @@ window.requestAnimationFrame(() => {
   window.requestAnimationFrame(() => {
     markVelvetHealthy();
     window.__VELVET_BOOT_OK__ = true;
+    try { localStorage.setItem("velvet:last-healthy-version", __VELVET_VERSION__); } catch {}
+    window.dispatchEvent(new CustomEvent("velvet:boot-ready", { detail: { version: __VELVET_VERSION__, at: Date.now() } }));
     if (nativeRuntime) {
       window.setTimeout(() => {
         document.documentElement.classList.remove("velvet-native-prepaint");
@@ -151,3 +155,4 @@ import "./styles/velvet-v3493-seamless-generation.css";
 
 import "./styles/velvet-v3495-chat-recovery-clean-ui.css";
 import "./styles/velvet-v3497-five-fix-polish.css";
+import "./styles/velvet-v34912-mobile-experience.css";

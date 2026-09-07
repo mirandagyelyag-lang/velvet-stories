@@ -11,9 +11,9 @@ const diagnostics=fs.readFileSync("src/pages/Diagnostics.jsx","utf8");
 const css=fs.readFileSync("src/styles/diagnostics.css","utf8");
 const edge=fs.readFileSync("supabase/functions/character-chat/index.ts","utf8");
 
-ok("version 3.49.8",pkg.version==="3.49.8"&&pub.version==="3.49.8");
-ok("release names invisible reliability",/Invisible Reliability/.test(pub.release||""));
-ok("v3.49.8 runs first in stability lab",(pkg.scripts?.["stability:lab"]||"").startsWith("npm run verify:v3498"));
+ok("version 3.49.8 descendant",pkg.version===pub.version&&/^3\.49\.(?:8|9|[1-9]\d+)$/.test(pkg.version));
+ok("release preserves invisible reliability descendant",/Invisible Reliability|Mobile Experience/.test(pub.release||""));
+ok("v3.49.8 remains in stability lab",(pkg.scripts?.["stability:lab"]||"").includes("npm run verify:v3498"));
 ok("v3.49.7 remains regression",(pkg.scripts?.["stability:lab"]||"").includes("npm run verify:v3497"));
 
 ok("local trace ring exists",resilience.includes("velvet_generation_traces_v3498")&&resilience.includes("MAX_GENERATION_TRACES = 60"));

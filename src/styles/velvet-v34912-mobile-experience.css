@@ -1,0 +1,243 @@
+/* Velvet v3.49.12 · Mobile Experience + Character Polish Completion
+   3.49.9 Chat Mobile 2.0 · 3.49.10 Message Actions Rebuild
+   3.49.12 Startup / PWA / Android reliability polish. */
+
+.chat__jump-bottom.has-new {
+  position: fixed;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  min-width: 42px;
+  padding-inline: 10px;
+}
+.chat__jump-bottom.has-new > span {
+  min-width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  padding-inline: 4px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent, #722640);
+  font-size: .61rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.v34910-message-actions__handle { display: none; }
+.v34910-message-actions__quick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.v34910-message-actions__quick button {
+  min-width: 0;
+  min-height: 64px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 9px 5px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--surface-soft) 82%, transparent);
+  cursor: pointer;
+}
+.v34910-message-actions__quick button svg { color: var(--accent); }
+.v34910-message-actions__quick button span { font-size: .67rem; font-weight: 700; }
+
+@media (max-width: 760px), (pointer: coarse) {
+  html[data-velvet-keyboard="open"] body[data-velvet-page="chat"],
+  html.velvet-native-keyboard-open body[data-velvet-page="chat"] {
+    overscroll-behavior-y: none;
+  }
+
+  .chat__content {
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: auto;
+    touch-action: pan-y !important;
+  }
+
+  .chat__messages {
+    gap: 10px !important;
+    padding-inline: 10px !important;
+    padding-bottom: calc(12px + max(env(safe-area-inset-bottom), var(--velvet-native-safe-bottom, 0px))) !important;
+  }
+
+  .chat-message {
+    touch-action: pan-y !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .chat-message[data-hold-actions="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .chat-message--character .chat-message__swipe-content {
+    max-width: min(88vw, 590px) !important;
+  }
+  .chat-message--user .chat-message__swipe-content {
+    max-width: min(82vw, 550px) !important;
+  }
+
+  .chat-message__avatar,
+  .chat-message__avatar img {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+  }
+
+  .chat-message__body > p {
+    margin-block: 0 !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Actions live behind long-press on touch. Permanent ellipses are noise. */
+  .chat-message__actions,
+  .chat-message__actions--inline,
+  .chat-message__version-nav.is-single {
+    display: none !important;
+  }
+
+  .chat-message__feedback {
+    opacity: .34;
+    transform: scale(.92);
+    transform-origin: left center;
+    margin-top: 2px !important;
+  }
+  .chat-message:focus-within .chat-message__feedback { opacity: .72; }
+
+  .chat-message__version-nav.is-multiple {
+    display: inline-flex !important;
+    min-height: 28px !important;
+    margin-top: 4px !important;
+    padding: 1px 3px !important;
+    border: 0 !important;
+    background: transparent !important;
+    opacity: .62;
+  }
+  .chat-message__version-nav.is-multiple .chat-message__version-arrow {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    border: 0 !important;
+    background: color-mix(in srgb, var(--surface) 74%, transparent) !important;
+  }
+  .chat-message__version-count {
+    min-width: 32px !important;
+    font-size: .57rem !important;
+    opacity: .72;
+  }
+  .chat-message__edited {
+    display: inline !important;
+    margin: 3px 5px 0 !important;
+    font-size: .52rem !important;
+    letter-spacing: .02em;
+    opacity: .28 !important;
+  }
+
+  body > .chat__composer,
+  .chat__composer {
+    bottom: max(0px, var(--velvet-keyboard-offset, 0px)) !important;
+    min-height: 54px !important;
+    padding: 5px 6px max(5px, var(--velvet-native-safe-bottom, env(safe-area-inset-bottom))) !important;
+    border-radius: 22px !important;
+    gap: 5px !important;
+    backdrop-filter: blur(18px) saturate(1.1);
+  }
+  .chat__composer > textarea {
+    min-height: 42px !important;
+    height: auto !important;
+    max-height: 146px !important;
+    padding: 9px 5px !important;
+    line-height: 1.38 !important;
+    overscroll-behavior: contain;
+  }
+  .chat__composer > .chat__director-trigger,
+  .chat__composer > .chat__send-button,
+  .chat__composer > .chat__stop-button {
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    border-radius: 15px !important;
+  }
+
+  .v312-composer-state {
+    max-height: 18px;
+    margin-block: -2px 0 !important;
+    opacity: .48;
+    font-size: .55rem !important;
+  }
+
+  .chat__jump-bottom {
+    right: 12px !important;
+    bottom: calc(68px + max(env(safe-area-inset-bottom), var(--velvet-native-safe-bottom, 0px)) + var(--velvet-keyboard-offset, 0px)) !important;
+    z-index: 95 !important;
+    min-height: 38px !important;
+    border-radius: 999px !important;
+    box-shadow: 0 8px 22px rgba(0,0,0,.16);
+  }
+
+  .message-sheet-backdrop {
+    align-items: end !important;
+    padding: 0 !important;
+    background: rgba(8,2,5,.52) !important;
+    backdrop-filter: blur(7px) !important;
+  }
+  .message-sheet {
+    width: 100% !important;
+    max-height: min(82dvh, calc(var(--velvet-visual-height, 100dvh) - 24px)) !important;
+    padding: 10px 14px calc(12px + max(env(safe-area-inset-bottom), var(--velvet-native-safe-bottom, 0px))) !important;
+    border-inline: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 24px 24px 0 0 !important;
+    overscroll-behavior: contain;
+  }
+  .message-sheet > header {
+    margin-bottom: 10px !important;
+  }
+  .message-sheet > header strong {
+    font-size: 1.27rem !important;
+  }
+  .v34910-message-actions__handle {
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: -2px auto 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-secondary) 22%, transparent);
+  }
+  .v34910-message-actions__quick {
+    gap: 6px;
+    margin-bottom: 9px;
+  }
+  .v34910-message-actions__quick button {
+    min-height: 58px;
+    border-radius: 13px;
+  }
+  .v34910-message-actions__quick button span { font-size: .62rem; }
+  .message-sheet__refine-note { margin-block: 4px 8px !important; }
+  .message-sheet__refine-grid { gap: 6px !important; }
+  .message-sheet__refine-grid button { min-height: 42px !important; }
+  .message-sheet__refine-secondary { gap: 5px !important; }
+  .message-sheet__refine-secondary button { min-height: 40px !important; }
+  .message-sheet__more button { min-height: 46px !important; }
+
+  /* Keep the input above Android's IME even when visualViewport lags one frame. */
+  html[data-velvet-runtime="android"] body > .chat__composer {
+    padding-bottom: max(6px, var(--velvet-native-safe-bottom, 0px)) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-sheet,
+  .chat__jump-bottom,
+  .chat-message { animation: none !important; transition: none !important; }
+}

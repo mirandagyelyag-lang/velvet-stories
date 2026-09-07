@@ -13,8 +13,8 @@ const prose=fs.readFileSync("supabase/functions/character-chat/engine/prose-inte
 const css=fs.readFileSync("src/styles/velvet-v3497-five-fix-polish.css","utf8");
 const main=fs.readFileSync("src/main.jsx","utf8");
 
-ok("v3.49.7 lineage preserved",["3.49.7","3.49.8"].includes(pkg.version)&&["3.49.7","3.49.8"].includes(pub.version));
-ok("release preserves five-fix descendant",/Five-Fix Polish Sweep|Invisible Reliability/.test(pub.release||""));
+ok("v3.49.7 lineage preserved",pkg.version===pub.version&&/^3\.49\.(?:[7-9]|[1-9]\d+)$/.test(pkg.version));
+ok("release preserves five-fix descendant",/Five-Fix Polish Sweep|Invisible Reliability|Mobile Experience/.test(pub.release||""));
 
 // 1 · speed + reliability
 const microPerf=derivePerformanceMobileV348({orchestrator:{mode:"micro"},recentMessageCount:8,memoryRetrievalCount:2});
