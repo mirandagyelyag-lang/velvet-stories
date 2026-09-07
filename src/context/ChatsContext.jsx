@@ -884,7 +884,7 @@ export function ChatsProvider({
       const elapsed = Date.now() - lastStreamFlushAt;
       // VELVET_STREAM_POLISH_V2: slightly slower paint cadence on touch devices
       // keeps long replies fluid without making the stream feel delayed.
-      const targetCadence = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 30 : 24;
+      const targetCadence = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 34 : 26;
       const waitMs = Math.max(0, targetCadence - elapsed);
       streamFlushTimer = setTimeout(() => {
         streamFlushTimer = null;
@@ -1158,7 +1158,7 @@ export function ChatsProvider({
         } catch (error) {
           if (requestWasCancelled() || error?.name === "AbortError") throw cancellationError();
           if (attempt === 0 && navigator.onLine && isRetryableNetworkError(error)) {
-            await wait(420);
+            await wait(260);
             continue;
           }
           throw error;
@@ -1166,7 +1166,7 @@ export function ChatsProvider({
 
         if (attempt === 0 && isRetryableStatus(response.status)) {
           try { await response.body?.cancel?.(); } catch {}
-          await wait(response.status === 429 ? 850 : 420);
+          await wait(response.status === 429 ? 650 : 280);
           continue;
         }
         break;
@@ -1347,7 +1347,7 @@ export function ChatsProvider({
           result = await new Promise((resolve, reject) => {
             const timeoutId = setTimeout(
               () => reject(new Error("The response stream stalled. Please try again.")),
-              45000
+              30000
             );
 
             reader.read().then(

@@ -28,7 +28,7 @@ ok("mobile duplicate Studio composer button hidden",css.includes("chat__experien
 ok("mobile permanent ellipsis chrome hidden",css.includes("chat-message__actions--inline")&&css.includes("display: none !important"));
 ok("mobile composer is compact",css.includes("min-height: 58px !important")&&css.includes("height: 42px !important"));
 ok("error card is compact",css.includes("width: min(520px")&&css.includes("min-height: 34px"));
-ok("new CSS imported last",main.trim().endsWith('import "./styles/velvet-v3495-chat-recovery-clean-ui.css";'));
+ok("v3.49.5 CSS remains imported before descendant polish",main.includes('import "./styles/velvet-v3495-chat-recovery-clean-ui.css";'));
 ok("v3.49.4 remains regression",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3494"));
 ok("v3.49.5 remains in lab",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3495"));
 

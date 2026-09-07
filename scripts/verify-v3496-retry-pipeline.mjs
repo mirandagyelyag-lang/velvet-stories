@@ -4,8 +4,8 @@ const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
 const pub=JSON.parse(fs.readFileSync("public/velvet-version.json","utf8"));
 const chat=fs.readFileSync("src/pages/Chat.jsx","utf8");
 
-ok("version 3.49.6",pkg.version==="3.49.6"&&pub.version==="3.49.6");
-ok("release names retry pipeline",/Retry Pipeline Fix/.test(pub.release||""));
+ok("version 3.49.6 descendant",pkg.version===pub.version&&/^3\.49\.(?:[6-9]|[1-9]\d+)$/.test(pkg.version));
+ok("release preserves retry lineage",/Retry Pipeline Fix|Five-Fix Polish Sweep/.test(pub.release||""));
 ok("failed generation has explicit state",chat.includes("failedGenerationRef")&&chat.includes("failedGeneration"));
 ok("retry has immediate in-flight lock",chat.includes("retryInFlightRef.current")&&chat.includes("if (busy || !conversationReady || retryInFlightRef.current) return"));
 ok("normal retry anchors exact user turn",chat.includes("expectedUserMessageId: savedUserMessageId")&&chat.includes("mode: \"reply\""));
@@ -24,7 +24,7 @@ ok("failed retry keeps same context",chat.includes("rememberGenerationFailure(er
 ok("resolved reply error uses exact failed user id",chat.includes("failedTurnHasCompletedReply")&&chat.includes("failedGeneration.expectedUserMessageId"));
 ok("regenerate error is not hidden just because old reply exists",chat.includes('failedGeneration?.mode === "regenerate"')&&chat.includes("resolvedGenerationError"));
 ok("v3.49.5 remains regression",(pkg.scripts?.["stability:lab"]||"").includes("verify:v3495"));
-ok("v3.49.6 runs first in lab",(pkg.scripts?.["stability:lab"]||"").startsWith("npm run verify:v3496"));
+ok("v3.49.6 stays in lab",(pkg.scripts?.["stability:lab"]||"").includes("npm run verify:v3496"));
 
 let failed=0; for(const [name,value] of checks){console.log(`${value?"PASS":"FAIL"} ${name}`);if(!value)failed++;}
 console.log(`\n${checks.length-failed}/${checks.length} v3.49.6 retry-pipeline checks passed.`); if(failed)process.exit(1);

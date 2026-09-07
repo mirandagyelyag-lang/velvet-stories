@@ -25,12 +25,12 @@ export function deriveProseIntelligenceV345(input:Record<string,unknown>={}){
   const dialogueForward=low(style.dialogueMode).includes("dialogue") || userWords<16 || low(turn.responseShape).includes("short");
   const group=Number(director.maxActiveSpeakers||0)>2;
   const reflective=/\b(why|feel|remember|thinking|thought|tell me|what happened)\b/i.test(user) && userWords>8;
-  const mode=group?"group":userWords<=5?"micro":reflective?"reflective":dialogueForward?"dialogue":"balanced";
-  const targets:Record<string,[number,number]>={micro:[5,65],dialogue:[20,130],balanced:[35,190],reflective:[50,240],group:[35,210]};
-  const dialogueRatio:Record<string,string>={micro:"60-100%",dialogue:"55-85%",balanced:"35-70%",reflective:"25-60%",group:"45-75%"};
+  const mode=group?"group":userWords<=12?"micro":reflective?"reflective":dialogueForward?"dialogue":"balanced";
+  const targets:Record<string,[number,number]>={micro:[4,55],dialogue:[18,120],balanced:[32,180],reflective:[48,230],group:[32,200]};
+  const dialogueRatio:Record<string,string>={micro:"70-100%",dialogue:"60-90%",balanced:"35-70%",reflective:"25-60%",group:"45-75%"};
   const narrationBudget=mode==="micro"?1:mode==="dialogue"?2:mode==="group"?3:4;
   const interiorityBudget=mode==="reflective"?2:mode==="balanced"?1:0;
-  const gestureBudget=Math.max(0,Math.min(2,Number(intent.gestureBudget??1)));
+  const gestureBudget=mode==="micro"?Math.min(1,Math.max(0,Number(intent.gestureBudget??0))):Math.max(0,Math.min(2,Number(intent.gestureBudget??1)));
   const openings=recent.map(r=>low(sentences(r)[0]||"").replace(/[^a-z0-9' ]/g,"").split(/\s+/).slice(0,5).join(" ")).filter(Boolean);
   const counts=new Map<string,number>(); openings.forEach(o=>counts.set(o,(counts.get(o)||0)+1));
   const stale=[...counts.entries()].filter(([,n])=>n>=2).map(([s])=>s).slice(0,5);
@@ -40,13 +40,14 @@ export function deriveProseIntelligenceV345(input:Record<string,unknown>={}){
     interiorityBudget,gestureBudget,sentenceTexture:tx(style.sentenceTexture)||"vary sentence length; favor spoken rhythm over polished symmetry",
     voiceAnchor:voice,staleOpeningSignatures:stale,
     prohibitedCadence:["cinematic body-language stacks","explain subtext after already showing it","therapist summary","decorative gaze/jaw/finger choreography","three polished paragraphs when one line would do"],
-    instruction:`Write for the beat, not for a prose quota. Mode=${mode}. Target roughly ${targets[mode][0]}-${targets[mode][1]} words when the user's requested length permits. Dialogue may stand alone. Silence and a plain answer are valid. Do not explain subtext after showing it.`
+    instruction:`Write for the beat, not for a prose quota. Mode=${mode}. Target roughly ${targets[mode][0]}-${targets[mode][1]} words when the user's requested length permits. ${mode==="micro"?"For a short user turn, answer in character with dialogue first; use at most one brief physical beat and never build a cinematic lead-in before the line.":"Dialogue may stand alone."} Silence and a plain answer are valid. Do not explain subtext after showing it.`
   };
 }
 
 export function proseIntelligenceV345Issues(input:Record<string,unknown>={}){
   const reply=tx(input.reply); if(!reply) return [];
   const engine=(input.engine||{}) as Record<string,unknown>;
+  const recent=(Array.isArray(input.recentCharacterReplies)?input.recentCharacterReplies:[]).map(tx).filter(Boolean).slice(-8);
   const issues:string[]=[]; const wc=words(reply); const [min,max]=Array.isArray(engine.targetWords)?engine.targetWords as number[]:[0,220];
   const stock=AI_STOCK.filter(r=>r.test(reply)).length;
   const gestureCount=GESTURES.filter(r=>r.test(reply)).length;
@@ -59,6 +60,11 @@ export function proseIntelligenceV345Issues(input:Record<string,unknown>={}){
   const opening=low(sentences(reply)[0]||"").replace(/[^a-z0-9' ]/g,"").split(/\s+/).slice(0,5).join(" ");
   if(opening && stale.some((s:string)=>s && (opening.startsWith(s)||s.startsWith(opening)))) issues.push("repeated_prose_structure_v345");
   if(gestureCount>Math.max(2,Number(engine.gestureBudget??1)+1)) issues.push("gesture_choreography_overbudget_v345");
+  if(engine.mode==="micro" && wc>22){
+    const first=sentences(reply)[0]||""; const quoteWords=words((reply.match(/[“"][^”"]+[”"]/g)||[]).join(" "));
+    if(first && !/[“"]/.test(first) && words(first)>=13 && quoteWords>=3) issues.push("micro_narration_lead_v3497");
+  }
+  if(/^[A-Z][a-z]+\s+(?:lets out|shifts|keeps|turns|looks|glances|reaches|drops|moves|leans)\b/i.test(reply) && recent.some(r=>/^[A-Z][a-z]+\s+(?:lets out|shifts|keeps|turns|looks|glances|reaches|drops|moves|leans)\b/i.test(r))) issues.push("repeated_named_action_opening_v3497");
   return [...new Set(issues)];
 }
 
@@ -70,6 +76,12 @@ export function sanitizeProseIntelligenceV345Reply(reply:string, issues:string[]
   }
   if(issues.includes("subtext_explained_after_showing_v345")){
     const kept=sentences(out).filter(s=>!EXPLAIN_AFTER_SHOW.some(r=>r.test(s))); if(kept.length) out=kept.join(" ");
+  }
+  if(issues.includes("micro_narration_lead_v3497")){
+    const parts=sentences(out); if(parts.length>1 && !/[“"]/.test(parts[0]) && parts.slice(1).some(s=>/[“"]/.test(s))) out=parts.slice(1).join(" ");
+  }
+  if(issues.includes("repeated_named_action_opening_v3497")){
+    const parts=sentences(out); if(parts.length>1 && /^[A-Z][a-z]+\s+(?:lets out|shifts|keeps|turns|looks|glances|reaches|drops|moves|leans)\b/i.test(parts[0])) out=parts.slice(1).join(" ");
   }
   return out.trim();
 }

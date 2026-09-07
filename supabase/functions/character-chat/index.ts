@@ -376,7 +376,7 @@ Deno.serve(async (request) => {
     // Do not put a Supabase round trip in front of every Gemini SSE chunk. The
     // browser AbortController still stops immediately; the server-side probe is
     // a safety net and only needs to poll a few times per second.
-    const isCancelled = createThrottledCancellationProbe(rawIsCancelled, Math.max(350, Number(turnContract?.performanceMobileV348?.cancellationPollMs || 500)));
+    const isCancelled = createThrottledCancellationProbe(rawIsCancelled, Math.max(220, Number(turnContract?.performanceMobileV348?.cancellationPollMs || 280)));
 
     console.log("[character-chat] generation started", {
       conversationId,
@@ -5217,7 +5217,7 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const sceneDirectorHard = ["scene_thread_dump_overload", "dormant_thread_forced_onscreen", "ungrounded_scene_interruption", "user_momentum_hijacked", "cooldown_escalation_spike", "romance_gravity_monopoly", "director_forced_cliffhanger", "group_scene_roll_call", "background_actor_overactivation", "screen_time_selection_bypassed", "scene_pattern_recycled"];
   const longStoryMemoryHard = ["false_memory_claim", "resolved_thread_reactivated", "perspective_memory_leak", "memory_conflict_overclaim"];
   const narrativeArcHard = ["relationship_pace_jump", "arc_forced_progression", "resolved_arc_reopened_without_cause", "arc_growth_total_reset", "arc_personality_replacement", "payoff_without_setup", "drama_escalation_for_progress", "arc_stagnation_replay", "arc_progress_exposition"];
-  const proseHard = ["adaptive_prose_overwritten", "ai_prose_stack_v345", "narration_swallowed_dialogue_v345", "subtext_explained_after_showing_v345", "repeated_prose_structure_v345", "gesture_choreography_overbudget_v345"];
+  const proseHard = ["adaptive_prose_overwritten", "ai_prose_stack_v345", "narration_swallowed_dialogue_v345", "subtext_explained_after_showing_v345", "repeated_prose_structure_v345", "gesture_choreography_overbudget_v345", "micro_narration_lead_v3497", "repeated_named_action_opening_v3497"];
   const orchestrationHard = ["orchestrator_system_exposure", "context_dump_exposition_v346", "recovery_internal_exposure_v347", "performance_internal_exposure_v348"];
   const canSanitize = issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted", "unsolicited_offscreen_lead_contact", "social_role_assignment_broken", "unsupported_social_plan_expansion", ...groundedHard, ...agencyHard, ...physicsRepair, ...intentHard, ...chemistryHard, ...embodiedHard, ...sceneIntelligenceHard, ...discourseHard, ...evolutionHard, ...npcEcosystemHard, ...calendarLifeHard, ...causalTimelineHard, ...sceneDirectorHard, ...longStoryMemoryHard, ...narrativeArcHard, ...proseHard, ...orchestrationHard].includes(issue));
   if (!canSanitize) return { result, issues };
@@ -7431,7 +7431,7 @@ async function streamGeminiEnvelopeWithFailover({
     const previous = hedgeDelays.length ? hedgeDelays[hedgeDelays.length - 1] : 0;
     hedgeDelays.push(Math.min(5200, previous + 1150));
   }
-  const overallDeadlineMs = Math.max(11000, Math.min(30000, Number(performancePlan?.overallDeadlineMs) || 18000));
+  const overallDeadlineMs = Math.max(9000, Math.min(30000, Number(performancePlan?.overallDeadlineMs) || 15000));
   const deadlineAt = Date.now() + overallDeadlineMs;
   // v3.49.3: a model does not win merely because it emitted the first fragment.
   // Guarded chat cannot show raw draft text anyway, so keep hedges alive until one

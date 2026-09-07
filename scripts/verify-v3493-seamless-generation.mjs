@@ -21,7 +21,7 @@ ok("roleplay forces complete winner",edge.includes("completeWinnerOnly: true"));
 ok("transient upstream retry is silent and bounded",edge.includes("[500, 502, 503, 504].includes(response.status)")&&edge.includes("transient-retry"));
 ok("429 is not immediate-retried by same model",edge.includes("Do not immediately retry 429"));
 ok("raw transient provider errors are masked",edge.includes("const transient = /(?:high demand|overload|unavailable")&&edge.includes("transient ? \"Velvet couldn't finish this reply right now. Retry in a moment.\""));
-ok("faster hedges",perf.includes("hedgeDelaysMs:[0,450,1100]")&&perf.includes("hedgeDelaysMs:[0,600,1450]"));
+ok("faster hedges",/hedgeDelaysMs:\[0,(?:260|450),(?:680|1100)/.test(perf)&&/hedgeDelaysMs:\[0,(?:420|600),(?:980|1450)/.test(perf));
 ok("mobile error uses stable grid",css.includes("grid-template-columns: auto minmax(0, 1fr) auto"));
 ok("retry button cannot collapse vertically",css.includes("white-space: nowrap !important")&&css.includes("writing-mode: horizontal-tb !important")&&css.includes("min-width: max-content"));
 ok("mobile retry gets its own row",css.includes("grid-column: 2")&&css.includes("min-height: 34px"));

@@ -252,6 +252,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const failedGenerationRef = useRef(null);
   const retryInFlightRef = useRef(false);
   const variantGenerationLockRef = useRef(false);
+  const versionOperationSeqRef = useRef(0);
+  const returnMainPovAfterStopRef = useRef(false);
   const chatExitGuardUntilRef = useRef(0);
   const actionNoticeTimerRef = useRef(null);
   const aiPhaseTimerRef = useRef(null);
@@ -999,18 +1001,20 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
     const cleanMessage = message.trim();
     if (!conversationReady) return;
-    if (busy) {
-      if (cleanMessage === ".") {
-        setMessage("");
-        handleStop();
-      }
+    if (cleanMessage === ".") {
+      setMessage("");
+      setSilentCue("");
+      clearGenerationFailure();
+      if (busy) handleStop();
       return;
     }
+    if (busy) return;
 
     const dotsOnly = /^[.…。]+$/u.test(cleanMessage);
     const compactDots = cleanMessage.replace(/[…。]/gu, ".");
     const returnToMainPov = dotsOnly && compactDots === "..";
-    const messageToSend = cleanMessage === "" || dotsOnly
+    const silentContinue = dotsOnly && compactDots.length >= 3;
+    const messageToSend = cleanMessage === "" || returnToMainPov || silentContinue
       ? (returnToMainPov ? RETURN_MAIN_POV_MESSAGE : SILENT_CONTINUE_MESSAGE)
       : cleanMessage;
 
@@ -1038,9 +1042,12 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       readExperience(currentConversationId),
       { characterName: character.name, groupMode: Boolean(conversation?.groupMode) }
     );
+    const stopPovHint = returnMainPovAfterStopRef.current
+      ? `Return narrative focus to ${character.name}'s established primary POV. Do not continue a secondary NPC POV unless the user explicitly asks.`
+      : "";
     const noteForThisGeneration = mergeDirectorHints(
-      mergeDirectorHints(mergeDirectorHints(directorNote.trim(), adaptiveReplyHint), livingWorldHint),
-      experienceHint
+      mergeDirectorHints(mergeDirectorHints(mergeDirectorHints(directorNote.trim(), adaptiveReplyHint), livingWorldHint), experienceHint),
+      stopPovHint
     );
     const submittedDraft = cleanMessage;
     let userMessageSaved = false;
@@ -1077,6 +1084,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       });
       userMessageSaved = true;
       savedUserMessageId = savedUserMessage?.id || "";
+      returnMainPovAfterStopRef.current = false;
 
       if (savedUserMessage?.isOfflinePending) {
         setSending(false);
@@ -1138,11 +1146,17 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     // five more Stop calls for the next second; those timers could catch a new
     // regeneration/send and kill it immediately.
     generationRunRef.current += 1;
+    versionOperationSeqRef.current += 1;
     stoppedRef.current = true;
+    returnMainPovAfterStopRef.current = true;
+    retryInFlightRef.current = false;
+    variantGenerationLockRef.current = false;
     if (settings.haptics) navigator.vibrate?.(10);
 
     stopGeneration(character.id);
 
+    setRetryingGeneration(false);
+    setActionLoading(false);
     setSending(false);
     setIsTyping(false);
     setSilentCue("");
@@ -1709,6 +1723,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const instruction = actionDraft.trim();
     const feedbackCodes = [...regenerationFeedback];
     variantGenerationLockRef.current = true;
+    const variantOp = ++versionOperationSeqRef.current;
     try {
       rememberFeedback("negative", feedbackCodes, targetId);
       setActionLoading(true);
@@ -1718,6 +1733,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       showActionNotice("Generating another response…", "working", 5000);
       clearGenerationFailure();
       const regenerationResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
+      if (versionOperationSeqRef.current !== variantOp || stoppedRef.current) return;
       const regeneratedContent = regenerationResult?.message?.content || previousContent;
       setReplacementUndo({ messageId: regenerationResult?.message?.id || targetId, content: previousContent, label: "Regenerate" });
       const regeneratedRows = await getMessageAlternatives(targetId).catch(() => []);
@@ -1738,9 +1754,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       });
       rememberGenerationFailure(error, { mode: "regenerate", regenerateMessageId: targetId, instruction, feedbackCodes, source: "regenerate" });
     } finally {
-      variantGenerationLockRef.current = false;
-      setActionLoading(false);
-      setIsTyping(false);
+      if (versionOperationSeqRef.current === variantOp) {
+        variantGenerationLockRef.current = false;
+        setActionLoading(false);
+        setIsTyping(false);
+      }
     }
   }
 
@@ -1751,13 +1769,15 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
     for (const row of rows) {
       const content = String(row?.content || "").trim();
-      if (!content || seen.has(content)) continue;
-      seen.add(content);
+      const key = content.replace(/\s+/g, " ").trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
       items.push({ ...row, content });
     }
 
     const current = String(currentContent || "").trim();
-    if (current && !seen.has(current)) {
+    const currentKey = current.replace(/\s+/g, " ").trim();
+    if (currentKey && !seen.has(currentKey)) {
       items.push({ id: `current-${Date.now()}`, content: current, current: true });
     }
 
@@ -1774,10 +1794,18 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       [chatMessage.id]: { ...(current[chatMessage.id] || {}), loading: true },
     }));
 
-    const rows = await getMessageAlternatives(chatMessage.id);
-    const next = normalizeVersionRows(rows, chatMessage.content);
-    setResponseVersions((current) => ({ ...current, [chatMessage.id]: next }));
-    return next;
+    try {
+      const rows = await getMessageAlternatives(chatMessage.id);
+      const next = normalizeVersionRows(rows, chatMessage.content);
+      setResponseVersions((current) => ({ ...current, [chatMessage.id]: next }));
+      return next;
+    } catch (error) {
+      setResponseVersions((current) => ({
+        ...current,
+        [chatMessage.id]: { ...(current[chatMessage.id] || {}), loading: false },
+      }));
+      throw error;
+    }
   }
 
   useEffect(() => {
@@ -1792,6 +1820,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     if (!chatMessage || chatMessage.sender !== "character" || chatMessage.isStreaming || busy || variantGenerationLockRef.current) return;
 
     variantGenerationLockRef.current = true;
+    const versionOp = ++versionOperationSeqRef.current;
     let retryContext = null;
     try {
       setSendError("");
@@ -1801,7 +1830,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         if (state.index <= 0) return;
         const nextIndex = state.index - 1;
         await selectMessageAlternative(character.id, chatMessage.id, state.items[nextIndex].content);
-        setResponseVersions((current) => ({
+        if (versionOperationSeqRef.current === versionOp) setResponseVersions((current) => ({
           ...current,
           [chatMessage.id]: { ...state, index: nextIndex },
         }));
@@ -1812,7 +1841,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       if (state.index < state.items.length - 1) {
         const nextIndex = state.index + 1;
         await selectMessageAlternative(character.id, chatMessage.id, state.items[nextIndex].content);
-        setResponseVersions((current) => ({
+        if (versionOperationSeqRef.current === versionOp) setResponseVersions((current) => ({
           ...current,
           [chatMessage.id]: { ...state, index: nextIndex },
         }));
@@ -1830,7 +1859,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       const rows = await getMessageAlternatives(chatMessage.id);
       const refreshed = normalizeVersionRows(rows, currentContent);
       refreshed.index = Math.max(0, refreshed.items.findIndex((item) => item.content === currentContent));
-      setResponseVersions((current) => ({ ...current, [chatMessage.id]: refreshed }));
+      if (versionOperationSeqRef.current === versionOp) setResponseVersions((current) => ({ ...current, [chatMessage.id]: refreshed }));
       showAiPhase("Finishing", 420);
       showActionNotice(`Response ${refreshed.index + 1} / ${Math.max(1, refreshed.items.length)} ✓`);
     } catch (error) {
@@ -1840,8 +1869,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       if (retryContext) rememberGenerationFailure(error, retryContext);
       else setSendError(translateMessageError(error.message));
     } finally {
-      variantGenerationLockRef.current = false;
-      setIsTyping(false);
+      if (versionOperationSeqRef.current === versionOp) {
+        variantGenerationLockRef.current = false;
+        setIsTyping(false);
+      }
     }
   }
 
@@ -1861,6 +1892,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const targetId = selectedMessage.id;
     const previousContent = selectedMessage.content;
     variantGenerationLockRef.current = true;
+    const variantOp = ++versionOperationSeqRef.current;
     try {
       const feedbackCodes = feedbackCode ? [feedbackCode] : [];
       rememberFeedback("negative", feedbackCodes, targetId);
@@ -1872,6 +1904,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       showActionNotice("Refining response…", "working", 5000);
       clearGenerationFailure();
       const refinementResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
+      if (versionOperationSeqRef.current !== variantOp || stoppedRef.current) return;
       setReplacementUndo({ messageId: refinementResult?.message?.id || targetId, content: previousContent, label: "Refine" });
       const refinedContent = refinementResult?.message?.content || previousContent;
       const refinedRows = await getMessageAlternatives(targetId).catch(() => []);
@@ -1890,9 +1923,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       await reloadConversationMessages(character.id).catch(() => {});
       rememberGenerationFailure(error, { mode: "regenerate", regenerateMessageId: targetId, instruction, feedbackCodes: feedbackCode ? [feedbackCode] : [], source: "refine" });
     } finally {
-      variantGenerationLockRef.current = false;
-      setActionLoading(false);
-      setIsTyping(false);
+      if (versionOperationSeqRef.current === variantOp) {
+        variantGenerationLockRef.current = false;
+        setActionLoading(false);
+        setIsTyping(false);
+      }
     }
   }
 
@@ -2009,6 +2044,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
     const targetId = latestMessage.id;
     const previousContent = latestMessage.content;
+    variantGenerationLockRef.current = true;
+    const variantOp = ++versionOperationSeqRef.current;
     try {
       setActionLoading(true);
       setSendError("");
@@ -2025,6 +2062,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       // new turn. The previous response is replaced immediately in-place.
       clearGenerationFailure();
       const rewriteResult = await regenerateCharacterReply(character.id, targetId, instruction, []);
+      if (versionOperationSeqRef.current !== variantOp || stoppedRef.current) return;
       const rewrittenContent = rewriteResult?.message?.content || previousContent;
       setReplacementUndo({ messageId: rewriteResult?.message?.id || targetId, content: previousContent, label: "Rewrite" });
       const rewrittenRows = await getMessageAlternatives(targetId).catch(() => []);
@@ -2039,8 +2077,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       await reloadConversationMessages(character.id).catch(() => {});
       rememberGenerationFailure(error, { mode: "regenerate", regenerateMessageId: targetId, instruction, feedbackCodes: [], source: "director-rewrite" });
     } finally {
-      setActionLoading(false);
-      setIsTyping(false);
+      if (versionOperationSeqRef.current === variantOp) {
+        variantGenerationLockRef.current = false;
+        setActionLoading(false);
+        setIsTyping(false);
+      }
     }
   }
 

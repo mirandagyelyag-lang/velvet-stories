@@ -8,10 +8,10 @@ export function deriveGenerationOrchestratorV346(input:Record<string,unknown>={}
   const deep=user.length>260 || /\b(explain|why|remember|what happened|tell me everything)\b/i.test(user);
   const micro=user.length<45 && !deep; const mode=group?"group":deep?"deep":micro?"micro":"standard";
   const cfg:Record<string,any>={
-    micro:{contextBudgetChars:15000,immediateMessageCount:4,olderMessageCount:1,memorySlots:4,loreSlots:2,castSlots:3,responseTokenCeiling:850,repairBudget:1},
-    standard:{contextBudgetChars:24000,immediateMessageCount:6,olderMessageCount:3,memorySlots:7,loreSlots:4,castSlots:5,responseTokenCeiling:1200,repairBudget:1},
-    deep:{contextBudgetChars:33000,immediateMessageCount:7,olderMessageCount:5,memorySlots:10,loreSlots:6,castSlots:7,responseTokenCeiling:1550,repairBudget:2},
-    group:{contextBudgetChars:29000,immediateMessageCount:7,olderMessageCount:3,memorySlots:7,loreSlots:4,castSlots:8,responseTokenCeiling:1450,repairBudget:2},
+    micro:{contextBudgetChars:12000,immediateMessageCount:4,olderMessageCount:1,memorySlots:4,loreSlots:2,castSlots:3,responseTokenCeiling:680,repairBudget:1},
+    standard:{contextBudgetChars:20500,immediateMessageCount:6,olderMessageCount:2,memorySlots:6,loreSlots:3,castSlots:5,responseTokenCeiling:1050,repairBudget:1},
+    deep:{contextBudgetChars:30000,immediateMessageCount:7,olderMessageCount:4,memorySlots:9,loreSlots:5,castSlots:7,responseTokenCeiling:1450,repairBudget:2},
+    group:{contextBudgetChars:25500,immediateMessageCount:7,olderMessageCount:3,memorySlots:7,loreSlots:4,castSlots:8,responseTokenCeiling:1320,repairBudget:2},
   };
   const active=["turn_contract","canon","pov_privacy","voice","grounded_reality","scene_physics"];
   if((memory.retrievalSet as unknown[])?.length) active.push("long_story_memory");
