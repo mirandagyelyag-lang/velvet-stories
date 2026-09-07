@@ -73,7 +73,7 @@ import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
 import { speakText, stopSpeech } from "../utils/speech";
 import { readAudioPreference, stopAllAudio } from "../utils/audioBus";
-import { clearBugReportPrivateContext, setBugReportPrivateContext } from "../utils/bugReporter";
+import { clearBugReportPrivateContext, formatBugReport, setBugReportPrivateContext } from "../utils/bugReporter";
 import { buildLivingSceneHeader, continuityGuardLabel, continuityGuardTitle } from "../utils/livingScenes";
 import { suggestAmbienceForScene } from "../utils/ambienceIntelligence";
 import { STORY_THEMES, readStoryTheme, saveStoryTheme } from "../utils/velvetResilience";
@@ -326,6 +326,18 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     failedGenerationRef.current = null;
     setFailedGeneration(null);
     setSendError("");
+  }
+
+  async function copyGenerationDebugReport() {
+    try {
+      const text = formatBugReport({ includePrivate: false, note: "Copied from the active chat menu." });
+      await navigator.clipboard.writeText(text);
+      setMenuOpen(false);
+      showActionNotice("Debug report copied ✓", "neutral", 1600);
+    } catch (error) {
+      console.warn("Could not copy Velvet debug report:", error);
+      showActionNotice("Couldn’t copy debug report", "neutral", 1800);
+    }
   }
 
   function rememberGenerationFailure(error, context = {}) {
@@ -1101,6 +1113,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       const generationResult = await generateCharacterReply(character.id, {
         directorInstruction: noteForThisGeneration,
         expectedUserMessageId: savedUserMessage.id,
+        diagnosticSource: "send",
       });
       clearGenerationFailure();
       if (generationResult?.learnedMemoryCount) {
@@ -1203,7 +1216,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           character.id,
           targetId,
           inferredFailure.instruction || "",
-          inferredFailure.feedbackCodes || []
+          inferredFailure.feedbackCodes || [],
+          inferredFailure.source || "retry-regenerate"
         );
         const regeneratedContent = result?.message?.content || "";
         const rows = await getMessageAlternatives(targetId).catch(() => []);
@@ -1226,7 +1240,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           : null;
 
         if (!alreadyFinished) {
-          await generateCharacterReply(character.id, { expectedUserMessageId });
+          await generateCharacterReply(character.id, { expectedUserMessageId, diagnosticSource: inferredFailure?.source || "retry-reply" });
         }
       }
 
@@ -1679,7 +1693,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       updatedUserMessageId = updatedUserMessage?.id || "";
       closeActionsAfterAction();
       setIsTyping(true);
-      await generateCharacterReply(character.id, { expectedUserMessageId: updatedUserMessage.id });
+      await generateCharacterReply(character.id, { expectedUserMessageId: updatedUserMessage.id, diagnosticSource: "edit-user" });
       clearGenerationFailure();
     } catch (error) {
       if (error?.name === "AbortError" || stoppedRef.current) return;
@@ -1732,7 +1746,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       showAiPhase("Rewriting", 1100);
       showActionNotice("Generating another response…", "working", 5000);
       clearGenerationFailure();
-      const regenerationResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
+      const regenerationResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes, "regenerate");
       if (versionOperationSeqRef.current !== variantOp || stoppedRef.current) return;
       const regeneratedContent = regenerationResult?.message?.content || previousContent;
       setReplacementUndo({ messageId: regenerationResult?.message?.id || targetId, content: previousContent, label: "Regenerate" });
@@ -1854,7 +1868,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       showActionNotice("Generating another response…", "working", 5000);
       retryContext = { mode: "regenerate", regenerateMessageId: chatMessage.id, instruction: "", feedbackCodes: [], source: "next-version" };
       clearGenerationFailure();
-      const result = await regenerateCharacterReply(character.id, chatMessage.id, "");
+      const result = await regenerateCharacterReply(character.id, chatMessage.id, "", [], "next-version");
       const currentContent = result?.message?.content || chatMessage.content;
       const rows = await getMessageAlternatives(chatMessage.id);
       const refreshed = normalizeVersionRows(rows, currentContent);
@@ -1903,7 +1917,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       showAiPhase("Rewriting", 1100);
       showActionNotice("Refining response…", "working", 5000);
       clearGenerationFailure();
-      const refinementResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes);
+      const refinementResult = await regenerateCharacterReply(character.id, targetId, instruction, feedbackCodes, "refine");
       if (versionOperationSeqRef.current !== variantOp || stoppedRef.current) return;
       setReplacementUndo({ messageId: refinementResult?.message?.id || targetId, content: previousContent, label: "Refine" });
       const refinedContent = refinementResult?.message?.content || previousContent;
@@ -2061,7 +2075,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       // Important: this is a regeneration of the same character message, not a
       // new turn. The previous response is replaced immediately in-place.
       clearGenerationFailure();
-      const rewriteResult = await regenerateCharacterReply(character.id, targetId, instruction, []);
+      const rewriteResult = await regenerateCharacterReply(character.id, targetId, instruction, [], "director-rewrite");
       if (versionOperationSeqRef.current !== variantOp || stoppedRef.current) return;
       const rewrittenContent = rewriteResult?.message?.content || previousContent;
       setReplacementUndo({ messageId: rewriteResult?.message?.id || targetId, content: previousContent, label: "Rewrite" });
@@ -2243,6 +2257,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setLivingWorldOpen(true); }} disabled={!conversationReady}><Globe2 size={17} /> Living World</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setExperienceOpen(true); }} disabled={!conversationReady}><Sparkles size={17} /> Velvet Experience</button>
               <div className="chat__menu-section-label">TOOLS</div>
+              <button className="chat__menu-controls" onClick={copyGenerationDebugReport}><Copy size={17} /> Copy debug report</button>
               <button className="chat__menu-controls" onClick={exportCurrentStory} disabled={!conversationReady || !visibleMessages.length}><Download size={17} /> Export this story</button>
               <button className="chat__menu-danger" onClick={handleDeleteConversation} disabled={deleting}><Trash2 size={17} /> {deleting ? "Deleting..." : "Delete conversation"}</button>
             </section>

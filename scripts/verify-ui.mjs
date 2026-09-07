@@ -178,7 +178,7 @@ check("Home and Party ambience modes persist through ChatsContext", chatsContext
 check("choosing an ambience starts sound immediately", storyHubDrawer.includes("onAmbientSoundToggle?.(true)") && storyHubDrawer.includes("chooseAmbientMode(id)"));
 check("reading mode still has persistent state", chat.includes('localStorage.getItem("velvet_reading_mode")') && chat.includes('localStorage.setItem("velvet_reading_mode"'));
 check("immersive mode keeps chat header and three-dot menu visible", chat.includes("Immersive mode") && reference.includes(".chat--reading .chat__more") && reference.includes("transform: none !important"));
-check("scene director rewrites latest reply in place", chat.includes("applyDirectorAndRegenerate") && chat.includes("regenerateCharacterReply(character.id, targetId, instruction, [])") && chat.includes("Rewrite last reply"));
+check("scene director rewrites latest reply in place", chat.includes("applyDirectorAndRegenerate") && /regenerateCharacterReply\(character\.id, targetId, instruction, \[\](?:, "director-rewrite")?\)/.test(chat) && chat.includes("Rewrite last reply"));
 check("scene director next beat queues direction for the next generation", chat.includes("noteForThisGeneration") && chat.includes("mergeDirectorHints") && chat.includes("queueDirectorForNextBeat") && chat.includes("Save for the next reply"));
 check("scene director keeps next beat tick and rewrite visible together", chat.includes("director-sheet__next-action") && chat.includes("director-sheet__rewrite-action") && chat.includes("<Check size={17}/>") && mobile.includes("director-sheet__dual-actions"));
 check("queued next beat can be cleared from composer", chat.includes("chat__director-active") && chat.includes("clearQueuedDirector"));

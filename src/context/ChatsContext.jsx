@@ -10,7 +10,7 @@ import { useAuth } from "./AuthContext";
 import { useSettings } from "./SettingsContext";
 import { supabase } from "../services/supabase";
 import { characterStoryStyleInstruction } from "../utils/characterStoryStyle";
-import { isProbablyUuid, isRetryableNetworkError, isRetryableStatus, recordGenerationMetric, wait } from "../utils/velvetResilience";
+import { beginGenerationTrace, classifyGenerationError, finishGenerationTrace, isProbablyUuid, isRetryableNetworkError, isRetryableStatus, recordGenerationMetric, updateGenerationTrace, wait } from "../utils/velvetResilience";
 
 const ChatsContext = createContext();
 const MESSAGE_PAGE_SIZE = 40;
@@ -807,6 +807,14 @@ export function ChatsProvider({
     let diagnosticPrimaryModel = "";
     let diagnosticFirstTokenMs = 0;
     let diagnosticRepair = false;
+    const diagnosticOperation = String(options.diagnosticSource || (options.regenerateMessageId ? "regenerate" : "reply"));
+    const diagnosticTraceRef = beginGenerationTrace({
+      requestId,
+      generationId,
+      conversationId: conversation.conversationId,
+      operation: diagnosticOperation,
+      source: diagnosticOperation,
+    });
     recordAiSession({ started: 1, lastError: "" });
     let streamStarted = false;
     let completeContent = "";
@@ -974,6 +982,16 @@ export function ChatsProvider({
           fallbackUsed: Boolean(diagnosticPrimaryModel && diagnosticModel && diagnosticPrimaryModel !== diagnosticModel),
           repairUsed: diagnosticRepair,
         });
+        finishGenerationTrace(diagnosticTraceRef, {
+          status: "success",
+          phase: "durable-recovery",
+          model: diagnosticModel || reason,
+          firstTokenMs: diagnosticFirstTokenMs,
+          durationMs: recoveredDurationMs,
+          fallbackUsed: Boolean(diagnosticPrimaryModel && diagnosticModel && diagnosticPrimaryModel !== diagnosticModel),
+          repairUsed: diagnosticRepair,
+          recovery: reason,
+        });
         return { message: recoveredMessage, learnedMemoryCount };
       } catch (recoveryError) {
         console.warn("[Velvet] persisted reply recovery unavailable:", recoveryError);
@@ -1037,6 +1055,7 @@ export function ChatsProvider({
 
         if (enqueueResponse.ok) {
           backgroundAccepted = true;
+          updateGenerationTrace(diagnosticTraceRef, { phase: "background-accepted", httpStatus: enqueueResponse.status, recovery: "background-delivery" });
           setGenerationStates((current) => ({
             ...current,
             [characterId]: "writing",
@@ -1097,6 +1116,7 @@ export function ChatsProvider({
                 lastError: "",
               });
               recordGenerationMetric({ status: "success", model: diagnosticModel || "background", firstTokenMs: diagnosticFirstTokenMs, durationMs: backgroundDuration, fallbackUsed: false, repairUsed: diagnosticRepair });
+              finishGenerationTrace(diagnosticTraceRef, { status: "success", phase: "background-done", model: diagnosticModel || "background", firstTokenMs: diagnosticFirstTokenMs, durationMs: backgroundDuration, fallbackUsed: false, repairUsed: diagnosticRepair, recovery: "background-delivery" });
               return {
                 message: finalMessage,
                 learnedMemoryCount: 0,
@@ -1119,6 +1139,7 @@ export function ChatsProvider({
         // If enqueue itself failed before the server accepted the job, keep the
         // old foreground SSE route as a compatibility fallback.
         console.warn("Background delivery unavailable; falling back to live stream:", error);
+        updateGenerationTrace(diagnosticTraceRef, { phase: "background-fallback", recovery: "foreground-stream", errorCategory: classifyGenerationError(error), error });
       }
 
       if (backgroundAccepted) {
@@ -1153,9 +1174,12 @@ export function ChatsProvider({
       };
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
+        updateGenerationTrace(diagnosticTraceRef, { phase: "edge-request", attempt: { phase: "edge-request", mode: "sse", elapsedMs: Date.now() - requestStartedAt, reason: `client-attempt-${attempt + 1}` } });
         try {
           response = await fetch(functionUrl, liveRequestInit);
+          updateGenerationTrace(diagnosticTraceRef, { phase: "edge-response", httpStatus: response.status, attempt: { phase: "edge-response", mode: "sse", status: response.status, elapsedMs: Date.now() - requestStartedAt } });
         } catch (error) {
+          updateGenerationTrace(diagnosticTraceRef, { phase: "edge-fetch-error", errorCategory: classifyGenerationError(error), error, attempt: { phase: "edge-fetch-error", mode: "sse", elapsedMs: Date.now() - requestStartedAt, reason: classifyGenerationError(error) } });
           if (requestWasCancelled() || error?.name === "AbortError") throw cancellationError();
           if (attempt === 0 && navigator.onLine && isRetryableNetworkError(error)) {
             await wait(260);
@@ -1165,6 +1189,7 @@ export function ChatsProvider({
         }
 
         if (attempt === 0 && isRetryableStatus(response.status)) {
+          updateGenerationTrace(diagnosticTraceRef, { phase: "edge-retry", recovery: "client-http-retry", httpStatus: response.status, attempt: { phase: "edge-retry", mode: "sse", status: response.status, elapsedMs: Date.now() - requestStartedAt, reason: "retryable-status" } });
           try { await response.body?.cancel?.(); } catch {}
           await wait(response.status === 429 ? 650 : 280);
           continue;
@@ -1209,6 +1234,17 @@ export function ChatsProvider({
             diagnosticModel = String(eventData.model || diagnosticModel || "");
             diagnosticPrimaryModel = diagnosticPrimaryModel || diagnosticModel;
             diagnosticRepair = Boolean(eventData.repairUsed);
+            updateGenerationTrace(diagnosticTraceRef, {
+              phase: "stream-start",
+              model: diagnosticModel,
+              repairUsed: diagnosticRepair,
+              context: {
+                memoryCount: Number(eventData.memoryCount || 0),
+                pinnedMemoryCount: Number(eventData.pinnedMemoryCount || 0),
+                loreCount: Number(eventData.loreCount || 0),
+                ...(eventData.diagnostics && typeof eventData.diagnostics === "object" ? eventData.diagnostics : {}),
+              },
+            });
             if (diagnosticModel || diagnosticRepair) recordAiSession({ lastModel: diagnosticModel, repairs: diagnosticRepair ? 1 : 0 });
             setChats((currentChats) => ({
               ...currentChats,
@@ -1241,7 +1277,27 @@ export function ChatsProvider({
 
           if (eventData.type === "model") {
             diagnosticModel = String(eventData.model || diagnosticModel || "");
+            diagnosticPrimaryModel = diagnosticPrimaryModel || diagnosticModel;
+            updateGenerationTrace(diagnosticTraceRef, { phase: "model-selected", model: diagnosticModel });
             if (diagnosticModel) recordAiSession({ lastModel: diagnosticModel });
+            continue;
+          }
+
+          if (eventData.type === "diagnostic") {
+            updateGenerationTrace(diagnosticTraceRef, {
+              phase: String(eventData.phase || "provider-attempt"),
+              model: String(eventData.model || diagnosticModel || ""),
+              httpStatus: Number(eventData.status || 0),
+              errorCategory: String(eventData.reason || ""),
+              attempt: {
+                phase: String(eventData.phase || "provider-attempt"),
+                model: String(eventData.model || ""),
+                mode: String(eventData.mode || ""),
+                status: Number(eventData.status || 0),
+                elapsedMs: Number(eventData.elapsedMs || 0),
+                reason: String(eventData.reason || ""),
+              },
+            });
             continue;
           }
 
@@ -1264,6 +1320,7 @@ export function ChatsProvider({
 
             if (!streamStarted) {
               diagnosticFirstTokenMs = Date.now() - requestStartedAt;
+              updateGenerationTrace(diagnosticTraceRef, { phase: "first-text", firstTokenMs: diagnosticFirstTokenMs });
               recordAiSession({ firstTokenMs: diagnosticFirstTokenMs });
               streamStarted = true;
               pendingStreamContent = completeContent;
@@ -1305,6 +1362,14 @@ export function ChatsProvider({
             }
 
             learnedMemoryCount = Number(eventData.learnedMemoryCount || 0);
+            diagnosticModel = String(eventData.model || diagnosticModel || "");
+            diagnosticRepair = Boolean(eventData.repairUsed || diagnosticRepair);
+            updateGenerationTrace(diagnosticTraceRef, {
+              phase: eventData.enrichmentDegraded ? "reply-saved-enrichment-degraded" : "reply-saved",
+              model: diagnosticModel,
+              repairUsed: diagnosticRepair,
+              recovery: eventData.enrichmentDegraded ? "post-reply-enrichment-degraded" : "",
+            });
             setChats((currentChats) => ({
               ...currentChats,
               [characterId]: {
@@ -1330,6 +1395,7 @@ export function ChatsProvider({
 
           if (eventData.type === "error") {
             streamError = eventData.error || "The character couldn't respond.";
+            updateGenerationTrace(diagnosticTraceRef, { phase: "stream-error", errorCategory: classifyGenerationError(streamError), error: streamError });
           }
         }
       };
@@ -1421,6 +1487,15 @@ export function ChatsProvider({
         fallbackUsed: Boolean(diagnosticPrimaryModel && diagnosticModel && diagnosticPrimaryModel !== diagnosticModel),
         repairUsed: diagnosticRepair,
       });
+      finishGenerationTrace(diagnosticTraceRef, {
+        status: "success",
+        phase: "done",
+        model: diagnosticModel,
+        firstTokenMs: diagnosticFirstTokenMs,
+        durationMs: finalDurationMs,
+        fallbackUsed: Boolean(diagnosticPrimaryModel && diagnosticModel && diagnosticPrimaryModel !== diagnosticModel),
+        repairUsed: diagnosticRepair,
+      });
       return {
         message: finalMessage,
         learnedMemoryCount,
@@ -1440,6 +1515,7 @@ export function ChatsProvider({
       }
 
       if (requestWasCancelled() || error?.name === "AbortError") {
+        finishGenerationTrace(diagnosticTraceRef, { status: "cancelled", phase: "cancelled", model: diagnosticModel, firstTokenMs: diagnosticFirstTokenMs, durationMs: Date.now() - requestStartedAt });
         throw cancellationError();
       }
 
@@ -1452,6 +1528,17 @@ export function ChatsProvider({
       const failedDurationMs = Date.now() - requestStartedAt;
       recordAiSession({ failed: 1, lastErrorAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: failedDurationMs, lastError: String(error?.message || "Generation failed").slice(0, 220) });
       recordGenerationMetric({ status: "error", model: diagnosticModel, firstTokenMs: diagnosticFirstTokenMs, durationMs: failedDurationMs, fallbackUsed: Boolean(diagnosticPrimaryModel && diagnosticModel && diagnosticPrimaryModel !== diagnosticModel), repairUsed: diagnosticRepair, error: error?.message || "Generation failed" });
+      finishGenerationTrace(diagnosticTraceRef, {
+        status: "error",
+        phase: "failed",
+        model: diagnosticModel,
+        firstTokenMs: diagnosticFirstTokenMs,
+        durationMs: failedDurationMs,
+        fallbackUsed: Boolean(diagnosticPrimaryModel && diagnosticModel && diagnosticPrimaryModel !== diagnosticModel),
+        repairUsed: diagnosticRepair,
+        errorCategory: classifyGenerationError(error),
+        error,
+      });
       throw error;
     } finally {
       clearStreamFlushTimer();
@@ -2055,11 +2142,12 @@ export function ChatsProvider({
     return branchConversation;
   }
 
-  async function regenerateCharacterReply(characterId, messageId, instruction = "", feedbackCodes = []) {
+  async function regenerateCharacterReply(characterId, messageId, instruction = "", feedbackCodes = [], diagnosticSource = "regenerate") {
     return generateCharacterReply(characterId, {
       regenerateMessageId: messageId,
       instruction,
       feedbackCodes,
+      diagnosticSource,
     });
   }
 

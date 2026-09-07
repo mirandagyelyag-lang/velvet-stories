@@ -1,4 +1,5 @@
 import { VELVET_BUILD_TIME, VELVET_RELEASE, VELVET_VERSION } from "../config/version";
+import { readGenerationTraces, summarizeGenerationTraces } from "./velvetResilience";
 let privateContext = null;
 export function setBugReportPrivateContext(context) { privateContext = context && typeof context === "object" ? context : null; }
 export function clearBugReportPrivateContext() { privateContext = null; }
@@ -13,6 +14,7 @@ export function getBugReportSnapshot({ includePrivate = false, note = "" } = {})
     device: { viewport: `${window.innerWidth}x${window.innerHeight}`, touchPoints: navigator.maxTouchPoints || 0, standalone: Boolean(window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone), online: navigator.onLine, userAgent: navigator.userAgent },
     lastTechnicalError: readLastRuntimeError(),
     ai: { lastModel: ai.lastModel || "", lastError: ai.lastError || "", lastDurationMs: ai.lastDurationMs || 0, repairs: ai.repairs || 0 },
+    generationDiagnostics: (() => { const rows = readGenerationTraces(); return { summary: summarizeGenerationTraces(rows), recent: rows.slice(0, 8) }; })(),
     note: String(note || "").trim().slice(0, 1200),
   };
   if (includePrivate && privateContext) report.privateChatExcerpt = privateContext;

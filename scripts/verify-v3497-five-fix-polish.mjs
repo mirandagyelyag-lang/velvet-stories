@@ -13,8 +13,8 @@ const prose=fs.readFileSync("supabase/functions/character-chat/engine/prose-inte
 const css=fs.readFileSync("src/styles/velvet-v3497-five-fix-polish.css","utf8");
 const main=fs.readFileSync("src/main.jsx","utf8");
 
-ok("version 3.49.7",pkg.version==="3.49.7"&&pub.version==="3.49.7");
-ok("release names five-fix sweep",/Five-Fix Polish Sweep/.test(pub.release||""));
+ok("v3.49.7 lineage preserved",["3.49.7","3.49.8"].includes(pkg.version)&&["3.49.7","3.49.8"].includes(pub.version));
+ok("release preserves five-fix descendant",/Five-Fix Polish Sweep|Invisible Reliability/.test(pub.release||""));
 
 // 1 · speed + reliability
 const microPerf=derivePerformanceMobileV348({orchestrator:{mode:"micro"},recentMessageCount:8,memoryRetrievalCount:2});
@@ -59,7 +59,7 @@ const cleaned=sanitizeProseIntelligenceV345Reply(sample,issues);
 ok("micro cinematic lead sanitizes to dialogue",cleaned.startsWith('"Just hold it steady.'));
 ok("new prose guards are wired as hard sanitizers",edge.includes("micro_narration_lead_v3497")&&edge.includes("repeated_named_action_opening_v3497"));
 
-ok("v3.49.7 runs first in stability lab",(pkg.scripts?.["stability:lab"]||"").startsWith("npm run verify:v3497"));
+ok("v3.49.7 remains in stability lineage",(pkg.scripts?.["stability:lab"]||"").includes("npm run verify:v3497"));
 ok("v3.49.6 remains regression",(pkg.scripts?.["stability:lab"]||"").includes("npm run verify:v3496"));
 
 let failed=0; for(const [name,value] of checks){console.log(`${value?"PASS":"FAIL"} ${name}`);if(!value)failed++;}

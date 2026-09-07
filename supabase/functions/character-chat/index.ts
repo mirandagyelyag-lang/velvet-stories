@@ -6907,6 +6907,13 @@ async function streamRoleplayV19({
           memoryItems: memories.map((memory) => ({ id: memory.id, content: memory.content, category: memory.category, pinned: Boolean(memory.is_pinned) })),
           loreCount: loreEntries.length,
           loreItems: loreEntries.map((entry) => ({ id: entry.id, name: entry.name, type: entry.entry_type })),
+          diagnostics: {
+            route: "foreground-sse",
+            promptChars: String(prompt || "").length,
+            responseTokenCeiling: Number(turnContract?.generationOrchestratorV346?.responseTokenCeiling || 0),
+            overallDeadlineMs: Number(turnContract?.performanceMobileV348?.overallDeadlineMs || 0),
+            hedgeDelaysMs: Array.isArray(turnContract?.performanceMobileV348?.hedgeDelaysMs) ? turnContract.performanceMobileV348.hedgeDelaysMs.slice(0, 6) : [],
+          },
         });
 
         const firstDraftStartedAt = Date.now();
@@ -6919,6 +6926,9 @@ async function streamRoleplayV19({
           isCancelled,
           onModel(model) {
             sendEvent(controller, { type: "model", model });
+          },
+          onAttempt(attempt) {
+            sendEvent(controller, { type: "diagnostic", ...attempt });
           },
           onReset() {
             modelDraftReply = "";
@@ -7415,10 +7425,16 @@ async function streamGeminiEnvelopeWithFailover({
   onModel,
   onReply,
   onReset,
+  onAttempt,
   performancePlan = {},
 }): Promise<ModelResult> {
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_RECOVERY_MODEL].filter(Boolean))];
   if (!models.length) throw new Error("No Gemini model is configured.");
+
+  const failoverTraceStartedAt = Date.now();
+  const emitAttempt = (payload: Record<string, unknown> = {}) => {
+    try { onAttempt?.({ ...payload, elapsedMs: Date.now() - failoverTraceStartedAt }); } catch { /* diagnostics never affect generation */ }
+  };
 
   // v2.11.19 NO-RETRY HEDGED START:
   // Start the quality model first. If it stays silent, quietly launch a faster
@@ -7464,6 +7480,7 @@ async function streamGeminiEnvelopeWithFailover({
   const chooseWinner = (model: string) => {
     if (winnerModel || settled) return winnerModel === model;
     winnerModel = model;
+    emitAttempt({ phase: "winner", model });
     onModel?.(model);
     cancelLosers(model);
     return true;
@@ -7522,6 +7539,7 @@ async function streamGeminiEnvelopeWithFailover({
   const launchAttempt = async (model: string) => {
     if (settled || winnerModel || launched.has(model)) return;
     launched.add(model);
+    emitAttempt({ phase: "launch", model });
 
     const controller = new AbortController();
     controllers.set(model, controller);
@@ -7574,11 +7592,13 @@ async function streamGeminiEnvelopeWithFailover({
           diagnostic = extractGeminiHttpDiagnostic(errorText);
           message = diagnostic.message || `Gemini returned ${response.status}`;
           logGeminiAttemptFailure({ traceId, model, mode, status: response.status, error: diagnostic });
+          emitAttempt({ phase: "http-error", model, mode, status: response.status, reason: diagnostic.status || (response.status === 429 ? "provider_capacity" : "provider_http") });
 
           // One silent, bounded retry for genuine transient upstream outages.
           // Do not immediately retry 429 quota/rate-limit responses; the other
           // configured models are the correct failover lane for those.
           if ([500, 502, 503, 504].includes(response.status) && !settled && !winnerModel && Date.now() + 900 < deadlineAt) {
+            emitAttempt({ phase: "transient-retry", model, mode, status: response.status, reason: "provider_transient" });
             await delay(model === GEMINI_MODEL ? 320 : 520);
             if (!settled && !winnerModel && !await isCancelled()) {
               response = await makeStreamRequest(mode);
@@ -7587,6 +7607,7 @@ async function streamGeminiEnvelopeWithFailover({
               diagnostic = extractGeminiHttpDiagnostic(errorText);
               message = diagnostic.message || `Gemini returned ${response.status}`;
               logGeminiAttemptFailure({ traceId, model, mode: `${mode}-transient-retry`, status: response.status, error: diagnostic });
+              emitAttempt({ phase: "http-error", model, mode: `${mode}-transient-retry`, status: response.status, reason: diagnostic.status || "provider_transient" });
             }
           }
         }
@@ -7595,6 +7616,7 @@ async function streamGeminiEnvelopeWithFailover({
 
       let { response, message } = await runStreamAttempt("json");
       if (!response.ok && response.status === 400) {
+        emitAttempt({ phase: "compatibility-fallback", model, mode: "bare", status: 400, reason: "invalid_argument_or_schema" });
         ({ response, message } = await runStreamAttempt("bare"));
       }
       if (!response.ok) {
@@ -7647,6 +7669,7 @@ async function streamGeminiEnvelopeWithFailover({
       if (!envelope.reply && latestReply) envelope.reply = latestReply;
       if (!envelope.reply) throw new Error("Gemini returned an empty reply");
 
+      emitAttempt({ phase: "completed", model, mode: "stream", reason: finishReason || "complete" });
       if (!winnerModel) chooseWinner(model);
       if (winnerModel === model && !settled) {
         if (completeWinnerOnly) onReply?.(envelope.reply);
@@ -7674,6 +7697,7 @@ async function streamGeminiEnvelopeWithFailover({
           reason: getErrorName(error) === "AbortError" ? "timeout" : getErrorMessage(error),
           chars: latestReply.length,
         });
+        emitAttempt({ phase: "salvage", model, reason: getErrorName(error) === "AbortError" ? "timeout" : "stream_tail_failure" });
         if (resolveRecoveredReply(model, latestReply, finishReason || "RECOVERED_STREAM")) return;
       }
 
@@ -7686,6 +7710,7 @@ async function streamGeminiEnvelopeWithFailover({
       }
 
       errors.push(getErrorMessage(error));
+      emitAttempt({ phase: "attempt-error", model, reason: /timeout|deadline/i.test(getErrorMessage(error)) ? "timeout" : "provider_or_stream_error" });
       // A model that fails before speaking should silently accelerate the next hedge.
       if (!winnerModel) launchNextUnstarted();
     } finally {
@@ -7707,6 +7732,7 @@ async function streamGeminiEnvelopeWithFailover({
 
   const deadlineTimer = setTimeout(() => {
     if (settled) return;
+    emitAttempt({ phase: "deadline", reason: "overall_deadline" });
     // v3.49.4: a deadline may arrive after one model already completed the visible
     // reply but before its hidden JSON tail/metadata closed. Salvage that reply
     // first. Only surface a final failure when no complete candidate exists.
@@ -7919,6 +7945,7 @@ async function streamAndPersist({
           })),
           loreCount: loreEntries.length,
           loreItems: loreEntries.map((entry) => ({ id: entry.id, name: entry.name, type: entry.entry_type })),
+          diagnostics: { route: "buffered-stream" },
         });
 
         for (const chunk of splitForStreaming(reply)) {

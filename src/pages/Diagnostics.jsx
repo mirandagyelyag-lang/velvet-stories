@@ -1,12 +1,12 @@
 import { Activity, ArrowLeft, Bug, Check, Clipboard, Clock3, Cpu, Database, Fingerprint, LoaderCircle, RefreshCw, Smartphone, Trash2, Wifi, XCircle, Volume2, Wrench } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../services/supabase";
 import { useCharacters } from "../context/CharactersContext";
 import { VELVET_BUILD_TIME, VELVET_RELEASE, VELVET_VERSION } from "../config/version";
 import { formatBugReport } from "../utils/bugReporter";
 import { auditAmbienceTracks } from "../utils/ambienceQuality";
 import { isSafeModeEnabled, leaveVelvetSafeMode, startVelvetSafeMode } from "../utils/safeMode";
-import { readGenerationMetrics, summarizeGenerationMetrics } from "../utils/velvetResilience";
+import { clearGenerationTraces, readGenerationMetrics, readGenerationTraces, summarizeGenerationMetrics, summarizeGenerationTraces } from "../utils/velvetResilience";
 import "../styles/diagnostics.css";
 
 export default function Diagnostics({ onBack }) {
@@ -17,6 +17,8 @@ export default function Diagnostics({ onBack }) {
   const [bugNote, setBugNote] = useState("");
   const [includePrivate, setIncludePrivate] = useState(false);
   const [bugCopied, setBugCopied] = useState(false);
+  const [debugCopied, setDebugCopied] = useState(false);
+  const [diagnosticRevision, setDiagnosticRevision] = useState(0);
   const [safeMode, setSafeMode] = useState(() => isSafeModeEnabled());
   const [audioAudit, setAudioAudit] = useState(null);
   const [audioAuditRunning, setAudioAuditRunning] = useState(false);
@@ -49,9 +51,17 @@ export default function Diagnostics({ onBack }) {
   const [causalityLabRunning, setCausalityLabRunning] = useState(false);
   const [causalityLabResult, setCausalityLabResult] = useState(null);
   const sessionStats = useMemo(readSessionStats, [checks]);
-  const performanceRows = useMemo(() => readGenerationMetrics(), [checks]);
+  const performanceRows = useMemo(() => readGenerationMetrics(), [checks, diagnosticRevision]);
   const performanceSummary = useMemo(() => summarizeGenerationMetrics(performanceRows), [performanceRows]);
+  const generationTraces = useMemo(() => readGenerationTraces(), [checks, diagnosticRevision]);
+  const generationTraceSummary = useMemo(() => summarizeGenerationTraces(generationTraces), [generationTraces]);
   const device = useMemo(getDeviceSnapshot, []);
+
+  useEffect(() => {
+    const refresh = () => setDiagnosticRevision((value) => value + 1);
+    window.addEventListener("velvet:generation-diagnostics", refresh);
+    return () => window.removeEventListener("velvet:generation-diagnostics", refresh);
+  }, []);
 
   async function runChecks(probeAi = false) {
     setRunning(true);
@@ -243,6 +253,18 @@ export default function Diagnostics({ onBack }) {
     window.setTimeout(() => setBugCopied(false), 1800);
   }
 
+  async function copyLiveDebugReport() {
+    const text = formatBugReport({ includePrivate: false, note: "Live generation diagnostics copied from Velvet Doctor." });
+    await navigator.clipboard.writeText(text);
+    setDebugCopied(true);
+    window.setTimeout(() => setDebugCopied(false), 1800);
+  }
+
+  function clearLiveGenerationDiagnostics() {
+    clearGenerationTraces();
+    setDiagnosticRevision((value) => value + 1);
+  }
+
   async function clearAppCache() {
     try {
       if ("serviceWorker" in navigator) {
@@ -337,6 +359,12 @@ export default function Diagnostics({ onBack }) {
     <section className="diagnostics-card v312-performance-card"><header><Activity size={18}/><div><h2>Real response speed</h2><p>Measured on this device from your actual Velvet replies, not a synthetic benchmark.</p></div></header>
       <div className="diagnostics-grid"><Metric label="Median first text" value={performanceSummary.p50FirstTokenMs ? `${performanceSummary.p50FirstTokenMs} ms` : "—"}/><Metric label="Median full reply" value={performanceSummary.p50DurationMs ? `${performanceSummary.p50DurationMs} ms` : "—"}/><Metric label="Average first text" value={performanceSummary.avgFirstTokenMs ? `${performanceSummary.avgFirstTokenMs} ms` : "—"}/><Metric label="Fallback wins" value={`${performanceSummary.fallbackCount} / ${performanceSummary.success || 0}`}/><Metric label="Repair passes" value={String(performanceSummary.repairCount)}/><Metric label="Recorded replies" value={String(performanceSummary.total)}/></div>
       {performanceRows.length > 0 && <div className="v312-performance-list">{performanceRows.slice(0,6).map((row,index)=><div key={`${row.at}-${index}`}><span><strong>{row.model || "Unknown model"}</strong><small>{formatActivityTime(row.at)}</small></span><em>{row.firstTokenMs ? `${row.firstTokenMs} ms first` : "no first-token timing"} · {row.durationMs ? `${row.durationMs} ms total` : "unfinished"}{row.fallbackUsed ? " · fallback" : ""}{row.repairUsed ? " · repaired" : ""}</em></div>)}</div>}
+    </section>
+
+    <section className="diagnostics-card diagnostics-card--generation-traces"><header><Activity size={18}/><div><h2>Live generation diagnostics</h2><p>Local-only traces for the last replies: operation, model path, fallback, timing, context size and failure origin. No chat text is stored here.</p></div></header>
+      <div className="diagnostics-grid"><Metric label="Last operation" value={generationTraceSummary.lastOperation}/><Metric label="Last status" value={generationTraceSummary.lastStatus}/><Metric label="Last model" value={generationTraceSummary.lastModel}/><Metric label="Median first text" value={generationTraceSummary.medianFirstTokenMs ? `${generationTraceSummary.medianFirstTokenMs} ms` : "—"}/><Metric label="Fallback / recovery" value={`${generationTraceSummary.fallbackCount} fallback · ${generationTraceSummary.recoveryCount} recovered`}/><Metric label="Last error source" value={generationTraceSummary.lastErrorCategory}/></div>
+      <div className="diagnostics-actions"><button onClick={copyLiveDebugReport}><Clipboard size={16}/>{debugCopied ? "Copied debug report" : "Copy debug report"}</button><button onClick={clearLiveGenerationDiagnostics}>Clear local traces</button></div>
+      {generationTraces.length > 0 ? <div className="v3498-trace-list">{generationTraces.slice(0,8).map((row,index)=><div key={`${row.requestRef}-${index}`} className={`v3498-trace-row is-${row.status || "started"}`}><span><strong>{row.operation || "reply"} · {row.status || "started"}</strong><small>{formatActivityTime(row.at)} · {row.requestRef || "trace"}</small></span><em>{(row.modelTrail || []).join(" → ") || row.model || "model pending"}{row.firstTokenMs ? ` · ${row.firstTokenMs} ms first` : ""}{row.durationMs ? ` · ${row.durationMs} ms total` : ""}{row.recovery ? ` · ${row.recovery}` : ""}{row.errorCategory ? ` · ${row.errorCategory}` : ""}</em>{row.context && (row.context.memoryCount || row.context.loreCount || row.context.promptChars) ? <small className="v3498-trace-context">context: {row.context.memoryCount || 0} memories · {row.context.loreCount || 0} lore · {row.context.promptChars || 0} chars</small> : null}</div>)}</div> : <p className="v3498-trace-empty">No generation trace yet. Send or regenerate one reply, then come back here.</p>}
     </section>
 
     <section className="diagnostics-card diagnostics-card--audio-quality"><header><Volume2 size={18}/><div><h2>Ambience quality check</h2><p>Checks all eight local tracks for quiet edges, clipping and obvious loop mismatches. It never uploads your audio.</p></div></header>

@@ -5,7 +5,7 @@ const pub=JSON.parse(fs.readFileSync("public/velvet-version.json","utf8"));
 const chat=fs.readFileSync("src/pages/Chat.jsx","utf8");
 
 ok("version 3.49.6 descendant",pkg.version===pub.version&&/^3\.49\.(?:[6-9]|[1-9]\d+)$/.test(pkg.version));
-ok("release preserves retry lineage",/Retry Pipeline Fix|Five-Fix Polish Sweep/.test(pub.release||""));
+ok("release preserves retry lineage",/Retry Pipeline Fix|Five-Fix Polish Sweep|Invisible Reliability/.test(pub.release||""));
 ok("failed generation has explicit state",chat.includes("failedGenerationRef")&&chat.includes("failedGeneration"));
 ok("retry has immediate in-flight lock",chat.includes("retryInFlightRef.current")&&chat.includes("if (busy || !conversationReady || retryInFlightRef.current) return"));
 ok("normal retry anchors exact user turn",chat.includes("expectedUserMessageId: savedUserMessageId")&&chat.includes("mode: \"reply\""));
@@ -14,9 +14,9 @@ ok("next-version retry preserves target",chat.includes("source: \"next-version\"
 ok("refine retry preserves target",chat.includes("source: \"refine\""));
 ok("director rewrite retry preserves target",chat.includes("source: \"director-rewrite\""));
 ok("retry routes regenerate back through regenerateCharacterReply",chat.includes("if (inferredFailure?.mode === \"regenerate\"")&&chat.includes("await regenerateCharacterReply("));
-ok("retry routes normal reply through explicit expected user id",chat.includes("await generateCharacterReply(character.id, { expectedUserMessageId })"));
+ok("retry routes normal reply through explicit expected user id",/await generateCharacterReply\(character\.id, \{ expectedUserMessageId(?:, diagnosticSource: [^}]+)? \}\)/.test(chat));
 ok("retry reconciles durable messages first",chat.includes("const refreshed = await reloadConversationMessages(character.id)")&&chat.includes("const alreadyFinished"));
-ok("already-finished turn does not duplicate",chat.includes("if (!alreadyFinished) {")&&chat.includes("await generateCharacterReply(character.id, { expectedUserMessageId })"));
+ok("already-finished turn does not duplicate",chat.includes("if (!alreadyFinished) {")&&/await generateCharacterReply\(character\.id, \{ expectedUserMessageId(?:, diagnosticSource: [^}]+)? \}\)/.test(chat));
 ok("retry button shows progress",chat.includes('retryingGeneration ? "Retrying…" : "Retry"')&&chat.includes('LoaderCircle className="spin"'));
 ok("retry sets sending lock synchronously",chat.includes("setRetryingGeneration(true)")&&chat.includes("setSending(true)"));
 ok("successful retry clears remembered failure",chat.includes("clearGenerationFailure();")&&chat.includes("setRetryingGeneration(false)"));
