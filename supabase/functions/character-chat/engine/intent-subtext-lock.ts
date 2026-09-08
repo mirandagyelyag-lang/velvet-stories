@@ -190,6 +190,31 @@ export function hasIntentThreadAbandonment(reply = "", latestUserMessage = "", i
   return unrelatedFiller || noDialogue;
 }
 
+
+function obviousRhetoricalContradiction(value = "") {
+  const raw = String(value || "").trim();
+  const m = raw.match(/^\s*(?:yeah|yea|yep|sure|right|okay|ok)[,\s]+(?:and\s+)?(?:my\s+name\s+is|i(?:'m| am))\s+([A-Za-z][A-Za-z0-9_-]{1,30})[.!?\s]*$/i);
+  if (!m) return null;
+  return { payload: normalized(m[1] || "") };
+}
+
+export function hasPragmaticSarcasmMiss(reply = "", latestUserMessage = "", recentCharacterReplies = []) {
+  const cue = obviousRhetoricalContradiction(latestUserMessage);
+  if (!cue) return false;
+  const text = normalized(reply);
+  const dialogue = normalized(dialogueOnly(reply).join(" ")) || text;
+  if (!dialogue) return true;
+
+  // The payload in "yeah, and I'm X" is a vehicle for disbelief, not a new topic.
+  // Repeating/explaining/expanding X means the model followed words instead of the speech act.
+  if (cue.payload && new RegExp(`\\b${cue.payload.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(dialogue)) return true;
+  if (/^(?:okay|ok|right|sure|yeah|yep|mhm|uh huh)[.! ]*$/.test(dialogue)) return true;
+
+  // Do not answer an ironic contradiction by inventing a fresh analogy/comparison target.
+  if (/\b(?:choir boy|pope|saint peter|walk on water|heaven|holy|miracle|disciple|apostle)\b/.test(dialogue)) return true;
+  return false;
+}
+
 export function intentSubtextIssues({
   reply = "",
   latestUserMessage = "",
@@ -206,6 +231,7 @@ export function intentSubtextIssues({
   if (hasGestureBudgetOverflow(reply, latestUserMessage)) issues.push("gesture_budget_overflow");
   if (hasObligatoryBanterExit(reply, latestUserMessage)) issues.push("obligatory_banter_exit");
   if (hasIntentThreadAbandonment(reply, latestUserMessage, intent)) issues.push("intent_thread_abandoned");
+  if (hasPragmaticSarcasmMiss(reply, latestUserMessage, recentCharacterReplies)) issues.push("pragmatic_sarcasm_miss");
   return [...new Set(issues)];
 }
 

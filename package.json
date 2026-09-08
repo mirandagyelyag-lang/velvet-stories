@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.49.19",
+  "version": "3.49.20",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -126,7 +126,8 @@
     "verify:v34911": "node --experimental-strip-types scripts/verify-v34911-character-voice-audit.mjs",
     "verify:v34912": "node --experimental-strip-types scripts/verify-v34912-startup-pwa-android.mjs",
     "verify:v34915": "node --experimental-strip-types scripts/verify-v34915-story-library-memory-safety.mjs",
-    "verify:v34919": "node scripts/verify-v34919-pragmatic-subtext.mjs"
+    "verify:v34919": "node scripts/verify-v34919-pragmatic-subtext.mjs",
+    "verify:v34920": "node scripts/verify-v34920-pragmatic-speech-act.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",
