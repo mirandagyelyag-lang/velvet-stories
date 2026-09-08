@@ -182,6 +182,17 @@ Deno.serve(async (request) => {
       return await handleCharacterAssist({ apiKey, draft: body?.draft, mode: body?.mode, focusFields: body?.focusFields });
     }
 
+    if (action === "reply_assist") {
+      return await handleReplyAssist({
+        apiKey,
+        character: body?.character,
+        recentMessages: body?.recentMessages,
+        userDraft: body?.userDraft,
+        intent: body?.intent,
+        customIntent: body?.customIntent,
+      });
+    }
+
     if (action === "character_voice_test") {
       return await handleCharacterVoiceTest({ apiKey, draft: body?.draft, situation: body?.situation });
     }
@@ -800,6 +811,57 @@ async function handleCharacterAssist({ apiKey, draft, mode, focusFields = [] }) 
     prompt: `${instruction}\nSeparate stable identity from possible growth: motivation and defenses are present-day anchors, softening triggers are earned influences, and growth direction is only a possibility—not an instant transformation. Return field suggestions only.\n\nDRAFT\n${JSON.stringify(safeDraft).slice(0, 16000)}`,
   });
   return json({ suggestions });
+}
+
+
+async function handleReplyAssist({ apiKey, character, recentMessages, userDraft, intent, customIntent }) {
+  const safeCharacter = character && typeof character === "object" ? character : {};
+  const history = Array.isArray(recentMessages) ? recentMessages.slice(-10).map((item) => ({
+    speaker: cleanPromptValue(item?.speaker, 80),
+    text: cleanPromptValue(item?.text, 900),
+  })).filter((item) => item.text) : [];
+  const draft = cleanPromptValue(userDraft, 500);
+  const requestedIntent = cleanPromptValue(intent, 80) || "ideas";
+  const custom = cleanPromptValue(customIntent, 500);
+  const prompt = `You are Velvet Reply Assist, a private English-writing helper inside a fictional roleplay chat. Help the USER write THEIR NEXT MESSAGE, never the character's reply. Read the recent exchange, the character profile, relationship tone, and the user's requested intent. Infer conversational subtext. Produce exactly 4 distinct, natural English options that a real young adult could type. They should preserve what the user wants to communicate rather than translating word-for-word. Keep them concise unless context genuinely needs more. Avoid polished quote-card banter, therapy language, purple prose, repetitive one-liners, and over-clever jokes. Do not invent actions, feelings, thoughts, or facts for the user. If the user supplied a draft in Spanish or imperfect English, improve its meaning naturally without changing intent.
+
+INTENT MODES: ideas = useful context-aware ways to continue; playful = playful/teasing; dry = dry/sarcastic; flirty = subtle flirtation, not an instant confession; direct = clear/direct; custom = obey CUSTOM INTENT.
+
+Return ONLY valid JSON in this exact shape: {"options":[{"text":"...","tone":"2-4 word English label","meaning_es":"short natural Spanish explanation of what it conveys and its social tone"}]}. Exactly four options. No markdown.
+
+CHARACTER CONTEXT
+${JSON.stringify({name:safeCharacter?.name, personality:safeCharacter?.personality, speechStyle:safeCharacter?.speechStyle, relationship:safeCharacter?.relationship, description:safeCharacter?.description}).slice(0,5000)}
+
+RECENT CHAT
+${JSON.stringify(history).slice(0,9000)}
+
+USER DRAFT
+${draft || "(none)"}
+
+REQUESTED MODE
+${requestedIntent}
+
+CUSTOM INTENT
+${custom || "(none)"}`;
+
+  const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
+  let lastError = "Velvet couldn't suggest replies.";
+  for (const model of models) {
+    try {
+      const response = await fetch(modelEndpoint(model), {
+        method: "POST", headers: geminiHeaders(apiKey),
+        body: JSON.stringify({ contents:[{role:"user",parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:900, responseMimeType:"application/json", thinkingConfig:{thinkingLevel:"LOW"}} }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { lastError = data?.error?.message || lastError; continue; }
+      const parsed = JSON.parse(stripJsonFence(extractCandidateText(data)));
+      const options = Array.isArray(parsed?.options) ? parsed.options.slice(0,4).map((item) => ({
+        text: cleanPromptValue(item?.text, 500), tone: cleanPromptValue(item?.tone, 80), meaning_es: cleanPromptValue(item?.meaning_es, 300),
+      })).filter((item) => item.text) : [];
+      if (options.length >= 3) return json({ options });
+    } catch (error) { lastError = getErrorMessage(error); }
+  }
+  throw new Error(lastError);
 }
 
 async function handleCharacterVoiceTest({ apiKey, draft, situation }) {

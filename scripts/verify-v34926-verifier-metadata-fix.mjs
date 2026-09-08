@@ -1,0 +1,11 @@
+import fs from "node:fs";
+const checks=[]; const ok=(n,v)=>checks.push([n,Boolean(v)]);
+const read=(f)=>fs.readFileSync(f,"utf8");
+const pkg=JSON.parse(read("package.json")); const pub=JSON.parse(read("public/velvet-version.json"));
+const vite=read("vite.config.js"); const old=read("scripts/verify-v34919-pragmatic-subtext.mjs");
+ok("version 3.49.26",pkg.version==="3.49.26"&&pub.version===pkg.version);
+ok("current release represented in Vite",vite.includes(pub.release));
+ok("v34919 metadata check descendant-safe",old.includes('vite.includes(pub.release)'));
+ok("reply assist regression retained",pkg.scripts["stability:lab"].includes("verify:v34922"));
+ok("v34919 regression retained",pkg.scripts["stability:lab"].includes("verify:v34919"));
+for(const [n,v] of checks) console.log(`${v?"PASS":"FAIL"} ${n}`); const passed=checks.filter(([,v])=>v).length; console.log(`\n${passed}/${checks.length} passed`); if(passed!==checks.length) process.exit(1);

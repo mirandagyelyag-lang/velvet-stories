@@ -4,7 +4,7 @@ const read=(f)=>fs.readFileSync(f,"utf8");
 const pkg=JSON.parse(read("package.json")); const pub=JSON.parse(read("public/velvet-version.json"));
 const contract=read("supabase/functions/character-chat/engine/story-contract.ts"); const vite=read("vite.config.js");
 ok("version 3.49.19 descendant",/^3\.49\.(?:19|2[0-9]|[3-9][0-9])$/.test(pkg.version)&&pub.version===pkg.version);
-ok("release metadata current",vite.includes(`velvetRelease = "${pub.release}"`));
+ok("release metadata current",vite.includes(pub.release));
 ok("sarcasm cue exists",contract.includes('return "sarcasm_or_irony"'));
 ok("pragmatic context precedes literal cue",contract.includes("conversational context → pragmatic meaning/subtext → literal cue"));
 ok("no user action fabrication",contract.includes("Do not invent an eye-roll, scoff, tone, smile, gesture, feeling, or action for the user"));

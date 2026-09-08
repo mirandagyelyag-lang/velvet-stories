@@ -167,6 +167,12 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const conversation = getConversation(character.id);
 
   const [message, setMessage] = useState("");
+  const [replyAssistOpen, setReplyAssistOpen] = useState(false);
+  const [replyAssistMode, setReplyAssistMode] = useState("ideas");
+  const [replyAssistCustom, setReplyAssistCustom] = useState("");
+  const [replyAssistOptions, setReplyAssistOptions] = useState([]);
+  const [replyAssistLoading, setReplyAssistLoading] = useState(false);
+  const [replyAssistError, setReplyAssistError] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [directorNote, setDirectorNote] = useState("");
   const [directorNoteOpen, setDirectorNoteOpen] = useState(false);
@@ -1077,6 +1083,39 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     textarea.style.height = "auto";
     const maxHeight = mobileComposerMaxHeight(experienceState?.composer?.maxHeight || 170);
     textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+  }
+
+  async function requestReplyAssist(mode = replyAssistMode) {
+    if (!conversationReady || replyAssistLoading) return;
+    setReplyAssistLoading(true);
+    setReplyAssistError("");
+    setReplyAssistMode(mode);
+    try {
+      const recentMessages = visibleMessages.slice(-10).map((item) => ({
+        speaker: item.sender === "user" ? "user" : character.name,
+        text: String(item.content || "").slice(0,900),
+      }));
+      const { data, error } = await supabase.functions.invoke("character-chat", {
+        body: {
+          action: "reply_assist",
+          character: { name: character.name, personality: character.personality, speechStyle: character.speechStyle, relationship: character.relationship, description: character.description },
+          recentMessages,
+          userDraft: message.trim(),
+          intent: mode,
+          customIntent: mode === "custom" ? replyAssistCustom.trim() : "",
+        },
+      });
+      if (error) throw error;
+      setReplyAssistOptions(Array.isArray(data?.options) ? data.options : []);
+    } catch (error) {
+      setReplyAssistError(error?.message || "Velvet couldn't think of replies right now.");
+    } finally { setReplyAssistLoading(false); }
+  }
+
+  function useReplyAssistOption(text) {
+    setMessage(String(text || ""));
+    setReplyAssistOpen(false);
+    window.requestAnimationFrame(() => { resizeComposer(); try { textareaRef.current?.focus({ preventScroll:true }); } catch { textareaRef.current?.focus(); } });
   }
 
   async function handleSubmit(event) {
@@ -2536,6 +2575,27 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
       {silentCue && <div className="chat__silent-cue" role="status"><Sparkles size={13}/><span>{silentCue}</span></div>}
 
+      {typeof document !== "undefined" && replyAssistOpen && createPortal((
+        <div className="reply-assist-backdrop" onPointerDown={(event)=>{ if(event.target===event.currentTarget) setReplyAssistOpen(false); }}>
+          <section className="reply-assist-sheet" role="dialog" aria-modal="true" aria-label="Help me reply">
+            <div className="reply-assist-grabber" />
+            <header><div><strong>Help me reply</strong><small>Velvet reads the scene and helps you say it naturally in English.</small></div><button type="button" onClick={()=>setReplyAssistOpen(false)} aria-label="Close"><X size={18}/></button></header>
+            <div className="reply-assist-modes">
+              {[['ideas','Ideas'],['playful','Playful'],['dry','Dry'],['flirty','Flirty'],['direct','Direct']].map(([key,label])=><button type="button" key={key} className={replyAssistMode===key?'is-active':''} onClick={()=>requestReplyAssist(key)}>{label}</button>)}
+            </div>
+            <div className="reply-assist-custom">
+              <input value={replyAssistCustom} onChange={(e)=>setReplyAssistCustom(e.target.value)} placeholder="Or tell Velvet in Spanish: quiero coquetear pero que no sea obvio…" />
+              <button type="button" disabled={!replyAssistCustom.trim() || replyAssistLoading} onClick={()=>requestReplyAssist('custom')}><Sparkles size={15}/> Ask</button>
+            </div>
+            {!replyAssistOptions.length && !replyAssistLoading && !replyAssistError && <button type="button" className="reply-assist-generate" onClick={()=>requestReplyAssist('ideas')}><WandSparkles size={16}/> Give me ideas</button>}
+            {replyAssistLoading && <div className="reply-assist-status"><LoaderCircle className="is-spinning" size={17}/> Thinking about this scene…</div>}
+            {replyAssistError && <div className="reply-assist-error">{replyAssistError}<button type="button" onClick={()=>requestReplyAssist(replyAssistMode)}>Retry</button></div>}
+            {!!replyAssistOptions.length && <div className="reply-assist-options">{replyAssistOptions.map((option,index)=><button type="button" className="reply-assist-option" key={`${option.text}-${index}`} onClick={()=>useReplyAssistOption(option.text)}><span className="reply-assist-option-top"><b>{option.text}</b><em>{option.tone}</em></span><small>{option.meaning_es}</small></button>)}</div>}
+            <p className="reply-assist-hint">Tap an option to put it in your textbox. Velvet never sends it automatically.</p>
+          </section>
+        </div>
+      ), document.body)}
+
       {typeof document !== "undefined" && createPortal((
       <form className={`chat__composer${replyTo ? " chat__composer--replying" : ""}${experienceState?.composer?.compact ? " chat__composer--experience-compact" : ""}`} onSubmit={handleSubmit}>
         {replyTo && (
@@ -2566,7 +2626,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           </div>
         )}
         {experienceState?.composer?.quickTools && <button type="button" className="chat__experience-trigger" onClick={()=>setExperienceOpen(true)} aria-label="Open Velvet Experience" title="Velvet Experience"><WandSparkles size={15}/><span>Studio</span></button>}
-        <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>directorNoteOpen ? setDirectorNoteOpen(false) : openDirector("next")} aria-label="Open Scene Director" title="Scene Director"><Sparkles size={15}/><span>Direct</span></button>
+        <button type="button" className={`chat__reply-assist-trigger${replyAssistOpen ? " is-active" : ""}`} onClick={()=>{ setReplyAssistOpen((value)=>!value); setReplyAssistError(""); }} aria-label="Help me reply" title="Help me reply"><WandSparkles size={16}/><span>Reply</span></button>
+                <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>directorNoteOpen ? setDirectorNoteOpen(false) : openDirector("next")} aria-label="Open Scene Director" title="Scene Director"><Sparkles size={15}/><span>Direct</span></button>
         <textarea
           ref={textareaRef}
           value={message}

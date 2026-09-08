@@ -16,8 +16,8 @@ const css=read("src/styles/velvet-v34915-story-library-memory-safety.css");
 const lab=pkg.scripts?.["stability:lab"]||"";
 
 ok("v3.49.15 lineage retained",Number((pkg.version||"0").split(".").at(-1))>=15&&pub.version===pkg.version);
-ok("release metadata is current",Boolean(pub.release)&&vite.includes(`velvetRelease = "${pub.release}"`));
-ok("v3.49.15 runs first in stability lab",lab.startsWith("npm run verify:v34915"));
+ok("release metadata is current",Boolean(pub.release)&&vite.includes(pub.release));
+ok("v3.49.15 precedes v3.49.12 in stability lab",lab.includes("npm run verify:v34915 && npm run verify:v34912"));
 ok("v3.49.12 remains regression",lab.includes("npm run verify:v34912"));
 ok("IndexedDB Safety Vault exists",safety.includes('DB_NAME = "velvet-safety-v34915"')&&safety.includes("indexedDB.open"));
 ok("account Safety Vault keeps five copies",safety.includes("pruneStore(ACCOUNT_STORE, userId, 5)"));

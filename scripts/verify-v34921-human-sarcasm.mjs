@@ -3,8 +3,8 @@ const idx=fs.readFileSync("supabase/functions/character-chat/index.ts","utf8");
 const eng=fs.readFileSync("supabase/functions/character-chat/engine/intent-subtext-lock.ts","utf8");
 const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
 const checks=[
- ["version 3.49.21",pkg.version==="3.49.21"],
- ["v34921 runs first in stability lab",pkg.scripts["stability:lab"].startsWith("npm run verify:v34921 && npm run verify:v34920")],
+ ["v3.49.21 lineage retained",/^3\.49\.(?:2[1-9]|[3-9][0-9])$/.test(pkg.version)],
+ ["v34921 precedes v34920 in stability lab",pkg.scripts["stability:lab"].includes("npm run verify:v34921 && npm run verify:v34920")],
  ["semantic-field riff guard expanded",eng.includes("canonized|canonised|divine|divinity")],
  ["comedy monologue length guard",eng.includes("spokenWords > 18") && eng.includes("spoken.length > 1")],
  ["deterministic human fallback exists",eng.includes("pragmaticSarcasmFallback")],

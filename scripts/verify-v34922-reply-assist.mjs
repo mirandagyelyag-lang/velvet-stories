@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+const read=p=>fs.readFileSync(p,'utf8'); let pass=0, fail=0;
+const ok=(name,v)=>{console.log(`${v?'PASS':'FAIL'} ${name}`);v?pass++:fail++};
+const pkg=JSON.parse(read('package.json')), pub=JSON.parse(read('public/velvet-version.json')), chat=read('src/pages/Chat.jsx'), edge=read('supabase/functions/character-chat/index.ts'), main=read('src/main.jsx'), css=read('src/styles/velvet-v34922-reply-assist.css');
+ok('v3.49.22 lineage retained',/^3\.49\.(?:2[2-9]|[3-9][0-9])$/.test(pkg.version)&&pub.version===pkg.version);
+ok('reply helper action exists',edge.includes('action === "reply_assist"')&&edge.includes('handleReplyAssist'));
+ok('four contextual English options requested',edge.includes('exactly 4 distinct, natural English options')&&edge.includes('meaning_es'));
+ok('Spanish/custom intent supported',edge.includes('customIntent')&&edge.includes('USER DRAFT'));
+ok('chat invokes reply assist',chat.includes('action: "reply_assist"')&&chat.includes('Help me reply'));
+ok('suggestion inserts but does not send',chat.includes('useReplyAssistOption')&&chat.includes('setMessage(String(text || ""))'));
+ok('tone modes present',['ideas','playful','dry','flirty','direct','custom'].every(x=>chat.includes(x)));
+ok('reply assist css lineage remains',main.includes('import "./styles/velvet-v34922-reply-assist.css";')&&css.includes('.reply-assist-sheet'));
+console.log(`\n${pass}/${pass+fail} passed`); process.exit(fail?1:0);
