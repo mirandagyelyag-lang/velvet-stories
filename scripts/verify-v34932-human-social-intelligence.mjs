@@ -3,7 +3,7 @@ import { buildHumanSocialIntelligenceV34932, humanSocialIntelligenceV34932Issues
 const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 const src=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
 let n=0,ok=0; const check=(name,v)=>{n++;if(v){ok++;console.log('PASS',name)}else{console.error('FAIL',name);process.exitCode=1}};
-check('version 3.49.32',pkg.version==='3.49.32');
+{ const [a,b,c]=pkg.version.split('.').map(Number); check('version 3.49.32+',a===3&&b===49&&c>=32); }
 check('social intelligence imported',src.includes('buildHumanSocialIntelligenceV34932'));
 for(const needle of ['READ THE ROOM, NOT THE TROPE','Public and private versions','Bystanders are people, not reaction cameras','Respect face-saving','Courtesy, eye contact, proximity','social cost','Humor is socially calibrated']) check(needle,src.includes(needle));
 const brief=buildHumanSocialIntelligenceV34932({character:{personality:'guarded, popular, confident'},latestUserMessage:'Anyway, why did you come over?',scene:{location:'party'}});
@@ -19,5 +19,5 @@ check('romance projection rejected',humanSocialIntelligenceV34932Issues('Electri
 check('plain social answer accepted',humanSocialIntelligenceV34932Issues('"I saw you over here. That is all."','Why did you come over?',[]).length===0);
 check('repair trigger wired',src.includes('social_intelligence_pressure_after_boundary'));
 check('social issues scored',src.includes('socialIssuesForScore'));
-check('v34932 first in stability lab',pkg.scripts['stability:lab'].startsWith('npm run verify:v34932 && npm run verify:v34931'));
+check('v34932 precedes v34931 in stability lab',pkg.scripts['stability:lab'].includes('npm run verify:v34932 && npm run verify:v34931'));
 console.log(`\n${ok}/${n} v3.49.32 checks passed.`); if(ok!==n)process.exit(1);
