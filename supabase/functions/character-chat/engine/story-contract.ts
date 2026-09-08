@@ -757,6 +757,11 @@ function classifyReactionCue(latestUserMessage: string, boundaries: string[]) {
   if (/\b(?:leave|liar|hate you|you lied|you hurt|your fault|what is wrong with you|seriously\??|are you serious|whatever)\b/.test(value)) return "conflict_or_challenge";
   if (/\b(?:come with me|want to go|do you want to|can you|could you|will you|let's|lets)\b/.test(value)) return "request_or_invitation";
   if (/\b(?:cute|handsome|pretty|beautiful|hot|good job|proud of you|you look good|you look nice)\b/.test(value)) return "compliment";
+  // v3.49.19 PRAGMATIC SUBTEXT: common ironic contradiction frames are speech acts,
+  // not literal biographical claims. The model still uses context to decide the target.
+  if (/^(?:yeah|yea|sure|right|totally|obviously|of course)[, ]+(?:and )?(?:i(?:'m| am)|my (?:name|middle name) is)\b/.test(value)
+      || /^(?:and )?(?:i(?:'m| am)|my (?:name|middle name) is)\b.{0,48}(?:then|apparently)?[.!]*$/.test(value)
+      || /\b(?:yeah right|as if|sure you are|sure he is|sure she is|what a saint|very believable|totally believable)\b/.test(value)) return "sarcasm_or_irony";
   if (/\?|^(?:what|why|how|where|when|who|which|do|did|are|is|can|could|would|will|have|has)\b/.test(value)) return "direct_question";
   if (/\*[^*]+\*/.test(raw) && raw.replace(/\*[^*]+\*/g, "").trim().length < 8) return "action_only";
   if (value.split(/\s+/).filter(Boolean).length <= 12) return "mundane_short_turn";
@@ -837,8 +842,14 @@ function buildReactionEngine(character: Record<string, unknown>, latestUserMessa
     interpretationBias = "silence/action is not permission to narrate the user's feelings or force a plot twist";
     firstImpulse = dna.pressureResponse;
     visibleTactic = "let the character choose one small, readable behavior consistent with DNA; silence may remain silence";
+  } else if (cue === "sarcasm_or_irony") {
+    interpretationBias = "read the utterance as a pragmatic social move in context, not as a literal factual claim; infer the obvious contradiction/tease from the immediately preceding exchange while keeping uncertainty when the cue is genuinely ambiguous";
+    firstImpulse = /humor|deflect|sarcast|teas|witty|banter/.test(defense + " " + normalized(dna.pressureResponse))
+      ? "recognize the joke immediately and answer the implied meaning in the character's own banter register"
+      : "recognize the irony without pretending the literal claim is new canon";
+    visibleTactic = "respond to what the user MEANS socially, usually by volleying the sarcasm, conceding the point, or counter-teasing according to Character DNA. Do not explain that the user was sarcastic. Do not invent an eye-roll, scoff, tone, smile, gesture, feeling, or action for the user merely to justify the inference. Do not turn one keyword into an unrelated joke when the conversational target is obvious.";
   } else if (cue === "mundane_short_turn") {
-    interpretationBias = "ordinary conversation is allowed to be ordinary";
+    interpretationBias = "ordinary conversation is allowed to be ordinary, but short wording can still carry obvious conversational implicature from the previous line";
     firstImpulse = stableChoice(seed, ["answer the literal content", "offer one concrete personal detail", "let the topic breathe"]);
     visibleTactic = "use a short human response shaped by this character's speech mechanics; no résumé summary, metaphor, or automatic flirt escalation";
   }
@@ -854,7 +865,7 @@ function buildReactionEngine(character: Record<string, unknown>, latestUserMessa
     visibleTactic,
     avoidTactic,
     recentTactics,
-    instruction: "Run the reaction in this order silently: literal cue → character-specific interpretation → first impulse → defense/values filter → visible tactic. Do not narrate this checklist. Two characters receiving the same cue should often make different choices because their defenses, priorities, care style, and likely mistakes differ.",
+    instruction: "Run the reaction in this order silently: conversational context → pragmatic meaning/subtext → literal cue → character-specific interpretation → first impulse → defense/values filter → visible tactic. For short replies, resolve obvious sarcasm, irony, teasing, rhetorical contradiction, dry agreement, flirtation, dismissal, and playful insult from the immediately preceding exchange before answering. Never require the user to annotate *sarcastically* when ordinary human context is enough. Never fabricate user actions or emotions as evidence for that inference. Do not narrate this checklist. Two characters receiving the same cue should often make different choices because their defenses, priorities, care style, and likely mistakes differ.",
   };
 }
 
