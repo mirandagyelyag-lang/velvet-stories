@@ -34,6 +34,7 @@ import { buildHumanKnowledgeUncertaintyV34938, humanKnowledgeUncertaintyV34938Is
 import { buildNaturalDialogueResetV34940, naturalDialogueResetV34940Issues } from "./engine/natural-dialogue-reset-v34940.ts";
 import { buildPlainSpeechFirstV34941, plainSpeechFirstV34941Issues } from "./engine/plain-speech-first-v34941.ts";
 import { buildLeanDialogueCoreV34942, leanDialogueCoreV34942Issues } from "./engine/lean-dialogue-core-v34942.ts";
+import { buildTargetAwareDialogueV34943, targetAwareDialogueV34943Issues } from "./engine/target-aware-dialogue-v34943.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1901,6 +1902,11 @@ function buildNarrativePromptV3({
     relationship: conversation.relationship_state || {}, scene: conversation.scene_state || {},
     knowledgeLedger: conversation.intelligence_state?.knowledge_ledger || [],
   });
+  const targetAwareDialogueV34943 = buildTargetAwareDialogueV34943({
+    latestUserMessage: latestUserRecord?.content || "",
+    character,
+    recentContext: recentCharacterRepliesForVoice?.slice(-2).join(" ") || "",
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2033,6 +2039,8 @@ function buildNarrativePromptV3({
 ${storyContractPrompt(turnContract as any)}
 
 ${leanDialogueCoreV34942}
+
+${targetAwareDialogueV34943}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line.
 
@@ -5689,6 +5697,10 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
   "lean_core_causal_nonanswer",
+  "target_dialogue_abstract_fragment",
+  "target_dialogue_premise_denial",
+  "target_dialogue_location_not_interaction",
+  "target_dialogue_quip_evasion",
   "lean_core_causal_quip_substitution",
   "lean_core_performed_quip",
   "lean_core_performed_body_language",
@@ -6571,6 +6583,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   const knowledgeUncertaintyIssuesForScore = humanKnowledgeUncertaintyV34938Issues(reply, latest, recent);
   const naturalDialogueIssuesForScore = naturalDialogueResetV34940Issues(reply, latest, recent);
   const leanCoreIssuesForScore = leanDialogueCoreV34942Issues(reply, latest);
+  const targetAwareIssuesForScore = targetAwareDialogueV34943Issues(reply, latest);
+  score -= targetAwareIssuesForScore.length * 18;
   const plainSpeechIssuesForScore = plainSpeechFirstV34941Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (relationshipAttachmentIssuesForScore.length) score -= Math.min(56, 24 + relationshipAttachmentIssuesForScore.length * 8);
@@ -6654,6 +6668,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of leanDialogueCoreV34942Issues(text, options.latestUserMessage || "")) issues.push(issue);
+  for (const issue of targetAwareDialogueV34943Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
