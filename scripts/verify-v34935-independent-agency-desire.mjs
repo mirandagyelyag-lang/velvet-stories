@@ -4,7 +4,7 @@ const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),
 const src=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
 const eng=fs.readFileSync(new URL('../supabase/functions/character-chat/engine/independent-agency-desire-v34935.ts',import.meta.url),'utf8');
 let n=0,ok=0;const check=(a,v)=>{n++;if(v){ok++;console.log('PASS',a)}else{console.error('FAIL',a);process.exitCode=1}};
-check('version 3.49.35',pkg.version==='3.49.35');
+check('version 3.49.35+', (()=>{const [a,b,c]=pkg.version.split('.').map(Number); return a===3 && b===49 && c>=35;})());
 for(const x of ['SELF-OWNED AGENDA','DESIRE STACK','PRIORITY COMPETITION','DECISION OWNERSHIP','NO USER-ORBIT','NO COMPULSORY AVAILABILITY','GOAL PERSISTENCE','GOAL SWITCHING NEEDS CAUSE','UNFINISHED ACTIONS PERSIST','INTERRUPTION COST','INITIATIVE','REFUSAL + NEGOTIATION','AMBIVALENCE','EFFORT HAS COST','RELATIONSHIP IS ONE MOTIVE','OFF-SCREEN CONTINUITY','FRIENDS + NPCs ARE REAL RELATIONSHIPS','SELF-INTEREST IS ALLOWED','VALUES + STANDARDS','CONSEQUENCES CHANGE FUTURE CHOICES','NO RETROACTIVE MOTIVE INVENTION','NO DESTINY LANGUAGE','NO HEROIC SERVICE LOOP','NO AUTOMATIC PURSUIT','BOREDOM + MUNDANITY EXIST','ENDINGS ARE ALLOWED','AUTONOMY WITHOUT HOSTILITY','ANTI-SIMULATION THEATER']) check(x,eng.includes(x));
 const b=buildIndependentAgencyDesireV34935({character:{role:'student'},mind:{current_goal:'finish the assignment'},latestUserMessage:'Hey.'});
 check('grounded agenda reaches hidden brief',b.includes('finish the assignment'));

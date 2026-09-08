@@ -173,6 +173,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [replyAssistOptions, setReplyAssistOptions] = useState([]);
   const [replyAssistLoading, setReplyAssistLoading] = useState(false);
   const [replyAssistError, setReplyAssistError] = useState("");
+  const [replyAssistUnderstanding, setReplyAssistUnderstanding] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
   const [directorNote, setDirectorNote] = useState("");
   const [directorNoteOpen, setDirectorNoteOpen] = useState(false);
@@ -1107,6 +1108,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       });
       if (error) throw error;
       setReplyAssistOptions(Array.isArray(data?.options) ? data.options : []);
+      setReplyAssistUnderstanding(data?.understanding || null);
     } catch (error) {
       setReplyAssistError(error?.message || "Velvet couldn't think of replies right now.");
     } finally { setReplyAssistLoading(false); }
@@ -2581,8 +2583,9 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
             <div className="reply-assist-grabber" />
             <header><div><strong>Help me reply</strong><small>Velvet reads the scene and helps you say it naturally in English.</small></div><button type="button" onClick={()=>setReplyAssistOpen(false)} aria-label="Close"><X size={18}/></button></header>
             <div className="reply-assist-modes">
-              {[['ideas','Ideas'],['playful','Playful'],['dry','Dry'],['flirty','Flirty'],['direct','Direct']].map(([key,label])=><button type="button" key={key} className={replyAssistMode===key?'is-active':''} onClick={()=>requestReplyAssist(key)}>{label}</button>)}
+              {[['understand','Explain it'],['ideas','Ideas'],['playful','Playful'],['dry','Dry'],['flirty','Flirty'],['direct','Direct']].map(([key,label])=><button type="button" key={key} className={replyAssistMode===key?'is-active':''} onClick={()=>requestReplyAssist(key)}>{label}</button>)}
             </div>
+            {replyAssistUnderstanding && <div className="reply-assist-understanding"><strong>What did they mean?</strong><p>{replyAssistUnderstanding.literal_es}</p><p>{replyAssistUnderstanding.explanation_es}</p>{replyAssistUnderstanding.subtext_es && <small><b>Subtext:</b> {replyAssistUnderstanding.subtext_es}</small>}{Array.isArray(replyAssistUnderstanding.english_notes) && replyAssistUnderstanding.english_notes.length>0 && <div className="reply-assist-english-notes">{replyAssistUnderstanding.english_notes.slice(0,3).map((note,i)=><span key={i}><b>{note.phrase}</b> = {note.meaning_es}</span>)}</div>}</div>}
             <div className="reply-assist-custom">
               <input value={replyAssistCustom} onChange={(e)=>setReplyAssistCustom(e.target.value)} placeholder="Or tell Velvet in Spanish: quiero coquetear pero que no sea obvio…" />
               <button type="button" disabled={!replyAssistCustom.trim() || replyAssistLoading} onClick={()=>requestReplyAssist('custom')}><Sparkles size={15}/> Ask</button>

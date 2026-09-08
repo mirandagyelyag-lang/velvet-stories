@@ -28,6 +28,7 @@ import { buildHumanSocialIntelligenceV34932, humanSocialIntelligenceV34932Issues
 import { buildHumanMemoryPersonalHistoryV34933, humanMemoryPersonalHistoryV34933Issues } from "./engine/human-memory-personal-history-v34933.ts";
 import { buildHumanEmotionNervousSystemV34934, humanEmotionNervousSystemV34934Issues } from "./engine/human-emotion-nervous-system-v34934.ts";
 import { buildIndependentAgencyDesireV34935, independentAgencyDesireV34935Issues } from "./engine/independent-agency-desire-v34935.ts";
+import { buildRelationshipAttachmentV34936, relationshipAttachmentV34936Issues } from "./engine/relationship-attachment-v34936.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -822,52 +823,20 @@ async function handleCharacterAssist({ apiKey, draft, mode, focusFields = [] }) 
 
 async function handleReplyAssist({ apiKey, character, recentMessages, userDraft, intent, customIntent }) {
   const safeCharacter = character && typeof character === "object" ? character : {};
-  const history = Array.isArray(recentMessages) ? recentMessages.slice(-10).map((item) => ({
-    speaker: cleanPromptValue(item?.speaker, 80),
-    text: cleanPromptValue(item?.text, 900),
-  })).filter((item) => item.text) : [];
-  const draft = cleanPromptValue(userDraft, 500);
-  const requestedIntent = cleanPromptValue(intent, 80) || "ideas";
-  const custom = cleanPromptValue(customIntent, 500);
-  const prompt = `You are Velvet Reply Assist, a private English-writing helper inside a fictional roleplay chat. Help the USER write THEIR NEXT MESSAGE, never the character's reply. Read the recent exchange, the character profile, relationship tone, and the user's requested intent. Infer conversational subtext. Produce exactly 4 distinct, natural English options that a real young adult could type. They should preserve what the user wants to communicate rather than translating word-for-word. Keep them concise unless context genuinely needs more. Avoid polished quote-card banter, therapy language, purple prose, repetitive one-liners, and over-clever jokes. Do not invent actions, feelings, thoughts, or facts for the user. If the user supplied a draft in Spanish or imperfect English, improve its meaning naturally without changing intent.
+  const history = Array.isArray(recentMessages) ? recentMessages.slice(-12).map((item) => ({speaker:cleanPromptValue(item?.speaker,80),text:cleanPromptValue(item?.text,1000)})).filter(x=>x.text) : [];
+  const draft=cleanPromptValue(userDraft,500), requestedIntent=cleanPromptValue(intent,80)||"ideas", custom=cleanPromptValue(customIntent,500);
+  const prompt=`You are Velvet Reply Companion for a Spanish-speaking user learning English inside a fictional roleplay chat. FIRST understand the character's latest message in context, including slang, sarcasm, flirting, indirectness, idioms and subtext. Explain it in simple natural Spanish without overclaiming hidden motives. THEN help the USER answer. Never write the character's next reply.
 
-INTENT MODES: ideas = useful context-aware ways to continue; playful = playful/teasing; dry = dry/sarcastic; flirty = subtle flirtation, not an instant confession; direct = clear/direct; custom = obey CUSTOM INTENT.
+MODES: understand = prioritize explanation and neutral reply choices; ideas = context-aware replies; playful; dry; flirty = subtle only; direct; custom = obey Spanish/English instruction. If English is ambiguous, say so in explanation_es and give the most likely reading plus a brief alternate reading. Never invent user actions/feelings/facts. Preserve imperfect-English intent naturally, not word-for-word. Produce exactly 4 distinct, natural English options. Options must sound like real young adults, not quote-card banter.
 
-Return ONLY valid JSON in this exact shape: {"options":[{"text":"...","tone":"2-4 word English label","meaning_es":"short natural Spanish explanation of what it conveys and its social tone"}]}. Exactly four options. No markdown.
-
-CHARACTER CONTEXT
-${JSON.stringify({name:safeCharacter?.name, personality:safeCharacter?.personality, speechStyle:safeCharacter?.speechStyle, relationship:safeCharacter?.relationship, description:safeCharacter?.description}).slice(0,5000)}
-
-RECENT CHAT
-${JSON.stringify(history).slice(0,9000)}
-
-USER DRAFT
-${draft || "(none)"}
-
-REQUESTED MODE
-${requestedIntent}
-
-CUSTOM INTENT
-${custom || "(none)"}`;
-
-  const models = [...new Set([GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_MODEL].filter(Boolean))];
-  let lastError = "Velvet couldn't suggest replies.";
-  for (const model of models) {
-    try {
-      const response = await fetch(modelEndpoint(model), {
-        method: "POST", headers: geminiHeaders(apiKey),
-        body: JSON.stringify({ contents:[{role:"user",parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:900, responseMimeType:"application/json", thinkingConfig:{thinkingLevel:"LOW"}} }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) { lastError = data?.error?.message || lastError; continue; }
-      const parsed = JSON.parse(stripJsonFence(extractCandidateText(data)));
-      const options = Array.isArray(parsed?.options) ? parsed.options.slice(0,4).map((item) => ({
-        text: cleanPromptValue(item?.text, 500), tone: cleanPromptValue(item?.tone, 80), meaning_es: cleanPromptValue(item?.meaning_es, 300),
-      })).filter((item) => item.text) : [];
-      if (options.length >= 3) return json({ options });
-    } catch (error) { lastError = getErrorMessage(error); }
-  }
-  throw new Error(lastError);
+Return ONLY JSON: {"understanding":{"literal_es":"plain Spanish meaning of the character's latest line","explanation_es":"what they mean here in simple Spanish","subtext_es":"likely social tone/subtext, cautious if ambiguous","english_notes":[{"phrase":"useful English phrase/slang","meaning_es":"meaning here"}]},"options":[{"text":"natural English reply","tone":"short Spanish tone label","meaning_es":"what YOUR reply conveys in Spanish"}]}. Exactly 4 options. No markdown.
+CHARACTER ${JSON.stringify(safeCharacter).slice(0,5000)}
+RECENT CHAT ${JSON.stringify(history).slice(0,10000)}
+USER DRAFT ${draft||"(none)"}
+MODE ${requestedIntent}
+CUSTOM ${custom||"(none)"}`;
+  const models=[...new Set([GEMINI_FALLBACK_MODEL,GEMINI_EMERGENCY_MODEL,GEMINI_MODEL].filter(Boolean))]; let lastError="Velvet couldn't help with this message.";
+  for(const model of models){try{const response=await fetch(modelEndpoint(model),{method:"POST",headers:geminiHeaders(apiKey),body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1300,responseMimeType:"application/json",thinkingConfig:{thinkingLevel:"LOW"}}})}); const data=await response.json().catch(()=>({})); if(!response.ok){lastError=data?.error?.message||lastError;continue;} const parsed=JSON.parse(stripJsonFence(extractCandidateText(data))); const options=Array.isArray(parsed?.options)?parsed.options.slice(0,4).map(item=>({text:cleanPromptValue(item?.text,500),tone:cleanPromptValue(item?.tone,80),meaning_es:cleanPromptValue(item?.meaning_es,350)})).filter(x=>x.text):[]; if(options.length>=3)return json({understanding:parsed?.understanding||{},options});}catch(error){lastError=getErrorMessage(error)}} throw new Error(lastError);
 }
 
 async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
@@ -1892,6 +1861,9 @@ function buildNarrativePromptV3({
     relationship: conversation.relationship_state || {},
     scene: conversation.scene_state || {},
   });
+  const relationshipAttachmentV34936 = buildRelationshipAttachmentV34936({
+    character: configuredCharacter, relationship: loaded.relationship || loaded.conversation || {}, latestUserMessage: latestUserMessage?.content || "", recentCharacterReplies: recentCharacterReplies || []
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2034,6 +2006,7 @@ ${humanMemoryPersonalHistoryV34933}
 ${humanEmotionNervousSystemV34934}
 
 ${independentAgencyDesireV34935}
+${relationshipAttachmentV34936}
 
 HUMAN SOCIAL INTELLIGENCE 3.49.32 · READ THE ROOM, NOT THE TROPE
 - Social meaning comes from context, relationship, audience, status, timing and uncertainty, not from romance tropes.
@@ -6504,6 +6477,7 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   const emotionIssuesForScore = humanEmotionNervousSystemV34934Issues(reply, latest, recent);
   if (emotionIssuesForScore.length) score -= Math.min(54, 22 + emotionIssuesForScore.length * 8);
   const agencyDesireIssuesForScore = independentAgencyDesireV34935Issues(reply, latest, recent);
+  const relationshipAttachmentIssuesForScore = relationshipAttachmentV34936Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
@@ -6576,6 +6550,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of humanMemoryPersonalHistoryV34933Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanEmotionNervousSystemV34934Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of independentAgencyDesireV34935Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of relationshipAttachmentV34936Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
     reply: text,
     recentCharacterReplies: options.recentCharacterReplies || [],
