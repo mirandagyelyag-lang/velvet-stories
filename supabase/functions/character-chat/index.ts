@@ -30,6 +30,7 @@ import { buildHumanEmotionNervousSystemV34934, humanEmotionNervousSystemV34934Is
 import { buildIndependentAgencyDesireV34935, independentAgencyDesireV34935Issues } from "./engine/independent-agency-desire-v34935.ts";
 import { buildRelationshipAttachmentV34936, relationshipAttachmentV34936Issues } from "./engine/relationship-attachment-v34936.ts";
 import { buildHumanSpontaneityAntiPatternV34937, humanSpontaneityAntiPatternV34937Issues } from "./engine/human-spontaneity-antipattern-v34937.ts";
+import { buildHumanKnowledgeUncertaintyV34938, humanKnowledgeUncertaintyV34938Issues } from "./engine/human-knowledge-uncertainty-v34938.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1871,6 +1872,14 @@ function buildNarrativePromptV3({
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character, scene: conversation.scene_state || {}, mind: conversation.intelligence_state?.character_mind || {},
   });
+  const humanKnowledgeUncertaintyV34938 = buildHumanKnowledgeUncertaintyV34938({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character, mind: conversation.intelligence_state?.character_mind || {}, scene: conversation.scene_state || {},
+    knowledgeLedger: conversation.intelligence_state?.knowledge_ledger || [],
+    memories: conversation.memories || conversation.intelligence_state?.memories || [],
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2016,6 +2025,7 @@ ${independentAgencyDesireV34935}
 ${relationshipAttachmentV34936}
 
 ${humanSpontaneityAntiPatternV34937}
+${humanKnowledgeUncertaintyV34938}
 
 HUMAN SOCIAL INTELLIGENCE 3.49.32 · READ THE ROOM, NOT THE TROPE
 - Social meaning comes from context, relationship, audience, status, timing and uncertainty, not from romance tropes.
@@ -5813,6 +5823,13 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "conflict_residue_erased",
   "vulnerability_hangover_erased",
   "third_party_relationship_mindread",
+  "knowledge_uncertainty_overconfident_inference",
+  "knowledge_uncertainty_private_mind_claim",
+  "knowledge_uncertainty_unrouted_public_knowledge",
+  "knowledge_uncertainty_perception_override",
+  "knowledge_uncertainty_assumed_shared_knowledge",
+  "knowledge_uncertainty_perfect_recall_performance",
+  "knowledge_uncertainty_hindsight_certainty",
 ]);
 
 // v2.11.0 NARRATIVE CORE REBUILD
@@ -5938,6 +5955,13 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "agency_automatic_pursuit",
   "agency_user_orbit_density",
   "agency_autonomy_theater",
+  "knowledge_uncertainty_overconfident_inference",
+  "knowledge_uncertainty_private_mind_claim",
+  "knowledge_uncertainty_unrouted_public_knowledge",
+  "knowledge_uncertainty_perception_override",
+  "knowledge_uncertainty_assumed_shared_knowledge",
+  "knowledge_uncertainty_perfect_recall_performance",
+  "knowledge_uncertainty_hindsight_certainty",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -6488,7 +6512,11 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   const agencyDesireIssuesForScore = independentAgencyDesireV34935Issues(reply, latest, recent);
   const relationshipAttachmentIssuesForScore = relationshipAttachmentV34936Issues(reply, latest, recent);
   const spontaneityIssuesForScore = humanSpontaneityAntiPatternV34937Issues(reply, latest, recent);
+  const knowledgeUncertaintyIssuesForScore = humanKnowledgeUncertaintyV34938Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
+  if (relationshipAttachmentIssuesForScore.length) score -= Math.min(56, 24 + relationshipAttachmentIssuesForScore.length * 8);
+  if (spontaneityIssuesForScore.length) score -= Math.min(56, 24 + spontaneityIssuesForScore.length * 8);
+  if (knowledgeUncertaintyIssuesForScore.length) score -= Math.min(58, 26 + knowledgeUncertaintyIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
   const latestWords = normalizeText(latest).split(/\s+/).filter(Boolean).length;
@@ -6562,6 +6590,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of independentAgencyDesireV34935Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of relationshipAttachmentV34936Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
     reply: text,
     recentCharacterReplies: options.recentCharacterReplies || [],
