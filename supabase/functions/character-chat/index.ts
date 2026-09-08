@@ -1864,7 +1864,10 @@ function buildNarrativePromptV3({
     scene: conversation.scene_state || {},
   });
   const relationshipAttachmentV34936 = buildRelationshipAttachmentV34936({
-    character: configuredCharacter, relationship: loaded.relationship || loaded.conversation || {}, latestUserMessage: latestUserMessage?.content || "", recentCharacterReplies: recentCharacterReplies || []
+    character,
+    relationship: conversation.relationship_state || conversation.relationship || {},
+    latestUserMessage: latestUserRecord?.content || "",
+    recentCharacterReplies: recentCharacterRepliesForVoice,
   });
   const humanSpontaneityAntiPatternV34937 = buildHumanSpontaneityAntiPatternV34937({
     latestUserMessage: latestUserRecord?.content || "",

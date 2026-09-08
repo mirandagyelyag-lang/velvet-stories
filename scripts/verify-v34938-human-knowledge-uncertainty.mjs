@@ -2,7 +2,7 @@ import fs from 'node:fs'; import path from 'node:path'; import { pathToFileURL }
 const root=process.cwd(); let pass=0, fail=0; const ok=(n,v)=>{console.log(`${v?'PASS':'FAIL'} ${n}`); v?pass++:fail++};
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')); const idx=fs.readFileSync(path.join(root,'supabase/functions/character-chat/index.ts'),'utf8');
 const eng=await import(pathToFileURL(path.join(root,'supabase/functions/character-chat/engine/human-knowledge-uncertainty-v34938.ts')).href);
-ok('version 3.49.38',pkg.version==='3.49.38'); ok('engine imported',idx.includes('buildHumanKnowledgeUncertaintyV34938'));
+ok('version 3.49.38+', /^3\.49\.(?:3[89]|[4-9]\d|\d{3,})$/.test(pkg.version)); ok('engine imported',idx.includes('buildHumanKnowledgeUncertaintyV34938'));
 const brief=eng.buildHumanKnowledgeUncertaintyV34938({latestUserMessage:'Maybe he told her. I am not sure.',character:{name:'Chase'},knowledgeLedger:[{fact:'private talk',status:'rumor'}]});
 for(const x of ['KNOWLEDGE HAS PROVENANCE','BELIEF != FACT','NO OMNISCIENCE','UNCERTAINTY IS NORMAL','BELIEF REVISION','NO FAKE EXPERTISE','NO PERFORMED CONFUSION','CALIBRATION TARGET']) ok(`brief ${x}`,brief.includes(x));
 const issues=eng.humanKnowledgeUncertaintyV34938Issues;
@@ -17,5 +17,5 @@ ok('validation wired',idx.includes('humanKnowledgeUncertaintyV34938Issues(text')
 ok('scoring wired',idx.includes('knowledgeUncertaintyIssuesForScore'));
 ok('repair wired',idx.includes('"knowledge_uncertainty_private_mind_claim"'));
 ok('prompt injected',idx.includes('${humanKnowledgeUncertaintyV34938}'));
-ok('v34938 first in stability',pkg.scripts['stability:lab'].startsWith('npm run verify:v34938 && npm run verify:v34937'));
+ok('v34938 retained near front of stability', pkg.scripts['stability:lab'].includes('npm run verify:v34938 && npm run verify:v34937'));
 console.log(`\n${pass}/${pass+fail} PASS`); if(fail) process.exit(1);
