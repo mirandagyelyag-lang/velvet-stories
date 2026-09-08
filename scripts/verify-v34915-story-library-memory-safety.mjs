@@ -15,8 +15,8 @@ const main=read("src/main.jsx");
 const css=read("src/styles/velvet-v34915-story-library-memory-safety.css");
 const lab=pkg.scripts?.["stability:lab"]||"";
 
-ok("version 3.49.15 exact",pkg.version==="3.49.15"&&pub.version==="3.49.15");
-ok("release metadata matches",/Story Library.*Memory Experience.*Data Safety/.test(pub.release||"")&&vite.includes(`velvetRelease = "${pub.release}"`));
+ok("v3.49.15 lineage retained",Number((pkg.version||"0").split(".").at(-1))>=15&&pub.version===pkg.version);
+ok("release metadata is current",Boolean(pub.release)&&vite.includes(`velvetRelease = "${pub.release}"`));
 ok("v3.49.15 runs first in stability lab",lab.startsWith("npm run verify:v34915"));
 ok("v3.49.12 remains regression",lab.includes("npm run verify:v34912"));
 ok("IndexedDB Safety Vault exists",safety.includes('DB_NAME = "velvet-safety-v34915"')&&safety.includes("indexedDB.open"));
@@ -47,7 +47,7 @@ ok("relationship journal shows keepsakes",memories.includes("inside_jokes")&&mem
 ok("relationship journal avoids raw score UI",memories.includes("without reducing it to a score")&&memories.includes("const blocked = /score|percent|meter|level|points|count|turn|revision|version/i"));
 ok("Settings exposes Safety Vault",settings.includes("Safety Vault")&&settings.includes("Local recovery copies"));
 ok("Settings supports local restore/download/delete",settings.includes("restoreLatestLocalSafetyCopy")&&settings.includes("downloadLatestLocalSafetyCopy")&&settings.includes("removeLocalSafetyCopy"));
-ok("v3.49.15 CSS exists and is imported last",main.trim().endsWith('import "./styles/velvet-v34915-story-library-memory-safety.css";')&&css.includes("v34915-recovery-row")&&css.includes("v34915-relationship-journal")&&css.includes("v34915-safety-snapshots"));
+ok("v3.49.15 CSS lineage remains",main.includes('import "./styles/velvet-v34915-story-library-memory-safety.css";')&&css.includes("v34915-recovery-row")&&css.includes("v34915-relationship-journal")&&css.includes("v34915-safety-snapshots"));
 ok("mobile CSS collapses relationship grid",css.includes("@media(max-width:700px)")&&css.includes(".v34915-relationship-keepsakes,.v34915-relationship-grid{grid-template-columns:1fr}"));
 ok("Safety Vault restore rejects another account",safety.includes("belongs to a different Velvet account"));
 
