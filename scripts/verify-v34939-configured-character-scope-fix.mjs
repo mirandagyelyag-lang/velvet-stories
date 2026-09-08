@@ -2,7 +2,7 @@ import fs from "node:fs";
 const index = fs.readFileSync("supabase/functions/character-chat/index.ts", "utf8");
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const checks = [
-  [pkg.version === "3.49.39", "package version is 3.49.39"],
+  [/^3\.49\.(?:39|[4-9]\d|\d{3,})$/.test(pkg.version), "package version retains v3.49.39+ scope fix"],
   [index.includes("const configuredCharacter = applyConversationControls"), "request scope still defines configuredCharacter"],
   [!index.includes("character: configuredCharacter, relationship: loaded.relationship || loaded.conversation"), "prompt builder no longer leaks request-scope configuredCharacter/loaded"],
   [index.includes("character,\n    relationship: conversation.relationship_state || conversation.relationship || {}"), "relationship attachment uses prompt-local character/conversation"],

@@ -31,6 +31,7 @@ import { buildIndependentAgencyDesireV34935, independentAgencyDesireV34935Issues
 import { buildRelationshipAttachmentV34936, relationshipAttachmentV34936Issues } from "./engine/relationship-attachment-v34936.ts";
 import { buildHumanSpontaneityAntiPatternV34937, humanSpontaneityAntiPatternV34937Issues } from "./engine/human-spontaneity-antipattern-v34937.ts";
 import { buildHumanKnowledgeUncertaintyV34938, humanKnowledgeUncertaintyV34938Issues } from "./engine/human-knowledge-uncertainty-v34938.ts";
+import { buildNaturalDialogueResetV34940, naturalDialogueResetV34940Issues } from "./engine/natural-dialogue-reset-v34940.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1883,6 +1884,11 @@ function buildNarrativePromptV3({
     knowledgeLedger: conversation.intelligence_state?.knowledge_ledger || [],
     memories: conversation.memories || conversation.intelligence_state?.memories || [],
   });
+  const naturalDialogueResetV34940 = buildNaturalDialogueResetV34940({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2029,6 +2035,7 @@ ${relationshipAttachmentV34936}
 
 ${humanSpontaneityAntiPatternV34937}
 ${humanKnowledgeUncertaintyV34938}
+${naturalDialogueResetV34940}
 
 HUMAN SOCIAL INTELLIGENCE 3.49.32 · READ THE ROOM, NOT THE TROPE
 - Social meaning comes from context, relationship, audience, status, timing and uncertainty, not from romance tropes.
@@ -2714,7 +2721,14 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
   const issueDirections = {
     personality_performance_override: "Stop performing the character archetype. Answer the actual conversational job first, then let personality affect only wording and degree of disclosure. For a direct WHY question, give a grounded reason, partial truth, or referential evasion tied to the real prior action. Remove screenplay punchlines, mock duties, metaphorical pretexts, self-branding, and polished mini-monologues. Plain human speech is preferred.",
     human_mind_dialogue_artifice: "Rebuild from the live conversational job and character state. Keep private motive private unless disclosure is earned. Preserve active emotional residue, answer or meaningfully resist the actual topic, remove quote-card banter, unnecessary metaphors, therapy-speak, compulsory flirtation, repeated names, and polished hooks. Prefer the shortest ordinary line that still belongs to this character.",
-    human_cognition_stock_body_language: "Remove stock romance/body-language choreography. Keep at most one physically grounded action tied to the actual space or activity; plain dialogue is allowed.",
+
+    natural_dialogue_authored_banter: "Delete the clever/performed line and rewrite as ordinary speech. No labels for the user, no quotable zinger, no challenge-line. One plain conversational move.",
+    natural_dialogue_dead_callback: "Delete the recycled motif/callback. Answer the live beat without reviving old joke vocabulary.",
+    natural_dialogue_author_interpretation: "Remove authorial labels such as practiced/unbothered/guarded mask. If an action is necessary, show one concrete observable action only.",
+    natural_dialogue_meta_silence: "Remove narration about letting silence hang or not rushing to fill it. Silence does not need explanation.",
+    natural_dialogue_choreographed_coolness: "Remove slow-breath/lean-back coolness choreography. Prefer dialogue alone or one necessary concrete action.",
+    natural_dialogue_unearned_proximity: "Remove the automatic step closer/personal-space move unless the user explicitly established or invited that proximity.",
+    natural_dialogue_callback_loop: "Do not reuse a recent motif merely for continuity. Use fresh, literal language for the current beat.",    human_cognition_stock_body_language: "Remove stock romance/body-language choreography. Keep at most one physically grounded action tied to the actual space or activity; plain dialogue is allowed.",
     human_cognition_auto_flirtification: "Do not convert ordinary attention, proximity, tension, eye contact, or conflict into romance/sexual electricity without grounded relationship evidence. Restore the actual social meaning.",
     human_cognition_response_weight: "Match the size of the reply to the size of the beat. Cut explanation, narration, and performance until only what a person would naturally say/do remains.",
     human_cognition_compulsory_hook: "Remove the artificial follow-up hook/question. Let the turn land naturally unless the character genuinely needs information.",
@@ -5670,6 +5684,13 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
+  "natural_dialogue_dead_callback",
+  "natural_dialogue_authored_banter",
+  "natural_dialogue_author_interpretation",
+  "natural_dialogue_meta_silence",
+  "natural_dialogue_choreographed_coolness",
+  "natural_dialogue_unearned_proximity",
+  "natural_dialogue_callback_loop",
   "context_dump_exposition_v346",
   // SPEED + QUALITY: second model calls are reserved for mistakes the user
   // would experience as broken canon, broken agency, or a direct non-answer.
@@ -5840,6 +5861,13 @@ const REPAIR_TRIGGER_ISSUES = new Set([
 // surface/save the rejected draft merely because the one repair call timed out.
 const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
+  "natural_dialogue_dead_callback",
+  "natural_dialogue_authored_banter",
+  "natural_dialogue_author_interpretation",
+  "natural_dialogue_meta_silence",
+  "natural_dialogue_choreographed_coolness",
+  "natural_dialogue_unearned_proximity",
+  "natural_dialogue_callback_loop",
   "context_dump_exposition_v346",
   "user_staged_scene_retcon",
   "distance_boundary_override",
@@ -6516,9 +6544,11 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   const relationshipAttachmentIssuesForScore = relationshipAttachmentV34936Issues(reply, latest, recent);
   const spontaneityIssuesForScore = humanSpontaneityAntiPatternV34937Issues(reply, latest, recent);
   const knowledgeUncertaintyIssuesForScore = humanKnowledgeUncertaintyV34938Issues(reply, latest, recent);
+  const naturalDialogueIssuesForScore = naturalDialogueResetV34940Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (relationshipAttachmentIssuesForScore.length) score -= Math.min(56, 24 + relationshipAttachmentIssuesForScore.length * 8);
   if (spontaneityIssuesForScore.length) score -= Math.min(56, 24 + spontaneityIssuesForScore.length * 8);
+  if (naturalDialogueIssuesForScore.length) score -= Math.min(70, 36 + naturalDialogueIssuesForScore.length * 10);
   if (knowledgeUncertaintyIssuesForScore.length) score -= Math.min(58, 26 + knowledgeUncertaintyIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
@@ -6594,6 +6624,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of relationshipAttachmentV34936Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
     reply: text,
     recentCharacterReplies: options.recentCharacterReplies || [],
