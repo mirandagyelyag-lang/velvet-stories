@@ -23,6 +23,7 @@ import { performanceMobileV348Issues } from "./engine/performance-mobile-v348.ts
 import { instantStoryLooksComplete } from "./engine/instant-story-v3492.ts";
 import { buildVoiceAuditDirectiveV34911, voiceAuditV34911Issues } from "./engine/character-voice-audit-v34911.ts";
 import { buildHumanCognitionBriefV34930, humanCognitionV34930Issues } from "./engine/human-cognition-pipeline-v34930.ts";
+import { buildIndividualHumanPsycheV34931, individualHumanPsycheV34931Issues } from "./engine/individual-human-psyche-v34931.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1837,6 +1838,14 @@ function buildNarrativePromptV3({
     scene: conversation.scene_state || {},
     relationship: conversation.relationship_state || {},
   });
+  const individualHumanPsycheV34931 = buildIndividualHumanPsycheV34931({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+    mind: conversation.intelligence_state?.character_mind || {},
+    behavior: conversation.intelligence_state?.human_behavior_state || {},
+    relationship: conversation.relationship_state || {},
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -1969,6 +1978,19 @@ function buildNarrativePromptV3({
 ${storyContractPrompt(turnContract as any)}
 
 ${humanCognitionBriefV34930}
+
+${individualHumanPsycheV34931}
+
+INDIVIDUAL HUMAN PSYCHE 3.49.31 · DIFFERENT PEOPLE, DIFFERENT MINDS
+- Do not humanize every character into the same casual voice. Human realism includes individual asymmetry.
+- Derive response behavior from creator canon + grounded history + current private state. Archetype labels never dictate a line.
+- A defense mechanism changes disclosure, not causality. A guarded jealous person may say less; they do not invent an unrelated comedy premise.
+- Let characters differ in what they notice, remember, admit, misunderstand, ask, avoid, joke about, and leave unsaid.
+- Preserve stable tendencies while allowing context-dependent exceptions. Consistency is a distribution, not repetition.
+- Do not force verbal quirks, filler, stutters, profanity, pet names, nicknames, catchphrases, or humor to prove individuality.
+- Never make all attractive/confident characters converge on smirks, teasing, rhetorical questions, possessiveness, or polished banter.
+- Character voice is the consequence of mind + history + situation, not decorative vocabulary.
+- Prefer a response that only THIS character would choose for THIS reason, even when the wording is ordinary.
 
 HUMAN COGNITION PIPELINE 3.49.30 · 30 HUMANIZATION LAWS
 1. PRIVATE MIND MODEL: maintain grounded beliefs, motive, emotion/residue, social goal, fear/inhibition, attention target and impulse; never expose the scaffold.
@@ -2635,6 +2657,11 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     human_cognition_compulsory_hook: "Remove the artificial follow-up hook/question. Let the turn land naturally unless the character genuinely needs information.",
     human_cognition_mindread: "Downgrade claimed knowledge of the user's inner state to uncertainty or remove it. Characters can infer, suspect, ask, or be wrong; they cannot know private user feelings/motives.",
     human_cognition_semantic_repetition: "Choose a different conversational maneuver, not merely different wording. Do not repeat the same curiosity/deflection/quip tactic used in recent turns.",
+    individual_psyche_generic_archetype_line: "Remove the generic charismatic-roleplay line. Reconstruct this specific character’s motive, disclosure style and conversational rhythm; ordinary wording is preferred.",
+    individual_psyche_repeated_mannerism: "Do not reuse the same stock mannerism. Either use a physically grounded different action or no action at all.",
+    individual_psyche_repeated_opening: "Change the conversational entry pattern, not just synonyms. Let this character respond from the current beat rather than a repeated sentence skeleton.",
+    individual_psyche_overconfident_inference: "Respect uncertainty. This character may suspect, ask, or be wrong; do not turn the user’s uncertainty into certainty.",
+    individual_psyche_self_branding: "Remove self-branding/catchphrase dialogue. Let personality emerge from the choice and wording rather than announcing the archetype.",
     direct_causal_answer_miss: "Answer the user’s direct causal question about the specific prior action. Reconstruct the recent event chain and anchor the answer to the actual grounded trigger. The character may minimize, conceal, or deflect their motive, but the deflection must remain about that trigger. Do not answer with Okay, an unrelated witty excuse, or a callback to an older joke/keyword. Plain specific dialogue is allowed and preferred over a punchline.",
     pragmatic_sarcasm_miss: "Read the user utterance as a SOCIAL SPEECH ACT, not a bag of nouns. For an obvious ironic contradiction such as yeah-and-I-am-X, respond to the implied disbelief/tease about YOUR immediately preceding claim. Do not repeat X, extend its metaphor, introduce a third comparison target, explain the joke, or collapse to Okay. Use this character’s natural timing: a short dry concession, mock offense, shameless doubling-down, amused deflection, or other profile-owned response. Never invent a user gesture or emotion.",
     invented_precise_schedule: "Remove invented exact clock/day scheduling. Preserve only the broad routine or time anchor actually established. If exact time is unknown, keep it unknown.",
@@ -5621,6 +5648,11 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "human_cognition_compulsory_hook",
   "human_cognition_mindread",
   "human_cognition_semantic_repetition",
+  "individual_psyche_generic_archetype_line",
+  "individual_psyche_repeated_mannerism",
+  "individual_psyche_repeated_opening",
+  "individual_psyche_overconfident_inference",
+  "individual_psyche_self_branding",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
   "unsupported_concrete_canon_invention",
@@ -5781,6 +5813,11 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "human_cognition_compulsory_hook",
   "human_cognition_mindread",
   "human_cognition_semantic_repetition",
+  "individual_psyche_generic_archetype_line",
+  "individual_psyche_repeated_mannerism",
+  "individual_psyche_repeated_opening",
+  "individual_psyche_overconfident_inference",
+  "individual_psyche_self_branding",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -6320,6 +6357,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (intentIssuesForScore.includes("human_mind_dialogue_artifice")) score -= 38;
   const cognitionIssuesForScore = humanCognitionV34930Issues(reply, latest, recent);
   if (cognitionIssuesForScore.length) score -= Math.min(48, 16 + cognitionIssuesForScore.length * 8);
+  const psycheIssuesForScore = individualHumanPsycheV34931Issues(reply, latest, recent);
+  if (psycheIssuesForScore.length) score -= Math.min(46, 18 + psycheIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
   const latestWords = normalizeText(latest).split(/\s+/).filter(Boolean).length;
@@ -6386,6 +6425,7 @@ function validateNarrativeReply(reply = "", options = {}) {
     intent: options.turnContract?.characterIntentEngine || {},
   })) issues.push(issue);
   for (const issue of humanCognitionV34930Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of individualHumanPsycheV34931Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
     reply: text,
     recentCharacterReplies: options.recentCharacterReplies || [],

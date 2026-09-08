@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const velvetVersion = pkg.version;
-const velvetRelease = "Human Cognition Pipeline + Direct Answer Lock";
+const velvetRelease = "Individual Human Psyche + Direct Answer Lock";
 const velvetBuildTime = new Date().toISOString();
 
 export default defineConfig(({ mode }) => {
