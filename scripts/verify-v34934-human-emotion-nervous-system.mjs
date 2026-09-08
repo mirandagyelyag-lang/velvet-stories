@@ -4,7 +4,7 @@ const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),
 const src=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
 const eng=fs.readFileSync(new URL('../supabase/functions/character-chat/engine/human-emotion-nervous-system-v34934.ts',import.meta.url),'utf8');
 let n=0,ok=0;const check=(a,v)=>{n++;if(v){ok++;console.log('PASS',a)}else{console.error('FAIL',a);process.exitCode=1}};
-check('version 3.49.34',pkg.version==='3.49.34');
+check('version 3.49.34+', /^3\.49\.(?:3[4-9]|[4-9]\d|\d{3,})$/.test(pkg.version));
 for(const x of ['EMOTIONAL CAUSALITY','INERTIA','GRADIENTS','MIXED AFFECT','PRIMARY / SECONDARY','REGULATION','RECOVERY CURVE','THRESHOLDS','ACCUMULATION','BODY SIGNALS ARE SPARSE','SOCIAL MASK','VULNERABILITY HANGOVER','ANGER REALISM','JEALOUSY REALISM','ATTRACTION REALISM','EMPATHY WITHOUT THERAPY-SPEAK','EMOTIONAL MISREADS','BASELINE RETURN']) check(x,eng.includes(x));
 const b=buildHumanEmotionNervousSystemV34934({latestUserMessage:'Why did you come over?',mind:{current_emotion:'mild jealousy mixed with embarrassment',emotion_trigger:'saw her talking to someone',behavioral_pressure:'curious but guarded'}});
 check('hidden brief preserves mixed state',b.includes('mild jealousy mixed with embarrassment'));
