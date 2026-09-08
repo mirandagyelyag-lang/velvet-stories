@@ -33,6 +33,7 @@ import { buildHumanSpontaneityAntiPatternV34937, humanSpontaneityAntiPatternV349
 import { buildHumanKnowledgeUncertaintyV34938, humanKnowledgeUncertaintyV34938Issues } from "./engine/human-knowledge-uncertainty-v34938.ts";
 import { buildNaturalDialogueResetV34940, naturalDialogueResetV34940Issues } from "./engine/natural-dialogue-reset-v34940.ts";
 import { buildPlainSpeechFirstV34941, plainSpeechFirstV34941Issues } from "./engine/plain-speech-first-v34941.ts";
+import { buildLeanDialogueCoreV34942, leanDialogueCoreV34942Issues } from "./engine/lean-dialogue-core-v34942.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1895,6 +1896,11 @@ function buildNarrativePromptV3({
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
+  const leanDialogueCoreV34942 = buildLeanDialogueCoreV34942({
+    latestUserMessage: latestUserRecord?.content || "", character,
+    relationship: conversation.relationship_state || {}, scene: conversation.scene_state || {},
+    knowledgeLedger: conversation.intelligence_state?.knowledge_ledger || [],
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2026,23 +2032,9 @@ function buildNarrativePromptV3({
 
 ${storyContractPrompt(turnContract as any)}
 
-${humanCognitionBriefV34930}
+${leanDialogueCoreV34942}
 
-${individualHumanPsycheV34931}
-
-${humanSocialIntelligenceV34932}
-
-${humanMemoryPersonalHistoryV34933}
-
-${humanEmotionNervousSystemV34934}
-
-${independentAgencyDesireV34935}
-${relationshipAttachmentV34936}
-
-${humanSpontaneityAntiPatternV34937}
-${humanKnowledgeUncertaintyV34938}
-${plainSpeechFirstV34941}
-${naturalDialogueResetV34940}
+PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line.
 
 HUMAN SOCIAL INTELLIGENCE 3.49.32 · READ THE ROOM, NOT THE TROPE
 - Social meaning comes from context, relationship, audience, status, timing and uncertainty, not from romance tropes.
@@ -5696,6 +5688,10 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // continuity merging protects stored canon. Only structural failures or severe
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
+  "lean_core_causal_nonanswer",
+  "lean_core_causal_quip_substitution",
+  "lean_core_performed_quip",
+  "lean_core_performed_body_language",
   ...BLOCKING_NARRATIVE_ISSUES,
   "plain_speech_performed_pseudo_choice",
   "plain_speech_writerly_dismissal",
@@ -5879,6 +5875,10 @@ const REPAIR_TRIGGER_ISSUES = new Set([
 // These are not cosmetic preferences. If a draft violates one of these, never
 // surface/save the rejected draft merely because the one repair call timed out.
 const HARD_REPAIR_REQUIRED_ISSUES = new Set([
+  "lean_core_causal_nonanswer",
+  "lean_core_causal_quip_substitution",
+  "lean_core_performed_quip",
+  "lean_core_performed_body_language",
   ...BLOCKING_NARRATIVE_ISSUES,
   "plain_speech_performed_pseudo_choice",
   "plain_speech_writerly_dismissal",
@@ -6570,11 +6570,13 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   const spontaneityIssuesForScore = humanSpontaneityAntiPatternV34937Issues(reply, latest, recent);
   const knowledgeUncertaintyIssuesForScore = humanKnowledgeUncertaintyV34938Issues(reply, latest, recent);
   const naturalDialogueIssuesForScore = naturalDialogueResetV34940Issues(reply, latest, recent);
+  const leanCoreIssuesForScore = leanDialogueCoreV34942Issues(reply, latest);
   const plainSpeechIssuesForScore = plainSpeechFirstV34941Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (relationshipAttachmentIssuesForScore.length) score -= Math.min(56, 24 + relationshipAttachmentIssuesForScore.length * 8);
   if (spontaneityIssuesForScore.length) score -= Math.min(56, 24 + spontaneityIssuesForScore.length * 8);
   if (naturalDialogueIssuesForScore.length) score -= Math.min(70, 36 + naturalDialogueIssuesForScore.length * 10);
+  if (leanCoreIssuesForScore.length) score -= Math.min(80, 40 + leanCoreIssuesForScore.length * 12);
   if (plainSpeechIssuesForScore.length) score -= Math.min(82, 48 + plainSpeechIssuesForScore.length * 12);
   if (knowledgeUncertaintyIssuesForScore.length) score -= Math.min(58, 26 + knowledgeUncertaintyIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
@@ -6651,6 +6653,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of relationshipAttachmentV34936Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of leanDialogueCoreV34942Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({

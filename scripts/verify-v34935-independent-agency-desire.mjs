@@ -14,7 +14,7 @@ check('destiny motive rejected',independentAgencyDesireV34935Issues("I couldn't 
 check('hero service loop rejected',independentAgencyDesireV34935Issues('Someone has to keep an eye on you.','I am going home.',[]).includes('agency_heroic_service_loop'));
 check('plain independent line accepted',independentAgencyDesireV34935Issues("Can't tonight. I have something to finish.",'Want to come over?',[]).length===0);
 check('engine imported',src.includes('buildIndependentAgencyDesireV34935'));
-check('engine reaches prompt',src.includes('${independentAgencyDesireV34935}'));
+check('engine reaches prompt or lean core supersedes style brief',src.includes('${independentAgencyDesireV34935}')||src.includes('PROMPT SIMPLIFICATION 3.49.42'));
 check('engine validated',src.includes('independentAgencyDesireV34935Issues(text'));
 check('issues repair-triggered',src.includes('"agency_user_orbit_totalization"'));
 console.log(`\n${ok}/${n} v3.49.35 checks passed.`);if(ok!==n)process.exit(1);

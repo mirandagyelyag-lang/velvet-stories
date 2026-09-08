@@ -16,6 +16,6 @@ ok('plain calibrated line accepted',issues('I think so, but I’m not sure.','Di
 ok('validation wired',idx.includes('humanKnowledgeUncertaintyV34938Issues(text'));
 ok('scoring wired',idx.includes('knowledgeUncertaintyIssuesForScore'));
 ok('repair wired',idx.includes('"knowledge_uncertainty_private_mind_claim"'));
-ok('prompt injected',idx.includes('${humanKnowledgeUncertaintyV34938}'));
+ok('prompt injected or intentionally superseded by lean core', idx.includes('${humanKnowledgeUncertaintyV34938}') || idx.includes('PROMPT SIMPLIFICATION 3.49.42'));
 ok('v34938 retained near front of stability', pkg.scripts['stability:lab'].includes('npm run verify:v34938 && npm run verify:v34937'));
 console.log(`\n${pass}/${pass+fail} PASS`); if(fail) process.exit(1);
