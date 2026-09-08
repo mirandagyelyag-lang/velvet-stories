@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.49.43",
+  "version": "3.49.44",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -150,7 +150,8 @@
     "verify:v34940": "node --experimental-strip-types scripts/verify-v34940-natural-dialogue-reset.mjs",
     "verify:v34941": "node --experimental-strip-types scripts/verify-v34941-plain-speech-first.mjs",
     "verify:v34942": "node --experimental-strip-types scripts/verify-v34942-lean-dialogue-core.mjs",
-    "verify:v34943": "node --experimental-strip-types scripts/verify-v34943-target-aware-dialogue.mjs"
+    "verify:v34943": "node --experimental-strip-types scripts/verify-v34943-target-aware-dialogue.mjs",
+    "verify:v34944": "node --experimental-strip-types scripts/verify-v34944-spoken-naturalness.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

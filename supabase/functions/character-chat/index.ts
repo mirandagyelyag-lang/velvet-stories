@@ -35,6 +35,7 @@ import { buildNaturalDialogueResetV34940, naturalDialogueResetV34940Issues } fro
 import { buildPlainSpeechFirstV34941, plainSpeechFirstV34941Issues } from "./engine/plain-speech-first-v34941.ts";
 import { buildLeanDialogueCoreV34942, leanDialogueCoreV34942Issues } from "./engine/lean-dialogue-core-v34942.ts";
 import { buildTargetAwareDialogueV34943, targetAwareDialogueV34943Issues } from "./engine/target-aware-dialogue-v34943.ts";
+import { buildSpokenNaturalnessV34944, spokenNaturalnessV34944Issues } from "./engine/spoken-naturalness-v34944.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1907,6 +1908,10 @@ function buildNarrativePromptV3({
     character,
     recentContext: recentCharacterRepliesForVoice?.slice(-2).join(" ") || "",
   });
+  const spokenNaturalnessV34944 = buildSpokenNaturalnessV34944({
+    latestUserMessage: latestUserRecord?.content || "",
+    character,
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2041,6 +2046,8 @@ ${storyContractPrompt(turnContract as any)}
 ${leanDialogueCoreV34942}
 
 ${targetAwareDialogueV34943}
+
+${spokenNaturalnessV34944}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line.
 
@@ -6585,6 +6592,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   const leanCoreIssuesForScore = leanDialogueCoreV34942Issues(reply, latest);
   const targetAwareIssuesForScore = targetAwareDialogueV34943Issues(reply, latest);
   score -= targetAwareIssuesForScore.length * 18;
+  const spokenNaturalnessIssuesForScore = spokenNaturalnessV34944Issues(reply, latest);
+  if (spokenNaturalnessIssuesForScore.length) score -= Math.min(48, 20 + spokenNaturalnessIssuesForScore.length * 10);
   const plainSpeechIssuesForScore = plainSpeechFirstV34941Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (relationshipAttachmentIssuesForScore.length) score -= Math.min(56, 24 + relationshipAttachmentIssuesForScore.length * 8);
@@ -6669,6 +6678,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of leanDialogueCoreV34942Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of targetAwareDialogueV34943Issues(text, options.latestUserMessage || "")) issues.push(issue);
+  for (const issue of spokenNaturalnessV34944Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
