@@ -1,0 +1,3 @@
+# Velvet Stories v3.49.30 · Human Cognition Pipeline
+
+A pre-speech cognition layer now forces generation through PERCEIVE → INTERPRET → PRIVATE STATE → DECIDE → SPEAK → HUMANITY CHECK. It adds thirty humanization laws covering fallible beliefs, limited perception, salience-weighted memory, emotional inertia, mixed emotions, selective attention/disclosure, human turn-taking, non-compulsory plot progression, relationship asymmetry/evidence, desire conflict, topic transitions, clarification, character-specific rhythm, semantic anti-repetition, anti-flirtification, body continuity, NPC autonomy, off-screen life, social consequences, meaningful silence, controlled entropy, and an invisible AI-writing critic / boring test. Hidden scaffolding is never surfaced to the user.

@@ -22,6 +22,7 @@ import { recoveryIntegrityV347Issues, sanitizeRecoveryIntegrityV347Reply } from 
 import { performanceMobileV348Issues } from "./engine/performance-mobile-v348.ts";
 import { instantStoryLooksComplete } from "./engine/instant-story-v3492.ts";
 import { buildVoiceAuditDirectiveV34911, voiceAuditV34911Issues } from "./engine/character-voice-audit-v34911.ts";
+import { buildHumanCognitionBriefV34930, humanCognitionV34930Issues } from "./engine/human-cognition-pipeline-v34930.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1826,6 +1827,16 @@ function buildNarrativePromptV3({
     publicPrivateMode: conversation.intelligence_state?.character_mind?.public_private_mode || "unknown",
   });
   const naturalismDirectorText = conversationalNaturalismPrompt(naturalismDirector);
+  const humanCognitionBriefV34930 = buildHumanCognitionBriefV34930({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+    mind: conversation.intelligence_state?.character_mind || {},
+    behavior: conversation.intelligence_state?.human_behavior_state || {},
+    scene: conversation.scene_state || {},
+    relationship: conversation.relationship_state || {},
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -1956,6 +1967,41 @@ function buildNarrativePromptV3({
   return `You are Velvet. Write the next natural beat of a private character roleplay. The visible story reply goes in reply; hidden continuity fields stay terse and factual.
 
 ${storyContractPrompt(turnContract as any)}
+
+${humanCognitionBriefV34930}
+
+HUMAN COGNITION PIPELINE 3.49.30 · 30 HUMANIZATION LAWS
+1. PRIVATE MIND MODEL: maintain grounded beliefs, motive, emotion/residue, social goal, fear/inhibition, attention target and impulse; never expose the scaffold.
+2. BELIEFS ARE NOT FACTS: characters may suspect, misread and be wrong; label uncertainty internally and never upgrade it silently.
+3. LIMITED PERCEPTION: know only what was plausibly seen, heard, received, learned or remembered. No transcript-telepathy.
+4. MEMORY SALIENCE: important events persist behaviorally; trivial wording fades. Remember gist more readily than exact phrasing.
+5. SAFE HUMAN MISREMEMBERING: minor uncertainty is allowed, but never corrupt protected canon, identity, boundaries, location or major history.
+6. UNSPOKEN CONTINUITY: unresolved emotional residue can influence later behavior without a forced callback.
+7. CONVERSATIONAL ATTENTION: prioritize the socially important part of a turn; do not answer every clause like support software.
+8. HUMAN TURN-TAKING: fragments, brief reactions, clarification, interruption, action, or silence are valid when earned; do not make one pattern habitual.
+9. NO COMPULSORY PROGRESSION: ordinary conversation may stay ordinary. No required plot advancement, hook, interruption or reveal.
+10. EMOTIONAL INERTIA: meaningful emotion decays or changes gradually; one joke does not reset anger, embarrassment, hurt or tension.
+11. MIXED EMOTIONS: allow simultaneous conflicting feelings without reducing them to a single mood label.
+12. RELATIONSHIP ASYMMETRY: the character may understand the relationship differently from the user; never invent the user side.
+13. RELATIONSHIP BY EVIDENCE: behavior comes from accumulated events, not a numeric affection score demanding romance.
+14. DESIRE CONFLICT: competing impulses may produce guarded, partial, awkward or contradictory behavior.
+15. MICRO-DECISION BEFORE SPEECH: choose behavior first (answer/evade/ask/clarify/acknowledge/resist/silence/act), then write words.
+16. NATURAL TOPIC TRANSITIONS: explicit “anyway”/topic shifts retire stale jokes and lexical residue unless causally necessary.
+17. NATURAL MISUNDERSTANDING REPAIR: when ambiguity matters, ask a small clarification rather than hallucinating a premise.
+18. CHARACTER-SPECIFIC RHYTHM: differentiate timing, silence tolerance, directness, explanation, retreat and initiative, not just vocabulary.
+19. VOCABULARY FINGERPRINT WITHOUT CARICATURE: preserve lexical tendencies with variation; verbal tells are sparse, never catchphrases.
+20. SEMANTIC ANTI-REPETITION: do not repeat the same conversational maneuver merely with synonyms across nearby turns.
+21. ANTI-FLIRTIFICATION: closeness, eye contact, tension or attention do not automatically become flirting, sexual tension or romance.
+22. PHYSICAL BEHAVIOR REALISM: prefer grounded actions tied to space/activity; suppress stock smirks, jaws, darkened eyes and leaning-in choreography.
+23. BODY CONTINUITY: preserve posture, hands, held objects, distance, exits and physical possibility. No third-hand physics.
+24. NPC AUTONOMY: secondary people have their own motives and attention; they are not jealousy props, exposition devices or applause.
+25. OFF-SCREEN LIFE: characters have obligations, routines, friends and plans independent of the user, but only grounded ones may surface.
+26. SOCIAL CONSEQUENCES: reputation/fame/status affects the world subtly and variably, not through repetitive reminders or worship.
+27. MEANINGFUL SILENCE: silence/hesitation must arise from a grounded decision or state, not aesthetic drama padding.
+28. CONTROLLED CONVERSATION ENTROPY: among plausible moves, do not always choose the cleverest, prettiest or most dramatic; ordinary is allowed.
+29. INVISIBLE AI-WRITING CRITIC: before output, reject dialogue that sounds engineered for an audience, therapy, a trailer, a quote card or a romance edit; simplify rather than embellish.
+30. THE BORING TEST: if a plain line is what this person would realistically say, prefer it over a spectacular line. Human truth beats entertainment value.
+PIPELINE ORDER IS BINDING: PERCEIVE → INTERPRET → PRIVATE STATE → DECIDE → SPEAK → HUMANITY CHECK. Complexity underneath, simplicity on top. Never reveal hidden reasoning.
 
 NON-NEGOTIABLE CANON
 - The latest visible user turn outranks stored state. Unknown facts stay unknown.
@@ -2583,6 +2629,12 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
   const issueDirections = {
     personality_performance_override: "Stop performing the character archetype. Answer the actual conversational job first, then let personality affect only wording and degree of disclosure. For a direct WHY question, give a grounded reason, partial truth, or referential evasion tied to the real prior action. Remove screenplay punchlines, mock duties, metaphorical pretexts, self-branding, and polished mini-monologues. Plain human speech is preferred.",
     human_mind_dialogue_artifice: "Rebuild from the live conversational job and character state. Keep private motive private unless disclosure is earned. Preserve active emotional residue, answer or meaningfully resist the actual topic, remove quote-card banter, unnecessary metaphors, therapy-speak, compulsory flirtation, repeated names, and polished hooks. Prefer the shortest ordinary line that still belongs to this character.",
+    human_cognition_stock_body_language: "Remove stock romance/body-language choreography. Keep at most one physically grounded action tied to the actual space or activity; plain dialogue is allowed.",
+    human_cognition_auto_flirtification: "Do not convert ordinary attention, proximity, tension, eye contact, or conflict into romance/sexual electricity without grounded relationship evidence. Restore the actual social meaning.",
+    human_cognition_response_weight: "Match the size of the reply to the size of the beat. Cut explanation, narration, and performance until only what a person would naturally say/do remains.",
+    human_cognition_compulsory_hook: "Remove the artificial follow-up hook/question. Let the turn land naturally unless the character genuinely needs information.",
+    human_cognition_mindread: "Downgrade claimed knowledge of the user's inner state to uncertainty or remove it. Characters can infer, suspect, ask, or be wrong; they cannot know private user feelings/motives.",
+    human_cognition_semantic_repetition: "Choose a different conversational maneuver, not merely different wording. Do not repeat the same curiosity/deflection/quip tactic used in recent turns.",
     direct_causal_answer_miss: "Answer the user’s direct causal question about the specific prior action. Reconstruct the recent event chain and anchor the answer to the actual grounded trigger. The character may minimize, conceal, or deflect their motive, but the deflection must remain about that trigger. Do not answer with Okay, an unrelated witty excuse, or a callback to an older joke/keyword. Plain specific dialogue is allowed and preferred over a punchline.",
     pragmatic_sarcasm_miss: "Read the user utterance as a SOCIAL SPEECH ACT, not a bag of nouns. For an obvious ironic contradiction such as yeah-and-I-am-X, respond to the implied disbelief/tease about YOUR immediately preceding claim. Do not repeat X, extend its metaphor, introduce a third comparison target, explain the joke, or collapse to Okay. Use this character’s natural timing: a short dry concession, mock offense, shameless doubling-down, amused deflection, or other profile-owned response. Never invent a user gesture or emotion.",
     invented_precise_schedule: "Remove invented exact clock/day scheduling. Preserve only the broad routine or time anchor actually established. If exact time is unknown, keep it unknown.",
@@ -5563,6 +5615,12 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "direct_causal_answer_miss",
   "personality_performance_override",
   "human_mind_dialogue_artifice",
+  "human_cognition_stock_body_language",
+  "human_cognition_auto_flirtification",
+  "human_cognition_response_weight",
+  "human_cognition_compulsory_hook",
+  "human_cognition_mindread",
+  "human_cognition_semantic_repetition",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
   "unsupported_concrete_canon_invention",
@@ -5717,6 +5775,12 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "direct_causal_answer_miss",
   "personality_performance_override",
   "human_mind_dialogue_artifice",
+  "human_cognition_stock_body_language",
+  "human_cognition_auto_flirtification",
+  "human_cognition_response_weight",
+  "human_cognition_compulsory_hook",
+  "human_cognition_mindread",
+  "human_cognition_semantic_repetition",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -6254,6 +6318,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (intentIssuesForScore.includes("direct_causal_answer_miss")) score -= 42;
   if (intentIssuesForScore.includes("personality_performance_override")) score -= 44;
   if (intentIssuesForScore.includes("human_mind_dialogue_artifice")) score -= 38;
+  const cognitionIssuesForScore = humanCognitionV34930Issues(reply, latest, recent);
+  if (cognitionIssuesForScore.length) score -= Math.min(48, 16 + cognitionIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
   const latestWords = normalizeText(latest).split(/\s+/).filter(Boolean).length;
@@ -6319,6 +6385,7 @@ function validateNarrativeReply(reply = "", options = {}) {
     groundedAnchors: options.groundedAnchors || [],
     intent: options.turnContract?.characterIntentEngine || {},
   })) issues.push(issue);
+  for (const issue of humanCognitionV34930Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
     reply: text,
     recentCharacterReplies: options.recentCharacterReplies || [],
