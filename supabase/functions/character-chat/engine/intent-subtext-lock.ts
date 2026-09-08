@@ -301,6 +301,20 @@ export function hasPersonalityPerformanceOverride(reply = "", latestUserMessage 
   return false;
 }
 
+export function hasHumanMindDialogueArtifice(reply: string, latestUserMessage = ""): boolean {
+  const text = normalized(reply);
+  const latest = normalized(latestUserMessage);
+  if (!text) return false;
+  const spoken = dialogueOnly(reply).join(" ").trim() || text;
+  const userNameHits = (spoken.match(/\bantonia\b/g) || []).length;
+  const therapy = /\b(?:your feelings are valid|hold space|safe space|process (?:this|that|your feelings)|communicate your needs|set boundaries|emotional bandwidth)\b/.test(spoken);
+  const quoteCard = /\b(?:you really are something|careful what you wish for|you have no idea what you do to me|you're playing with fire|don't tempt me|someone has to keep you on your toes|where's the fun in that)\b/.test(spoken);
+  const trailer = /\b(?:this isn't over|you haven't seen anything yet|we're just getting started|game on)\b/.test(spoken);
+  const forcedHook = /(?:,|\.)?\s*(?:or are you|aren't you|wouldn't you agree|don't you think)\??$/.test(spoken) && !/[?]\s*$/.test(latest);
+  const tooManyNames = userNameHits >= 2 || (userNameHits >= 1 && spoken.split(/\s+/).length <= 14 && !/\bantonia\b/.test(latest));
+  return therapy || quoteCard || trailer || forcedHook || tooManyNames;
+}
+
 export function intentSubtextIssues({
   reply = "",
   latestUserMessage = "",
@@ -320,6 +334,7 @@ export function intentSubtextIssues({
   if (hasPragmaticSarcasmMiss(reply, latestUserMessage, recentCharacterReplies)) issues.push("pragmatic_sarcasm_miss");
   if (hasDirectCausalAnswerMiss(reply, latestUserMessage, recentCharacterReplies)) issues.push("direct_causal_answer_miss");
   if (hasPersonalityPerformanceOverride(reply, latestUserMessage)) issues.push("personality_performance_override");
+  if (hasHumanMindDialogueArtifice(reply, latestUserMessage)) issues.push("human_mind_dialogue_artifice");
   return [...new Set(issues)];
 }
 

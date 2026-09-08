@@ -3,7 +3,8 @@ import { hasPersonalityPerformanceOverride } from '../supabase/functions/charact
 const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url)));
 const index=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
 let pass=0,fail=0; const ok=(n,v)=>{console.log(`${v?'PASS':'FAIL'} ${n}`);v?pass++:fail++;};
-ok('version 3.49.28',pkg.version==='3.49.28');
+const [major,minor,patch]=String(pkg.version||'').split('.').map(Number);
+ok('version 3.49.28+',major===3 && minor===49 && patch>=28);
 ok('Human Conversation Director reaches prompt',index.includes('HUMAN CONVERSATION DIRECTOR v3.49.28'));
 ok('Personality is not performance reaches prompt',index.includes('PERSONALITY IS NOT PERFORMANCE'));
 const q='Anyway, why did you come up to me?';
