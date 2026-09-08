@@ -3,7 +3,7 @@ import { buildIndividualHumanPsycheV34931, individualHumanPsycheV34931Issues } f
 const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 const src=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
 let n=0,ok=0; const check=(name,v)=>{n++;if(v){ok++;console.log('PASS',name)}else{console.error('FAIL',name);process.exitCode=1}};
-check('version 3.49.31',pkg.version==='3.49.31');
+check('version 3.49.31+', /^3\.49\.(?:3[1-9]|[4-9]\d|\d{3,})$/.test(pkg.version));
 check('individual psyche imported',src.includes('buildIndividualHumanPsycheV34931'));
 for(const needle of ['DIFFERENT PEOPLE, DIFFERENT MINDS','individual asymmetry','defense mechanism changes disclosure','differ in what they notice','Consistency is a distribution','Never make all attractive/confident characters converge','Character voice is the consequence of mind + history + situation']) check(needle,src.includes(needle));
 const guarded=buildIndividualHumanPsycheV34931({character:{personality:'guarded, proud, dry, observant'},latestUserMessage:'Why did you come over?',recentCharacterReplies:['Fine.']});
@@ -19,5 +19,5 @@ check('self branding rejected',individualHumanPsycheV34931Issues('"What can I sa
 check('plain specific line accepted',individualHumanPsycheV34931Issues('"I wanted to see who you were talking to."','Why did you come over?',[]).length===0);
 check('repair trigger wired',src.includes('individual_psyche_generic_archetype_line'));
 check('psyche issues scored',src.includes('psycheIssuesForScore'));
-check('v34931 first in stability lab',pkg.scripts['stability:lab'].startsWith('npm run verify:v34931 && npm run verify:v34930'));
+check('v34931 retained before v34930',pkg.scripts['stability:lab'].includes('npm run verify:v34931 && npm run verify:v34930'));
 console.log(`\n${ok}/${n} v3.49.31 checks passed.`); if(ok!==n)process.exit(1);

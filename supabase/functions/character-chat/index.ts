@@ -24,6 +24,7 @@ import { instantStoryLooksComplete } from "./engine/instant-story-v3492.ts";
 import { buildVoiceAuditDirectiveV34911, voiceAuditV34911Issues } from "./engine/character-voice-audit-v34911.ts";
 import { buildHumanCognitionBriefV34930, humanCognitionV34930Issues } from "./engine/human-cognition-pipeline-v34930.ts";
 import { buildIndividualHumanPsycheV34931, individualHumanPsycheV34931Issues } from "./engine/individual-human-psyche-v34931.ts";
+import { buildHumanSocialIntelligenceV34932, humanSocialIntelligenceV34932Issues } from "./engine/human-social-intelligence-v34932.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1846,6 +1847,16 @@ function buildNarrativePromptV3({
     behavior: conversation.intelligence_state?.human_behavior_state || {},
     relationship: conversation.relationship_state || {},
   });
+  const humanSocialIntelligenceV34932 = buildHumanSocialIntelligenceV34932({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+    mind: conversation.intelligence_state?.character_mind || {},
+    behavior: conversation.intelligence_state?.human_behavior_state || {},
+    scene: conversation.scene_state || {},
+    relationship: conversation.relationship_state || {},
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -1980,6 +1991,22 @@ ${storyContractPrompt(turnContract as any)}
 ${humanCognitionBriefV34930}
 
 ${individualHumanPsycheV34931}
+
+${humanSocialIntelligenceV34932}
+
+HUMAN SOCIAL INTELLIGENCE 3.49.32 · READ THE ROOM, NOT THE TROPE
+- Social meaning comes from context, relationship, audience, status, timing and uncertainty, not from romance tropes.
+- Separate what a character knows, suspects, publicly claims and privately feels. Never leak hidden knowledge across people.
+- Public and private versions of the same person may differ in disclosure and register without becoming different personalities.
+- Track who is actually present and what each witness could plausibly perceive. Bystanders are people, not reaction cameras.
+- Respect face-saving, embarrassment, politeness, indirect refusal, topic closure, awkwardness and the option not to disclose.
+- “Anyway,” short closure, disengagement and explicit boundaries can lower social permission to keep pressing the old topic.
+- Courtesy, eye contact, proximity, attention and help are not automatic attraction. A third person is not automatically a rival.
+- Reputation/status should create small domain-grounded effects, not universal fear, worship, silence or constant reminders.
+- In groups, distribute attention naturally. NPCs may talk to each other, miss cues, disagree, leave, return or care about something else.
+- Before a vulnerable, confrontational or intimate line, consider its social cost. If saying the true thought would be implausibly exposing, keep it private or disclose partially.
+- Humor is socially calibrated, not a reflex. Never use a quip to erase discomfort, dodge a direct question, or perform coolness for an imaginary audience.
+- Prefer socially plausible imperfection over perfect emotional intelligence. People can misread, recover late, save face badly, or choose not to make a moment bigger.
 
 INDIVIDUAL HUMAN PSYCHE 3.49.31 · DIFFERENT PEOPLE, DIFFERENT MINDS
 - Do not humanize every character into the same casual voice. Human realism includes individual asymmetry.
@@ -2662,6 +2689,13 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     individual_psyche_repeated_opening: "Change the conversational entry pattern, not just synonyms. Let this character respond from the current beat rather than a repeated sentence skeleton.",
     individual_psyche_overconfident_inference: "Respect uncertainty. This character may suspect, ask, or be wrong; do not turn the user’s uncertainty into certainty.",
     individual_psyche_self_branding: "Remove self-branding/catchphrase dialogue. Let personality emerge from the choice and wording rather than announcing the archetype.",
+    social_intelligence_invented_audience: "Remove the invented audience reaction. Track only established people who could actually perceive the moment; do not use a room/crowd as a reaction camera.",
+    social_intelligence_mindread_attraction: "Do not assert the user's attraction, jealousy, desire, or private motive. Treat ambiguous social cues as ambiguous and keep the character's belief subjective.",
+    social_intelligence_third_party_certainty: "Do not declare a third party's jealousy or desire without evidence. The character may suspect or ask, and may be wrong.",
+    social_intelligence_unrouted_information: "Remove universal/public knowledge claims unless the story established a plausible information route. Distinguish rumor, inference, shared knowledge and public fact.",
+    social_intelligence_pressure_after_boundary: "Respect the social boundary/topic closure. Do not keep pressing for an admission or intimacy after the user disengages, redirects, or says no/stop/drop it.",
+    social_intelligence_romance_projection: "Remove automatic romantic/sexual framing. Courtesy, proximity, attention, conflict and third-party presence are not romance evidence by themselves.",
+    social_intelligence_crowd_theater: "Remove synchronized crowd theater. Let only grounded observers react, and usually subtly, if the event would realistically draw attention.",
     direct_causal_answer_miss: "Answer the user’s direct causal question about the specific prior action. Reconstruct the recent event chain and anchor the answer to the actual grounded trigger. The character may minimize, conceal, or deflect their motive, but the deflection must remain about that trigger. Do not answer with Okay, an unrelated witty excuse, or a callback to an older joke/keyword. Plain specific dialogue is allowed and preferred over a punchline.",
     pragmatic_sarcasm_miss: "Read the user utterance as a SOCIAL SPEECH ACT, not a bag of nouns. For an obvious ironic contradiction such as yeah-and-I-am-X, respond to the implied disbelief/tease about YOUR immediately preceding claim. Do not repeat X, extend its metaphor, introduce a third comparison target, explain the joke, or collapse to Okay. Use this character’s natural timing: a short dry concession, mock offense, shameless doubling-down, amused deflection, or other profile-owned response. Never invent a user gesture or emotion.",
     invented_precise_schedule: "Remove invented exact clock/day scheduling. Preserve only the broad routine or time anchor actually established. If exact time is unknown, keep it unknown.",
@@ -5653,6 +5687,13 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "individual_psyche_repeated_opening",
   "individual_psyche_overconfident_inference",
   "individual_psyche_self_branding",
+  "social_intelligence_invented_audience",
+  "social_intelligence_mindread_attraction",
+  "social_intelligence_third_party_certainty",
+  "social_intelligence_unrouted_information",
+  "social_intelligence_pressure_after_boundary",
+  "social_intelligence_romance_projection",
+  "social_intelligence_crowd_theater",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
   "unsupported_concrete_canon_invention",
@@ -5818,6 +5859,13 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "individual_psyche_repeated_opening",
   "individual_psyche_overconfident_inference",
   "individual_psyche_self_branding",
+  "social_intelligence_invented_audience",
+  "social_intelligence_mindread_attraction",
+  "social_intelligence_third_party_certainty",
+  "social_intelligence_unrouted_information",
+  "social_intelligence_pressure_after_boundary",
+  "social_intelligence_romance_projection",
+  "social_intelligence_crowd_theater",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -6359,6 +6407,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (cognitionIssuesForScore.length) score -= Math.min(48, 16 + cognitionIssuesForScore.length * 8);
   const psycheIssuesForScore = individualHumanPsycheV34931Issues(reply, latest, recent);
   if (psycheIssuesForScore.length) score -= Math.min(46, 18 + psycheIssuesForScore.length * 8);
+  const socialIssuesForScore = humanSocialIntelligenceV34932Issues(reply, latest, recent);
+  if (socialIssuesForScore.length) score -= Math.min(50, 20 + socialIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
   const latestWords = normalizeText(latest).split(/\s+/).filter(Boolean).length;
