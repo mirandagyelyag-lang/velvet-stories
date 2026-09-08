@@ -32,6 +32,7 @@ import { buildRelationshipAttachmentV34936, relationshipAttachmentV34936Issues }
 import { buildHumanSpontaneityAntiPatternV34937, humanSpontaneityAntiPatternV34937Issues } from "./engine/human-spontaneity-antipattern-v34937.ts";
 import { buildHumanKnowledgeUncertaintyV34938, humanKnowledgeUncertaintyV34938Issues } from "./engine/human-knowledge-uncertainty-v34938.ts";
 import { buildNaturalDialogueResetV34940, naturalDialogueResetV34940Issues } from "./engine/natural-dialogue-reset-v34940.ts";
+import { buildPlainSpeechFirstV34941, plainSpeechFirstV34941Issues } from "./engine/plain-speech-first-v34941.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1889,6 +1890,11 @@ function buildNarrativePromptV3({
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
+  const plainSpeechFirstV34941 = buildPlainSpeechFirstV34941({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2035,6 +2041,7 @@ ${relationshipAttachmentV34936}
 
 ${humanSpontaneityAntiPatternV34937}
 ${humanKnowledgeUncertaintyV34938}
+${plainSpeechFirstV34941}
 ${naturalDialogueResetV34940}
 
 HUMAN SOCIAL INTELLIGENCE 3.49.32 · READ THE ROOM, NOT THE TROPE
@@ -2722,6 +2729,12 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     personality_performance_override: "Stop performing the character archetype. Answer the actual conversational job first, then let personality affect only wording and degree of disclosure. For a direct WHY question, give a grounded reason, partial truth, or referential evasion tied to the real prior action. Remove screenplay punchlines, mock duties, metaphorical pretexts, self-branding, and polished mini-monologues. Plain human speech is preferred.",
     human_mind_dialogue_artifice: "Rebuild from the live conversational job and character state. Keep private motive private unless disclosure is earned. Preserve active emotional residue, answer or meaningfully resist the actual topic, remove quote-card banter, unnecessary metaphors, therapy-speak, compulsory flirtation, repeated names, and polished hooks. Prefer the shortest ordinary line that still belongs to this character.",
 
+    plain_speech_performed_pseudo_choice: "Recover the literal cause/answer first, then say only what the character would actually disclose. Delete the pseudo-clever either/or and any take-your-pick closer.",
+    plain_speech_writerly_dismissal: "Delete the writerly filing/list metaphor or polished dismissal. Use a literal ordinary response, or silence if no response is needed.",
+    plain_speech_smug_generalization: "Delete the smug generalization about people/everyone. Respond to the actual person/event in front of the character, plainly.",
+    plain_speech_performed_narration: "Delete decorative coolness narration. Start from zero movement; keep dialogue only unless a concrete action changes scene state.",
+    plain_speech_quotable_construction: "Flatten the quotable construction into one ordinary conversational move. Preserve meaning, remove the flourish.",
+    plain_speech_detachment_performance_loop: "Stop repeatedly narrating detachment/coolness. Let personality emerge from the decision and wording, not attitude labels.",
     natural_dialogue_authored_banter: "Delete the clever/performed line and rewrite as ordinary speech. No labels for the user, no quotable zinger, no challenge-line. One plain conversational move.",
     natural_dialogue_dead_callback: "Delete the recycled motif/callback. Answer the live beat without reviving old joke vocabulary.",
     natural_dialogue_author_interpretation: "Remove authorial labels such as practiced/unbothered/guarded mask. If an action is necessary, show one concrete observable action only.",
@@ -5684,6 +5697,12 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
+  "plain_speech_performed_pseudo_choice",
+  "plain_speech_writerly_dismissal",
+  "plain_speech_smug_generalization",
+  "plain_speech_performed_narration",
+  "plain_speech_quotable_construction",
+  "plain_speech_detachment_performance_loop",
   "natural_dialogue_dead_callback",
   "natural_dialogue_authored_banter",
   "natural_dialogue_author_interpretation",
@@ -5861,6 +5880,12 @@ const REPAIR_TRIGGER_ISSUES = new Set([
 // surface/save the rejected draft merely because the one repair call timed out.
 const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   ...BLOCKING_NARRATIVE_ISSUES,
+  "plain_speech_performed_pseudo_choice",
+  "plain_speech_writerly_dismissal",
+  "plain_speech_smug_generalization",
+  "plain_speech_performed_narration",
+  "plain_speech_quotable_construction",
+  "plain_speech_detachment_performance_loop",
   "natural_dialogue_dead_callback",
   "natural_dialogue_authored_banter",
   "natural_dialogue_author_interpretation",
@@ -6545,10 +6570,12 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   const spontaneityIssuesForScore = humanSpontaneityAntiPatternV34937Issues(reply, latest, recent);
   const knowledgeUncertaintyIssuesForScore = humanKnowledgeUncertaintyV34938Issues(reply, latest, recent);
   const naturalDialogueIssuesForScore = naturalDialogueResetV34940Issues(reply, latest, recent);
+  const plainSpeechIssuesForScore = plainSpeechFirstV34941Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (relationshipAttachmentIssuesForScore.length) score -= Math.min(56, 24 + relationshipAttachmentIssuesForScore.length * 8);
   if (spontaneityIssuesForScore.length) score -= Math.min(56, 24 + spontaneityIssuesForScore.length * 8);
   if (naturalDialogueIssuesForScore.length) score -= Math.min(70, 36 + naturalDialogueIssuesForScore.length * 10);
+  if (plainSpeechIssuesForScore.length) score -= Math.min(82, 48 + plainSpeechIssuesForScore.length * 12);
   if (knowledgeUncertaintyIssuesForScore.length) score -= Math.min(58, 26 + knowledgeUncertaintyIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
@@ -6624,6 +6651,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of relationshipAttachmentV34936Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
     reply: text,
