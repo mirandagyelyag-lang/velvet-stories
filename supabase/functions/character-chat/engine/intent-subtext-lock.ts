@@ -210,9 +210,31 @@ export function hasPragmaticSarcasmMiss(reply = "", latestUserMessage = "", rece
   if (cue.payload && new RegExp(`\\b${cue.payload.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(dialogue)) return true;
   if (/^(?:okay|ok|right|sure|yeah|yep|mhm|uh huh)[.! ]*$/.test(dialogue)) return true;
 
-  // Do not answer an ironic contradiction by inventing a fresh analogy/comparison target.
-  if (/\b(?:choir boy|pope|saint peter|walk on water|heaven|holy|miracle|disciple|apostle)\b/.test(dialogue)) return true;
+  // Do not answer an ironic contradiction by inventing a fresh analogy/comparison target
+  // or by extending the semantic field of the payload. v3.49.21 treats this as a
+  // comprehension failure, not merely a style preference.
+  if (/\b(?:choir boy|pope|saint peter|walk on water|heaven|holy|holier|miracle|miracles|disciple|apostle|canonized|canonised|divine|divinity|deity|deities|religion|religious|scripture|gospel|prayer|pray|blessed|blessing|worship|church|chapel|halo|angel|heavenly|salvation|savior|saviour)\b/.test(dialogue)) return true;
+
+  // A tiny sarcastic cue should not trigger a polished comedy monologue. One compact
+  // reaction is enough; two+ dialogue sentences or a long bit means the model is
+  // performing around the cue instead of answering the social move.
+  const spoken = dialogueOnly(reply);
+  const spokenWords = wordCount(spoken.join(" "));
+  if (spoken.length > 1 || spokenWords > 18) return true;
   return false;
+}
+
+export function pragmaticSarcasmFallback(character = {}, recentCharacterReplies = []) {
+  const profile = normalized([character?.personality, character?.description, character?.background, character?.notes, character?.scenario, character?.relationship].filter(Boolean).join(" "));
+  const recent = normalized((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-2).join(" "));
+  // Deliberately no narration: the fallback must never manufacture a user gesture,
+  // and it must not need a stage direction to communicate the character's reaction.
+  if (/\b(?:cocky|smug|arrogant|confident|shameless|heartthrob|playboy)\b/.test(profile)) return '"Cute. Still doesn\'t make me wrong."';
+  if (/\b(?:sarcastic|dry|snark|teas|banter)\b/.test(profile)) return '"Very funny. You know what I meant."';
+  if (/\b(?:blunt|direct|stoic|reserved|guarded|cold)\b/.test(profile)) return '"You know what I meant."';
+  if (/\b(?:playful|warm|easygoing|charming)\b/.test(profile)) return '"Okay, that was good. My point stands."';
+  if (/\b(?:saint|practically a saint)\b/.test(recent)) return '"Very funny. I stand by it."';
+  return '"Fair. Still not taking it back."';
 }
 
 export function intentSubtextIssues({

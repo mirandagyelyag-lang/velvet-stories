@@ -3,7 +3,7 @@ import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBo
 import { groundedRealityIssues, sanitizeGroundedRealityReply } from "./engine/grounded-reality-lock.ts";
 import { agencyMomentumIssues, sanitizeAgencyMomentumReply } from "./engine/agency-momentum-lock.ts";
 import { deriveScenePhysicsState, scenePhysicsIssues, sanitizeScenePhysicsReply } from "./engine/scene-physics-lock.ts";
-import { intentSubtextIssues, sanitizeIntentSubtextReply } from "./engine/intent-subtext-lock.ts";
+import { intentSubtextIssues, sanitizeIntentSubtextReply, pragmaticSarcasmFallback } from "./engine/intent-subtext-lock.ts";
 import { socialGravityIssues } from "./engine/social-gravity-world-identity.ts";
 import { relationshipChemistryIssues, sanitizeRelationshipChemistryReply } from "./engine/relationship-chemistry-v2.ts";
 import { embodiedAwarenessIssues, sanitizeEmbodiedAwarenessReply } from "./engine/embodied-awareness-salience.ts";
@@ -1959,7 +1959,7 @@ VOICE + QUALITY
 - ANTI-THERAPIST ENGINE: unless therapy/counseling is genuinely part of this character's role and voice, avoid counselor/service phrases such as “you don’t have to talk about it,” “take all the time you need,” “your feelings are valid,” “I’m here if you need anything,” or “if you change your mind.” Care must sound like THIS person.
 - ANTI-PERFECT-REACTION: do not optimize the character into the ideal supportive partner. They can pause, answer only half of it, choose the wrong practical fix, joke badly, get defensive, need time, or repair imperfectly while still respecting boundaries.
 - NATURAL VOICE LOCK 3.31.1: do not PERFORM the character every turn. Voice identity is allowed to be quiet. A plain answer that only this person would phrase slightly differently is better than proving five personality traits at once.
-- PRAGMATIC SUBTEXT HARD LOCK v3.49.20: infer the speech act from the immediately preceding exchange. Obvious ironic contradiction (for example, “yeah, and I’m X” after an unbelievable boast) means “I do not believe your claim / I’m mocking that claim.” The placeholder X is NOT a topic. Never repeat X, riff on X, explain X, build a metaphor around X, or swap in a new analogy. Reply to the underlying challenge in this character’s own voice. A one-line dry reaction can be perfect. “Okay” is not an acceptable response to a clear social cue. Do not invent the user’s facial expression, tone, gesture, feeling, or action to justify the inference.
+- PRAGMATIC SUBTEXT HARD LOCK v3.49.21: infer the speech act from the immediately preceding exchange. Obvious ironic contradiction (for example, “yeah, and I’m X” after an unbelievable boast) means “I do not believe your claim / I’m mocking that claim.” The placeholder X is NOT a topic. Never repeat X, riff on X, explain X, build a metaphor around X, or swap in a new analogy. Reply to the underlying challenge in this character’s own voice. Do NOT answer sarcasm by trying to out-joke it. Prefer one compact, ordinary human volley that addresses the challenged claim. For this cue, dialogue should normally stay under 18 words and one spoken line. A one-line dry reaction can be perfect. “Okay” is not an acceptable response to a clear social cue. Do not invent the user’s facial expression, tone, gesture, feeling, or action to justify the inference.
 - BANTER SATURATION LIMIT: sarcasm from the user is NOT an instruction to escalate into a bigger joke. If the last two character replies already used teasing, mock-formal wit, hyperbole or a clever comeback, the next ordinary reply should contain zero performative quips unless the profile and the live beat strongly require one. Even a sarcastic character is not doing a bit every sentence.
 - ONE-JOKE CEILING: in a mundane exchange, use at most one brief joke/tease in a turn. Never stack setup + punchline + second metaphor + callback. After the joke lands, stop.
 - CANON SPECIFICITY GATE: never invent fake specificity to make dialogue feel alive. Do not fabricate prior texts, ignored messages, exact wait times, grades, exams, classes, seminars, labs, known employees, shared arguments, shared food habits, habitual seats, private jokes, schedules or academic details unless they exist in visible canon/profile/state. If the user asks a factual question and canon does not contain the detail, answer only from what is actually known.
@@ -5631,6 +5631,7 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "resolved_thread_reactivated",
   "perspective_memory_leak",
   "memory_conflict_overclaim",
+  "pragmatic_sarcasm_miss",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -7077,6 +7078,18 @@ async function streamRoleplayV19({
             turnContract,
           });
           repairedIssues.push(...validateContinuityEnvelope(repaired, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies }));
+          // v3.49.21: if the bounded repair STILL turns an obvious sarcastic contradiction
+          // into a semantic riff/comedy bit, do not surface it. Use a tiny character-shaped
+          // conversational fallback that answers the challenged claim without touching the
+          // payload or inventing user actions.
+          if (repairedIssues.includes("pragmatic_sarcasm_miss")) {
+            repaired = { ...repaired, reply: pragmaticSarcasmFallback(character, recentCharacterReplies) };
+            repairedIssues.splice(0, repairedIssues.length, ...validateNarrativeReply(repaired.reply, {
+              characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
+              finishReason: repaired.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
+              character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+            }));
+          }
           const repairedFatal = blockingNarrativeIssues(repairedIssues);
           const originalFatal = blockingNarrativeIssues(originalIssues);
           const originalHard = hardRepairRequiredIssues(originalIssues);
