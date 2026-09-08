@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Bug, Check, ChevronRight, Copy, Crown, Download, Heart, HeartOff, History, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Plus, Search, SlidersHorizontal, Sparkles, Trash2, UsersRound, X } from "lucide-react";
+import { Archive, ArchiveRestore, Bug, Check, ChevronRight, Copy, Crown, Download, FolderHeart, FolderPlus, Heart, HeartOff, History, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, UsersRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
@@ -10,6 +10,21 @@ import { useFeedback } from "../context/FeedbackContext";
 import { useTheme } from "../context/ThemeContext";
 import GroupStoryModal from "../components/GroupStoryModal";
 import SwipeToTrash from "../components/SwipeToTrash";
+import {
+  createStorySafetySnapshotV34915,
+  deleteStorySafetySnapshotV34915,
+  listStorySafetySnapshotsV34915,
+  restoreStorySafetySnapshotV34915,
+} from "../utils/dataSafetyV34915";
+import {
+  createStoryCollectionV34915,
+  loadStoryCollectionsV34915,
+  normalizedStorySearchV34915,
+  removeStoryCollectionV34915,
+  removeStoryFromAllCollectionsV34915,
+  storySearchScoreV34915,
+  toggleStoryInCollectionV34915,
+} from "../utils/storyLibraryV34915";
 import "../styles/chats.css";
 
 function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
@@ -35,8 +50,57 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
   const [groupStoryOpen, setGroupStoryOpen] = useState(false);
+  const [recoverySnapshots, setRecoverySnapshots] = useState([]);
+  const [collections, setCollections] = useState([]);
+  const [collectionDialog, setCollectionDialog] = useState(null);
+  const [collectionName, setCollectionName] = useState("");
+  const [deepMatches, setDeepMatches] = useState([]);
+  const [deepSearching, setDeepSearching] = useState(false);
+  const [libraryNotice, setLibraryNotice] = useState("");
 
   useEffect(() => { loadConversations(); }, [user?.id, characters.length]);
+
+  useEffect(() => {
+    if (!user?.id) { setCollections([]); setRecoverySnapshots([]); return; }
+    setCollections(loadStoryCollectionsV34915(user.id));
+    void refreshSafetyVault();
+  }, [user?.id]);
+
+  // v3.49.15 DEEP STORY SEARCH: the Stories search finally searches old
+  // messages and memories, not only the latest preview line.
+  useEffect(() => {
+    const needle = search.trim();
+    if (!user?.id || needle.length < 2) { setDeepMatches([]); setDeepSearching(false); return undefined; }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setDeepSearching(true);
+      try {
+        const [messageResult, memoryResult] = await Promise.all([
+          supabase.from("messages").select("id, conversation_id, sender, content, created_at").order("created_at", { ascending: false }).limit(1800),
+          supabase.from("memories").select("id, conversation_id, content, category, is_canon, is_pinned, created_at").is("superseded_at", null).order("created_at", { ascending: false }).limit(700),
+        ]);
+        if (messageResult.error) throw messageResult.error;
+        if (memoryResult.error) throw memoryResult.error;
+        const known = new Set(conversations.map((item) => item.id));
+        const matches = [];
+        for (const message of messageResult.data || []) {
+          if (!known.has(message.conversation_id)) continue;
+          const score = storySearchScoreV34915(message.content, needle);
+          if (score) matches.push({ kind: "message", score: score + 4, conversationId: message.conversation_id, messageId: message.id, text: message.content, date: message.created_at });
+        }
+        for (const memory of memoryResult.data || []) {
+          if (!memory.conversation_id || !known.has(memory.conversation_id)) continue;
+          const score = storySearchScoreV34915(`${memory.content} ${memory.category || ""}`, needle);
+          if (score) matches.push({ kind: "memory", score: score + (memory.is_canon ? 8 : memory.is_pinned ? 4 : 0), conversationId: memory.conversation_id, messageId: null, text: memory.content, date: memory.created_at });
+        }
+        if (!cancelled) setDeepMatches(matches.sort((a,b)=>b.score-a.score||new Date(b.date||0)-new Date(a.date||0)).slice(0,18));
+      } catch (requestError) {
+        console.warn("Velvet deep story search skipped:", requestError?.message || requestError);
+        if (!cancelled) setDeepMatches([]);
+      } finally { if (!cancelled) setDeepSearching(false); }
+    }, 260);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [search, user?.id, conversations.length]);
 
   useEffect(() => {
     if (!pickerOpen && !groupStoryOpen) return undefined;
@@ -86,6 +150,66 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     const colors = { light: "#f7eff2", comfort: "#eee4dc", dark: "#10090e" };
     meta?.setAttribute("content", colors[theme] || colors.dark);
   }, [theme]);
+
+  async function refreshSafetyVault() {
+    if (!user?.id) return;
+    try { setRecoverySnapshots(await listStorySafetySnapshotsV34915(user.id)); }
+    catch (requestError) { console.warn("Safety Vault unavailable:", requestError?.message || requestError); }
+  }
+
+  function persistCollections(next) {
+    setCollections(next);
+    return next;
+  }
+
+  function createCollection(event) {
+    event?.preventDefault?.();
+    try {
+      const next = createStoryCollectionV34915(user?.id, collections, collectionName);
+      persistCollections(next);
+      setCollectionName("");
+      setCollectionDialog(null);
+      setLibraryNotice("Collection created.");
+    } catch (requestError) { setLibraryNotice(requestError?.message || "Velvet couldn't create that collection."); }
+  }
+
+  function toggleCollectionStory(collectionId, storyId) {
+    const next = toggleStoryInCollectionV34915(user?.id, collections, collectionId, storyId);
+    persistCollections(next);
+  }
+
+  async function restoreSafetySnapshot(snapshot) {
+    if (!user?.id || updatingId) return;
+    try {
+      setUpdatingId(snapshot.id);
+      setLibraryNotice("");
+      const result = await restoreStorySafetySnapshotV34915({ supabase, userId: user.id, snapshot });
+      await loadConversations();
+      setView("active");
+      setLibraryNotice(`Story restored from Safety Vault · ${result.restored} records recovered${result.failures.length ? ` · ${result.failures.length} optional sections skipped` : ""}.`);
+    } catch (requestError) {
+      console.error("Safety Vault restore failed:", requestError);
+      setLibraryNotice(requestError?.message || "Velvet couldn't restore that recovery copy.");
+    } finally { setUpdatingId(null); }
+  }
+
+  async function removeSafetySnapshot(snapshotId) {
+    try {
+      await deleteStorySafetySnapshotV34915(snapshotId);
+      setRecoverySnapshots((current) => current.filter((item) => item.id !== snapshotId));
+    } catch (requestError) { setLibraryNotice(requestError?.message || "Velvet couldn't remove that recovery copy."); }
+  }
+
+  async function deleteActiveCollection() {
+    if (!String(view).startsWith("collection:")) return;
+    const active = collections.find((item) => item.id === String(view).slice("collection:".length));
+    if (!active) return;
+    const approved = await confirmAction({ title: "Remove this collection?", message: `“${active.name}” will be removed from your shelves. The stories inside it stay safe.`, confirmLabel: "Remove collection" });
+    if (!approved) return;
+    persistCollections(removeStoryCollectionV34915(user?.id, collections, active.id));
+    setView("active");
+    setLibraryNotice("Collection removed. Your stories were not deleted.");
+  }
 
   async function loadConversations() {
     if (!user) return;
@@ -215,18 +339,25 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
 
   async function permanentlyDeleteConversation(event, conversationId) {
     event.stopPropagation();
-    const approved = await confirmAction({ title: "Delete forever?", message: "This story cannot be recovered after this.", confirmLabel: "Delete forever" });
+    const conversation = conversations.find((item) => item.id === conversationId);
+    if (!conversation) return;
+    const approved = await confirmAction({ title: "Delete forever?", message: "Velvet will save a 30-day recovery copy locally before deleting this story from Supabase.", confirmLabel: "Save copy & delete" });
     if (!approved) return;
     setDeletingId(conversationId);
-    const { error: memoryDeleteError } = await supabase.from("memories").delete().eq("conversation_id", conversationId);
-    if (memoryDeleteError) {
-      setError("We couldn't permanently delete that story.");
-      setDeletingId(null);
-      return;
-    }
-    const { error: requestError } = await supabase.from("conversations").delete().eq("id", conversationId);
-    if (requestError) setError("We couldn't permanently delete that story."); else setConversations((current) => current.filter((item) => item.id !== conversationId));
-    setDeletingId(null);
+    try {
+      await createStorySafetySnapshotV34915({ supabase, userId: user.id, conversation, characterName: conversation.character?.name || "", reason: "before-delete-forever" });
+      const { error: memoryDeleteError } = await supabase.from("memories").delete().eq("conversation_id", conversationId);
+      if (memoryDeleteError) throw memoryDeleteError;
+      const { error: requestError } = await supabase.from("conversations").delete().eq("id", conversationId);
+      if (requestError) throw requestError;
+      setConversations((current) => current.filter((item) => item.id !== conversationId));
+      persistCollections(removeStoryFromAllCollectionsV34915(user.id, collections, conversationId));
+      await refreshSafetyVault();
+      setLibraryNotice("Deleted from Supabase · recovery copy kept locally for 30 days.");
+    } catch (requestError) {
+      console.error("Permanent delete safety gate failed:", requestError);
+      setError("Velvet did not delete this story because it could not secure a recovery copy first.");
+    } finally { setDeletingId(null); }
   }
 
   function swipeDeleteConversationForever(conversationId) {
@@ -243,10 +374,13 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       message: (count) => `${count} ${count === 1 ? "story" : "stories"} deleted forever`,
       onUndo: restoreSnapshot,
       onCommit: async () => {
+        await createStorySafetySnapshotV34915({ supabase, userId: user.id, conversation, characterName: conversation.character?.name || "", reason: "before-swipe-delete-forever" });
         const { error: memoryDeleteError } = await supabase.from("memories").delete().eq("conversation_id", conversationId);
         if (memoryDeleteError) throw memoryDeleteError;
         const { error: requestError } = await supabase.from("conversations").delete().eq("id", conversationId);
         if (requestError) throw requestError;
+        persistCollections(removeStoryFromAllCollectionsV34915(user.id, collections, conversationId));
+        await refreshSafetyVault();
       },
       onError: (requestError) => {
         console.error("Permanent trash swipe failed:", requestError);
@@ -351,41 +485,74 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     finally { setUpdatingId(null); }
   }
 
+  const deepMatchConversationIds = useMemo(() => new Set(deepMatches.map((item) => item.conversationId)), [deepMatches]);
+
   const filtered = useMemo(() => {
-    const value = search.trim().toLowerCase();
+    const value = normalizedStorySearchV34915(search);
+    const activeCollection = String(view).startsWith("collection:")
+      ? collections.find((item) => item.id === String(view).slice("collection:".length))
+      : null;
     return conversations.filter((conversation) => {
       if (pendingDeletionIds.includes(conversation.id)) return false;
+      if (view === "recovery") return false;
       if (view === "trash" && !conversation.trashed_at) return false;
       if (view !== "trash" && conversation.trashed_at) return false;
       if (view === "active" && conversation.archived_at) return false;
       if (view === "favorites" && (conversation.archived_at || !conversation.is_pinned)) return false;
       if (view === "archived" && !conversation.archived_at) return false;
+      if (activeCollection && (!activeCollection.storyIds.includes(conversation.id) || conversation.trashed_at)) return false;
       if (!value) return true;
       const character = conversation.character;
-      return `${conversation.title || ""} ${character?.name || ""} ${(conversation.groupCharacters || []).map((item) => item.name).join(" ")} ${character?.role || ""} ${conversation.latestMessage?.content || ""}`
-        .toLowerCase().includes(value);
+      const shallow = normalizedStorySearchV34915(`${conversation.title || ""} ${character?.name || ""} ${(conversation.groupCharacters || []).map((item) => item.name).join(" ")} ${character?.role || ""} ${conversation.latestMessage?.content || ""}`);
+      return shallow.includes(value) || deepMatchConversationIds.has(conversation.id);
     });
-  }, [conversations, search, view, pendingDeletionIds]);
+  }, [conversations, search, view, pendingDeletionIds, collections, deepMatchConversationIds]);
 
   const collectionCounts = useMemo(() => ({
     favorites: conversations.filter((item) => !item.trashed_at && !item.archived_at && item.is_pinned && !pendingDeletionIds.includes(item.id)).length,
     archived: conversations.filter((item) => !item.trashed_at && item.archived_at && !pendingDeletionIds.includes(item.id)).length,
     trash: conversations.filter((item) => item.trashed_at && !pendingDeletionIds.includes(item.id)).length,
-  }), [conversations, pendingDeletionIds]);
+    recovery: recoverySnapshots.length,
+  }), [conversations, pendingDeletionIds, recoverySnapshots.length]);
 
   const collectionCards = [
     { id: "favorites", label: "Favorites", count: collectionCounts.favorites, icon: Heart },
     { id: "archived", label: "Archived", count: collectionCounts.archived, icon: History },
     { id: "trash", label: "Trash", count: collectionCounts.trash, icon: Trash2 },
+    { id: "recovery", label: "Recovery Vault", count: collectionCounts.recovery, icon: ShieldCheck },
+    ...collections.map((item) => ({ id: `collection:${item.id}`, collectionId: item.id, label: item.name, count: item.storyIds.filter((id) => conversations.some((conversation) => conversation.id === id && !conversation.trashed_at)).length, icon: FolderHeart })),
   ];
 
   const visibleStories = showAllRecent ? filtered : filtered.slice(0, 3);
 
+  const activeCustomCollection = useMemo(() => String(view).startsWith("collection:")
+    ? collections.find((item) => item.id === String(view).slice("collection:".length)) || null
+    : null, [view, collections]);
+
+  const deepMomentEntries = useMemo(() => deepMatches.map((match) => {
+    const conversation = conversations.find((item) => item.id === match.conversationId);
+    if (!conversation?.character) return null;
+    return { ...match, conversation, character: conversation.character };
+  }).filter(Boolean), [deepMatches, conversations]);
+
+  function currentSectionTitle() {
+    if (view === "active") return "RECENT STORIES";
+    if (view === "favorites") return "FAVORITE STORIES";
+    if (view === "archived") return "ARCHIVED STORIES";
+    if (view === "trash") return "TRASH";
+    if (view === "recovery") return "RECOVERY VAULT";
+    return activeCustomCollection?.name?.toUpperCase() || "COLLECTION";
+  }
+
   function collectionArt(type) {
+    const custom = String(type).startsWith("collection:") ? collections.find((item) => item.id === String(type).slice("collection:".length)) : null;
     const match = conversations.find((item) => {
       if (type === "favorites") return !item.trashed_at && !item.archived_at && item.is_pinned;
       if (type === "archived") return !item.trashed_at && item.archived_at;
-      return Boolean(item.trashed_at);
+      if (type === "trash") return Boolean(item.trashed_at);
+      if (custom) return custom.storyIds.includes(item.id) && !item.trashed_at;
+      if (type === "recovery") return recoverySnapshots.some((snapshot) => snapshot.conversationId === item.id);
+      return false;
     });
     const fallback = conversations.find((item) => !item.trashed_at);
     const target = match || fallback;
@@ -433,6 +600,31 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     );
   }
 
+  function renderRecoverySnapshot(snapshot) {
+    const character = characters.find((item) => item.id === snapshot.characterId);
+    return <article className="v34915-recovery-row" key={snapshot.id}>
+      <span className="v34915-recovery-row__icon"><ShieldCheck size={20}/></span>
+      <div className="v34915-recovery-row__copy">
+        <small>LOCAL SAFETY COPY · {formatShelfDate(snapshot.capturedAt)}</small>
+        <strong>{snapshot.title || character?.name || "Recovered story"}</strong>
+        <p>{snapshot.characterName || character?.name || "Velvet story"} · {snapshot.recordCount || 0} records · expires after 30 days</p>
+      </div>
+      <div className="v34915-recovery-row__actions">
+        <button type="button" onClick={() => restoreSafetySnapshot(snapshot)} disabled={updatingId === snapshot.id}><RotateCcw size={15}/>{updatingId === snapshot.id ? "Restoring…" : "Restore"}</button>
+        <button type="button" className="danger" onClick={() => removeSafetySnapshot(snapshot.id)}><Trash2 size={15}/>Remove copy</button>
+      </div>
+    </article>;
+  }
+
+  function renderDeepMoment(match) {
+    const label = match.kind === "memory" ? "Memory" : match.kind === "message" && match.text ? "Message" : "Moment";
+    return <button type="button" className="v34915-deep-match" key={`${match.kind}-${match.messageId || match.conversationId}-${match.date || ""}`} onClick={() => onOpenCharacter(match.character, match.conversationId, match.messageId || null)}>
+      <span><Search size={15}/></span>
+      <div><small>{label} · {match.conversation.title || match.character.name}</small><p>{shelfPreview(match.text).slice(0, 150)}</p></div>
+      <ChevronRight size={16}/>
+    </button>;
+  }
+
   function renderStoryMenu(conversation, title, variant = "card") {
     const menuOpen = menuId === conversation.id;
     const panel = menuOpen && typeof document !== "undefined" ? createPortal(
@@ -444,6 +636,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
           <button type="button" role="menuitem" onClick={(event) => { setMenuId(null); beginRename(event, conversation); }}><Pencil size={15}/><span>Rename</span></button>
           <button type="button" role="menuitem" onClick={(event) => { setMenuId(null); duplicateConversation(event, conversation); }} disabled={updatingId === conversation.id}><Copy size={15}/><span>Duplicate</span></button>
           <button type="button" role="menuitem" onClick={(event) => { setMenuId(null); exportConversation(event, conversation); }} disabled={updatingId === conversation.id}><Download size={15}/><span>Export</span></button>
+          {!conversation.trashed_at && <button type="button" role="menuitem" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId(null); setCollectionDialog({ mode: "assign", conversation }); }}><FolderHeart size={15}/><span>Add to collection</span></button>}
           <button type="button" role="menuitem" onClick={(event) => { setMenuId(null); toggleArchived(event, conversation); }} disabled={updatingId === conversation.id}>{conversation.archived_at ? <ArchiveRestore size={15}/> : <Archive size={15}/>}<span>{conversation.archived_at ? "Restore" : "Archive"}</span></button>
           {onOpenDiagnostics && <button type="button" role="menuitem" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setMenuId(null); onOpenDiagnostics(); }}><Bug size={15}/><span>Report a problem</span></button>}
           <span className="story-action-menu__separator" />
@@ -508,6 +701,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
             ["favorites", "Favorites"],
             ["archived", "Archived"],
             ["trash", "Trash"],
+            ["recovery", "Recovery Vault"],
+            ...collections.map((item) => [`collection:${item.id}`, item.name]),
           ].map(([id, label]) => (
             <button key={id} className={view === id ? "active" : ""} onClick={() => { setView(id); setFiltersOpen(false); setShowAllRecent(true); }}>{label}</button>
           ))}
@@ -516,15 +711,16 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
 
       {loading && <PageState icon={<LoaderCircle className="spin" size={28}/>} text="Opening your library..." />}
       {!loading && error && <div className="chats-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")} aria-label="Dismiss"><X size={16}/></button></div>}
+      {libraryNotice && <div className="chats-page__notice v34915-library-notice"><ShieldCheck size={17}/><span>{libraryNotice}</span><button onClick={() => setLibraryNotice("")} aria-label="Dismiss"><X size={16}/></button></div>}
 
-      {!loading && conversations.length === 0 && (
+      {!loading && conversations.length === 0 && recoverySnapshots.length === 0 && collections.length === 0 && (
         <div className="reference-empty">
           <Sparkles size={28}/><span>YOUR FIRST STORY</span><h2>Nothing here yet</h2><p>Choose a character and begin a private world.</p>
           <button onClick={() => setPickerOpen(true)}><Plus size={17}/> Start a story</button>
         </div>
       )}
 
-      {!loading && conversations.length > 0 && (
+      {!loading && (conversations.length > 0 || recoverySnapshots.length > 0 || collections.length > 0) && (
         <>
           <section className="reference-collections">
             <h2>COLLECTIONS</h2>
@@ -548,17 +744,47 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
                   </button>
                 );
               })}
+              <button className="reference-collection-card v34915-new-collection" type="button" onClick={() => { setCollectionName(""); setCollectionDialog({ mode: "create" }); }}>
+                <span className="reference-collection-card__fallback" />
+                <span className="reference-collection-card__shade" />
+                <span className="reference-collection-card__icon"><FolderPlus size={28}/></span>
+                <strong>New collection</strong>
+                <small>Make your own shelf</small>
+              </button>
             </div>
           </section>
 
           <section className="reference-recent">
             <header className="reference-section-heading">
-              <h2>{view === "active" ? "RECENT STORIES" : view === "favorites" ? "FAVORITE STORIES" : view === "archived" ? "ARCHIVED STORIES" : "TRASH"}</h2>
-              {filtered.length > 3 && <button type="button" onClick={() => setShowAllRecent((value) => !value)}>{showAllRecent ? "SHOW LESS" : "VIEW ALL"}<ChevronRight size={17}/></button>}
+              <h2>{currentSectionTitle()}</h2>
+              <div className="v34915-section-actions">
+                {activeCustomCollection && <button type="button" className="v34915-remove-collection" onClick={deleteActiveCollection}><Trash2 size={14}/>REMOVE COLLECTION</button>}
+                {view !== "recovery" && filtered.length > 3 && <button type="button" onClick={() => setShowAllRecent((value) => !value)}>{showAllRecent ? "SHOW LESS" : "VIEW ALL"}<ChevronRight size={17}/></button>}
+              </div>
             </header>
-            {filtered.length ? <div className="reference-story-list">{visibleStories.map(renderRecentStory)}</div> : <div className="reference-no-results"><Search size={22}/><span>No stories here yet.</span></div>}
+            {view === "recovery"
+              ? (recoverySnapshots.length ? <div className="v34915-recovery-list">{recoverySnapshots.map(renderRecoverySnapshot)}</div> : <div className="reference-no-results"><ShieldCheck size={22}/><span>No recovery copies yet. Velvet creates them before permanent deletion.</span></div>)
+              : (filtered.length ? <div className="reference-story-list">{visibleStories.map(renderRecentStory)}</div> : <div className="reference-no-results"><Search size={22}/><span>No stories here yet.</span></div>)}
           </section>
+
+          {search.trim().length >= 2 && view !== "recovery" && <section className="v34915-deep-search">
+            <header><div><small>DEEP SEARCH</small><h2>Matching moments</h2></div>{deepSearching && <LoaderCircle className="spin" size={18}/>}</header>
+            {deepMomentEntries.length ? <div>{deepMomentEntries.map(renderDeepMoment)}</div> : !deepSearching && <p>No older messages or memories match this search.</p>}
+          </section>}
         </>
+      )}
+
+      {collectionDialog && typeof document !== "undefined" && createPortal(
+        <div className="v34915-collection-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget) setCollectionDialog(null); }}>
+          <section className="v34915-collection-sheet" role="dialog" aria-modal="true" aria-label={collectionDialog.mode === "create" ? "Create collection" : "Story collections"} onPointerDown={(event)=>event.stopPropagation()}>
+            <span className="velvet-sheet-grabber" aria-hidden="true"/>
+            <header><div><small>{collectionDialog.mode === "create" ? "NEW COLLECTION" : "ORGANIZE STORY"}</small><h2>{collectionDialog.mode === "create" ? "Name this shelf" : (collectionDialog.conversation?.title || collectionDialog.conversation?.character?.name || "Collections")}</h2></div><button type="button" onClick={()=>setCollectionDialog(null)} aria-label="Close"><X size={18}/></button></header>
+            {collectionDialog.mode === "create" ? <form onSubmit={createCollection} className="v34915-collection-create"><label><FolderPlus size={18}/><input autoFocus maxLength={40} value={collectionName} onChange={(event)=>setCollectionName(event.target.value)} placeholder="Campus favorites, Roman, Comfort reads…"/></label><button type="submit" disabled={!collectionName.trim()}>Create collection</button></form> : <div className="v34915-collection-assign">
+              {collections.length ? collections.map((collection)=>{ const included=collection.storyIds.includes(collectionDialog.conversation.id); return <button type="button" key={collection.id} className={included?"is-active":""} onClick={()=>toggleCollectionStory(collection.id, collectionDialog.conversation.id)}><span><FolderHeart size={17}/><strong>{collection.name}</strong><small>{collection.storyIds.length} {collection.storyIds.length===1?"story":"stories"}</small></span>{included?<Check size={18}/>:<Plus size={18}/>}</button>; }) : <p>No custom collections yet.</p>}
+              <button type="button" className="v34915-collection-assign__new" onClick={()=>{setCollectionName("");setCollectionDialog({mode:"create"});}}><FolderPlus size={16}/>New collection</button>
+            </div>}
+          </section>
+        </div>, document.body
       )}
 
       {groupStoryOpen && <GroupStoryModal onClose={() => setGroupStoryOpen(false)} onOpenStory={onOpenCharacter}/>}

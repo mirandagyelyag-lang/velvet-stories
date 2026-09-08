@@ -38,7 +38,7 @@ function excerpt(value = "", query = "", max = 170) {
   return `${start ? "…" : ""}${chunk}${start + max < text.length ? "…" : ""}`;
 }
 
-export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpenLorebooks }) {
+export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpenLorebooks, onOpenStories }) {
   const { characters } = useCharacters();
   const { theme } = useTheme();
   const [query, setQuery] = useState("");
@@ -71,9 +71,9 @@ export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpen
     setError("");
     try {
       const [conversationResult, messageResult, memoryResult, loreResult] = await Promise.all([
-        supabase.from("conversations").select("id, character_id, title, summary, story_recap, updated_at, story_timeline, group_mode, group_character_ids, group_title").is("trashed_at", null).is("archived_at", null).order("updated_at", { ascending: false }).limit(140),
-        supabase.from("messages").select("id, conversation_id, sender, content, created_at").order("created_at", { ascending: false }).limit(500),
-        supabase.from("memories").select("id, conversation_id, character_id, content, category, importance, created_at, is_canon, is_pinned").is("superseded_at", null).order("created_at", { ascending: false }).limit(260),
+        supabase.from("conversations").select("id, character_id, title, summary, story_recap, updated_at, story_timeline, group_mode, group_character_ids, group_title, archived_at").is("trashed_at", null).order("updated_at", { ascending: false }).limit(260),
+        supabase.from("messages").select("id, conversation_id, sender, content, created_at").order("created_at", { ascending: false }).limit(1600),
+        supabase.from("memories").select("id, conversation_id, character_id, content, category, importance, created_at, is_canon, is_pinned").is("superseded_at", null).order("created_at", { ascending: false }).limit(700),
         supabase.from("lore_entries").select("id, lorebook_id, name, content, entry_type, keywords, updated_at").eq("is_active", true).order("updated_at", { ascending: false }).limit(260),
       ]);
       for (const response of [conversationResult, messageResult, memoryResult, loreResult]) if (response.error) throw response.error;
@@ -94,7 +94,7 @@ export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpen
         const storyName = conversation.group_mode ? (conversation.group_title || conversation.title || castNames || "Group Story") : (conversation.title || `${character.name} story`);
         const score = scoreText(`${storyName} ${castNames} ${conversation.summary || ""} ${conversation.story_recap || ""}`, needle);
         if (!score) return;
-        found.push({ type: "story", score: score + 6, id: conversation.id, conversationId: conversation.id, character, title: storyName, subtitle: conversation.group_mode ? "Group Story" : `${character.name} · Story`, text: excerpt(conversation.story_recap || conversation.summary || "Open story", needle), date: conversation.updated_at });
+        found.push({ type: "story", score: score + 6, id: conversation.id, conversationId: conversation.id, character, archived: Boolean(conversation.archived_at), title: storyName, subtitle: conversation.group_mode ? `Group Story${conversation.archived_at ? " · Archived" : ""}` : `${character.name} · Story${conversation.archived_at ? " · Archived" : ""}`, text: excerpt(conversation.story_recap || conversation.summary || "Open story", needle), date: conversation.updated_at });
       });
 
       (messageResult.data || []).forEach((message) => {
@@ -103,7 +103,7 @@ export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpen
         const conversation = byConversation.get(message.conversation_id);
         const character = characters.find((item) => item.id === conversation?.character_id);
         if (!conversation || !character) return;
-        found.push({ type: "message", score: score + (message.sender === "user" ? 1 : 0), id: message.id, messageId: message.id, conversationId: conversation.id, character, title: conversation.group_mode ? (conversation.group_title || conversation.title) : character.name, subtitle: message.sender === "user" ? "Your message" : "Story message", text: excerpt(message.content, needle), date: message.created_at });
+        found.push({ type: "message", score: score + (message.sender === "user" ? 1 : 0), id: message.id, messageId: message.id, conversationId: conversation.id, character, archived: Boolean(conversation.archived_at), title: conversation.group_mode ? (conversation.group_title || conversation.title) : character.name, subtitle: `${message.sender === "user" ? "Your message" : "Story message"}${conversation.archived_at ? " · Archived" : ""}`, text: excerpt(message.content, needle), date: message.created_at });
       });
 
       conversations.forEach((conversation) => {
@@ -112,7 +112,7 @@ export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpen
         (Array.isArray(conversation.story_timeline) ? conversation.story_timeline : []).forEach((beat, index) => {
           const score = scoreText(`${beat.label || ""} ${beat.detail || ""} ${beat.kind || ""}`, needle);
           if (!score) return;
-          found.push({ type: "timeline", score: score + 5, id: `${conversation.id}-${beat.message_id || index}`, messageId: beat.message_id || null, conversationId: conversation.id, character, title: beat.label || "Story beat", subtitle: `${conversation.group_mode ? (conversation.group_title || conversation.title) : character.name} · Timeline`, text: beat.detail || beat.kind || "Timeline event", date: beat.created_at || conversation.updated_at });
+          found.push({ type: "timeline", score: score + 5, archived: Boolean(conversation.archived_at), id: `${conversation.id}-${beat.message_id || index}`, messageId: beat.message_id || null, conversationId: conversation.id, character, title: beat.label || "Story beat", subtitle: `${conversation.group_mode ? (conversation.group_title || conversation.title) : character.name} · Timeline${conversation.archived_at ? " · Archived" : ""}`, text: beat.detail || beat.kind || "Timeline event", date: beat.created_at || conversation.updated_at });
         });
       });
 
@@ -144,6 +144,7 @@ export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpen
   const groupedCounts = useMemo(() => results.reduce((acc, item) => ({ ...acc, [item.type]: (acc[item.type] || 0) + 1 }), {}), [results]);
 
   function openResult(item) {
+    if (item.archived) return onOpenStories?.();
     if ((item.type === "message" || item.type === "timeline") && item.character && item.conversationId) return onOpenCharacter(item.character, item.conversationId, item.messageId || null);
     if (item.type === "story" && item.character && item.conversationId) return onOpenCharacter(item.character, item.conversationId);
     if (item.type === "memory") {

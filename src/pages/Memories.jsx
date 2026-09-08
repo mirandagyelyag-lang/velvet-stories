@@ -95,6 +95,11 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
   const [workingId, setWorkingId] = useState(null);
   const [importanceFilter, setImportanceFilter] = useState("all");
   const [cleanupNotice, setCleanupNotice] = useState("");
+  const [conversationRows, setConversationRows] = useState([]);
+  const [chemistryProfiles, setChemistryProfiles] = useState([]);
+  const [storyMilestones, setStoryMilestones] = useState([]);
+  const [detailMode, setDetailMode] = useState("book");
+  const [detailSearch, setDetailSearch] = useState("");
 
   useEffect(() => {
     document.documentElement.classList.add("velvet-burgundy-route");
@@ -117,14 +122,26 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
     if (!user) return;
     try {
       setLoading(true); setError("");
-      const [{ data: memoryRows, error: memoryError }, { data: conversations, error: conversationError }] = await Promise.all([
+      const [
+        { data: memoryRows, error: memoryError },
+        { data: conversations, error: conversationError },
+        { data: chemistryRows, error: chemistryError },
+        { data: milestoneRows, error: milestoneError },
+      ] = await Promise.all([
         supabase.from("memories").select("*").order("is_canon", { ascending: false }).order("is_pinned", { ascending: false }).order("importance", { ascending: false }).order("updated_at", { ascending: false }),
-        supabase.from("conversations").select("id, character_id, updated_at").is("trashed_at", null).is("archived_at", null).order("updated_at", { ascending: false }),
+        supabase.from("conversations").select("id, character_id, title, updated_at, relationship_state, story_timeline, story_recap, summary, unresolved_threads").is("trashed_at", null).is("archived_at", null).order("updated_at", { ascending: false }),
+        supabase.from("story_chemistry_profiles").select("*").order("updated_at", { ascending: false }),
+        supabase.from("story_milestones").select("*").order("created_at", { ascending: false }),
       ]);
       if (memoryError) throw memoryError;
       if (conversationError) throw conversationError;
+      if (chemistryError) console.warn("Memory chemistry unavailable:", chemistryError.message);
+      if (milestoneError) console.warn("Memory milestones unavailable:", milestoneError.message);
       const activeConversationIds = new Set((conversations || []).map((conversation) => conversation.id));
       const visibleMemories = (memoryRows || []).filter((memory) => !memory.conversation_id || activeConversationIds.has(memory.conversation_id));
+      setConversationRows(conversations || []);
+      setChemistryProfiles((chemistryRows || []).filter((row) => activeConversationIds.has(row.conversation_id)));
+      setStoryMilestones((milestoneRows || []).filter((row) => activeConversationIds.has(row.conversation_id)));
       const map = new Map();
       (conversations || []).forEach((conversation) => { if (!map.has(conversation.character_id)) map.set(conversation.character_id, conversation.id); });
       setConversationByCharacter(map);
@@ -276,17 +293,82 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
 
   const selectedCharacterMemories = useMemo(() => {
     if (!selectedMemoryCharacter) return [];
+    const needle = normalize(detailSearch);
     return activeMemories
       .filter((memory) => memory.character_id === selectedMemoryCharacter.id)
       .filter((memory) => memoryMatchesImportance(memory, importanceFilter))
       .filter((memory) => memoryMatchesGroup(memory, group))
+      .filter((memory) => !needle || normalize(`${memory.content || ""} ${memory.category || ""} ${memory.why_remembered || ""}`).includes(needle))
       .sort(sortMemoryRows);
-  }, [activeMemories, selectedMemoryCharacter, importanceFilter, group]);
+  }, [activeMemories, selectedMemoryCharacter, importanceFilter, group, detailSearch]);
+
+  const selectedCharacterConversations = useMemo(() => selectedMemoryCharacter
+    ? conversationRows.filter((row) => row.character_id === selectedMemoryCharacter.id).sort((a,b)=>new Date(b.updated_at||0)-new Date(a.updated_at||0))
+    : [], [conversationRows, selectedMemoryCharacter]);
+
+  const selectedConversationIds = useMemo(() => new Set(selectedCharacterConversations.map((row) => row.id)), [selectedCharacterConversations]);
+
+  const selectedChemistry = useMemo(() => {
+    if (!selectedMemoryCharacter) return null;
+    return chemistryProfiles.find((row) => selectedConversationIds.has(row.conversation_id) && normalize(row.character_name) === normalize(selectedMemoryCharacter.name))
+      || chemistryProfiles.find((row) => selectedConversationIds.has(row.conversation_id))
+      || null;
+  }, [chemistryProfiles, selectedConversationIds, selectedMemoryCharacter]);
+
+  const selectedJournalEntries = useMemo(() => {
+    if (!selectedMemoryCharacter) return [];
+    const rows = [];
+    const seen = new Set();
+    for (const memory of activeMemories.filter((item) => item.character_id === selectedMemoryCharacter.id)) {
+      const text = String(memory.content || "").trim();
+      const signature = normalize(text);
+      if (!text || seen.has(signature)) continue;
+      seen.add(signature);
+      rows.push({ id:`memory-${memory.id}`, kind:"memory", title:categoryLabel(memory.category), detail:text, date:memory.updated_at || memory.created_at, importance:Number(memory.importance||0), canon:Boolean(memory.is_canon), conversationId:memory.conversation_id || "" });
+    }
+    for (const milestone of storyMilestones.filter((item) => selectedConversationIds.has(item.conversation_id))) {
+      const text = String(milestone.details || milestone.title || "").trim();
+      const signature = normalize(`${milestone.title || ""} ${text}`);
+      if (!text || seen.has(signature)) continue;
+      seen.add(signature);
+      rows.push({ id:`milestone-${milestone.id}`, kind:"milestone", title:milestone.title || "Milestone", detail:milestone.details || "", date:milestone.created_at, importance:5, conversationId:milestone.conversation_id || "" });
+    }
+    for (const conversation of selectedCharacterConversations) {
+      for (const [index, beat] of (Array.isArray(conversation.story_timeline) ? conversation.story_timeline : []).entries()) {
+        const title = typeof beat === "string" ? beat : beat?.label || beat?.note || beat?.detail || "Story beat";
+        const detail = typeof beat === "string" ? "" : beat?.detail || beat?.note || "";
+        const signature = normalize(`${title} ${detail}`);
+        if (!signature || seen.has(signature)) continue;
+        seen.add(signature);
+        rows.push({ id:`timeline-${conversation.id}-${beat?.message_id || index}`, kind:"timeline", title, detail:detail && detail !== title ? detail : "", date:beat?.created_at || conversation.updated_at, importance:Number(beat?.importance||3), conversationId:conversation.id });
+      }
+    }
+    return rows.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,120);
+  }, [activeMemories, selectedMemoryCharacter, selectedCharacterConversations, storyMilestones, selectedConversationIds]);
+
+  const selectedRelationshipMemories = useMemo(() => selectedMemoryCharacter
+    ? activeMemories.filter((memory)=>memory.character_id===selectedMemoryCharacter.id && ["relationship","promise","conflict","boundary"].includes(memory.category)).sort(sortMemoryRows)
+    : [], [activeMemories, selectedMemoryCharacter]);
+
+  const selectedMemoryStats = useMemo(() => {
+    if (!selectedMemoryCharacter) return { canon:0, pinned:0, relationship:0, moments:0 };
+    const rows = activeMemories.filter((memory)=>memory.character_id===selectedMemoryCharacter.id);
+    return {
+      canon: rows.filter((memory)=>memory.is_canon).length,
+      pinned: rows.filter((memory)=>memory.is_pinned).length,
+      relationship: rows.filter((memory)=>["relationship","promise","conflict","boundary"].includes(memory.category)).length,
+      moments: rows.filter((memory)=>["event","conflict","promise"].includes(memory.category)).length,
+    };
+  }, [activeMemories, selectedMemoryCharacter]);
+
+  const relationshipTexture = useMemo(() => extractRelationshipTextureV34915(selectedCharacterConversations[0]?.relationship_state), [selectedCharacterConversations]);
 
   function openMemoryCharacter(characterId) {
     setSelectedCharacterId(characterId);
     setImportanceFilter("all");
     setGroup("all");
+    setDetailMode("book");
+    setDetailSearch("");
     setMenuId(null);
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -295,6 +377,8 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
     setSelectedCharacterId("all");
     setImportanceFilter("all");
     setGroup("all");
+    setDetailMode("book");
+    setDetailSearch("");
     setMenuId(null);
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -366,45 +450,72 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
         <button className="reference-stories-new memories-reference__new" type="button" onClick={() => openCreateFor(selectedMemoryCharacter.id)} aria-label={`Add memory for ${selectedMemoryCharacter.name}`}><Plus size={23}/></button>
       </header>
 
-      <section className="memory-character-detail__hero">
+      <section className="memory-character-detail__hero v34915-memory-hero">
         <div className="memory-character-detail__portrait">{art ? <img src={art} alt=""/> : <span style={{ "--memory-color": selectedMemoryCharacter.color }}>{selectedMemoryCharacter.initials || "✦"}</span>}</div>
         <div className="memory-character-detail__copy"><small>CHARACTER · {selectedMemoryCharacter.name}</small><h2>{selectedMemoryCharacter.name}</h2><p>{selectedMemoryCharacter.role || "Character"}</p><span>{totalMemories} {totalMemories === 1 ? "saved memory" : "saved memories"}</span></div>
+        <div className="v34915-memory-stats" aria-label="Memory summary">
+          <span><strong>{selectedMemoryStats.canon}</strong><small>Canon</small></span>
+          <span><strong>{selectedMemoryStats.pinned}</strong><small>Keepsakes</small></span>
+          <span><strong>{selectedMemoryStats.relationship}</strong><small>Relationship</small></span>
+          <span><strong>{selectedMemoryStats.moments}</strong><small>Moments</small></span>
+        </div>
       </section>
 
-      <div className="memory-character-detail__toolbar v311-memory-toolbar">
-        <div className="v311-memory-tabs" role="tablist" aria-label="Memory categories">
-          {groups.map((item)=>{ const Icon=item.icon; return <button type="button" key={item.id} className={group===item.id?"is-active":""} onClick={()=>setGroup(item.id)}>{Icon&&<Icon size={13}/>}<span>{item.label}</span></button>; })}
-        </div>
-        <div className="v311-memory-tools">
-          <label className="memories-character-library__importance"><Star size={16}/><select value={importanceFilter} onChange={(event) => setImportanceFilter(event.target.value)} aria-label="Filter memories by importance"><option value="all">All importance</option><option value="essential">Essential · 5</option><option value="high">High · 4+</option><option value="medium">Medium · 3+</option><option value="low">Low · 1–2</option></select><ChevronDown size={14}/></label>
-          {duplicateClusters.length>0&&<button type="button" className="v311-memory-clean" onClick={cleanSelectedDuplicates} disabled={workingId==="duplicate-cleanup"}><Combine size={15}/>{workingId==="duplicate-cleanup"?"Cleaning…":`Merge ${duplicateClusters.reduce((sum,c)=>sum+Math.max(0,c.length-1),0)} duplicates`}</button>}
-        </div>
-      </div>
-      {cleanupNotice&&<div className="v311-memory-clean-notice"><Check size={14}/><span>{cleanupNotice}</span><button type="button" onClick={()=>setCleanupNotice("")}><X size={13}/></button></div>}
+      <nav className="v34915-memory-mode-tabs" aria-label="Memory Book views">
+        <button type="button" className={detailMode === "book" ? "is-active" : ""} onClick={()=>setDetailMode("book")}><span>Memory Book</span><small>What Velvet remembers</small></button>
+        <button type="button" className={detailMode === "timeline" ? "is-active" : ""} onClick={()=>setDetailMode("timeline")}><span>Timeline</span><small>How the story changed</small></button>
+        <button type="button" className={detailMode === "relationship" ? "is-active" : ""} onClick={()=>setDetailMode("relationship")}><span>Us</span><small>Relationship journal</small></button>
+      </nav>
 
-      {error && !editorOpen && <div className="memories-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")}><X size={16}/></button></div>}
+      {detailMode !== "relationship" && <label className="v34915-memory-search"><Search size={17}/><input value={detailSearch} onChange={(event)=>setDetailSearch(event.target.value)} placeholder={detailMode === "book" ? "Search this memory book…" : "Search this timeline…"}/>{detailSearch&&<button type="button" onClick={()=>setDetailSearch("")} aria-label="Clear"><X size={14}/></button>}</label>}
 
-      <section className="memory-character-detail__list">
-        <header><div><small>MEMORY BOOK</small><h3>{importanceFilter === "all" ? "Everything Velvet remembers" : `${selectedCharacterMemories.length} matching memories`}</h3></div><span>{selectedCharacterMemories.length}</span></header>
-        {selectedCharacterMemories.length ? selectedCharacterMemories.map((memory) => <SwipeToTrash
-          key={memory.id}
-          className="swipe-trash--memory"
-          direction="right"
-          disabled={workingId === memory.id}
-          onDelete={() => deleteMemory(memory)}
-          label={`Delete memory for ${selectedMemoryCharacter.name}`}
-        ><CharacterThoughtRow
-          memory={memory}
-          busy={workingId === memory.id}
-          menuOpen={menuId === memory.id}
-          onMenu={() => setMenuId((current) => current === memory.id ? null : memory.id)}
-          onCanon={() => toggleCanon(memory)}
-          onPin={() => togglePinned(memory)}
-          onEdit={() => openEdit(memory)}
-          onDelete={() => deleteMemory(memory)}
-          influencedAt={readMemoryInfluence(selectedMemoryCharacter.id, memory.id)}
-        /></SwipeToTrash>) : <div className="memory-character-detail__empty"><Sparkles size={18}/><strong>No memories at this importance.</strong><span>Try another filter or add one for {selectedMemoryCharacter.name}.</span></div>}
-      </section>
+      {detailMode === "book" && <>
+        <div className="memory-character-detail__toolbar v311-memory-toolbar">
+          <div className="v311-memory-tabs" role="tablist" aria-label="Memory categories">
+            {groups.map((item)=>{ const Icon=item.icon; return <button type="button" key={item.id} className={group===item.id?"is-active":""} onClick={()=>setGroup(item.id)}>{Icon&&<Icon size={13}/>}<span>{item.label}</span></button>; })}
+          </div>
+          <div className="v311-memory-tools">
+            <label className="memories-character-library__importance"><Star size={16}/><select value={importanceFilter} onChange={(event) => setImportanceFilter(event.target.value)} aria-label="Filter memories by importance"><option value="all">All importance</option><option value="essential">Essential · 5</option><option value="high">High · 4+</option><option value="medium">Medium · 3+</option><option value="low">Low · 1–2</option></select><ChevronDown size={14}/></label>
+            {duplicateClusters.length>0&&<button type="button" className="v311-memory-clean" onClick={cleanSelectedDuplicates} disabled={workingId==="duplicate-cleanup"}><Combine size={15}/>{workingId==="duplicate-cleanup"?"Cleaning…":`Merge ${duplicateClusters.reduce((sum,c)=>sum+Math.max(0,c.length-1),0)} duplicates`}</button>}
+          </div>
+        </div>
+        {cleanupNotice&&<div className="v311-memory-clean-notice"><Check size={14}/><span>{cleanupNotice}</span><button type="button" onClick={()=>setCleanupNotice("")}><X size={13}/></button></div>}
+
+        {error && !editorOpen && <div className="memories-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")}><X size={16}/></button></div>}
+
+        <section className="memory-character-detail__list">
+          <header><div><small>MEMORY BOOK</small><h3>{detailSearch ? `${selectedCharacterMemories.length} matching memories` : importanceFilter === "all" ? "Everything Velvet remembers" : `${selectedCharacterMemories.length} matching memories`}</h3></div><span>{selectedCharacterMemories.length}</span></header>
+          {selectedCharacterMemories.length ? selectedCharacterMemories.map((memory) => <SwipeToTrash
+            key={memory.id}
+            className="swipe-trash--memory"
+            direction="right"
+            disabled={workingId === memory.id}
+            onDelete={() => deleteMemory(memory)}
+            label={`Delete memory for ${selectedMemoryCharacter.name}`}
+          ><CharacterThoughtRow
+            memory={memory}
+            busy={workingId === memory.id}
+            menuOpen={menuId === memory.id}
+            onMenu={() => setMenuId((current) => current === memory.id ? null : memory.id)}
+            onCanon={() => toggleCanon(memory)}
+            onPin={() => togglePinned(memory)}
+            onEdit={() => openEdit(memory)}
+            onDelete={() => deleteMemory(memory)}
+            influencedAt={readMemoryInfluence(selectedMemoryCharacter.id, memory.id)}
+          /></SwipeToTrash>) : <div className="memory-character-detail__empty"><Sparkles size={18}/><strong>No memories match.</strong><span>Try another filter or add one for {selectedMemoryCharacter.name}.</span></div>}
+        </section>
+      </>}
+
+      {detailMode === "timeline" && <MemoryJournalTimeline entries={selectedJournalEntries} query={detailSearch} />}
+
+      {detailMode === "relationship" && <MemoryRelationshipJournal
+        character={selectedMemoryCharacter}
+        memories={selectedRelationshipMemories}
+        chemistry={selectedChemistry}
+        texture={relationshipTexture}
+        conversations={selectedCharacterConversations}
+        onOpenStory={(conversationId)=>onOpenCharacter?.(selectedMemoryCharacter, conversationId)}
+      />}
 
       <button className="memories-reference__add-bottom" onClick={() => openCreateFor(selectedMemoryCharacter.id)}><Plus size={22}/>Add memory for {selectedMemoryCharacter.name}</button>
 
@@ -449,6 +560,68 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
 
     {editorOpen && <MemoryEditor editingMemory={editingMemory} draft={draft} setDraft={setDraft} draftCharacterId={draftCharacterId} setDraftCharacterId={setDraftCharacterId} characters={characters} replacementCandidates={replacementCandidates} saving={saving} error={error} setError={setError} onClose={() => setEditorOpen(false)} onSubmit={saveMemory} />}
   </section>;
+}
+
+function MemoryJournalTimeline({ entries, query }) {
+  const needle = normalize(query);
+  const filtered = (entries || []).filter((entry) => !needle || normalize(`${entry.title || ""} ${entry.detail || ""}`).includes(needle));
+  const grouped = filtered.reduce((map, entry) => {
+    const key = journalMonthLabel(entry.date);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(entry);
+    return map;
+  }, new Map());
+  return <section className="v34915-memory-journal">
+    <header><div><small>STORY JOURNAL</small><h3>Moments that changed the story</h3></div><span>{filtered.length}</span></header>
+    {filtered.length ? <div className="v34915-memory-journal__months">{[...grouped.entries()].map(([month, rows])=><section key={month}><h4>{month}</h4><ol>{rows.map((entry)=><li key={entry.id} className={`is-${entry.kind}${entry.canon?" is-canon":""}`}><span className="v34915-memory-journal__dot"/><div><small>{entry.kind === "milestone" ? "MILESTONE" : entry.kind === "timeline" ? "STORY BEAT" : entry.canon ? "CANON MEMORY" : "MEMORY"} · {formatMemoryDate(entry.date)}</small><strong>{entry.title}</strong>{entry.detail&&<p>{entry.detail}</p>}</div></li>)}</ol></section>)}</div> : <div className="memory-character-detail__empty"><Clock3 size={19}/><strong>No matching story moments.</strong><span>As this relationship evolves, milestones and important memories will collect here.</span></div>}
+  </section>;
+}
+
+function MemoryRelationshipJournal({ character, memories, chemistry, texture, conversations, onOpenStory }) {
+  const promises = memories.filter((memory)=>memory.category === "promise" || memory.category === "boundary");
+  const conflicts = memories.filter((memory)=>memory.category === "conflict");
+  const relationship = memories.filter((memory)=>memory.category === "relationship");
+  const insideJokes = Array.isArray(chemistry?.inside_jokes) ? chemistry.inside_jokes.filter(Boolean).slice(0,8) : [];
+  const places = Array.isArray(chemistry?.meaningful_places) ? chemistry.meaningful_places.filter(Boolean).slice(0,8) : [];
+  const recent = conversations?.[0] || null;
+  return <section className="v34915-relationship-journal">
+    <header className="v34915-relationship-journal__hero"><div><small>RELATIONSHIP JOURNAL</small><h3>{character.name} & you</h3><p>What changed between you, without reducing it to a score.</p></div>{recent&&<button type="button" onClick={()=>onOpenStory?.(recent.id)}>Open latest story<ChevronDown size={14}/></button>}</header>
+
+    {(texture.length > 0 || chemistry?.signature) && <section className="v34915-relationship-card v34915-relationship-card--texture"><small>RIGHT NOW</small>{chemistry?.signature&&<strong>{chemistry.signature}</strong>}{texture.map((line,index)=><p key={`${line}-${index}`}>{line}</p>)}</section>}
+
+    {(insideJokes.length > 0 || places.length > 0) && <section className="v34915-relationship-keepsakes"><div>{insideJokes.length>0&&<><small>INSIDE JOKES</small><div>{insideJokes.map((item)=><span key={item}>{item}</span>)}</div></>}</div><div>{places.length>0&&<><small>MEANINGFUL PLACES</small><div>{places.map((item)=><span key={item}>{item}</span>)}</div></>}</div></section>}
+
+    <div className="v34915-relationship-grid">
+      <RelationshipMemorySection title="Relationship shifts" rows={relationship} empty="No saved relationship shifts yet."/>
+      <RelationshipMemorySection title="Promises & boundaries" rows={promises} empty="No promises or boundaries saved yet."/>
+      <RelationshipMemorySection title="Conflict & repair" rows={conflicts} empty="No major conflict memories saved yet."/>
+    </div>
+  </section>;
+}
+
+function RelationshipMemorySection({ title, rows, empty }) {
+  return <section className="v34915-relationship-card"><small>{title.toUpperCase()}</small>{rows.length ? <div>{rows.slice(0,12).map((memory)=><article key={memory.id}><strong>{memory.content}</strong><span>{formatMemoryDate(memory.updated_at || memory.created_at)}{memory.is_canon?" · Canon":""}</span></article>)}</div> : <p>{empty}</p>}</section>;
+}
+
+function extractRelationshipTextureV34915(state) {
+  if (!state || typeof state !== "object") return [];
+  const blocked = /score|percent|meter|level|points|count|turn|revision|version/i;
+  const lines=[];
+  const visit=(value,key="")=>{
+    if(lines.length>=5 || blocked.test(key)) return;
+    if(typeof value === "string") { const text=value.trim(); if(text && text.length>=3 && text.length<=220 && !lines.includes(text)) lines.push(text); return; }
+    if(Array.isArray(value)) { value.slice(0,4).forEach((item)=>visit(item,key)); return; }
+    if(value && typeof value === "object") Object.entries(value).slice(0,12).forEach(([childKey,child])=>visit(child,childKey));
+  };
+  visit(state);
+  return lines;
+}
+
+function journalMonthLabel(value) {
+  if (!value) return "Undated";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Undated";
+  return date.toLocaleDateString([], { month:"long", year:"numeric" });
 }
 
 function MemoryCharacterIndexCard({ character, count, onOpen }) {

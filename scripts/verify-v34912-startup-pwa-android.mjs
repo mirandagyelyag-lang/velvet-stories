@@ -10,9 +10,9 @@ const chat=fs.readFileSync("src/pages/Chat.jsx","utf8");
 const java=fs.readFileSync("android/app/src/main/java/com/velvetstories/app/MainActivity.java","utf8");
 const vite=fs.readFileSync("vite.config.js","utf8");
 
-ok("version 3.49.12 exact",pkg.version==="3.49.12"&&pub.version==="3.49.12");
-ok("release name is completion release",/Mobile Experience.*Character Polish Completion/.test(pub.release||""));
-ok("v3.49.12 runs first in stability lab",(pkg.scripts?.["stability:lab"]||"").startsWith("npm run verify:v34912"));
+ok("v3.49.12 lineage retained",Number((pkg.version||"0").split(".").at(-1))>=12&&pub.version===pkg.version);
+ok("v3.49.12 completion lineage remains",fs.existsSync("src/utils/appResumeRecoveryV34912.js")&&fs.existsSync("scripts/verify-v34912-startup-pwa-android.mjs"));
+ok("v3.49.12 remains in stability lab",(pkg.scripts?.["stability:lab"]||"").includes("npm run verify:v34912"));
 ok("v3.49.8 remains regression",(pkg.scripts?.["stability:lab"]||"").includes("npm run verify:v3498"));
 ok("resume recovery installs before app boot",main.includes("installAppResumeRecoveryV34912")&&main.indexOf("installAppResumeRecoveryV34912()")<main.indexOf("createRoot(document.getElementById"));
 ok("boot-ready event is emitted",main.includes("velvet:boot-ready")&&main.includes("window.__VELVET_BOOT_OK__ = true"));
@@ -31,7 +31,7 @@ ok("chat reloads after resume",chat.includes('velvet:app-resume')&&chat.includes
 ok("Android emits native resume event",java.includes("onResume()")&&java.includes("velvet:native-resume"));
 ok("Android emits native pause event",java.includes("onPause()")&&java.includes("velvet:native-pause"));
 ok("native lifecycle bridge uses main WebView safely",java.includes("bridge.getWebView()")&&java.includes("evaluateJavascript"));
-ok("Vite release metadata matches final release",vite.includes('velvetRelease = "Mobile Experience · Character Polish Completion"'));
+ok("Vite release metadata is current",vite.includes(`velvetRelease = "${pub.release}"`));
 ok("runtime state stays minimal",resume.includes("STATE_KEY")&&!resume.includes("message.content")&&!resume.includes("prompt"));
 
 let failed=0; for(const [name,value] of checks){console.log(`${value?"PASS":"FAIL"} ${name}`);if(!value)failed++;}

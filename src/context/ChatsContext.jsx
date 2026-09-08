@@ -11,6 +11,7 @@ import { useSettings } from "./SettingsContext";
 import { supabase } from "../services/supabase";
 import { characterStoryStyleInstruction } from "../utils/characterStoryStyle";
 import { beginGenerationTrace, classifyGenerationError, finishGenerationTrace, isProbablyUuid, isRetryableNetworkError, isRetryableStatus, recordGenerationMetric, updateGenerationTrace, wait } from "../utils/velvetResilience";
+import { ensureDailyAccountSafetySnapshotV34915 } from "../utils/dataSafetyV34915";
 
 const ChatsContext = createContext();
 const MESSAGE_PAGE_SIZE = 40;
@@ -46,6 +47,18 @@ export function ChatsProvider({
     }
     offlineQueueRef.current = readOfflineQueue(user.id);
     setOfflineQueueSize(offlineQueueRef.current.length);
+  }, [user?.id]);
+
+  // v3.49.15 DATA SAFETY: one quiet local account snapshot per day.
+  // It runs after auth settles and never blocks chat boot or generation.
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const timer = window.setTimeout(() => {
+      ensureDailyAccountSafetySnapshotV34915({ supabase, userId: user.id }).catch((error) => {
+        console.warn("Velvet daily safety snapshot skipped:", error?.message || error);
+      });
+    }, 2600);
+    return () => window.clearTimeout(timer);
   }, [user?.id]);
 
   useEffect(() => {

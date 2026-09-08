@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { Activity, ArrowLeft, Check, Download, Eye, FileDown, FileUp, Heart, LoaderCircle, MessageCircle, MonitorSmartphone, Moon, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Sun, Type, WifiOff, X, Wrench } from "lucide-react";
+import { Activity, ArrowLeft, Check, Download, Eye, FileDown, FileUp, Heart, LoaderCircle, MessageCircle, MonitorSmartphone, Moon, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Sun, Trash2, Type, WifiOff, X, Wrench } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { usePWA } from "../context/PWAContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
 import { useAuth } from "../context/AuthContext";
-import { triggerJsonDownload } from "../utils/velvetResilience";
 import { VELVET_BUILD_TIME, VELVET_RELEASE, VELVET_VERSION } from "../config/version";
 import { isSafeModeEnabled, leaveVelvetSafeMode, startVelvetSafeMode } from "../utils/safeMode";
+import {
+  createAccountSafetySnapshotV34915,
+  deleteAccountSafetySnapshotV34915,
+  downloadSafetyPayloadV34915,
+  listAccountSafetySnapshotsV34915,
+  restoreAccountSafetySnapshotV34915,
+} from "../utils/dataSafetyV34915";
 import "../styles/settings.css";
 
 function Settings({ onBack, onOpenDiagnostics }) {
@@ -21,6 +27,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
   const [safeModeBusy, setSafeModeBusy] = useState(false);
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupNotice, setBackupNotice] = useState("");
+  const [safetySnapshots, setSafetySnapshots] = useState([]);
   const restoreInputRef = useRef(null);
   const { user } = useAuth();
   useEffect(() => {
@@ -54,32 +61,24 @@ function Settings({ onBack, onOpenDiagnostics }) {
       if (themeMeta && previousThemeColor) themeMeta.setAttribute("content", previousThemeColor);
     };
   }, [theme]);
+  useEffect(() => {
+    if (!user?.id) { setSafetySnapshots([]); return; }
+    listAccountSafetySnapshotsV34915(user.id).then(setSafetySnapshots).catch(()=>setSafetySnapshots([]));
+  }, [user?.id]);
+
+  async function refreshLocalSafetySnapshots() {
+    if (!user?.id) return;
+    try { setSafetySnapshots(await listAccountSafetySnapshotsV34915(user.id)); } catch {}
+  }
+
   async function exportVelvetBackup() {
     if (!user?.id || backupBusy) return;
     setBackupBusy(true); setBackupNotice("");
     try {
-      const tableNames = ["characters","personas","lorebooks","lore_entries","conversations","messages","memories","message_alternatives","story_snapshots","story_milestones","story_cast_members","story_chemistry_profiles","story_canon_corrections","user_story_preferences"];
-      const tables = {};
-      const skipped = [];
-      for (const table of tableNames) {
-        try {
-          const { data, error } = await supabase.from(table).select("*").eq("user_id", user.id);
-          if (error) throw error;
-          tables[table] = data || [];
-        } catch (error) {
-          skipped.push({ table, reason: String(error?.message || "unavailable").slice(0,160) });
-        }
-      }
-      const local = {};
-      try {
-        for (let index=0; index<localStorage.length; index+=1) {
-          const key = localStorage.key(index);
-          if (key && /^(velvet_story_theme_v312_|velvet_character_story_style_|velvet_scene_|velvet_reading_mode|velvet_draft_)/.test(key)) local[key] = localStorage.getItem(key);
-        }
-      } catch {}
-      const payload = { format:"velvet-full-backup", version:VELVET_VERSION, exportedAt:new Date().toISOString(), userId:user.id, tables, local, skipped };
-      triggerJsonDownload(`Velvet-Backup-${new Date().toISOString().slice(0,10)}.json`, payload);
-      setBackupNotice(`Backup ready · ${Object.values(tables).reduce((sum,rows)=>sum+(rows?.length||0),0)} records saved${skipped.length?` · ${skipped.length} optional sections unavailable`:""}.`);
+      const snapshot = await createAccountSafetySnapshotV34915({ supabase, userId:user.id, reason:"manual-export" });
+      downloadSafetyPayloadV34915(`Velvet-Backup-${new Date().toISOString().slice(0,10)}.json`, snapshot.payload);
+      await refreshLocalSafetySnapshots();
+      setBackupNotice(`Backup ready · ${snapshot.recordCount} records saved locally and downloaded${snapshot.skippedCount ? ` · ${snapshot.skippedCount} optional sections unavailable` : ""}.`);
     } catch (error) {
       setBackupNotice(error?.message || "Velvet couldn't create the backup.");
     } finally { setBackupBusy(false); }
@@ -96,21 +95,46 @@ function Settings({ onBack, onOpenDiagnostics }) {
     const approved = await confirmAction({ title:"Restore this Velvet backup?", message:"Existing rows with the same IDs will be updated. Current stories not present in the backup are left alone.", confirmLabel:"Restore backup" });
     if (!approved) return;
     setBackupBusy(true); setBackupNotice("");
-    const order = ["characters","personas","lorebooks","lore_entries","conversations","messages","memories","message_alternatives","story_snapshots","story_milestones","story_cast_members","story_chemistry_profiles","story_canon_corrections","user_story_preferences"];
-    const failures=[];
-    let restored=0;
     try {
-      for (const table of order) {
-        const rows = Array.isArray(payload.tables?.[table]) ? payload.tables[table] : [];
-        if (!rows.length) continue;
-        const safeRows = rows.map((row)=>({ ...row, ...(Object.prototype.hasOwnProperty.call(row,"user_id") ? { user_id:user.id } : {}) }));
-        const { error } = await supabase.from(table).upsert(safeRows, { onConflict:"id" });
-        if (error) failures.push(`${table}: ${error.message}`); else restored += rows.length;
-      }
-      try { Object.entries(payload.local||{}).forEach(([key,value])=>localStorage.setItem(key,String(value))); } catch {}
-      setBackupNotice(`Restore finished · ${restored} records${failures.length?` · ${failures.length} optional sections need attention`:""}. Reopen Velvet to refresh everything.`);
+      const result = await restoreAccountSafetySnapshotV34915({ supabase, userId:user.id, payload });
+      setBackupNotice(`Restore finished · ${result.restored} records${result.failures.length ? ` · ${result.failures.length} optional sections need attention` : ""}. Reopen Velvet to refresh everything.`);
     } catch (error) { setBackupNotice(error?.message || "Restore stopped unexpectedly."); }
     finally { setBackupBusy(false); }
+  }
+
+  async function createLocalSafetyCopy() {
+    if (!user?.id || backupBusy) return;
+    try {
+      setBackupBusy(true); setBackupNotice("");
+      const snapshot = await createAccountSafetySnapshotV34915({ supabase, userId:user.id, reason:"manual-local" });
+      await refreshLocalSafetySnapshots();
+      setBackupNotice(`Local Safety Vault updated · ${snapshot.recordCount} records protected.`);
+    } catch (error) { setBackupNotice(error?.message || "Velvet couldn't create a local safety copy."); }
+    finally { setBackupBusy(false); }
+  }
+
+  async function restoreLatestLocalSafetyCopy() {
+    const latest = safetySnapshots[0];
+    if (!latest || backupBusy || !user?.id) return;
+    const approved = await confirmAction({ title:"Restore the latest local safety copy?", message:`Captured ${formatSafetyTime(latest.capturedAt)}. Existing rows with the same IDs will be updated.`, confirmLabel:"Restore local copy" });
+    if (!approved) return;
+    try {
+      setBackupBusy(true); setBackupNotice("");
+      const result = await restoreAccountSafetySnapshotV34915({ supabase, userId:user.id, payload:latest.payload });
+      setBackupNotice(`Local restore finished · ${result.restored} records restored${result.failures.length ? ` · ${result.failures.length} optional sections skipped` : ""}.`);
+    } catch (error) { setBackupNotice(error?.message || "Velvet couldn't restore the local safety copy."); }
+    finally { setBackupBusy(false); }
+  }
+
+  function downloadLatestLocalSafetyCopy() {
+    const latest = safetySnapshots[0];
+    if (!latest) return;
+    downloadSafetyPayloadV34915(`Velvet-Safety-${new Date(latest.capturedAt).toISOString().slice(0,10)}.json`, latest.payload);
+  }
+
+  async function removeLocalSafetyCopy(snapshotId) {
+    await deleteAccountSafetySnapshotV34915(snapshotId);
+    await refreshLocalSafetySnapshots();
   }
 
   async function confirmReset() { if (await confirmAction({ title: "Reset all preferences?", message: "Reading, story style, learned feedback, export and safety preferences will return to their defaults.", confirmLabel: "Reset settings" })) resetSettings(); }
@@ -168,7 +192,20 @@ function Settings({ onBack, onOpenDiagnostics }) {
     </div>
     <div className="settings-group settings-group--exports"><header><FileDown size={19}/><div><h2>Stories & backup</h2><p>Export one story normally, or keep a full safety copy of your Velvet world.</p></div></header>
       <SettingChoice label="Default story export" value={settings.exportFormat} options={[["markdown","Markdown"],["text","Plain text"],["json","JSON story"]]} onChange={(value)=>updateSetting("exportFormat",value)}/>
-      <div className="v312-backup-center"><div><strong>Never Lose a Story</strong><small>Characters, conversations, messages, Memories, worlds and local story preferences in one JSON backup.</small></div><div className="v312-backup-center__actions"><button type="button" onClick={exportVelvetBackup} disabled={backupBusy}>{backupBusy?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>}Back up Velvet</button><button type="button" onClick={()=>restoreInputRef.current?.click()} disabled={backupBusy}><FileUp size={15}/>Restore backup</button><input ref={restoreInputRef} type="file" accept="application/json,.json" hidden onChange={restoreVelvetBackup}/></div>{backupNotice&&<p className="v312-backup-center__notice">{backupNotice}</p>}</div>
+      <div className="v312-backup-center v34915-safety-center">
+        <div><strong>Safety Vault</strong><small>Velvet keeps up to five private local account snapshots for 30 days. One is refreshed automatically each day; manual downloads still work too.</small></div>
+        <div className="v312-backup-center__actions">
+          <button type="button" onClick={exportVelvetBackup} disabled={backupBusy}>{backupBusy?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>}Back up & download</button>
+          <button type="button" onClick={createLocalSafetyCopy} disabled={backupBusy}><ShieldCheck size={15}/>Save local copy</button>
+          <button type="button" onClick={()=>restoreInputRef.current?.click()} disabled={backupBusy}><FileUp size={15}/>Restore file</button>
+          <input ref={restoreInputRef} type="file" accept="application/json,.json" hidden onChange={restoreVelvetBackup}/>
+        </div>
+        <div className="v34915-safety-snapshots">
+          <header><span><ShieldCheck size={15}/><strong>Local recovery copies</strong></span><small>{safetySnapshots.length}/5</small></header>
+          {safetySnapshots.length ? <div>{safetySnapshots.map((snapshot,index)=><article key={snapshot.id} className={index===0?"is-latest":""}><span><strong>{index===0?"Latest safety copy":"Earlier safety copy"}</strong><small>{formatSafetyTime(snapshot.capturedAt)} · {snapshot.recordCount || 0} records · {snapshot.reason === "automatic-daily" ? "automatic" : "manual"}</small></span><span className="v34915-safety-snapshot-actions">{index===0&&<><button type="button" onClick={restoreLatestLocalSafetyCopy} disabled={backupBusy}><RotateCcw size={14}/>Restore</button><button type="button" onClick={downloadLatestLocalSafetyCopy}><Download size={14}/>Download</button></>}<button type="button" className="danger" onClick={()=>removeLocalSafetyCopy(snapshot.id)} aria-label="Remove local safety copy"><Trash2 size={14}/></button></span></article>)}</div> : <p className="v34915-safety-empty">No local safety copy yet. Velvet will create one automatically after you sign in, or you can make one now.</p>}
+        </div>
+        {backupNotice&&<p className="v312-backup-center__notice">{backupNotice}</p>}
+      </div>
     </div>
     <div className="settings-group" id="settings-privacy"><header><ShieldCheck size={19}/><div><h2>Privacy & safety</h2><p>Protection against accidental destructive actions.</p></div></header>
       <Toggle label="Confirm before deleting" description="Ask before deleting characters, conversations and lore." checked={settings.confirmBeforeDelete} onChange={(value)=>updateSetting('confirmBeforeDelete',value)}/>
@@ -242,4 +279,16 @@ function LearningPreferenceGroup({ title, kind, entries, onRemove }) {
   </section>;
 }
 function formatBuild(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString([], { month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit" }); }
+function formatSafetyTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) {
+    return `Today · ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  }
+  return date.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+}
+
+
 export default Settings;

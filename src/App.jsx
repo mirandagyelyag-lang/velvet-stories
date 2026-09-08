@@ -681,7 +681,7 @@ function App() {
 
     if (activePage === "diagnostics") return <Diagnostics onBack={() => goBackOr("profile")} />;
 
-    if (activePage === "search") return <SearchPage onBack={() => goBackOr("profile")} onOpenCharacter={openCharacter} onOpenMemories={() => navigate("memories")} onOpenLorebooks={() => navigate("lorebooks")} />;
+    if (activePage === "search") return <SearchPage onBack={() => goBackOr("profile")} onOpenCharacter={openCharacter} onOpenMemories={() => navigate("memories")} onOpenLorebooks={() => navigate("lorebooks")} onOpenStories={() => navigate("chats")} />;
 
     if (activePage === "profile") return <Profile onManageCharacters={() => navigate("characters")} onManagePersonas={() => navigate("personas")} onManageLorebooks={() => navigate("lorebooks")} onOpenMemories={() => navigate("memories")} onOpenDiagnostics={() => navigate("diagnostics")} onOpenSettings={() => navigate("settings")} onOpenSearch={() => navigate("search")} />;
 
