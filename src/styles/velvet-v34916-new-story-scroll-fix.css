@@ -1,0 +1,57 @@
+/* Velvet v3.49.16 — authoritative Android one-finger scroll for New Story picker. */
+@media (max-width: 760px) {
+  .conversation-picker-backdrop {
+    overflow: hidden !important;
+    touch-action: pan-y !important;
+    overscroll-behavior: none !important;
+  }
+
+  .conversation-picker.conversation-picker--editorial {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: min(90dvh, calc(var(--velvet-visual-height, 100dvh) - 8px)) !important;
+    min-height: min(68dvh, 620px) !important;
+    max-height: min(90dvh, calc(var(--velvet-visual-height, 100dvh) - 8px)) !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    touch-action: pan-y !important;
+    overscroll-behavior: none !important;
+  }
+
+  .conversation-picker.conversation-picker--editorial > header,
+  .conversation-picker.conversation-picker--editorial > .velvet-sheet-grabber {
+    flex: 0 0 auto !important;
+  }
+
+  .conversation-picker.conversation-picker--editorial > .conversation-picker__scroll {
+    display: block !important;
+    flex: 1 1 0 !important;
+    width: 100% !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-x: hidden !important;
+    overflow-y: scroll !important;
+    padding: 14px 14px calc(104px + env(safe-area-inset-bottom)) !important;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    pointer-events: auto !important;
+  }
+
+  .conversation-picker.conversation-picker--editorial > .conversation-picker__scroll::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .conversation-picker.conversation-picker--editorial .conversation-picker__list {
+    max-height: none !important;
+    overflow: visible !important;
+    touch-action: pan-y !important;
+  }
+
+  .conversation-picker.conversation-picker--editorial .conversation-picker__list > button {
+    touch-action: manipulation !important;
+  }
+}

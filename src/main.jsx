@@ -158,3 +158,5 @@ import "./styles/velvet-v3497-five-fix-polish.css";
 import "./styles/velvet-v34912-mobile-experience.css";
 
 import "./styles/velvet-v34915-story-library-memory-safety.css";
+
+import "./styles/velvet-v34916-new-story-scroll-fix.css";
