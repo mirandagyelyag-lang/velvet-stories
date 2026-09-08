@@ -280,6 +280,27 @@ export function hasDirectCausalAnswerMiss(reply = "", latestUserMessage = "", re
   return false;
 }
 
+
+export function hasPersonalityPerformanceOverride(reply = "", latestUserMessage = "") {
+  if (!directCausalQuestion(latestUserMessage)) return false;
+  const spoken = dialogueOnly(reply).join(" ").trim();
+  const text = normalized(spoken || reply);
+  if (!text) return true;
+
+  // Human Conversation Director: on a direct causal question, attitude may color the
+  // answer but cannot replace it. Reject screenplay-like pretexts, self-branding,
+  // and ornamental mini-monologues that manufacture a clever line instead of giving
+  // a socially plausible reason tied to the prior interaction.
+  const words = text.split(/\s+/).filter(Boolean);
+  const groundedMotive = /\b(?:because|wanted|want|curious|wondered|saw|seen|noticed|heard|thought|figured|came over to|talk to you|speak to you|ask you|tell you|see you|check on you|make sure you(?: were| are| re)? (?:okay|alright|fine)|reason|your friend|that (?:guy|girl|person)|him|her|them)\b/.test(text);
+  const referentialEvasion = /\b(?:do i need a reason|can t i (?:come|talk|speak)|maybe i (?:wanted|felt like)|i just (?:did|wanted|felt like)|does it matter)\b/.test(text);
+  const performanceFrame = /\b(?:someone had to|somebody had to|keep things interesting|maintain standards|for the scenery|checking for (?!you\b)|check(?:ing)? for (?:survivors?|a pulse|pulse|signs? of life)|public service|community service|quality control|damage control|entertainment value|moral support)\b/.test(text);
+  const polishedPitch = words.length > 24 && /\b(?:someone|everyone|interesting|standards|obviously|apparently|busy being|while you(?: re| are))\b/.test(text);
+  if (performanceFrame || polishedPitch) return true;
+  if (causalApproachQuestion(latestUserMessage) && !groundedMotive && !referentialEvasion) return true;
+  return false;
+}
+
 export function intentSubtextIssues({
   reply = "",
   latestUserMessage = "",
@@ -298,6 +319,7 @@ export function intentSubtextIssues({
   if (hasIntentThreadAbandonment(reply, latestUserMessage, intent)) issues.push("intent_thread_abandoned");
   if (hasPragmaticSarcasmMiss(reply, latestUserMessage, recentCharacterReplies)) issues.push("pragmatic_sarcasm_miss");
   if (hasDirectCausalAnswerMiss(reply, latestUserMessage, recentCharacterReplies)) issues.push("direct_causal_answer_miss");
+  if (hasPersonalityPerformanceOverride(reply, latestUserMessage)) issues.push("personality_performance_override");
   return [...new Set(issues)];
 }
 

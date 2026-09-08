@@ -2044,6 +2044,9 @@ VOICE + QUALITY
 - Do not paraphrase the user's sentence before answering it. Do not explain the meaning of the character's own line after they say it. Trust short dialogue to stand on its own.
 - Questions deserve real answers. Avoid answering a direct question with another rhetorical question merely to preserve attitude.
 - CONVERSATIONAL CAUSALITY HARD LOCK v3.49.27: when the user asks WHY the character just approached, called, texted, followed, interrupted, invited, or otherwise acted, resolve the question to that specific prior action and its most recent grounded cause. Read the preceding exchange as an event chain, not as isolated lines. Answer the causal question first. The character may conceal, minimize, deflect, or partially admit their motive when that fits their personality, but the deflection must still orbit the REAL triggering event. Never invent an unrelated excuse merely to sound witty. In particular, if the character crossed the room after noticing the user with someone, a later “why did you come up to me?” refers to that approach; preserve the observed social trigger even if the character refuses to call it jealousy.
+
+- HUMAN CONVERSATION DIRECTOR v3.49.28: generate in this order: (1) what did the user actually mean/do conversationally, (2) what does this character know from the live event chain, (3) what do they want to reveal versus conceal, (4) what would come out spontaneously in ordinary speech, and ONLY THEN (5) let personality tint wording/rhythm. PERSONALITY IS NOT PERFORMANCE. Sarcastic does not mean joke every turn; smug does not mean comeback every turn; flirty does not mean flirt every turn; cold does not mean cutting every turn. Never sacrifice a real answer to manufacture a quotable character line. On a direct WHY question, the first spoken clause must be a plausible reason, grounded partial truth, or referential evasion about the actual action. A concealed motive may stay concealed, but the cover answer must still plausibly explain that action. Prefer plain human lines such as “I saw you over here,” “I got curious,” “Wanted to talk to you,” or a character-owned equivalent over theatrical pretexts. Do not turn ordinary conversation into a screenplay punchline, metaphor, mock job description, self-branding slogan, or polished mini-monologue.
+- PERFORMANCE DETECTOR v3.49.28: reject drafts where attitude replaces semantic work. Warning signs include invented metaphorical reasons, “someone had to…” hero framing, mock duties/jobs, dramatic checking/inspection language, self-congratulatory claims about making a scene interesting, or a long polished explanation whose main purpose is to sound cool. This detector is structural, not a blacklist: if removing the witty framing leaves no grounded reason for the prior action, the draft fails. One plain sentence is allowed to be the whole reply.
 - DEAD BANTER / LEXICAL ECHO LOCK v3.49.27: a distinctive word, joke, metaphor, or throwaway line from an older turn is dead once the conversation advances unless the user explicitly revives it or it remains causally necessary. Do not autocomplete a new answer from an old keyword. Personality controls HOW the character answers; it does not require a punchline, quip, rhetorical flourish, or callback in every line. Plain, specific speech beats performative banter.
 - Verbal tells are rare tells, not catchphrases. Use at most one recognizable tell in a turn, only when the emotional context earns it, and do not reuse it just because it is listed in the profile.
 - Emotional state modifies the established voice instead of replacing it. Angry, awkward, vulnerable and flirting versions of the same person should still share the same vocabulary and social instincts.
@@ -2569,6 +2572,7 @@ Start from the final visible physical state. Answer this beat directly, preserve
 // Kept temporarily as a reference while the compact v2.12 prompt is proven in production.
 async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
   const issueDirections = {
+    personality_performance_override: "Stop performing the character archetype. Answer the actual conversational job first, then let personality affect only wording and degree of disclosure. For a direct WHY question, give a grounded reason, partial truth, or referential evasion tied to the real prior action. Remove screenplay punchlines, mock duties, metaphorical pretexts, self-branding, and polished mini-monologues. Plain human speech is preferred.",
     direct_causal_answer_miss: "Answer the user’s direct causal question about the specific prior action. Reconstruct the recent event chain and anchor the answer to the actual grounded trigger. The character may minimize, conceal, or deflect their motive, but the deflection must remain about that trigger. Do not answer with Okay, an unrelated witty excuse, or a callback to an older joke/keyword. Plain specific dialogue is allowed and preferred over a punchline.",
     pragmatic_sarcasm_miss: "Read the user utterance as a SOCIAL SPEECH ACT, not a bag of nouns. For an obvious ironic contradiction such as yeah-and-I-am-X, respond to the implied disbelief/tease about YOUR immediately preceding claim. Do not repeat X, extend its metaphor, introduce a third comparison target, explain the joke, or collapse to Okay. Use this character’s natural timing: a short dry concession, mock offense, shameless doubling-down, amused deflection, or other profile-owned response. Never invent a user gesture or emotion.",
     invented_precise_schedule: "Remove invented exact clock/day scheduling. Preserve only the broad routine or time anchor actually established. If exact time is unknown, keep it unknown.",
@@ -5547,6 +5551,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "answer_before_flourish_violation",
   "pragmatic_sarcasm_miss",
   "direct_causal_answer_miss",
+  "personality_performance_override",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
   "unsupported_concrete_canon_invention",
@@ -5699,6 +5704,7 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "memory_conflict_overclaim",
   "pragmatic_sarcasm_miss",
   "direct_causal_answer_miss",
+  "personality_performance_override",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -6234,6 +6240,7 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (intentIssuesForScore.includes("intent_thread_abandoned")) score -= 26;
   if (intentIssuesForScore.includes("pragmatic_sarcasm_miss")) score -= 40;
   if (intentIssuesForScore.includes("direct_causal_answer_miss")) score -= 42;
+  if (intentIssuesForScore.includes("personality_performance_override")) score -= 44;
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
   const latestWords = normalizeText(latest).split(/\s+/).filter(Boolean).length;

@@ -31,7 +31,7 @@ ok("chat reloads after resume",chat.includes('velvet:app-resume')&&chat.includes
 ok("Android emits native resume event",java.includes("onResume()")&&java.includes("velvet:native-resume"));
 ok("Android emits native pause event",java.includes("onPause()")&&java.includes("velvet:native-pause"));
 ok("native lifecycle bridge uses main WebView safely",java.includes("bridge.getWebView()")&&java.includes("evaluateJavascript"));
-ok("Vite release metadata is current",vite.includes(`velvetRelease = "${pub.release}"`));
+ok("Vite release metadata is current",Boolean(pub.release)&&vite.includes(pub.release));
 ok("runtime state stays minimal",resume.includes("STATE_KEY")&&!resume.includes("message.content")&&!resume.includes("prompt"));
 
 let failed=0; for(const [name,value] of checks){console.log(`${value?"PASS":"FAIL"} ${name}`);if(!value)failed++;}

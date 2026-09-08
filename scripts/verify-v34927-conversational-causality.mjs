@@ -4,7 +4,7 @@ let pass=0, fail=0;
 const ok=(name,cond)=>{ console.log(`${cond?'PASS':'FAIL'} ${name}`); cond?pass++:fail++; };
 const index=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts', import.meta.url),'utf8');
 const pkg=JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url),'utf8'));
-ok('version 3.49.27', pkg.version==='3.49.27');
+ok('version 3.49.27+', /^3\.49\.(?:2[7-9]|[3-9]\d|\d{3,})$/.test(pkg.version));
 ok('causal hard lock reaches prompt', index.includes('CONVERSATIONAL CAUSALITY HARD LOCK v3.49.27'));
 ok('dead banter lock reaches prompt', index.includes('DEAD BANTER / LEXICAL ECHO LOCK v3.49.27'));
 ok('Okay is rejected for direct why question', hasDirectCausalAnswerMiss('"Okay."','Anyway, why did you come up to me?',[]));

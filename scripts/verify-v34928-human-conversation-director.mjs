@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import { hasPersonalityPerformanceOverride } from '../supabase/functions/character-chat/engine/intent-subtext-lock.ts';
+const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url)));
+const index=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
+let pass=0,fail=0; const ok=(n,v)=>{console.log(`${v?'PASS':'FAIL'} ${n}`);v?pass++:fail++;};
+ok('version 3.49.28',pkg.version==='3.49.28');
+ok('Human Conversation Director reaches prompt',index.includes('HUMAN CONVERSATION DIRECTOR v3.49.28'));
+ok('Personality is not performance reaches prompt',index.includes('PERSONALITY IS NOT PERFORMANCE'));
+const q='Anyway, why did you come up to me?';
+ok('rejects theatrical survivor pretext',hasPersonalityPerformanceOverride('"Checking for survivors."',q));
+ok('rejects polished self-branding excuse',hasPersonalityPerformanceOverride('I just thought you might need someone to keep things interesting while you’re busy being unimpressed with everyone else.',q));
+ok('rejects theatrical pulse pretext',hasPersonalityPerformanceOverride('"Checking for pulse, obviously. Someone had to make sure you weren\'t actually freezing to death in this crowd."',q));
+ok('accepts plain curiosity',!hasPersonalityPerformanceOverride('"I got curious."',q));
+ok('accepts grounded social reason',!hasPersonalityPerformanceOverride('"Wanted to see who you were talking to."',q));
+ok('accepts referential evasion',!hasPersonalityPerformanceOverride('"Do I need a reason?"',q));
+ok('ordinary non-causal turn unaffected',!hasPersonalityPerformanceOverride('"Checking the time."','What time is it?'));
+console.log(`\n${pass}/${pass+fail} v3.49.28 checks passed.`); if(fail) process.exit(1);
