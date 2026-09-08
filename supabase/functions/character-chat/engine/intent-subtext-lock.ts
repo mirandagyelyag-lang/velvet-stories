@@ -237,6 +237,49 @@ export function pragmaticSarcasmFallback(character = {}, recentCharacterReplies 
   return '"Fair. Still not taking it back."';
 }
 
+
+function directCausalQuestion(value = "") {
+  const text = normalized(value);
+  if (!text || !/\?*$/.test(String(value || "").trim())) {
+    // Roleplay users often omit the question mark; wording is authoritative.
+  }
+  return /\bwhy (?:did|do|are|were|would|will|have|had|didn'?t|don'?t|aren'?t|weren'?t)\b/.test(text)
+    || /\bwhat (?:made|makes) you\b/.test(text)
+    || /\bwhat did you mean\b/.test(text);
+}
+
+function causalApproachQuestion(value = "") {
+  const text = normalized(value);
+  return /\bwhy (?:did|do) you (?:come|came|come up|came up|walk over|walked over|approach|approached|talk to|speak to|call|text|message|invite|ask|follow|show up|stop by)(?:\s+(?:to|over to|up to))?\s*(?:me)?\b/.test(text)
+    || /\bwhat (?:made|makes) you (?:come|come over|walk over|approach|talk to|call|text|message)\b/.test(text);
+}
+
+function distinctiveWords(value = "") {
+  const stop = new Set(["something","everything","anything","nothing","because","actually","apparently","probably","seriously","literally","everyone","someone","another","without","through","really","already","around","before","should","would","could","there","their","about","where","which","while"]);
+  return new Set((normalized(value).match(/[a-z][a-z'-]{9,}/g) || []).filter((word) => !stop.has(word)));
+}
+
+export function hasDirectCausalAnswerMiss(reply = "", latestUserMessage = "", recentCharacterReplies = []) {
+  if (!directCausalQuestion(latestUserMessage)) return false;
+  const dialogue = normalized(dialogueOnly(reply).join(" ")) || normalized(reply);
+  if (!dialogue) return true;
+  // A direct why/what-made-you question cannot be answered with an acknowledgement.
+  if (/^(?:okay|ok|right|sure|yeah|yep|mhm|uh huh|whatever|fine)[.! ]*$/.test(dialogue)) return true;
+
+  // When the user asks why the character just approached/contacted them, resurrecting
+  // an old distinctive joke-word is lexical autocomplete, not causal memory.
+  if (causalApproachQuestion(latestUserMessage)) {
+    const recent = Array.isArray(recentCharacterReplies) ? recentCharacterReplies : [];
+    const old = recent.slice(-4, -1).join(" ");
+    const stale = distinctiveWords(old);
+    const latest = normalized(latestUserMessage);
+    for (const word of stale) {
+      if (dialogue.includes(word) && !latest.includes(word)) return true;
+    }
+  }
+  return false;
+}
+
 export function intentSubtextIssues({
   reply = "",
   latestUserMessage = "",
@@ -254,6 +297,7 @@ export function intentSubtextIssues({
   if (hasObligatoryBanterExit(reply, latestUserMessage)) issues.push("obligatory_banter_exit");
   if (hasIntentThreadAbandonment(reply, latestUserMessage, intent)) issues.push("intent_thread_abandoned");
   if (hasPragmaticSarcasmMiss(reply, latestUserMessage, recentCharacterReplies)) issues.push("pragmatic_sarcasm_miss");
+  if (hasDirectCausalAnswerMiss(reply, latestUserMessage, recentCharacterReplies)) issues.push("direct_causal_answer_miss");
   return [...new Set(issues)];
 }
 

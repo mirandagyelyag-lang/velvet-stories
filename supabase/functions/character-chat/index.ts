@@ -2043,6 +2043,8 @@ VOICE + QUALITY
 - Let mundane conversation stay mundane. Established attraction may exist without appearing in every line. Do not convert neutral questions, jokes or practical exchanges into automatic romantic subtext.
 - Do not paraphrase the user's sentence before answering it. Do not explain the meaning of the character's own line after they say it. Trust short dialogue to stand on its own.
 - Questions deserve real answers. Avoid answering a direct question with another rhetorical question merely to preserve attitude.
+- CONVERSATIONAL CAUSALITY HARD LOCK v3.49.27: when the user asks WHY the character just approached, called, texted, followed, interrupted, invited, or otherwise acted, resolve the question to that specific prior action and its most recent grounded cause. Read the preceding exchange as an event chain, not as isolated lines. Answer the causal question first. The character may conceal, minimize, deflect, or partially admit their motive when that fits their personality, but the deflection must still orbit the REAL triggering event. Never invent an unrelated excuse merely to sound witty. In particular, if the character crossed the room after noticing the user with someone, a later “why did you come up to me?” refers to that approach; preserve the observed social trigger even if the character refuses to call it jealousy.
+- DEAD BANTER / LEXICAL ECHO LOCK v3.49.27: a distinctive word, joke, metaphor, or throwaway line from an older turn is dead once the conversation advances unless the user explicitly revives it or it remains causally necessary. Do not autocomplete a new answer from an old keyword. Personality controls HOW the character answers; it does not require a punchline, quip, rhetorical flourish, or callback in every line. Plain, specific speech beats performative banter.
 - Verbal tells are rare tells, not catchphrases. Use at most one recognizable tell in a turn, only when the emotional context earns it, and do not reuse it just because it is listed in the profile.
 - Emotional state modifies the established voice instead of replacing it. Angry, awkward, vulnerable and flirting versions of the same person should still share the same vocabulary and social instincts.
 - CHARACTER DNA 2.0: voice is only the surface. The character's defense, values, care style, pride, likely mistakes, vulnerability threshold and decision bias must change WHAT THEY CHOOSE TO DO OR SAY. Do not solve differentiation by swapping slang on the same underlying reaction.
@@ -2567,6 +2569,7 @@ Start from the final visible physical state. Answer this beat directly, preserve
 // Kept temporarily as a reference while the compact v2.12 prompt is proven in production.
 async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
   const issueDirections = {
+    direct_causal_answer_miss: "Answer the user’s direct causal question about the specific prior action. Reconstruct the recent event chain and anchor the answer to the actual grounded trigger. The character may minimize, conceal, or deflect their motive, but the deflection must remain about that trigger. Do not answer with Okay, an unrelated witty excuse, or a callback to an older joke/keyword. Plain specific dialogue is allowed and preferred over a punchline.",
     pragmatic_sarcasm_miss: "Read the user utterance as a SOCIAL SPEECH ACT, not a bag of nouns. For an obvious ironic contradiction such as yeah-and-I-am-X, respond to the implied disbelief/tease about YOUR immediately preceding claim. Do not repeat X, extend its metaphor, introduce a third comparison target, explain the joke, or collapse to Okay. Use this character’s natural timing: a short dry concession, mock offense, shameless doubling-down, amused deflection, or other profile-owned response. Never invent a user gesture or emotion.",
     invented_precise_schedule: "Remove invented exact clock/day scheduling. Preserve only the broad routine or time anchor actually established. If exact time is unknown, keep it unknown.",
     unsupported_temporal_language: "Remove or soften yesterday/tomorrow/last-week/hours-later language unless the transcript or calendar supports it. Temporal words are factual canon claims.",
@@ -5543,6 +5546,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "repeated_action_fingerprint",
   "answer_before_flourish_violation",
   "pragmatic_sarcasm_miss",
+  "direct_causal_answer_miss",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
   "unsupported_concrete_canon_invention",
@@ -5694,6 +5698,7 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "perspective_memory_leak",
   "memory_conflict_overclaim",
   "pragmatic_sarcasm_miss",
+  "direct_causal_answer_miss",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -6228,6 +6233,7 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (intentIssuesForScore.includes("obligatory_banter_exit")) score -= 18;
   if (intentIssuesForScore.includes("intent_thread_abandoned")) score -= 26;
   if (intentIssuesForScore.includes("pragmatic_sarcasm_miss")) score -= 40;
+  if (intentIssuesForScore.includes("direct_causal_answer_miss")) score -= 42;
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
   const latestWords = normalizeText(latest).split(/\s+/).filter(Boolean).length;

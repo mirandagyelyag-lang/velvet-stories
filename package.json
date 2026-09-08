@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.49.26",
+  "version": "3.49.27",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -72,7 +72,7 @@
     "verify:v3230": "node scripts/verify-v3230-safe-studio.mjs",
     "verify:v3240": "node scripts/verify-v3240-living-world.mjs",
     "verify:v3241": "node scripts/verify-v3241-stability-sweep.mjs",
-    "stability:lab": "npm run verify:v34926 && npm run verify:v34925 && npm run verify:v34924 && npm run verify:v34923 && npm run verify:v34922 && npm run verify:v34921 && npm run verify:v34920 && npm run verify:v34919 && npm run verify:v34915 && npm run verify:v34912 && npm run verify:v34911 && npm run verify:v34910 && npm run verify:v3499 && npm run verify:v3498 && npm run verify:v3497 && npm run verify:v3496 && npm run verify:v3495 && npm run verify:v3494 && npm run verify:v3493 && npm run verify:v3492 && npm run verify:v3491 && npm run verify:v3490 && npm run verify:v3480 && npm run verify:v3470 && npm run verify:v3460 && npm run verify:v3450 && npm run verify:v3440 && npm run verify:v3430 && npm run verify:v3420 && npm run verify:v3410 && npm run verify:v3400 && npm run verify:v3390 && npm run verify:v3380 && npm run verify:v3371 && npm run verify:v3370 && npm run verify:v3361 && npm run verify:v3360 && npm run verify:v3355 && npm run verify:v3354 && npm run verify:v3353 && npm run verify:v3352 && npm run verify:v3351 && npm run verify:v3350 && npm run verify:v3341 && npm run verify:v3340 && npm run verify:v3331 && npm run verify:v3330 && npm run verify:v3320 && npm run verify:v3312 && npm run verify:v3311 && npm run verify:v3310 && npm run verify:v3300 && npm run verify:v3290 && npm run verify:v3280 && npm run verify:v3270 && npm run verify:v3260 && npm run verify:v3254 && npm run verify:v3252 && npm run verify:v3250 && npm run verify:v3241 && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v34 && npm run verify:chat-syntax",
+    "stability:lab": "npm run verify:v34927 && npm run verify:v34926 && npm run verify:v34925 && npm run verify:v34924 && npm run verify:v34923 && npm run verify:v34922 && npm run verify:v34921 && npm run verify:v34920 && npm run verify:v34919 && npm run verify:v34915 && npm run verify:v34912 && npm run verify:v34911 && npm run verify:v34910 && npm run verify:v3499 && npm run verify:v3498 && npm run verify:v3497 && npm run verify:v3496 && npm run verify:v3495 && npm run verify:v3494 && npm run verify:v3493 && npm run verify:v3492 && npm run verify:v3491 && npm run verify:v3490 && npm run verify:v3480 && npm run verify:v3470 && npm run verify:v3460 && npm run verify:v3450 && npm run verify:v3440 && npm run verify:v3430 && npm run verify:v3420 && npm run verify:v3410 && npm run verify:v3400 && npm run verify:v3390 && npm run verify:v3380 && npm run verify:v3371 && npm run verify:v3370 && npm run verify:v3361 && npm run verify:v3360 && npm run verify:v3355 && npm run verify:v3354 && npm run verify:v3353 && npm run verify:v3352 && npm run verify:v3351 && npm run verify:v3350 && npm run verify:v3341 && npm run verify:v3340 && npm run verify:v3331 && npm run verify:v3330 && npm run verify:v3320 && npm run verify:v3312 && npm run verify:v3311 && npm run verify:v3310 && npm run verify:v3300 && npm run verify:v3290 && npm run verify:v3280 && npm run verify:v3270 && npm run verify:v3260 && npm run verify:v3254 && npm run verify:v3252 && npm run verify:v3250 && npm run verify:v3241 && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v34 && npm run verify:chat-syntax",
     "deploy:pwa": "bash DEPLOY-PWA-STABLE.sh",
     "verify:v3250": "node scripts/verify-v3250-experience.mjs",
     "verify:v3251": "node scripts/verify-v3251-update-fix.mjs",
@@ -133,7 +133,8 @@
     "verify:v34923": "node scripts/verify-v34923-verifier-lineage.mjs",
     "verify:v34924": "node scripts/verify-v34924-lineage-chain.mjs",
     "verify:v34925": "node scripts/verify-v34925-reply-assist-build-fix.mjs",
-    "verify:v34926": "node scripts/verify-v34926-verifier-metadata-fix.mjs"
+    "verify:v34926": "node scripts/verify-v34926-verifier-metadata-fix.mjs",
+    "verify:v34927": "node --experimental-strip-types scripts/verify-v34927-conversational-causality.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

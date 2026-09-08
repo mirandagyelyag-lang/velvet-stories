@@ -3,7 +3,7 @@ const checks=[]; const ok=(n,v)=>checks.push([n,Boolean(v)]);
 const read=(f)=>fs.readFileSync(f,"utf8");
 const pkg=JSON.parse(read("package.json")); const pub=JSON.parse(read("public/velvet-version.json"));
 const vite=read("vite.config.js"); const old=read("scripts/verify-v34919-pragmatic-subtext.mjs");
-ok("version 3.49.26",pkg.version==="3.49.26"&&pub.version===pkg.version);
+ok("v3.49.26 lineage retained",/^3\.49\.(?:2[6-9]|[3-9]\d|\d{3,})$/.test(pkg.version)&&pub.version===pkg.version);
 ok("current release represented in Vite",vite.includes(pub.release));
 ok("v34919 metadata check descendant-safe",old.includes('vite.includes(pub.release)'));
 ok("reply assist regression retained",pkg.scripts["stability:lab"].includes("verify:v34922"));
