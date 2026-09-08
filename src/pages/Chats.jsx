@@ -39,6 +39,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerExpanded, setPickerExpanded] = useState(false);
+  const [pickerDragStartY, setPickerDragStartY] = useState(null);
   const [creatingId, setCreatingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
@@ -791,11 +793,11 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
 
       {pickerOpen && (
         <div className="conversation-picker-backdrop" onMouseDown={() => !creatingId && setPickerOpen(false)}>
-          <section className="conversation-picker conversation-picker--editorial" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="conversation-picker-title">
-            <span className="velvet-sheet-grabber" aria-hidden="true" />
-            <header>
+          <section className={`conversation-picker conversation-picker--editorial${pickerExpanded ? " is-expanded" : ""}`} onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="conversation-picker-title">
+            <button type="button" className="velvet-sheet-grabber velvet-sheet-grabber--interactive" aria-label={pickerExpanded ? "Lower character picker" : "Expand character picker"} onClick={() => setPickerExpanded((value) => !value)} onPointerDown={(event) => { event.currentTarget.setPointerCapture?.(event.pointerId); setPickerDragStartY(event.clientY); }} onPointerUp={(event) => { if (pickerDragStartY == null) return; const delta = event.clientY - pickerDragStartY; if (delta < -24) setPickerExpanded(true); if (delta > 24) setPickerExpanded(false); setPickerDragStartY(null); }} />
+            <header onPointerDown={(event) => { if (event.target.closest?.("button")) return; setPickerDragStartY(event.clientY); }} onPointerUp={(event) => { if (pickerDragStartY == null) return; const delta = event.clientY - pickerDragStartY; if (delta < -24) setPickerExpanded(true); if (delta > 24) setPickerExpanded(false); setPickerDragStartY(null); }}>
               <div><p>NEW STORY</p><h2 id="conversation-picker-title">Who is this story with?</h2><span>Choose a character. Velvet will create a fresh timeline.</span></div>
-              <button onClick={() => setPickerOpen(false)} disabled={Boolean(creatingId)} aria-label="Close"><X size={20}/></button>
+              <button onClick={() => { setPickerOpen(false); setPickerExpanded(false); }} disabled={Boolean(creatingId)} aria-label="Close"><X size={20}/></button>
             </header>
             <div className="conversation-picker__scroll">
             {characters.length > 0 ? (
