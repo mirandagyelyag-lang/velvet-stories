@@ -29,6 +29,7 @@ import { buildHumanMemoryPersonalHistoryV34933, humanMemoryPersonalHistoryV34933
 import { buildHumanEmotionNervousSystemV34934, humanEmotionNervousSystemV34934Issues } from "./engine/human-emotion-nervous-system-v34934.ts";
 import { buildIndependentAgencyDesireV34935, independentAgencyDesireV34935Issues } from "./engine/independent-agency-desire-v34935.ts";
 import { buildRelationshipAttachmentV34936, relationshipAttachmentV34936Issues } from "./engine/relationship-attachment-v34936.ts";
+import { buildHumanSpontaneityAntiPatternV34937, humanSpontaneityAntiPatternV34937Issues } from "./engine/human-spontaneity-antipattern-v34937.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1864,6 +1865,12 @@ function buildNarrativePromptV3({
   const relationshipAttachmentV34936 = buildRelationshipAttachmentV34936({
     character: configuredCharacter, relationship: loaded.relationship || loaded.conversation || {}, latestUserMessage: latestUserMessage?.content || "", recentCharacterReplies: recentCharacterReplies || []
   });
+  const humanSpontaneityAntiPatternV34937 = buildHumanSpontaneityAntiPatternV34937({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character, scene: conversation.scene_state || {}, mind: conversation.intelligence_state?.character_mind || {},
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2007,6 +2014,8 @@ ${humanEmotionNervousSystemV34934}
 
 ${independentAgencyDesireV34935}
 ${relationshipAttachmentV34936}
+
+${humanSpontaneityAntiPatternV34937}
 
 HUMAN SOCIAL INTELLIGENCE 3.49.32 · READ THE ROOM, NOT THE TROPE
 - Social meaning comes from context, relationship, audience, status, timing and uncertainty, not from romance tropes.
@@ -6478,6 +6487,7 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (emotionIssuesForScore.length) score -= Math.min(54, 22 + emotionIssuesForScore.length * 8);
   const agencyDesireIssuesForScore = independentAgencyDesireV34935Issues(reply, latest, recent);
   const relationshipAttachmentIssuesForScore = relationshipAttachmentV34936Issues(reply, latest, recent);
+  const spontaneityIssuesForScore = humanSpontaneityAntiPatternV34937Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
@@ -6551,6 +6561,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of humanEmotionNervousSystemV34934Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of independentAgencyDesireV34935Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of relationshipAttachmentV34936Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
     reply: text,
     recentCharacterReplies: options.recentCharacterReplies || [],
