@@ -26,6 +26,7 @@ import { buildHumanCognitionBriefV34930, humanCognitionV34930Issues } from "./en
 import { buildIndividualHumanPsycheV34931, individualHumanPsycheV34931Issues } from "./engine/individual-human-psyche-v34931.ts";
 import { buildHumanSocialIntelligenceV34932, humanSocialIntelligenceV34932Issues } from "./engine/human-social-intelligence-v34932.ts";
 import { buildHumanMemoryPersonalHistoryV34933, humanMemoryPersonalHistoryV34933Issues } from "./engine/human-memory-personal-history-v34933.ts";
+import { buildHumanEmotionNervousSystemV34934, humanEmotionNervousSystemV34934Issues } from "./engine/human-emotion-nervous-system-v34934.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1870,6 +1871,16 @@ function buildNarrativePromptV3({
     knowledgeLedger: conversation.intelligence_state?.knowledge_ledger || [],
     memories: conversation.memories || conversation.intelligence_state?.memories || [],
   });
+  const humanEmotionNervousSystemV34934 = buildHumanEmotionNervousSystemV34934({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+    mind: conversation.intelligence_state?.character_mind || {},
+    behavior: conversation.intelligence_state?.human_behavior_state || {},
+    relationship: conversation.relationship_state || {},
+    scene: conversation.scene_state || {},
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2008,6 +2019,8 @@ ${individualHumanPsycheV34931}
 ${humanSocialIntelligenceV34932}
 
 ${humanMemoryPersonalHistoryV34933}
+
+${humanEmotionNervousSystemV34934}
 
 HUMAN SOCIAL INTELLIGENCE 3.49.32 · READ THE ROOM, NOT THE TROPE
 - Social meaning comes from context, relationship, audience, status, timing and uncertainty, not from romance tropes.
@@ -5716,6 +5729,14 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "human_memory_transcript_perfection",
   "human_memory_recap_dump",
   "human_memory_hindsight_omniscience",
+  "emotion_nervous_system_signal_stack",
+  "emotion_nervous_system_cinematic_arousal",
+  "emotion_nervous_system_user_mindread",
+  "emotion_nervous_system_therapy_script",
+  "emotion_nervous_system_unearned_intensity",
+  "emotion_nervous_system_jealousy_label",
+  "emotion_nervous_system_instant_reset",
+  "emotion_nervous_system_explanation_dump",
   "unsupported_user_reason_claim",
   "unsupported_prior_event_claim",
   "unsupported_concrete_canon_invention",
@@ -5900,6 +5921,14 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "human_memory_transcript_perfection",
   "human_memory_recap_dump",
   "human_memory_hindsight_omniscience",
+  "emotion_nervous_system_signal_stack",
+  "emotion_nervous_system_cinematic_arousal",
+  "emotion_nervous_system_user_mindread",
+  "emotion_nervous_system_therapy_script",
+  "emotion_nervous_system_unearned_intensity",
+  "emotion_nervous_system_jealousy_label",
+  "emotion_nervous_system_instant_reset",
+  "emotion_nervous_system_explanation_dump",
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
@@ -6445,6 +6474,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (socialIssuesForScore.length) score -= Math.min(50, 20 + socialIssuesForScore.length * 8);
   const memoryIssuesForScore = humanMemoryPersonalHistoryV34933Issues(reply, latest, recent);
   if (memoryIssuesForScore.length) score -= Math.min(52, 20 + memoryIssuesForScore.length * 8);
+  const emotionIssuesForScore = humanEmotionNervousSystemV34934Issues(reply, latest, recent);
+  if (emotionIssuesForScore.length) score -= Math.min(54, 22 + emotionIssuesForScore.length * 8);
   if (hasNameAddressOveruse(reply, recent, options.userName || "")) score -= 8;
   const sig = replyRhythmSignature(reply);
   const latestWords = normalizeText(latest).split(/\s+/).filter(Boolean).length;
@@ -6514,6 +6545,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of individualHumanPsycheV34931Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanSocialIntelligenceV34932Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanMemoryPersonalHistoryV34933Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of humanEmotionNervousSystemV34934Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
     reply: text,
     recentCharacterReplies: options.recentCharacterReplies || [],

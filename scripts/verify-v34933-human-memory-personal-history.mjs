@@ -4,7 +4,7 @@ const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),
 const src=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
 const engine=fs.readFileSync(new URL('../supabase/functions/character-chat/engine/human-memory-personal-history-v34933.ts',import.meta.url),'utf8');
 let n=0,ok=0; const check=(name,v)=>{n++;if(v){ok++;console.log('PASS',name)}else{console.error('FAIL',name);process.exitCode=1}};
-check('version 3.49.33',pkg.version==='3.49.33');
+check('version 3.49.33+',/^3\.49\.(?:3[3-9]|[4-9]\d|\d{3,})$/.test(pkg.version));
 check('memory engine imported',src.includes('buildHumanMemoryPersonalHistoryV34933'));
 for(const x of ['lived history, not transcript retrieval','MEMORY OWNERSHIP','EPISTEMIC MEMORY','SALIENCE','GIST OVER TRANSCRIPT','PERSONAL MEANING','ASSOCIATIVE RECALL','UNSPOKEN RESIDUE','MEMORY INHIBITION','FORGETTING','RECONSOLIDATION','PROMISES + DEBTS + OPEN LOOPS','SHARED REFERENCES','TEMPORAL HUMILITY','NO MEMORY DUMP','NO CALLBACK COMPULSION']) check(x,engine.includes(x));
 const b=buildHumanMemoryPersonalHistoryV34933({latestUserMessage:'Anyway, why did you come over?',character:{name:'Chase'},relationship:{stage:'friends'},recentUserMessages:['I was talking to him.'],recentCharacterReplies:['I saw you across the room.']});
