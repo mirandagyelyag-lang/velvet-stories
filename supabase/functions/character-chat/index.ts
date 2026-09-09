@@ -5667,6 +5667,7 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const orchestrationHard = ["orchestrator_system_exposure", "context_dump_exposition_v346", "recovery_internal_exposure_v347", "performance_internal_exposure_v348"];
   const canSanitize = issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted", "unsolicited_offscreen_lead_contact", "social_role_assignment_broken", "unsupported_social_plan_expansion", ...groundedHard, ...agencyHard, ...physicsRepair, ...intentHard, ...chemistryHard, ...embodiedHard, ...sceneIntelligenceHard, ...discourseHard, ...evolutionHard, ...npcEcosystemHard, ...calendarLifeHard, ...causalTimelineHard, ...sceneDirectorHard, ...longStoryMemoryHard, ...narrativeArcHard, ...proseHard, ...orchestrationHard].includes(issue));
   if (!canSanitize) return { result, issues };
+  const readableBeforeSanitize = String(result?.reply || "").trim();
   let reply = String(result?.reply || "");
   if (issues.includes("user_motive_overwritten") || issues.includes("rejected_pursuit_framing_persisted")) {
     reply = sanitizeHardUserIntentContradictions(reply, options.latestUserMessage || "");
@@ -5733,6 +5734,11 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
     reply = sanitizeGenerationOrchestratorV346Reply(reply, issues);
     reply = sanitizeRecoveryIntegrityV347Reply(reply, issues);
   }
+  // v3.50.6 NO-BLANK REPLY INVARIANT: deterministic sanitizers may shorten
+  // prose, but they are never allowed to erase a readable model response.
+  // If the sanitizer chain collapses to whitespace, keep the pre-sanitize
+  // candidate and let the remaining validators fail soft instead.
+  if (!String(reply || "").trim() && readableBeforeSanitize) reply = readableBeforeSanitize;
   let nextResult = { ...result, reply };
   let nextIssues = validateNarrativeReply(nextResult.reply, options);
   if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];
@@ -5766,7 +5772,8 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
     // more useful candidate. Keep the best sanitized candidate and let the final
     // hard/meaningful-turn validation decide whether it can be saved. Empty prose
     // remains empty so the request fails visibly instead of fabricating a fake beat.
-    nextResult = { ...nextResult, reply: String(nextResult.reply || "").trim() };
+    const readableFinal = String(nextResult.reply || "").trim() || readableBeforeSanitize;
+    nextResult = { ...nextResult, reply: readableFinal };
     nextIssues = validateNarrativeReply(nextResult.reply, options);
     if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];
   }
@@ -7809,9 +7816,32 @@ async function streamRoleplayV19({
         if (await isCancelled()) return;
         if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
 
+        // v3.50.6 ABSOLUTE PERSISTENCE GUARD: a whitespace-only character
+        // message must never reach Supabase. Prefer the validated result, then
+        // the untouched model draft captured before validators. If both are
+        // empty, make one clean non-stream recovery call rather than saving a
+        // ghost bubble.
+        let persistableReply = String(result?.reply || "").trim() || String(originalResult?.reply || "").trim() || String(modelDraftReply || "").trim();
+        if (!persistableReply) {
+          sendEvent(controller, { type: "diagnostic", phase: "blank-reply-recovery", reason: "all-local-candidates-empty" });
+          const blankRecovery = await callGeminiWithFailover({
+            apiKey,
+            systemInstruction: liveSystemInstruction,
+            prompt,
+            maxOutputTokens: getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling),
+            isCancelled,
+            interactionDeadlineMs: 24000,
+          });
+          persistableReply = String(blankRecovery?.reply || "").trim();
+          if (blankRecovery?.model) sendEvent(controller, { type: "model", model: blankRecovery.model });
+        }
+        if (!persistableReply) throw new Error("Velvet received an empty model reply after recovery; nothing was saved.");
+        result = { ...result, reply: persistableReply };
+        await streamFinalReply(persistableReply, "v3506-persistence-guard");
+
         const savedMessage = replacementMessage
-          ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: result.reply })
-          : await saveCharacterReply({ supabase, conversationId, userId, reply: result.reply, latestUserMessageId });
+          ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: persistableReply })
+          : await saveCharacterReply({ supabase, conversationId, userId, reply: persistableReply, latestUserMessageId });
         committedReplyMessage = savedMessage;
 
         const update = { updated_at: new Date().toISOString() } as Record<string, any>;

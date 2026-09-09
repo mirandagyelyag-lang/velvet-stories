@@ -1364,6 +1364,12 @@ export function ChatsProvider({
             if (requestWasCancelled()) continue;
 
             finalMessage = convertDatabaseMessage(eventData.message);
+            if (!String(finalMessage?.content || "").trim()) {
+              finalMessage = null;
+              streamError = "Velvet received a blank saved reply; recovering instead of rendering it.";
+              updateGenerationTrace(diagnosticTraceRef, { phase: "blank-done-rejected", errorCategory: "empty_reply" });
+              continue;
+            }
 
             if (streamStarted) {
               clearStreamFlushTimer();
