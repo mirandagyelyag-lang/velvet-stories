@@ -1090,7 +1090,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     if (!conversationReady || replyAssistLoading) return;
     setReplyAssistLoading(true);
     setReplyAssistError("");
-    setReplyAssistMode(mode);
+    if (mode !== "more") setReplyAssistMode(mode);
     try {
       const recentMessages = visibleMessages.slice(-10).map((item) => ({
         speaker: item.sender === "user" ? "user" : character.name,
@@ -1102,20 +1102,33 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           character: { name: character.name, personality: character.personality, speechStyle: character.speechStyle, relationship: character.relationship, description: character.description },
           recentMessages,
           userDraft: message.trim(),
-          intent: mode,
+          intent: mode === "more" ? (replyAssistMode === "more" ? "ideas" : replyAssistMode) : mode,
           customIntent: mode === "custom" ? replyAssistCustom.trim() : "",
         },
       });
       if (error) throw error;
-      setReplyAssistOptions(Array.isArray(data?.options) ? data.options : []);
+      const nextOptions = Array.isArray(data?.options) ? data.options : [];
+      setReplyAssistOptions((current) => mode === "more" ? [...current, ...nextOptions].filter((option, index, all) => {
+        const text = String(option?.text || "").trim().toLowerCase();
+        return text && all.findIndex((candidate) => String(candidate?.text || "").trim().toLowerCase() === text) === index;
+      }) : nextOptions);
       setReplyAssistUnderstanding(data?.understanding || null);
     } catch (error) {
       setReplyAssistError(error?.message || "Velvet couldn't think of replies right now.");
     } finally { setReplyAssistLoading(false); }
   }
 
+  function clearReplyAssist() {
+    setReplyAssistOptions([]);
+    setReplyAssistUnderstanding(null);
+    setReplyAssistError("");
+    setReplyAssistCustom("");
+    setReplyAssistMode("ideas");
+  }
+
   function useReplyAssistOption(text) {
     setMessage(String(text || ""));
+    clearReplyAssist();
     setReplyAssistOpen(false);
     window.requestAnimationFrame(() => { resizeComposer(); try { textareaRef.current?.focus({ preventScroll:true }); } catch { textareaRef.current?.focus(); } });
   }
@@ -2597,8 +2610,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
             {!replyAssistOptions.length && !replyAssistLoading && !replyAssistError && <button type="button" className="reply-assist-generate" onClick={()=>requestReplyAssist('ideas')}><WandSparkles size={16}/> Give me ideas</button>}
             {replyAssistLoading && <div className="reply-assist-status"><LoaderCircle className="is-spinning" size={17}/> Thinking about this scene…</div>}
             {replyAssistError && <div className="reply-assist-error">{replyAssistError}<button type="button" onClick={()=>requestReplyAssist(replyAssistMode)}>Retry</button></div>}
-            {!!replyAssistOptions.length && <div className="reply-assist-options">{replyAssistOptions.map((option,index)=><button type="button" className="reply-assist-option" key={`${option.text}-${index}`} onClick={()=>useReplyAssistOption(option.text)}><span className="reply-assist-option-top"><b>{option.text}</b><em>{option.tone}</em></span><small>{option.meaning_es}</small></button>)}</div>}
-            <p className="reply-assist-hint">Tap an option to put it in your textbox. Velvet never sends it automatically.</p>
+            {!!replyAssistOptions.length && <>
+              <div className="reply-assist-options">{replyAssistOptions.map((option,index)=><button type="button" className="reply-assist-option" key={`${option.text}-${index}`} onClick={()=>useReplyAssistOption(option.text)}><span className="reply-assist-option-top"><b>{option.text}</b><em>{option.tone}</em></span><small>{option.meaning_es}</small></button>)}</div>
+              <button type="button" className="reply-assist-more" disabled={replyAssistLoading} onClick={()=>requestReplyAssist('more')}>{replyAssistLoading ? <LoaderCircle className="is-spinning" size={15}/> : <RefreshCw size={15}/>} Generate more</button>
+            </>}
+            <p className="reply-assist-hint">Choose one and the suggestions disappear. Nothing is sent automatically.</p>
           </section>
         </div>
       ), document.body)}

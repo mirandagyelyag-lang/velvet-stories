@@ -2,7 +2,7 @@ import fs from 'node:fs';
 const edge=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
 const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 const tests=[
- ['version 3.50.7',pkg.version==='3.50.7'],
+ ['version 3.50.7+ descendant',/^3\.50\.(?:7|8)$/.test(pkg.version)],
  ['plain prose transport recovery exists',edge.includes('TRANSPORT RECOVERY v3.50.7')],
  ['stream starts with bare transport',edge.includes('let { response, message } = await runStreamAttempt("bare");')],
  ['nonstream recovery starts with bare transport',edge.includes('let { response, data } = await runAttempt("bare");')],
