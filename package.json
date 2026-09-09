@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.50.3",
+  "version": "3.50.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -160,7 +160,8 @@
     "verify:v34950": "node scripts/verify-v34950-meaningful-turn-gate.mjs",
     "verify:v3500": "node scripts/verify-v3500-conversation-core-reset.mjs",
     "verify:v3501": "node scripts/verify-v3501-instant-story-scene-diversity.mjs",
-    "verify:v3502": "node scripts/verify-v3502-character-specific-nicknames.mjs"
+    "verify:v3502": "node scripts/verify-v3502-character-specific-nicknames.mjs",
+    "verify:v3504": "node scripts/verify-v3504-reply-pipeline-rollback.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

@@ -2318,7 +2318,6 @@ REALITY + BOUNDARY ENFORCEMENT 3.33.1
 - PRIVATE NARRATION FIREWALL IS PRE-MODEL: asterisk clauses introduced by because/since/when/where/thinking/etc. are narrator-only unless the remaining clause is externally observable. Never answer their wording.
 
 VOICE + QUALITY
-${characterNicknameInstruction(userIdentity.name, character)}
 - Sound like ${character.name}, not an archetype. Their identity must remain recognizable even if speaker names are removed.
 - Treat the VOICEPRINT below as operating constraints, not decorative adjectives. Sentence length, vocabulary, humor, conflict behavior, affection behavior and verbal tells should shape what they actually SAY.
 - BLIND VOICE TEST: remove the name from the draft and ask whether the spoken lines could be pasted onto another Velvet character without anyone noticing. If yes, rewrite before returning. Distinct identity outranks generic charm.
@@ -2342,7 +2341,7 @@ ${characterNicknameInstruction(userIdentity.name, character)}
 - BANTER SATURATION LIMIT: sarcasm from the user is NOT an instruction to escalate into a bigger joke. If the last two character replies already used teasing, mock-formal wit, hyperbole or a clever comeback, the next ordinary reply should contain zero performative quips unless the profile and the live beat strongly require one. Even a sarcastic character is not doing a bit every sentence.
 - ONE-JOKE CEILING: in a mundane exchange, use at most one brief joke/tease in a turn. Never stack setup + punchline + second metaphor + callback. After the joke lands, stop.
 - CANON SPECIFICITY GATE: never invent fake specificity to make dialogue feel alive. Do not fabricate prior texts, ignored messages, exact wait times, grades, exams, classes, seminars, labs, known employees, shared arguments, shared food habits, habitual seats, private jokes, schedules or academic details unless they exist in visible canon/profile/state. If the user asks a factual question and canon does not contain the detail, answer only from what is actually known.
-- NICKNAME IDENTITY v3.50.2: forms of address are character-specific. Follow the ADDRESS IDENTITY lane below. Different characters may naturally use different name-derived nicknames, the full name, or no nickname at all. Do not collapse the cast onto the same nickname. A nickname is optional and should never become a catchphrase.
+- NICKNAME OWNERSHIP GATE: never derive a nickname from the user's name on your own. A nickname may be used only if the character profile, creator-approved voice examples or visible canon already established that exact form.
 - IMMEDIATE STOP RULE: if the latest user explicitly tells the character to stop joking, teasing, saying bullshit, using a nickname, touching, following, or doing a behavior, the very next reply must not repeat that behavior as another joke. The character may react in-character, but the prohibited behavior stops immediately unless the user clearly frames the line as playful permission to continue.
 - SHORT-TURN SCALE: for a short casual user line, default to one compact answer and at most one meaningful action. Do not answer 4-12 user words with a 50-word comedy routine, fake anecdote, scene relocation or cinematic paragraph unless the transcript genuinely demands it.
 - NO FAKE SHARED HISTORY: a relationship can feel established through tone and comfortable silence without inventing memories. Never create a past event merely to prove closeness.
@@ -3067,7 +3066,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     banter_saturation_loop: "The conversation has become a comedy routine. Remove the performative quip. Give a plain, character-specific response and let the exchange breathe.",
     short_turn_performance_monologue: "Scale the reply to the user's short turn. Use one compact answer and at most one meaningful action; remove the clever mini-monologue.",
     immediate_behavior_stop_violation: "The user explicitly told the character to stop this behavior. Stop it now. React in-character without repeating the joke/tease as another bit.",
-    unearned_nickname_address: "Use this character’s assigned ADDRESS IDENTITY lane or an already-established canon form of address. Do not borrow another character’s nickname and do not repeat a nickname mechanically.",
+    unearned_nickname_address: "Remove the invented nickname. Use the user's established name or no name unless that exact nickname already exists in canon/profile/examples.",
     unsupported_shared_history_specificity: "Remove fabricated shared history or academic/social specificity. Keep only facts grounded in visible canon, profile, or persisted state.",
     dialogue_genome_drift: "Restore the established Dialogue Genome: sentence length, question habit, explanation level, topic resistance, humor timing and public/private voice.",
     support_ticket_conversation: "Stop processing the user's message like a checklist. Let this character answer only the one or two clauses they would naturally latch onto. Remove stacked acknowledgements and stacked follow-up questions.",
@@ -5416,35 +5415,6 @@ function hasUnsupportedUserReasonClaim(reply = "", recentUserMessages = []) {
   ];
   return claims.some(({ claim, support }) => claim.test(text) && !support.test(userContext));
 }
-function characterNicknameLane(userName = "", character = {}) {
-  const firstRaw = String(userName || "").trim().split(/\s+/)[0] || "";
-  const first = normalizeText(firstRaw);
-  if (!first) return { mode:"none", nickname:"", alternatives:[] };
-  let candidates = [];
-  if (first === "antonia") candidates = ["Anto", "Toni", "Nia", "Antonia", "Tonia", "none"];
-  else {
-    const raw = firstRaw.replace(/[^\p{L}]/gu, "");
-    if (raw.length >= 5) candidates.push(raw.slice(0, 4));
-    if (raw.length >= 6) candidates.push(raw.slice(1, 5));
-    candidates.push(firstRaw, "none");
-  }
-  candidates = [...new Set(candidates.filter(Boolean))];
-  const key = `${character?.id || ""}|${character?.name || "character"}`;
-  let hash = 2166136261;
-  for (let i=0;i<key.length;i++) { hash ^= key.charCodeAt(i); hash = Math.imul(hash, 16777619); }
-  const chosen = candidates[Math.abs(hash >>> 0) % candidates.length] || firstRaw;
-  return {
-    mode: chosen === "none" ? "none" : "nickname",
-    nickname: chosen === "none" ? "" : chosen,
-    alternatives: candidates.filter((item)=>item !== "none" && normalizeText(item) !== normalizeText(chosen)),
-  };
-}
-function characterNicknameInstruction(userName = "", character = {}) {
-  const lane = characterNicknameLane(userName, character);
-  if (lane.mode === "none") return `ADDRESS IDENTITY: ${character?.name || "This character"} normally uses no nickname for ${String(userName||"the user").trim() || "the user"}. This is a character-specific habit. Do not copy another character's nickname merely because it is common.`;
-  return `ADDRESS IDENTITY: when a nickname is socially natural, ${character?.name || "This character"}'s preferred name-derived address for ${String(userName||"the user").trim() || "the user"} is “${lane.nickname}”. Treat it as this character's own stable habit, not a mandatory catchphrase. Use it sparingly, never every turn, and do not drift to another character's preferred nickname without visible relationship evolution or explicit canon.`;
-}
-
 function userAddressAliases(userName = "") {
   const first = String(userName || "").trim().split(/\s+/)[0] || "";
   if (!first) return [];
@@ -5763,13 +5733,6 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
     reply = sanitizeGenerationOrchestratorV346Reply(reply, issues);
     reply = sanitizeRecoveryIntegrityV347Reply(reply, issues);
   }
-  // v3.50.3: A validator/sanitizer is never allowed to erase a readable model turn.
-  // The v3.50.2 nickname guard could trigger the hard-repair lane and a downstream
-  // sanitizer could reduce the reply to an empty string. Preserve the original prose
-  // whenever sanitization produces no visible text.
-  if (!String(reply || "").trim() && String(result?.reply || "").trim()) {
-    reply = String(result.reply).trim();
-  }
   let nextResult = { ...result, reply };
   let nextIssues = validateNarrativeReply(nextResult.reply, options);
   if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];
@@ -6037,6 +6000,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "user_self_report_overridden",
   "user_exit_not_applied",
   "absent_user_reappeared_without_entry",
+  "unearned_nickname_address",
   "immediate_behavior_stop_violation",
   "banter_saturation_loop",
   "short_turn_performance_monologue",
@@ -6067,6 +6031,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "banter_saturation_loop",
   "short_turn_performance_monologue",
   "immediate_behavior_stop_violation",
+  "unearned_nickname_address",
   "unsupported_shared_history_specificity",
   "unsupported_timeline_duration_claim",
   "overwritten_banter",
@@ -6464,22 +6429,18 @@ function hasImmediateBehaviorStopViolation(reply = "", latestUserMessage = "") {
 }
 function hasUnearnedNicknameAddress(reply = "", userName = "", recentUserMessages = [], recentCharacterReplies = [], character = {}) {
   const first = normalizeText(String(userName || "").trim().split(/\s+/)[0] || "");
-  if (first.length < 3) return false;
-  const lane = characterNicknameLane(userName, character);
-  const allowed = new Set([first]);
-  if (lane.nickname) allowed.add(normalizeText(lane.nickname));
+  if (first.length < 5) return false;
+  const aliases = [...new Set([first.slice(0,4), first.length >= 6 ? first.slice(2,6) : ""].filter((item)=>item && item !== first && item.length >= 3))];
+  if (!aliases.length) return false;
   const evidence = normalizeText([
     ...(Array.isArray(recentUserMessages) ? recentUserMessages : []),
     ...(Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []),
     character?.relationship || "", character?.voice_vocabulary || "", character?.verbal_tells || "", character?.example_dialogue || "", character?.notes || ""
   ].join(" "));
-  for (const alias of userAddressAliases(userName)) if (new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`).test(evidence)) allowed.add(alias);
   const dialogue = normalizeText(dialogueOnlyText(reply));
-  const candidateAliases = first === "antonia" ? ["anto","toni","nia","tonia"] : userAddressAliases(userName).filter((item)=>item!==first);
-  return candidateAliases.some((alias)=>{
-    if (allowed.has(alias)) return false;
+  return aliases.some((alias)=>{
     const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(`\\b${escaped}\\b`).test(dialogue);
+    return new RegExp(`\\b${escaped}\\b`).test(dialogue) && !new RegExp(`\\b${escaped}\\b`).test(evidence);
   });
 }
 function hasUnsupportedSharedAcademicSpecificity(reply = "", visibleUserMessages = [], visibleCharacterReplies = [], character = {}) {
@@ -7826,22 +7787,6 @@ async function streamRoleplayV19({
         }
         if (await isCancelled()) return;
         if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
-
-        // v3.50.3 EMPTY-REPLY FIREWALL: never commit an empty assistant message.
-        // If validation/repair damaged the selected draft, restore the original readable
-        // model candidate instead of showing a blank bubble or Retry warning.
-        if (!String(result?.reply || "").trim() && String(originalResult?.reply || "").trim()) {
-          console.warn("[character-chat] empty reply prevented; restoring readable original candidate");
-          result = { ...originalResult, reply: String(originalResult.reply).trim() };
-          validationIssues = validateNarrativeReply(result.reply, {
-            characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
-            finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
-            character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
-          });
-        }
-        if (!String(result?.reply || "").trim()) {
-          throw new Error("EMPTY_REPLY_BLOCKED_BEFORE_SAVE");
-        }
 
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: result.reply })
