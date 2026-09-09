@@ -5763,6 +5763,13 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
     reply = sanitizeGenerationOrchestratorV346Reply(reply, issues);
     reply = sanitizeRecoveryIntegrityV347Reply(reply, issues);
   }
+  // v3.50.3: A validator/sanitizer is never allowed to erase a readable model turn.
+  // The v3.50.2 nickname guard could trigger the hard-repair lane and a downstream
+  // sanitizer could reduce the reply to an empty string. Preserve the original prose
+  // whenever sanitization produces no visible text.
+  if (!String(reply || "").trim() && String(result?.reply || "").trim()) {
+    reply = String(result.reply).trim();
+  }
   let nextResult = { ...result, reply };
   let nextIssues = validateNarrativeReply(nextResult.reply, options);
   if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];
@@ -6030,7 +6037,6 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "user_self_report_overridden",
   "user_exit_not_applied",
   "absent_user_reappeared_without_entry",
-  "unearned_nickname_address",
   "immediate_behavior_stop_violation",
   "banter_saturation_loop",
   "short_turn_performance_monologue",
@@ -6061,7 +6067,6 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "banter_saturation_loop",
   "short_turn_performance_monologue",
   "immediate_behavior_stop_violation",
-  "unearned_nickname_address",
   "unsupported_shared_history_specificity",
   "unsupported_timeline_duration_claim",
   "overwritten_banter",
@@ -7821,6 +7826,22 @@ async function streamRoleplayV19({
         }
         if (await isCancelled()) return;
         if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
+
+        // v3.50.3 EMPTY-REPLY FIREWALL: never commit an empty assistant message.
+        // If validation/repair damaged the selected draft, restore the original readable
+        // model candidate instead of showing a blank bubble or Retry warning.
+        if (!String(result?.reply || "").trim() && String(originalResult?.reply || "").trim()) {
+          console.warn("[character-chat] empty reply prevented; restoring readable original candidate");
+          result = { ...originalResult, reply: String(originalResult.reply).trim() };
+          validationIssues = validateNarrativeReply(result.reply, {
+            characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
+            finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
+            character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+          });
+        }
+        if (!String(result?.reply || "").trim()) {
+          throw new Error("EMPTY_REPLY_BLOCKED_BEFORE_SAVE");
+        }
 
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: result.reply })

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
 const src=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
 const tests=[]; const test=(name,fn)=>{fn();tests.push(name);};
-test('package version 3.50.2',()=>assert.equal(pkg.version,'3.50.2'));
+test('package version is v3.50.2 descendant',()=>assert.match(pkg.version,/^3\.50\.(?:2|3)$/));
 test('character nickname lane exists',()=>assert.match(src,/function characterNicknameLane/));
 test('Antonia has multiple address candidates',()=>{for(const n of ['Anto','Toni','Nia','Tonia']) assert.ok(src.includes(`"${n}"`));});
 test('some characters may use no nickname',()=>assert.match(src,/"none"/));
@@ -15,4 +15,4 @@ test('old never derive nickname ban removed',()=>assert.doesNotMatch(src,/never 
 test('validator accepts assigned lane',()=>assert.match(src,/if \(lane\.nickname\) allowed\.add/));
 test('existing canon nickname remains allowed',()=>assert.match(src,/recentCharacterReplies[\s\S]{0,500}allowed\.add\(alias\)/));
 test('repair points to address identity',()=>assert.match(src,/unearned_nickname_address: "Use this character’s assigned ADDRESS IDENTITY lane/));
-console.log(`v3.50.2 character-specific nicknames: ${tests.length}/${tests.length} PASS`);
+console.log(`v3.50.2+ character-specific nicknames: ${tests.length}/${tests.length} PASS`);
