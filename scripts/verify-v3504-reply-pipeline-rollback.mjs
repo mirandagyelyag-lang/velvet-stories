@@ -10,4 +10,6 @@ test('conversation core reset remains',()=>assert(src.includes('CONVERSATION COR
 test('instant story scene diversity remains',()=>assert(src.includes('v3.50.1') || src.includes('ACADEMIC')));
 test('provider failover remains',()=>assert(src.includes('streamGeminiEnvelopeWithFailover')));
 test('retry error path remains diagnostic only',()=>assert(src.includes("Velvet couldn't finish this reply right now. Retry in a moment.")));
+
+test('stability lab skips rolled-back v3502 verifier',()=>assert.doesNotMatch(pkg.scripts?.['stability:lab'] || '',/verify:v3502/));
 console.log(`\nv3.50.4 reply pipeline rollback: ${n}/${n} PASS`);

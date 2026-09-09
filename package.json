@@ -72,7 +72,7 @@
     "verify:v3230": "node scripts/verify-v3230-safe-studio.mjs",
     "verify:v3240": "node scripts/verify-v3240-living-world.mjs",
     "verify:v3241": "node scripts/verify-v3241-stability-sweep.mjs",
-    "stability:lab": "npm run verify:v3502 && npm run verify:v3501 && npm run verify:v3500 && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v34 && npm run verify:chat-syntax",
+    "stability:lab": "npm run verify:v3501 && npm run verify:v3500 && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v34 && npm run verify:chat-syntax",
     "deploy:pwa": "bash DEPLOY-PWA-STABLE.sh",
     "verify:v3250": "node scripts/verify-v3250-experience.mjs",
     "verify:v3251": "node scripts/verify-v3251-update-fix.mjs",
