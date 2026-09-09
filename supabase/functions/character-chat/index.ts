@@ -1292,7 +1292,7 @@ function instantStoryFallbackOpening(draft, idea = "") {
   const cleanIdea = cleanPromptValue(idea, 180);
 
   if (cleanIdea) {
-    return `${name} looks over, already focused on what is happening instead of filling the silence for you. “Okay. I’m listening.” A brief pause follows, patient rather than awkward. “Start wherever you want. What happened?”`;
+    return `${name} catches your attention before you can second-guess the idea. “You wanted to try this, right?” Their attention stays on the actual situation rather than turning it into a speech. “Show me where you want to start.”`;
   }
   if (/race|racing|racer|garage|car|track|circuit|street race/.test(profile)) {
     return `The garage has thinned out by the time ${name} looks up from the car, attention sharpening when they notice you. “You’re here. Good.” They move just enough to clear the view beside them. “Come look at this and tell me if I’m imagining it.”`;
@@ -1839,6 +1839,86 @@ function buildNarrativePromptV3({
     publicPrivateMode: conversation.intelligence_state?.character_mind?.public_private_mode || "unknown",
   });
   const naturalismDirectorText = conversationalNaturalismPrompt(naturalismDirector);
+
+  // v3.50.0 CONVERSATION CORE RESET
+  // One writer, one source of truth. The v3.49.x prompt stack remains in the file for
+  // rollback/history, but is intentionally unreachable from live narrative generation.
+  // This prevents validators and overlapping style briefs from competing to author a turn.
+  const recentTruthTurnsV3500 = messages.slice(-8).map((message) => {
+    const speaker = message.sender === "user" ? userIdentity.name : character.name;
+    const content = message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content;
+    return `${speaker}: ${compactMessageForPrompt(content, 1100)}`;
+  }).join("\n\n") || "none";
+  const compactStateV3500 = JSON.stringify({
+    relationship: conversation.relationship_state || {},
+    scene: conversation.scene_state || {},
+    recap: cleanPromptValue(conversation.story_recap || conversation.summary || "", 900),
+    unfinished: Array.isArray(conversation.intelligence_state?.unfinished_business) ? conversation.intelligence_state.unfinished_business.slice(-5) : [],
+  }).slice(0, 4200);
+  const regenV3500 = openingRegeneration
+    ? `Write a materially different opening from this rejected one: ${clean(openingSeed, 700)}`
+    : isRegeneration
+      ? `Regenerate from the SAME branch point. Make a genuinely different choice, not a paraphrase. Optional direction: ${clean(regenerationInstruction || "none", 500)}`
+      : "Continue canon from the last visible turn.";
+
+  return `VELVET STORIES 3.50 · CONVERSATION CORE RESET
+Write the next beat as the configured character. Do not perform a checklist. Understand what literally happened, decide what this person does next, then write it naturally.
+
+ABSOLUTE PRIORITY · TURN TRUTH
+1. Read RECENT TURNS in order. Treat them as the ground truth of who said, asked, moved, offered, promised, refused, or completed each action.
+2. Never swap actor and recipient. If Alex said “Move over” and the user moved, Alex cannot answer as though the user had asked Alex to move.
+3. A user action written in *asterisks* HAS ALREADY HAPPENED. React to its consequence. Do not reassign it, undo it, or invent a different request.
+4. Resolve pronouns and callbacks from the nearest compatible event. Keep ownership of objects, promises, jokes, invitations, requests, and obligations stable until the story changes them on-page.
+5. Do not answer a sentence merely because it sounds clever. The reply must be logically possible after the exact previous turn.
+
+INSTANT STORY / EARLY-TURN RULE
+The opening message is canon, not decorative setup. During the first turns, preserve its exact action geometry and conversational roles. Do not reinterpret the opener to manufacture banter. The first user response must connect directly to what the character just did or said.
+
+NATURAL RESPONSE
+- First determine the plain semantic response. Personality changes wording and disclosure, never basic causality.
+- Dialogue should sound spoken, not written for a quote card. Contractions, fragments and ordinary vocabulary are welcome when they fit this character.
+- Sarcasm may bend tone, not facts. A joke cannot reverse who did what.
+- Do not force a quip, question, flirt, threat, proximity beat, atmospheric pause, “Okay,” or empty narration because the turn is short.
+- A sigh, eye-roll, silence, look, or tiny action can receive a tiny response, a purposeful action, a topic landing, or genuine silence. Do not fill space just to prove the model replied.
+- Do not narrate the user’s private thoughts, feelings, decisions, dialogue, or unstaged actions.
+- Do not over-explain the character’s personality in narration. Let choices reveal it.
+- Keep length proportional to the user’s turn and the scene. One good line is better than a polished paragraph when one line is enough.
+
+CHARACTER
+Name: ${clean(character.name, 90)}
+Role: ${clean(character.role, 180)}
+Personality: ${clean(character.personality, 1100)}
+Relationship to ${userIdentity.name}: ${clean(character.relationship, 900)}
+Voice:
+${voiceFingerprint}
+Dialogue genome (reference, not a quota):
+${dialogueGenomeText}
+
+RECENT TURNS · HIGHEST AUTHORITY
+${recentTruthTurnsV3500}
+
+OLDER CONTEXT
+${older}
+
+CANON MEMORY
+${confirmedMemories}
+
+LORE
+${loreText}
+
+CURRENT STATE · use only when compatible with visible turns
+${compactStateV3500}
+
+LATEST USER BEAT
+${latest || "none"}
+
+GENERATION MODE
+${regenV3500}
+
+LANGUAGE
+${clean(responseLanguage || "match the conversation", 120)}
+
+Before finalizing, silently verify only three things: (a) who did what, (b) what the latest user beat means here, (c) whether the reply follows from those facts. If any answer is unclear, choose the least assumptive continuation. Hidden continuity fields must be conservative and must never override the visible turn history.`;
   const humanCognitionBriefV34930 = buildHumanCognitionBriefV34930({
     latestUserMessage: latestUserRecord?.content || "",
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
