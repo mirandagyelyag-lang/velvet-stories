@@ -38,6 +38,7 @@ import { buildTargetAwareDialogueV34943, targetAwareDialogueV34943Issues } from 
 import { buildSpokenNaturalnessV34944, spokenNaturalnessV34944Issues } from "./engine/spoken-naturalness-v34944.ts";
 import { buildMicroContinuityV34945, microContinuityV34945Issues } from "./engine/micro-continuity-v34945.js";
 import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engine/turn-state-ledger-v34946.js";
+import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1954,6 +1955,10 @@ function buildNarrativePromptV3({
     recentTurns: messages.slice(-10).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${String(message.content || "")}`),
     character,
   });
+  const meaningfulTurnGateV34950 = buildMeaningfulTurnGateV34950({
+    latestUserMessage: latestUserRecord?.content || "",
+    character,
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2094,6 +2099,8 @@ ${spokenNaturalnessV34944}
 ${microContinuityV34945}
 
 ${turnStateLedgerV34946}
+
+${meaningfulTurnGateV34950}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line.
 
@@ -2813,6 +2820,8 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     social_intelligence_romance_projection: "Remove automatic romantic/sexual framing. Courtesy, proximity, attention, conflict and third-party presence are not romance evidence by themselves.",
     social_intelligence_crowd_theater: "Remove synchronized crowd theater. Let only grounded observers react, and usually subtly, if the event would realistically draw attention.",
     direct_causal_answer_miss: "Answer the user’s direct causal question about the specific prior action. Reconstruct the recent event chain and anchor the answer to the actual grounded trigger. The character may minimize, conceal, or deflect their motive, but the deflection must remain about that trigger. Do not answer with Okay, an unrelated witty excuse, or a callback to an older joke/keyword. Plain specific dialogue is allowed and preferred over a punchline.",
+    meaningful_turn_no_move: "The draft contains no character-owned move. Replace empty time/atmosphere/stillness with the smallest grounded conversational or narrative move already available in context. Do not invent an event, user feeling, or new obligation.",
+    meaningful_turn_stalled_regeneration: "The draft repeats an empty no-move response. Choose a different grounded move from the live thread; do not paraphrase the same pause/silence/stillness.",
     dead_ack_after_nonverbal_cue: "The user gave an observable nonverbal action beat. Do not answer with bare Okay/Right/Sure/Yeah. React specifically without inventing the user's inner state. Preserve the live conversational thread and role ownership; silence is allowed if natural, otherwise use one character-specific response that actually changes or acknowledges the beat.",
     pragmatic_sarcasm_miss: "Read the user utterance as a SOCIAL SPEECH ACT, not a bag of nouns. For an obvious ironic contradiction such as yeah-and-I-am-X, respond to the implied disbelief/tease about YOUR immediately preceding claim. Do not repeat X, extend its metaphor, introduce a third comparison target, explain the joke, or collapse to Okay. Use this character’s natural timing: a short dry concession, mock offense, shameless doubling-down, amused deflection, or other profile-owned response. Never invent a user gesture or emotion.",
     invented_precise_schedule: "Remove invented exact clock/day scheduling. Preserve only the broad routine or time anchor actually established. If exact time is unknown, keep it unknown.",
@@ -5641,10 +5650,12 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
     // v3.49.49: Never convert a failed repair into the exact dead acknowledgement
     // that the validator rejects. This old deterministic fallback was why regeneration
     // could return "Okay." forever even when the model produced different candidates.
-    const fallback = hasExplicitUserExit(options.latestUserMessage || "") ? "A beat passed."
-      : embodied?.recognitionDue ? sanitizeEmbodiedAwarenessReply("", ["embodied_state_ignored"], embodied)
-      : "A beat passes.";
-    nextResult = { ...nextResult, reply: fallback };
+    // v3.49.50: NEVER replace a model candidate with synthetic filler. The old
+    // safety fallback ("A beat passes.") was itself a dead turn and could mask a
+    // more useful candidate. Keep the best sanitized candidate and let the final
+    // hard/meaningful-turn validation decide whether it can be saved. Empty prose
+    // remains empty so the request fails visibly instead of fabricating a fake beat.
+    nextResult = { ...nextResult, reply: String(nextResult.reply || "").trim() };
     nextIssues = validateNarrativeReply(nextResult.reply, options);
     if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];
   }
@@ -5753,6 +5764,8 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // continuity merging protects stored canon. Only structural failures or severe
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
+  "meaningful_turn_no_move",
+  "meaningful_turn_stalled_regeneration",
   "turn_state_commitment_reversal",
   "turn_state_fake_user_readiness",
   "turn_state_fake_user_obligation",
@@ -5953,6 +5966,8 @@ const REPAIR_TRIGGER_ISSUES = new Set([
 // These are not cosmetic preferences. If a draft violates one of these, never
 // surface/save the rejected draft merely because the one repair call timed out.
 const HARD_REPAIR_REQUIRED_ISSUES = new Set([
+  "meaningful_turn_no_move",
+  "meaningful_turn_stalled_regeneration",
   "turn_state_commitment_reversal",
   "turn_state_fake_user_readiness",
   "turn_state_fake_user_obligation",
@@ -6754,6 +6769,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of spokenNaturalnessV34944Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
+  for (const issue of meaningfulTurnGateV34950Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
