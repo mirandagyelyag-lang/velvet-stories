@@ -3154,7 +3154,7 @@ async function callGeminiWithFailover({
               // Compatibility floor: only the universally-required `contents`
               // field. Fold the system instruction into the user text so a
               // model/API change cannot reject optional request fields.
-              contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\n${prompt}` }] }],
+              contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\n${prompt}\n\nTRANSPORT RECOVERY v3.50.7: Return ONLY the visible in-character roleplay reply as plain prose. Do not return JSON, metadata, keys, code fences, or explanations. A short natural reply is valid.` }] }],
             }
           : {
               systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -3180,9 +3180,9 @@ async function callGeminiWithFailover({
         return { response, data };
       };
 
-      let { response, data } = await runAttempt("json");
+      let { response, data } = await runAttempt("bare");
       if (!response.ok && response.status === 400) {
-        ({ response, data } = await runAttempt("bare"));
+        ({ response, data } = await runAttempt("json"));
       }
       if (!response.ok) {
         lastError = data?.error?.message || `Gemini returned ${response.status}`;
@@ -8311,7 +8311,7 @@ async function streamGeminiEnvelopeWithFailover({
           ? {
               // True compatibility fallback: no systemInstruction,
               // generationConfig, thinking config, MIME type, or schema.
-              contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\n${prompt}` }] }],
+              contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\n${prompt}\n\nTRANSPORT RECOVERY v3.50.7: Return ONLY the visible in-character roleplay reply as plain prose. Do not return JSON, metadata, keys, code fences, or explanations. A short natural reply is valid.` }] }],
             }
           : {
               systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -8363,10 +8363,10 @@ async function streamGeminiEnvelopeWithFailover({
         return { response, message };
       };
 
-      let { response, message } = await runStreamAttempt("json");
+      let { response, message } = await runStreamAttempt("bare");
       if (!response.ok && response.status === 400) {
-        emitAttempt({ phase: "compatibility-fallback", model, mode: "bare", status: 400, reason: "invalid_argument_or_schema" });
-        ({ response, message } = await runStreamAttempt("bare"));
+        emitAttempt({ phase: "compatibility-fallback", model, mode: "json", status: 400, reason: "bare_transport_rejected" });
+        ({ response, message } = await runStreamAttempt("json"));
       }
       if (!response.ok) {
         quotaReached ||= response.status === 429;
