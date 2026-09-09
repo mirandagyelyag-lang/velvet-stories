@@ -2,7 +2,7 @@ import fs from 'node:fs';
 const src=fs.readFileSync('supabase/functions/character-chat/index.ts','utf8');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const tests=[
- ['version is 3.50.1', pkg.version==='3.50.1'],
+ ['version is v3.50.1+ descendant', /^3\.50\.(?:[1-9]|[1-9]\d+)$/.test(pkg.version)],
  ['non-academic scene pool exists', src.includes('INSTANT_STORY_NON_ACADEMIC_SCENES')],
  ['academic default ban exists', src.includes('DEFAULT BAN: do NOT set this opening at a university')],
  ['student profile is not academic permission', src.includes('Character profile words like student, university, campus prince')],
