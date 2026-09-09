@@ -2,7 +2,7 @@ import fs from 'node:fs'; import assert from 'node:assert/strict';
 const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url)));
 const src=fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
 let n=0; const test=(name,fn)=>{fn(); n++; console.log(`PASS ${n}: ${name}`)};
-test('version is 3.50.4',()=>assert.equal(pkg.version,'3.50.4'));
+test('version is v3.50.4+ descendant',()=>assert.match(pkg.version,/^3\.50\.(?:4|5)$/));
 test('nickname lane runtime removed',()=>assert(!src.includes('function characterNicknameLane(')));
 test('nickname instruction runtime removed',()=>assert(!src.includes('characterNicknameInstruction(userIdentity.name, character)')));
 test('v3.50.3 empty firewall runtime removed',()=>assert(!src.includes('v3.50.3 EMPTY-REPLY FIREWALL')));
