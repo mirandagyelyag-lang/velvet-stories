@@ -5638,9 +5638,12 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const stubbornOrchestration = nextIssues.filter((issue) => orchestrationHard.includes(issue));
   if (stubbornGrounded.length || stubbornAgency.length || stubbornPhysics.length || stubbornIntent.length || stubbornChemistry.length || stubbornEmbodied.length || stubbornSceneIntelligence.length || stubbornDiscourse.length || stubbornEvolution.length || stubbornNpcEcosystem.length || stubbornCalendarLife.length || stubbornCausalTimeline.length || stubbornSceneDirector.length || stubbornLongStoryMemory.length || stubbornNarrativeArc.length || stubbornProse.length || stubbornOrchestration.length || !String(nextResult.reply || "").trim()) {
     const embodied = options.turnContract?.embodiedAwarenessSalience || {};
+    // v3.49.49: Never convert a failed repair into the exact dead acknowledgement
+    // that the validator rejects. This old deterministic fallback was why regeneration
+    // could return "Okay." forever even when the model produced different candidates.
     const fallback = hasExplicitUserExit(options.latestUserMessage || "") ? "A beat passed."
       : embodied?.recognitionDue ? sanitizeEmbodiedAwarenessReply("", ["embodied_state_ignored"], embodied)
-      : '"Okay."';
+      : "A beat passes.";
     nextResult = { ...nextResult, reply: fallback };
     nextIssues = validateNarrativeReply(nextResult.reply, options);
     if (options.continuity) nextIssues = [...new Set([...nextIssues, ...validateContinuityEnvelope(nextResult, options.continuity)])];

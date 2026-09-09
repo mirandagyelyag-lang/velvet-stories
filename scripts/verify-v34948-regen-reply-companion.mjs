@@ -3,7 +3,7 @@ const chat=fs.readFileSync('src/pages/Chat.jsx','utf8');
 const edge=fs.readFileSync('supabase/functions/character-chat/index.ts','utf8');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const tests=[
- ['version',pkg.version==='3.49.48'],
+ ['version',/^3\.49\.(?:48|49)$/.test(pkg.version)],
  ['regen clears stale stop',chat.includes('stoppedRef.current = false;\n    variantGenerationLockRef.current = true;')],
  ['reply history 16',edge.includes('recentMessages.slice(-16)')],
  ['tracks referents',edge.includes('pronouns/referents, promises, jokes, questions')],
