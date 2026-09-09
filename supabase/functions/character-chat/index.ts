@@ -1286,33 +1286,64 @@ function compactInstantStoryDraft(draft) {
   };
 }
 
-function instantStoryFallbackOpening(draft, idea = "") {
-  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
+const INSTANT_STORY_NON_ACADEMIC_SCENES = [
+  "a late-night convenience store run with a concrete reason to be there",
+  "a quiet neighborhood street after separate plans have just ended",
+  "a crowded restaurant or takeout counter where something practical brings them together",
+  "a grocery store or market during an ordinary errand",
+  "a parking garage or curbside pickup with somewhere real to go next",
+  "a friend's apartment or shared social gathering already in progress",
+  "a family or friend-group event where the character has their own reason to attend",
+  "a train station, bus stop, airport pickup, or other transit moment",
+  "a park, waterfront, lookout, trail, or outdoor public place tied to an actual activity",
+  "a shop, record store, bookstore, arcade, cinema, gallery, or event venue chosen for a specific activity",
+  "the character's work, training, garage, studio, office, club, or hobby space when their profile supports it",
+  "a home kitchen, living room, hallway, balcony, or building entrance when the relationship plausibly allows it",
+];
+
+function instantStorySceneSeed(draft, idea = "") {
+  const cleanIdea = cleanPromptValue(idea, 180);
+  if (cleanIdea) return `USER-SPECIFIED DIRECTION: ${cleanIdea}`;
+  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
+  const specialized = [];
+  if (/race|racing|racer|garage|car|track|circuit|street race/.test(profile)) specialized.push("garage, workshop, roadside stop, gas station, car meet, or race-adjacent place");
+  if (/athlete|captain|team|practice|training|football|soccer|basketball|polo|sport/.test(profile)) specialized.push("training facility, stadium exterior, equipment pickup, recovery stop, or post-practice food run");
+  if (/business|ceo|company|wealth|millionaire|billionaire|family empire|executive/.test(profile)) specialized.push("office after hours, hotel lobby, private event, restaurant, car ride, building entrance, or work-adjacent errand");
+  const pool = specialized.length ? [...specialized, ...INSTANT_STORY_NON_ACADEMIC_SCENES] : INSTANT_STORY_NON_ACADEMIC_SCENES;
+  const index = Math.floor(Math.random() * pool.length);
+  return pool[index];
+}
+
+function instantStoryFallbackOpening(draft, idea = "", sceneSeed = "") {
   const name = cleanPromptValue(draft?.name, 70) || "They";
   const cleanIdea = cleanPromptValue(idea, 180);
-
   if (cleanIdea) {
-    return `${name} catches your attention before you can second-guess the idea. “You wanted to try this, right?” Their attention stays on the actual situation rather than turning it into a speech. “Show me where you want to start.”`;
+    return `${name} catches your attention before the moment gets away from either of you. “You wanted to try this, right?” They leave the choice with you instead of deciding your reaction for you. “Okay. Where do you want to start?”`;
   }
-  if (/race|racing|racer|garage|car|track|circuit|street race/.test(profile)) {
-    return `The garage has thinned out by the time ${name} looks up from the car, attention sharpening when they notice you. “You’re here. Good.” They move just enough to clear the view beside them. “Come look at this and tell me if I’m imagining it.”`;
-  }
-  if (/athlete|captain|team|practice|training|football|soccer|basketball|polo|sport/.test(profile)) {
-    return `${name} catches you just after practice, still carrying the restless energy of it while everyone else starts scattering. “You heading out?” They glance toward the exit, then back at you. “Walk with me for a minute. I need your opinion on something.”`;
-  }
-  if (/student|university|college|campus|class|professor/.test(profile)) {
-    return `${name} spots you outside class and actually slows instead of disappearing into the crowd. “Hey.” Their attention settles on you, direct and unhurried. “You got a few minutes before your next thing? I wanted to ask you something without half the campus listening.”`;
-  }
-  if (/business|ceo|company|wealth|millionaire|billionaire|family empire|executive/.test(profile)) {
-    return `${name} steps away from the conversation around them and gives you their full attention, phone going dark in their hand. “There you are.” Their tone drops a little. “I need a second opinion, and everyone in that room is telling me what they think I want to hear.”`;
-  }
-  return `${name} catches your attention before the moment can pass and gives you a small, expectant look. “Hey. Got a minute?” They wait instead of answering for you. “I’ve been meaning to ask you something, but I’d rather hear the real answer than the polite one.”`;
+  return `${name} catches sight of you during ${cleanPromptValue(sceneSeed, 150) || "an ordinary plan away from school"} and changes course for a concrete reason of their own. “Hey.” They come close enough to speak normally, without turning the moment into a performance. “Good timing. I actually need you for something.”`;
 }
 
 async function handleInstantStory({ apiKey, draft, idea }) {
   const safeDraft = compactInstantStoryDraft(draft);
   const cleanIdea = cleanPromptValue(idea || "", 420);
-  const prompt = `Write one fresh opening beat for a private roleplay with this character. 45-85 words. It must be immediately playable, specific to the character, and DIFFERENT from their stored first message. Preserve voice and established relationship. Do not write the user's dialogue, thoughts, feelings, decisions, or actions. Use 0-2 short narration sentences and 1-4 natural spoken lines. Prefer dialogue first when natural. No room inventory, weather montage, outfit inventory, cinematic body-language padding, exposition disguised as dialogue, or forced cliffhanger. End with a clean opening the user can answer. IMPORTANT: finish every sentence and every quotation. Never stop mid-word or mid-sentence. Use the language of the profile or idea.\n\nCHARACTER\n${JSON.stringify(safeDraft)}\n\nIDEA\n${cleanIdea || "Choose a plausible ordinary situation from the character's established life."}`;
+  const sceneSeed = instantStorySceneSeed(safeDraft, cleanIdea);
+  const prompt = `Write one fresh opening beat for a private roleplay with this character. 45-85 words. It must be immediately playable, specific to the character, and DIFFERENT from their stored first message. Preserve voice and established relationship. Do not write the user's dialogue, thoughts, feelings, decisions, or actions. Use 0-2 short narration sentences and 1-4 natural spoken lines. Prefer dialogue first when natural. No room inventory, weather montage, outfit inventory, cinematic body-language padding, exposition disguised as dialogue, or forced cliffhanger. End with a clean opening the user can answer. IMPORTANT: finish every sentence and every quotation. Never stop mid-word or mid-sentence. Use the language of the profile or idea.
+
+INSTANT STORY LOCATION DIVERSITY LOCK v3.50.1
+- DEFAULT BAN: do NOT set this opening at a university, college, campus, school, classroom, lecture hall, dorm, study room, or library. Do not use academic buildings as a convenient generic backdrop.
+- A character may be a student without living every scene at school. Their identity, friendships, family, hobbies, errands, nightlife, work, sport, travel, neighborhoods, homes and ordinary city life still exist.
+- Academic locations are allowed ONLY when the user's IDEA explicitly requests one. Character profile words like student, university, campus prince, class, professor, scholarship, major or degree are NOT permission by themselves.
+- Use the scene seed below as a direction, then make it causally specific to this character. Do not merely rename a campus scene.
+- Give the character a concrete reason to be there and a concrete reason to interact now. Avoid generic “got a minute?”, “wanted to ask you something”, accidental collision, seat-taking, notebook-drop and coffee-table openings unless the seed genuinely requires them.
+
+SCENE SEED
+${sceneSeed}
+
+CHARACTER
+${JSON.stringify(safeDraft)}
+
+IDEA
+${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}`;
 
   // v3.49.2: race compact model attempts instead of waiting serially. A response
   // only wins if it is a complete opening; MAX_TOKENS, dangling quotes, unfinished
@@ -1395,7 +1426,7 @@ async function handleInstantStory({ apiKey, draft, idea }) {
   }
 
   console.warn("[character-chat] instant story using complete local fallback", { durationMs: Date.now() - startedAt });
-  return json({ opening: instantStoryFallbackOpening(safeDraft, cleanIdea), source: "local_fallback" });
+  return json({ opening: instantStoryFallbackOpening(safeDraft, cleanIdea, sceneSeed), source: "local_fallback" });
 }
 
 async function handleCharacterGenerate({ apiKey, concept }) {
