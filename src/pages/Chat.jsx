@@ -1852,6 +1852,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const previousContent = selectedMessage.content;
     const instruction = actionDraft.trim();
     const feedbackCodes = [...regenerationFeedback];
+    // v3.49.48 REGENERATION RECOVERY: Stop is a one-generation signal, not a
+    // permanent chat state. A previous Stop used to leave stoppedRef=true, so
+    // regeneration could finish on the server and then be discarded by this UI.
+    stoppedRef.current = false;
     variantGenerationLockRef.current = true;
     const variantOp = ++versionOperationSeqRef.current;
     try {

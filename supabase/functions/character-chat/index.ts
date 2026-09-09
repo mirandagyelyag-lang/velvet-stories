@@ -830,22 +830,50 @@ async function handleCharacterAssist({ apiKey, draft, mode, focusFields = [] }) 
 }
 
 
+// Reply Companion lineage contract: exactly 4 distinct, natural English options; FIRST understand the character's latest message.
+// If English is ambiguous, explain the most likely reading cautiously and mention the alternate.
 async function handleReplyAssist({ apiKey, character, recentMessages, userDraft, intent, customIntent }) {
   const safeCharacter = character && typeof character === "object" ? character : {};
-  const history = Array.isArray(recentMessages) ? recentMessages.slice(-12).map((item) => ({speaker:cleanPromptValue(item?.speaker,80),text:cleanPromptValue(item?.text,1000)})).filter(x=>x.text) : [];
-  const draft=cleanPromptValue(userDraft,500), requestedIntent=cleanPromptValue(intent,80)||"ideas", custom=cleanPromptValue(customIntent,500);
-  const prompt=`You are Velvet Reply Companion for a Spanish-speaking user learning English inside a fictional roleplay chat. FIRST understand the character's latest message in context, including slang, sarcasm, flirting, indirectness, idioms and subtext. Explain it in simple natural Spanish without overclaiming hidden motives. THEN help the USER answer. Never write the character's next reply.
+  const history = Array.isArray(recentMessages) ? recentMessages.slice(-16).map((item) => ({speaker:cleanPromptValue(item?.speaker,80),text:cleanPromptValue(item?.text,1200)})).filter(x=>x.text) : [];
+  const draft=cleanPromptValue(userDraft,700), requestedIntent=cleanPromptValue(intent,80)||"ideas", custom=cleanPromptValue(customIntent,700);
+  const prompt=`You are Velvet Reply Companion. You help a Spanish-speaking user reply AS THEMSELVES in English inside a fictional roleplay chat. This is not a dialogue generator for the character.
 
-MODES: understand = prioritize explanation and neutral reply choices; ideas = context-aware replies; playful; dry; flirty = subtle only; direct; custom = obey Spanish/English instruction. If English is ambiguous, say so in explanation_es and give the most likely reading plus a brief alternate reading. Never invent user actions/feelings/facts. Preserve imperfect-English intent naturally, not word-for-word. Produce exactly 4 distinct, natural English options. Options must sound like real young adults, not quote-card banter.
+DO THIS IN ORDER:
+1. Reconstruct the last 6-16 turns. Track who said what, pronouns/referents, promises, jokes, questions, unfinished topics and the latest character line.
+2. Understand what the character's latest line actually means here. Do not invent motives.
+3. Infer the USER'S reply voice from THEIR recent messages only: length, bluntness, humor, punctuation, confidence, teasing style, English level. Never copy the character's voice onto the user.
+4. Generate exactly 4 genuinely different replies the user could send NOW.
 
-Return ONLY JSON: {"understanding":{"literal_es":"plain Spanish meaning of the character's latest line","explanation_es":"what they mean here in simple Spanish","subtext_es":"likely social tone/subtext, cautious if ambiguous","english_notes":[{"phrase":"useful English phrase/slang","meaning_es":"meaning here"}]},"options":[{"text":"natural English reply","tone":"short Spanish tone label","meaning_es":"what YOUR reply conveys in Spanish"}]}. Exactly 4 options. No markdown.
-CHARACTER ${JSON.stringify(safeCharacter).slice(0,5000)}
-RECENT CHAT ${JSON.stringify(history).slice(0,10000)}
+REPLY QUALITY RULES:
+- Every option must answer/react to the latest line and preserve micro-continuity.
+- Sound typed/spoken by a real young adult, not a screenplay writer, quote card, therapist, or polished AI.
+- Prefer the user's normal length. Short chat should stay short unless CUSTOM asks otherwise.
+- No invented actions (*smirks*, *walks closer*), feelings, backstory, facts, pet names or relationship escalation.
+- No generic filler options like "Okay", "Interesting", "Fair enough", "We'll see" unless context makes that exact reply useful.
+- Do not make all four the same sentence with synonyms. Give four different conversational tactics.
+- Do not overdo sarcasm, flirting, rhetorical questions, clever one-liners, or formal vocabulary.
+- If USER DRAFT exists, preserve what the user is trying to say and improve the English rather than replacing the intent.
+- CUSTOM instruction is highest priority, but still preserve scene facts and user ownership.
+
+MODES:
+understand = clearest explanation + 4 neutral/natural ways to respond.
+ideas = 4 contextually useful directions the user might naturally take.
+playful = light teasing, not sitcom banter.
+dry = restrained, concise, not cruel.
+flirty = subtle and plausible for the established relationship, never forced escalation.
+direct = say the point plainly.
+custom = follow the user's Spanish/English instruction precisely.
+
+For explanation, distinguish literal meaning from likely subtext. If ambiguous, explicitly say it can mean more than one thing. english_notes should explain only phrases that are actually useful here.
+
+Return ONLY JSON: {"understanding":{"literal_es":"...","explanation_es":"...","subtext_es":"...","english_notes":[{"phrase":"...","meaning_es":"..."}]},"options":[{"text":"...","tone":"short Spanish label","meaning_es":"what this reply communicates"}]}. Exactly 4 options. No markdown.
+CHARACTER (context only; DO NOT imitate their voice for user replies) ${JSON.stringify(safeCharacter).slice(0,6000)}
+RECENT CHAT ${JSON.stringify(history).slice(0,14000)}
 USER DRAFT ${draft||"(none)"}
 MODE ${requestedIntent}
 CUSTOM ${custom||"(none)"}`;
   const models=[...new Set([GEMINI_FALLBACK_MODEL,GEMINI_EMERGENCY_MODEL,GEMINI_MODEL].filter(Boolean))]; let lastError="Velvet couldn't help with this message.";
-  for(const model of models){try{const response=await fetch(modelEndpoint(model),{method:"POST",headers:geminiHeaders(apiKey),body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1300,responseMimeType:"application/json",thinkingConfig:{thinkingLevel:"LOW"}}})}); const data=await response.json().catch(()=>({})); if(!response.ok){lastError=data?.error?.message||lastError;continue;} const parsed=JSON.parse(stripJsonFence(extractCandidateText(data))); const options=Array.isArray(parsed?.options)?parsed.options.slice(0,4).map(item=>({text:cleanPromptValue(item?.text,500),tone:cleanPromptValue(item?.tone,80),meaning_es:cleanPromptValue(item?.meaning_es,350)})).filter(x=>x.text):[]; if(options.length>=3)return json({understanding:parsed?.understanding||{},options});}catch(error){lastError=getErrorMessage(error)}} throw new Error(lastError);
+  for(const model of models){try{const response=await fetch(modelEndpoint(model),{method:"POST",headers:geminiHeaders(apiKey),body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1500,responseMimeType:"application/json",thinkingConfig:{thinkingLevel:"LOW"}}})}); const data=await response.json().catch(()=>({})); if(!response.ok){lastError=data?.error?.message||lastError;continue;} const parsed=JSON.parse(stripJsonFence(extractCandidateText(data))); const options=Array.isArray(parsed?.options)?parsed.options.slice(0,4).map(item=>({text:cleanPromptValue(item?.text,500),tone:cleanPromptValue(item?.tone,80),meaning_es:cleanPromptValue(item?.meaning_es,350)})).filter(x=>x.text):[]; const unique=[...new Map(options.map(x=>[x.text.toLowerCase().replace(/\s+/g," ").trim(),x])).values()]; if(unique.length===4)return json({understanding:parsed?.understanding||{},options:unique});}catch(error){lastError=getErrorMessage(error)}} throw new Error(lastError);
 }
 
 async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
