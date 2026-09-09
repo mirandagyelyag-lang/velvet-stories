@@ -37,6 +37,7 @@ import { buildLeanDialogueCoreV34942, leanDialogueCoreV34942Issues } from "./eng
 import { buildTargetAwareDialogueV34943, targetAwareDialogueV34943Issues } from "./engine/target-aware-dialogue-v34943.ts";
 import { buildSpokenNaturalnessV34944, spokenNaturalnessV34944Issues } from "./engine/spoken-naturalness-v34944.ts";
 import { buildMicroContinuityV34945, microContinuityV34945Issues } from "./engine/micro-continuity-v34945.js";
+import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engine/turn-state-ledger-v34946.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1918,6 +1919,13 @@ function buildNarrativePromptV3({
     recentTurns: messages.slice(-8).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${String(message.content || "")}`),
     character,
   });
+  const turnStateLedgerV34946 = buildTurnStateLedgerV34946({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    recentTurns: messages.slice(-10).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${String(message.content || "")}`),
+    character,
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2056,6 +2064,8 @@ ${targetAwareDialogueV34943}
 ${spokenNaturalnessV34944}
 
 ${microContinuityV34945}
+
+${turnStateLedgerV34946}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line.
 
@@ -5711,6 +5721,11 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // continuity merging protects stored canon. Only structural failures or severe
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
+  "turn_state_commitment_reversal",
+  "turn_state_fake_user_readiness",
+  "turn_state_fake_user_obligation",
+  "turn_state_actor_recipient_swap",
+  "turn_state_joke_extension_role_drift",
   "micro_continuity_role_reversal",
   "micro_continuity_commitment_owner_swap",
   "micro_continuity_fake_user_task",
@@ -5905,6 +5920,11 @@ const REPAIR_TRIGGER_ISSUES = new Set([
 // These are not cosmetic preferences. If a draft violates one of these, never
 // surface/save the rejected draft merely because the one repair call timed out.
 const HARD_REPAIR_REQUIRED_ISSUES = new Set([
+  "turn_state_commitment_reversal",
+  "turn_state_fake_user_readiness",
+  "turn_state_fake_user_obligation",
+  "turn_state_actor_recipient_swap",
+  "turn_state_joke_extension_role_drift",
   "micro_continuity_role_reversal",
   "micro_continuity_commitment_owner_swap",
   "micro_continuity_fake_user_task",
@@ -6610,6 +6630,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (spokenNaturalnessIssuesForScore.length) score -= Math.min(48, 20 + spokenNaturalnessIssuesForScore.length * 10);
   const microContinuityIssuesForScore = microContinuityV34945Issues(reply, latest, recent);
   if (microContinuityIssuesForScore.length) score -= Math.min(90, 55 + microContinuityIssuesForScore.length * 18);
+  const turnStateIssuesForScore = turnStateLedgerV34946Issues(reply, latest, recent, options.recentUserMessages || []);
+  if (turnStateIssuesForScore.length) score -= Math.min(96, 64 + turnStateIssuesForScore.length * 16);
   const plainSpeechIssuesForScore = plainSpeechFirstV34941Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (relationshipAttachmentIssuesForScore.length) score -= Math.min(56, 24 + relationshipAttachmentIssuesForScore.length * 8);
@@ -6696,6 +6718,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of targetAwareDialogueV34943Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of spokenNaturalnessV34944Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
