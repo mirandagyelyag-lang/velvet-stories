@@ -315,6 +315,18 @@ export function hasHumanMindDialogueArtifice(reply: string, latestUserMessage = 
   return therapy || quoteCard || trailer || forcedHook || tooManyNames;
 }
 
+
+export function hasDeadAcknowledgementAfterNonverbalCue(reply = "", latestUserMessage = "") {
+  const latest = String(latestUserMessage || "").trim();
+  // A user-authored action beat such as *i sigh* is observable input, not an empty turn.
+  // A bare acknowledgement contributes no character reaction, no thread continuity and,
+  // on regeneration, easily collapses every candidate into the same "Okay." dead end.
+  const actionOnly = /^\s*\*[^*]+\*\s*[.!?]*\s*$/.test(latest);
+  if (!actionOnly) return false;
+  const dialogue = normalized(dialogueOnly(reply).join(" ")) || normalized(reply);
+  return /^(?:okay|ok|right|sure|yeah|yep|mhm|uh huh|fine)[.! ]*$/.test(dialogue);
+}
+
 export function intentSubtextIssues({
   reply = "",
   latestUserMessage = "",
@@ -335,6 +347,7 @@ export function intentSubtextIssues({
   if (hasDirectCausalAnswerMiss(reply, latestUserMessage, recentCharacterReplies)) issues.push("direct_causal_answer_miss");
   if (hasPersonalityPerformanceOverride(reply, latestUserMessage)) issues.push("personality_performance_override");
   if (hasHumanMindDialogueArtifice(reply, latestUserMessage)) issues.push("human_mind_dialogue_artifice");
+  if (hasDeadAcknowledgementAfterNonverbalCue(reply, latestUserMessage)) issues.push("dead_ack_after_nonverbal_cue");
   return [...new Set(issues)];
 }
 

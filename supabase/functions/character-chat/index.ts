@@ -2488,7 +2488,7 @@ Rule: ${clean(turnContract?.sceneIntelligenceDynamicWorld?.instruction || "", 15
 - LOCATION-SPECIFIC LIFE: campus, racing, training, parties, private homes and business spaces activate different parts of identity, obligations and social gravity.
 - NO PROTAGONIST ORBIT: established friends, duties, admirers, rivals and plans keep existing, but only enter the visible scene through causal paths.
 - ONE EARNED ACTION: if a scene truly stagnates, use one small action licensed by existing intent/activity/obligation, or let the scene land. Never manufacture spectacle.
-- MEANINGFUL SILENCE: an action-only beat may receive silence or one tiny reaction. Do not overwrite quiet with a monologue.
+- MEANINGFUL SILENCE: an action-only beat may receive silence or one tiny reaction. Do not overwrite quiet with a monologue. A visible cue such as *I sigh* is NOT an excuse for a bare “Okay.” If the character responds, make the response specific to the cue, the live thread, and this character; it may be a look, a short question, a thread-aware line, or deliberate silence. Regeneration must not collapse to the same generic acknowledgement.
 - CLEAN CLOSURE: when someone leaves or the purpose is finished, end it. Never attach “just as you reached the door…” bait.
 - RE-ENTRY: a new day/location resets transient hand positions, cups, menus and posture. Durable canon/residue survives; frozen choreography does not.
 - STORY TIME ≠ MESSAGE COUNT: do not invent hours, lateness, closing time or schedule changes from the number of turns.
@@ -2785,6 +2785,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     social_intelligence_romance_projection: "Remove automatic romantic/sexual framing. Courtesy, proximity, attention, conflict and third-party presence are not romance evidence by themselves.",
     social_intelligence_crowd_theater: "Remove synchronized crowd theater. Let only grounded observers react, and usually subtly, if the event would realistically draw attention.",
     direct_causal_answer_miss: "Answer the user’s direct causal question about the specific prior action. Reconstruct the recent event chain and anchor the answer to the actual grounded trigger. The character may minimize, conceal, or deflect their motive, but the deflection must remain about that trigger. Do not answer with Okay, an unrelated witty excuse, or a callback to an older joke/keyword. Plain specific dialogue is allowed and preferred over a punchline.",
+    dead_ack_after_nonverbal_cue: "The user gave an observable nonverbal action beat. Do not answer with bare Okay/Right/Sure/Yeah. React specifically without inventing the user's inner state. Preserve the live conversational thread and role ownership; silence is allowed if natural, otherwise use one character-specific response that actually changes or acknowledges the beat.",
     pragmatic_sarcasm_miss: "Read the user utterance as a SOCIAL SPEECH ACT, not a bag of nouns. For an obvious ironic contradiction such as yeah-and-I-am-X, respond to the implied disbelief/tease about YOUR immediately preceding claim. Do not repeat X, extend its metaphor, introduce a third comparison target, explain the joke, or collapse to Okay. Use this character’s natural timing: a short dry concession, mock offense, shameless doubling-down, amused deflection, or other profile-owned response. Never invent a user gesture or emotion.",
     invented_precise_schedule: "Remove invented exact clock/day scheduling. Preserve only the broad routine or time anchor actually established. If exact time is unknown, keep it unknown.",
     unsupported_temporal_language: "Remove or soften yesterday/tomorrow/last-week/hours-later language unless the transcript or calendar supports it. Temporal words are factual canon claims.",
@@ -5502,7 +5503,7 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const agencyHard = ["agency_commitment_inertia_break", "gratuitous_external_hook", "initiative_budget_overflow", "forced_scene_continuation_hook"];
   const physicsHard = ["body_state_redundant_transition", "spatial_anchor_teleport", "object_possession_break", "object_state_rewind", "line_of_sight_violation", "interaction_geometry_violation", "precise_time_invention", "unsupported_elapsed_time_claim", "door_state_continuity_break"];
   const physicsRepair = [...physicsHard, "repeated_action_fingerprint"];
-  const intentHard = ["narration_pov_flip", "random_activity_filler", "fake_shared_day_history", "gesture_budget_overflow", "obligatory_banter_exit", "intent_thread_abandoned"];
+  const intentHard = ["narration_pov_flip", "random_activity_filler", "fake_shared_day_history", "gesture_budget_overflow", "obligatory_banter_exit", "intent_thread_abandoned", "dead_ack_after_nonverbal_cue"];
   const chemistryHard = ["jealousy_without_grounded_evidence", "generic_jealousy_clone", "premature_relationship_escalation", "romance_used_to_skip_repair", "conflict_residue_erased", "vulnerability_hangover_erased", "third_party_relationship_mindread"];
   const embodiedHard = ["embodied_state_ignored", "banter_overrides_embodied_state", "chemistry_overrides_embodied_state", "care_hijacks_user_agency", "private_embodied_label_claim"];
   const sceneIntelligenceHard = ["decorative_environment_filler", "forced_scene_extension", "reentry_transient_state_leak", "unearned_world_collision", "scene_stagnation_loop", "silence_overwritten", "environment_wallpaper_overload"];
@@ -5790,6 +5791,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "repeated_action_fingerprint",
   "answer_before_flourish_violation",
   "pragmatic_sarcasm_miss",
+  "dead_ack_after_nonverbal_cue",
   "direct_causal_answer_miss",
   "personality_performance_override",
   "human_mind_dialogue_artifice",
@@ -6016,6 +6018,7 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "perspective_memory_leak",
   "memory_conflict_overclaim",
   "pragmatic_sarcasm_miss",
+  "dead_ack_after_nonverbal_cue",
   "direct_causal_answer_miss",
   "human_memory_fake_shared_nostalgia",
   "human_memory_unsupported_frequency",
@@ -6605,6 +6608,7 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (intentIssuesForScore.includes("obligatory_banter_exit")) score -= 18;
   if (intentIssuesForScore.includes("intent_thread_abandoned")) score -= 26;
   if (intentIssuesForScore.includes("pragmatic_sarcasm_miss")) score -= 40;
+  if (intentIssuesForScore.includes("dead_ack_after_nonverbal_cue")) score -= 35;
   if (intentIssuesForScore.includes("direct_causal_answer_miss")) score -= 42;
   if (intentIssuesForScore.includes("personality_performance_override")) score -= 44;
   if (intentIssuesForScore.includes("human_mind_dialogue_artifice")) score -= 38;
