@@ -174,6 +174,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [replyAssistLoading, setReplyAssistLoading] = useState(false);
   const [replyAssistError, setReplyAssistError] = useState("");
   const [replyAssistUnderstanding, setReplyAssistUnderstanding] = useState(null);
+  const [storyPathsOpen, setStoryPathsOpen] = useState(false);
+  const [storyPaths, setStoryPaths] = useState([]);
+  const [storyPathsLoading, setStoryPathsLoading] = useState(false);
+  const [storyPathsError, setStoryPathsError] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [directorNote, setDirectorNote] = useState("");
   const [directorNoteOpen, setDirectorNoteOpen] = useState(false);
@@ -1096,9 +1100,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         speaker: item.sender === "user" ? "user" : character.name,
         text: String(item.content || "").slice(0,900),
       }));
-      const { data, error } = await supabase.functions.invoke("character-chat", {
+      const { data, error } = await supabase.functions.invoke("reply-assist", {
         body: {
-          action: "reply_assist",
           character: { name: character.name, personality: character.personality, speechStyle: character.speechStyle, relationship: character.relationship, description: character.description },
           recentMessages,
           userDraft: message.trim(),
@@ -1131,6 +1134,52 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     clearReplyAssist();
     setReplyAssistOpen(false);
     window.requestAnimationFrame(() => { resizeComposer(); try { textareaRef.current?.focus({ preventScroll:true }); } catch { textareaRef.current?.focus(); } });
+  }
+
+  async function requestStoryPaths() {
+    if (!conversationReady || storyPathsLoading) return;
+    setStoryPathsLoading(true);
+    setStoryPathsError("");
+    try {
+      const recentMessages = visibleMessages.slice(-12).map((item) => ({
+        speaker: item.sender === "user" ? "user" : character.name,
+        text: String(item.content || "").slice(0, 1000),
+      }));
+      const { data, error } = await supabase.functions.invoke("reply-assist", {
+        body: {
+          task: "story_paths",
+          character: { name: character.name, personality: character.personality, speechStyle: character.speechStyle, relationship: character.relationship, description: character.description },
+          recentMessages,
+        },
+      });
+      if (error) throw error;
+      const paths = Array.isArray(data?.paths) ? data.paths.filter((item) => String(item?.direction || "").trim()).slice(0, 4) : [];
+      if (!paths.length) throw new Error(data?.error || "Velvet couldn't find a natural next path.");
+      setStoryPaths(paths);
+    } catch (error) {
+      setStoryPathsError(error?.message || "Velvet couldn't find a natural next path.");
+    } finally {
+      setStoryPathsLoading(false);
+    }
+  }
+
+  function openStoryPaths() {
+    setStoryPathsOpen(true);
+    setStoryPaths([]);
+    setStoryPathsError("");
+    window.setTimeout(() => requestStoryPaths(), 0);
+  }
+
+  function chooseStoryPath(path) {
+    const direction = String(path?.direction || "").trim();
+    if (!direction) return;
+    setDirectorNote(direction);
+    setDirectorMode("next");
+    setStoryPathsOpen(false);
+    setStoryPaths([]);
+    setStoryPathsError("");
+    showActionNotice("Story path queued ✓");
+    if (settings.haptics) navigator.vibrate?.(5);
   }
 
   async function handleSubmit(event) {
@@ -2650,7 +2699,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         )}
         {experienceState?.composer?.quickTools && <button type="button" className="chat__experience-trigger" onClick={()=>setExperienceOpen(true)} aria-label="Open Velvet Experience" title="Velvet Experience"><WandSparkles size={15}/><span>Studio</span></button>}
         <button type="button" className={`chat__reply-assist-trigger${replyAssistOpen ? " is-active" : ""}`} onClick={()=>{ setReplyAssistOpen((value)=>!value); setReplyAssistError(""); }} aria-label="Help me reply" title="Help me reply"><WandSparkles size={16}/><span>Reply</span></button>
-                <button type="button" className={`chat__director-trigger${directorNoteOpen ? " is-active" : ""}`} onClick={()=>directorNoteOpen ? setDirectorNoteOpen(false) : openDirector("next")} aria-label="Open Scene Director" title="Scene Director"><Sparkles size={15}/><span>Direct</span></button>
+        <button type="button" className={`chat__director-trigger${storyPathsOpen ? " is-active" : ""}`} onClick={openStoryPaths} aria-label="What happens next?" title="What happens next?"><GitBranch size={15}/><span>Next</span></button>
         <textarea
           ref={textareaRef}
           value={message}
@@ -2688,27 +2737,16 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       </form>
       ), document.body)}
 
-      {directorNoteOpen && typeof document !== "undefined" && createPortal((
-        <div className="director-sheet-backdrop" onClick={(event) => event.target === event.currentTarget && setDirectorNoteOpen(false)}>
-          <section className="director-sheet" role="dialog" aria-modal="true" aria-label="Scene Director" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
-            <div className="director-sheet__grab" />
-            <header><div><span><Sparkles size={15}/> SCENE DIRECTOR</span><h2>Guide the story</h2><p>Write one direction, then choose whether it belongs to the next beat or should replace the latest reply.</p></div><button type="button" onClick={()=>setDirectorNoteOpen(false)} aria-label="Close Scene Director"><X size={19}/></button></header>
-            <div className="director-sheet__presets">
-              <button type="button" onClick={()=>applyDirectorPreset("Use more natural audible dialogue and less descriptive filler in the next beat.")}><MessageSquareQuote size={17}/><span>More dialogue<small>Less filler</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset(`Let ${character.name} be wrong, misunderstand something, or make an imperfect choice without turning cruel or stupid.`)}><GitBranch size={17}/><span>Let them be wrong<small>More human</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset("Bring in one plausible established side character with their own goal. Let them affect the scene without becoming a jealousy prop.")}><UserRound size={17}/><span>Bring in an NPC<small>Independent motive</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset("Reduce romantic focus for this beat. Continue friendships, obligations, conflict or ordinary life without erasing established feelings.")}><HeartHandshake size={17}/><span>Less romance<small>Broaden the story</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset("Advance the current night to the next meaningful moment. Preserve positions, unresolved feelings and who is still present.")}><Clock3 size={17}/><span>Advance the night<small>Keep continuity</small></span></button>
-              <button type="button" onClick={()=>applyDirectorPreset("Do not soften this conflict into therapy, instant apology or perfect emotional maturity. Keep boundaries safe, but let the disagreement remain difficult and character-specific.")}><Flame size={17}/><span>Keep the conflict<small>Don't sanitize it</small></span></button>
-            </div>
-            <label className="director-sheet__custom"><span>What should Velvet do?</span><textarea value={directorNote} onChange={(event)=>setDirectorNote(event.target.value)} maxLength={500} rows={3} placeholder="e.g. Two hours later he texts me… or: Make him stay instead of leaving…"/><small>{directorNote.length}/500</small></label>
-            <footer className="director-sheet__dual-footer">
-              <button type="button" className="secondary director-sheet__clear" onClick={()=>{clearQueuedDirector();setDirectorNoteOpen(false);}}>Clear</button>
-              <div className="director-sheet__dual-actions">
-                <button type="button" className="director-sheet__next-action" onClick={queueDirectorForNextBeat} disabled={!directorNote.trim() || busy || actionLoading}><Check size={17}/><span>Next beat<small>Save for the next reply</small></span></button>
-                <button type="button" className="director-sheet__rewrite-action" onClick={applyDirectorAndRegenerate} disabled={!directorNote.trim() || busy || actionLoading}>{actionLoading ? <LoaderCircle className="spin" size={17}/> : <RefreshCw size={17}/>}<span>Rewrite last reply<small>Replace the current answer</small></span></button>
-              </div>
-            </footer>
+      {storyPathsOpen && typeof document !== "undefined" && createPortal((
+        <div className="reply-assist-backdrop" onPointerDown={(event)=>{ if(event.target===event.currentTarget) setStoryPathsOpen(false); }}>
+          <section className="reply-assist-sheet" role="dialog" aria-modal="true" aria-label="What happens next?">
+            <div className="reply-assist-grabber" />
+            <header className="reply-assist-header"><div><span><GitBranch size={15}/> STORY PATHS</span><h2>What happens next?</h2><p>Pick a direction. Velvet uses it quietly for the next reply, without writing your character for you.</p></div><button type="button" onClick={()=>setStoryPathsOpen(false)} aria-label="Close"><X size={19}/></button></header>
+            {storyPathsLoading && <div className="reply-assist-status"><LoaderCircle className="is-spinning" size={17}/> Reading the scene…</div>}
+            {storyPathsError && <div className="reply-assist-error">{storyPathsError}<button type="button" onClick={requestStoryPaths}>Retry</button></div>}
+            {!!storyPaths.length && <div className="reply-assist-options">{storyPaths.map((path,index)=><button type="button" className="reply-assist-option" key={`${path.title}-${index}`} onClick={()=>chooseStoryPath(path)}><span className="reply-assist-option-top"><b>{path.title}</b><em>{path.vibe}</em></span><small>{path.preview}</small></button>)}</div>}
+            {!!storyPaths.length && <button type="button" className="reply-assist-more" disabled={storyPathsLoading} onClick={requestStoryPaths}>{storyPathsLoading ? <LoaderCircle className="is-spinning" size={15}/> : <RefreshCw size={15}/>} Different paths</button>}
+            <p className="reply-assist-hint">Nothing happens until you choose. Your choice only guides the next character beat.</p>
           </section>
         </div>
       ), document.body)}
@@ -2756,7 +2794,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         onOpenMemoryBook={() => { setExperienceOpen(false); setMemoryBookOpen(true); }}
         onOpenTimeline={() => { setExperienceOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }}
         onOpenLivingWorld={() => { setExperienceOpen(false); setLivingWorldOpen(true); }}
-        onQueueDirector={(note) => { setExperienceOpen(false); setDirectorNote(note); setDirectorMode("next"); setDirectorNoteOpen(true); }}
+        onQueueDirector={(note) => { setExperienceOpen(false); setDirectorNote(note); setDirectorMode("next"); showActionNotice("Next beat queued ✓"); }}
         onThemeChange={applyStoryTheme}
       />
 
