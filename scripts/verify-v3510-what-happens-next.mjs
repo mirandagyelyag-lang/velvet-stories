@@ -12,7 +12,7 @@ const checks=[
  ["story paths never auto-send",()=>assert.ok(chat.includes('setDirectorNote(direction)')&&!chat.includes('chooseStoryPath(path) {\n    handleSubmit'))],
  ["choice queues next beat internally",()=>assert.ok(chat.includes('showActionNotice("Story path queued ✓")'))],
  ["edge protects user agency",()=>assert.ok(edge.includes("Do not write the user's actions, dialogue, feelings, decisions, or POV"))],
- ["edge requires four story paths",()=>assert.ok(edge.includes('if(unique.length===4) return json({paths:unique, model})'))],
+ ["edge requires four story paths",()=>assert.ok(edge.includes('if(unique.length===4) return json({paths:unique, model})')||edge.includes('if(unique.length!==4) throw new Error("Gemini returned fewer than four usable story paths.")'))],
  ["different paths action exists",()=>assert.ok(chat.includes("Different paths"))],
 ];
 let pass=0; for(const [name,fn] of checks){try{fn();pass++;console.log(`PASS ${pass}: ${name}`)}catch(e){console.error(`FAIL ${name}`);throw e}}

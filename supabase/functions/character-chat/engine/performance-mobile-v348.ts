@@ -1,7 +1,7 @@
 const tx=(v:unknown)=>String(v??"").trim();
 export function derivePerformanceMobileV348(input:Record<string,unknown>={}){
   const orch=(input.orchestrator||{}) as Record<string,unknown>; const mode=tx(orch.mode)||"standard";
-  const table:Record<string,any>={micro:{firstTokenTargetMs:1100,overallDeadlineMs:11500,hedgeDelaysMs:[0,260,680,1450],streamChunkChars:34},standard:{firstTokenTargetMs:1600,overallDeadlineMs:14800,hedgeDelaysMs:[0,420,980,1900],streamChunkChars:42},deep:{firstTokenTargetMs:2400,overallDeadlineMs:19800,hedgeDelaysMs:[0,650,1450,2600],streamChunkChars:52},group:{firstTokenTargetMs:2000,overallDeadlineMs:17400,hedgeDelaysMs:[0,520,1200,2250],streamChunkChars:46}};
+  const table:Record<string,any>={micro:{firstTokenTargetMs:900,overallDeadlineMs:10500,hedgeDelaysMs:[0,180,420,850],streamChunkChars:34},standard:{firstTokenTargetMs:1200,overallDeadlineMs:12500,hedgeDelaysMs:[0,220,520,980],streamChunkChars:42},deep:{firstTokenTargetMs:1800,overallDeadlineMs:15500,hedgeDelaysMs:[0,300,720,1350],streamChunkChars:52},group:{firstTokenTargetMs:1500,overallDeadlineMs:14000,hedgeDelaysMs:[0,260,620,1150],streamChunkChars:46}};
   const cfg=table[mode]||table.standard; const recent=Number(input.recentMessageCount||0); const mem=Number(input.memoryRetrievalCount||0);
   const promptRisk=(recent>35||mem>12)?"high":(recent>18||mem>7)?"medium":"low";
   return {mode,...cfg,promptRisk,cancellationPollMs:280,

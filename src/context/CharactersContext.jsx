@@ -267,7 +267,7 @@ export function CharactersProvider({ children }) {
 
   async function generateInstantStory(characterData, idea = "") {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();

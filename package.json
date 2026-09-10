@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.50.11",
+  "version": "3.50.12",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -72,7 +72,7 @@
     "verify:v3230": "node scripts/verify-v3230-safe-studio.mjs",
     "verify:v3240": "node scripts/verify-v3240-living-world.mjs",
     "verify:v3241": "node scripts/verify-v3241-stability-sweep.mjs",
-    "stability:lab": "npm run verify:v3511 && npm run verify:v3510 && npm run verify:v3509 && npm run verify:v3508 && npm run verify:v3507 && npm run verify:v3506 && npm run verify:v3501 && npm run verify:v3500 && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v34 && npm run verify:chat-syntax",
+    "stability:lab": "npm run verify:v35012 && npm run verify:v3511 && npm run verify:v3510 && npm run verify:v3509 && npm run verify:v3508 && npm run verify:v3507 && npm run verify:v3506 && npm run verify:v3501 && npm run verify:v3500 && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v34 && npm run verify:chat-syntax",
     "deploy:pwa": "bash DEPLOY-PWA-STABLE.sh",
     "verify:v3250": "node scripts/verify-v3250-experience.mjs",
     "verify:v3251": "node scripts/verify-v3251-update-fix.mjs",
@@ -168,7 +168,8 @@
     "verify:v3508": "node scripts/verify-v3508-reply-assist-flow.mjs",
     "verify:v3509": "node scripts/verify-v3509-reply-assist-edge-isolation.mjs",
     "verify:v3510": "node scripts/verify-v3510-what-happens-next.mjs",
-    "verify:v3511": "node scripts/verify-v3511-human-turn-realism.mjs"
+    "verify:v3511": "node scripts/verify-v3511-human-turn-realism.mjs",
+    "verify:v35012": "node scripts/verify-v35012-ai-speed-recovery.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.0",

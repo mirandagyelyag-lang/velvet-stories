@@ -5,7 +5,7 @@ const tests=[
  ['version 3.50.7+ descendant',/^3\.50\.(?:[7-9]|[1-9]\d+)$/.test(pkg.version)],
  ['plain prose transport recovery exists',edge.includes('TRANSPORT RECOVERY v3.50.7')],
  ['stream starts with bare transport',edge.includes('let { response, message } = await runStreamAttempt("bare");')],
- ['nonstream recovery starts with bare transport',edge.includes('let { response, data } = await runAttempt("bare");')],
+ ['nonstream recovery starts with bare transport',edge.includes('let { response, data } = await runAttempt("bare");')||edge.includes('let { response, data } = await run("bare");')],
  ['plain transport forbids JSON',edge.includes('Return ONLY the visible in-character roleplay reply as plain prose')],
  ['plain transport forbids metadata',edge.includes('Do not return JSON, metadata, keys, code fences, or explanations')],
  ['plain prose still enters envelope adapter',edge.includes('return emptyModelEnvelope(clean);')],

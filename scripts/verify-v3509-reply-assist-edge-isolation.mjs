@@ -11,7 +11,7 @@ const checks=[
  ['isolated edge authenticates user',edge.includes('sb.auth.getUser()')],
  ['isolated edge has CORS OPTIONS',edge.includes('req.method === "OPTIONS"')],
  ['isolated edge has model failover',edge.includes('GEMINI_FALLBACK_MODEL')&&edge.includes('GEMINI_RECOVERY_MODEL')],
- ['isolated edge requires four options',edge.includes('unique.length===4')],
+ ['isolated edge requires four options',edge.includes('unique.length===4')||edge.includes('unique.length!==4')],
  ['Generate more remains',chat.includes('Generate more')],
  ['selection still clears assistant',chat.includes('clearReplyAssist();')&&chat.includes('setReplyAssistOpen(false);')],
 ];

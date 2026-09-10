@@ -40,27 +40,41 @@ Deno.serve(async (req) => {
       Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash",
       Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-3.5-flash",
     ].filter(Boolean))];
-    let last = "Velvet couldn't think of replies right now.";
-    for (const model of models) {
+    // v3.50.12: Reply Companion and Story Paths use the same fast hedge idea as chat.
+    // Do not spend 18 seconds on each model serially. First valid four-option result wins.
+    const assistControllers = new Map<string, AbortController>();
+    const assistErrors: string[] = [];
+    const assistHedges = [0, 180, 420, 800];
+    const attemptAssist = async (model: string, index: number) => {
+      const wait = assistHedges[index] ?? 800;
+      if (wait) await new Promise((resolve)=>setTimeout(resolve, wait));
+      const ctrl = new AbortController(); assistControllers.set(model, ctrl);
+      const timer=setTimeout(()=>ctrl.abort(),10500);
       try {
-        const ctrl = new AbortController(); const timer=setTimeout(()=>ctrl.abort(),18000);
-        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method:"POST", signal:ctrl.signal, headers:{"Content-Type":"application/json","x-goog-api-key":apiKey}, body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1600,responseMimeType:"application/json"}}) }).finally(()=>clearTimeout(timer));
+        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method:"POST", signal:ctrl.signal, headers:{"Content-Type":"application/json","x-goog-api-key":apiKey}, body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:storyPathTask?1000:1300,responseMimeType:"application/json"}}) });
         const data=await r.json().catch(()=>({}));
-        if(!r.ok){ last=clean(data?.error?.message,500)||last; continue; }
+        if(!r.ok) throw new Error(clean(data?.error?.message,500)||`Gemini returned ${r.status}`);
         const parsed=JSON.parse(stripFence(textOf(data)));
         if (storyPathTask) {
           const paths=(Array.isArray(parsed?.paths)?parsed.paths:[]).map((x:any)=>({title:clean(x?.title,90),vibe:clean(x?.vibe,60),preview:clean(x?.preview,320),direction:clean(x?.direction,700)})).filter((x:any)=>x.title&&x.direction);
           const unique=[...new Map(paths.map((x:any)=>[x.direction.toLowerCase().replace(/\s+/g," "),x])).values()].slice(0,4);
-          if(unique.length===4) return json({paths:unique, model});
-          last="Gemini returned fewer than four usable story paths.";
-          continue;
+          if(unique.length!==4) throw new Error("Gemini returned fewer than four usable story paths.");
+          return {paths:unique, model};
         }
         const opts=(Array.isArray(parsed?.options)?parsed.options:[]).map((x:any)=>({text:clean(x?.text,500),tone:clean(x?.tone,80),meaning_es:clean(x?.meaning_es,350)})).filter((x:any)=>x.text);
         const unique=[...new Map(opts.map((x:any)=>[x.text.toLowerCase().replace(/\s+/g," "),x])).values()].slice(0,4);
-        if(unique.length===4) return json({understanding:parsed?.understanding||{},options:unique, model});
-        last="Gemini returned fewer than four usable reply options.";
-      } catch(e) { last=e instanceof Error ? e.message : String(e); }
+        if(unique.length!==4) throw new Error("Gemini returned fewer than four usable reply options.");
+        return {understanding:parsed?.understanding||{},options:unique, model};
+      } catch(e) { const message=e instanceof Error?e.message:String(e); assistErrors.push(message); throw e; }
+      finally { clearTimeout(timer); }
+    };
+    try {
+      const winner=await Promise.any(models.map((model,index)=>attemptAssist(model,index)));
+      for(const [model,ctrl] of assistControllers.entries()) if(model!==winner.model&&!ctrl.signal.aborted) ctrl.abort();
+      return json(winner);
+    } catch {
+      for(const ctrl of assistControllers.values()) if(!ctrl.signal.aborted) ctrl.abort();
+      return json({error:assistErrors.find(Boolean)||"Velvet couldn't think of replies right now."},502);
     }
-    return json({ error:last }, 502);
   } catch(e) { return json({ error:e instanceof Error ? e.message : String(e) }, 500); }
 });

@@ -3145,94 +3145,97 @@ async function callGeminiWithFailover({
   maxOutputTokens,
   temperature,
   isCancelled,
-  interactionDeadlineMs = 26000,
+  interactionDeadlineMs = 14000,
 }): Promise<ModelResult> {
-  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  let lastError = "Gemini could not generate a response";
-  let quotaReached = false;
-  const deadlineAt = Date.now() + Math.max(6000, Number(interactionDeadlineMs) || 26000);
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_RECOVERY_MODEL].filter(Boolean))];
+  if (!models.length) throw new Error("No Gemini model is configured.");
 
-  for (const model of models) {
+  // v3.50.12 FAST RECOVERY MESH: utility/recovery generations no longer wait
+  // for one dead model after another. Start the preferred model immediately,
+  // then hedge healthy fallbacks a fraction of a second later. First complete
+  // usable answer wins and every loser is aborted. This path powers recovery,
+  // Instant Story and the character AI tools that share this helper.
+  const deadlineMs = Math.max(7000, Math.min(16000, Number(interactionDeadlineMs) || 14000));
+  const deadlineAt = Date.now() + deadlineMs;
+  const hedgeDelays = [0, 220, 520, 900];
+  const controllers = new Map<string, AbortController>();
+  const errors: string[] = [];
+  let quotaCount = 0;
+
+  const attempt = async (model: string, index: number): Promise<ModelResult> => {
+    const delayMs = hedgeDelays[index] ?? 900;
+    if (delayMs) await delay(delayMs);
     if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
     const remainingMs = deadlineAt - Date.now();
-    if (remainingMs <= 900) break;
+    if (remainingMs <= 900) throw new Error("AI deadline reached");
 
     const controller = new AbortController();
+    controllers.set(model, controller);
+    const timeoutId = setTimeout(() => controller.abort(), Math.max(1200, remainingMs));
     let watching = true;
-    const timeoutId = setTimeout(() => controller.abort(), Math.min(7000, remainingMs));
     const cancellationWatcher = (async () => {
       while (watching && !controller.signal.aborted) {
-        await delay(180);
+        await delay(220);
         if (watching && await isCancelled()) controller.abort();
       }
     })();
 
     try {
       const traceId = createGeminiTraceId();
-      const makeRequest = (mode: "json" | "bare" = "json") => {
+      const makeRequest = (mode: "json" | "bare" = "bare") => {
         const requestBody = mode === "bare"
-          ? {
-              // Compatibility floor: only the universally-required `contents`
-              // field. Fold the system instruction into the user text so a
-              // model/API change cannot reject optional request fields.
-              contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\n${prompt}\n\nTRANSPORT RECOVERY v3.50.7: Return ONLY the visible in-character roleplay reply as plain prose. Do not return JSON, metadata, keys, code fences, or explanations. A short natural reply is valid.` }] }],
-            }
+          ? { contents: [{ role: "user", parts: [{ text: `${systemInstruction}\n\n${prompt}\n\nTRANSPORT RECOVERY v3.50.12: Return ONLY the visible in-character result as plain prose. Do not return JSON, metadata, keys, code fences, or explanations. A short natural reply is valid.` }] }] }
           : {
               systemInstruction: { parts: [{ text: systemInstruction }] },
               contents: [{ role: "user", parts: [{ text: prompt }] }],
               generationConfig: {
                 maxOutputTokens,
+                ...(Number.isFinite(Number(temperature)) ? { temperature: Number(temperature) } : {}),
                 thinkingConfig: { thinkingLevel: "LOW" },
                 responseMimeType: "application/json",
               },
             };
-        return fetch(modelEndpoint(model), {
-          method: "POST",
-          headers: geminiHeaders(apiKey),
-          signal: controller.signal,
-          body: JSON.stringify(requestBody),
-        });
+        return fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), signal: controller.signal, body: JSON.stringify(requestBody) });
       };
-
-      const runAttempt = async (mode: "json" | "bare") => {
+      const run = async (mode: "json" | "bare") => {
         const response = await makeRequest(mode);
         const data = await response.json().catch(() => ({}));
         if (!response.ok) logGeminiAttemptFailure({ traceId, model, mode, status: response.status, error: data?.error });
         return { response, data };
       };
-
-      let { response, data } = await runAttempt("bare");
-      if (!response.ok && response.status === 400) {
-        ({ response, data } = await runAttempt("json"));
-      }
+      let { response, data } = await run("bare");
+      if (!response.ok && response.status === 400) ({ response, data } = await run("json"));
       if (!response.ok) {
-        lastError = data?.error?.message || `Gemini returned ${response.status}`;
-        quotaReached ||= response.status === 429;
-        if ([429, 500, 502, 503, 504].includes(response.status)) continue;
-        throw new Error(lastError);
+        if (response.status === 429) quotaCount += 1;
+        throw new Error(data?.error?.message || `Gemini returned ${response.status}`);
       }
-
       const raw = extractCandidateText(data);
+      if (!String(raw || "").trim()) throw new Error("Gemini returned an empty response");
       const envelope = parseModelEnvelope(raw);
-      const finishReason = String(data?.candidates?.[0]?.finishReason || "");
-      console.log("[character-chat] model completed", { model, finishReason });
-      return { ...envelope, finishReason, model };
+      if (!String(envelope?.reply || "").trim()) throw new Error("Gemini returned an empty reply");
+      return { ...envelope, finishReason: String(data?.candidates?.[0]?.finishReason || ""), model };
     } catch (error) {
       if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
-      if (getErrorName(error) === "AbortError") {
-        lastError = "The AI took too long to answer. Please try again.";
-        continue;
-      }
-      lastError = getErrorMessage(error);
+      const message = getErrorName(error) === "AbortError" ? "AI model timed out" : getErrorMessage(error);
+      errors.push(message);
+      throw new Error(message);
     } finally {
       clearTimeout(timeoutId);
       watching = false;
       void cancellationWatcher;
     }
-  }
+  };
 
-  if (quotaReached) throw new Error("Gemini is rate-limited right now. This can be a per-minute, token, or daily project limit. Wait a little and try again.");
-  throw new Error(lastError);
+  try {
+    const winner = await Promise.any(models.map((model, index) => attempt(model, index)));
+    for (const [model, controller] of controllers.entries()) if (model !== winner.model && !controller.signal.aborted) controller.abort();
+    return winner;
+  } catch (error) {
+    for (const controller of controllers.values()) if (!controller.signal.aborted) controller.abort();
+    if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
+    if (quotaCount >= models.length) throw new Error("Gemini is rate-limited right now. Wait a little and try again.");
+    throw new Error(errors.find((x) => x && !/timed out|deadline/i.test(x)) || "The AI took too long to answer. Please try again.");
+  }
 }
 function emptyModelEnvelope(reply = ""): ModelEnvelope {
   return { reply: String(reply || "").trim(), story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, presence_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
