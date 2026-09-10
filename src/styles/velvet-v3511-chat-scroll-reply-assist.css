@@ -1,0 +1,41 @@
+/* Velvet v3.51.1 · restore native one-finger chat scrolling + reply sheet isolation */
+@media (pointer: coarse), (max-width: 760px) {
+  html, body, #root {
+    min-height: 100% !important;
+    height: auto !important;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .app--chat,
+  .app--chat .app__content,
+  .app--chat .chat,
+  .app--chat .chat__content,
+  .app--chat .chat__messages,
+  .app--chat .chat-message,
+  .app--chat .chat-message__body,
+  .app--chat .chat-message__swipe-content,
+  .app--chat .roleplay-text {
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .app--chat .chat { min-height: 100dvh !important; overflow-x: clip !important; }
+  .app--chat .chat__content { min-height: calc(100dvh - 76px) !important; }
+
+  /* The assistant is its own scroll surface only while open. */
+  .reply-assist-backdrop { touch-action: none !important; overscroll-behavior: none !important; }
+  .reply-assist-sheet {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .reply-assist-sheet input,
+  .reply-assist-sheet button { touch-action: manipulation !important; }
+}

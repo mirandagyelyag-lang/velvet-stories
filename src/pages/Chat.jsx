@@ -1110,6 +1110,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       const nextOptions = Array.isArray(data?.options) ? data.options : [];
       setReplyAssistOptions((current) => mode === "more" ? [...current, ...nextOptions].filter((option, index, all) => {
         const text = String(option?.text || "").trim().toLowerCase();
@@ -1117,7 +1118,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       }) : nextOptions);
       setReplyAssistUnderstanding(data?.understanding || null);
     } catch (error) {
-      setReplyAssistError(error?.message || "Velvet couldn't think of replies right now.");
+      // Supabase client errors such as “Edge Function returned a non-2xx status code”
+      // are implementation details. Never leak them into the story UI.
+      console.warn("[Velvet Reply Assist] request failed", error);
+      setReplyAssistError("Velvet couldn't load reply ideas right now. Try again in a moment.");
     } finally { setReplyAssistLoading(false); }
   }
 

@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.51.0",
+  "version": "3.51.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -168,7 +168,7 @@
     "verify:v3508": "node scripts/verify-v3508-reply-assist-flow.mjs",
     "verify:v3509": "node scripts/verify-v3509-reply-assist-edge-isolation.mjs",
     "verify:v3510": "node scripts/verify-v3510-velvet-alive.mjs",
-    "verify:v3511": "node scripts/verify-v3511-human-turn-realism.mjs",
+    "verify:v3511": "node scripts/verify-v3511-chat-scroll-reply-assist.mjs",
     "verify:v35012": "node scripts/verify-v35012-ai-speed-recovery.mjs"
   },
   "dependencies": {
