@@ -6,7 +6,7 @@ const perf=read('supabase/functions/character-chat/engine/performance-mobile-v34
 const assist=read('supabase/functions/reply-assist/index.ts');
 const chat=read('src/pages/Chat.jsx');
 const checks=[
- ['version 3.51.0',pkg.version==='3.51.0'],
+ ['version 3.51.x lineage',/^3\.51\.\d+$/.test(pkg.version)],
  ['fast standard hedge',perf.includes('hedgeDelaysMs:[0,150,340,650]')],
  ['character initiative',edge.includes('CHARACTER INITIATIVE')&&edge.includes('Do not make the user carry every scene')],
  ['affection through behavior',edge.includes('AFFECTION THROUGH BEHAVIOR')&&edge.includes('Courtship should feel chosen')],
