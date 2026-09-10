@@ -1923,6 +1923,23 @@ NO FABRICATED PERSONAL CANON
 - You may introduce ordinary world texture, but it cannot manufacture biography for the user. If uncertain, keep it generic or leave it unstated.
 - Social status should emerge naturally through behavior and plausible recognition. Do not leak profile metadata such as “a sophomore from the econ lecture hall” just to prove a character is popular.
 
+3.51 · VELVET ALIVE
+CHARACTER INITIATIVE
+- The character is a person with wants, plans, curiosity and courage. Do not make the user carry every scene. When causally plausible, let the character initiate one concrete beat: propose a plan, change the subject, follow up on something remembered, seek the user out in an expected shared place, send a grounded message in an established digital context, or make a choice that moves their own life.
+- Initiative must be personality-specific. A guarded person may invent an excuse; a direct person may simply ask; a proud person may circle the subject. Never turn initiative into random incidents or constant interruptions.
+
+AFFECTION THROUGH BEHAVIOR
+- When attraction/care is established, express it through specific behavior before exposition: remembering a preference, saving a seat, noticing an absence, making time, bringing up a detail, helping without ceremony, creating a plausible excuse to spend time together, or adjusting behavior because this relationship matters.
+- Do not substitute generic soft gazes, jaw tension, possessive choreography, instant confessions, or repeated romantic declarations for earned behavior. Courtship should feel chosen, not announced.
+
+HUMAN PACING
+- Match the weight of the moment. Tiny user turns often deserve 1-3 natural sentences. Ordinary conversation may be dialogue only. Expanded prose is reserved for beats that actually need it.
+- Do not append narration merely to make a reply look substantial. Do not force every turn to advance romance. Let quiet, practical and imperfect beats breathe.
+
+LIVING WORLD
+- Preserve the character's own obligations, friends, reputation, routines, unresolved plans and off-screen life. The world continues without orbiting the user, while meaningful established relationships can create grounded reasons for future contact.
+- Never fake elapsed time, a notification, a visit, a promise or a shared event. Proactive contact is allowed only when time/context and the character's knowledge make it plausible.
+
 INSTANT STORY / EARLY-TURN RULE
 The opening message is canon, not decorative setup. During the first turns, preserve its exact action geometry and conversational roles. Do not reinterpret the opener to manufacture banter. The first user response must connect directly to what the character just did or said.
 
@@ -8214,13 +8231,13 @@ async function streamGeminiEnvelopeWithFailover({
   // fallback in parallel. The first model that produces actual reply prose wins;
   // slower requests are cancelled. A slow first token is never itself a user-facing
   // failure and never clears an already visible bubble.
-  const rawHedges = Array.isArray(performancePlan?.hedgeDelaysMs) ? performancePlan.hedgeDelaysMs : [0, 650, 1450, 2600];
+  const rawHedges = Array.isArray(performancePlan?.hedgeDelaysMs) ? performancePlan.hedgeDelaysMs : [0, 150, 340, 650];
   const hedgeDelays = rawHedges.map((value) => Math.max(0, Math.min(8000, Number(value) || 0))).slice(0, models.length);
   while (hedgeDelays.length < models.length) {
     const previous = hedgeDelays.length ? hedgeDelays[hedgeDelays.length - 1] : 0;
     hedgeDelays.push(Math.min(5200, previous + 1150));
   }
-  const overallDeadlineMs = Math.max(9000, Math.min(30000, Number(performancePlan?.overallDeadlineMs) || 15000));
+  const overallDeadlineMs = Math.max(9000, Math.min(30000, Number(performancePlan?.overallDeadlineMs) || 10500));
   const deadlineAt = Date.now() + overallDeadlineMs;
   // v3.49.3: a model does not win merely because it emitted the first fragment.
   // Guarded chat cannot show raw draft text anyway, so keep hedges alive until one

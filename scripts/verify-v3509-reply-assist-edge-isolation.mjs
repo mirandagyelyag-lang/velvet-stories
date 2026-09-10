@@ -4,7 +4,7 @@ const chat=fs.readFileSync('src/pages/Chat.jsx','utf8');
 const edge=fs.readFileSync('supabase/functions/reply-assist/index.ts','utf8');
 const version=JSON.parse(fs.readFileSync('public/velvet-version.json','utf8'));
 const checks=[
- ['version is 3.50.9+ descendant',/^3\.50\.(?:9|[1-9]\d+)$/.test(pkg.version)],
+ ['version is 3.50.9+ descendant',/^(?:3\.50\.(?:9|[1-9]\d+)|3\.(?:5[1-9]|[6-9]\d)\.\d+)$/.test(pkg.version)],
  ['PWA metadata matches package',version.version===pkg.version],
  ['Reply Assist invokes isolated edge',chat.includes('supabase.functions.invoke("reply-assist"')],
  ['Reply Assist no longer invokes character-chat action',!chat.includes('action: "reply_assist"')],

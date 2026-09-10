@@ -73,7 +73,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onOpenStory, onEditC
         const unresolved=rows.find((row)=>Array.isArray(row.unresolved_threads)&&row.unresolved_threads.length>0&&row.id!==rows[0]?.id);
         if(unresolved) picks.push({ ...unresolved, reason:`Something is still unresolved with ${unresolved.character.name}`, kind:"thread" });
         const stale=rows.find((row)=>now-new Date(row.updated_at).getTime()>3*24*60*60*1000&&!picks.some((pick)=>pick.id===row.id));
-        if(stale) picks.push({ ...stale, reason:`${stale.character.name} hasn't seen you in a while`, kind:"return" });
+        if(stale) picks.push({ ...stale, reason:`${stale.character.name} might have something to say after some time apart`, kind:"return" });
         const favorite=rows.find((row)=>row.character.isFavorite&&!picks.some((pick)=>pick.id===row.id));
         if(favorite&&picks.length<3) picks.push({ ...favorite, reason:"One of your favorites", kind:"favorite" });
         setStoryHighlights(picks.slice(0,3));

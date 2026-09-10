@@ -2,7 +2,7 @@ import fs from "node:fs";
 const chat=fs.readFileSync("src/pages/Chat.jsx","utf8");
 const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
 const tests=[
- ["version is v3.50.8+ descendant",/^3\.50\.(?:8|9|[1-9]\d+)$/.test(pkg.version)],
+ ["version is v3.50.8+ descendant",/^(?:3\.50\.(?:8|9|[1-9]\d+)|3\.(?:5[1-9]|[6-9]\d)\.\d+)$/.test(pkg.version)],
  ["selection clears assist options",/function useReplyAssistOption[\s\S]*clearReplyAssist\(\)/.test(chat)],
  ["selection closes assist",/function useReplyAssistOption[\s\S]*setReplyAssistOpen\(false\)/.test(chat)],
  ["clear removes options",/function clearReplyAssist[\s\S]*setReplyAssistOptions\(\[\]\)/.test(chat)],
