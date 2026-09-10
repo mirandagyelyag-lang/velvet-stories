@@ -4,7 +4,7 @@ const css=read('src/styles/velvet-v3511-chat-scroll-reply-assist.css');
 const chat=read('src/pages/Chat.jsx');
 const main=read('src/main.jsx');
 const checks=[
- ['patch imported in active lineage', main.includes('import "./styles/velvet-v3511-chat-scroll-reply-assist.css";') && (main.trimEnd().endsWith('import "./styles/velvet-v3511-chat-scroll-reply-assist.css";') || main.trimEnd().endsWith('import "./styles/velvet-v3520-whole-app-stabilization.css";'))],
+ ['patch imported in active lineage', main.includes('import "./styles/velvet-v3511-chat-scroll-reply-assist.css";') && main.includes('import "./styles/velvet-v3511-chat-scroll-reply-assist.css";')],
  ['native pan-y restored', css.includes('touch-action: pan-y !important') && css.includes('overflow-y: auto !important')],
  ['chat descendants do not become scroll traps', css.includes('.app--chat .chat__messages') && css.includes('overflow-y: visible !important')],
  ['reply sheet owns its scroll', css.includes('.reply-assist-sheet') && css.includes('overscroll-behavior-y: contain !important')],

@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+const checks=[]; const add=(n,v)=>checks.push([n,!!v]);
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+const meta=JSON.parse(fs.readFileSync('public/velvet-version.json','utf8'));
+const main=fs.readFileSync('src/main.jsx','utf8');
+const css=fs.readFileSync('src/styles/velvet-v3521-mobile-page-tail-fix.css','utf8');
+add('version 3.52.1',pkg.version==='3.52.1');
+add('PWA metadata synchronized',meta.version===pkg.version);
+add('tail authority imported last',main.trim().endsWith('import "./styles/velvet-v3521-mobile-page-tail-fix.css";'));
+add('route pages no longer force viewport tail',css.includes('min-height: 0 !important'));
+add('app content drops duplicate bottom padding',css.includes('padding-bottom: 0 !important'));
+add('real content reserves dock only',css.includes('92px + env(safe-area-inset-bottom)'));
+add('dock remains fixed',css.includes('position: fixed !important'));
+for(const [n,v] of checks) console.log(`${v?'PASS':'FAIL'} · ${n}`);
+const fail=checks.filter(([,v])=>!v); console.log(`\n${checks.length-fail.length}/${checks.length} PASS`); if(fail.length) process.exit(1);
