@@ -4,7 +4,7 @@ const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
 const chat=fs.readFileSync("src/pages/Chat.jsx","utf8");
 const edge=fs.readFileSync("supabase/functions/reply-assist/index.ts","utf8");
 const checks=[
- ["version 3.50.10",()=>assert.equal(pkg.version,"3.50.10")],
+ ["version 3.50.10+ descendant",()=>assert.match(pkg.version,/^3\.50\.(?:1[0-9]|[2-9][0-9])$/)],
  ["Guide the story removed from chat UI",()=>assert.ok(!chat.includes("<h2>Guide the story</h2>"))],
  ["old Direct trigger removed",()=>assert.ok(!chat.includes("<span>Direct</span>"))],
  ["What happens next trigger exists",()=>assert.ok(chat.includes('aria-label="What happens next?"'))],
