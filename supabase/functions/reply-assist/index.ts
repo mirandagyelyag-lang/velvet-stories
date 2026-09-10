@@ -44,14 +44,14 @@ Deno.serve(async (req) => {
     // Do not spend 18 seconds on each model serially. First valid four-option result wins.
     const assistControllers = new Map<string, AbortController>();
     const assistErrors: string[] = [];
-    const assistHedges = [0, 180, 420, 800];
+    const assistHedges = [0, 120, 280, 520];
     const attemptAssist = async (model: string, index: number) => {
       const wait = assistHedges[index] ?? 800;
       if (wait) await new Promise((resolve)=>setTimeout(resolve, wait));
       const ctrl = new AbortController(); assistControllers.set(model, ctrl);
-      const timer=setTimeout(()=>ctrl.abort(),10500);
+      const timer=setTimeout(()=>ctrl.abort(),7500);
       try {
-        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method:"POST", signal:ctrl.signal, headers:{"Content-Type":"application/json","x-goog-api-key":apiKey}, body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:storyPathTask?1000:1300,responseMimeType:"application/json"}}) });
+        const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method:"POST", signal:ctrl.signal, headers:{"Content-Type":"application/json","x-goog-api-key":apiKey}, body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:storyPathTask?1000:1300,responseMimeType:"application/json",thinkingConfig:{thinkingLevel:"LOW"}}}) });
         const data=await r.json().catch(()=>({}));
         if(!r.ok) throw new Error(clean(data?.error?.message,500)||`Gemini returned ${r.status}`);
         const parsed=JSON.parse(stripFence(textOf(data)));

@@ -1161,7 +1161,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       if (!paths.length) throw new Error(data?.error || "Velvet couldn't find a natural next path.");
       setStoryPaths(paths);
     } catch (error) {
-      setStoryPathsError(error?.message || "Velvet couldn't find a natural next path.");
+      console.warn("[Velvet Story Paths] request failed", error);
+      setStoryPathsError("Velvet couldn't find a natural next path right now. Try again in a moment.");
     } finally {
       setStoryPathsLoading(false);
     }

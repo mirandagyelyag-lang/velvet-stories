@@ -166,3 +166,5 @@ import "./styles/velvet-v34918-draggable-new-story-sheet.css";
 import "./styles/velvet-v34922-reply-assist.css";
 
 import "./styles/velvet-v3511-chat-scroll-reply-assist.css";
+
+import "./styles/velvet-v3520-whole-app-stabilization.css";
