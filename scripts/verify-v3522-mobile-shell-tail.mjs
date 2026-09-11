@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+const checks=[]; const add=(n,v)=>checks.push([n,!!v]);
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+const meta=JSON.parse(fs.readFileSync('public/velvet-version.json','utf8'));
+const main=fs.readFileSync('src/main.jsx','utf8');
+const css=fs.readFileSync('src/styles/velvet-v3522-mobile-shell-tail.css','utf8');
+add('version 3.52.2',pkg.version==='3.52.2');
+add('PWA metadata synchronized',meta.version===pkg.version);
+add('shell-tail authority imported last',main.trim().endsWith('import "./styles/velvet-v3522-mobile-shell-tail.css";'));
+add('app viewport minimum removed',css.includes('.app:not(.app--chat)')&&css.includes('min-height: 0 !important'));
+add('route stage viewport minimum removed',css.includes('.velvet-route-stage'));
+add('single dock clearance lives on app content',css.includes('padding-bottom: calc(88px + env(safe-area-inset-bottom))'));
+add('page-level giant tail removed',css.includes('padding-bottom: 18px !important'));
+add('dock remains fixed',css.includes('position: fixed !important'));
+for(const [n,v] of checks) console.log(`${v?'PASS':'FAIL'} · ${n}`);
+const fail=checks.filter(([,v])=>!v); console.log(`\n${checks.length-fail.length}/${checks.length} PASS`); if(fail.length) process.exit(1);

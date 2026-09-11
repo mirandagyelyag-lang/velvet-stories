@@ -1,0 +1,33 @@
+/* Velvet v3.52.2 · final mobile shell tail authority
+   Fixes the oversized footer-colored band created by stacked viewport minima. */
+@media (max-width:760px), (pointer:coarse) {
+  body:not(.velvet-page--chat) .app:not(.app--chat),
+  body:not(.velvet-page--chat) .app:not(.app--chat) > .app__content,
+  body:not(.velvet-page--chat) .app:not(.app--chat) > .app__content > .velvet-route-stage {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  body:not(.velvet-page--chat) .app:not(.app--chat) > .app__content {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+    background: var(--stories-canvas, var(--background)) !important;
+  }
+
+  body:not(.velvet-page--chat) .app__content > .velvet-route-stage > :is(
+    .chats-page, .chats-page--reference, .reference-inbox, .discover-burgundy,
+    .memories-page, .memories-reference-page, .profile-page, .profile-reference-page,
+    .settings-page, .personas-page, .lore-page, .diagnostics-page, .search-page,
+    .velvet-search-page, .character-profile
+  ) {
+    min-height: 0 !important;
+    height: auto !important;
+    padding-bottom: 18px !important;
+  }
+
+  /* Keep the dock fixed without turning the area behind it into a second footer. */
+  body:not(.velvet-page--chat) .mobile-nav.velvet-reference-nav {
+    position: fixed !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    margin: 0 !important;
+  }
+}
