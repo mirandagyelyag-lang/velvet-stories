@@ -8,7 +8,7 @@
 }
 
 .app--chat { display: block; }
-.app__content { min-width: 0; min-height: 100vh; }
+.app__content { min-width: 0; }
 
 .app-loading {
   min-height: 100dvh;
@@ -53,8 +53,8 @@
 }
 
 @media (max-width: 760px) {
-  .app { display: block; }
-  .app__content { min-height: 100dvh; overflow-x:clip; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .app { display: flex; flex-direction: column; min-height: 0; }
+  .app__content { order: 1; min-height: 0; overflow-x:clip; padding-bottom: 0; }
   .app--chat .app__content { padding-bottom: 0; }
   .page-heading { margin-bottom: 20px; padding-bottom: 18px; }
   .page-heading h1 { font-size: clamp(2.8rem, 13vw, 4rem); }
@@ -68,6 +68,6 @@
 }
 
 /* Velvet 3.8 Continuity: native-feeling route handoff without moving the bottom nav. */
-.velvet-route-stage{min-height:100%;animation:velvetRouteEnter 180ms cubic-bezier(.2,.75,.25,1) both}
+.velvet-route-stage{min-height:0;animation:velvetRouteEnter 180ms cubic-bezier(.2,.75,.25,1) both}
 @keyframes velvetRouteEnter{from{opacity:.25;transform:translate3d(0,5px,0)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.velvet-route-stage{animation:none}}

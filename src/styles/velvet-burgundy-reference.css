@@ -435,16 +435,16 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 
   .app__content:has(.chats-page--reference),
   .app__content:has(.reference-inbox) {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: 0 !important;
     background: #0f090e !important;
   }
 
   .chats-page.chats-page--reference {
     width: 100% !important;
     max-width: none !important;
-    min-height: 100dvh !important;
+    min-height: 0 !important;
     margin: 0 !important;
-    padding: calc(26px + env(safe-area-inset-top)) 18px calc(112px + env(safe-area-inset-bottom)) !important;
+    padding: calc(26px + env(safe-area-inset-top)) 18px 18px !important;
     overflow-x: clip !important;
   }
 
@@ -1629,4 +1629,13 @@ body.velvet-burgundy-route .reference-stories-new {
   .reference-inbox__row--quiet { grid-template-columns: 46px minmax(0,1fr) 7px; gap: 10px; }
   .reference-inbox__avatar--quiet { width: 46px; height: 46px; }
   .reference-inbox__name-line--quiet strong { font-size: 1.06rem; }
+}
+
+
+/* v3.52.3: mobile route geometry belongs to document flow, not stacked viewports. */
+@media (max-width: 760px) {
+  body.velvet-burgundy-route .app,
+  body.velvet-burgundy-route .app__content,
+  body.velvet-burgundy-route .chats-page--reference,
+  body.velvet-burgundy-route .reference-inbox { min-height: 0 !important; }
 }
