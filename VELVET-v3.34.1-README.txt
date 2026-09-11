@@ -1,9 +1,0 @@
-VELVET STORIES v3.34.1 · CANON DOCTOR REPAIR HOTFIX
-
-Fixes Repair Story State failing against the live Supabase schema:
-- conversations.story_revision is UUID, so Canon Doctor now rotates it with crypto.randomUUID().
-- conversations.story_engine_version is smallint, so Canon Doctor no longer writes "3.34.0" into it.
-- the update returns the actual repaired conversation row.
-- the Canon Doctor sheet now confirms what was cleaned instead of looking like nothing happened.
-
-No visible story messages are rewritten or deleted.

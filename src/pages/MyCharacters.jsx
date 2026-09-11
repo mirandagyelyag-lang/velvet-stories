@@ -334,7 +334,7 @@ function CharacterMenu({ character, menuId, setMenuId, onOpenCharacter, onToggle
 
 function CharacterImage({ character }) {
   const source = character.coverUrl || character.imageUrl;
-  if (source) return <img src={source} alt="" loading="lazy" />;
+  if (source) return <img src={source} alt="" loading="lazy" decoding="async" />;
   return <span className="discover-burgundy__image-fallback" style={{ "--character-color": character.color || "var(--accent)" }}>{character.initials || character.name?.slice(0, 2) || "VS"}</span>;
 }
 

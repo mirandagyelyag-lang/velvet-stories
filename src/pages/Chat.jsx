@@ -1133,7 +1133,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     setReplyAssistMode("ideas");
   }
 
-  function useReplyAssistOption(text) {
+  function applyReplyAssistOption(text) {
     setMessage(String(text || ""));
     clearReplyAssist();
     setReplyAssistOpen(false);
@@ -2665,7 +2665,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
             {replyAssistLoading && <div className="reply-assist-status"><LoaderCircle className="is-spinning" size={17}/> Thinking about this scene…</div>}
             {replyAssistError && <div className="reply-assist-error">{replyAssistError}<button type="button" onClick={()=>requestReplyAssist(replyAssistMode)}>Retry</button></div>}
             {!!replyAssistOptions.length && <>
-              <div className="reply-assist-options">{replyAssistOptions.map((option,index)=><button type="button" className="reply-assist-option" key={`${option.text}-${index}`} onClick={()=>useReplyAssistOption(option.text)}><span className="reply-assist-option-top"><b>{option.text}</b><em>{option.tone}</em></span><small>{option.meaning_es}</small></button>)}</div>
+              <div className="reply-assist-options">{replyAssistOptions.map((option,index)=><button type="button" className="reply-assist-option" key={`${option.text}-${index}`} onClick={()=>applyReplyAssistOption(option.text)}><span className="reply-assist-option-top"><b>{option.text}</b><em>{option.tone}</em></span><small>{option.meaning_es}</small></button>)}</div>
               <button type="button" className="reply-assist-more" disabled={replyAssistLoading} onClick={()=>requestReplyAssist('more')}>{replyAssistLoading ? <LoaderCircle className="is-spinning" size={15}/> : <RefreshCw size={15}/>} Generate more</button>
             </>}
             <p className="reply-assist-hint">Choose one and the suggestions disappear. Nothing is sent automatically.</p>

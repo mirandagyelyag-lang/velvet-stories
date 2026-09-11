@@ -20,7 +20,7 @@ const intelligenceStyles = read("src/styles/velvet-v230-story-intelligence.css")
 const timelineDrawer = read("src/components/StoryTimelineDrawer.jsx");
 const storyHubDrawer = read("src/components/StoryHubDrawer.jsx");
 const pwaContext = read("src/context/PWAContext.jsx");
-const characterCard = read("src/components/CharacterCard.jsx");
+const characterLibrary = read("src/pages/MyCharacters.jsx");
 const searchPage = read("src/pages/Search.jsx");
 const searchStyles = read("src/styles/search.css");
 const groupStoryModal = read("src/components/GroupStoryModal.jsx");
@@ -229,7 +229,7 @@ check("v2.4 Storycraft styling remains loaded", main.includes('import "./styles/
 check("v2.5 Living Story styling remains loaded", main.includes('import "./styles/velvet-v250-living-story.css";') && main.lastIndexOf("velvet-v250-living-story.css") > main.lastIndexOf("velvet-v240-storycraft.css"));
 check("v2.6 Keepsake styling is the final native layer", main.includes('import "./styles/velvet-v260-keepsake.css";') && main.lastIndexOf("velvet-v260-keepsake.css") > main.lastIndexOf("velvet-v250-living-story.css"));
 check("PWA periodically checks for fresh production service workers", pwaContext.includes("registration.update()") && pwaContext.includes("visibilitychange") && pwaContext.includes("online") && (pwaContext.includes("20 * 60 * 1000") || pwaContext.includes("30 * 60 * 1000")));
-check("character art is lazy decoded for long lists", characterCard.includes('loading="lazy"') && characterCard.includes('decoding="async"'));
+check("character art is lazy decoded for long lists", characterLibrary.includes('loading="lazy"') && characterLibrary.includes('decoding="async"'));
 
 check("AI responses can be edited without deleting later visible messages", chat.includes("editCharacterMessageInPlace") && chat.includes("Your previous wording is saved as an alternative") && read("src/context/ChatsContext.jsx").includes("async function editCharacterMessageInPlace"));
 check("response alternatives have inline arrows counters and guarded swipe", chat.includes("chat-message__version-nav") && chat.includes("navigateResponseVersion") && chat.includes("onVersionNavigate(message, dx < 0 ? 1 : -1)"));
