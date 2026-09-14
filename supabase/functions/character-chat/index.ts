@@ -39,6 +39,7 @@ import { buildSpokenNaturalnessV34944, spokenNaturalnessV34944Issues } from "./e
 import { buildMicroContinuityV34945, microContinuityV34945Issues } from "./engine/micro-continuity-v34945.js";
 import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engine/turn-state-ledger-v34946.js";
 import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
+import { immediateTurnContinuityIssues } from "./engine/immediate-turn-continuity-v35213.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -3033,6 +3034,8 @@ Start from the final visible physical state. Answer this beat directly, preserve
 // Kept temporarily as a reference while the compact v2.12 prompt is proven in production.
 async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
   const issueDirections = {
+    immediate_user_choice_overridden: "Honor the user's literal selection or refusal. The character may respond in voice, but must not push, hand back, impose, or substitute the option the user just declined.",
+    immediate_event_truth_rewritten: "Keep the immediately preceding event facts unchanged. Do not replace a missing or mistaken order plus a different spare item with a new claim that two identical orders were intentional.",
     personality_performance_override: "Stop performing the character archetype. Answer the actual conversational job first, then let personality affect only wording and degree of disclosure. For a direct WHY question, give a grounded reason, partial truth, or referential evasion tied to the real prior action. Remove screenplay punchlines, mock duties, metaphorical pretexts, self-branding, and polished mini-monologues. Plain human speech is preferred.",
     human_mind_dialogue_artifice: "Rebuild from the live conversational job and character state. Keep private motive private unless disclosure is earned. Preserve active emotional residue, answer or meaningfully resist the actual topic, remove quote-card banter, unnecessary metaphors, therapy-speak, compulsory flirtation, repeated names, and polished hooks. Prefer the shortest ordinary line that still belongs to this character.",
 
@@ -5926,6 +5929,8 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   return { result: nextResult, issues: nextIssues };
 }
 const CONTINUITY_GUARD_ISSUES = new Set([
+  "immediate_user_choice_overridden",
+  "immediate_event_truth_rewritten",
   "location_changed_without_scene_change",
   "time_changed_without_scene_change",
   "present_character_silently_dropped",
@@ -5941,6 +5946,8 @@ const CONTINUITY_GUARD_ISSUES = new Set([
   "unsolicited_offscreen_lead_contact",
 ]);
 const BLOCKING_NARRATIVE_ISSUES = new Set([
+  "immediate_user_choice_overridden",
+  "immediate_event_truth_rewritten",
   "empty_reply",
   "truncated_by_model",
   "unfinished_reply",
@@ -7043,6 +7050,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
   for (const issue of meaningfulTurnGateV34950Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
