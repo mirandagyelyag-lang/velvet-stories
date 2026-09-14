@@ -40,6 +40,7 @@ import { buildMicroContinuityV34945, microContinuityV34945Issues } from "./engin
 import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engine/turn-state-ledger-v34946.js";
 import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
 import { immediateTurnContinuityIssues } from "./engine/immediate-turn-continuity-v35213.js";
+import { establishedAttractionOpportunityIssues } from "./engine/established-attraction-opportunity-v35219.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -3224,6 +3225,8 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     generic_attractive_guy_cadence: "Remove reusable hot-guy/romance-bot lines and smug quote-card hooks. Rebuild the spoken line from this character's actual sentence DNA and priorities.",
     generic_couple_audience_flirt: "Delete the invented audience claim that people or the room think they are dating, married, a couple, or discussing a wedding. Do not use imaginary observers as a shortcut for chemistry. Show this character's own grounded interest through a specific choice, cost, attention, invitation, honesty, or selective access.",
     attraction_opening_wasted: "The user gave a direct or contextually clear emotional opening and this character canonically likes them. Do not answer only with smug teasing, victory, 'progress,' or forced ambiguity. Let the character register the risk and return one character-specific piece of evidence—plain reciprocity, a partial admission, a concrete choice, or honest action—without inventing the user's feelings or forcing a milestone.",
+    chosen_time_attraction_flattened: "This character explicitly likes the user and has voluntarily created an opportunity for time alone together. Keep the practical answer, but add one natural character-specific sign that the user—not merely the activity—is why this matters. Use preference, anticipation, selective honesty, or a small choice; do not force a confession or narrate the user's feelings.",
+    delegated_social_task_condescension: "The user reasonably delegated the explanation to the older character. Accept it without belittling them or calling it 'passing the buck'; let confidence appear through calmly handling the group.",
     location_incompatible_commerce: "The scene is not an established restaurant or café. Remove the check, bill, waiter, tip, or cash-on-table action. Preserve the actual location and use only objects and exits that belong there.",
     question_personality_mismatch: "Restore this character's established question frequency. Do not append questions for engagement when this person is normally terse, evasive or low-question.",
     therapist_care_package_v2: "Remove the counseling/customer-service care package. Keep any care through character-specific wording, silence, practical action, awkwardness or imperfect support.",
@@ -5968,6 +5971,8 @@ const CONTINUITY_GUARD_ISSUES = new Set([
   "dangling_scene_reference",
   "unsupported_future_callback",
   "opening_attraction_thread_dropped",
+  "chosen_time_attraction_flattened",
+  "delegated_social_task_condescension",
   "settled_choice_reopened",
   "adjacent_dialogue_fragments",
   "unsupported_user_habit_claim",
@@ -5992,6 +5997,8 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "dangling_scene_reference",
   "unsupported_future_callback",
   "opening_attraction_thread_dropped",
+  "chosen_time_attraction_flattened",
+  "delegated_social_task_condescension",
   "settled_choice_reopened",
   "adjacent_dialogue_fragments",
   "unsupported_user_habit_claim",
@@ -6253,6 +6260,8 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "generic_attractive_guy_cadence",
   "generic_couple_audience_flirt",
   "attraction_opening_wasted",
+  "chosen_time_attraction_flattened",
+  "delegated_social_task_condescension",
   "location_incompatible_commerce",
   "question_personality_mismatch",
   "therapist_care_package_v2",
@@ -7248,6 +7257,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasAttentionFixationLoop(text, options.recentCharacterReplies || [])) issues.push("attention_fixation_loop");
   if (hasNpcCommentatorLoop(text, options.recentCharacterReplies || [])) issues.push("npc_commentator_loop");
   if (hasRomanticInitiativeDrought(text, options.latestUserMessage || "", options.recentUserMessages || [], options.recentCharacterReplies || [], options.characterName || "", options.character || {})) issues.push("romantic_initiative_drought");
+  for (const issue of establishedAttractionOpportunityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [], character: options.character || {} })) issues.push(issue);
   if (hasInventedDebateEvidence(text, options.latestUserMessage || "")) issues.push("invented_debate_evidence");
   if (hasUserMotiveOverride(text, options.latestUserMessage || "", options.recentUserMessages || [])) issues.push("user_motive_overwritten");
   if (hasRejectedPursuitFramingPersistence(text, options.latestUserMessage || "")) issues.push("rejected_pursuit_framing_persisted");
