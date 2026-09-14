@@ -2770,6 +2770,21 @@ Forgiveness gate: ${clean(turnContract?.relationshipIntelligenceEngine?.forgiven
 Forecast: ${clean(turnContract?.relationshipIntelligenceEngine?.forecast, 520)}
 Rule: ${clean(turnContract?.relationshipIntelligenceEngine?.instruction, 820)}
 
+CHARACTER PRESENCE + FELT ATTRACTION 3.52.7 — PROFILE FACTS MUST REACH THE PAGE
+Established attraction: ${turnContract?.relationshipChemistryV2?.personalityManifestation?.attractionCanonExplicit ? "YES — it must remain perceptible" : "not explicit; do not invent it"}
+Attraction visibility: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.attractionVisibility || "Follow earned relationship evidence.", 950)}
+Confidence: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.confidenceStyle || "Follow canon.", 720)}
+Coldness: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.coldStyle || "Follow canon.", 720)}
+Danger/power: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.dangerStyle || "Follow canon.", 820)}
+Differentiation: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.differentiationRule || "Traits alter behavior.", 820)}
+Rule: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.policy || "Do not flatten the character.", 900)}
+- If canon says the character already likes or wants the user, give the reader concrete evidence. Hidden feelings may be unconfessed; they may not be behaviorally absent for scene after scene.
+- Make attraction character-specific: prioritization, chosen proximity, remembered detail, voluntary time, practical care, selective honesty, changed tone, or one small cost/risk. Never use a generic flirt kit.
+- The user must remain free to feel anything. Show the character's differential treatment; never narrate that the user blushes, wants them, feels chemistry, or reciprocates.
+- Slow burn limits milestones, not signals. Anti-trope rules remove clichés, not desire. Naturalism removes performance, not personality.
+- A confident character may risk a clear invitation, decision or admission appropriate to the phase. Do not automatically turn confidence into stalling, nervous evasion or an endless almost-moment.
+- A cold character remains controlled and difficult to access; attraction appears through rare exceptions and chosen access. A dangerous character remains competent and consequential; danger is not a decorative smirk and is never a license to violate user boundaries.
+
 EMOTIONAL CONTINUITY 4.0
 Residue level: ${clean(turnContract?.emotionalContinuityEngine?.residueLevel, 40)}
 Unresolved: ${clean(Array.isArray(turnContract?.emotionalContinuityEngine?.unresolved) ? turnContract.emotionalContinuityEngine.unresolved.join(" | ") : "none", 760)}

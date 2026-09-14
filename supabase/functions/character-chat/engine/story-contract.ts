@@ -267,6 +267,7 @@ export type StoryContract = {
     asymmetry: { characterView:string; userViewStatus:"unknown"|"explicit"; userView:string; policy:string };
     reciprocity: { userApproach:number; userDistance:number; characterApproach:number; characterDistance:number; balance:string; policy:string };
     affectionLanguage: { primary:string; secondary:string; avoid:string[]; policy:string };
+    personalityManifestation: { attractionCanonExplicit:boolean; attractionVisibility:string; confidenceStyle:string; coldStyle:string; dangerStyle:string; differentiationRule:string; policy:string };
     jealousy: { stage:"off"|"notice"|"friction"|"confront"; evidence:string[]; style:string; policy:string };
     vulnerabilityHangover: { active:boolean; source:string; policy:string };
     conflictResidue: { active:boolean; level:number; policy:string };

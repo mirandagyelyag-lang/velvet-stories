@@ -4,6 +4,7 @@ export type RelationshipChemistryV2 = {
   asymmetry: { characterView:string; userViewStatus:"unknown"|"explicit"; userView:string; policy:string };
   reciprocity: { userApproach:number; userDistance:number; characterApproach:number; characterDistance:number; balance:string; policy:string };
   affectionLanguage: { primary:string; secondary:string; avoid:string[]; policy:string };
+  personalityManifestation: { attractionCanonExplicit:boolean; attractionVisibility:string; confidenceStyle:string; coldStyle:string; dangerStyle:string; differentiationRule:string; policy:string };
   jealousy: { stage:"off"|"notice"|"friction"|"confront"; evidence:string[]; style:string; policy:string };
   vulnerabilityHangover: { active:boolean; source:string; policy:string };
   conflictResidue: { active:boolean; level:number; policy:string };
@@ -36,6 +37,30 @@ function affectionLanguageFor(character:Record<string,unknown>={}){
   if(/\b(?:reserved|cold|guarded|quiet|stoic|proud)\b/.test(p)) return {primary:"small choices that grant access",secondary:"rare plain honesty",avoid:["constant verbal reassurance","instant emotional fluency"]};
   if(/\b(?:direct|open|honest|warm|green flag|steady)\b/.test(p)) return {primary:"direct words plus consistent action",secondary:"making room in plans",avoid:["cryptic hot-guy lines","manufactured jealousy"]};
   return {primary:"relationship-specific choices",secondary:"remembered preferences and voluntary time",avoid:["generic romance gestures","one-size-fits-all banter"]};
+}
+function personalityManifestationFor(character:Record<string,unknown>={}){
+  const p=profileText(character);
+  const attractionCanonExplicit=/\b(?:already likes|likes (?:you|the user|her|him)|has (?:a )?(?:crush|thing|feelings) for (?:you|the user|her|him)|attracted to (?:you|the user|her|him)|into (?:you|the user|her|him)|in love with (?:you|the user|her|him)|secretly likes|secret crush|romantic feelings|le gustas|gusta de ti|siente algo por ti|enamorado de ti|enamorada de ti)\b/.test(p);
+  const confident=/\b(?:confident|self assured|self-assured|bold|decisive|assertive|seguro de si|segura de si|decidido|decidida)\b/.test(p);
+  const cold=/\b(?:cold|aloof|distant|reserved|guarded|stoic|detached|frio|fria|distante|reservado|reservada)\b/.test(p);
+  const dangerous=/\b(?:dangerous|feared|lethal|ruthless|criminal|mafia|assassin|killer|gangster|powerful|peligroso|peligrosa|temido|temida|letal|despiadado|despiadada)\b/.test(p);
+  return {
+    attractionCanonExplicit,
+    attractionVisibility: attractionCanonExplicit
+      ? "The character already likes/is attracted to the user. Keep that fact perceptible through specific choices, attention, remembered detail, voluntary time, selective access, proximity, practical care, or a small social/emotional risk. It may remain unspoken, but it may not become invisible."
+      : "Do not invent attraction; if it develops, ground it in earned interaction.",
+    confidenceStyle: confident
+      ? "Self-assurance must produce calm initiative, clear choices, direct follow-through and tolerance of being seen wanting something—not default evasiveness, helpless awkwardness or endless almost-moments."
+      : "Use only the confidence level supported by canon.",
+    coldStyle: cold
+      ? "Coldness means controlled distance, restraint, difficult access and selective exceptions. Let any special treatment of the user be legible precisely because it differs from how this character treats others; do not reduce coldness to cruelty or repetitive smirking."
+      : "Do not manufacture aloofness.",
+    dangerStyle: dangerous
+      ? "Danger must appear as competence, command, boundaries, risk awareness, credible consequences and other people's grounded reactions. Do not replace it with decorative menace, and never direct coercion or violence at the user without canon and current-scene support."
+      : "Do not manufacture menace.",
+    differentiationRule: "Traits must change decisions, access, timing, initiative and consequences—not merely appear as narrator labels. Preserve a clear behavioral difference between how the character treats the user and how they treat everyone else when canon supports one.",
+    policy: "Do not flatten attraction or personality in the name of slow burn, naturalism, safety, or anti-trope rules. Those rules control escalation and clichés; they do not erase established desire, confidence, coldness, danger, status, or agency."
+  };
 }
 function jealousyStyleFor(character:Record<string,unknown>={}){
   const p=profileText(character);
@@ -120,6 +145,7 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
   const forbidden=paceStatus==="hold"?["sudden kiss/almost-kiss","instant possessiveness","love confession from one pleasant exchange"]:paceStatus==="repair_first"?["romantic reset that skips repair","instant forgiveness","milestone used to erase conflict"]:["forced milestone solely because scores are high"];
 
   const affection=affectionLanguageFor(character);
+  const personalityManifestation=personalityManifestationFor(character);
   const repairStyle=repairStyleFor(character);
   const trajectory=trajectoryFor(character);
   const antiCloneSignature=`${affection.primary} | jealousy: ${jealousyStyleFor(character)} | repair: ${repairStyle} | defense: ${defense}`;
@@ -129,6 +155,7 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
     asymmetry:{characterView:charView,userViewStatus:explicitUserView?"explicit":"unknown",userView:explicitUserView||"unknown; never infer the user's feelings",policy:"Keep the character's belief and the user's authored state separate. A one-sided crush, mistaken belief, or mismatched readiness is valid."},
     reciprocity:{userApproach,userDistance,characterApproach,characterDistance,balance,policy:"Track who visibly initiates, returns, cancels, withdraws, repairs and makes room. Imbalance changes expectations; it does not invent blame or the user's motive."},
     affectionLanguage:{primary:affection.primary,secondary:affection.secondary,avoid:affection.avoid,policy:"Affection must sound and behave like this character. Do not substitute the universal romance kit."},
+    personalityManifestation,
     jealousy:{stage:jealousyStage,evidence:uniq(jealousyEvidence).slice(-4),style:jealousyStyleFor(character),policy:"No jealousy without witnessed/canonical evidence. Jealousy is a behavior filter, never proof of ownership or love."},
     vulnerabilityHangover:{active:vulnerabilityHangover,source:text(vulnerabilitySource),policy:vulnerabilityHangover?"Do not emotionally reset on the next turn. Let awkwardness, exposure, pride, relief, avoidance or changed access linger in this character-specific way.":"No forced vulnerability residue."},
     conflictResidue:{active:conflictActive,level:conflictLevel,policy:conflictActive?"Conflict residue changes warmth, patience, access or trust until repair evidence accumulates. One apology cannot erase it.":"Do not invent conflict residue."},
@@ -138,7 +165,7 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
     historyAnchors,
     thirdPartyAwareness:{evidence:thirdPartyEvidence,policy:"NPCs may notice only observable patterns they have actually witnessed or plausibly heard about. They cannot announce hidden mutual feelings as fact."},
     antiCloneSignature,
-    instruction:"RELATIONSHIP CHEMISTRY 2.0: keep attraction, trust, comfort, attachment and commitment independent; preserve desire-versus-defense, reciprocity, vulnerability hangover, conflict residue, character-specific affection/jealousy/repair style, trajectory and asymmetric beliefs. Do not protect the ship by deleting other people. Do not force romance because the scene is pleasant, and do not stall earned progression forever."
+    instruction:"RELATIONSHIP CHEMISTRY 2.1: keep attraction, trust, comfort, attachment and commitment independent; preserve desire-versus-defense, reciprocity, vulnerability hangover, conflict residue, character-specific affection/jealousy/repair style, trajectory and asymmetric beliefs. Established attraction must remain behaviorally perceptible without forcing a confession or milestone. Confidence, coldness and danger must alter choices and presence rather than survive only as profile labels. Do not protect the ship by deleting other people. Do not force romance because the scene is pleasant, and do not stall earned progression forever."
   };
 }
 
