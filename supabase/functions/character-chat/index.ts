@@ -1316,18 +1316,40 @@ function instantStorySceneSeed(draft, idea = "") {
 
 function instantStoryFallbackOpening(draft, idea = "", sceneSeed = "") {
   const name = cleanPromptValue(draft?.name, 70) || "They";
+  const role = cleanPromptValue(draft?.role, 90) || "their own demanding life";
+  const relationship = cleanPromptValue(draft?.relationship, 180) || "a history neither of you usually explains out loud";
+  const personality = cleanPromptValue(draft?.personality, 160) || "a private, unmistakable way of handling pressure";
   const cleanIdea = cleanPromptValue(idea, 180);
-  if (cleanIdea) {
-    return `${name} catches your attention before the moment gets away from either of you. “You wanted to try this, right?” They leave the choice with you instead of deciding your reaction for you. “Okay. Where do you want to start?”`;
-  }
-  return `${name} catches sight of you during ${cleanPromptValue(sceneSeed, 150) || "an ordinary plan away from school"} and changes course for a concrete reason of their own. “Hey.” They come close enough to speak normally, without turning the moment into a performance. “Good timing. I actually need you for something.”`;
+  const setting = cleanIdea || cleanPromptValue(sceneSeed, 150) || "an ordinary plan away from school";
+  return `${name} is already in the middle of ${setting}, occupied with something connected to ${role} rather than waiting around for anyone. A practical complication changes the next few minutes, but not their entire day. Between you sits ${relationship}; it affects what ${name} notices and what they choose not to say. Their response carries ${personality}, without turning it into a performance.
+
+“You’re here.”
+
+${name} finishes the practical thing in front of them before giving you their full attention. There is a concrete reason the two of you need to deal with each other now, and neither a stranger nor a convenient accident has manufactured it.
+
+“I was going to handle this without dragging you into it.” The admission is incomplete on purpose, held back by the way ${name} normally protects what matters. “That plan isn’t going to work now.”
+
+They make room for your answer instead of deciding it for you. The situation is already moving, the relationship has something real at stake, and what happens next depends on what you choose to say.`;
 }
 
 async function handleInstantStory({ apiKey, draft, idea }) {
   const safeDraft = compactInstantStoryDraft(draft);
   const cleanIdea = cleanPromptValue(idea || "", 420);
   const sceneSeed = instantStorySceneSeed(safeDraft, cleanIdea);
-  const prompt = `Write one fresh opening beat for a private roleplay with this character. 45-85 words. It must be immediately playable, specific to the character, and DIFFERENT from their stored first message. Preserve voice and established relationship. Do not write the user's dialogue, thoughts, feelings, decisions, or actions. Use 0-2 short narration sentences and 1-4 natural spoken lines. Prefer dialogue first when natural. No room inventory, weather montage, outfit inventory, cinematic body-language padding, exposition disguised as dialogue, or forced cliffhanger. End with a clean opening the user can answer. IMPORTANT: finish every sentence and every quotation. Never stop mid-word or mid-sentence. Use the language of the profile or idea.
+  const prompt = `Write one substantial opening scene for a private roleplay with this character. TARGET 150-230 WORDS; never return fewer than 130 words. It must read like the beginning of a good novel scene, not a teaser, summary, character advertisement, writing prompt, or tiny exchange. Make it immediately playable, highly specific to this exact character, and materially different from their stored first message.
+
+INSTANT STORY QUALITY CONTRACT 3.52.6
+- Build one coherent scene with a concrete activity already underway, a grounded reason these two people interact now, a small source of pressure/tension, and a final opening the user can naturally answer.
+- Use the character's actual occupation, social world, habits, contradictions, relationship history, affection style, conflict style and voice fingerprint. At least THREE details must be impossible to swap onto a random attractive character.
+- Preserve the established relationship stage. Do not manufacture instant intimacy, confessions, pet names, possessiveness, hostility, flirting or physical contact.
+- Give the character an independent purpose that would exist without the user. The user may affect it, but must not become the center of the entire world.
+- Use 3-6 purposeful narration sentences and 3-7 natural spoken lines or fragments. Dialogue should carry personality; narration should carry physical situation and consequence.
+- Write only the character, established NPCs and observable environment. Never write the user's dialogue, thoughts, feelings, decisions, reaction, arrival, posture or unstaged movement.
+- Do not begin with “Hey,” “There you are,” “You're late,” “Didn't think you'd come,” “Got a minute?”, an accidental collision, spilled drink, dropped object, seat dispute or generic invitation.
+- Ban generic hooks: “I need you for something,” “something changed,” mysterious unnamed emergencies, surprise messages, arbitrary strangers and cliffhangers that hide the actual premise.
+- No room/weather/outfit inventory, cinematic gaze/smirk/jaw choreography, therapy language, quote-card banter, exposition disguised as dialogue or paragraph fragments masquerading as depth.
+- Keep one narration POV and one tense throughout. Finish every sentence and quotation. Use the language of the profile or idea.
+- End after the character makes one clear, character-specific move that creates a genuine choice for the user. Do not state that the choice belongs to the user; simply leave room for it.
 
 INSTANT STORY LOCATION DIVERSITY LOCK v3.50.1
 - DEFAULT BAN: do NOT set this opening at a university, college, campus, school, classroom, lecture hall, dorm, study room, or library. Do not use academic buildings as a convenient generic backdrop.
@@ -1349,9 +1371,9 @@ ${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}
   // only wins if it is a complete opening; MAX_TOKENS, dangling quotes, unfinished
   // contractions, tiny fragments and missing terminal punctuation are rejected.
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  const globalDeadlineMs = 6800;
-  const attemptTimeoutMs = 5000;
-  const hedgeDelaysMs = [0, 650, 1350];
+  const globalDeadlineMs = 14000;
+  const attemptTimeoutMs = 11000;
+  const hedgeDelaysMs = [0, 1800, 3600];
   const controllers = new Set<AbortController>();
   const startedAt = Date.now();
   let closed = false;
@@ -1375,9 +1397,9 @@ ${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
-            maxOutputTokens: 900,
-            temperature: 0.82,
-            thinkingConfig: { thinkingLevel: "LOW" },
+            maxOutputTokens: 1800,
+            temperature: 0.9,
+            thinkingConfig: { thinkingLevel: "MEDIUM" },
           },
         }),
       });
