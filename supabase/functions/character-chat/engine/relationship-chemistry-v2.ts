@@ -169,7 +169,7 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
   };
 }
 
-export function relationshipChemistryIssues({reply="",engine={}}:{reply?:string;engine?:Partial<RelationshipChemistryV2>}={}){
+export function relationshipChemistryIssues({reply="",engine={},latestUserMessage="",recentCharacterReplies=[]}:{reply?:string;engine?:Partial<RelationshipChemistryV2>;latestUserMessage?:string;recentCharacterReplies?:string[]}={}){
   const issues:string[]=[];
   const t=norm(reply);
   const jealousyEvidence=engine?.jealousy?.evidence||[];
@@ -182,6 +182,15 @@ export function relationshipChemistryIssues({reply="",engine={}}:{reply?:string;
   if(engine?.conflictResidue?.active&&/\b(?:everything was back to normal|like nothing happened|as if nothing had happened|all was forgiven|the tension disappeared completely|forgot all about the argument)\b/.test(t)) issues.push("conflict_residue_erased");
   if(engine?.vulnerabilityHangover?.active&&/\b(?:back to (?:his|her|their) usual self|as if (?:he|she|they) hadn t said anything|as if nothing happened)\b/.test(t)) issues.push("vulnerability_hangover_erased");
   if(/\b(?:everyone can tell|everyone knows|we all know)\b.{0,80}\b(?:you two|you both|love each other|like each other|are into each other)\b/.test(t)&&!(engine?.thirdPartyAwareness?.evidence||[]).length) issues.push("third_party_relationship_mindread");
+  const audienceCoupleTheater=/\b(?:people|everyone|everybody|half (?:the|this) room|the (?:whole )?room|they|someone)\b.{0,90}\b(?:think|thinks|thinking|assume|assumes|believe|believes|say|says|said|spoken)\b.{0,90}\b(?:we(?:'| )?re dating|we are dating|you(?:'| )?re dating|you are dating|a couple|together|wedding|married|marrying|like each other|into each other)\b|\b(?:people are going to|everyone(?:'| )?s going to|everyone is going to)\b.{0,80}\b(?:think|thinking|say|saying)\b.{0,60}\b(?:dating|couple|together)\b|\b(?:argument|fight) about wedding (?:venues?|plans?)\b|\bthe room has spoken\b/.test(t);
+  if(audienceCoupleTheater) issues.push("generic_couple_audience_flirt");
+  const latest=norm(latestUserMessage);
+  const previous=norm((Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).at(-1)||"");
+  const admission=/\b(?:i miss you|missed you|i like you|i care about you|it(?:'| )?s not a secret|its not a secret|no es un secreto|te extrano|te extraño|me gustas)\b/.test(latest);
+  const contextualAdmission=/\b(?:it(?:'| )?s not a secret|its not a secret|no es un secreto)\b/.test(latest)&&/\b(?:miss(?:ed)? me|like me|care about me|want me)\b/.test(previous);
+  const smugDeflection=/\b(?:finally admitting it|look at you|progress|that s what i thought|keep telling yourself|knew it|we both know|denial looks good|about time)\b/.test(t);
+  const reciprocalEvidence=/\b(?:i missed you|missed you too|i like you|i care about you|glad you|wanted to see you|came to (?:find|see) you|looked for you|made time|stayed because|because i wanted|so did i|me too|yo tambien|yo también|te extrane|te extrañé)\b/.test(t);
+  if(engine?.personalityManifestation?.attractionCanonExplicit&&(admission||contextualAdmission)&&smugDeflection&&!reciprocalEvidence) issues.push("attraction_opening_wasted");
   return uniq(issues);
 }
 

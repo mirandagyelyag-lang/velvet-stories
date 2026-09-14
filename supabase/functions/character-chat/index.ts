@@ -1762,6 +1762,15 @@ function hasGenericAttractiveGuyCadenceV2(reply = "", recentReplies = [], charac
   const recentHits = (Array.isArray(recentReplies)?recentReplies:[]).slice(-5).filter((item)=>patterns.some((pattern)=>pattern.test(normalizeText(dialogueOnlyText(item))) && !owned(pattern))).length;
   return unownedHits >= 2 || (unownedHits >= 1 && recentHits >= 2);
 }
+function hasLocationIncompatibleCommerce(reply = "", previousScene = {}, recentUserMessages = [], recentCharacterReplies = []) {
+  const location = normalizeText(previousScene?.location || "");
+  if (!/\b(?:library|biblioteca|classroom|lecture hall|gym|locker room|track|field|campus hallway)\b/.test(location)) return false;
+  const text = normalizeText(reply);
+  const restaurantAction = /\b(?:signal(?:ed|s|ing)? for (?:the )?check|ask(?:ed|s|ing)? for (?:the )?(?:check|bill)|pay(?:s|ing|ed)? (?:the )?(?:check|bill)|settle(?:d|s|ing)? (?:the )?(?:check|bill)|toss(?:ed|es|ing)? (?:a few )?bills? (?:onto|on) (?:the )?table|leave(?:s|ing|left)? (?:cash|money|bills?) (?:on|onto) (?:the )?table|tip(?:ped|s|ping)? (?:the )?(?:waiter|waitress|server))\b/.test(text);
+  if (!restaurantAction) return false;
+  const history = [...(Array.isArray(recentUserMessages) ? recentUserMessages : []), ...(Array.isArray(recentCharacterReplies) ? recentCharacterReplies : [])].slice(-8).map(normalizeText).join(" ");
+  return !/\b(?:library cafe|library café|campus cafe|campus café|cafe inside|café inside|restaurant|diner|coffee shop|waiter|waitress|server|ordered food|ordered coffee|asked for the check)\b/.test(history);
+}
 function hasQuestionPersonalityMismatchV2(reply = "", recentReplies = [], character = {}) {
   const profile = normalizeText(`${character?.speech_style || ""} ${character?.voice_vocabulary || ""} ${character?.verbal_tells || ""}`);
   const low = /\b(?:rarely asks|doesn t ask|does not ask|few questions|laconic|terse|quiet|not chatty)\b/.test(profile);
@@ -2780,6 +2789,8 @@ Differentiation: ${clean(turnContract?.relationshipChemistryV2?.personalityManif
 Rule: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.policy || "Do not flatten the character.", 900)}
 - If canon says the character already likes or wants the user, give the reader concrete evidence. Hidden feelings may be unconfessed; they may not be behaviorally absent for scene after scene.
 - Make attraction character-specific: prioritization, chosen proximity, remembered detail, voluntary time, practical care, selective honesty, changed tone, or one small cost/risk. Never use a generic flirt kit.
+- NEVER substitute attraction with “people think we’re dating,” wedding/couple jokes, “the room has spoken,” “denial looks good on you,” locked-eye narration, or smug claims that the user secretly wants/misses the character. Imaginary audience approval is not chemistry.
+- When the user gives a clear emotional opening, respond to its actual vulnerability. A character may stay guarded, but must not flatten the opening into a victory lap, “progress,” or another evasive zinger. If this confident character already likes the user, return one small piece of real evidence.
 - The user must remain free to feel anything. Show the character's differential treatment; never narrate that the user blushes, wants them, feels chemistry, or reciprocates.
 - Slow burn limits milestones, not signals. Anti-trope rules remove clichés, not desire. Naturalism removes performance, not personality.
 - A confident character may risk a clear invitation, decision or admission appropriate to the phase. Do not automatically turn confidence into stalling, nervous evasion or an endless almost-moment.
@@ -3157,6 +3168,9 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     dialogue_genome_drift: "Restore the established Dialogue Genome: sentence length, question habit, explanation level, topic resistance, humor timing and public/private voice.",
     support_ticket_conversation: "Stop processing the user's message like a checklist. Let this character answer only the one or two clauses they would naturally latch onto. Remove stacked acknowledgements and stacked follow-up questions.",
     generic_attractive_guy_cadence: "Remove reusable hot-guy/romance-bot lines and smug quote-card hooks. Rebuild the spoken line from this character's actual sentence DNA and priorities.",
+    generic_couple_audience_flirt: "Delete the invented audience claim that people or the room think they are dating, married, a couple, or discussing a wedding. Do not use imaginary observers as a shortcut for chemistry. Show this character's own grounded interest through a specific choice, cost, attention, invitation, honesty, or selective access.",
+    attraction_opening_wasted: "The user gave a direct or contextually clear emotional opening and this character canonically likes them. Do not answer only with smug teasing, victory, 'progress,' or forced ambiguity. Let the character register the risk and return one character-specific piece of evidence—plain reciprocity, a partial admission, a concrete choice, or honest action—without inventing the user's feelings or forcing a milestone.",
+    location_incompatible_commerce: "The scene is not an established restaurant or café. Remove the check, bill, waiter, tip, or cash-on-table action. Preserve the actual location and use only objects and exits that belong there.",
     question_personality_mismatch: "Restore this character's established question frequency. Do not append questions for engagement when this person is normally terse, evasive or low-question.",
     therapist_care_package_v2: "Remove the counseling/customer-service care package. Keep any care through character-specific wording, silence, practical action, awkwardness or imperfect support.",
     vocabulary_ownership_violation: "Remove slang, pet names or signature words not owned by this character's profile/examples/canon. Do not borrow another character's verbal tell.",
@@ -6138,6 +6152,9 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "dialogue_genome_drift",
   "support_ticket_conversation",
   "generic_attractive_guy_cadence",
+  "generic_couple_audience_flirt",
+  "attraction_opening_wasted",
+  "location_incompatible_commerce",
   "question_personality_mismatch",
   "therapist_care_package_v2",
   "vocabulary_ownership_violation",
@@ -6992,6 +7009,8 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of relationshipChemistryIssues({
     reply: text,
     engine: options.turnContract?.relationshipChemistryV2 || {},
+    latestUserMessage: options.latestUserMessage || "",
+    recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
   for (const issue of embodiedAwarenessIssues({
     reply: text,
@@ -7087,6 +7106,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasDialogueGenomeDrift(text, options.recentCharacterReplies || [], options.character || {})) issues.push("dialogue_genome_drift");
   if (hasSupportTicketConversationV2(text, options.latestUserMessage || "")) issues.push("support_ticket_conversation");
   if (hasGenericAttractiveGuyCadenceV2(text, options.recentCharacterReplies || [], options.character || {})) issues.push("generic_attractive_guy_cadence");
+  if (hasLocationIncompatibleCommerce(text, options.previousScene || options.continuity?.previousScene || {}, options.recentUserMessages || [], options.recentCharacterReplies || [])) issues.push("location_incompatible_commerce");
   if (hasQuestionPersonalityMismatchV2(text, options.recentCharacterReplies || [], options.character || {})) issues.push("question_personality_mismatch");
   if (hasTherapistCarePackageV2(text, options.character || {})) issues.push("therapist_care_package_v2");
   if (hasVocabularyOwnershipViolationV2(text, options.character || {})) issues.push("vocabulary_ownership_violation");
