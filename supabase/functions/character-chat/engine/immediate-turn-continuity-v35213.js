@@ -9,10 +9,18 @@ export function immediateTurnContinuityIssues(reply = "", latestUserMessage = ""
   const previous = norm((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
 
   const userKeepsOwnFood = /\b(?:its fine|it is fine|no thanks|im fine|i am fine)\b.{0,55}\b(?:ill|i will|let me|i can)\s+(?:eat|keep|take|have)\s+(?:mine|my own|my order)\b/.test(latest)
-    || /\b(?:ill|i will)\s+(?:eat|keep|take|have)\s+(?:mine|my own|my order)\b/.test(latest);
+    || /\b(?:ill|i will)\s+(?:eat|keep|take|have)\s+(?:mine|my own|my order|the other one|the other thing|this one|that one)\b/.test(latest);
   const characterForcesSwap = /\b(?:push(?:es|ed|ing)?|slide(?:s|d|ing)?|shove(?:s|d|ing)?|place(?:s|d|ing)?)\b.{0,75}\b(?:container|food|meal|order|plate|drink|mine|extra)\b/.test(text)
     || /\b(?:take mine|eat mine|eat this|youre eating this|you are eating this|no arguments?|relax)\b/.test(text);
   if (userKeepsOwnFood && characterForcesSwap) issues.push("immediate_user_choice_overridden");
+
+  const userSettledAlternative = /\b(?:dont|do not|no thanks|its fine|it is fine)\b/.test(latest)
+    && /\b(?:ill|i will)\s+(?:eat|keep|take|have)\s+(?:mine|my own|my order|the other one|the other thing|this one|that one)\b/.test(latest);
+  const replyReopensChoice = /\b(?:you sure|are you sure|sure you dont|sure you do not|still want|change your mind)\b.{0,80}\b(?:other|mine|food|order|thing|one)\b/.test(text)
+    || /\b(?:i can|ill|i will)\s+still\s+(?:go|take it back|fix it|call them|get another)\b/.test(text);
+  if (userSettledAlternative && replyReopensChoice) issues.push("settled_choice_reopened");
+
+  if (/["”]\s+["“]/.test(String(reply || ""))) issues.push("adjacent_dialogue_fragments");
 
   const previousSaysMissing = /\b(?:forgot|missing|left out|didnt include|did not include|messed up)\b.{0,60}\b(?:your|yours|order|food|drink)\b|\b(?:your|yours)\b.{0,35}\b(?:forgotten|missing|left out)\b/.test(previous);
   const previousHasDifferentSpare = /\b(?:spare|extra|backup)\b.{0,90}\b(?:thing|item|order|food|drink|usually|usual)\b|\b(?:ordered|got|bought)\b.{0,35}\b(?:spare|extra|backup)\b/.test(previous);
@@ -37,6 +45,10 @@ export function immediateTurnContinuityIssues(reply = "", latestUserMessage = ""
   const selectiveInterest = /\b(?:saved|kept|left|made|cleared|held|moved|set aside|remembered|checked|waited|stayed|offered|invited|reserved)\b.{0,80}\b(?:for you|your|beside him|next to him|space|seat|spot|drink|food|order)\b/.test(text)
     || /\b(?:dont touch hers|don t touch hers|get your own|thats hers|that s hers)\b/.test(text);
   if (explicitAttraction && openingProvedInterest && distancingReset && !selectiveInterest) issues.push("opening_attraction_thread_dropped");
+
+  const inventedEatingHabit = /\b(?:make sure|ensure|see that)\s+you\s+(?:actually\s+)?eat\b|\byou\s+(?:never|always|usually|keep)\s+(?:eat|eating|pick|picking)\b|\bpicking at (?:your|the) (?:food|dinner|meal)\b|\bget distracted\b.{0,45}\b(?:movie|tv|show|conversation|everyone)\b/.test(text);
+  const groundedEatingHabit = /\b(?:i|me|my)\b.{0,80}\b(?:not eating|dont eat|do not eat|forgot to eat|forget to eat|picking at|distracted|no appetite|not hungry)\b/.test(latest);
+  if (inventedEatingHabit && !groundedEatingHabit) issues.push("unsupported_user_habit_claim");
 
   return [...new Set(issues)];
 }
