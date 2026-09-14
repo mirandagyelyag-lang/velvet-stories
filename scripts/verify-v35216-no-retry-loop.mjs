@@ -5,10 +5,10 @@ const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts
 const chat = readFileSync(new URL("../src/pages/Chat.jsx", import.meta.url), "utf8");
 
 assert.match(edge, /function buildCompactLiveRecoveryPrompt/);
-assert.match(edge, /prompt: compactRecoveryPrompt/);
+assert.match(edge, /prompt: compactTurnPrompt/);
 assert.match(edge, /slice\(-10\)/);
 assert.match(edge, /maxOutputTokens: Math\.min\(1100/);
-assert.doesNotMatch(edge.slice(edge.indexOf("const compactRecoveryPrompt"), edge.indexOf("const firstDraftDurationMs")), /\n\s+prompt,\n/);
+assert.doesNotMatch(edge.slice(edge.indexOf("} catch (streamFailure)"), edge.indexOf("const firstDraftDurationMs")), /\n\s+prompt,\n/);
 assert.match(edge, /quota \? "Gemini's quota is exhausted right now\. Retrying the same reply won't fix it/);
 assert.match(chat, /Gemini's quota is exhausted right now\. Retrying the same reply won't work/);
 

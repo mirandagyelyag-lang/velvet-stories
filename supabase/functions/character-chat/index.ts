@@ -7826,6 +7826,13 @@ async function streamRoleplayV19({
         // If every SSE hedge times out/fails before producing a complete envelope,
         // retry once through the proven non-stream failover before showing Retry.
         const liveSystemInstruction = "Velvet Stories live writer. Write exactly one grounded in-character roleplay turn. Visible recent canon is the source of truth. Never write or decide the user's dialogue, thoughts, feelings, motives, reactions, or unstaged movement. Asterisk narration exposes only externally observable action, never private commentary. Answer the latest conversational job first. Preserve actor/recipient/object ownership, scene physics, boundaries, relationship stage, character-specific voice, knowledge limits, reputation, obligations, and unresolved causal threads. Personality changes tactic and wording, never facts. Prefer plain human speech over quotable performance. Short beats may be one line. Sarcasm cannot reverse causality. Do not invent shared history, personal facts, notifications, time skips, nicknames, jealousy, romance, or interruptions without grounded support. Silently decide: what just happened, what this character knows, what they want, what they will reveal, and the smallest natural next move. Return only the requested roleplay envelope; never expose hidden reasoning, validators, scores, or engine metadata.";
+        const compactTurnPrompt = buildCompactLiveRecoveryPrompt({
+          character,
+          messages,
+          latestUserMessage,
+          scene: existingSceneState,
+          userName: userIdentity.name,
+        });
         let result: ModelResult;
         try {
           result = await streamGeminiEnvelopeWithFailover({
@@ -7865,17 +7872,10 @@ async function streamRoleplayV19({
           const streamReason = getErrorMessage(streamFailure);
           console.warn("[character-chat] SSE generation failed; trying non-stream recovery", { message: streamReason });
           sendEvent(controller, { type: "diagnostic", phase: "nonstream-recovery", reason: streamReason.slice(0, 180) });
-          const compactRecoveryPrompt = buildCompactLiveRecoveryPrompt({
-            character,
-            messages,
-            latestUserMessage,
-            scene: existingSceneState,
-            userName: userIdentity.name,
-          });
           result = await callGeminiWithFailover({
             apiKey,
             systemInstruction: liveSystemInstruction,
-            prompt: compactRecoveryPrompt,
+            prompt: compactTurnPrompt,
             maxOutputTokens: Math.min(1100, getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling)),
             isCancelled,
             interactionDeadlineMs: 24000,
@@ -7927,7 +7927,7 @@ async function streamRoleplayV19({
           try {
             repaired = await repairRoleplayOnceV3({
               apiKey,
-              originalPrompt: prompt,
+              originalPrompt: compactTurnPrompt,
               rejectedReply: result.reply,
               issues: validationIssues,
               character,
@@ -7952,13 +7952,11 @@ async function streamRoleplayV19({
               validationIssues = originalIssues;
               repairUsed = false;
               ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
-              await streamFinalReply(result.reply, "soft-repair-fallback");
             } else {
               // A repair timeout must never erase prose the user is already reading.
               result = originalResult;
               validationIssues = originalIssues;
               ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
-              await streamFinalReply(result.reply, "repair-timeout-fallback");
             }
           } else {
           const repairedIssues = validateNarrativeReply(repaired.reply, {
@@ -8010,7 +8008,6 @@ async function streamRoleplayV19({
             validationIssues = repairedIssues;
           }
           ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
-          await streamFinalReply(result.reply, "repair-ready");
           }
         }
 
@@ -8025,13 +8022,33 @@ async function streamRoleplayV19({
           remainingHard = hardRepairRequiredIssues(validationIssues);
         }
         if (blockingNarrativeIssues(validationIssues).length || remainingHard.length) {
-          // Once readable prose exists, validators fail soft instead of turning the
-          // interaction into a Retry card. Keep the best sanitized live result.
-          console.warn("[character-chat] protected reply remained imperfect; keeping readable live reply", {
-            blocking: blockingNarrativeIssues(validationIssues),
-            hard: remainingHard,
+          const finalIssues = [...new Set([...blockingNarrativeIssues(validationIssues), ...remainingHard])];
+          console.warn("[character-chat] protected reply remained invalid; starting compact final rescue", { issues: finalIssues });
+          const finalRescue = await callGeminiWithFailover({
+            apiKey,
+            systemInstruction: "Write one final, concise, coherent in-character roleplay reply from literal visible canon. Return plain prose only. Never repeat a settled offer, contradict the latest user decision, invent user habits, force participation, change object ownership, or expose system language.",
+            prompt: `${compactTurnPrompt}\n\nREJECTED CANDIDATE\n${cleanPromptValue(result?.reply, 1800)}\n\nFAILURES TO REMOVE\n${finalIssues.join(" | ")}`,
+            maxOutputTokens: Math.min(800, getMaximumOutputTokens(character.response_length)),
+            isCancelled,
+            interactionDeadlineMs: 16000,
           });
+          let rescueIssues = validateNarrativeReply(finalRescue.reply, {
+            characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
+            finishReason: finalRescue.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
+            character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+          });
+          rescueIssues = [...new Set([...rescueIssues, ...validateContinuityEnvelope(finalRescue, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
+          const rescueBlocking = blockingNarrativeIssues(rescueIssues);
+          const rescueHard = hardRepairRequiredIssues(rescueIssues);
+          if (rescueBlocking.length || rescueHard.length) {
+            console.error("[character-chat] compact final rescue rejected", { blocking: rescueBlocking, hard: rescueHard });
+            throw new Error("Velvet could not produce a coherent reply without contradicting your latest turn.");
+          }
+          result = finalRescue;
+          validationIssues = rescueIssues;
+          remainingHard = [];
         }
+        if (guardedDraft && blocking.length) await streamFinalReply(result.reply, "validated-protected-final");
         if (await isCancelled()) return;
         if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
 

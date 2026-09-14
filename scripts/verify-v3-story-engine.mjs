@@ -31,7 +31,7 @@ check("initiative no longer forces prop choreography", contract.includes("Dialog
 check("scene choreography is continuity-first, not prose-first", contract.includes("Track physical reality silently") && contract.includes("Do not inventory props"));
 check("Instant Story openings are substantial and novel-like", edge.includes("TARGET 150-230 WORDS") && edge.includes("INSTANT STORY QUALITY CONTRACT 3.52.6"));
 check("severe overwritten narration can trigger one bounded repair", edge.includes("hasOverwrittenNarration") && edge.includes('"overwritten_narration"'));
-check("readable replies fail soft after bounded protection", edge.includes("protected reply remained imperfect; keeping readable live reply"));
+check("rejected protected replies receive a compact final rescue before display", edge.includes("protected reply remained invalid; starting compact final rescue") && edge.includes("validated-protected-final"));
 check("edge keeps live streaming and bounded model failover", edge.includes("streamGenerateContent?alt=sse") && (edge.includes("const hedgeDelays = [0, 1200, 3200]") || edge.includes("performancePlan?.hedgeDelaysMs")) && edge.includes("cancelLosers"));
 check("no narrative fallback fabricates prose", !/function\s+\w*Fallback\s*\(/.test(edge));
 
