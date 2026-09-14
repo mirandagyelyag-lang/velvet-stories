@@ -3588,7 +3588,7 @@ function translateMessageError(message = "") {
   const error = message.toLowerCase();
   if (error.includes("row-level security") || error.includes("permission")) return "Your account doesn't have permission for this action.";
   if (error.includes("authentication") || error.includes("invalid session") || error.includes("jwt")) return "Your session expired. Sign in again.";
-  if (error.includes("quota") || error.includes("rate limit") || error.includes("rate-limited") || error.includes("resource_exhausted")) return "Velvet couldn't finish this reply right now. Retry in a moment.";
+  if (error.includes("quota") || error.includes("rate limit") || error.includes("rate-limited") || error.includes("resource_exhausted")) return "Gemini's quota is exhausted right now. Retrying the same reply won't work until quota is available again.";
   if (error.includes("high demand") || error.includes("overload") || error.includes("unavailable") || error.includes("503") || error.includes("502") || error.includes("504")) return "Velvet couldn't finish this reply right now. Retry in a moment.";
   if (error.includes("network") || error.includes("failed to fetch")) return "Velvet lost the connection before the reply finished. Retry.";
   if (error.includes("protected interaction beat") || error.includes("valid protected reply") || error.includes("repair still violated")) return "Velvet couldn't finish that reply cleanly. Try again.";

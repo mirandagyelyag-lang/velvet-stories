@@ -3413,6 +3413,31 @@ function parseModelEnvelope(raw): ModelEnvelope {
   }
 }
 
+function buildCompactLiveRecoveryPrompt({ character = {}, messages = [], latestUserMessage = "", scene = {}, userName = "" } = {}) {
+  const transcript = (Array.isArray(messages) ? messages : []).slice(-10).map((message) => {
+    const speaker = message?.sender === "user" ? (userName || "User") : (character?.name || "Character");
+    return `${speaker}: ${cleanPromptValue(message?.content, 900)}`;
+  }).filter((line) => line.split(": ").at(-1)).join("\n");
+  return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
+
+CHARACTER
+Name: ${cleanPromptValue(character?.name, 100)}
+Personality: ${cleanPromptValue(character?.personality, 900)}
+Relationship: ${cleanPromptValue(character?.relationship, 900)}
+Voice: ${cleanPromptValue(character?.speaking_style || character?.voice || character?.dialogue_style, 600)}
+
+CURRENT SCENE
+${cleanPromptValue(JSON.stringify(scene || {}), 1000)}
+
+RECENT VISIBLE TRANSCRIPT
+${transcript || "No earlier visible turn."}
+
+LATEST USER TURN
+${cleanPromptValue(latestUserMessage, 1200)}
+
+Continue from the literal final state. Respect the user's choice, possessions, location and boundaries. Do not invent a user habit, feeling, action, shared history, plan or object transfer. Answer the latest meaning once; do not repeat a settled offer. Keep established attraction visible through one natural character-specific choice when relevant, never through control. A short complete answer is valid.`;
+}
+
 // PURE_NARRATIVE_HELPERS_START
 function normalizeText(value = "") {
   return String(value || "")
@@ -7840,11 +7865,18 @@ async function streamRoleplayV19({
           const streamReason = getErrorMessage(streamFailure);
           console.warn("[character-chat] SSE generation failed; trying non-stream recovery", { message: streamReason });
           sendEvent(controller, { type: "diagnostic", phase: "nonstream-recovery", reason: streamReason.slice(0, 180) });
+          const compactRecoveryPrompt = buildCompactLiveRecoveryPrompt({
+            character,
+            messages,
+            latestUserMessage,
+            scene: existingSceneState,
+            userName: userIdentity.name,
+          });
           result = await callGeminiWithFailover({
             apiKey,
             systemInstruction: liveSystemInstruction,
-            prompt,
-            maxOutputTokens: getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling),
+            prompt: compactRecoveryPrompt,
+            maxOutputTokens: Math.min(1100, getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling)),
             isCancelled,
             interactionDeadlineMs: 24000,
           });
@@ -8161,8 +8193,9 @@ async function streamRoleplayV19({
             });
           } else {
             console.error("[character-chat] live stream failed", { message: rawError });
-            const transient = /(?:high demand|overload|unavailable|rate.?limit|resource_exhausted|Gemini returned (?:429|500|502|503|504)|temporarily unavailable)/i.test(rawError);
-            sendEvent(controller, { type: "error", error: transient ? "Velvet couldn't finish this reply right now. Retry in a moment." : rawError });
+            const quota = /(?:rate.?limit|resource_exhausted|Gemini returned 429|quota)/i.test(rawError);
+            const transient = /(?:high demand|overload|unavailable|Gemini returned (?:500|502|503|504)|temporarily unavailable)/i.test(rawError);
+            sendEvent(controller, { type: "error", error: quota ? "Gemini's quota is exhausted right now. Retrying the same reply won't fix it until quota is available again." : transient ? "Velvet couldn't finish this reply right now. Retry in a moment." : rawError });
           }
         }
       } finally {
