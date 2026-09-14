@@ -141,6 +141,19 @@ export function hasNarrativeNaturalismOverwrite(reply = "", latestUserMessage = 
   return hits >= 2 || (latestWords <= 8 && hits >= 1 && text.split(/\s+/).length >= 45);
 }
 
+export function hasUserAuthoredSceneBeatIgnored(reply = "", latestUserMessage = "") {
+  const latest = normalized(latestUserMessage);
+  const text = normalized(reply);
+  if (!latest || !text) return false;
+  const introducedActor = /\b(?:cashier|clerk|waiter|waitress|server|barista|girl|woman|guy|man|student|teammate|coach|professor|stranger|cajera|cajero|mesera|mesero|chica|mujer|tipo|hombre|estudiante|entrenador|entrenadora|profesor|profesora|desconocido|desconocida)\b/.test(latest);
+  const authoredAction = /\b(?:flirt|flirting|flirts|approach|approaches|walks? over|comes? over|waves?|smiles? at|asks?|says?|tells?|hands?|gives?|touches?|calls?|interrupts?|coquetea|coqueteando|se acerca|saluda|sonrie|sonríe|pregunta|dice|entrega|toca|llama|interrumpe)\b/.test(latest);
+  if (!introducedActor || !authoredAction) return false;
+  const femaleActor=/\b(?:girl|woman|waitress|cajera|mesera|chica|mujer|entrenadora|profesora|desconocida)\b/.test(latest);
+  const acknowledgesActor = /\b(?:cashier|clerk|waiter|waitress|server|barista|girl|woman|guy|man|student|teammate|coach|professor|stranger|cajera|cajero|mesera|mesero|chica|mujer|tipo|hombre|estudiante|entrenador|entrenadora|profesor|profesora|desconocido|desconocida|they|them)\b/.test(text) || (femaleActor&&/\b(?:she|her)\b/.test(text));
+  const acknowledgesAction = /\b(?:flirt|smile|answer|reply|respond|thank|decline|ignore|look(?:s|ed)? (?:at|toward)|turn(?:s|ed)? (?:to|toward)|acknowledge|coquete|sonri|sonrí|responde|contesta|agradece|rechaza|ignora|mira|se gira)\b/.test(text);
+  return !acknowledgesActor && !acknowledgesAction;
+}
+
 export function groundedRealityIssues({ reply = "", latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], character = {} } = {}) {
   const issues = [];
   if (hasDeclaredStateDisbelief(reply, recentUserMessages, latestUserMessage)) issues.push("declared_state_disbelief");
@@ -149,6 +162,7 @@ export function groundedRealityIssues({ reply = "", latestUserMessage = "", rece
   if (hasSpecificityEscalation(reply, recentUserMessages, recentCharacterReplies, character)) issues.push("specificity_escalation");
   if (hasInvisibleHistoryClaim(reply, recentUserMessages, recentCharacterReplies, character)) issues.push("invisible_history_claim");
   if (hasNarrativeNaturalismOverwrite(reply, latestUserMessage)) issues.push("narrative_naturalism_overwrite");
+  if (hasUserAuthoredSceneBeatIgnored(reply, latestUserMessage)) issues.push("user_authored_scene_beat_ignored");
   return [...new Set(issues)];
 }
 

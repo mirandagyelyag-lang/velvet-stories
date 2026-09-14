@@ -2960,6 +2960,9 @@ USER POV PRIVACY / ASTERISK BOUNDARY — ABSOLUTE
 
 LATEST USER TURN — HIGHEST AUTHORITY
 ${latest || "none; this is an opening"}
+- USER-AUTHORED SCENE BEAT 3.52.9: when the user introduces a place, time skip, person, entrance, action, flirtation, interruption, discovery, or situation, it becomes immediate scene canon. Apply it in this reply. Never silently discard it because another internal thread seems preferable.
+- The character still owns their reaction: they may engage, refuse, ignore, leave, challenge, or redirect—but the reply must visibly acknowledge that the authored event happened. Deliberate ignoring must itself be shown; omission is not a choice.
+- If the user introduces someone flirting with a character who canonically likes the user, let the interaction exist for a real beat and reveal the character's specific availability and differential treatment. Do not auto-humiliate/delete the admirer, do not invent jealousy for the user, and do not hide the established attraction either.
 
 FRESHNESS
 Recent character openings: ${recentOpenings}
@@ -3085,6 +3088,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     social_role_assignment_broken: "Restore who wants whom, who received what, and who is only helping. Fix pronouns.",
     latest_user_scene_ignored: "Move the camera to the latest user-established scene and honor every staged event in order.",
     latest_user_scene_not_applied: "Continue in the latest user-established location, even if the primary character is absent.",
+    user_authored_scene_beat_ignored: "The user explicitly introduced a person, action, interaction, or event into the current scene. Treat it as immediate canon and respond to it now. The character may engage, refuse, ignore, or redirect in-character, but that choice must be visible; never behave as if the authored beat did not occur.",
     unsupported_prior_event_claim: "Delete the invented prior message, promise, handoff, invitation, or shared event.",
     false_memory_claim: "Delete the unsupported remembered event. A confident recollection is not evidence; keep only past events grounded in visible transcript, creator/canon memory, milestone, consequence, chapter/recap or valid scoped knowledge.",
     resolved_thread_reactivated: "Keep the resolved/cancelled thread historical rather than active. Do not schedule, threaten or reopen it unless a new visible cause truly reactivates it.",
@@ -5894,6 +5898,7 @@ const CONTINUITY_GUARD_ISSUES = new Set([
   "invented_scene_object_state",
   "latest_user_scene_not_applied",
   "latest_user_scene_ignored",
+  "user_authored_scene_beat_ignored",
   "unsolicited_offscreen_lead_contact",
 ]);
 const BLOCKING_NARRATIVE_ISSUES = new Set([
@@ -5910,6 +5915,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "secret_knowledge_leak",
   "exposes_system_language",
   "user_staged_scene_retcon",
+  "user_authored_scene_beat_ignored",
   "declared_state_disbelief",
   "semantic_scope_overreach",
   "inference_distance_exceeded",
