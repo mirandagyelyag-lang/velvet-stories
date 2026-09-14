@@ -1639,17 +1639,3 @@ body.velvet-burgundy-route .reference-stories-new {
   body.velvet-burgundy-route .chats-page--reference,
   body.velvet-burgundy-route .reference-inbox { min-height: 0 !important; }
 }
-
-/* v3.52.4: continuous Stories canvas behind the mobile dock. */
-@media (max-width: 760px) {
-  body.velvet-burgundy-route .app,
-  body.velvet-burgundy-route .app__content {
-    background: var(--stories-atmosphere) !important;
-  }
-  body.velvet-burgundy-route .chats-page--reference {
-    box-sizing: border-box;
-    min-height: 100dvh !important;
-    padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important;
-  }
-  body.velvet-burgundy-route .mobile-global-search { display: none !important; }
-}

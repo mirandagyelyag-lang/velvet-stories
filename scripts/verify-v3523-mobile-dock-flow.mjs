@@ -3,7 +3,7 @@ const read=(p)=>fs.readFileSync(p,"utf8");
 const checks=[]; const add=(n,c)=>checks.push([n,!!c]);
 const pkg=JSON.parse(read("package.json"));
 const app=read("src/App.css"); const mobile=read("src/styles/velvet-mobile-foundation.css"); const burg=read("src/styles/velvet-burgundy-reference.css"); const main=read("src/main.jsx");
-add("version 3.52.3",pkg.version==="3.52.3");
+add("version 3.52.x",/^3\.52\.\d+$/.test(pkg.version));
 add("mobile app is column flow",mobile.includes("display:flex!important;flex-direction:column!important;min-height:0!important"));
 add("content owns first order",mobile.includes("order:1!important;min-height:0!important"));
 add("mobile dock follows content",mobile.includes(".mobile-nav{order:2!important;position:sticky!important"));

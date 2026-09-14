@@ -172,7 +172,9 @@ export function admirerAutoNeutralized(value:any="") {
 export function socialGravityIssues({ reply="", recentCharacterReplies=[], engine={}, character={} }:{reply?:string;recentCharacterReplies?:string[];engine?:Record<string,any>;character?:Record<string,unknown>}={}) {
   const issues:string[]=[];
   const identity=deriveSocialWorldIdentity(character);
-  const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-4).join(" ");
+  // Reputation should remain present without becoming a prop every few turns.
+  // A ten-reply cooldown prevents repeated greetings/approaches in one scene.
+  const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-10).join(" ");
   if(engine?.manifestationDue===true && !socialWorldFootprint(`${recent} ${reply}`)) issues.push("world_identity_manifestation_missing");
   if(engine?.approachWindowDue===true && !outsideApproachFootprint(`${recent} ${reply}`)) issues.push("outside_attention_missing");
   if(engine?.lifeContinuityDue===true && !domainLifeFootprint(`${recent} ${reply}`,identity)) issues.push("domain_life_continuity_missing");

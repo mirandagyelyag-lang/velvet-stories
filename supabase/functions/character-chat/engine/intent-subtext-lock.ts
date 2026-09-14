@@ -28,6 +28,29 @@ function wordCount(value = "") {
   return normalized(value).split(/\s+/).filter(Boolean).length;
 }
 
+function narrationTense(value = "") {
+  const narration = normalized(stripQuotedDialogue(value));
+  if (!narration) return "unknown";
+  const past = (narration.match(/\b(?:looked|glanced|turned|shifted|walked|moved|reached|took|opened|closed|pushed|pulled|said|asked|smiled|laughed|nodded|stepped|dropped|leaned|was|were)\b/g) || []).length;
+  const present = (narration.match(/\b(?:looks|glances|turns|shifts|walks|moves|reaches|takes|opens|closes|pushes|pulls|says|asks|smiles|laughs|nods|steps|drops|leans|is|are)\b/g) || []).length;
+  if (past && present) return "mixed";
+  if (past) return "past";
+  if (present) return "present";
+  return "unknown";
+}
+
+function mannerismKeys(value = "") {
+  const narration = normalized(stripQuotedDialogue(value));
+  const patterns = [
+    ["glance", /\b(?:glance|glanced|glances|glancing|look|looked|looks|looking) (?:at|over|toward|back|down|up)\b/],
+    ["grin", /\b(?:grin|grinned|grins|grinning|smirk|smirked|smirks|smirking)\b/],
+    ["shift", /\b(?:shift|shifted|shifts|shifting)\b/],
+    ["turn", /\b(?:turn|turned|turns|turning)\b/],
+    ["head", /\b(?:shook|tilted|cocked) (?:his|her|their) head\b/],
+  ];
+  return patterns.filter(([, pattern]) => pattern.test(narration)).map(([key]) => key);
+}
+
 function evidenceText(recentUserMessages = [], recentCharacterReplies = [], groundedAnchors = [], character = {}) {
   return normalized([
     ...(Array.isArray(recentUserMessages) ? recentUserMessages : []),
@@ -92,6 +115,25 @@ export function hasNarrationPovFlip(reply = "", recentCharacterReplies = [], cha
   return current !== expected;
 }
 
+export function hasNarrationTenseFlip(reply = "", recentCharacterReplies = []) {
+  const current = narrationTense(reply);
+  if (current === "mixed") return true;
+  const modes = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : [])
+    .slice(-6).map(narrationTense).filter((mode) => mode !== "unknown" && mode !== "mixed");
+  if (!modes.length || current === "unknown") return false;
+  const past = modes.filter((mode) => mode === "past").length;
+  const present = modes.filter((mode) => mode === "present").length;
+  const expected = past >= present ? "past" : "present";
+  return Math.max(past, present) >= 2 && current !== expected;
+}
+
+export function hasRepeatedLowSignalMannerism(reply = "", recentCharacterReplies = []) {
+  const current = mannerismKeys(reply);
+  if (!current.length) return false;
+  const recent = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-6);
+  return current.some((key) => recent.filter((item) => mannerismKeys(item).includes(key)).length >= 2);
+}
+
 export function hasRandomActivityFiller(reply = "", latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], character = {}, groundedAnchors = []) {
   const text = normalized(reply);
   if (!text) return false;
@@ -106,6 +148,8 @@ export function hasRandomActivityFiller(reply = "", latestUserMessage = "", rece
     { key: "couple", pattern: /\b(?:a|the) couple (?:at|from|on) (?:the )?(?:next|nearby) table\b/ },
     { key: "stranger", pattern: /\b(?:a|some) (?:guy|girl|student|stranger|employee)\b.{0,70}\b(?:walked over|came over|approached|called out|interrupted)\b/ },
     { key: "ambient interruption", pattern: /\b(?:someone|somebody)\b.{0,55}\b(?:dropped|knocked|called out|walked over|came over|interrupted)\b/ },
+    { key: "vehicle greeting", pattern: /\b(?:car|truck|suv|driver|vehicle)\b.{0,100}\b(?:waved|greeted|honked|called out|flashed (?:its|their) lights)\b|\b(?:waved|greeted|honked)\b.{0,100}\b(?:car|truck|suv|driver|vehicle)\b/ },
+    { key: "named newcomer", pattern: /\b[A-Z][a-z]{2,18}\b.{0,90}\b(?:waved|greeted|called out|came over|walked over|approached)\b/ },
   ];
   for (const candidate of candidates) {
     if (!candidate.pattern.test(text)) continue;
@@ -113,6 +157,8 @@ export function hasRandomActivityFiller(reply = "", latestUserMessage = "", rece
       : candidate.key === "tray" ? ["tray", "glassware", "glasses", "plates"]
       : candidate.key === "couple" ? ["couple", "next table", "nearby table"]
       : candidate.key === "stranger" ? ["guy", "girl", "student", "stranger", "employee"]
+      : candidate.key === "vehicle greeting" ? ["car", "truck", "suv", "driver", "vehicle", "honked", "flashed its lights"]
+      : candidate.key === "named newcomer" ? []
       : ["someone", "somebody", "interrupted"];
     const supported = supportTokens.some((token) => evidence.includes(token));
     const userIntroduced = supportTokens.some((token) => latest.includes(token));
@@ -338,6 +384,8 @@ export function intentSubtextIssues({
 } = {}) {
   const issues = [];
   if (hasNarrationPovFlip(reply, recentCharacterReplies, character?.name || "", intent?.povMode || "")) issues.push("narration_pov_flip");
+  if (hasNarrationTenseFlip(reply, recentCharacterReplies)) issues.push("narration_tense_flip");
+  if (hasRepeatedLowSignalMannerism(reply, recentCharacterReplies)) issues.push("repeated_low_signal_mannerism");
   if (hasRandomActivityFiller(reply, latestUserMessage, recentUserMessages, recentCharacterReplies, character, groundedAnchors)) issues.push("random_activity_filler");
   if (hasFakeSharedDayHistory(reply, recentUserMessages, recentCharacterReplies, groundedAnchors)) issues.push("fake_shared_day_history");
   if (hasGestureBudgetOverflow(reply, latestUserMessage)) issues.push("gesture_budget_overflow");

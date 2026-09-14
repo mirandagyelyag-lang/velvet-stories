@@ -2917,6 +2917,14 @@ FRESHNESS
 Recent character openings: ${recentOpenings}
 Do not reuse their opening gesture, first-line construction, comeback rhythm or signature phrase unless repetition is meaningful.
 
+SCENE CLOCK + ACTION OWNERSHIP 3.52.5
+- Conversation turns are not elapsed travel time. If visible canon calls a drive, walk, class, wait, shift or journey long, remain inside that activity until the user supplies an elapsed-time marker or explicitly arrives. Dialogue alone cannot teleport the scene to the destination.
+- Start from the final physical state already established. Never replay the user's completed action or instruct them to do what they just visibly did.
+- Keep the established narration tense and POV for the whole story.
+- Across the last six character turns, a glance/look, grin/smirk, shift, turn or head gesture used twice is unavailable. Stillness or dialogue-only is preferred.
+- Reputation is background causality, not a parade. Never invent a named acquaintance, greeting car, horn, wave, admirer or interruption to prove popularity, especially during SILENT_CONTINUE or while reputation is the topic. After one grounded social manifestation, allow at least ten character replies before another unless the user introduces it.
+- Do not accelerate intimacy merely because the user teases or asks about the relationship. Preserve existing disclosure cost, mixed signals and pace.
+
 HIDDEN STATE OUTPUT
 - mind_update is ${character.name}'s SUBJECTIVE mind after this beat. know = supported facts only. believe may be wrong. misunderstand contains a plausible current error, or empty string. want/avoid/wont_admit/outside_priority and short/mid/long goals must describe this character, not the user. Goals should persist unless an on-page event changes them. attachment_pattern is behavioral shorthand only. microvoice changes slowly. emotion_trigger → emotion_interpretation → current_emotion → behavioral_pressure must form a supported causal chain. anticipated_next/private_intention/expected_outcome/feared_outcome are private forecasts, never guaranteed facts. behavioral_pattern and conflict_pattern require transcript evidence. public_private_mode describes context, not a new personality.
 - connection_updates only records relationships BETWEEN named characters that were evidenced or materially changed. Never invent a bond just to fill the array.
@@ -3058,6 +3066,8 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     initiative_budget_overflow: "Reduce to one grounded character choice or, on a larger turn, at most the allowed small sequence. Do not stack actions merely to prove agency.",
     forced_scene_continuation_hook: "Let the beat land or end. Remove trailer-style teases, surprise buzzes, arrivals, or mandatory continuation hooks that were not caused by canon.",
     narration_pov_flip: "Keep narration in the already-established first- or third-person mode. Do not alternate character-name/he-she narration with I/me narration across turns.",
+    narration_tense_flip: "Keep narration in the established tense. Do not alternate past and present, and never mix both inside one reply.",
+    repeated_low_signal_mannerism: "Delete the recycled glance, grin, smirk, shift, turn or head gesture. Use no physical action unless the current beat materially requires one.",
     random_activity_filler: "Delete the invented ambient interruption. Continue from the character's active motive or allow silence; do not use a waiter, tray, phone, passerby, door, or surprise NPC to fill a conversational pause.",
     fake_shared_day_history: "Remove the fabricated shared-day callback. Do not imply a streak of bad luck, repeated event, or shared history unless it exists in visible canon.",
     gesture_budget_overflow: "Cut low-signal choreography. Keep at most one useful gesture in a short turn and let dialogue/stillness carry the rest.",
@@ -5693,7 +5703,7 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const agencyHard = ["agency_commitment_inertia_break", "gratuitous_external_hook", "initiative_budget_overflow", "forced_scene_continuation_hook"];
   const physicsHard = ["body_state_redundant_transition", "spatial_anchor_teleport", "object_possession_break", "object_state_rewind", "line_of_sight_violation", "interaction_geometry_violation", "precise_time_invention", "unsupported_elapsed_time_claim", "door_state_continuity_break"];
   const physicsRepair = [...physicsHard, "repeated_action_fingerprint"];
-  const intentHard = ["narration_pov_flip", "random_activity_filler", "fake_shared_day_history", "gesture_budget_overflow", "obligatory_banter_exit", "intent_thread_abandoned", "dead_ack_after_nonverbal_cue"];
+  const intentHard = ["narration_pov_flip", "narration_tense_flip", "repeated_low_signal_mannerism", "random_activity_filler", "fake_shared_day_history", "gesture_budget_overflow", "obligatory_banter_exit", "intent_thread_abandoned", "dead_ack_after_nonverbal_cue"];
   const chemistryHard = ["jealousy_without_grounded_evidence", "generic_jealousy_clone", "premature_relationship_escalation", "romance_used_to_skip_repair", "conflict_residue_erased", "vulnerability_hangover_erased", "third_party_relationship_mindread"];
   const embodiedHard = ["embodied_state_ignored", "banter_overrides_embodied_state", "chemistry_overrides_embodied_state", "care_hijacks_user_agency", "private_embodied_label_claim"];
   const sceneIntelligenceHard = ["decorative_environment_filler", "forced_scene_extension", "reentry_transient_state_leak", "unearned_world_collision", "scene_stagnation_loop", "silence_overwritten", "environment_wallpaper_overload"];
@@ -5869,6 +5879,8 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "unsupported_elapsed_time_claim",
   "door_state_continuity_break",
   "narration_pov_flip",
+  "narration_tense_flip",
+  "repeated_low_signal_mannerism",
   "random_activity_filler",
   "fake_shared_day_history",
   "gesture_budget_overflow",
@@ -6808,6 +6820,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
     intent: options.turnContract?.characterIntentEngine || {},
   });
   if (intentIssuesForScore.includes("narration_pov_flip")) score -= 28;
+  if (intentIssuesForScore.includes("narration_tense_flip")) score -= 28;
+  if (intentIssuesForScore.includes("repeated_low_signal_mannerism")) score -= 24;
   if (intentIssuesForScore.includes("random_activity_filler")) score -= 24;
   if (intentIssuesForScore.includes("fake_shared_day_history")) score -= 28;
   if (intentIssuesForScore.includes("gesture_budget_overflow")) score -= 18;
