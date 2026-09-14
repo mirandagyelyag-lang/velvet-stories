@@ -303,9 +303,11 @@ export function CharactersProvider({ children }) {
       }
       const opening = String(data?.opening || "").trim();
       const instantWords = opening.split(/\s+/).filter(Boolean);
+      const leakedTemplate = /\b(?:between you sits|their response carries|without turning it into a performance|neither a stranger nor a convenient accident|what happens next depends on what you choose to say)\b/i.test(opening);
+      const genericInstantStory = /\b(?:flickering neon|the kind of .{0,55} (?:he|she|they) usually reserved for|expression shifted from .{0,80} to something (?:much )?softer|gaze lingering .{0,30} too long|spotting you (?:near|by|at|beside)|poor life choices)\b/i.test(opening);
       const visiblyComplete = /[.!?…][\"'”’)]?$/.test(opening) && !/[’'][A-Za-z]{0,2}$/.test(opening);
       if (!opening) throw new Error("Velvet returned an empty Instant Story. Try again.");
-      if (instantWords.length < 130 || !visiblyComplete) {
+      if (instantWords.length < 130 || !visiblyComplete || leakedTemplate || genericInstantStory) {
         throw new Error("Velvet received a cut-off Instant Story instead of a complete opening. Try again.");
       }
       return opening;

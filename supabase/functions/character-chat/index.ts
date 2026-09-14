@@ -1287,7 +1287,6 @@ function compactInstantStoryDraft(draft) {
 }
 
 const INSTANT_STORY_NON_ACADEMIC_SCENES = [
-  "a late-night convenience store run with a concrete reason to be there",
   "a quiet neighborhood street after separate plans have just ended",
   "a crowded restaurant or takeout counter where something practical brings them together",
   "a grocery store or market during an ordinary errand",
@@ -1315,21 +1314,48 @@ function instantStorySceneSeed(draft, idea = "") {
 }
 
 function instantStoryFallbackOpening(draft, idea = "", sceneSeed = "") {
-  const name = cleanPromptValue(draft?.name, 70) || "They";
-  const role = cleanPromptValue(draft?.role, 90) || "their own demanding life";
-  const relationship = cleanPromptValue(draft?.relationship, 180) || "a history neither of you usually explains out loud";
-  const personality = cleanPromptValue(draft?.personality, 160) || "a private, unmistakable way of handling pressure";
-  const cleanIdea = cleanPromptValue(idea, 180);
-  const setting = cleanIdea || cleanPromptValue(sceneSeed, 150) || "an ordinary plan away from school";
-  return `${name} is already in the middle of ${setting}, occupied with something connected to ${role} rather than waiting around for anyone. A practical complication changes the next few minutes, but not their entire day. Between you sits ${relationship}; it affects what ${name} notices and what they choose not to say. Their response carries ${personality}, without turning it into a performance.
+  const name = cleanPromptValue(draft?.name, 70) || "Alex";
+  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
+  const male=/\b(?:he|him|his|boyfriend|man|guy|king|prince)\b/.test(profile);
+  const female=/\b(?:she|her|hers|girlfriend|woman|girl|queen|princess)\b/.test(profile);
+  const subject=male?"he":female?"she":"they";
+  const object=male?"him":female?"her":"them";
+  const possessive=male?"his":female?"her":"their";
+  const Subject=subject[0].toUpperCase()+subject.slice(1);
+  const openInterest=/\b(?:likes you|likes the user|has feelings for you|attracted to you|into you|flirts openly|never hidden|le gustas|siente algo por ti)\b/.test(profile);
+  const closeFriends=/\b(?:close friends|best friends|same group|friend group|friends for years|group of eight)\b/.test(profile);
 
-“You’re here.”
+  if(/\b(?:race|racing|racer|garage|street race|driver|mechanic)\b/.test(profile)) return `The garage door was only halfway open, leaving a stripe of evening light across the concrete while ${name} stood beside the car with a socket wrench in one hand and a parts invoice in the other. The replacement belt had arrived in the right box and the wrong size, which meant the car could stay dismantled overnight or someone could make the drive back to the supplier before it closed. ${Subject} checked the stamped number once more, then set the useless part on the workbench.
 
-${name} finishes the practical thing in front of them before giving you their full attention. There is a concrete reason the two of you need to deal with each other now, and neither a stranger nor a convenient accident has manufactured it.
+“They sent the wrong one.”
 
-“I was going to handle this without dragging you into it.” The admission is incomplete on purpose, held back by the way ${name} normally protects what matters. “That plan isn’t going to work now.”
+${name} held out the invoice so you could see the mismatch for yourself. Grease marked ${possessive} wrist, but ${subject} had already cleared the passenger seat and put the keys beside your usual drink. ${openInterest ? `${Subject} did not bother pretending either detail was accidental.` : `${Subject} kept the decision practical.`}
 
-They make room for your answer instead of deciding it for you. The situation is already moving, the relationship has something real at stake, and what happens next depends on what you choose to say.`;
+“I can leave the car here and deal with it tomorrow,” ${subject} said, “or we go now and make them fix it tonight.”
+
+${Subject} picked up the keys but did not head for the door yet. “If you come with me, you choose the music. That is the only generous offer you’re getting.”`;
+
+  if(closeFriends||/\b(?:campus king|campus prince|popular|heartthrob|social)\b/.test(profile)) return `The apartment kitchen had become the unofficial supply station for the evening, and ${name} was standing behind the island sorting takeout containers while the rest of the group argued in the living room. Two drinks were missing, one order had been labeled incorrectly, and the restaurant had stopped answering its phone. ${name} checked the receipt, separated the food that was still warm, and pushed one untouched container away from the others before anyone could claim it.
+
+“They forgot yours.”
+
+${Subject} said it without looking at the label again. ${closeFriends ? `After years in the same group, ${subject} knew your order well enough to catch the mistake before you did.` : `${Subject} had noticed the mistake before anyone else.`} ${openInterest ? `The fact that ${subject} had also ordered a spare of the thing you usually chose was much harder to explain as coincidence.` : `${Subject} had kept a spare option aside.`}
+
+“You can take mine,” ${name} said, already reaching for ${possessive} keys, “or I can go back and make them fix it.”
+
+A friend called from the next room asking whether everything was ready. ${name} answered, “Almost,” then looked to you instead of making the decision alone. “Which one?”`;
+
+  return `${name} was at the kitchen counter with a phone propped beside an open notebook, finishing a task that had clearly started before you entered the room. A delivery had arrived with one item missing, and the confirmation email offered only two options: accept the incomplete order tonight or collect the replacement in person before closing. ${Subject} crossed out the useless order number and called the shop once more. It went straight to voicemail.
+
+“Of course it did.”
+
+${name} set the phone down and slid the email across the counter where you could read it. ${Subject} had already gathered ${possessive} keys and jacket, but ${subject} had not decided whether the errand was worth losing the rest of the evening.
+
+“I can leave it until tomorrow,” ${subject} said. “That would be the sensible option.”
+
+The keys stayed in ${possessive} palm. ${Subject} glanced toward the door, then back at you. “Unfortunately, I’m considering the stupid option.”
+
+${name} waited a beat. “Tell me whether you want the quiet evening or the drive. I can live with either.”`;
 }
 
 async function handleInstantStory({ apiKey, draft, idea }) {
@@ -1342,12 +1368,17 @@ INSTANT STORY QUALITY CONTRACT 3.52.6
 - Build one coherent scene with a concrete activity already underway, a grounded reason these two people interact now, a small source of pressure/tension, and a final opening the user can naturally answer.
 - Use the character's actual occupation, social world, habits, contradictions, relationship history, affection style, conflict style and voice fingerprint. At least THREE details must be impossible to swap onto a random attractive character.
 - Preserve the established relationship stage. Do not manufacture instant intimacy, confessions, pet names, possessiveness, hostility, flirting or physical contact.
+- If the profile explicitly says the character already likes the user, flirts openly, or goes out of their way for them, make that established attraction clearly perceptible through one specific choice or cost. Do not erase it in the name of slow burn.
+- Output ONLY finished story prose. Never print, paraphrase, splice, or expose profile fields, scene-seed alternatives, quality-contract language, instructions, placeholders, or phrases such as “Between you sits,” “Their response carries,” “concrete reason,” or “what happens next depends on what you choose.”
 - Give the character an independent purpose that would exist without the user. The user may affect it, but must not become the center of the entire world.
 - Use 3-6 purposeful narration sentences and 3-7 natural spoken lines or fragments. Dialogue should carry personality; narration should carry physical situation and consequence.
 - Write only the character, established NPCs and observable environment. Never write the user's dialogue, thoughts, feelings, decisions, reaction, arrival, posture or unstaged movement.
 - Do not begin with “Hey,” “There you are,” “You're late,” “Didn't think you'd come,” “Got a minute?”, an accidental collision, spilled drink, dropped object, seat dispute or generic invitation.
 - Ban generic hooks: “I need you for something,” “something changed,” mysterious unnamed emergencies, surprise messages, arbitrary strangers and cliffhangers that hide the actual premise.
 - No room/weather/outfit inventory, cinematic gaze/smirk/jaw choreography, therapy language, quote-card banter, exposition disguised as dialogue or paragraph fragments masquerading as depth.
+- Do not write convenience-store/energy-drink/jerky/snack-road-trip filler. Do not manufacture a comedic shopping dilemma or an invented named friend to make the character sound social.
+- Never place or move the user inside the opening (“you stood near…”, “spotting you by…”, “you waited…”). Begin only from the character, established NPCs, and environment; leave the user's entrance, position and response unwritten.
+- Do not explain personality with “the kind of focus he reserved for,” “expression shifted from X to softer,” “fluid and purposeful,” or a lingering gaze. Personality and attraction must change an actual decision.
 - Keep one narration POV and one tense throughout. Finish every sentence and quotation. Use the language of the profile or idea.
 - End after the character makes one clear, character-specific move that creates a genuine choice for the user. Do not state that the choice belongs to the user; simply leave room for it.
 
@@ -1409,7 +1440,7 @@ ${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}
       const candidate = data?.candidates?.[0] || {};
       const opening = extractCandidateText(data).trim();
       const finishReason = String(candidate?.finishReason || "");
-      if (!instantStoryLooksComplete(opening, finishReason)) {
+      if (!instantStoryLooksComplete(opening, finishReason, safeDraft)) {
         console.warn("[character-chat] instant story rejected incomplete output", {
           model,
           finishReason,
@@ -1448,7 +1479,12 @@ ${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}
   }
 
   console.warn("[character-chat] instant story using complete local fallback", { durationMs: Date.now() - startedAt });
-  return json({ opening: instantStoryFallbackOpening(safeDraft, cleanIdea, sceneSeed), source: "local_fallback" });
+  const fallbackOpening = instantStoryFallbackOpening(safeDraft, cleanIdea, sceneSeed);
+  if (!instantStoryLooksComplete(fallbackOpening, "STOP", safeDraft)) {
+    console.error("[character-chat] instant story fallback failed quality gate");
+    return json({ error: "Instant Story could not produce a complete opening. Please try again." }, 503);
+  }
+  return json({ opening: fallbackOpening, source: "local_fallback" });
 }
 
 async function handleCharacterGenerate({ apiKey, concept }) {

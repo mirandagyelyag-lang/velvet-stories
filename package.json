@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.52.10",
+  "version": "3.52.12",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,7 +20,7 @@
     "verify:v34": "node --experimental-strip-types scripts/verify-v34-relationship-dynamics.mjs",
     "verify:ambience": "node scripts/verify-ambience.mjs",
     "verify:chat-syntax": "node scripts/verify-chat-syntax.mjs",
-    "verify:current": "node scripts/verify-v3520-whole-app-stabilization.mjs && node scripts/verify-v3523-mobile-dock-flow.mjs && node --experimental-strip-types scripts/verify-v3525-scene-dialogue-integrity.mjs && node --experimental-strip-types scripts/verify-v3526-instant-story-rebuilt.mjs && node --experimental-strip-types scripts/verify-v3527-character-presence-attraction.mjs && node --experimental-strip-types scripts/verify-v3528-alexander-behavioral-proof.mjs && node --experimental-strip-types scripts/verify-v3529-user-authored-scene-control.mjs && node --experimental-strip-types scripts/verify-v35210-life-plan-continuity.mjs",
+    "verify:current": "node scripts/verify-v3520-whole-app-stabilization.mjs && node scripts/verify-v3523-mobile-dock-flow.mjs && node --experimental-strip-types scripts/verify-v3525-scene-dialogue-integrity.mjs && node --experimental-strip-types scripts/verify-v3526-instant-story-rebuilt.mjs && node --experimental-strip-types scripts/verify-v3527-character-presence-attraction.mjs && node --experimental-strip-types scripts/verify-v3528-alexander-behavioral-proof.mjs && node --experimental-strip-types scripts/verify-v3529-user-authored-scene-control.mjs && node --experimental-strip-types scripts/verify-v35210-life-plan-continuity.mjs && node --experimental-strip-types scripts/verify-v35211-instant-story-template-firewall.mjs && node --experimental-strip-types scripts/verify-v35212-instant-story-naturalism.mjs",
     "android:env": "node scripts/prepare-android-env.mjs",
     "android:sync": "npm run android:env && vite build --mode android && npx cap sync android && npm run android:verify",
     "android:verify": "node scripts/verify-android-native.mjs",
