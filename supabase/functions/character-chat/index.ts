@@ -2717,6 +2717,7 @@ Upcoming: ${clean(JSON.stringify(turnContract?.calendarLifeSimulation?.upcomingE
 Recurring routines: ${clean(Array.isArray(turnContract?.calendarLifeSimulation?.recurringRoutines) ? turnContract.calendarLifeSimulation.recurringRoutines.join(" | ") : "none", 900)}
 Availability: ${clean(JSON.stringify(turnContract?.calendarLifeSimulation?.availability || {}), 620)}
 Active plans: ${clean(Array.isArray(turnContract?.calendarLifeSimulation?.activePlans) ? turnContract.calendarLifeSimulation.activePlans.join(" | ") : "none", 760)}
+Live spoken transit: ${clean(JSON.stringify(turnContract?.calendarLifeSimulation?.activeTransitThread || {}), 900)}
 Due commitments: ${clean(Array.isArray(turnContract?.calendarLifeSimulation?.dueCommitments) ? turnContract.calendarLifeSimulation.dueCommitments.join(" | ") : "none", 760)}
 Schedule conflicts: ${clean(Array.isArray(turnContract?.calendarLifeSimulation?.scheduleConflicts) ? turnContract.calendarLifeSimulation.scheduleConflicts.join(" | ") : "none", 620)}
 Rule: ${clean(turnContract?.calendarLifeSimulation?.instruction || "", 1500)}
@@ -2724,6 +2725,7 @@ Rule: ${clean(turnContract?.calendarLifeSimulation?.instruction || "", 1500)}
 - MESSAGE COUNT IS NOT TIME: twelve turns at lunch do not automatically become three hours.
 - ROUTINE ≠ APPOINTMENT: "trains evenings" may affect availability, but it does not create "practice at 6:15 tonight."
 - PLANS PERSIST: an agreed Friday meet/call/ride remains active until completed, cancelled or rescheduled on-page.
+- SPOKEN PLANS COUNT: “you’re driving,” “I’m riding shotgun,” “back to the car,” “hit the highway,” and an established destination create a live travel thread even if no formal plan row exists. Do not replace it with campus errands, lunch, committees, classes or a different destination.
 - AVAILABILITY IS REAL: characters can be busy, late, leave for an established obligation, or offer another time without this automatically meaning rejection.
 - SCHEDULE COLLISIONS MATTER: if two grounded obligations overlap, the character must choose, negotiate, miss, reschedule or face a consequence. Never occupy two places at once.
 - TRAVEL HAS ORDER: departure → transit/compression → arrival. Do not teleport campus ↔ home ↔ track ↔ another city.
@@ -3039,6 +3041,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     due_commitment_erased: "Keep the established due plan or obligation active. Do not make the character magically free or claim they have no plans.",
     schedule_collision_ignored: "A grounded overlap is a real conflict. Let the character choose, reschedule, miss something or acknowledge the clash rather than being in two places at once.",
     travel_time_broken: "Restore geographic order. Do not teleport between locations; use an explicit travel/scene transition before arrival.",
+    active_transit_plan_abandoned: "Restore the live spoken travel plan and the character's role in it. Continue toward the established car, highway and destination with the same companions unless the user explicitly changes, completes, cancels or redirects that plan. Remove invented campus errands, meals, committees and replacement destinations.",
     routine_overprecision: "A broad routine does not create an exact appointment. Remove fabricated day/time precision while preserving the routine.",
     message_count_used_as_clock: "Do not infer hours from the number of messages. Keep elapsed time unspecified unless the story established it.",
     embodied_state_ignored: "The user has a persistent or escalating embodied/energy state. Acknowledge or adapt to it before resuming old banter, flirt momentum or the prior scene objective. Keep the reaction character-specific and small.",
@@ -5765,7 +5768,7 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const discourseHard = ["recent_line_echo", "clarification_echo_before_answer", "phantom_event_claim", "unresolved_reference_claim", "clarification_reference_unresolved", "social_gravity_priority_intrusion"];
   const evolutionHard = ["instant_personality_rewrite", "relationship_personality_replacement", "growth_exposition_without_behavior", "growth_regression_reset", "unearned_offscreen_transformation", "relationship_growth_globalized"];
   const npcEcosystemHard = ["npc_protagonist_orbit_collapse", "npc_puppet_consensus", "telepathic_social_spread", "npc_relationship_history_reset", "recurring_npc_identity_reset", "group_turn_crowding", "ship_bubble_social_erasure", "cross_circle_collision_without_cause", "recurring_npc_fragmentation"];
-  const calendarLifeHard = ["invented_precise_schedule", "unsupported_temporal_language", "time_jump_without_transition", "due_commitment_erased", "schedule_collision_ignored", "travel_time_broken", "routine_overprecision", "message_count_used_as_clock"];
+  const calendarLifeHard = ["invented_precise_schedule", "unsupported_temporal_language", "time_jump_without_transition", "due_commitment_erased", "schedule_collision_ignored", "travel_time_broken", "active_transit_plan_abandoned", "routine_overprecision", "message_count_used_as_clock"];
   const causalTimelineHard = ["unsupported_consequence_without_cause", "active_consequence_magically_reset", "consequence_residue_erased", "rumor_promoted_to_fact", "resolved_or_cancelled_event_reactivated", "major_offscreen_event_without_causal_window", "consequence_budget_overflow", "minor_event_overcanonized"];
   const sceneDirectorHard = ["scene_thread_dump_overload", "dormant_thread_forced_onscreen", "ungrounded_scene_interruption", "user_momentum_hijacked", "cooldown_escalation_spike", "romance_gravity_monopoly", "director_forced_cliffhanger", "group_scene_roll_call", "background_actor_overactivation", "screen_time_selection_bypassed", "scene_pattern_recycled"];
   const longStoryMemoryHard = ["false_memory_claim", "resolved_thread_reactivated", "perspective_memory_leak", "memory_conflict_overclaim"];

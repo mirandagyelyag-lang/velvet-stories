@@ -327,6 +327,7 @@ export type StoryContract = {
     lifeDomains: string[];
     availability: { state:"available"|"occupied"|"unknown"; reason:string; policy:string };
     activePlans: string[];
+    activeTransitThread: { active:boolean; anchor:string; destination:string; policy:string };
     dueCommitments: string[];
     scheduleConflicts: string[];
     travelConstraints: string[];
@@ -2337,6 +2338,7 @@ export function storyContractPrompt(contract: StoryContract) {
       lifeDomains: take(contract.calendarLifeSimulation.lifeDomains, 6),
       availability: contract.calendarLifeSimulation.availability,
       activePlans: take(contract.calendarLifeSimulation.activePlans, 6),
+      activeTransitThread: contract.calendarLifeSimulation.activeTransitThread,
       dueCommitments: take(contract.calendarLifeSimulation.dueCommitments, 6),
       scheduleConflicts: take(contract.calendarLifeSimulation.scheduleConflicts, 5),
       travelConstraints: take(contract.calendarLifeSimulation.travelConstraints, 4),

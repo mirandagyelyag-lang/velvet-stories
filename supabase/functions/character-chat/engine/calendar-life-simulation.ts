@@ -14,6 +14,7 @@ export type CalendarLifeSimulation = {
   lifeDomains: string[];
   availability: { state:"available"|"occupied"|"unknown"; reason:string; policy:string };
   activePlans: string[];
+  activeTransitThread: { active:boolean; anchor:string; destination:string; policy:string };
   dueCommitments: string[];
   scheduleConflicts: string[];
   travelConstraints: string[];
@@ -170,6 +171,21 @@ function temporalAnchors(args:Args){
   return uniq(rows).slice(0,14);
 }
 
+function inferActiveTransit(messages:Array<Record<string,any>>=[]){
+  const recent=list(messages).slice(-16).map((m:any)=>text(m?.content||m?.text||"")).filter(Boolean);
+  const transitions=/\b(?:we arrived|when we arrived|pulled up at|reached the|got to the|back at the cabin|arrived at the cabin|trip was over|drive was over|cancel(?:led)? the trip|not going anymore)\b/i;
+  const plan=/\b(?:road trip|drive back|driving back|back to the car|get back to the car|hit the highway|on the highway|riding shotgun|ride shotgun|you'?re driving|you are driving|cabin)\b/i;
+  let anchor="";
+  for(let i=recent.length-1;i>=0;i--){
+    if(transitions.test(recent[i])) return {active:false,anchor:"",destination:"",policy:"No unresolved transit plan detected."};
+    if(plan.test(recent[i])) { anchor=recent[i]; break; }
+  }
+  const destination=/\bcabin\b/i.test(anchor)?"cabin":/\b(?:car|shotgun|driv|highway|road trip)\b/i.test(anchor)?"car/highway destination":"";
+  return anchor
+    ? {active:true,anchor:text(anchor).slice(0,360),destination,policy:"This spoken travel plan is live canon. Keep departure, vehicle roles, companions and destination coherent until arrival, cancellation, rescheduling, or an explicit user-authored transition."}
+    : {active:false,anchor:"",destination:"",policy:"No unresolved transit plan detected."};
+}
+
 export function deriveCalendarLifeSimulation(args:Args={}):CalendarLifeSimulation{
   const clock=inferClock(args.sceneState||{},args.recentMessages||[]);
   const events=list(args.calendarEvents).filter((e:any)=>!/^cancel/i.test(text(e?.status))).map((e:any)=>normalizeEvent(e,clock)).slice(0,14);
@@ -191,6 +207,7 @@ export function deriveCalendarLifeSimulation(args:Args={}):CalendarLifeSimulatio
     lifeDomains:lifeDomains(args.character||{}),
     availability,
     activePlans:plans,
+    activeTransitThread:inferActiveTransit(args.recentMessages||[]),
     dueCommitments,
     scheduleConflicts:detectConflicts(events),
     travelConstraints:uniq([text(args.sceneState?.location)?`Current location: ${text(args.sceneState?.location)}`:"","Location changes require a narrated departure/transit/arrival bridge unless a scene transition explicitly compresses travel."]).filter(Boolean).slice(0,5),
@@ -210,6 +227,7 @@ export function deriveCalendarLifeSimulation(args:Args={}):CalendarLifeSimulatio
 function hasSupport(needle:string, engine:Partial<CalendarLifeSimulation>={}, latest=""){
   const n=norm(needle); if(!n) return false;
   const hay=norm([latest,...list(engine.temporalAnchors),...list(engine.upcomingEvents).flatMap((e:any)=>[e?.title,e?.storyTime,e?.details]),...list(engine.activePlans),...list(engine.recurringRoutines)].join(" | "));
+  if(!hay) return false;
   return hay.includes(n) || n.includes(hay);
 }
 function userTransition(latest:string){return /\b(?:later|after(?:ward|wards)?|the next day|next morning|that night|hours? later|days? later|weeks? later|tomorrow|the following|time skip|fast forward|when we arrived|when i got|when we got|i leave|i left|we leave|we left)\b/i.test(latest);}
@@ -217,7 +235,7 @@ function userTransition(latest:string){return /\b(?:later|after(?:ward|wards)?|t
 export function calendarLifeSimulationIssues(args:IssueArgs={}):string[]{
   const reply=text(args.reply), engine=args.engine||{}, latest=text(args.latestUserMessage); if(!reply) return [];
   const issues:string[]=[];
-  const precise=[...reply.matchAll(/\b(?:at\s+)?((?:1[0-2]|[1-9])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)|(?:[01]?\d|2[0-3]):[0-5]\d)\b/gi)].map((m)=>text(m[1]));
+  const precise=[...reply.matchAll(/\b(?:at\s+)?((?:1[0-2]|[1-9])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)|(?:[01]?\d|2[0-3]):[0-5]\d|at\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve))\b/gi)].map((m)=>text(m[1]));
   if(precise.some((t)=>!hasSupport(t,engine,latest))) issues.push("invented_precise_schedule");
 
   const relativeClaims=[...reply.matchAll(/\b(yesterday|tomorrow|tonight|last night|last week|next week|this friday|this saturday|this sunday|three hours later|two hours later|an hour later|hours later|days later|weeks later)\b/gi)].map((m)=>text(m[1]));
@@ -240,6 +258,15 @@ export function calendarLifeSimulationIssues(args:IssueArgs={}):string[]{
   }
 
   if(/\b(?:we've been here for hours|we have been here for hours|it's been hours)\b/i.test(reply) && !hasSupport("hours",engine,latest) && !/hours?/i.test(latest)) issues.push("message_count_used_as_clock");
+
+  if(engine.activeTransitThread?.active&&!userTransition(latest)){
+    const r=norm(reply);
+    const plan=norm(`${engine.activeTransitThread.anchor} ${engine.activeTransitThread.destination}`);
+    const roadPlan=/\b(?:road trip|highway|cabin|car|driv|shotgun)\b/.test(plan);
+    const unrelatedCampusDetours=[/\bquad\b/,/\bdorm(?:s|itory)?\b/,/\bcafeteria\b/,/\bgrab(?:bing)? lunch\b/,/\bdorm committee\b/].filter((p)=>p.test(r)).length;
+    const preservesTransit=/\b(?:car|drive|driving|highway|road|cabin|shotgun|parking lot|gas station|checkout|others|group)\b/.test(r);
+    if(roadPlan&&unrelatedCampusDetours>=1&&!preservesTransit) issues.push("active_transit_plan_abandoned");
+  }
 
   return uniq(issues);
 }
