@@ -3036,6 +3036,10 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
   const issueDirections = {
     immediate_user_choice_overridden: "Honor the user's literal selection or refusal. The character may respond in voice, but must not push, hand back, impose, or substitute the option the user just declined.",
     immediate_event_truth_rewritten: "Keep the immediately preceding event facts unchanged. Do not replace a missing or mistaken order plus a different spare item with a new claim that two identical orders were intentional.",
+    immediate_object_ownership_rewritten: "Track the user's last explicit possession. If the user carried their own food into the room, the character cannot pass that food back without an on-page transfer.",
+    dangling_scene_reference: "Replace the dangling pronoun with the concrete seat or object already established. Never write 'onto it' before naming what 'it' is.",
+    unsupported_future_callback: "Remove the unexplained reference to later. A future meal, dessert, plan, promise, or event exists only if visible canon established it.",
+    opening_attraction_thread_dropped: "Carry the opening's established attraction through one small character-specific choice. Do not reset into generic distance; show selective attention, access, memory, or effort without overriding the user.",
     personality_performance_override: "Stop performing the character archetype. Answer the actual conversational job first, then let personality affect only wording and degree of disclosure. For a direct WHY question, give a grounded reason, partial truth, or referential evasion tied to the real prior action. Remove screenplay punchlines, mock duties, metaphorical pretexts, self-branding, and polished mini-monologues. Plain human speech is preferred.",
     human_mind_dialogue_artifice: "Rebuild from the live conversational job and character state. Keep private motive private unless disclosure is earned. Preserve active emotional residue, answer or meaningfully resist the actual topic, remove quote-card banter, unnecessary metaphors, therapy-speak, compulsory flirtation, repeated names, and polished hooks. Prefer the shortest ordinary line that still belongs to this character.",
 
@@ -5931,6 +5935,10 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
 const CONTINUITY_GUARD_ISSUES = new Set([
   "immediate_user_choice_overridden",
   "immediate_event_truth_rewritten",
+  "immediate_object_ownership_rewritten",
+  "dangling_scene_reference",
+  "unsupported_future_callback",
+  "opening_attraction_thread_dropped",
   "location_changed_without_scene_change",
   "time_changed_without_scene_change",
   "present_character_silently_dropped",
@@ -5948,6 +5956,10 @@ const CONTINUITY_GUARD_ISSUES = new Set([
 const BLOCKING_NARRATIVE_ISSUES = new Set([
   "immediate_user_choice_overridden",
   "immediate_event_truth_rewritten",
+  "immediate_object_ownership_rewritten",
+  "dangling_scene_reference",
+  "unsupported_future_callback",
+  "opening_attraction_thread_dropped",
   "empty_reply",
   "truncated_by_model",
   "unfinished_reply",
@@ -7050,7 +7062,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
   for (const issue of meaningfulTurnGateV34950Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
-  for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
