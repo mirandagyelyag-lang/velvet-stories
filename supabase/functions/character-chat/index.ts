@@ -423,6 +423,7 @@ Deno.serve(async (request) => {
     return streamRoleplayV19({
       apiKey,
       prompt,
+      messages,
       character: configuredCharacter,
       latestUserMessage,
       turnIntent,
@@ -7734,6 +7735,7 @@ function relationshipStateFromDevelopment(development = {}, previous = {}) {
 async function streamRoleplayV19({
   apiKey,
   prompt,
+  messages,
   character,
   latestUserMessage,
   turnIntent,
