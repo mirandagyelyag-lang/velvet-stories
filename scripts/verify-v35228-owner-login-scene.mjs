@@ -12,7 +12,7 @@ const scenePath = join(root, "public/velvet-owner-login-scene.png");
 const sceneHash = existsSync(scenePath) ? createHash("sha256").update(readFileSync(scenePath)).digest("hex") : "";
 
 const checks = [
-  ["version is 3.52.30", pkg.version === "3.52.30"],
+  ["version is 3.52.31", pkg.version === "3.52.31"],
   ["exact owner login artwork ships with the app", existsSync(scenePath) && statSync(scenePath).size > 500_000],
   ["owner artwork is the exact approved image", sceneHash === "223b3c52abc874e7e2772eb65922d91fa08af6b42ab467b7c33aace0f8719507"],
   ["auth renders the owner artwork directly", auth.includes('/velvet-owner-login-scene.png') && auth.includes('auth__owner-stage')],

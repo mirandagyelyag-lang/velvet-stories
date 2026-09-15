@@ -10,7 +10,7 @@ const width = png.readUInt32BE(16);
 const height = png.readUInt32BE(20);
 
 const checks = [
-  ["version is 3.52.30", pkg.version === "3.52.30"],
+  ["version is 3.52.31", pkg.version === "3.52.31"],
   ["artwork dimensions are read correctly", width === 1672 && height === 941],
   ["stage uses the artwork's real aspect ratio", css.includes("aspect-ratio: 1672 / 941") && css.includes("177.683dvh")],
   ["password hitbox is calibrated to the artwork", css.includes("left: 34.33%") && css.includes("top: 59.40%") && css.includes("height: 6.91%")],

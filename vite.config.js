@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 const velvetVersion = pkg.version;
-const velvetRelease = "Velvet Rose Icon";
+const velvetRelease = "Velvet Rose · No Frame";
 const velvetBuildTime = new Date().toISOString();
 
 export default defineConfig(({ mode }) => {
@@ -53,12 +53,12 @@ export default defineConfig(({ mode }) => {
         registerType: "autoUpdate",
         injectRegister: "auto",
         includeAssets: [
-          "velvet-rose-v1-favicon.png",
-          "velvet-rose-v1-apple-180.png",
-          "velvet-rose-v1-64.png",
-          "velvet-rose-v1-192.png",
-          "velvet-rose-v1-512.png",
-          "velvet-rose-v1-maskable-512.png",
+          "velvet-rose-no-frame-favicon.png",
+          "velvet-rose-no-frame-apple-180.png",
+          "velvet-rose-no-frame-64.png",
+          "velvet-rose-no-frame-192.png",
+          "velvet-rose-no-frame-512.png",
+          "velvet-rose-no-frame-maskable-512.png",
         ],
         manifest: {
           id: "/",
@@ -80,14 +80,14 @@ export default defineConfig(({ mode }) => {
               name: "Open stories",
               short_name: "Stories",
               url: "/?open=chats",
-              icons: [{ src: "velvet-rose-v1-192.png", sizes: "192x192", type: "image/png" }],
+              icons: [{ src: "velvet-rose-no-frame-192.png", sizes: "192x192", type: "image/png" }],
             },
           ],
           icons: [
-            { src: "velvet-rose-v1-64.png", sizes: "64x64", type: "image/png", purpose: "any" },
-            { src: "velvet-rose-v1-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-            { src: "velvet-rose-v1-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-            { src: "velvet-rose-v1-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+            { src: "velvet-rose-no-frame-64.png", sizes: "64x64", type: "image/png", purpose: "any" },
+            { src: "velvet-rose-no-frame-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: "velvet-rose-no-frame-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: "velvet-rose-no-frame-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
           ],
         },
         workbox: {
@@ -101,7 +101,7 @@ export default defineConfig(({ mode }) => {
           runtimeCaching: [
             {
               urlPattern: ({ request, url }) =>
-                request.destination === "image" && !url.pathname.includes("velvet-rose-v1-") && !url.pathname.includes("velvet-loading-entry"),
+                request.destination === "image" && !url.pathname.includes("velvet-rose-no-frame-") && !url.pathname.includes("velvet-loading-entry"),
               handler: "CacheFirst",
               options: {
                 cacheName: "velvet-images",
