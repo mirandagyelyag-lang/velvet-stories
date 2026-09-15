@@ -42,3 +42,20 @@ export function establishedAttractionOpportunityIssues({ reply = "", latestUserM
   if (/\bpass the buck\b/.test(normalize(reply))) issues.push("delegated_social_task_condescension");
   return issues;
 }
+
+export function buildGroundedLastResortReply({ character = {}, latestUserMessage = "", issues = [] } = {}) {
+  const name = String(character?.name || "The character").trim() || "The character";
+  const normalizedTurn = normalize(latestUserMessage);
+  const failures = new Set(Array.isArray(issues) ? issues : []);
+
+  if (failures.has("chosen_time_attraction_flattened") || failures.has("delegated_social_task_condescension")) {
+    return `“Fine. I’ll handle them.” ${name} starts toward the others, then looks back at you. “Wait for me. I want to do this with you.”`;
+  }
+  if (/\b(?:dont|do not|no|stop|leave it|never mind|won t|wont|can t|cant)\b/.test(normalizedTurn)) {
+    return `${name} stops instead of pushing the point. “Okay. I heard you.”`;
+  }
+  if (/\?$|\b(?:what|why|who|where|when|how|which)\b/.test(normalizedTurn)) {
+    return `${name} takes a moment before answering. “I’m not sure yet. Let me be honest about that.”`;
+  }
+  return `${name} lets the moment settle without deciding anything for you. “All right. I’m listening.”`;
+}

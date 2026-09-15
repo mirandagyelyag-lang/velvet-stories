@@ -11,13 +11,14 @@ assert.doesNotMatch(protectedFlow, /streamFinalReply\(result\.reply, "repair-rea
 assert.doesNotMatch(protectedFlow, /streamFinalReply\(result\.reply, "repair-timeout-fallback"\)/);
 assert.match(protectedFlow, /protected reply remained invalid; starting compact final rescue/);
 assert.match(protectedFlow, /const rescueBlocking = blockingNarrativeIssues\(rescueIssues\)/);
-assert.match(protectedFlow, /throw new Error\("Velvet could not produce a coherent reply without contradicting your latest turn\."\)/);
+assert.match(protectedFlow, /buildGroundedLastResortReply/);
+assert.doesNotMatch(protectedFlow, /Velvet could not produce a coherent reply without contradicting your latest turn/);
 assert.match(protectedFlow, /streamFinalReply\(result\.reply, "validated-protected-final"\)/);
 assert.ok(protectedFlow.indexOf("compact final rescue rejected") < protectedFlow.indexOf("validated-protected-final"));
 
 console.log("PASS  bounded repair receives the compact visible-canon prompt");
 console.log("PASS  rejected repair and timeout drafts are never streamed early");
 console.log("PASS  persistent violations trigger one compact final rescue");
-console.log("PASS  the final rescue is validated before display");
+console.log("PASS  the final rescue is validated and safely grounded before display");
 console.log("PASS  no rejected protected reply can cross the display barrier");
 console.log("\n5 hard quality-barrier checks passed.");

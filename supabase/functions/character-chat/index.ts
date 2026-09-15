@@ -40,7 +40,7 @@ import { buildMicroContinuityV34945, microContinuityV34945Issues } from "./engin
 import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engine/turn-state-ledger-v34946.js";
 import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
 import { immediateTurnContinuityIssues } from "./engine/immediate-turn-continuity-v35213.js";
-import { establishedAttractionOpportunityIssues } from "./engine/established-attraction-opportunity-v35219.js";
+import { buildGroundedLastResortReply, establishedAttractionOpportunityIssues } from "./engine/established-attraction-opportunity-v35219.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8036,29 +8036,39 @@ async function streamRoleplayV19({
         if (blockingNarrativeIssues(validationIssues).length || remainingHard.length) {
           const finalIssues = [...new Set([...blockingNarrativeIssues(validationIssues), ...remainingHard])];
           console.warn("[character-chat] protected reply remained invalid; starting compact final rescue", { issues: finalIssues });
-          const finalRescue = await callGeminiWithFailover({
-            apiKey,
-            systemInstruction: "Write one final, concise, coherent in-character roleplay reply from literal visible canon. Return plain prose only. Never repeat a settled offer, contradict the latest user decision, invent user habits, force participation, change object ownership, or expose system language.",
-            prompt: `${compactTurnPrompt}\n\nREJECTED CANDIDATE\n${cleanPromptValue(result?.reply, 1800)}\n\nFAILURES TO REMOVE\n${finalIssues.join(" | ")}`,
-            maxOutputTokens: Math.min(800, getMaximumOutputTokens(character.response_length)),
-            isCancelled,
-            interactionDeadlineMs: 16000,
-          });
-          let rescueIssues = validateNarrativeReply(finalRescue.reply, {
+          let finalRescue: ModelResult | null = null;
+          try {
+            finalRescue = await callGeminiWithFailover({
+              apiKey,
+              systemInstruction: "Write one final, concise, coherent in-character roleplay reply from literal visible canon. Return plain prose only. Never repeat a settled offer, contradict the latest user decision, invent user habits, force participation, change object ownership, or expose system language.",
+              prompt: `${compactTurnPrompt}\n\nREJECTED CANDIDATE\n${cleanPromptValue(result?.reply, 1800)}\n\nFAILURES TO REMOVE\n${finalIssues.join(" | ")}`,
+              maxOutputTokens: Math.min(800, getMaximumOutputTokens(character.response_length)),
+              isCancelled,
+              interactionDeadlineMs: 16000,
+            });
+          } catch (finalRescueError) {
+            if (await isCancelled()) throw finalRescueError;
+            console.error("[character-chat] compact final rescue call failed; using deterministic grounded reply", { error: getErrorMessage(finalRescueError) });
+          }
+          let rescueIssues = finalRescue ? validateNarrativeReply(finalRescue.reply, {
             characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
             finishReason: finalRescue.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
             character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
-          });
-          rescueIssues = [...new Set([...rescueIssues, ...validateContinuityEnvelope(finalRescue, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
+          }) : finalIssues;
+          if (finalRescue) rescueIssues = [...new Set([...rescueIssues, ...validateContinuityEnvelope(finalRescue, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
           const rescueBlocking = blockingNarrativeIssues(rescueIssues);
           const rescueHard = hardRepairRequiredIssues(rescueIssues);
-          if (rescueBlocking.length || rescueHard.length) {
-            console.error("[character-chat] compact final rescue rejected", { blocking: rescueBlocking, hard: rescueHard });
-            throw new Error("Velvet could not produce a coherent reply without contradicting your latest turn.");
+          if (!finalRescue || rescueBlocking.length || rescueHard.length) {
+            const lastResortReply = buildGroundedLastResortReply({ character, latestUserMessage, issues: [...finalIssues, ...rescueBlocking, ...rescueHard] });
+            console.error("[character-chat] compact final rescue rejected; using deterministic grounded reply", { blocking: rescueBlocking, hard: rescueHard });
+            result = { ...(finalRescue || result), reply: lastResortReply };
+            validationIssues = [];
+            remainingHard = [];
+          } else {
+            result = finalRescue;
+            validationIssues = rescueIssues;
+            remainingHard = [];
           }
-          result = finalRescue;
-          validationIssues = rescueIssues;
-          remainingHard = [];
         }
         if (guardedDraft && blocking.length) await streamFinalReply(result.reply, "validated-protected-final");
         if (await isCancelled()) return;
