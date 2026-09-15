@@ -20,6 +20,11 @@ export function immediateTurnContinuityIssues(reply = "", latestUserMessage = ""
     || /\b(?:i can|ill|i will)\s+still\s+(?:go|take it back|fix it|call them|get another)\b/.test(text);
   if (userSettledAlternative && replyReopensChoice) issues.push("settled_choice_reopened");
 
+  const userDelegatesChoice = /^(?:i(?:ll| will)? trust you|i trust you|you choose|your choice|surprise me|up to you|you decide|whatever you want|whatever you think|confio en ti|tu elige|elige tu|sorprendeme|lo que tu quieras)$/i.test(latest);
+  const replyReturnsChoice = /\b(?:your call|up to you|you choose|you decide|your choice|which (?:one|place)|where do you want|what do you want|what sounds better|unless you have a better idea)\b/.test(text)
+    || /\b(?:or we can|we could either|option one|option two)\b/.test(text);
+  if (userDelegatesChoice && replyReturnsChoice) issues.push("delegated_choice_returned");
+
   if (/["”]\s+["“]/.test(String(reply || ""))) issues.push("adjacent_dialogue_fragments");
 
   const previousSaysMissing = /\b(?:forgot|missing|left out|didnt include|did not include|messed up)\b.{0,60}\b(?:your|yours|order|food|drink)\b|\b(?:your|yours)\b.{0,35}\b(?:forgotten|missing|left out)\b/.test(previous);

@@ -3147,6 +3147,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     memory_conflict_overclaim: "Do not flatten contradictory current-state memories into certainty. Prefer the newest explicit correction/current fact and keep older facts historical only when they genuinely used to be true.",
     clarification_evasion: "Name the concrete referent in the first spoken sentence, then tease or evade only if still in character.",
     direct_preference_evasion: "Answer the preference with a real stance in the first spoken clause.",
+    delegated_choice_returned: "The user explicitly delegated the decision with 'I trust you', 'you choose', 'surprise me', or equivalent. Choose one concrete option and act on it now. Do not return the choice, ask another preference question, or offer another menu.",
     banter_reciprocity_drop: "Answer the latest jab directly with a plain concession, grounded tease, or playful stance.",
     phantom_question_reference: "Remove references to a question unless the previous character turn visibly asked one.",
     reaction_reference_ungrounded: "Ground the reaction in the exact immediately preceding line or action.",
@@ -3439,7 +3440,7 @@ ${transcript || "No earlier visible turn."}
 LATEST USER TURN
 ${cleanPromptValue(latestUserMessage, 1200)}
 
-Continue from the literal final state. Respect the user's choice, possessions, location and boundaries. Do not invent a user habit, feeling, action, shared history, plan or object transfer. Answer the latest meaning once; do not repeat a settled offer. Keep established attraction visible through one natural character-specific choice when relevant, never through control. A short complete answer is valid.`;
+Continue from the literal final state. Respect the user's choice, possessions, location and boundaries. Do not invent a user habit, feeling, action, shared history, plan or object transfer. Answer the latest meaning once; do not repeat a settled offer. If the user says "I trust you", "you choose", "surprise me", "up to you", or equivalent, they delegated the decision: choose one concrete option and move; never hand the choice back. Keep established attraction visible through one natural character-specific choice when relevant, never through control. A short complete answer is valid.`;
 }
 
 // PURE_NARRATIVE_HELPERS_START
@@ -5966,6 +5967,7 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
 }
 const CONTINUITY_GUARD_ISSUES = new Set([
   "immediate_user_choice_overridden",
+  "delegated_choice_returned",
   "immediate_event_truth_rewritten",
   "immediate_object_ownership_rewritten",
   "dangling_scene_reference",
@@ -5992,6 +5994,7 @@ const CONTINUITY_GUARD_ISSUES = new Set([
 ]);
 const BLOCKING_NARRATIVE_ISSUES = new Set([
   "immediate_user_choice_overridden",
+  "delegated_choice_returned",
   "immediate_event_truth_rewritten",
   "immediate_object_ownership_rewritten",
   "dangling_scene_reference",
@@ -8059,7 +8062,7 @@ async function streamRoleplayV19({
           const rescueBlocking = blockingNarrativeIssues(rescueIssues);
           const rescueHard = hardRepairRequiredIssues(rescueIssues);
           if (!finalRescue || rescueBlocking.length || rescueHard.length) {
-            const lastResortReply = buildGroundedLastResortReply({ character, latestUserMessage, issues: [...finalIssues, ...rescueBlocking, ...rescueHard] });
+            const lastResortReply = buildGroundedLastResortReply({ character, latestUserMessage, recentCharacterReplies, issues: [...finalIssues, ...rescueBlocking, ...rescueHard] });
             console.error("[character-chat] compact final rescue rejected; using deterministic grounded reply", { blocking: rescueBlocking, hard: rescueHard });
             result = { ...(finalRescue || result), reply: lastResortReply };
             validationIssues = [];

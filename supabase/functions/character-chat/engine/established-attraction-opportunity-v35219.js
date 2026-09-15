@@ -43,13 +43,19 @@ export function establishedAttractionOpportunityIssues({ reply = "", latestUserM
   return issues;
 }
 
-export function buildGroundedLastResortReply({ character = {}, latestUserMessage = "", issues = [] } = {}) {
+export function buildGroundedLastResortReply({ character = {}, latestUserMessage = "", recentCharacterReplies = [], issues = [] } = {}) {
   const name = String(character?.name || "The character").trim() || "The character";
   const normalizedTurn = normalize(latestUserMessage);
   const failures = new Set(Array.isArray(issues) ? issues : []);
 
   if (failures.has("chosen_time_attraction_flattened") || failures.has("delegated_social_task_condescension")) {
     return `“Fine. I’ll handle them.” ${name} starts toward the others, then looks back at you. “Wait for me. I want to do this with you.”`;
+  }
+  if (failures.has("delegated_choice_returned")) {
+    const recent = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
+    if (/\bdiner\b/.test(recent)) return `“The diner.” ${name} makes the decision and heads that way without handing it back to you. “Come on.”`;
+    if (/\bdrive thru\b/.test(recent)) return `“Drive-thru.” ${name} makes the decision and leads the way. “I’ve got it.”`;
+    return `${name} makes the decision instead of handing it back to you. “I’ve got it. Come on.”`;
   }
   if (/\b(?:dont|do not|no|stop|leave it|never mind|won t|wont|can t|cant)\b/.test(normalizedTurn)) {
     return `${name} stops instead of pushing the point. “Okay. I heard you.”`;
