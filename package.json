@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.52.24",
+  "version": "3.52.26",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,7 @@
     "lint": "oxlint",
     "clean": "node scripts/clean-workspace.mjs",
     "verify": "npm run lint && npm run verify:stability && npm run build",
-    "verify:stability": "npm run verify:install-lock && npm run verify:edge-boot && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v3 && npm run verify:v34 && npm run verify:ambience && npm run verify:chat-syntax && npm run verify:current",
+    "verify:stability": "npm run verify:install-lock && npm run verify:edge-boot && npm run verify:ui && npm run verify:mobile && npm run verify:story && npm run verify:v3 && npm run verify:v34 && npm run verify:chat-syntax && npm run verify:current",
     "verify:install-lock": "node scripts/verify-install-lock.mjs",
     "verify:edge-boot": "node scripts/verify-edge-boot.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
@@ -18,9 +18,8 @@
     "verify:story": "node scripts/verify-v3-story-engine.mjs",
     "verify:v3": "node --experimental-strip-types scripts/verify-v3-conversations.mjs",
     "verify:v34": "node --experimental-strip-types scripts/verify-v34-relationship-dynamics.mjs",
-    "verify:ambience": "node scripts/verify-ambience.mjs",
     "verify:chat-syntax": "node scripts/verify-chat-syntax.mjs",
-    "verify:current": "node scripts/verify-v3520-whole-app-stabilization.mjs && node scripts/verify-v3523-mobile-dock-flow.mjs && node --experimental-strip-types scripts/verify-v3525-scene-dialogue-integrity.mjs && node --experimental-strip-types scripts/verify-v3526-instant-story-rebuilt.mjs && node --experimental-strip-types scripts/verify-v3527-character-presence-attraction.mjs && node --experimental-strip-types scripts/verify-v3528-alexander-behavioral-proof.mjs && node --experimental-strip-types scripts/verify-v3529-user-authored-scene-control.mjs && node --experimental-strip-types scripts/verify-v35210-life-plan-continuity.mjs && node --experimental-strip-types scripts/verify-v35211-instant-story-template-firewall.mjs && node --experimental-strip-types scripts/verify-v35212-instant-story-naturalism.mjs && node scripts/verify-v35213-first-turn-continuity.mjs && node scripts/verify-v35214-live-scene-continuity.mjs && node scripts/verify-v35215-semantic-choice-continuity.mjs && node scripts/verify-v35216-no-retry-loop.mjs && node scripts/verify-v35217-hard-quality-barrier.mjs && node scripts/verify-v35218-stream-context-scope.mjs && node scripts/verify-v35219-chosen-time-attraction.mjs && node scripts/verify-v35220-no-terminal-retry-loop.mjs && node scripts/verify-v35221-delegated-choice.mjs && node --experimental-strip-types scripts/verify-v35222-visible-attraction-initiative.mjs && node scripts/verify-v35223-absolute-final-turn-barrier.mjs && node scripts/verify-v35224-behavioral-turn-integrity.mjs",
+    "verify:current": "node scripts/verify-v3520-whole-app-stabilization.mjs && node scripts/verify-v3523-mobile-dock-flow.mjs && node --experimental-strip-types scripts/verify-v3525-scene-dialogue-integrity.mjs && node --experimental-strip-types scripts/verify-v3526-instant-story-rebuilt.mjs && node --experimental-strip-types scripts/verify-v3527-character-presence-attraction.mjs && node --experimental-strip-types scripts/verify-v3528-alexander-behavioral-proof.mjs && node --experimental-strip-types scripts/verify-v3529-user-authored-scene-control.mjs && node --experimental-strip-types scripts/verify-v35210-life-plan-continuity.mjs && node --experimental-strip-types scripts/verify-v35211-instant-story-template-firewall.mjs && node --experimental-strip-types scripts/verify-v35212-instant-story-naturalism.mjs && node scripts/verify-v35213-first-turn-continuity.mjs && node scripts/verify-v35214-live-scene-continuity.mjs && node scripts/verify-v35215-semantic-choice-continuity.mjs && node scripts/verify-v35216-no-retry-loop.mjs && node scripts/verify-v35217-hard-quality-barrier.mjs && node scripts/verify-v35218-stream-context-scope.mjs && node scripts/verify-v35219-chosen-time-attraction.mjs && node scripts/verify-v35220-no-terminal-retry-loop.mjs && node scripts/verify-v35221-delegated-choice.mjs && node --experimental-strip-types scripts/verify-v35222-visible-attraction-initiative.mjs && node scripts/verify-v35223-absolute-final-turn-barrier.mjs && node scripts/verify-v35224-behavioral-turn-integrity.mjs && node scripts/verify-v35226-media-cleanup.mjs",
     "android:env": "node scripts/prepare-android-env.mjs",
     "android:sync": "npm run android:env && vite build --mode android && npx cap sync android && npm run android:verify",
     "android:verify": "node scripts/verify-android-native.mjs",

@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark, BookOpen, ChevronRight, Download, FileDown, GitBranch, HeartHandshake,
-  ImagePlus, ListTodo, MapPin, Music2, Pause, Play, RotateCcw, Search, Sparkles, Star, Trash2,
-  Upload, UserRound, Users, Volume2, Square, X,
+  ImagePlus, ListTodo, MapPin, RotateCcw, Search, Sparkles, Star, Trash2,
+  Upload, UserRound, Users, X,
 } from "lucide-react";
 import { useChats } from "../context/ChatsContext";
-import { useCharacters } from "../context/CharactersContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { exportStoryBook, downloadStoryBackup } from "../utils/storyExport";
-import { AMBIENT_MODES, normalizeAmbientMode, readAmbienceVolume, writeAmbienceVolume } from "./StoryAmbience";
-import { suggestAmbienceForScene } from "../utils/ambienceIntelligence";
-import { getDeviceVoices, getVoiceCapabilities, speakText, stopSpeech } from "../utils/speech";
-import { getAudioState, readAudioPreference, stopAllAudio, subscribeAudioState, writeAudioPreference } from "../utils/audioBus";
 
 const TABS = [
   ["dashboard", "Story", BookOpen],
@@ -23,7 +18,7 @@ const TABS = [
 
 export default function StoryHubDrawer({
   open, onClose, character, characters = [], persona = null, lorebook = null,
-  onJumpToMessage, onOpenConversation, ambientSoundOn = false, onAmbientSoundToggle, recentSceneText = "",
+  onJumpToMessage, onOpenConversation,
 }) {
   const {
     getStoryHubData, searchConversationMessages, getConversation,
@@ -31,14 +26,10 @@ export default function StoryHubDrawer({
     deleteStorySnapshot, restoreStorySnapshot, exportStoryBackupData, importStoryBackupData,
     getStoryExportData,
   } = useChats();
-  const { updateCharacterVoice } = useCharacters();
   const { confirmAction } = useFeedback();
   const conversation = getConversation(character.id);
   const [tab, setTab] = useState("dashboard");
   const [hub, setHub] = useState(null);
-  const currentAmbientMode = normalizeAmbientMode(conversation?.ambientMode || hub?.ambientMode || "none");
-  const currentAmbientVolume = Number(conversation?.ambientVolume ?? hub?.ambientVolume ?? 18);
-  const ambienceSuggestion = useMemo(() => suggestAmbienceForScene(recentSceneText), [recentSceneText]);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -47,14 +38,6 @@ export default function StoryHubDrawer({
   const [snapshotLabel, setSnapshotLabel] = useState("");
   const [busy, setBusy] = useState("");
   const [coverDraft, setCoverDraft] = useState({ title: "", mood: "" });
-  const [voiceDraft, setVoiceDraft] = useState({ voiceName: "", rate: 1, pitch: 1, volume: 100 });
-  const [voiceLanguage, setVoiceLanguage] = useState("all");
-  const [voiceGender, setVoiceGender] = useState("all");
-  const [favoriteVoiceIds, setFavoriteVoiceIds] = useState(() => { try { return JSON.parse(localStorage.getItem("velvet_favorite_voices") || "[]"); } catch { return []; } });
-  const [onlyFavoriteVoices, setOnlyFavoriteVoices] = useState(false);
-  const [audioState, setAudioState] = useState(getAudioState);
-  const [voices, setVoices] = useState([]);
-  const [voiceTesting, setVoiceTesting] = useState(false);
   const coverInputRef = useRef(null);
   const backupInputRef = useRef(null);
 
@@ -86,14 +69,6 @@ export default function StoryHubDrawer({
           title: data.coverTitle || conversation.coverTitle || conversation.title || character.name,
           mood: data.coverMood || conversation.coverMood || "",
         });
-        const legacyVoiceVolume = Number(readAudioPreference("voice", character.id, { volume: 100 }).volume ?? 100);
-        const storyVoiceVolume = Number(readAudioPreference("story", conversation.conversationId, { voiceVolume: legacyVoiceVolume }).voiceVolume ?? legacyVoiceVolume);
-        setVoiceDraft({
-          voiceName: character.ttsVoiceName || "",
-          rate: Number(character.ttsRate ?? 1),
-          pitch: Number(character.ttsPitch ?? 1),
-          volume: storyVoiceVolume,
-        });
       })
       .catch(console.error)
       .finally(() => live && setLoading(false));
@@ -108,40 +83,6 @@ export default function StoryHubDrawer({
     return () => window.clearTimeout(timer);
   }, [open, tab, query, character.id]);
 
-  useEffect(() => {
-    if (!open || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const load = () => setVoices(getDeviceVoices());
-    load();
-    const retry = window.setTimeout(load, 350);
-    window.speechSynthesis.addEventListener?.("voiceschanged", load);
-    return () => {
-      window.clearTimeout(retry);
-      window.speechSynthesis.removeEventListener?.("voiceschanged", load);
-      stopSpeech();
-      setVoiceTesting(false);
-    };
-  }, [open]);
-
-  useEffect(() => subscribeAudioState(setAudioState), []);
-
-  const voiceCapabilities = useMemo(() => getVoiceCapabilities(), [voices.length]);
-  const filteredVoices = useMemo(() => voices.filter((voice) => {
-    const id = voice.voiceURI || voice.name;
-    if (voiceLanguage !== "all" && voice.lang !== voiceLanguage) return false;
-    if (voiceGender !== "all" && String(voice.gender || "").toLowerCase() !== voiceGender) return false;
-    if (onlyFavoriteVoices && !favoriteVoiceIds.includes(id)) return false;
-    return true;
-  }), [voices, voiceLanguage, voiceGender, onlyFavoriteVoices, favoriteVoiceIds]);
-
-  function toggleFavoriteVoice() {
-    const id = String(voiceDraft.voiceName || "").trim();
-    if (!id) return;
-    setFavoriteVoiceIds((current) => {
-      const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
-      try { localStorage.setItem("velvet_favorite_voices", JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }
 
   const castEntries = useMemo(() => Object.entries(hub?.cast || {}), [hub?.cast]);
   const groupCharacters = useMemo(() => {
@@ -172,73 +113,6 @@ export default function StoryHubDrawer({
       setNotice("Cover image updated.");
     } catch (error) { setNotice(error.message || "Could not upload the cover."); }
     finally { setBusy(""); }
-  }
-
-  async function saveVoice() {
-    try {
-      setBusy("voice");
-      setNotice("");
-      await updateCharacterVoice(character.id, voiceDraft);
-      const voiceVolume = Number(voiceDraft.volume ?? 100);
-      writeAudioPreference("voice", character.id, { volume: voiceVolume, engine: "device" });
-      if (conversation?.conversationId) writeAudioPreference("story", conversation.conversationId, { voiceVolume });
-      setNotice("Voice saved. Volume remembered for this story.");
-    } catch (error) { setNotice(error.message || "Could not save the voice."); }
-    finally { setBusy(""); }
-  }
-
-  function stopVoiceTest() {
-    stopSpeech();
-    setVoiceTesting(false);
-  }
-
-  function testVoice() {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      return setNotice("Text to speech is not available on this device.");
-    }
-    setNotice("");
-    setVoiceTesting(true);
-    speakText({
-      text: `This is ${character.name}. ${character.exampleDialogue || character.firstMessage || "Ready when you are."}`,
-      voiceId: String(voiceDraft.voiceName || ""),
-      rate: Number(voiceDraft.rate || 1),
-      pitch: Number(voiceDraft.pitch || 1),
-      volume: Math.max(0, Math.min(1, Number(voiceDraft.volume ?? 100) / 100)),
-      label: `${character.name} voice preview`,
-      onEnd: () => setVoiceTesting(false),
-      onError: (error) => {
-        setVoiceTesting(false);
-        if (error?.error && error.error !== "interrupted") {
-          setNotice(`Voice stopped: ${error.error}. Try another installed device voice.`);
-        }
-      },
-    });
-  }
-
-  async function setAmbient(patch) {
-    try {
-      setBusy("ambient");
-      await updateStoryExperience(character.id, patch);
-      await refreshHub();
-    } catch (error) { setNotice(error.message || "Could not save the atmosphere."); }
-    finally { setBusy(""); }
-  }
-
-  function chooseAmbientMode(id) {
-    const normalized = normalizeAmbientMode(id);
-    if (normalized === "none") {
-      onAmbientSoundToggle?.(false);
-      void setAmbient({ ambientMode: "none" });
-      return;
-    }
-    const remembered = readAmbienceVolume(normalized, normalized === currentAmbientMode ? currentAmbientVolume : 18);
-    onAmbientSoundToggle?.(true);
-    void setAmbient({ ambientMode: normalized, ambientVolume: remembered });
-  }
-
-  function changeAmbientVolume(value) {
-    const next = writeAmbienceVolume(currentAmbientMode, value);
-    void setAmbient({ ambientVolume: next });
   }
 
   async function exportBook(format) {
@@ -342,31 +216,6 @@ export default function StoryHubDrawer({
             </div>
             <div className="keepsake-fields"><input value={coverDraft.title} onChange={(e)=>setCoverDraft((v)=>({...v,title:e.target.value}))} placeholder="Cover title"/><input value={coverDraft.mood} onChange={(e)=>setCoverDraft((v)=>({...v,mood:e.target.value}))} placeholder="Mood / subtitle"/></div>
             <div className="keepsake-actions"><button onClick={()=>coverInputRef.current?.click()} disabled={Boolean(busy)}><Upload size={15}/>Image</button><button onClick={saveCover} disabled={busy==="cover"}>Save cover</button><input ref={coverInputRef} type="file" accept="image/*" hidden onChange={(e)=>uploadCover(e.target.files?.[0])}/></div>
-          </div>
-
-          <div className="keepsake-card keepsake-card--audio-center">
-            <div className="story-hub__mini-heading"><Music2 size={14}/> Audio Center</div>
-            <div className="audio-center__status"><span><small>{audioState.ambiencePaused && !audioState.voiceActive ? "PAUSED" : "NOW PLAYING"}</small><strong>{[audioState.voiceLabel,audioState.ambienceLabel && `${audioState.ambienceLabel}${audioState.ambiencePaused ? " · Paused" : ""}`].filter(Boolean).join(" · ") || "Nothing"}</strong></span><div className="audio-center__transport">{currentAmbientMode!=="none" && <button type="button" onClick={()=>onAmbientSoundToggle?.(!ambientSoundOn)}>{ambientSoundOn ? <Pause size={14}/> : <Play size={14}/>} {ambientSoundOn ? "Pause ambience" : "Resume ambience"}</button>}<button type="button" onClick={()=>{ stopAllAudio(); stopVoiceTest(); onAmbientSoundToggle?.(false); }} disabled={!audioState.voiceActive&&!audioState.ambienceActive&&!audioState.ambiencePaused}><Square size={14}/>Stop all</button></div></div>
-            <small>Voice and ambience have separate volume controls. Switching ambience crossfades instead of stacking two rooms on top of each other.</small>
-          </div>
-
-          <div className="keepsake-card">
-            <div className="story-hub__mini-heading"><Volume2 size={14}/> {character.name}'s voice</div>
-            <div className="audio-center__engine"><span><small>ENGINE</small><strong>Device voice · free</strong></span><em>Neural-ready architecture</em></div>
-            <div className="audio-center__voice-filters"><select value={voiceLanguage} onChange={(e)=>setVoiceLanguage(e.target.value)}><option value="all">All languages</option>{voiceCapabilities.languages.map((lang)=><option key={lang} value={lang}>{lang}</option>)}</select>{voiceCapabilities.exposesGender && <select value={voiceGender} onChange={(e)=>setVoiceGender(e.target.value)}><option value="all">All voice types</option>{[...new Set(voices.map((voice)=>String(voice.gender||"").toLowerCase()).filter(Boolean))].map((gender)=><option key={gender} value={gender}>{gender}</option>)}</select>}<button type="button" className={onlyFavoriteVoices?"active":""} onClick={()=>setOnlyFavoriteVoices((v)=>!v)}><Star size={14} fill={onlyFavoriteVoices?"currentColor":"none"}/>Favorites</button></div>
-            <label>Voice<select value={voiceDraft.voiceName} onChange={(e)=>{ stopVoiceTest(); setVoiceDraft((v)=>({...v,voiceName:e.target.value})); }}><option value="">Device default</option>{filteredVoices.map((voice)=>{ const id=voice.voiceURI||voice.name; return <option key={`${id}-${voice.lang}`} value={id}>{favoriteVoiceIds.includes(id)?"★ ":""}{voice.name} · {voice.lang}</option>; })}</select></label>
-            <button type="button" className="audio-center__favorite" onClick={toggleFavoriteVoice} disabled={!voiceDraft.voiceName}><Star size={14} fill={favoriteVoiceIds.includes(voiceDraft.voiceName)?"currentColor":"none"}/>{favoriteVoiceIds.includes(voiceDraft.voiceName)?"Favorited voice":"Favorite this voice"}</button>
-            <label>Speed <span>{Number(voiceDraft.rate).toFixed(2)}×</span><input type="range" min=".65" max="1.45" step=".05" value={voiceDraft.rate} onChange={(e)=>setVoiceDraft((v)=>({...v,rate:Number(e.target.value)}))}/></label>
-            <label>Pitch <span>{Number(voiceDraft.pitch).toFixed(2)}</span><input type="range" min=".65" max="1.35" step=".05" value={voiceDraft.pitch} onChange={(e)=>setVoiceDraft((v)=>({...v,pitch:Number(e.target.value)}))}/></label><label>Voice volume <span>{Number(voiceDraft.volume ?? 100)}%</span><input type="range" min="0" max="100" step="1" value={voiceDraft.volume ?? 100} onChange={(e)=>{ const volume=Number(e.target.value); setVoiceDraft((v)=>({...v,volume})); if(conversation?.conversationId) writeAudioPreference("story", conversation.conversationId, { voiceVolume: volume }); }}/></label><small className="keepsake-voice-note">Natural cadence is always on: Velvet reads in shorter phrases with human-like pauses and slight prosody changes. The actual timbre still depends on voices installed on your device.</small>
-            <div className="keepsake-actions"><button onClick={voiceTesting ? stopVoiceTest : testVoice}>{voiceTesting ? <X size={15}/> : <Volume2 size={15}/>} {voiceTesting ? "Stop" : "Test"}</button><button onClick={saveVoice} disabled={busy==="voice"}>Save voice</button></div>
-          </div>
-
-          <div className="keepsake-card keepsake-card--ambience-v2">
-            <div className="story-hub__mini-heading"><Music2 size={14}/> Ambient story mode</div>
-            {ambienceSuggestion && <div className={`ambience-suggestion${ambienceSuggestion.mode===currentAmbientMode ? " is-active" : ""}`}><span><small>{ambienceSuggestion.mode===currentAmbientMode ? "SCENE MATCH" : "SUGGESTED FOR THIS SCENE"}</small><strong>{ambienceSuggestion.label}</strong>{ambienceSuggestion.reason && <em>{ambienceSuggestion.reason}</em>}</span>{ambienceSuggestion.mode!==currentAmbientMode && <button type="button" onClick={()=>chooseAmbientMode(ambienceSuggestion.mode)}>Use {ambienceSuggestion.label}</button>}</div>}
-            <div className="keepsake-ambience">{AMBIENT_MODES.map(([id,label])=><button key={id} className={currentAmbientMode===id?"active":""} onClick={()=>chooseAmbientMode(id)}>{label}</button>)}</div>
-            <label>Volume for {AMBIENT_MODES.find(([id])=>id===currentAmbientMode)?.[1] || "ambience"} <span>{currentAmbientVolume}%</span><input type="range" min="0" max="45" value={currentAmbientVolume} onChange={(e)=>changeAmbientVolume(Number(e.target.value))}/></label>
-            <div className="ambience-v2__footer"><button className={`keepsake-sound-toggle${ambientSoundOn?" active":""}`} onClick={()=>onAmbientSoundToggle?.(!ambientSoundOn)} disabled={currentAmbientMode==="none"}>{ambientSoundOn ? <Pause size={16}/> : <Play size={16}/>} {ambientSoundOn ? "Pause" : "Resume"}</button><small>Each room remembers its own volume. Switching rooms uses a soft crossfade and loops are blended automatically.</small></div>
           </div>
 
           <div className="keepsake-card">

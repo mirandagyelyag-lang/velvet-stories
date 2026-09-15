@@ -97,7 +97,7 @@ export default defineConfig(({ mode }) => {
           clientsClaim: true,
           skipWaiting: true,
           navigateFallback: "/index.html",
-          globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2,mp3}"],
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2}"],
           runtimeCaching: [
             {
               urlPattern: ({ request, url }) =>

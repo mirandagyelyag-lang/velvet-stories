@@ -37,7 +37,6 @@ import "./styles/velvet-v265-stability.css";
 import "./styles/velvet-v269-character-studio-mobile.css";
 import "./styles/velvet-v2610-character-studio-scroll.css";
 import "./styles/velvet-v2611-six-fixes.css";
-import "./styles/velvet-v2616-audio-center.css";
 import "./styles/velvet-v270-living-scenes.css";
 import "./styles/velvet-v274-in-chat-actions.css";
 import "./styles/velvet-v280-chat-experience.css";

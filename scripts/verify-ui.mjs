@@ -28,26 +28,19 @@ const storycraftStyles = read("src/styles/velvet-v240-storycraft.css");
 const precisionActions = read("src/styles/velvet-v296-precision-actions.css");
 const livingStoryStyles = read("src/styles/velvet-v250-living-story.css");
 const keepsakeStyles = read("src/styles/velvet-v260-keepsake.css");
-const storyAmbience = read("src/components/StoryAmbience.jsx");
 const charactersContextV260 = read("src/context/CharactersContext.jsx");
 const chatsContextV260 = read("src/context/ChatsContext.jsx");
 const keepsakeMigration = read("supabase/migrations/202608170005_velvet_v260_keepsake_suite.sql");
 const storyExport = read("src/utils/storyExport.js");
-const speechUtil = read("src/utils/speech.js");
-const audioBus = read("src/utils/audioBus.js");
 const bugReporter = read("src/utils/bugReporter.js");
 const stabilityStyles = read("src/styles/velvet-v265-stability.css");
 const pwaStatus = read("src/components/PWAStatus.jsx");
-const audioStatusPill = read("src/components/AudioStatusPill.jsx");
 const publicVersion = read("public/velvet-version.json");
 const relationshipDrawerV250 = read("src/components/RelationshipDrawer.jsx");
 const characterDetailV240 = read("src/pages/CharacterDetail.jsx");
 const lorebooksV240 = read("src/pages/Lorebooks.jsx");
 const sixFixStyles = read("src/styles/velvet-v2611-six-fixes.css");
 const sixFixMigration = read("supabase/migrations/202608180001_velvet_v2611_street_racing_mode.sql");
-const audioCenterStyles = read("src/styles/velvet-v2616-audio-center.css");
-const ambienceIntelligence = read("src/utils/ambienceIntelligence.js");
-const ambienceQuality = read("src/utils/ambienceQuality.js");
 const feedbackContext = read("src/context/FeedbackContext.jsx");
 const feedbackStyles = read("src/styles/feedback.css");
 const studioLiteStyles = read("src/styles/velvet-v290-character-studio-lite.css");
@@ -170,12 +163,7 @@ check("Personas and Lore mobile grids are one column", mobile.includes(".persona
 check("Diagnostics mobile grid is one column", mobile.includes(".diagnostics-hero,.diagnostics-grid{grid-template-columns:1fr!important"));
 check("all major story drawers become phone sheets", [".memory-book,.timeline-drawer,.story-hub,.conversation-picker",".relationship-drawer",".chat-controls"].every((token)=>mobile.includes(token)));
 check("PWA build cleans old caches", read("vite.config.js").includes("cleanupOutdatedCaches: true") && ((read("vite.config.js").includes("skipWaiting: true") && read("vite.config.js").includes('registerType: "autoUpdate"')) || (read("vite.config.js").includes("skipWaiting: false") && read("vite.config.js").includes('registerType: "prompt"'))));
-check("all reference ambience MP3 files are bundled and precached", read("vite.config.js").includes("woff2,mp3") && ["rain-reference-gentle.mp3","night-city-reference.mp3","street-racing-reference.mp3","cafe-reference-warm.mp3","campus-reference.mp3","fireplace-reference-warm.mp3","home-tv-reference-distant.mp3","party-reference-next-room.mp3"].every((name)=>existsSync(`public/audio/ambience/${name}`)));
 
-check("device TTS uses natural cadence chunking", speechUtil.includes("splitNaturalChunks") && speechUtil.includes("variationForChunk") && speechUtil.includes("naturalVoiceScore"));
-check("Night and Street Racing are separate bundled reference ambience", storyAmbience.includes('["night_city", "Night"]') && storyAmbience.includes('["street_racing", "Street racing"]') && storyAmbience.includes("night-city-reference.mp3") && storyAmbience.includes("street-racing-reference.mp3"));
-check("Home and Party ambience modes persist through ChatsContext", chatsContextV260.includes('"home","party"') && read("supabase/migrations/202608170006_velvet_v264_ambience_modes.sql").includes("'home','party'"));
-check("choosing an ambience starts sound immediately", storyHubDrawer.includes("onAmbientSoundToggle?.(true)") && storyHubDrawer.includes("chooseAmbientMode(id)"));
 check("reading mode still has persistent state", chat.includes('localStorage.getItem("velvet_reading_mode")') && chat.includes('localStorage.setItem("velvet_reading_mode"'));
 check("immersive mode keeps chat header and three-dot menu visible", chat.includes("Immersive mode") && reference.includes(".chat--reading .chat__more") && reference.includes("transform: none !important"));
 check("scene director rewrites latest reply in place", chat.includes("applyDirectorAndRegenerate") && /regenerateCharacterReply\(character\.id, targetId, instruction, \[\](?:, "director-rewrite")?\)/.test(chat) && chat.includes("Rewrite last reply"));
@@ -242,33 +230,13 @@ check("Search results can deep-link to the exact story message", searchPage.incl
 check("Search Velvet is reachable on desktop mobile profile and keyboard", sidebar.includes("Search Velvet") && sidebar.includes("mobile-global-search") && read("src/pages/Profile.jsx").includes("Search Velvet") && app.includes("handleGlobalSearchShortcut"));
 check("Group Story modal remains phone-safe", storycraftStyles.includes(".group-story-backdrop") && storycraftStyles.includes("max-height:92dvh") && storycraftStyles.includes("grid-template-columns:repeat(3"));
 
-check("character TTS voice preferences persist per character", keepsakeMigration.includes("tts_voice_name") && keepsakeMigration.includes("tts_rate") && charactersContextV260.includes("updateCharacterVoice") && chat.includes('runAction("listen")'));
-check("TTS can be stopped from both chat and voice test", chat.includes("stopCharacterVoice") && chat.includes("Stop voice") && storyHubDrawer.includes("stopVoiceTest") && storyHubDrawer.includes("Stop"));
-check("TTS resolves exact device voice URI before legacy name", speechUtil.includes("voice.voiceURI === wanted") && speechUtil.includes("voice.name === wanted") && storyHubDrawer.includes("voice.voiceURI || voice.name"));
-check("Android TTS survives immediate cancel and rerender", speechUtil.includes("activeUtterance") && speechUtil.includes("setTimeout") && speechUtil.includes("synth.resume()") && !chat.includes("window.speechSynthesis.cancel()") && !storyHubDrawer.includes("window.speechSynthesis.cancel()"));
 check("story covers are conversation-scoped and visible in the library", keepsakeMigration.includes("cover_url") && chatsContextV260.includes("uploadStoryCover") && read("src/pages/Chats.jsx").includes("conversation.cover_url"));
 check("story export supports PDF HTML and Markdown without a third-party runtime", storyExport.includes('format === "pdf"') && storyExport.includes('format === "markdown"') && storyExport.includes("application/pdf") && storyHubDrawer.includes('exportBook("pdf")'));
-check("ambient story mode has visual and optional bundled local sound", keepsakeMigration.includes("ambient_mode") && storyAmbience.includes("new Audio(sourceUrl)") && storyAmbience.includes("createSeamlessAmbience") && keepsakeStyles.includes(".story-ambience--rain"));
-check("Rain Cafe Fireplace and Home use bundled reference ambience tracks", ["rain-reference-gentle.mp3","cafe-reference-warm.mp3","fireplace-reference-warm.mp3","home-tv-reference-distant.mp3"].every((name)=>storyAmbience.includes(name)) && ["rain-reference-gentle.mp3","cafe-reference-warm.mp3","fireplace-reference-warm.mp3","home-tv-reference-distant.mp3"].every((name)=>existsSync(`public/audio/ambience/${name}`)));
-check("Home TV Party and Campus ambience are bundled", storyAmbience.includes('["home", "Home · TV"]') && storyAmbience.includes('["party", "Party"]') && storyAmbience.includes('["campus", "Campus"]') && storyAmbience.includes("home-tv-reference-distant.mp3") && storyAmbience.includes("party-reference-next-room.mp3") && storyAmbience.includes("campus-reference.mp3"));
-check("Home and Party have distinct subtle visual ambience", keepsakeStyles.includes(".story-ambience--home") && keepsakeStyles.includes(".story-ambience--party") && keepsakeStyles.includes("velvetTVGlow") && keepsakeStyles.includes("velvetPartyPulse"));
 check("story snapshots and portable backups can restore a story", keepsakeMigration.includes("story_snapshots") && chatsContextV260.includes("createStorySnapshot") && chatsContextV260.includes("restoreStorySnapshot") && chatsContextV260.includes("importStoryBackupData"));
 check("Catch Me Up appears only after a meaningful return", chatsContextV260.includes("catchUpAvailable") && chatsContextV260.includes("6 * 60 * 60 * 1000") && chat.includes("Last time in this story") && chat.includes("dismissCatchUp"));
 
-check("Audio Center separates voice and ambience controls", storyHubDrawer.includes("Audio Center") && storyHubDrawer.includes("Voice volume") && storyHubDrawer.includes("Ambient story mode") && audioBus.includes("stopAllAudio"));
-check("Audio Center 2.0 exposes pause resume and now-playing state", storyHubDrawer.includes("Pause ambience") && storyHubDrawer.includes("Resume ambience") && audioStatusPill.includes("ambiencePaused") && audioBus.includes("ambiencePaused"));
-check("seamless loop uses two recorded decks with a constant-sum overlap", storyAmbience.includes("const decks = [makeDeck(sourceUrl), makeDeck(sourceUrl)]") && storyAmbience.includes("LOOP_CROSSFADE_MS") && storyAmbience.includes("Constant-sum crossfade") && !storyAmbience.includes("audio.loop = true"));
-check("room switching is a real simultaneous crossfade", storyAmbience.includes("Promise.all([") && storyAmbience.includes("next.fadeSessionTo(1") && storyAmbience.includes("previous?.fadeSessionTo(0"));
-check("each ambience remembers its own volume", storyAmbience.includes("velvet_ambience_volume_") && storyAmbience.includes("readAmbienceVolume") && storyHubDrawer.includes("writeAmbienceVolume") && storyHubDrawer.includes("Each room remembers its own volume"));
-check("scene ambience suggestions stay opt-in and cost no AI call", ambienceIntelligence.includes("suggestAmbienceForScene") && storyHubDrawer.includes("SUGGESTED FOR THIS SCENE") && storyHubDrawer.includes("Use {ambienceSuggestion.label}") && !ambienceIntelligence.includes("supabase") && !ambienceIntelligence.includes("fetch("));
-check("Diagnostics can locally audit ambience track quality", diagnostics.includes("Ambience quality check") && diagnostics.includes("runAudioAudit") && ambienceQuality.includes("decodeAudioData") && ambienceQuality.includes("possible clipping") && ambienceQuality.includes("loop edge mismatch"));
-check("voice volume is remembered per story with legacy fallback", storyHubDrawer.includes('readAudioPreference("story", conversation.conversationId') && storyHubDrawer.includes('writeAudioPreference("story", conversation.conversationId') && chat.includes('readAudioPreference("story", conversation?.conversationId || character.id'));
-check("Audio Center exposes one-tap Stop all and now-playing state", storyHubDrawer.includes("Stop all") && audioStatusPill.includes("NOW PLAYING") && audioStatusPill.includes("Stop all") && audioBus.includes("voiceActive") && audioBus.includes("ambienceActive"));
-check("ambience fades cleanly and enforces one active room", storyAmbience.includes("activeAmbience") && storyAmbience.includes("previous?.fadeSessionTo(0") && storyAmbience.includes("next.fadeSessionTo(1") && storyAmbience.includes("registerAudioStopper"));
-check("mobile ambience pauses and resumes instead of restarting on visibility changes", audioBus.includes('window.addEventListener("pagehide", stopAllAudio)') && !audioBus.includes('document.visibilityState === "hidden"') && storyAmbience.includes("visibilityPausedRef") && storyAmbience.includes("pauseActiveAmbience") && storyAmbience.includes("switchAmbience(latest.mode, latest.volume)"));
-check("device voice center supports language filters favorites and future neural engines", storyHubDrawer.includes("All languages") && storyHubDrawer.includes("Favorite this voice") && speechUtil.includes("neuralReady: true") && storyHubDrawer.includes("Neural-ready architecture"));
-check("voice volume is remembered without changing story ambience volume", storyHubDrawer.includes('writeAudioPreference("voice", character.id') && chat.includes('readAudioPreference("voice", character.id') && storyHubDrawer.includes("ambientVolume"));
 check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes(`"${pkg.version}"`));
+check("audio system is fully removed", !existsSync("public/audio") && !existsSync("src/utils/audioBus.js") && !existsSync("src/utils/speech.js") && !existsSync("src/components/StoryAmbience.jsx") && !existsSync("src/components/AudioStatusPill.jsx") && !chat.includes("runAction(\"listen\")") && !storyHubDrawer.includes("Audio Center") && !diagnostics.includes("Audio engine"));
 check("Characters keeps the compact private-library layout with the current wordmark", read("src/pages/MyCharacters.jsx").includes("characters-library__compact-hero") && read("src/pages/MyCharacters.jsx").includes("characters-library__wordmark") && read("src/pages/MyCharacters.jsx").includes('const inTrash = view === "trash"') && read("src/styles/velvet-v298-characters-clean-mobile.css").includes("characters-library__compact"));
 check("updater only offers genuinely newer semantic versions", pwaContext.includes("compareVersions(serverVersion, VELVET_VERSION) > 0") && pwaContext.includes("compareVersions(remote, VELVET_VERSION) > 0"));
 check("Stories rapid cleanup uses intentional right swipe with no confirmation", stories.includes('direction="right"') && stories.includes('batchKey: "story-cleanup"') && !stories.includes('title: "Delete this conversation?"'));
@@ -293,18 +261,14 @@ check("double-dot main POV sentinel remains available", chat.includes('const RET
 check("desktop Enter behavior is user-configurable", settings.includes("Desktop Enter key") && chat.includes("settings.enterToSend === false") && read("src/context/SettingsContext.jsx").includes("enterToSend: true"));
 check("replacement actions expose a one-tap undo", chat.includes("replacementUndo") && chat.includes("undoReplacement") && chat.includes("selectMessageAlternative(character.id, replacementUndo.messageId, replacementUndo.content)"));
 check("Velvet Safe Mode never clears story storage", read("src/utils/safeMode.js").includes("velvet_safe_mode_v1") && read("src/utils/safeMode.js").includes("caches.keys") && !read("src/utils/safeMode.js").includes("localStorage.clear") && settings.includes("Start Safe Mode"));
-check("Safe Mode suppresses both speech and ambience", speechUtil.includes("isSafeModeEnabled") && storyAmbience.includes("isSafeModeEnabled") && read("src/utils/safeMode.js").includes("stopAllAudio"));
-check("Velvet Health Check includes version PWA cache audio and AI activity", diagnostics.includes("App version") && diagnostics.includes("PWA / cache") && diagnostics.includes("Audio engine") && diagnostics.includes("Last successful AI request") && diagnostics.includes("Last error") && diagnostics.includes("Velvet Safe Mode"));
 
 check("v2.7.4 in-chat action guard is the final mobile touch authority", main.includes('import "./styles/velvet-v274-in-chat-actions.css";') && main.lastIndexOf("velvet-v274-in-chat-actions.css") > main.lastIndexOf("velvet-v270-living-scenes.css") && read("src/styles/velvet-v274-in-chat-actions.css").includes(".velvet-dialog-backdrop{z-index:5200!important"));
-check("v2.7 Living Scenes stylesheet loads after Audio Center", main.includes('import "./styles/velvet-v2616-audio-center.css";') && main.includes('import "./styles/velvet-v270-living-scenes.css";') && main.lastIndexOf("velvet-v270-living-scenes.css") > main.lastIndexOf("velvet-v2616-audio-center.css") && read("src/styles/velvet-v270-living-scenes.css").includes("Living Scenes"));
 check("Stories actions render in a body portal", stories.includes("createPortal") && stories.includes("story-action-menu__portal-backdrop") && stories.includes("document.body") && sixFixStyles.includes("z-index:10000!important"));
 check("Character Studio Depth and Voice are no longer trapped in a closed details", characterModal.includes('StudioSection step="depth"') && characterModal.includes('StudioSection step="voice"') && !characterModal.includes('<details className="character-studio__depth">'));
 check("Character Studio gives Organize visible feedback and Voice a real preview", characterModal.includes("toolNotice") && characterModal.includes("Preview character voice") && characterModal.includes("handleVoiceTest") && sixFixStyles.includes("character-studio__tool-notice"));
 check("Chats receive a quieter six-fix spacing layer", sixFixStyles.includes(".reference-story-list{gap:14px!important}") && sixFixStyles.includes(".chat__messages{gap:29px!important}") && sixFixStyles.includes(".reference-story-row__copy p{display:none!important}"));
 check("Add something important uses the rebuilt memory editor", memories.includes("memory-editor__category-chips") && memories.includes("Give Velvet one clear thing worth carrying") && memories.includes("Remember this") && sixFixStyles.includes("memory-editor__switches"));
 check("Group Story preserves the selected cast through conversation creation", chatsContextV260.includes("openOrCreateConversation(\n        character,\n        { ...options, requestedConversationId, forceNew }") && stories.includes("GroupStoryModal") && stories.includes("groupStoryOpen"));
-check("Street Racing remains database-compatible and independent from Night", chatsContextV260.includes('"street_racing"') && sixFixMigration.includes("'street_racing'") && storyAmbience.includes('["street_racing", "Street racing"]'));
 
 
 check("v2.8 chat polish stylesheet is final", main.includes('import "./styles/velvet-v280-chat-experience.css";') && main.lastIndexOf("velvet-v280-chat-experience.css") > main.lastIndexOf("velvet-v274-in-chat-actions.css"));

@@ -1,4 +1,3 @@
-import { stopAllAudio } from "./audioBus";
 
 const SAFE_MODE_KEY = "velvet_safe_mode_v1";
 
@@ -18,7 +17,6 @@ export function setSafeModeEnabled(enabled) {
   const value = Boolean(enabled);
   try { localStorage.setItem(SAFE_MODE_KEY, value ? "1" : "0"); } catch {}
   applySafeModeClass(value);
-  if (value) stopAllAudio();
   try { window.dispatchEvent(new CustomEvent("velvet:safe-mode", { detail: { enabled: value } })); } catch {}
   return value;
 }

@@ -57,8 +57,6 @@ import StorySafeStudioDrawer from "../components/StorySafeStudioDrawer";
 import LivingWorldDrawer from "../components/LivingWorldDrawer";
 import VelvetExperienceDrawer from "../components/VelvetExperienceDrawer";
 import StoryHubDrawer from "../components/StoryHubDrawer";
-import StoryAmbience from "../components/StoryAmbience";
-import AudioStatusPill from "../components/AudioStatusPill";
 import RelationshipDrawer from "../components/RelationshipDrawer";
 import StoryWorldDrawer from "../components/StoryWorldDrawer";
 import MessageQualitySheet from "../components/MessageQualitySheet";
@@ -71,11 +69,8 @@ import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../services/supabase";
-import { speakText, stopSpeech } from "../utils/speech";
-import { readAudioPreference, stopAllAudio } from "../utils/audioBus";
 import { clearBugReportPrivateContext, formatBugReport, setBugReportPrivateContext } from "../utils/bugReporter";
 import { buildLivingSceneHeader, continuityGuardLabel, continuityGuardTitle } from "../utils/livingScenes";
-import { suggestAmbienceForScene } from "../utils/ambienceIntelligence";
 import { STORY_THEMES, readStoryTheme, saveStoryTheme } from "../utils/velvetResilience";
 import { buildAdaptiveReplyHint, mergeDirectorHints } from "../utils/safeStoryUX";
 import { buildLivingWorldDirectorHint, readLivingWorld } from "../utils/livingWorldSafe";
@@ -191,7 +186,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [deleting, setDeleting] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
-  const [speakingMessageId, setSpeakingMessageId] = useState(null);
   const [actionMode, setActionMode] = useState("menu");
   const [actionDraft, setActionDraft] = useState("");
   const [regenerationFeedback, setRegenerationFeedback] = useState([]);
@@ -250,12 +244,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [backgroundDim, setBackgroundDim] = useState(42);
   const [backgroundSlideshow, setBackgroundSlideshow] = useState(false);
   const [compactMobileChat, setCompactMobileChat] = useState(false);
-  const [ambientSoundOn, setAmbientSoundOn] = useState(() => {
-    try { return localStorage.getItem("velvet_ambient_sound") === "1"; }
-    catch { return false; }
-  });
   const [catchUpOpen, setCatchUpOpen] = useState(false);
-  const [dismissedAmbienceSuggestion, setDismissedAmbienceSuggestion] = useState("");
   const sceneImageInputRef = useRef(null);
 
   const messagesEndRef = useRef(null);
@@ -468,10 +457,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     });
     return () => clearBugReportPrivateContext();
   }, [character.name, visibleMessages.length, visibleMessages.at(-1)?.id]);
-  useEffect(() => {
-    return () => stopSpeech();
-  }, []);
-
   useEffect(() => () => {
     if (actionNoticeTimerRef.current) window.clearTimeout(actionNoticeTimerRef.current);
     if (aiPhaseTimerRef.current) window.clearTimeout(aiPhaseTimerRef.current);
@@ -508,10 +493,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     } catch {}
     setCatchUpOpen(true);
   }, [conversation?.conversationId, conversation?.catchUpAvailable, conversation?.storyRecap]);
-
-  useEffect(() => {
-    try { localStorage.setItem("velvet_ambient_sound", ambientSoundOn ? "1" : "0"); } catch {}
-  }, [ambientSoundOn]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -601,15 +582,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     [conversation?.sceneState, conversation?.ambientMode, character.name]
   );
   const continuityLabel = continuityGuardLabel(conversation?.continuityGuard || {});
-  const ambienceSuggestion = useMemo(() => {
-    if (!conversation?.conversationId || conversation?.ambientMode && conversation.ambientMode !== "none") return null;
-    const recentText = visibleMessages.slice(-5).map((item) => item.content || "").join(" ");
-    const suggestion = suggestAmbienceForScene(recentText);
-    if (!suggestion || suggestion.confidence === "low") return null;
-    const key = `${conversation.conversationId}:${suggestion.mode}`;
-    return dismissedAmbienceSuggestion === key ? null : { ...suggestion, key };
-  }, [conversation?.conversationId, conversation?.ambientMode, visibleMessages, dismissedAmbienceSuggestion]);
-
 
   useEffect(() => {
     localStorage.setItem("velvet_reading_mode", readingMode ? "1" : "0");
@@ -1619,32 +1591,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     setAlternatives([]);
   }
 
-  function stopCharacterVoice() {
-    stopSpeech();
-    setSpeakingMessageId(null);
-  }
-
-  function speakCharacterText(content, messageId = null) {
-    const clean = String(content || "").replace(/\*+/g, "").trim();
-    if (!clean) return;
-    setSpeakingMessageId(messageId);
-    speakText({
-      text: clean,
-      voiceId: String(character.ttsVoiceName || ""),
-      rate: Number(character.ttsRate ?? 1),
-      pitch: Number(character.ttsPitch ?? 1),
-      volume: Math.max(0, Math.min(1, Number(readAudioPreference("story", conversation?.conversationId || character.id, { voiceVolume: readAudioPreference("voice", character.id, { volume: 100 }).volume ?? 100 }).voiceVolume ?? 100) / 100)),
-      label: `${character.name} voice`,
-      onEnd: () => setSpeakingMessageId(null),
-      onError: (error) => {
-        setSpeakingMessageId(null);
-        if (error?.error && error.error !== "interrupted") {
-          setSendError(`Voice stopped: ${error.error}`);
-        }
-      },
-    });
-  }
-
   async function runAction(action, event) {
     event?.preventDefault?.();
     event?.stopPropagation?.();
@@ -1664,15 +1610,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         closeActionsAfterAction();
       }
 
-      if (action === "listen") {
-        if (speakingMessageId === selectedMessage.id) {
-          stopCharacterVoice();
-        } else {
-          speakCharacterText(selectedMessage.content, selectedMessage.id);
-        }
-        setActionLoading(false);
-        return;
-      }
 
       if (action === "reply") {
         setReplyTo({
@@ -2381,8 +2318,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         ...(chatHeroImage ? { "--character-presence-image": `url(${JSON.stringify(chatHeroImage)})` } : {}),
       }}
     >
-      <StoryAmbience mode={conversation?.ambientMode || "none"} volume={conversation?.ambientVolume ?? 18} soundOn={ambientSoundOn} />
-      <AudioStatusPill onStopAll={() => { setAmbientSoundOn(false); stopAllAudio(); setSpeakingMessageId(null); }} />
       {typeof document !== "undefined" && createPortal((<header
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
@@ -2512,13 +2447,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         <button type="button" className="chat__mobile-exit" onClick={handleChatBack} aria-label="Leave chat"><ArrowLeft size={20}/></button>
       ), document.body)}
 
-      {ambienceSuggestion && !chatOverlayOpen && (
-        <div className="chat__ambience-suggestion" role="status">
-          <span><Sparkles size={14}/><b>{ambienceSuggestion.label}</b> fits this scene</span>
-          <button type="button" onClick={async()=>{ try { await updateConversationSettings(character.id,{ ambientMode: ambienceSuggestion.mode }); setAmbientSoundOn(true); } catch(error){ setSendError(error.message || "Couldn’t change ambience."); } }}>Use</button>
-          <button type="button" aria-label="Dismiss ambience suggestion" onClick={()=>setDismissedAmbienceSuggestion(ambienceSuggestion.key)}><X size={13}/></button>
-        </div>
-      )}
 
       <div ref={scrollContainerRef} className={`chat__content${activeSceneImage ? " chat__content--wallpaper" : ""}`} style={activeSceneImage ? { backgroundImage: `linear-gradient(rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100}), rgba(15,10,13,${Math.max(0, Math.min(90, backgroundDim)) / 100})), url(${JSON.stringify(activeSceneImage)})`, "--chat-wallpaper-blur": `${backgroundBlur}px` } : undefined}>
 
@@ -2821,9 +2749,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         lorebook={lorebooks.find((item) => item.id === conversation?.lorebookId) || null}
         onJumpToMessage={jumpToStoryMessage}
         onOpenConversation={openStoryConversation}
-        ambientSoundOn={ambientSoundOn}
-        onAmbientSoundToggle={setAmbientSoundOn}
-        recentSceneText={visibleMessages.slice(-6).map((item)=>String(item.content || "")).join("\n")}
       />
 
       {catchUpOpen && conversation?.storyRecap && typeof document !== "undefined" && createPortal((
@@ -3095,7 +3020,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                         <span>Different direction…</span>
                       </button>
                       <button onClick={() => runAction("quote")}><MessageSquareQuote size={16} /><span>Quote</span></button>
-                      <button onClick={() => runAction("listen")} aria-pressed={speakingMessageId === selectedMessage.id}>{speakingMessageId === selectedMessage.id ? <Square size={16}/> : <Volume2 size={16}/>}<span>{speakingMessageId === selectedMessage.id ? "Stop voice" : "Listen"}</span></button>
                       <button onClick={() => runAction("copy")}><Copy size={16} /><span>Copy</span></button>
                       <button onClick={() => setActionMode("more")}><MoreHorizontal size={16} /><span>More</span></button>
                     </div>
