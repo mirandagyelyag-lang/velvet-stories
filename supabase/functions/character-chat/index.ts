@@ -41,6 +41,7 @@ import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engin
 import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
 import { immediateTurnContinuityIssues } from "./engine/immediate-turn-continuity-v35213.js";
 import { buildGroundedLastResortReply, establishedAttractionOpportunityIssues } from "./engine/established-attraction-opportunity-v35219.js";
+import { enforceFinalDelegatedChoiceBarrier } from "./engine/final-turn-barrier-v35223.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7947,8 +7948,8 @@ async function streamRoleplayV19({
         if (blocking.length) {
           console.log("[character-chat] bounded repair started", { issues: blocking, firstDraftDurationMs });
           repairUsed = true;
-          // Keep the optimistic draft visible while repair runs. Swap only once the
-          // replacement is ready, so repair latency never becomes an empty wait state.
+          // Raw draft prose stays quarantined while repair runs. Only a reply that
+          // survives the final turn barrier may be streamed/persisted.
           let repaired: ModelResult | null = null;
           let repairFailure = "";
           try {
@@ -8077,15 +8078,20 @@ async function streamRoleplayV19({
             const lastResortReply = buildGroundedLastResortReply({ character, latestUserMessage, recentCharacterReplies, issues: [...finalIssues, ...rescueBlocking, ...rescueHard] });
             console.error("[character-chat] compact final rescue rejected; using deterministic grounded reply", { blocking: rescueBlocking, hard: rescueHard });
             result = { ...(finalRescue || result), reply: lastResortReply };
-            validationIssues = [];
-            remainingHard = [];
+            validationIssues = validateNarrativeReply(result.reply, {
+              characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
+              finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
+              character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+            });
+            validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
+            remainingHard = hardRepairRequiredIssues(validationIssues);
           } else {
             result = finalRescue;
             validationIssues = rescueIssues;
             remainingHard = [];
           }
         }
-        if (guardedDraft && blocking.length) await streamFinalReply(result.reply, "validated-protected-final");
+        // Blocking turns are streamed only after the absolute final barrier below.
         if (await isCancelled()) return;
         if (!await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) return;
 
@@ -8109,8 +8115,72 @@ async function streamRoleplayV19({
           if (blankRecovery?.model) sendEvent(controller, { type: "model", model: blankRecovery.model });
         }
         if (!persistableReply) throw new Error("Velvet received an empty model reply after recovery; nothing was saved.");
+
+        // v3.52.23 ABSOLUTE FINAL TURN BARRIER. This is intentionally the last
+        // semantic gate before both streaming and persistence, so drafts, repairs,
+        // model rescues, deterministic fallbacks, and blank-recovery prose cannot
+        // bypass delegated-choice ownership. If the user says “I’ll trust you”,
+        // Velvet must make one grounded choice instead of returning a menu/“your call”.
+        const finalBarrier = enforceFinalDelegatedChoiceBarrier({
+          reply: persistableReply,
+          latestUserMessage,
+          recentUserMessages,
+          recentCharacterReplies,
+          character,
+        });
+        persistableReply = String(finalBarrier.reply || "").trim();
+        if (finalBarrier.replaced) {
+          console.warn("[character-chat] final delegated-choice barrier replaced invalid prose", {
+            issues: finalBarrier.originalIssues || [],
+          });
+        }
+
+        let absoluteFinalIssues = validateNarrativeReply(persistableReply, {
+          characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
+          finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
+          character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+        });
+        absoluteFinalIssues = [...new Set([...absoluteFinalIssues, ...validateContinuityEnvelope({ ...result, reply: persistableReply }, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
+        const absoluteFinalBlocking = blockingNarrativeIssues(absoluteFinalIssues);
+        const absoluteFinalHard = hardRepairRequiredIssues(absoluteFinalIssues);
+        if (absoluteFinalBlocking.length || absoluteFinalHard.length || finalBarrier.issues?.length) {
+          const absoluteIssues = [...new Set([...absoluteFinalBlocking, ...absoluteFinalHard, ...(finalBarrier.issues || [])])];
+          const deterministicFinal = buildGroundedLastResortReply({
+            character, latestUserMessage, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: absoluteIssues,
+          });
+          const deterministicBarrier = enforceFinalDelegatedChoiceBarrier({
+            reply: deterministicFinal, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
+          });
+          persistableReply = String(deterministicBarrier.reply || deterministicFinal || "").trim();
+          absoluteFinalIssues = validateNarrativeReply(persistableReply, {
+            characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
+            finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
+            character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+          });
+          absoluteFinalIssues = [...new Set([...absoluteFinalIssues, ...validateContinuityEnvelope({ ...result, reply: persistableReply }, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
+          const unresolvedFinal = [...new Set([...blockingNarrativeIssues(absoluteFinalIssues), ...hardRepairRequiredIssues(absoluteFinalIssues), ...(deterministicBarrier.issues || [])])];
+          if (unresolvedFinal.length) {
+            // v3.52.23 never revives the old terminal Retry loop. The delegated-choice
+            // barrier is deterministic and must be settled locally; unrelated residual
+            // quality flags are logged after the grounded fallback instead of asking the
+            // user to regenerate the same turn again and again.
+            const delegatedStillOpen = Array.isArray(deterministicBarrier.issues) ? deterministicBarrier.issues : [];
+            if (delegatedStillOpen.length) {
+              const forcedCommitment = buildGroundedLastResortReply({
+                character, latestUserMessage, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: delegatedStillOpen,
+              });
+              const forcedBarrier = enforceFinalDelegatedChoiceBarrier({
+                reply: forcedCommitment, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
+              });
+              persistableReply = String(forcedBarrier.reply || forcedCommitment || persistableReply).trim();
+            }
+            console.warn("[character-chat] final grounded fallback retained non-delegated quality flags", { issues: unresolvedFinal });
+          }
+        }
+
+        if (!persistableReply) throw new Error("Velvet final turn barrier produced no safe reply; nothing was saved.");
         result = { ...result, reply: persistableReply };
-        await streamFinalReply(persistableReply, "v3506-persistence-guard");
+        await streamFinalReply(persistableReply, "v35223-absolute-final-turn-barrier");
 
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: persistableReply })

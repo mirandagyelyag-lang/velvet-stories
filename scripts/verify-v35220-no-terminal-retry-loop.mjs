@@ -18,7 +18,7 @@ assert.match(refusal, /stops instead of pushing/);
 
 const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts", import.meta.url), "utf8");
 const rescueStart = edge.indexOf("let finalRescue: ModelResult | null = null");
-const rescueEnd = edge.indexOf("if (guardedDraft && blocking.length)", rescueStart);
+const rescueEnd = edge.indexOf("// v3.50.6 ABSOLUTE PERSISTENCE GUARD", rescueStart);
 const rescueFlow = edge.slice(rescueStart, rescueEnd);
 assert.doesNotMatch(rescueFlow, /throw new Error/);
 assert.match(rescueFlow, /buildGroundedLastResortReply/);

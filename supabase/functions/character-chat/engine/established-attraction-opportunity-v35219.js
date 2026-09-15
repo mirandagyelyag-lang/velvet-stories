@@ -85,7 +85,8 @@ export function establishedAttractionOpportunityIssues({ reply = "", latestUserM
 }
 
 export function buildGroundedLastResortReply({ character = {}, latestUserMessage = "", recentCharacterReplies = [], issues = [] } = {}) {
-  const name = String(character?.name || "The character").trim() || "The character";
+  const fullName = String(character?.name || "The character").trim() || "The character";
+  const name = fullName.split(/\s+/)[0] || fullName;
   const normalizedTurn = normalize(latestUserMessage);
   const failures = new Set(Array.isArray(issues) ? issues : []);
 
@@ -95,14 +96,14 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
   if (failures.has("trusted_choice_attraction_flattened")) {
     const recent = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
     const destination = /\bdiner\b/.test(recent) ? "The diner" : /\bdrive thru\b/.test(recent) ? "Drive-thru" : "I’ve got it";
-    if (hasOpenFlirtCanon(character)) return `“${destination}.” ${name} makes the call and starts that way. “Better choice. And I’m not wasting an excuse to steal you from them for a while.”`;
-    return `“${destination}.” ${name} makes the call and starts that way. “I wasn’t in a hurry to head back yet.”`;
+    if (hasOpenFlirtCanon(character)) return `“${destination}.” ${name} heads that way without asking again. “Better choice. I wanted extra time with you anyway.”`;
+    return `“${destination}.” ${name} heads that way without asking again. “I wasn’t in a hurry to head back yet.”`;
   }
   if (failures.has("delegated_choice_returned")) {
     const recent = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
     if (hasExplicitAttraction(character) && userDelegatesChoice(latestUserMessage) && /\b(?:diner|drive thru|drive through|where are we going|fries)\b/.test(recent)) {
-      if (/\bdiner\b/.test(recent)) return `“The diner.” ${name} makes the decision and heads that way. “Better fries. I wanted the extra time with you anyway.”`;
-      if (/\bdrive thru\b/.test(recent)) return `“Drive-thru.” ${name} decides and leads the way. “I wanted the extra time with you anyway.”`;
+      if (/\bdiner\b/.test(recent)) return `“The diner.” ${name} makes the decision and heads that way. “Better fries. I wanted extra time with you anyway.”`;
+      if (/\bdrive thru\b/.test(recent)) return `“Drive-thru.” ${name} decides and leads the way. “I wanted extra time with you anyway.”`;
     }
     if (/\bdiner\b/.test(recent)) return `“The diner.” ${name} makes the decision and heads that way without handing it back to you. “Come on.”`;
     if (/\bdrive thru\b/.test(recent)) return `“Drive-thru.” ${name} makes the decision and leads the way. “I’ve got it.”`;

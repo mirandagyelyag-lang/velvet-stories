@@ -13,8 +13,12 @@ assert.match(protectedFlow, /protected reply remained invalid; starting compact 
 assert.match(protectedFlow, /const rescueBlocking = blockingNarrativeIssues\(rescueIssues\)/);
 assert.match(protectedFlow, /buildGroundedLastResortReply/);
 assert.doesNotMatch(protectedFlow, /Velvet could not produce a coherent reply without contradicting your latest turn/);
-assert.match(protectedFlow, /streamFinalReply\(result\.reply, "validated-protected-final"\)/);
-assert.ok(protectedFlow.indexOf("compact final rescue rejected") < protectedFlow.indexOf("validated-protected-final"));
+assert.doesNotMatch(protectedFlow, /streamFinalReply\(result\.reply, "validated-protected-final"\)/);
+const absoluteBarrierStart = edge.indexOf("ABSOLUTE FINAL TURN BARRIER", persistenceStart);
+const saveStart = edge.indexOf("const savedMessage = replacementMessage", absoluteBarrierStart);
+const absoluteFinalFlow = edge.slice(absoluteBarrierStart, saveStart);
+assert.match(absoluteFinalFlow, /streamFinalReply\(persistableReply, "v35223-absolute-final-turn-barrier"\)/);
+assert.ok(edge.indexOf("compact final rescue rejected") < absoluteBarrierStart);
 
 console.log("PASS  bounded repair receives the compact visible-canon prompt");
 console.log("PASS  rejected repair and timeout drafts are never streamed early");
