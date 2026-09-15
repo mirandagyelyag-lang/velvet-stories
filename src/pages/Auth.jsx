@@ -1,21 +1,13 @@
-import { Eye, EyeOff, KeyRound, Mail, Moon, Sun } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import "../styles/auth.css";
-
-const SAVED_EMAIL_KEY = "velvet-private-email-v1";
-
-function getSavedEmail() {
-  try {
-    return window.localStorage.getItem(SAVED_EMAIL_KEY) || "";
-  } catch {
-    return "";
-  }
-}
 
 function translateAuthError(message = "") {
   const normalized = message.toLowerCase();
+  if (normalized.includes("private owner") || normalized.includes("private velvet")) {
+    return "This Velvet belongs to its owner only.";
+  }
   if (normalized.includes("invalid login credentials")) {
     return "That password doesn't match your Velvet account.";
   }
@@ -29,12 +21,7 @@ function translateAuthError(message = "") {
 }
 
 export default function Auth() {
-  const { signIn } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const rememberedEmail = getSavedEmail();
-
-  const [email, setEmail] = useState(rememberedEmail);
-  const [useSavedAccount, setUseSavedAccount] = useState(Boolean(rememberedEmail));
+  const { signIn, ownerEmail } = useAuth();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -44,11 +31,6 @@ export default function Auth() {
     event.preventDefault();
     setError("");
 
-    if (!email.trim()) {
-      setError("Enter your email address.");
-      return;
-    }
-
     if (password.length < 6) {
       setError("Your password needs at least 6 characters.");
       return;
@@ -56,12 +38,7 @@ export default function Auth() {
 
     try {
       setSubmitting(true);
-      await signIn({ email: email.trim(), password });
-      try {
-        window.localStorage.setItem(SAVED_EMAIL_KEY, email.trim());
-      } catch {
-        // localStorage is only a convenience.
-      }
+      await signIn({ email: ownerEmail, password });
     } catch (requestError) {
       setError(translateAuthError(requestError.message));
     } finally {
@@ -69,106 +46,55 @@ export default function Auth() {
     }
   }
 
-  function chooseDifferentAccount() {
-    setUseSavedAccount(false);
-    setEmail("");
-    setPassword("");
-    setError("");
-  }
-
   return (
-    <main className="auth auth--first-choice">
-      <div className="auth__background auth__background--first-choice" aria-hidden="true" />
-      <div className="auth__veil auth__veil--first-choice" aria-hidden="true" />
+    <main className="auth auth--owner-scene">
+      <div className="auth__owner-stage">
+        <img
+          className="auth__owner-art"
+          src="/velvet-owner-login-scene.png"
+          alt=""
+          aria-hidden="true"
+          draggable="false"
+        />
 
-      <button
-        className="auth__theme-toggle auth__theme-toggle--first-choice"
-        onClick={toggleTheme}
-        type="button"
-        aria-label="Change theme"
-      >
-        {theme === "dark" ? <Moon size={17} /> : <Sun size={17} />}
-      </button>
-
-      <section className="auth__card auth__card--first-choice">
-        <header className="auth__hero auth__hero--first-choice">
-          <div className="auth__brand-mark" aria-label="Velvet Stories">
-            <span className="auth__monogram" aria-hidden="true">VS</span>
-          </div>
-          <h1 className="auth__brand-title">Velvet Stories</h1>
-          <p className="auth__brand-copy">More than characters. A place for you.</p>
-          <div className="auth__ornament" aria-hidden="true">
-            <span />
-            <i />
-            <span />
-          </div>
-        </header>
-
-        <form className="auth__form auth__form--first-choice" onSubmit={handleSubmit}>
-          {useSavedAccount ? (
-            <div className="auth__remembered auth__remembered--first-choice">
-              <div className="auth__remembered-icon">
-                <Mail size={16} />
-              </div>
-              <div className="auth__remembered-copy">
-                <small>Remembered account</small>
-                <strong>{email}</strong>
-              </div>
-              <button type="button" onClick={chooseDifferentAccount}>Change</button>
-            </div>
-          ) : (
-            <label className="auth__field auth__field--first-choice">
-              <span>Email</span>
-              <div className="auth__input auth__input--first-choice auth__input--two">
-                <Mail size={16} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    setError("");
-                  }}
-                  placeholder="Email"
-                  autoComplete="email"
-                  autoFocus
-                />
-              </div>
-            </label>
-          )}
-
-          <label className="auth__field auth__field--first-choice">
-            <span>Password</span>
-            <div className="auth__input auth__input--first-choice auth__input--three">
-              <KeyRound size={16} />
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setError("");
-                }}
-                placeholder="Password"
-                autoComplete="current-password"
-                autoFocus={useSavedAccount}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+        <form className="auth__owner-overlay" onSubmit={handleSubmit} aria-label="Private Velvet login">
+          <label className="auth__owner-password-shell">
+            <span className="sr-only">Password</span>
+            <span className="auth__owner-password-mask" aria-hidden="true" />
+            <input
+              className="auth__owner-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError("");
+              }}
+              placeholder="Password"
+              autoComplete="current-password"
+              autoFocus
+            />
+            <button
+              className="auth__owner-eye"
+              type="button"
+              onClick={() => setShowPassword((current) => !current)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff /> : <Eye />}
+            </button>
           </label>
 
-          {error ? <p className="auth__error auth__error--first-choice">{error}</p> : null}
-
-          <button className="auth__submit auth__submit--first-choice" type="submit" disabled={submitting}>
-            {submitting ? "Opening Velvet..." : "Enter Velvet"}
+          <button
+            className="auth__owner-enter"
+            type="submit"
+            disabled={submitting}
+            aria-label={submitting ? "Opening Velvet" : "Enter Velvet"}
+          >
+            <span className="sr-only">{submitting ? "Opening Velvet..." : "Enter Velvet"}</span>
           </button>
+
+          {error ? <p className="auth__owner-error" role="alert">{error}</p> : null}
         </form>
-        <p className="auth__closing-line">Same you, different stories</p>
-      </section>
+      </div>
     </main>
   );
 }

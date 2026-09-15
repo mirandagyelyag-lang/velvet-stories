@@ -56,6 +56,7 @@ const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3
 const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini-3.1-flash-lite";
 const GEMINI_RECOVERY_MODEL = Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-3.5-flash";
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
+const VELVET_OWNER_EMAIL = "mirandagyelyag@gmail.com";
 
 type ModelEnvelope = {
   reply: string;
@@ -127,6 +128,9 @@ Deno.serve(async (request) => {
 
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData.user) return json({ error: "Invalid session" }, 401);
+    if (String(userData.user.email || "").trim().toLowerCase() !== VELVET_OWNER_EMAIL) {
+      return json({ error: "Private owner account required" }, 403);
+    }
 
     const body = await request.json();
     const action = String(body?.action || "generate");
