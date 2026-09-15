@@ -12,15 +12,15 @@ const scenePath = join(root, "public/velvet-owner-login-scene.png");
 const sceneHash = existsSync(scenePath) ? createHash("sha256").update(readFileSync(scenePath)).digest("hex") : "";
 
 const checks = [
-  ["version is 3.52.28", pkg.version === "3.52.28"],
+  ["version is 3.52.29", pkg.version === "3.52.29"],
   ["exact owner login artwork ships with the app", existsSync(scenePath) && statSync(scenePath).size > 500_000],
   ["owner artwork is the exact approved image", sceneHash === "223b3c52abc874e7e2772eb65922d91fa08af6b42ab467b7c33aace0f8719507"],
   ["auth renders the owner artwork directly", auth.includes('/velvet-owner-login-scene.png') && auth.includes('auth__owner-stage')],
   ["old synthetic card is no longer rendered", !auth.includes('auth__card--first-choice') && !auth.includes('auth__theme-toggle')],
   ["only password is editable on the private screen", auth.includes('ownerEmail') && !auth.includes('chooseDifferentAccount') && !auth.includes('type="email"')],
   ["password and submit remain functional", auth.includes('handleSubmit') && auth.includes('showPassword') && auth.includes('type="submit"')],
-  ["desktop overlay is pinned to artwork coordinates", css.includes('left: 33.53%') && css.includes('top: 53.81%') && css.includes('top: 62.40%')],
-  ["mobile keeps the same cinematic artwork", css.includes('@media (max-width: 720px)') && css.includes('178dvh')],
+  ["desktop overlay is pinned to artwork coordinates", css.includes('left: 34.33%') && css.includes('top: 59.40%') && css.includes('top: 68.76%')],
+  ["mobile keeps the same cinematic artwork", css.includes('aspect-ratio: 1672 / 941') && css.includes('177.683dvh')],
   ["frontend rejects restored non-owner sessions", authContext.includes('nextEmail === ownerEmail') && authContext.includes('Velvet rejected a non-owner session')],
   ["frontend sign-in is owner locked", authContext.includes('requestedEmail !== ownerEmail') && authContext.includes('Private owner account required')],
   ["edge function also rejects non-owner accounts", edge.includes('VELVET_OWNER_EMAIL') && edge.includes('Private owner account required') && edge.includes('403')],

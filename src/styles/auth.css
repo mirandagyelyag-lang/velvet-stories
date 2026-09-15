@@ -1,4 +1,4 @@
-/* Velvet Stories · owner-only cinematic login · v3.52.28 */
+/* Velvet Stories · owner-only cinematic login · v3.52.29 */
 .auth--owner-scene {
   position: relative;
   width: 100%;
@@ -13,8 +13,8 @@
   position: fixed;
   left: 50%;
   top: 50%;
-  width: max(100vw, 150dvh);
-  aspect-ratio: 3 / 2;
+  width: max(100vw, 177.683dvh);
+  aspect-ratio: 1672 / 941;
   transform: translate(-50%, -50%);
   overflow: hidden;
   user-select: none;
@@ -37,28 +37,16 @@
   z-index: 2;
 }
 
-/* Exact coordinates of the generated owner login artwork (1536 × 1024). */
+/* Exact coordinates of the shipped owner login artwork (1672 × 941). */
 .auth__owner-password-shell {
   position: absolute;
-  left: 33.53%;
-  top: 53.81%;
-  width: 31.19%;
-  height: 6.25%;
+  left: 34.33%;
+  top: 59.40%;
+  width: 31.34%;
+  height: 6.91%;
   display: block;
   border-radius: 18px;
   cursor: text;
-}
-
-.auth__owner-password-mask {
-  position: absolute;
-  left: 13.6%;
-  right: 12.5%;
-  top: 15%;
-  bottom: 15%;
-  border-radius: 8px;
-  background: rgba(29, 5, 9, 0.965);
-  box-shadow: 0 0 10px rgba(29, 5, 9, 0.78);
-  pointer-events: none;
 }
 
 .auth__owner-password {
@@ -67,19 +55,35 @@
   z-index: 2;
   width: 100%;
   height: 100%;
-  padding: 0 14.5% 0 15.3%;
+  padding: 0;
   border: 0;
   outline: 0;
   background: transparent;
-  color: #f4d5c3;
-  caret-color: #f1b292;
-  font: 500 clamp(13px, 1.17vw, 18px)/1.2 Georgia, "Times New Roman", serif;
-  letter-spacing: 0.01em;
+  color: transparent;
+  caret-color: transparent;
+  opacity: 0.001;
+  font-size: 16px;
 }
 
-.auth__owner-password::placeholder {
-  color: rgba(225, 181, 158, 0.72);
-  opacity: 1;
+.auth__owner-password-live {
+  position: absolute;
+  z-index: 3;
+  left: 13.2%;
+  right: 13.0%;
+  top: 17%;
+  bottom: 17%;
+  display: flex;
+  align-items: center;
+  padding: 0 2%;
+  overflow: hidden;
+  border-radius: 9px;
+  background: rgba(28, 7, 10, 0.96);
+  box-shadow: 0 0 10px rgba(28, 7, 10, 0.72);
+  color: #f2d1bf;
+  font: 500 clamp(13px, 1.05vw, 18px)/1.2 Georgia, "Times New Roman", serif;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .auth__owner-password-shell:focus-within {
@@ -89,13 +93,11 @@
 .auth__owner-eye {
   position: absolute;
   z-index: 3;
-  right: 4.3%;
-  top: 50%;
-  width: 9%;
-  height: 70%;
-  transform: translateY(-50%);
-  display: grid;
-  place-items: center;
+  right: 0;
+  top: 0;
+  width: 15%;
+  height: 100%;
+  display: block;
   padding: 0;
   border: 0;
   background: transparent;
@@ -103,18 +105,12 @@
   cursor: pointer;
 }
 
-.auth__owner-eye svg {
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-}
-
 .auth__owner-enter {
   position: absolute;
-  left: 33.53%;
-  top: 62.40%;
-  width: 31.19%;
-  height: 7.13%;
+  left: 34.33%;
+  top: 68.76%;
+  width: 31.34%;
+  height: 8.18%;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -140,7 +136,7 @@
 .auth__owner-error {
   position: absolute;
   left: 50%;
-  top: 71.7%;
+  top: 78.3%;
   transform: translateX(-50%);
   width: min(31%, 480px);
   margin: 0;
@@ -157,19 +153,6 @@
   -webkit-backdrop-filter: blur(12px);
 }
 
-@media (max-aspect-ratio: 3/2) {
-  .auth__owner-stage {
-    width: 150dvh;
-  }
-}
-
-@media (max-width: 720px) and (orientation: portrait) {
-  /* Keep the cinematic card readable on phones by scaling from the same artwork,
-     while cropping only the decorative left/right room edges. */
-  .auth__owner-stage {
-    width: 178dvh;
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .auth__owner-enter {

@@ -1,4 +1,3 @@
-import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import "../styles/auth.css";
@@ -58,9 +57,7 @@ export default function Auth() {
         />
 
         <form className="auth__owner-overlay" onSubmit={handleSubmit} aria-label="Private Velvet login">
-          <label className="auth__owner-password-shell">
-            <span className="sr-only">Password</span>
-            <span className="auth__owner-password-mask" aria-hidden="true" />
+          <div className="auth__owner-password-shell">
             <input
               className="auth__owner-password"
               type={showPassword ? "text" : "password"}
@@ -69,19 +66,22 @@ export default function Auth() {
                 setPassword(event.target.value);
                 setError("");
               }}
-              placeholder="Password"
+              aria-label="Password"
               autoComplete="current-password"
               autoFocus
             />
+            {password ? (
+              <span className="auth__owner-password-live" aria-hidden="true">
+                {showPassword ? password : "•".repeat(Math.min(password.length, 18))}
+              </span>
+            ) : null}
             <button
               className="auth__owner-eye"
               type="button"
               onClick={() => setShowPassword((current) => !current)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <EyeOff /> : <Eye />}
-            </button>
-          </label>
+            />
+          </div>
 
           <button
             className="auth__owner-enter"
