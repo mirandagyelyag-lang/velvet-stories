@@ -2,7 +2,6 @@ import { Eye, EyeOff, KeyRound, Mail, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import velvetLogo from "../assets/velvet-logo.webp";
 import "../styles/auth.css";
 
 const SAVED_EMAIL_KEY = "velvet-private-email-v1";
@@ -93,7 +92,11 @@ export default function Auth() {
 
       <section className="auth__card auth__card--first-choice">
         <header className="auth__hero auth__hero--first-choice">
-          <img className="auth__logo auth__logo--first-choice" src={velvetLogo} alt="Velvet" />
+          <div className="auth__brand-mark" aria-label="Velvet Stories">
+            <span className="auth__monogram" aria-hidden="true">VS</span>
+          </div>
+          <h1 className="auth__brand-title">Velvet Stories</h1>
+          <p className="auth__brand-copy">More than characters. A place for you.</p>
           <div className="auth__ornament" aria-hidden="true">
             <span />
             <i />
@@ -164,6 +167,7 @@ export default function Auth() {
             {submitting ? "Opening Velvet..." : "Enter Velvet"}
           </button>
         </form>
+        <p className="auth__closing-line">Same you, different stories</p>
       </section>
     </main>
   );
