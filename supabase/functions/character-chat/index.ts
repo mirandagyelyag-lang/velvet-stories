@@ -40,6 +40,7 @@ import { buildMicroContinuityV34945, microContinuityV34945Issues } from "./engin
 import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engine/turn-state-ledger-v34946.js";
 import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
 import { immediateTurnContinuityIssues } from "./engine/immediate-turn-continuity-v35213.js";
+import { behavioralTurnIntegrityIssues, sanitizeBehavioralTurnIntegrity } from "./engine/behavioral-turn-integrity-v35224.js";
 import { buildGroundedLastResortReply, establishedAttractionOpportunityIssues } from "./engine/established-attraction-opportunity-v35219.js";
 import { enforceFinalDelegatedChoiceBarrier } from "./engine/final-turn-barrier-v35223.js";
 
@@ -3158,6 +3159,9 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     direct_preference_evasion: "Answer the preference with a real stance in the first spoken clause.",
     delegated_choice_returned: "The user explicitly delegated the decision with 'I trust you', 'you choose', 'surprise me', or equivalent. Choose one concrete option and act on it now. Do not return the choice, ask another preference question, or offer another menu.",
     trusted_choice_attraction_flattened: "Established attraction is canon and the user just trusted/delegated a one-on-one choice. Keep the concrete decision, then add ONE legible character-specific sign that this character wants the time with the user. If open flirting is canon, let the signal actually flirt. Do not answer with logistics alone, do not force a confession, and do not narrate user reciprocity.",
+    care_command_loop: "The character has already given enough directives in this care/illness beat. Stop repeating orders such as get in, come on, wake up, lie down, or don't argue. Preserve concern but change behavior: one practical action, a quiet check, waiting, ordinary conversation, or character-specific restraint. Caring is not a command loop.",
+    care_command_density: "Too much of this reply is imperative care language. Keep at most one necessary instruction. Let the rest be normal action/dialogue/silence in this character's own voice rather than nurse/security-guard scripting.",
+    transit_state_rewind_after_departure: "The vehicle journey is already underway. Do not reopen car doors, re-enter the driver seat, restart the engine, or replay pre-departure seatbelt/door choreography. Continue from the established moving-car state until an explicit arrival/stop occurs.",
     banter_reciprocity_drop: "Answer the latest jab directly with a plain concession, grounded tease, or playful stance.",
     phantom_question_reference: "Remove references to a question unless the previous character turn visibly asked one.",
     reaction_reference_ungrounded: "Ground the reaction in the exact immediately preceding line or action.",
@@ -5887,6 +5891,9 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   if (issues.some((issue) => physicsRepair.includes(issue))) {
     reply = sanitizeScenePhysicsReply(reply, issues);
   }
+  if (issues.some((issue) => ["care_command_loop", "care_command_density", "transit_state_rewind_after_departure"].includes(issue))) {
+    reply = sanitizeBehavioralTurnIntegrity(reply, issues, { recentCharacterReplies: options.recentCharacterReplies || [] });
+  }
   if (issues.some((issue) => intentHard.includes(issue))) {
     reply = sanitizeIntentSubtextReply(reply, issues);
   }
@@ -6177,6 +6184,9 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "unsupported_elapsed_time_claim",
   "door_state_continuity_break",
   "repeated_action_fingerprint",
+  "care_command_loop",
+  "care_command_density",
+  "transit_state_rewind_after_departure",
   "answer_before_flourish_violation",
   "pragmatic_sarcasm_miss",
   "dead_ack_after_nonverbal_cue",
@@ -6386,6 +6396,9 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "precise_time_invention",
   "unsupported_elapsed_time_claim",
   "door_state_continuity_break",
+  "care_command_loop",
+  "care_command_density",
+  "transit_state_rewind_after_departure",
   "jealousy_without_grounded_evidence",
   "premature_relationship_escalation",
   "romance_used_to_skip_repair",
@@ -7123,6 +7136,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
   for (const issue of meaningfulTurnGateV34950Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
+  for (const issue of behavioralTurnIntegrityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
