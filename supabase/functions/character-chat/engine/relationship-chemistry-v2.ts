@@ -4,7 +4,8 @@ export type RelationshipChemistryV2 = {
   asymmetry: { characterView:string; userViewStatus:"unknown"|"explicit"; userView:string; policy:string };
   reciprocity: { userApproach:number; userDistance:number; characterApproach:number; characterDistance:number; balance:string; policy:string };
   affectionLanguage: { primary:string; secondary:string; avoid:string[]; policy:string };
-  personalityManifestation: { attractionCanonExplicit:boolean; attractionVisibility:string; confidenceStyle:string; coldStyle:string; dangerStyle:string; differentiationRule:string; policy:string };
+  personalityManifestation: { attractionCanonExplicit:boolean; openFlirtCanon:boolean; attractionVisibility:string; flirtExpression:string; confidenceStyle:string; coldStyle:string; dangerStyle:string; differentiationRule:string; policy:string };
+  attractionExpression: { status:"not_required"|"ambient"|"due"|"opportunity_now"; recentSignalCount:number; directive:string; policy:string };
   jealousy: { stage:"off"|"notice"|"friction"|"confront"; evidence:string[]; style:string; policy:string };
   vulnerabilityHangover: { active:boolean; source:string; policy:string };
   conflictResidue: { active:boolean; level:number; policy:string };
@@ -40,15 +41,22 @@ function affectionLanguageFor(character:Record<string,unknown>={}){
 }
 function personalityManifestationFor(character:Record<string,unknown>={}){
   const p=profileText(character);
-  const attractionCanonExplicit=/\b(?:already likes|likes (?:you|the user|her|him)|has (?:a )?(?:crush|thing|feelings) for (?:you|the user|her|him)|attracted to (?:you|the user|her|him)|into (?:you|the user|her|him)|in love with (?:you|the user|her|him)|secretly likes|secret crush|romantic feelings|le gustas|gusta de ti|siente algo por ti|enamorado de ti|enamorada de ti)\b/.test(p);
+  const attractionCanonExplicit=/\b(?:already likes|likes (?:you|the user|her|him)|has (?:a )?(?:crush|thing|feelings) for (?:you|the user|her|him)|attracted to (?:you|the user|her|him)|into (?:you|the user|her|him)|in love with (?:you|the user|her|him)|secretly likes|secret crush|romantic feelings|never hidden how much (?:he|she|they) likes (?:you|the user)|le gustas|gusta de ti|siente algo por ti|enamorado de ti|enamorada de ti)\b/.test(p);
+  const openFlirtCanon=/\b(?:flirts openly|openly flirty|flirtatious|flirty|natural flirt|likes to flirt|coquetea abiertamente|coqueto|coqueta)\b/.test(p);
   const confident=/\b(?:confident|self assured|self-assured|bold|decisive|assertive|seguro de si|segura de si|decidido|decidida)\b/.test(p);
   const cold=/\b(?:cold|aloof|distant|reserved|guarded|stoic|detached|frio|fria|distante|reservado|reservada)\b/.test(p);
   const dangerous=/\b(?:dangerous|feared|lethal|ruthless|criminal|mafia|assassin|killer|gangster|powerful|peligroso|peligrosa|temido|temida|letal|despiadado|despiadada)\b/.test(p);
   return {
     attractionCanonExplicit,
+    openFlirtCanon,
     attractionVisibility: attractionCanonExplicit
       ? "The character already likes/is attracted to the user. Keep that fact perceptible through specific choices, attention, remembered detail, voluntary time, selective access, proximity, practical care, or a small social/emotional risk. It may remain unspoken, but it may not become invisible."
       : "Do not invent attraction; if it develops, ground it in earned interaction.",
+    flirtExpression: openFlirtCanon
+      ? "OPEN FLIRT CANON: this character is supposed to flirt. Let some attraction signals be unmistakably verbal, playful, selective, or socially risky instead of translating every feeling into practical care. Keep it natural and character-specific, never canned seduction lines."
+      : attractionCanonExplicit
+        ? "Attraction may stay mostly behavioral unless canon supports overt flirting, but it still needs legible signals."
+        : "Do not manufacture flirting.",
     confidenceStyle: confident
       ? "Self-assurance must produce calm initiative, clear choices, direct follow-through and tolerance of being seen wanting something—not default evasiveness, helpless awkwardness or endless almost-moments."
       : "Use only the confidence level supported by canon.",
@@ -85,6 +93,21 @@ function trajectoryFor(character:Record<string,unknown>={}){
   if(/crush|unrequited|one-sided|one sided/.test(p)) return "asymmetric crush: one person's attraction never proves reciprocity";
   if(/dating|boyfriend|girlfriend|partner|committed/.test(p)) return "established relationship: intimacy may be normal, but conflict, expectations and repair still have individual texture";
   return "organic relationship: let attraction, trust, comfort, attachment and commitment move at different speeds";
+}
+
+function looksLikeAttractionSignal(value:any){
+  const t=norm(value);
+  return /\b(?:wanted (?:some |more |extra )?time with you|want (?:some |more |extra )?time with you|rather be with you|rather stay with you|just the two of us|just us|you and me|because i wanted you|i wanted you there|i wanted you with me|steal you (?:away|from them)|have you to myself|keep you to myself|not in a hurry to (?:go|head) back|wasn t in a hurry to (?:go|head) back|saved you|saved this for you|remembered your|made time for you|waited for you|came to (?:find|see) you|looked for you|call it a date|sounds like a date)\b/.test(t);
+}
+function delegatedTrust(value:any){
+  const t=norm(value);
+  return /^(?:i(?:'ll| will)? trust you|i trust you|you choose|your choice|surprise me|up to you|you decide|whatever you want|whatever you think|confio en ti|tu elige|elige tu|sorprendeme|lo que tu quieras)$/.test(t);
+}
+function oneOnOneWindow(recentMessages:any[]=[], latestUserMessage=""){
+  const t=norm([...(Array.isArray(recentMessages)?recentMessages.slice(-12).map(messageText):[]), latestUserMessage].join(" "));
+  const outing=/\b(?:grab your jacket|take you somewhere|taking you somewhere|bailing|head out|leave a room|going to get|go somewhere|do something|where are we going|held the door|holding the door|diner|drive thru|drive through|fries|come on|lets go|let s go|parking lot|car ride)\b/.test(t);
+  const shared=/\b(?:we|us|you and me|with you|take you|taking you|lets|let s|come on|follow you|i follow you)\b/.test(t);
+  return outing&&shared;
 }
 
 export function deriveRelationshipChemistryV2({character={},userName="",latestUserMessage="",recentMessages=[],developmentState={},intelligenceState={},chemistryProfile={},activeConflicts=[],memories=[],milestones=[],baseRelationship={}}:any={}):RelationshipChemistryV2 {
@@ -146,6 +169,25 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
 
   const affection=affectionLanguageFor(character);
   const personalityManifestation=personalityManifestationFor(character);
+  const recentSignalCount=recentChar.slice(-4).filter(looksLikeAttractionSignal).length;
+  const latestBoundary=/\b(?:leave me alone|dont flirt|do not flirt|stop flirting|not interested|i need space|give me space|no me coquetees|dejame sola|dejame solo|necesito espacio)\b/.test(latest);
+  let attractionExpression:RelationshipChemistryV2["attractionExpression"]={
+    status:"not_required",
+    recentSignalCount,
+    directive:"No attraction signal is required because attraction is not explicit canon.",
+    policy:"Never invent romance to satisfy a cadence rule."
+  };
+  if(personalityManifestation.attractionCanonExplicit){
+    if(conflictActive||latestBoundary){
+      attractionExpression={status:"ambient",recentSignalCount,directive:"Established attraction still exists, but conflict/boundary context outranks flirting. Let desire survive as restraint, changed warmth, selective attention or distance without pressuring the user.",policy:"Boundaries and repair outrank attraction display."};
+    } else if(delegatedTrust(latestUserMessage)&&oneOnOneWindow(recentMessages,latestUserMessage)){
+      attractionExpression={status:"opportunity_now",recentSignalCount,directive:"ATTRACTION OPPORTUNITY NOW: the user delegated a one-on-one choice/trust moment. Choose for them as requested AND include one legible, character-specific sign that this character wants this time with the user. If open flirting is canon, the signal should include actual flirtatious subtext or dialogue, not logistics alone.",policy:"One signal is enough. Do not force a confession, kiss, jealousy beat, or user reciprocity."};
+    } else if(recentSignalCount===0){
+      attractionExpression={status:"due",recentSignalCount,directive:"VISIBLE ATTRACTION DUE: recent replies have not carried a legible attraction signal. On this ordinary opening, include one small character-specific sign through chosen time, selective attention, remembered detail, voluntary proximity, practical prioritization, a private joke, partial honesty, or overt flirting when canon supports it.",policy:"Do not stack signals or turn every turn romantic. Avoid another 3+ reply stretch where established attraction is behaviorally invisible."};
+    } else {
+      attractionExpression={status:"ambient",recentSignalCount,directive:"Keep established attraction intermittent but readable. Vary how it appears and let ordinary conversation stay ordinary between signals.",policy:"Aim for a natural signal every few character turns when the scene allows, not every line."};
+    }
+  }
   const repairStyle=repairStyleFor(character);
   const trajectory=trajectoryFor(character);
   const antiCloneSignature=`${affection.primary} | jealousy: ${jealousyStyleFor(character)} | repair: ${repairStyle} | defense: ${defense}`;
@@ -156,6 +198,7 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
     reciprocity:{userApproach,userDistance,characterApproach,characterDistance,balance,policy:"Track who visibly initiates, returns, cancels, withdraws, repairs and makes room. Imbalance changes expectations; it does not invent blame or the user's motive."},
     affectionLanguage:{primary:affection.primary,secondary:affection.secondary,avoid:affection.avoid,policy:"Affection must sound and behave like this character. Do not substitute the universal romance kit."},
     personalityManifestation,
+    attractionExpression,
     jealousy:{stage:jealousyStage,evidence:uniq(jealousyEvidence).slice(-4),style:jealousyStyleFor(character),policy:"No jealousy without witnessed/canonical evidence. Jealousy is a behavior filter, never proof of ownership or love."},
     vulnerabilityHangover:{active:vulnerabilityHangover,source:text(vulnerabilitySource),policy:vulnerabilityHangover?"Do not emotionally reset on the next turn. Let awkwardness, exposure, pride, relief, avoidance or changed access linger in this character-specific way.":"No forced vulnerability residue."},
     conflictResidue:{active:conflictActive,level:conflictLevel,policy:conflictActive?"Conflict residue changes warmth, patience, access or trust until repair evidence accumulates. One apology cannot erase it.":"Do not invent conflict residue."},
@@ -165,7 +208,7 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
     historyAnchors,
     thirdPartyAwareness:{evidence:thirdPartyEvidence,policy:"NPCs may notice only observable patterns they have actually witnessed or plausibly heard about. They cannot announce hidden mutual feelings as fact."},
     antiCloneSignature,
-    instruction:"RELATIONSHIP CHEMISTRY 2.1: keep attraction, trust, comfort, attachment and commitment independent; preserve desire-versus-defense, reciprocity, vulnerability hangover, conflict residue, character-specific affection/jealousy/repair style, trajectory and asymmetric beliefs. Established attraction must remain behaviorally perceptible without forcing a confession or milestone. Confidence, coldness and danger must alter choices and presence rather than survive only as profile labels. Do not protect the ship by deleting other people. Do not force romance because the scene is pleasant, and do not stall earned progression forever."
+    instruction:"RELATIONSHIP CHEMISTRY 2.2: keep attraction, trust, comfort, attachment and commitment independent; preserve desire-versus-defense, reciprocity, vulnerability hangover, conflict residue, character-specific affection/jealousy/repair style, trajectory and asymmetric beliefs. Established attraction must remain behaviorally perceptible without forcing a confession or milestone. If canon says the character flirts openly, some signals must actually read as flirting rather than being translated entirely into service or logistics. Confidence, coldness and danger must alter choices and presence rather than survive only as profile labels. Do not protect the ship by deleting other people. Do not force romance because the scene is pleasant, and do not stall earned progression forever."
   };
 }
 

@@ -2823,6 +2823,11 @@ Rule: ${clean(turnContract?.relationshipIntelligenceEngine?.instruction, 820)}
 CHARACTER PRESENCE + FELT ATTRACTION 3.52.7 — PROFILE FACTS MUST REACH THE PAGE
 Established attraction: ${turnContract?.relationshipChemistryV2?.personalityManifestation?.attractionCanonExplicit ? "YES — it must remain perceptible" : "not explicit; do not invent it"}
 Attraction visibility: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.attractionVisibility || "Follow earned relationship evidence.", 950)}
+Open flirt canon: ${turnContract?.relationshipChemistryV2?.personalityManifestation?.openFlirtCanon ? "YES — some signals should actually read as flirting" : "no explicit open-flirt requirement"}
+Flirt expression: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.flirtExpression || "Follow canon.", 900)}
+Signal cadence: ${clean(turnContract?.relationshipChemistryV2?.attractionExpression?.status || "not_required", 80).toUpperCase()} · recent visible signals ${clean(turnContract?.relationshipChemistryV2?.attractionExpression?.recentSignalCount ?? 0, 20)}
+Current attraction directive: ${clean(turnContract?.relationshipChemistryV2?.attractionExpression?.directive || "No extra signal required.", 1200)}
+Cadence policy: ${clean(turnContract?.relationshipChemistryV2?.attractionExpression?.policy || "Keep attraction natural.", 760)}
 Confidence: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.confidenceStyle || "Follow canon.", 720)}
 Coldness: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.coldStyle || "Follow canon.", 720)}
 Danger/power: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.dangerStyle || "Follow canon.", 820)}
@@ -2834,6 +2839,9 @@ Rule: ${clean(turnContract?.relationshipChemistryV2?.personalityManifestation?.p
 - When the user gives a clear emotional opening, respond to its actual vulnerability. A character may stay guarded, but must not flatten the opening into a victory lap, “progress,” or another evasive zinger. If this confident character already likes the user, return one small piece of real evidence.
 - The user must remain free to feel anything. Show the character's differential treatment; never narrate that the user blushes, wants them, feels chemistry, or reciprocates.
 - Slow burn limits milestones, not signals. Anti-trope rules remove clichés, not desire. Naturalism removes performance, not personality.
+- CADENCE, NOT SATURATION: established attraction should usually leave one readable footprint every few character turns when the scene allows. Do not flirt in every sentence, but do not let 3–4 ordinary replies pass with nothing that differentiates the user from a generic friend when canon says the character already wants them.
+- OPEN FLIRT MEANS OPEN FLIRT: if creator canon says this character flirts openly, practical care alone is not enough forever. Let some signals live in actual dialogue or socially risky/playful choices. Avoid stock lines such as “careful,” “dangerous,” “you’re trouble,” “don’t tempt me,” or audience jokes as substitutes for character-specific flirting.
+- TRUST/DELEGATED ONE-ON-ONE OPENINGS ARE HIGH-VALUE: when the user says “I’ll trust you,” “surprise me,” or equivalent during chosen time together, make the requested decision and let the character’s interest color it. Logistics alone is a miss when established attraction is canon.
 - A confident character may risk a clear invitation, decision or admission appropriate to the phase. Do not automatically turn confidence into stalling, nervous evasion or an endless almost-moment.
 - A cold character remains controlled and difficult to access; attraction appears through rare exceptions and chosen access. A dangerous character remains competent and consequential; danger is not a decorative smirk and is never a license to violate user boundaries.
 
@@ -3148,6 +3156,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     clarification_evasion: "Name the concrete referent in the first spoken sentence, then tease or evade only if still in character.",
     direct_preference_evasion: "Answer the preference with a real stance in the first spoken clause.",
     delegated_choice_returned: "The user explicitly delegated the decision with 'I trust you', 'you choose', 'surprise me', or equivalent. Choose one concrete option and act on it now. Do not return the choice, ask another preference question, or offer another menu.",
+    trusted_choice_attraction_flattened: "Established attraction is canon and the user just trusted/delegated a one-on-one choice. Keep the concrete decision, then add ONE legible character-specific sign that this character wants the time with the user. If open flirting is canon, let the signal actually flirt. Do not answer with logistics alone, do not force a confession, and do not narrate user reciprocity.",
     banter_reciprocity_drop: "Answer the latest jab directly with a plain concession, grounded tease, or playful stance.",
     phantom_question_reference: "Remove references to a question unless the previous character turn visibly asked one.",
     reaction_reference_ungrounded: "Ground the reaction in the exact immediately preceding line or action.",
@@ -5975,6 +5984,7 @@ const CONTINUITY_GUARD_ISSUES = new Set([
   "opening_attraction_thread_dropped",
   "chosen_time_attraction_flattened",
   "delegated_social_task_condescension",
+  "trusted_choice_attraction_flattened",
   "settled_choice_reopened",
   "adjacent_dialogue_fragments",
   "unsupported_user_habit_claim",
@@ -6002,6 +6012,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "opening_attraction_thread_dropped",
   "chosen_time_attraction_flattened",
   "delegated_social_task_condescension",
+  "trusted_choice_attraction_flattened",
   "settled_choice_reopened",
   "adjacent_dialogue_fragments",
   "unsupported_user_habit_claim",
@@ -6265,6 +6276,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "attraction_opening_wasted",
   "chosen_time_attraction_flattened",
   "delegated_social_task_condescension",
+  "trusted_choice_attraction_flattened",
   "location_incompatible_commerce",
   "question_personality_mismatch",
   "therapist_care_package_v2",
