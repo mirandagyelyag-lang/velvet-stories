@@ -1,0 +1,18 @@
+/* Velvet Stories v3.52.33 · Stories bottom-tail cleanup
+   The v3.29 UI sweep reserves 112px at the end of mobile routes. On Stories,
+   that stacks with the fixed dock and the separate floating global search,
+   producing a large empty block at the end of the library.
+
+   Stories already has its own full search field, so the duplicate floating
+   search action is hidden on this route. The page tail now only reserves the
+   dock clearance plus a small visual breathing gap. */
+
+@media (max-width: 760px) {
+  body[data-velvet-page="chats"]:not(.velvet-page--chat) .chats-page.chats-page--reference {
+    padding-bottom: calc(86px + max(env(safe-area-inset-bottom), var(--velvet-native-safe-bottom, 0px))) !important;
+  }
+
+  body[data-velvet-page="chats"]:not(.velvet-page--chat) .mobile-global-search {
+    display: none !important;
+  }
+}
