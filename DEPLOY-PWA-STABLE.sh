@@ -13,7 +13,9 @@ ALIAS="${VELVET_VERCEL_ALIAS:-$DEFAULT_ALIAS}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 PROJECT_ROOT=""
 
-if [ -f "$PWD/package.json" ]; then
+if [ -n "${VELVET_PROJECT_ROOT:-}" ]; then
+  PROJECT_ROOT="$VELVET_PROJECT_ROOT"
+elif [ -f "$PWD/package.json" ]; then
   PROJECT_ROOT="$PWD"
 elif [ -f "$SCRIPT_DIR/package.json" ]; then
   PROJECT_ROOT="$SCRIPT_DIR"
@@ -25,10 +27,6 @@ if [ -z "$PROJECT_ROOT" ]; then
   echo "❌ No encontré package.json."
   echo "Ejecuta este script desde la raíz de Velvet Stories o define VELVET_PROJECT_ROOT."
   exit 1
-fi
-
-if [ -n "${VELVET_PROJECT_ROOT:-}" ]; then
-  PROJECT_ROOT="$VELVET_PROJECT_ROOT"
 fi
 
 if [ ! -f "$PROJECT_ROOT/package.json" ]; then
@@ -121,8 +119,8 @@ echo "Alias: https://${ALIAS}"
 echo ""
 
 echo "=== PASO 1/7 · VERIFICADORES ==="
-if ! npm run stability:lab; then
-  finish_fail "Stability Lab falló."
+if ! npm run verify:stability; then
+  finish_fail "La verificación de estabilidad falló."
 fi
 
 echo ""
