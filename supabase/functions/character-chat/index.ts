@@ -41,6 +41,7 @@ import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engin
 import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
 import { immediateTurnContinuityIssues } from "./engine/immediate-turn-continuity-v35213.js";
 import { behavioralTurnIntegrityIssues, sanitizeBehavioralTurnIntegrity } from "./engine/behavioral-turn-integrity-v35224.js";
+import { buildSceneMomentumBarrierV35236, enforceSceneMomentumBarrierV35236, sanitizeSceneMomentumBarrierV35236, sceneMomentumBarrierV35236Issues } from "./engine/scene-momentum-barrier-v35236.js";
 import { buildGroundedLastResortReply, establishedAttractionOpportunityIssues } from "./engine/established-attraction-opportunity-v35219.js";
 import { enforceFinalDelegatedChoiceBarrier } from "./engine/final-turn-barrier-v35223.js";
 
@@ -2181,6 +2182,12 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     recentTurns: messages.slice(-10).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${String(message.content || "")}`),
     character,
   });
+  const sceneMomentumBarrierV35236 = buildSceneMomentumBarrierV35236({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+  });
   const meaningfulTurnGateV34950 = buildMeaningfulTurnGateV34950({
     latestUserMessage: latestUserRecord?.content || "",
     character,
@@ -2325,6 +2332,8 @@ ${spokenNaturalnessV34944}
 ${microContinuityV34945}
 
 ${turnStateLedgerV34946}
+
+${sceneMomentumBarrierV35236}
 
 ${meaningfulTurnGateV34950}
 
@@ -3166,6 +3175,10 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     care_command_loop: "The character has already given enough directives in this care/illness beat. Stop repeating orders such as get in, come on, wake up, lie down, or don't argue. Preserve concern but change behavior: one practical action, a quiet check, waiting, ordinary conversation, or character-specific restraint. Caring is not a command loop.",
     care_command_density: "Too much of this reply is imperative care language. Keep at most one necessary instruction. Let the rest be normal action/dialogue/silence in this character's own voice rather than nurse/security-guard scripting.",
     transit_state_rewind_after_departure: "The vehicle journey is already underway. Do not reopen car doors, re-enter the driver seat, restart the engine, or replay pre-departure seatbelt/door choreography. Continue from the established moving-car state until an explicit arrival/stop occurs.",
+    live_scene_vehicle_rewind: "The immediate physical state says the drive is already underway. Remove any replay of doors, seatbelts, entering the driver seat, or starting the engine. Continue from the moving-car state only.",
+    live_scene_premature_arrival: "The user's latest turn is only a micro reaction inside an active drive. Do not skip several blocks, arrive, park, cut the engine, wake them at the destination, or move indoors. Advance only one tiny beat inside the current drive.",
+    live_scene_location_skip: "Do not teleport from the active drive into the house, apartment, dorm, room, or destination after a tiny reaction. Stay in the car until a real transition is earned.",
+    live_scene_user_destination_overridden: "The user named their destination. The character may disagree or offer an alternative, but cannot silently replace the destination as settled fact. Give the user a chance to react before relocation becomes canon.",
     banter_reciprocity_drop: "Answer the latest jab directly with a plain concession, grounded tease, or playful stance.",
     phantom_question_reference: "Remove references to a question unless the previous character turn visibly asked one.",
     reaction_reference_ungrounded: "Ground the reaction in the exact immediately preceding line or action.",
@@ -5869,7 +5882,8 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const narrativeArcHard = ["relationship_pace_jump", "arc_forced_progression", "resolved_arc_reopened_without_cause", "arc_growth_total_reset", "arc_personality_replacement", "payoff_without_setup", "drama_escalation_for_progress", "arc_stagnation_replay", "arc_progress_exposition"];
   const proseHard = ["adaptive_prose_overwritten", "ai_prose_stack_v345", "narration_swallowed_dialogue_v345", "subtext_explained_after_showing_v345", "repeated_prose_structure_v345", "gesture_choreography_overbudget_v345", "micro_narration_lead_v3497", "repeated_named_action_opening_v3497"];
   const orchestrationHard = ["orchestrator_system_exposure", "context_dump_exposition_v346", "recovery_internal_exposure_v347", "performance_internal_exposure_v348"];
-  const canSanitize = issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted", "unsolicited_offscreen_lead_contact", "social_role_assignment_broken", "unsupported_social_plan_expansion", ...groundedHard, ...agencyHard, ...physicsRepair, ...intentHard, ...chemistryHard, ...embodiedHard, ...sceneIntelligenceHard, ...discourseHard, ...evolutionHard, ...npcEcosystemHard, ...calendarLifeHard, ...causalTimelineHard, ...sceneDirectorHard, ...longStoryMemoryHard, ...narrativeArcHard, ...proseHard, ...orchestrationHard].includes(issue));
+  const sceneMomentumHard = ["live_scene_vehicle_rewind", "live_scene_premature_arrival", "live_scene_location_skip", "live_scene_user_destination_overridden"];
+  const canSanitize = issues.some((issue) => ["user_motive_overwritten", "rejected_pursuit_framing_persisted", "unsolicited_offscreen_lead_contact", "social_role_assignment_broken", "unsupported_social_plan_expansion", ...groundedHard, ...agencyHard, ...physicsRepair, ...intentHard, ...chemistryHard, ...embodiedHard, ...sceneIntelligenceHard, ...discourseHard, ...evolutionHard, ...npcEcosystemHard, ...calendarLifeHard, ...causalTimelineHard, ...sceneDirectorHard, ...longStoryMemoryHard, ...narrativeArcHard, ...proseHard, ...orchestrationHard, ...sceneMomentumHard].includes(issue));
   if (!canSanitize) return { result, issues };
   const readableBeforeSanitize = String(result?.reply || "").trim();
   let reply = String(result?.reply || "");
@@ -5897,6 +5911,9 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   }
   if (issues.some((issue) => ["care_command_loop", "care_command_density", "transit_state_rewind_after_departure"].includes(issue))) {
     reply = sanitizeBehavioralTurnIntegrity(reply, issues, { recentCharacterReplies: options.recentCharacterReplies || [] });
+  }
+  if (issues.some((issue) => sceneMomentumHard.includes(issue))) {
+    reply = sanitizeSceneMomentumBarrierV35236(reply, issues, { latestUserMessage: options.latestUserMessage || "" });
   }
   if (issues.some((issue) => intentHard.includes(issue))) {
     reply = sanitizeIntentSubtextReply(reply, issues);
@@ -6191,6 +6208,10 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "care_command_loop",
   "care_command_density",
   "transit_state_rewind_after_departure",
+  "live_scene_vehicle_rewind",
+  "live_scene_premature_arrival",
+  "live_scene_location_skip",
+  "live_scene_user_destination_overridden",
   "answer_before_flourish_violation",
   "pragmatic_sarcasm_miss",
   "dead_ack_after_nonverbal_cue",
@@ -6403,6 +6424,10 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "care_command_loop",
   "care_command_density",
   "transit_state_rewind_after_departure",
+  "live_scene_vehicle_rewind",
+  "live_scene_premature_arrival",
+  "live_scene_location_skip",
+  "live_scene_user_destination_overridden",
   "jealousy_without_grounded_evidence",
   "premature_relationship_escalation",
   "romance_used_to_skip_repair",
@@ -7141,6 +7166,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of meaningfulTurnGateV34950Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
   for (const issue of behavioralTurnIntegrityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
+  for (const issue of sceneMomentumBarrierV35236Issues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({
@@ -8153,6 +8179,16 @@ async function streamRoleplayV19({
           });
         }
 
+        const sceneMomentumFinal = enforceSceneMomentumBarrierV35236({
+          reply: persistableReply, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
+        });
+        persistableReply = String(sceneMomentumFinal.reply || persistableReply).trim();
+        if (sceneMomentumFinal.replaced) {
+          console.warn("[character-chat] v3.52.36 live-scene barrier replaced invalid scene motion", {
+            issues: sceneMomentumFinal.originalIssues || [],
+          });
+        }
+
         let absoluteFinalIssues = validateNarrativeReply(persistableReply, {
           characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
           finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
@@ -8170,6 +8206,10 @@ async function streamRoleplayV19({
             reply: deterministicFinal, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
           });
           persistableReply = String(deterministicBarrier.reply || deterministicFinal || "").trim();
+          const deterministicSceneBarrier = enforceSceneMomentumBarrierV35236({
+            reply: persistableReply, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
+          });
+          persistableReply = String(deterministicSceneBarrier.reply || persistableReply).trim();
           absoluteFinalIssues = validateNarrativeReply(persistableReply, {
             characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
             finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
