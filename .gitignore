@@ -49,3 +49,6 @@ android/.gradle/
 android/**/build/
 android/local.properties
 *.apk
+
+.vercel
+.env*

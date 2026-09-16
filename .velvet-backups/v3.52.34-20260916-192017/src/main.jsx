@@ -75,7 +75,6 @@ import "./styles/velvet-v34922-reply-assist.css";
 import "./styles/velvet-v3511-chat-scroll-reply-assist.css";
 import "./styles/velvet-v3520-whole-app-stabilization.css";
 import "./styles/velvet-v35233-stories-bottom-tail.css";
-import "./styles/velvet-v35234-single-canvas.css";
 
 installMobileViewportLock();
 installInteractionReliability();
