@@ -7,7 +7,6 @@ export function buildAdaptiveReplyHint(rawMessage = "") {
   if (words >= 90) return "Respond fully to the important parts without mirroring the user's length. Keep the character specific, selective and dialogue-forward.";
   return "Use a natural medium reply whose length follows the scene, not a fixed template. Avoid padding and repeated emotional explanation.";
 }
-
 export function mergeDirectorHints(explicit = "", adaptive = "") {
   const a = String(explicit || "").trim();
   const b = String(adaptive || "").trim();

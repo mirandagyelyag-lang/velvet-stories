@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="velvet-version" content="3.52.32" />
+    <meta name="velvet-runtime" content="android" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#050103" />
+    <meta name="description" content="Private worlds and endless stories with AI characters." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Velvet Stories" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <link rel="icon" href="/velvet-rose-no-frame-favicon.png" type="image/png" sizes="64x64" />
+    <link rel="apple-touch-icon" href="/velvet-rose-no-frame-apple-180.png" />
+    <title>Velvet Stories</title>
+
+    <style>
+      html, body { margin:0; }
+      html.velvet-native-prepaint, html.velvet-native-prepaint body, html.velvet-native-prepaint #root { min-height:100%; background:#16050f !important; overflow:hidden; }
+      #velvet-native-prepaint { display:none; }
+      html.velvet-native-prepaint #velvet-native-prepaint {
+        display:block; position:fixed; inset:-1px; z-index:2147481000; pointer-events:none;
+        background-color:#050103;
+        background-image:linear-gradient(rgba(4,0,3,.38),rgba(4,0,3,.38)),url('/velvet-loading-entry.png');
+        background-size:cover; background-position:center; filter:blur(8px) brightness(.62); transform:scale(1.03);
+      }
+      html.velvet-native-prepaint #velvet-native-prepaint::after {
+        content:""; position:absolute; inset:0;
+        background:radial-gradient(ellipse at center,transparent 28%,rgba(0,0,0,.08) 60%,rgba(0,0,0,.5) 100%);
+      }
+    </style>
+
+    <script>
+      (() => {
+        window.__VELVET_BOOT_OK__ = false;
+        window.__VELVET_BOOT_ERRORS__ = [];
+        const BOOT_REPAIR_KEY = "velvet_boot_repaired_v3241";
+
+        const isNativeVelvet = () => {
+          try {
+            const runtime = document.querySelector('meta[name="velvet-runtime"]')?.content;
+            return runtime === "android" ||
+              Boolean(window.Capacitor?.isNativePlatform?.()) ||
+              (/Android/i.test(navigator.userAgent) && location.hostname === "localhost");
+          } catch {
+            return false;
+          }
+        };
+
+        window.__VELVET_IS_NATIVE__ = isNativeVelvet;
+        if (isNativeVelvet()) document.documentElement.classList.add("velvet-native-prepaint");
+
+        const rememberError = (value) => {
+          try {
+            const message =
+              value?.error?.message ||
+              value?.reason?.message ||
+              value?.message ||
+              String(value?.reason || value || "Unknown startup error");
+            if (message) window.__VELVET_BOOT_ERRORS__.push(String(message).slice(0, 900));
+          } catch {}
+        };
+
+        window.addEventListener("error", rememberError, true);
+        window.addEventListener("unhandledrejection", rememberError);
+
+        async function repairWebOnly() {
+          if (isNativeVelvet()) {
+            location.reload();
+            return;
+          }
+
+          if (window.__VELVET_REPAIRING__) return;
+          window.__VELVET_REPAIRING__ = true;
+
+          try {
+            if (sessionStorage.getItem(BOOT_REPAIR_KEY) === "1") {
+              location.reload();
+              return;
+            }
+            sessionStorage.setItem(BOOT_REPAIR_KEY, "1");
+          } catch {}
+
+          try {
+            if ("serviceWorker" in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              await Promise.allSettled(regs.map((reg) => reg.unregister()));
+            }
+            if ("caches" in window) {
+              const keys = await caches.keys();
+              await Promise.allSettled(keys.map((key) => caches.delete(key)));
+            }
+          } catch {}
+
+          const url = new URL(location.href);
+          url.searchParams.set("velvet_recovered", String(Date.now()));
+          location.replace(url.toString());
+        }
+
+        window.__VELVET_REPAIR_APP__ = repairWebOnly;
+
+        // Native builds must never inherit a PWA shell. This is deliberately
+        // best-effort and does not touch localStorage/session data.
+        if (isNativeVelvet()) {
+          Promise.resolve().then(async () => {
+            try {
+              if ("serviceWorker" in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.allSettled(regs.map((reg) => reg.unregister()));
+              }
+              if ("caches" in window) {
+                const keys = await caches.keys();
+                await Promise.allSettled(keys.map((key) => caches.delete(key)));
+              }
+            } catch {}
+          });
+        }
+
+        window.setTimeout(() => {
+          if (window.__VELVET_BOOT_OK__) return;
+
+          const root = document.getElementById("root");
+          if (root && root.childElementCount > 0) return;
+
+          const native = isNativeVelvet();
+          const rescue = document.createElement("div");
+          rescue.id = "velvet-boot-rescue";
+
+          const details = native
+            ? (window.__VELVET_BOOT_ERRORS__.at(-1) || "Android did not finish loading the JavaScript bundle.")
+            : "The web app did not finish loading.";
+
+          const cleanDetails = String(details).replace(/[&<>"']/g, "");
+
+          rescue.innerHTML = native
+            ? `<div><b>Velvet Android could not start.</b><p>${cleanDetails}</p><button type="button">Reopen Velvet</button></div>`
+            : '<div><b>Velvet could not finish opening.</b><p>Your stories are safe. Repair the web cache and reopen the newest version.</p><button type="button">Repair & reopen Velvet</button></div>';
+
+          Object.assign(rescue.style, {
+            position: "fixed", inset: "0", zIndex: "2147483647", display: "grid",
+            placeItems: "center", padding: "24px", background: "#f6ede4", color: "#4f363e",
+            fontFamily: "system-ui, sans-serif"
+          });
+
+          const card = rescue.firstElementChild;
+          Object.assign(card.style, {
+            width: "min(420px,100%)", padding: "26px 20px", textAlign: "center",
+            background: "#fffaf5", border: "1px solid #e3d0d2", borderRadius: "24px"
+          });
+
+          const button = rescue.querySelector("button");
+          Object.assign(button.style, {
+            width: "100%", minHeight: "48px", marginTop: "12px", color: "#fff",
+            background: "#722640", border: "0", borderRadius: "14px", fontWeight: "700"
+          });
+
+          button.addEventListener("click", repairWebOnly);
+          document.body.appendChild(rescue);
+        }, 8000);
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-Dm_uFqgp.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-BA0LGXMS.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DWJsl4Mj.css">
+  </head>
+
+  <body>
+    <div id="velvet-native-prepaint" aria-hidden="true"></div>
+    <div id="root"></div>
+    <noscript>Velvet Stories requires JavaScript to work.</noscript>
+  </body>
+</html>

@@ -1,44 +1,259 @@
-.velvet-dialog-backdrop{position:fixed;inset:0;z-index:5200;display:grid;place-items:center;padding:18px;background:rgba(8,3,5,.72);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.velvet-dialog{position:relative;width:min(340px,calc(100vw - 36px));padding:20px 18px 18px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.42)}
-.velvet-dialog__close{position:absolute;top:10px;right:10px;width:32px;height:32px;display:grid;place-items:center;color:var(--text-secondary);background:transparent;border:0;border-radius:50%}
-.velvet-dialog__icon{width:42px;height:42px;display:grid;place-items:center;margin:0 auto 10px;color:#d5798f;background:color-mix(in srgb,#d5798f 12%,transparent);border:1px solid color-mix(in srgb,#d5798f 35%,transparent);border-radius:50%}
-.velvet-dialog small{display:block;color:var(--gold);font-size:.5rem;letter-spacing:.15em}
-.velvet-dialog h2{margin:6px 24px 6px;font-family:"Cormorant Garamond",serif;font-size:1.5rem;line-height:1.05;font-weight:500}
-.velvet-dialog p{margin:0 auto;max-width:270px;color:var(--text-secondary);font-size:.66rem;line-height:1.45}
-.velvet-dialog footer{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
-.velvet-dialog footer button{min-height:42px;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;color:var(--text-secondary);background:transparent;border:1px solid var(--border);border-radius:10px;font-size:.72rem}
-.velvet-dialog footer .danger{color:white;background:#8e2f49;border-color:#a84b65}
-
-/* v2.9.7 · High-contrast centered undo card */
-.velvet-undo{position:fixed;left:50%;top:50%;right:auto;bottom:auto;z-index:5410;transform:translate(-50%,-50%);width:min(232px,calc(100vw - 56px));min-width:0;box-sizing:border-box;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:11px 11px 11px 14px;color:var(--text-primary);background:color-mix(in srgb,var(--surface) 76%,#090407 24%);border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border));border-radius:16px;box-shadow:0 22px 60px rgba(0,0,0,.58),0 0 0 1px color-mix(in srgb,var(--accent) 12%,transparent);backdrop-filter:none;-webkit-backdrop-filter:none;isolation:isolate}
-.velvet-undo>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72rem;font-weight:600;line-height:1.2;letter-spacing:.005em}
-.velvet-undo button{min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 10px;color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 38%,var(--border));border-radius:10px;font-size:.74rem;font-weight:800;line-height:1;box-shadow:0 5px 16px rgba(0,0,0,.2)}
-.velvet-undo button:active{transform:scale(.97)}
-.velvet-undo i{position:absolute;right:10px;bottom:5px;left:10px;height:2px;border-radius:999px;background:color-mix(in srgb,var(--accent) 76%,transparent);transform-origin:left;animation:undo-countdown 2.5s linear forwards}
-@keyframes undo-countdown{to{transform:scaleX(0)}}
-
-/* v2.9.5 Centered Confirmation UI */
-@media(max-width:760px){
-  .velvet-dialog-backdrop{display:grid;place-items:center;align-items:center;padding:18px calc(16px + env(safe-area-inset-right)) 18px calc(16px + env(safe-area-inset-left))}
-  .velvet-dialog{width:min(326px,calc(100vw - 32px));padding:18px 16px 16px;border-radius:18px}
-  .velvet-dialog__icon{width:40px;height:40px;margin-bottom:9px}
-  .velvet-dialog h2{font-size:1.42rem;margin:5px 22px 5px}
-  .velvet-dialog p{font-size:.64rem;line-height:1.42}
-  .velvet-dialog footer{margin-top:14px;gap:7px}
-  .velvet-dialog footer button{min-height:40px;padding:7px 8px;font-size:.68rem}
-  .velvet-undo{left:50%;top:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);width:min(224px,calc(100vw - 52px));padding:10px 10px 10px 13px;gap:9px;border-radius:15px}
+.velvet-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5200;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(8,3,5,.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-/* v2.10.3 · Batch undo stays out of the rapid-clean swipe lane. */
-.velvet-undo--batch {
-  top:max(82px,calc(env(safe-area-inset-top) + 62px));
-  width:min(286px,calc(100vw - 36px));
-  grid-template-columns:minmax(0,1fr) auto;
-  padding:10px 10px 10px 13px;
-  border-radius:14px;
+.velvet-dialog {
+  position: relative;
+  width: min(340px,calc(100vw - 36px));
+  padding: 20px 18px 18px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0,0,0,.42);
 }
-.velvet-undo--batch button { min-height:36px; white-space:nowrap; }
-.velvet-undo--batch i { animation-duration:2.5s; }
+
+.velvet-dialog__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+
+.velvet-dialog__icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 10px;
+  color: #d5798f;
+  background: color-mix(in srgb,#d5798f 12%,transparent);
+  border: 1px solid color-mix(in srgb,#d5798f 35%,transparent);
+  border-radius: 50%;
+}
+
+.velvet-dialog small {
+  display: block;
+  color: var(--gold);
+  font-size: .5rem;
+  letter-spacing: .15em;
+}
+
+.velvet-dialog h2 {
+  margin: 6px 24px 6px;
+  font-family: "Cormorant Garamond",serif;
+  font-size: 1.5rem;
+  line-height: 1.05;
+  font-weight: 500;
+}
+
+.velvet-dialog p {
+  margin: 0 auto;
+  max-width: 270px;
+  color: var(--text-secondary);
+  font-size: .66rem;
+  line-height: 1.45;
+}
+
+.velvet-dialog footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.velvet-dialog footer button {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: .72rem;
+}
+
+.velvet-dialog footer .danger {
+  color: white;
+  background: #8e2f49;
+  border-color: #a84b65;
+}
+
+/* High-contrast centered undo card */
+
+.velvet-undo {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  z-index: 5410;
+  transform: translate(-50%,-50%);
+  width: min(232px,calc(100vw - 56px));
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 11px 11px 14px;
+  color: var(--text-primary);
+  background: color-mix(in srgb,var(--surface) 76%,#090407 24%);
+  border: 1px solid color-mix(in srgb,var(--accent) 42%,var(--border));
+  border-radius: 16px;
+  box-shadow: 0 22px 60px rgba(0,0,0,.58),0 0 0 1px color-mix(in srgb,var(--accent) 12%,transparent);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  isolation: isolate;
+}
+
+.velvet-undo>span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: .72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: .005em;
+}
+
+.velvet-undo button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  color: var(--accent);
+  background: color-mix(in srgb,var(--accent) 14%,var(--surface));
+  border: 1px solid color-mix(in srgb,var(--accent) 38%,var(--border));
+  border-radius: 10px;
+  font-size: .74rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 5px 16px rgba(0,0,0,.2);
+}
+
+.velvet-undo button:active {
+  transform: scale(.97);
+}
+
+.velvet-undo i {
+  position: absolute;
+  right: 10px;
+  bottom: 5px;
+  left: 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb,var(--accent) 76%,transparent);
+  transform-origin: left;
+  animation: undo-countdown 2.5s linear forwards;
+}
+
+@keyframes undo-countdown {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Centered confirmation UI */
+
 @media (max-width:760px) {
-  .velvet-undo--batch { top:max(76px,calc(env(safe-area-inset-top) + 58px)); width:min(278px,calc(100vw - 28px)); }
+  .velvet-dialog-backdrop {
+    display: grid;
+    place-items: center;
+    align-items: center;
+    padding: 18px calc(16px + env(safe-area-inset-right)) 18px calc(16px + env(safe-area-inset-left));
+  }
+
+  .velvet-dialog {
+    width: min(326px,calc(100vw - 32px));
+    padding: 18px 16px 16px;
+    border-radius: 18px;
+  }
+
+  .velvet-dialog__icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 9px;
+  }
+
+  .velvet-dialog h2 {
+    font-size: 1.42rem;
+    margin: 5px 22px 5px;
+  }
+
+  .velvet-dialog p {
+    font-size: .64rem;
+    line-height: 1.42;
+  }
+
+  .velvet-dialog footer {
+    margin-top: 14px;
+    gap: 7px;
+  }
+
+  .velvet-dialog footer button {
+    min-height: 40px;
+    padding: 7px 8px;
+    font-size: .68rem;
+  }
+
+  .velvet-undo {
+    left: 50%;
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translate(-50%,-50%);
+    width: min(224px,calc(100vw - 52px));
+    padding: 10px 10px 10px 13px;
+    gap: 9px;
+    border-radius: 15px;
+  }
+}
+
+/* Batch undo stays out of the rapid-clean swipe lane. */
+
+.velvet-undo--batch {
+  top: max(82px,calc(env(safe-area-inset-top) + 62px));
+  width: min(286px,calc(100vw - 36px));
+  grid-template-columns: minmax(0,1fr) auto;
+  padding: 10px 10px 10px 13px;
+  border-radius: 14px;
+}
+
+.velvet-undo--batch button {
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.velvet-undo--batch i {
+  animation-duration: 2.5s;
+}
+
+@media (max-width:760px) {
+  .velvet-undo--batch {
+    top: max(76px,calc(env(safe-area-inset-top) + 58px));
+    width: min(278px,calc(100vw - 28px));
+  }
 }

@@ -1,9 +1,10 @@
-/* Velvet Stories v2.10.7 · Memories Safe Area + Cleanup Fix */
+/* Velvet Stories · Memories Safe Area + Cleanup Fix */
 
 @media (max-width: 760px) {
   /* The reference dock is 76px tall and floats above the bottom edge. Give the
      memory book enough real runway that its final rows/actions can scroll fully
      above it instead of disappearing underneath. */
+
   body.velvet-burgundy-route .memories-character-detail.memories-reference-page {
     padding-bottom: calc(188px + env(safe-area-inset-bottom)) !important;
     scroll-padding-bottom: calc(164px + env(safe-area-inset-bottom)) !important;
@@ -46,6 +47,7 @@
   }
 
   /* The last thought gets its own breathing room before the action button. */
+
   body.velvet-burgundy-route .memories-character-detail .swipe-trash--memory:last-of-type {
     margin-bottom: 8px !important;
   }

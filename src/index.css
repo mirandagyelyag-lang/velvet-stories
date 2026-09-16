@@ -62,12 +62,14 @@
 
 html {
   background: var(--background);
+  overflow-x: hidden;
   overflow-x: clip;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   background: var(--background);
   color: var(--text-primary);
@@ -86,8 +88,29 @@ select {
   font: inherit;
 }
 
-button{touch-action:manipulation}img{max-width:100%}
-@media(max-width:760px){button,input,select,textarea{font-size:16px}button{min-height:42px}body{overscroll-behavior-y:auto}}
+button {
+  touch-action: manipulation;
+}
+
+img {
+  max-width: 100%;
+}
+@media (max-width: 760px) {
+  button,
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  button {
+    min-height: 42px;
+  }
+
+  body {
+    overscroll-behavior-y: auto;
+  }
+}
 
 body::before {
   content: "";
@@ -100,10 +123,26 @@ body::before {
     radial-gradient(circle at 88% 78%, color-mix(in srgb, var(--gold) 7%, transparent), transparent 28%);
 }
 
-button, input, textarea, select { -webkit-tap-highlight-color: transparent; }
-button { transition: transform 140ms ease, opacity 140ms ease, border-color 180ms ease, background-color 180ms ease; }
-button:active:not(:disabled) { transform: scale(.985); }
-button:disabled { cursor: not-allowed; opacity: .55; }
+button,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  transition:
+    transform 140ms ease,
+    opacity 140ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+button:active:not(:disabled) {
+  transform: scale(0.985);
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 
 :where(button, input, textarea, select):focus-visible {
   outline: 2px solid color-mix(in srgb, var(--gold) 78%, white 5%);
@@ -119,7 +158,7 @@ html[data-reduce-motion="true"] *,
 html[data-reduce-motion="true"] *::before,
 html[data-reduce-motion="true"] *::after {
   scroll-behavior: auto !important;
-  transition-duration: .001ms !important;
-  animation-duration: .001ms !important;
+  transition-duration: 0.001ms !important;
+  animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
 }

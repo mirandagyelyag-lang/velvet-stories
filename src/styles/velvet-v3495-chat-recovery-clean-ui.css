@@ -1,4 +1,4 @@
-/* Velvet v3.49.5 · Chat Recovery + Clean Chat UI
+/* Velvet Stories · Chat Recovery + Clean Chat UI
    One successful reply = one successful turn. The chat chrome stays quiet. */
 
 .chat__send-error {
@@ -15,8 +15,16 @@
   line-height: 1.4 !important;
 }
 
-.chat__send-error > svg { flex: 0 0 auto !important; opacity: .75 !important; }
-.chat__send-error > span { flex: 1 1 auto !important; min-width: 0 !important; }
+.chat__send-error > svg {
+  flex: 0 0 auto !important;
+  opacity: .75 !important;
+}
+
+.chat__send-error > span {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
 .chat__send-error > button {
   flex: 0 0 auto !important;
   min-width: 72px !important;
@@ -40,13 +48,12 @@
 @media (max-width: 760px), (pointer: coarse) {
   /* Studio already lives in the ••• menu. Keeping a second Studio button in the
      composer created an entire empty row on phones. */
-  body > .chat__composer .chat__experience-trigger,
-  .chat__composer .chat__experience-trigger {
+
+  body > .chat__composer .chat__experience-trigger, .chat__composer .chat__experience-trigger {
     display: none !important;
   }
 
-  body > .chat__composer,
-  .chat__composer {
+  body > .chat__composer, .chat__composer {
     min-height: 58px !important;
     padding: 7px 8px max(7px, env(safe-area-inset-bottom)) !important;
     border-radius: 22px !important;
@@ -66,8 +73,7 @@
     padding-block: 9px !important;
   }
 
-  .chat__composer > .chat__send-button,
-  .chat__composer > .chat__stop-button {
+  .chat__composer > .chat__send-button, .chat__composer > .chat__stop-button {
     width: 42px !important;
     height: 42px !important;
     min-height: 42px !important;
@@ -79,8 +85,8 @@
 
   /* A tap on any bubble already opens message actions, so permanent ellipsis
      buttons are redundant phone chrome. */
-  .chat-message > .chat-message__swipe-content .chat-message__actions,
-  .chat-message__actions--inline {
+
+  .chat-message > .chat-message__swipe-content .chat-message__actions, .chat-message__actions--inline {
     display: none !important;
   }
 
@@ -132,8 +138,8 @@
   }
 
   /* A little less dead air around messages, without changing the reading width. */
-  .chat-message--character .chat-message__body,
-  .chat-message--user .chat-message__body {
+
+  .chat-message--character .chat-message__body, .chat-message--user .chat-message__body {
     margin-bottom: 0 !important;
   }
 }

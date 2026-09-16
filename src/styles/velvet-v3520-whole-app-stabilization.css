@@ -1,12 +1,54 @@
-/* Velvet v3.52.0 · whole-app stabilization authority */
-@media (max-width:760px),(pointer:coarse){
- html,body,#root{max-width:100%;overflow-x:clip;touch-action:pan-y;}
- button,a,[role="button"],input,textarea,select{touch-action:manipulation;}
- .app--chat .chat,.app--chat .chat__content,.app--chat .chat__messages{overflow-y:visible!important;max-height:none!important;touch-action:pan-y!important;}
- .app--chat .chat-message,.app--chat .chat-message *{overscroll-behavior-y:auto;}
- .chat__composer{position:fixed;left:0;right:0;bottom:0;z-index:60;transform:translateZ(0);}
- .reply-assist-sheet,.message-sheet,.chat-controls,.story-hub,.memory-book,.timeline-drawer,.director-sheet{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
- .reply-assist-sheet,.message-sheet,.chat-controls{touch-action:pan-y;}
- .reply-assist-backdrop{overscroll-behavior:none;}
+/* Velvet Stories · whole-app stabilization authority */
+
+@media (max-width:760px),(pointer:coarse) {
+  html, body, #root {
+    max-width: 100%;
+    overflow-x: clip;
+    touch-action: pan-y;
+  }
+
+  button, a, [role="button"], input, textarea, select {
+    touch-action: manipulation;
+  }
+
+  .app--chat .chat, .app--chat .chat__content, .app--chat .chat__messages {
+    overflow-y: visible !important;
+    max-height: none !important;
+    touch-action: pan-y !important;
+  }
+
+  .app--chat .chat-message, .app--chat .chat-message * {
+    overscroll-behavior-y: auto;
+  }
+
+  .chat__composer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    transform: translateZ(0);
+  }
+
+  .reply-assist-sheet, .message-sheet, .chat-controls, .story-hub, .memory-book, .timeline-drawer, .director-sheet {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .reply-assist-sheet, .message-sheet, .chat-controls {
+    touch-action: pan-y;
+  }
+
+  .reply-assist-backdrop {
+    overscroll-behavior: none;
+  }
 }
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}}
+
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

@@ -1,4 +1,4 @@
-/* Velvet Stories v2.6.10 · Character Studio one-finger scroll fix
+/* Velvet Stories · Character Studio one-finger scroll fix
    One and only one vertical scroll owner on phones: .character-studio__layout.
    This intentionally overrides the old v2.3 wizard rule that changed the layout
    back to overflow:visible and trapped content inside the full-screen studio. */
@@ -27,29 +27,26 @@
 
   /* Children must expand inside the single parent scroller, never become
      competing/nested vertical scrollers. */
-  .character-studio__preview,
-  .character-studio__editor,
-  .studio-section,
-  .studio-section__body {
+
+  .character-studio__preview, .character-studio__editor, .studio-section, .studio-section__body {
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
     overscroll-behavior: auto !important;
   }
 
-  .character-studio__editor,
-  .studio-section,
-  .studio-section__body,
-  .character-studio__journey {
+  .character-studio__editor, .studio-section, .studio-section__body, .character-studio__journey {
     touch-action: pan-y !important;
   }
 
   /* Starting a swipe on a wizard tab should still move the page vertically. */
+
   .character-studio__journey button {
     touch-action: pan-y !important;
   }
 
   /* Keep sticky UI attached to the real scroller. */
+
   .character-studio__journey {
     top: 0 !important;
   }

@@ -1,4 +1,5 @@
 .velvet-runtime-recovery {
+  min-height: 100vh;
   min-height: 100dvh;
   display: grid;
   place-items: center;
@@ -6,6 +7,7 @@
   color: #4e343b;
   background: linear-gradient(160deg, #f7eee5, #f1e3dc 62%, #e5c8c5);
 }
+
 .velvet-runtime-recovery__card {
   width: min(430px, 100%);
   padding: 28px 22px;
@@ -15,6 +17,7 @@
   border-radius: 26px;
   box-shadow: 0 24px 70px rgba(65, 31, 42, .13);
 }
+
 .velvet-runtime-recovery__mark {
   width: 52px;
   height: 52px;
@@ -26,6 +29,7 @@
   border-radius: 50%;
   font-size: 1.35rem;
 }
+
 .velvet-runtime-recovery__eyebrow {
   margin: 0 0 6px;
   color: #8f5d6e;
@@ -33,10 +37,12 @@
   font-weight: 800;
   letter-spacing: .17em;
 }
+
 .velvet-runtime-recovery h1 {
   margin: 0;
   font: 600 2.1rem/1 "Cormorant Garamond", Georgia, serif;
 }
+
 .velvet-runtime-recovery p:not(.velvet-runtime-recovery__eyebrow) {
   margin: 13px auto 20px;
   max-width: 34ch;
@@ -44,6 +50,7 @@
   font-size: .84rem;
   line-height: 1.55;
 }
+
 .velvet-runtime-recovery button {
   width: 100%;
   min-height: 48px;
@@ -54,7 +61,11 @@
   border-radius: 15px;
   font: 750 .82rem/1 system-ui, sans-serif;
 }
-.velvet-runtime-recovery button:disabled { opacity: .65; }
+
+.velvet-runtime-recovery button:disabled {
+  opacity: .65;
+}
+
 .velvet-runtime-recovery .velvet-runtime-recovery__secondary {
   color: #65444f;
   background: transparent;

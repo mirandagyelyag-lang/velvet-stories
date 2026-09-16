@@ -1,4 +1,4 @@
-/* Velvet Stories v3.9.3 · Characters Velvet Palette
+/* Velvet Stories · Characters Velvet Palette
    A real visual pass on the Characters library — not just motion.
    Uses Velvet's rose, wine and burgundy palette so this screen belongs to
    the same world as the rest of the app. Loaded last on purpose: this file
@@ -15,7 +15,11 @@
 
 /* ---------- hero: an actual wordmark, not a form label ---------- */
 
-.characters-library__compact-hero { position: relative; padding-bottom: 18px; }
+.characters-library__compact-hero {
+  position: relative;
+  padding-bottom: 18px;
+}
+
 .characters-library__compact-hero::after {
   content: "";
   position: absolute;
@@ -79,24 +83,29 @@
   }
 }
 
-.characters-library__hero-create,
-.characters-library__hero-back {
+.characters-library__hero-create, .characters-library__hero-back {
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
 }
+
 .characters-library__hero-create {
   background: linear-gradient(150deg, var(--char-rose), var(--char-wine)) !important;
   border-color: transparent !important;
   color: var(--char-ink) !important;
   box-shadow: 0 10px 24px color-mix(in srgb, var(--char-rose) 40%, transparent) !important;
 }
-.characters-library__hero-create:hover,
-.characters-library__hero-back:hover {
+
+.characters-library__hero-create:hover, .characters-library__hero-back:hover {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--char-rose) 55%, var(--stories-line, var(--border)));
 }
-.characters-library__hero-create:hover { box-shadow: 0 14px 30px color-mix(in srgb, var(--char-rose) 52%, transparent) !important; }
-.characters-library__hero-create:active,
-.characters-library__hero-back:active { transform: translateY(0) scale(.96); }
+
+.characters-library__hero-create:hover {
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--char-rose) 52%, transparent) !important;
+}
+
+.characters-library__hero-create:active, .characters-library__hero-back:active {
+  transform: translateY(0) scale(.96);
+}
 
 /* ---------- search + chips: darker, warmer, alive ---------- */
 
@@ -105,35 +114,47 @@
   border-color: color-mix(in srgb, var(--char-rose) 16%, var(--discover-line)) !important;
   transition: border-color .18s ease, box-shadow .18s ease;
 }
-.discover-burgundy__search > svg { color: var(--char-rose) !important; }
+
+.discover-burgundy__search > svg {
+  color: var(--char-rose) !important;
+}
+
 .discover-burgundy__search:focus-within {
   border-color: color-mix(in srgb, var(--char-rose) 60%, transparent) !important;
   box-shadow: 0 10px 28px var(--discover-shadow), 0 0 0 3px color-mix(in srgb, var(--char-rose) 16%, transparent) !important;
 }
+
 .discover-burgundy__search button {
   color: var(--char-rose) !important;
   transition: background .18s ease, transform .18s ease;
 }
-.discover-burgundy__search button:hover { transform: scale(1.05); }
-.discover-burgundy__search button:active { transform: scale(.92); }
 
-.discover-burgundy__chips button.active,
-.discover-burgundy__more-filters button.active {
+.discover-burgundy__search button:hover {
+  transform: scale(1.05);
+}
+
+.discover-burgundy__search button:active {
+  transform: scale(.92);
+}
+
+.discover-burgundy__chips button.active, .discover-burgundy__more-filters button.active {
   color: var(--char-ink) !important;
   background: linear-gradient(135deg, var(--char-rose), var(--char-wine)) !important;
   border-color: transparent !important;
 }
-.discover-burgundy__chips button,
-.discover-burgundy__more-filters button {
+
+.discover-burgundy__chips button, .discover-burgundy__more-filters button {
   transition: color .16s ease, background .16s ease, border-color .16s ease, transform .16s ease;
 }
-.discover-burgundy__chips button:hover,
-.discover-burgundy__more-filters button:hover {
+
+.discover-burgundy__chips button:hover, .discover-burgundy__more-filters button:hover {
   border-color: color-mix(in srgb, var(--char-rose) 45%, var(--discover-line));
   transform: translateY(-1px);
 }
-.discover-burgundy__chips button:active,
-.discover-burgundy__more-filters button:active { transform: translateY(0) scale(.97); }
+
+.discover-burgundy__chips button:active, .discover-burgundy__more-filters button:active {
+  transform: translateY(0) scale(.97);
+}
 
 /* ---------- the card itself: a book cover, not a generic tile ---------- */
 
@@ -143,6 +164,7 @@
   box-shadow: 0 14px 32px rgba(6, 2, 4, .5) !important;
   transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease !important;
 }
+
 .characters-library__card .discover-burgundy__feature-card-main:hover {
   transform: translateY(-4px) !important;
   border-color: color-mix(in srgb, var(--char-rose) 65%, transparent) !important;
@@ -156,11 +178,13 @@
 .characters-library__card .discover-burgundy__feature-card-copy {
   gap: 5px !important;
 }
+
 .characters-library__card .discover-burgundy__feature-card-copy strong {
   color: var(--char-cream) !important;
   letter-spacing: .01em !important;
   text-shadow: 0 2px 10px rgba(0, 0, 0, .4);
 }
+
 .characters-library__card .discover-burgundy__feature-card-copy small {
   display: flex !important;
   align-items: center !important;
@@ -178,6 +202,7 @@
   gap: 4px;
   margin-top: 2px;
 }
+
 .characters-library__card-tags i {
   padding: 3px 8px;
   color: var(--char-cream);
@@ -192,7 +217,10 @@
 }
 
 @media (max-width: 760px) {
-  .characters-library__card-tags i { font-size: .54rem; padding: 2px 7px; }
+  .characters-library__card-tags i {
+    font-size: .54rem;
+    padding: 2px 7px;
+  }
 }
 
 /* ---------- favorite mark: a small gold flame, not a badge ---------- */
@@ -214,8 +242,17 @@
 }
 
 @media (max-width: 760px) {
-  .characters-library__favorite-mark { top: 7px; left: 7px; width: 22px; height: 22px; }
-  .characters-library__favorite-mark svg { width: 10px; height: 10px; }
+  .characters-library__favorite-mark {
+    top: 7px;
+    left: 7px;
+    width: 22px;
+    height: 22px;
+  }
+
+  .characters-library__favorite-mark svg {
+    width: 10px;
+    height: 10px;
+  }
 }
 
 /* ---------- the ⋯ menu ---------- */
@@ -223,31 +260,60 @@
 .discover-burgundy__more {
   transition: background .18s ease, transform .18s ease, border-color .18s ease;
 }
+
 .discover-burgundy__more:hover {
   background: rgba(30, 14, 20, .78);
   border-color: rgba(255, 255, 255, .3);
   transform: scale(1.08);
 }
-.discover-burgundy__more:active { transform: scale(.94); }
+
+.discover-burgundy__more:active {
+  transform: scale(.94);
+}
 
 .discover-burgundy__menu {
   border-color: color-mix(in srgb, var(--char-rose) 22%, var(--discover-line)) !important;
   transform-origin: top right;
   animation: charactersMenuIn .16s cubic-bezier(.2,.9,.3,1.1);
 }
+
 @keyframes charactersMenuIn {
-  from { opacity: 0; transform: scale(.92) translateY(-4px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(.92) translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
-.discover-burgundy__menu button { transition: background .14s ease, color .14s ease; }
+
+.discover-burgundy__menu button {
+  transition: background .14s ease, color .14s ease;
+}
 
 /* ---------- trash rows ---------- */
 
-.discover-burgundy__trash-row { transition: border-color .18s ease, transform .18s ease; }
-.discover-burgundy__trash-row:hover { transform: translateY(-1px); }
-.discover-burgundy__trash-actions button { transition: background .16s ease, transform .16s ease; }
-.discover-burgundy__trash-actions button:hover { transform: translateY(-1px); }
-.discover-burgundy__trash-actions button:active { transform: translateY(0) scale(.97); }
+.discover-burgundy__trash-row {
+  transition: border-color .18s ease, transform .18s ease;
+}
+
+.discover-burgundy__trash-row:hover {
+  transform: translateY(-1px);
+}
+
+.discover-burgundy__trash-actions button {
+  transition: background .16s ease, transform .16s ease;
+}
+
+.discover-burgundy__trash-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.discover-burgundy__trash-actions button:active {
+  transform: translateY(0) scale(.97);
+}
 
 /* ---------- empty state ---------- */
 
@@ -257,5 +323,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .discover-burgundy__menu { animation: none; }
+  .discover-burgundy__menu {
+    animation: none;
+  }
 }

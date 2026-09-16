@@ -1,14 +1,13 @@
 const LOCK_KEY = "__VELVET_NATIVE_VIEWPORT_LOCK_V21033__";
-
 function stopBrowserScaleGesture(event) {
   event.preventDefault();
 }
-
 export function installMobileViewportLock() {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   if (window[LOCK_KEY]) return;
-
-  const options = { passive: false };
+  const options = {
+    passive: false
+  };
 
   // Safari/iOS exposes proprietary gesture events for page scaling.
   document.addEventListener("gesturestart", stopBrowserScaleGesture, options);

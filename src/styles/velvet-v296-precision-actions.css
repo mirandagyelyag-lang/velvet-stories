@@ -1,4 +1,4 @@
-/* Velvet Stories v2.9.6 · Precision Three-Dot Controls
+/* Velvet Stories · Precision Three-Dot Controls
    Smaller library action targets + tap-complete activation to avoid scroll collisions. */
 
 @media (max-width: 760px) {
@@ -6,12 +6,15 @@
      First column matches .reference-story-row__art's actual 62px width
      at this breakpoint (see velvet-v2611-six-fixes.css) — it was
      previously a stale 72px, leaving a visible gap beside the thumbnail. */
+
   .reference-story-row {
     grid-template-columns: 62px minmax(0,1fr) 34px !important;
   }
+
   .story-action-menu--reference {
     align-self: center;
   }
+
   .story-action-menu--reference .story-action-menu__trigger {
     width: 32px !important;
     height: 32px !important;
@@ -21,12 +24,14 @@
     touch-action: pan-y !important;
     -webkit-tap-highlight-color: transparent;
   }
+
   .story-action-menu--reference .story-action-menu__trigger svg {
     width: 15px !important;
     height: 15px !important;
   }
 
   /* Characters: keep the menu visible without making its invisible hitbox huge. */
+
   .characters-library__card .discover-burgundy__more {
     width: 32px !important;
     height: 32px !important;
@@ -37,17 +42,19 @@
     padding: 0 !important;
     touch-action: pan-y !important;
   }
+
   .characters-library__card .discover-burgundy__more svg {
     width: 15px !important;
     height: 15px !important;
   }
+
   .characters-library__card .discover-burgundy__feature-card-copy {
     right: 34px !important;
   }
 
   /* Memory-detail ellipsis follows the same compact interaction language. */
-  .character-memory-thought__menu-wrap > button,
-  .memories-reference__row-menu {
+
+  .character-memory-thought__menu-wrap > button, .memories-reference__row-menu {
     width: 32px !important;
     height: 32px !important;
     min-width: 32px !important;
@@ -55,11 +62,12 @@
     padding: 0 !important;
     touch-action: pan-y !important;
   }
-  .character-memory-thought__menu-wrap > button svg,
-  .memories-reference__row-menu svg {
+
+  .character-memory-thought__menu-wrap > button svg, .memories-reference__row-menu svg {
     width: 15px !important;
     height: 15px !important;
   }
+
   .memories-reference__row {
     grid-template-columns: 62px minmax(0,1fr) 34px !important;
   }

@@ -1,3 +1,218 @@
-.world-studio-backdrop{position:fixed;inset:0;z-index:1900;display:flex;justify-content:flex-end;background:rgba(20,7,13,.5);backdrop-filter:blur(8px)}.world-studio{width:min(680px,100%);height:100%;overflow:auto;padding:22px;background:var(--background);color:var(--text-primary);box-shadow:-20px 0 70px rgba(0,0,0,.25)}.world-studio>header{display:flex;justify-content:space-between;gap:18px}.world-studio>header small{letter-spacing:.15em;color:var(--accent)}.world-studio>header h2{margin:4px 0;font:500 2.1rem "Cormorant Garamond",serif}.world-studio>header p{margin:0;color:var(--text-secondary)}.world-studio>header button{width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:inherit}.world-studio>nav{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:20px 0}.world-studio>nav button{min-height:44px;border:1px solid var(--border);border-radius:13px;background:var(--surface);color:inherit;display:flex;align-items:center;justify-content:center;gap:7px}.world-studio>nav button.active{background:var(--accent);color:white;border-color:var(--accent)}.world-studio__section{display:grid;gap:16px}.world-studio__new,.world-studio__card{display:grid;gap:9px;padding:15px;border:1px solid var(--border);border-radius:17px;background:var(--surface)}.world-studio input,.world-studio textarea,.world-studio select{width:100%;min-height:44px;padding:10px 11px;border:1px solid var(--border);border-radius:11px;background:var(--background);color:inherit;font:inherit}.world-studio textarea{min-height:74px;resize:vertical}.world-studio__new>button{min-height:44px;border:0;border-radius:12px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:7px}.world-studio__entries{display:grid;gap:10px}.world-studio__card>div{display:flex;justify-content:flex-end;gap:7px}.world-studio__card button{min-height:40px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:transparent;color:inherit;display:flex;align-items:center;gap:6px}.world-studio>footer{position:sticky;bottom:0;margin-top:12px;padding:10px;border-radius:12px;background:var(--surface);border:1px solid var(--border)}@media(max-width:760px){.world-studio-backdrop{align-items:flex-end}.world-studio{width:100%;height:auto;max-height:92dvh;padding:16px 13px calc(18px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0}.world-studio>nav{position:sticky;top:-16px;z-index:2;padding:9px 0;background:var(--background)}.world-studio>nav button{font-size:.72rem;flex-direction:column;gap:2px}.world-studio input,.world-studio textarea,.world-studio select{font-size:16px}.world-studio__card>div button{flex:1;justify-content:center}}
-/* v3.3: seven tools remain usable on narrow screens. */
-.world-studio>nav{display:flex;grid-template-columns:none;overflow-x:auto;padding-bottom:5px}.world-studio>nav button{flex:0 0 96px}.world-studio__check{display:flex;align-items:center;gap:9px}.world-studio__check input{width:18px;min-height:18px}.world-studio label{display:grid;gap:5px;color:var(--text-secondary);font-size:.78rem}
+.world-studio-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1900;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(20,7,13,.5);
+  backdrop-filter: blur(8px);
+}
+
+.world-studio {
+  width: min(680px,100%);
+  height: 100%;
+  overflow: auto;
+  padding: 22px;
+  background: var(--background);
+  color: var(--text-primary);
+  box-shadow: -20px 0 70px rgba(0,0,0,.25);
+}
+
+.world-studio > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.world-studio > header small {
+  letter-spacing: .15em;
+  color: var(--accent);
+}
+
+.world-studio > header h2 {
+  margin: 4px 0;
+  font: 500 2.1rem "Cormorant Garamond",serif;
+}
+
+.world-studio > header p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.world-studio > header button {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: inherit;
+}
+
+.world-studio > nav {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 7px;
+  margin: 20px 0;
+}
+
+.world-studio > nav button {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.world-studio > nav button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.world-studio__section {
+  display: grid;
+  gap: 16px;
+}
+
+.world-studio__new, .world-studio__card {
+  display: grid;
+  gap: 9px;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  background: var(--surface);
+}
+
+.world-studio input, .world-studio textarea, .world-studio select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--background);
+  color: inherit;
+  font: inherit;
+}
+
+.world-studio textarea {
+  min-height: 74px;
+  resize: vertical;
+}
+
+.world-studio__new > button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.world-studio__entries {
+  display: grid;
+  gap: 10px;
+}
+
+.world-studio__card > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.world-studio__card button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.world-studio > footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+@media (max-width:760px) {
+  .world-studio-backdrop {
+    align-items: flex-end;
+  }
+
+  .world-studio {
+    width: 100%;
+    height: auto;
+    max-height: 92vh;
+    max-height: 92dvh;
+    padding: 16px 13px calc(18px + env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+  }
+
+  .world-studio > nav {
+    position: sticky;
+    top: -16px;
+    z-index: 2;
+    padding: 9px 0;
+    background: var(--background);
+  }
+
+  .world-studio > nav button {
+    font-size: .72rem;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .world-studio input, .world-studio textarea, .world-studio select {
+    font-size: 16px;
+  }
+
+  .world-studio__card > div button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* seven tools remain usable on narrow screens. */
+
+.world-studio > nav {
+  display: flex;
+  grid-template-columns: none;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+
+.world-studio > nav button {
+  flex: 0 0 96px;
+}
+
+.world-studio__check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.world-studio__check input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.world-studio label {
+  display: grid;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: .78rem;
+}

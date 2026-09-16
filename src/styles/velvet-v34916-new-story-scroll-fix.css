@@ -1,4 +1,5 @@
 /* Velvet v3.49.16 — authoritative Android one-finger scroll for New Story picker. */
+
 @media (max-width: 760px) {
   .conversation-picker-backdrop {
     overflow: hidden !important;
@@ -10,8 +11,11 @@
     display: flex !important;
     flex-direction: column !important;
     width: 100% !important;
+    height: min(90vh, calc(var(--velvet-visual-height, 100vh) - 8px)) !important;
     height: min(90dvh, calc(var(--velvet-visual-height, 100dvh) - 8px)) !important;
+    min-height: min(68vh, 620px) !important;
     min-height: min(68dvh, 620px) !important;
+    max-height: min(90vh, calc(var(--velvet-visual-height, 100vh) - 8px)) !important;
     max-height: min(90dvh, calc(var(--velvet-visual-height, 100dvh) - 8px)) !important;
     overflow: hidden !important;
     padding: 0 !important;
@@ -19,8 +23,7 @@
     overscroll-behavior: none !important;
   }
 
-  .conversation-picker.conversation-picker--editorial > header,
-  .conversation-picker.conversation-picker--editorial > .velvet-sheet-grabber {
+  .conversation-picker.conversation-picker--editorial > header, .conversation-picker.conversation-picker--editorial > .velvet-sheet-grabber {
     flex: 0 0 auto !important;
   }
 

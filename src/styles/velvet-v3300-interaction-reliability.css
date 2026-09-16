@@ -1,5 +1,5 @@
-
 :root {
+  --velvet-visual-height: 100vh;
   --velvet-visual-height: 100dvh;
   --velvet-visual-width: 100vw;
   --velvet-runtime-keyboard-inset: 0px;
@@ -11,87 +11,38 @@ html, body {
   overscroll-behavior-x: none;
 }
 
-html[data-velvet-pointer="touch"] button,
-html[data-velvet-pointer="pen"] button,
-html[data-velvet-pointer="touch"] [role="button"],
-html[data-velvet-pointer="pen"] [role="button"] {
+html[data-velvet-pointer="touch"] button, html[data-velvet-pointer="pen"] button, html[data-velvet-pointer="touch"] [role="button"], html[data-velvet-pointer="pen"] [role="button"] {
   touch-action: manipulation;
 }
 
-html[data-velvet-keyboard="open"] .mobile-nav,
-html[data-velvet-keyboard="open"] .mobile-global-search {
+html[data-velvet-keyboard="open"] .mobile-nav, html[data-velvet-keyboard="open"] .mobile-global-search {
   opacity: 0 !important;
   pointer-events: none !important;
   transform: translateY(12px) !important;
 }
 
 :is(
-  .message-sheet,
-  .chat__menu,
-  .character-profile-sheet,
-  .group-story-sheet,
-  .story-setup-sheet,
-  .memory-book,
-  .relationship-drawer,
-  .timeline-drawer,
-  .world-studio,
-  .living-world,
-  .safe-studio,
-  .experience-drawer,
-  .lore-modal,
-  .tag-modal,
-  .memory-editor,
-  .profile-editor,
-  .profile-access
+  .message-sheet, .chat__menu, .character-profile-sheet, .group-story-sheet, .story-setup-sheet, .memory-book, .relationship-drawer, .timeline-drawer, .world-studio, .living-world, .safe-studio, .experience-drawer, .lore-modal, .tag-modal, .memory-editor, .profile-editor, .profile-access
 ) {
+  max-height: min(94vh, calc(var(--velvet-visual-height) - 12px));
   max-height: min(94dvh, calc(var(--velvet-visual-height) - 12px));
   max-width: min(100%, var(--velvet-visual-width));
 }
 
 :is(
-  .message-sheet-backdrop,
-  .chat__menu-backdrop,
-  .character-profile-backdrop,
-  .group-story-backdrop,
-  .story-setup-backdrop,
-  .memory-book-backdrop,
-  .relationship-drawer-backdrop,
-  .timeline-drawer-backdrop,
-  .world-studio-backdrop,
-  .living-world-backdrop,
-  .safe-studio-backdrop,
-  .experience-backdrop,
-  .lore-modal-backdrop,
-  .tag-modal-backdrop,
-  .memory-editor-backdrop,
-  .profile-editor-backdrop,
-  .profile-access-backdrop,
-  .story-action-menu__portal-backdrop
+  .message-sheet-backdrop, .chat__menu-backdrop, .character-profile-backdrop, .group-story-backdrop, .story-setup-backdrop, .memory-book-backdrop, .relationship-drawer-backdrop, .timeline-drawer-backdrop, .world-studio-backdrop, .living-world-backdrop, .safe-studio-backdrop, .experience-backdrop, .lore-modal-backdrop, .tag-modal-backdrop, .memory-editor-backdrop, .profile-editor-backdrop, .profile-access-backdrop, .story-action-menu__portal-backdrop
 ) {
   overscroll-behavior: contain;
 }
 
 :is(
-  .message-sheet,
-  .chat__menu,
-  .character-profile-sheet,
-  .group-story-sheet,
-  .story-setup-sheet,
-  .memory-book,
-  .relationship-drawer,
-  .timeline-drawer,
-  .world-studio,
-  .living-world,
-  .safe-studio,
-  .experience-drawer
+  .message-sheet, .chat__menu, .character-profile-sheet, .group-story-sheet, .story-setup-sheet, .memory-book, .relationship-drawer, .timeline-drawer, .world-studio, .living-world, .safe-studio, .experience-drawer
 ) {
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
 }
 
-html[data-velvet-online="offline"] .chat__composer,
-html[data-velvet-online="offline"] .settings-page,
-html[data-velvet-online="offline"] .diagnostics-page {
+html[data-velvet-online="offline"] .chat__composer, html[data-velvet-online="offline"] .settings-page, html[data-velvet-online="offline"] .diagnostics-page {
   --velvet-network-state: offline;
 }
 
@@ -108,29 +59,12 @@ html[data-velvet-online="offline"] .diagnostics-page {
 }
 
 @media (max-width: 760px) {
-  html[data-velvet-keyboard="open"] body > .chat__composer,
-  html[data-velvet-keyboard="open"] .chat__composer {
+  html[data-velvet-keyboard="open"] body > .chat__composer, html[data-velvet-keyboard="open"] .chat__composer {
     max-width: 100vw !important;
   }
 
   :is(
-    .message-sheet,
-    .chat__menu,
-    .character-profile-sheet,
-    .group-story-sheet,
-    .story-setup-sheet,
-    .memory-book,
-    .relationship-drawer,
-    .timeline-drawer,
-    .world-studio,
-    .living-world,
-    .safe-studio,
-    .experience-drawer,
-    .lore-modal,
-    .tag-modal,
-    .memory-editor,
-    .profile-editor,
-    .profile-access
+    .message-sheet, .chat__menu, .character-profile-sheet, .group-story-sheet, .story-setup-sheet, .memory-book, .relationship-drawer, .timeline-drawer, .world-studio, .living-world, .safe-studio, .experience-drawer, .lore-modal, .tag-modal, .memory-editor, .profile-editor, .profile-access
   ) {
     max-height: calc(var(--velvet-visual-height) - max(0px, env(safe-area-inset-top)) - 4px);
   }
@@ -141,8 +75,7 @@ html[data-velvet-online="offline"] .diagnostics-page {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-velvet-keyboard="open"] .mobile-nav,
-  html[data-velvet-keyboard="open"] .mobile-global-search {
+  html[data-velvet-keyboard="open"] .mobile-nav, html[data-velvet-keyboard="open"] .mobile-global-search {
     transition: none !important;
   }
 }

@@ -4,11 +4,11 @@
 	"webDir": "dist",
 	"server": {
 		"hostname": "localhost",
-		"androidScheme": "http"
+		"androidScheme": "https"
 	},
 	"android": {
 		"allowMixedContent": false,
 		"captureInput": true,
-		"webContentsDebuggingEnabled": true
+		"webContentsDebuggingEnabled": false
 	}
 }

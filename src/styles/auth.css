@@ -1,7 +1,8 @@
-/* Velvet Stories · owner-only cinematic login · v3.52.29 */
+/* Velvet Stories · owner-only cinematic Login */
 .auth--owner-scene {
   position: relative;
   width: 100%;
+  min-height: 100vh;
   min-height: 100dvh;
   overflow: hidden;
   background: #090104;

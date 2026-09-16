@@ -1,6 +1,7 @@
 /* Velvet v3.7.4 — final chat composer geometry authority.
    The chat route has no desktop sidebar, so the composer is centered on the
    viewport itself. Explicitly clear both legacy edges before centering. */
+
 @media (min-width: 761px) {
   body > .chat__composer {
     position: fixed !important;

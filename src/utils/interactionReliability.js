@@ -1,12 +1,9 @@
 let cleanupInteractionReliability = null;
-
 export function installInteractionReliability() {
   if (typeof window === "undefined" || typeof document === "undefined") return () => {};
   if (cleanupInteractionReliability) return cleanupInteractionReliability;
-
   const root = document.documentElement;
   let frame = 0;
-
   const syncViewport = () => {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
@@ -22,25 +19,36 @@ export function installInteractionReliability() {
       root.dataset.velvetKeyboard = keyboardOpen ? "open" : "closed";
     });
   };
-
   const syncNetwork = () => {
     root.dataset.velvetOnline = navigator.onLine ? "online" : "offline";
   };
-
-  const markPointer = (event) => {
+  const markPointer = event => {
     root.dataset.velvetPointer = event.pointerType || "mouse";
   };
-
   syncViewport();
   syncNetwork();
-  window.addEventListener("resize", syncViewport, { passive: true });
-  window.addEventListener("orientationchange", syncViewport, { passive: true });
-  window.addEventListener("online", syncNetwork, { passive: true });
-  window.addEventListener("offline", syncNetwork, { passive: true });
-  window.addEventListener("pointerdown", markPointer, { passive: true, capture: true });
-  window.visualViewport?.addEventListener("resize", syncViewport, { passive: true });
-  window.visualViewport?.addEventListener("scroll", syncViewport, { passive: true });
-
+  window.addEventListener("resize", syncViewport, {
+    passive: true
+  });
+  window.addEventListener("orientationchange", syncViewport, {
+    passive: true
+  });
+  window.addEventListener("online", syncNetwork, {
+    passive: true
+  });
+  window.addEventListener("offline", syncNetwork, {
+    passive: true
+  });
+  window.addEventListener("pointerdown", markPointer, {
+    passive: true,
+    capture: true
+  });
+  window.visualViewport?.addEventListener("resize", syncViewport, {
+    passive: true
+  });
+  window.visualViewport?.addEventListener("scroll", syncViewport, {
+    passive: true
+  });
   cleanupInteractionReliability = () => {
     cancelAnimationFrame(frame);
     window.removeEventListener("resize", syncViewport);

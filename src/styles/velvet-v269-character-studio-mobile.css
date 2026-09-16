@@ -1,16 +1,9 @@
-/* Velvet Stories v2.6.9 · Character Studio mobile geometry hotfix
+/* Velvet Stories · Character Studio mobile geometry hotfix
    Keeps every wizard destination visible on 360–430px phones and prevents
    Character Studio controls from widening the viewport. */
 
 @media (max-width: 760px) {
-  .character-studio,
-  .character-studio__layout,
-  .character-studio__preview,
-  .character-studio__editor,
-  .character-studio__appearance-mini,
-  .character-studio__journey,
-  .studio-section,
-  .studio-section__body {
+  .character-studio, .character-studio__layout, .character-studio__preview, .character-studio__editor, .character-studio__appearance-mini, .character-studio__journey, .studio-section, .studio-section__body {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
@@ -18,6 +11,7 @@
   }
 
   /* Six destinations, all visible. No hidden horizontal carousel. */
+
   .character-studio__journey {
     position: sticky !important;
     top: 0 !important;
@@ -65,6 +59,7 @@
   }
 
   /* The compact media controls must shrink instead of pushing the canvas. */
+
   .character-studio__appearance-mini {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
@@ -79,8 +74,7 @@
     min-width: 0 !important;
   }
 
-  .character-studio__media-control strong,
-  .character-studio__media-control small {
+  .character-studio__media-control strong, .character-studio__media-control small {
     max-width: 100% !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -107,15 +101,7 @@
     justify-self: center !important;
   }
 
-  .character-studio__topbar,
-  .character-studio__autosave,
-  .character-studio__top-actions,
-  .studio-grid,
-  .studio-grid--two,
-  .studio-field,
-  .studio-field input,
-  .studio-field textarea,
-  .studio-field select {
+  .character-studio__topbar, .character-studio__autosave, .character-studio__top-actions, .studio-grid, .studio-grid--two, .studio-field, .studio-field input, .studio-field textarea, .studio-field select {
     min-width: 0 !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
