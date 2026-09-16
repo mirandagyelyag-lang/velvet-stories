@@ -1,0 +1,46 @@
+/* Velvet Stories v3.52.35 · one background owner
+   The previous fix reused the same gradient on several nested boxes. Because
+   CSS gradients are calculated inside each element's own box, the end of the
+   Stories section could still reveal a visibly different band underneath.
+
+   This release gives the atmospheric background to exactly ONE full-page
+   owner: <body>. Every nested Stories shell is transparent, and the legacy
+   route pseudo-layer is disabled so it cannot stop at the content boundary. */
+
+html[data-velvet-page="chats"].velvet-burgundy-route {
+  background: var(--stories-canvas) !important;
+  background-image: none !important;
+}
+
+body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route {
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  background: var(--stories-atmosphere) !important;
+  background-color: var(--stories-canvas) !important;
+}
+
+/* The body is the ONLY atmospheric painter on the Stories library route. */
+body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+
+body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route #root,
+body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .app,
+body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .app__content,
+body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .velvet-route-stage,
+body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .chats-page.chats-page--reference {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* This old fixed decoration lived inside an isolated route section. Even with
+   position:fixed it belonged to that section's stacking context, so its visual
+   contribution could end exactly where the section ended. Body now owns it. */
+body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .chats-page.chats-page--reference::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
