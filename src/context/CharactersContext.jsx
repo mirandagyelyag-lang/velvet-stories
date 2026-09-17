@@ -268,6 +268,15 @@ export function CharactersProvider({ children }) {
   async function generateInstantStory(characterData, idea = "") {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 26000);
+    const historyKey = `velvet:instant-story-scenes:${characterData?.id || characterData?.name || "character"}`;
+    let recentSceneSeeds = [];
+    try {
+      const stored = JSON.parse(localStorage.getItem(historyKey) || "[]");
+      recentSceneSeeds = Array.isArray(stored) ? stored.filter(Boolean).slice(-6) : [];
+    } catch {
+      recentSceneSeeds = [];
+    }
+    const variationKey = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -294,6 +303,8 @@ export function CharactersProvider({ children }) {
           action: "instant_story",
           draft: characterDraftPayload(characterData),
           idea: String(idea || "").slice(0, 700),
+          variationKey,
+          recentSceneSeeds,
         }),
       });
 
@@ -304,11 +315,20 @@ export function CharactersProvider({ children }) {
       const opening = String(data?.opening || "").trim();
       const instantWords = opening.split(/\s+/).filter(Boolean);
       const leakedTemplate = /\b(?:between you sits|their response carries|without turning it into a performance|neither a stranger nor a convenient accident|what happens next depends on what you choose to say)\b/i.test(opening);
-      const genericInstantStory = /\b(?:flickering neon|the kind of .{0,55} (?:he|she|they) usually reserved for|expression shifted from .{0,80} to something (?:much )?softer|gaze lingering .{0,30} too long|spotting you (?:near|by|at|beside)|poor life choices)\b/i.test(opening);
+      const genericInstantStory = /\b(?:flickering neon|the kind of .{0,55} (?:he|she|they) usually reserved for|expression shifted from .{0,80} to something (?:much )?softer|gaze lingering .{0,30} too long|spotting you (?:near|by|at|beside)|poor life choices|saved (?:you|your|the) (?:a )?seat|defended this seat|drove across (?:campus|town)|ordered (?:an )?extra.{0,40}(?:your usual|your favorite)|quiet evening or the drive)\b/i.test(opening);
       const visiblyComplete = /[.!?…][\"'”’)]?$/.test(opening) && !/[’'][A-Za-z]{0,2}$/.test(opening);
       if (!opening) throw new Error("Velvet returned an empty Instant Story. Try again.");
       if (instantWords.length < 130 || !visiblyComplete || leakedTemplate || genericInstantStory) {
         throw new Error("Velvet received a cut-off Instant Story instead of a complete opening. Try again.");
+      }
+      const usedSceneSeed = String(data?.sceneSeed || "").trim();
+      if (usedSceneSeed) {
+        try {
+          localStorage.setItem(historyKey, JSON.stringify([...recentSceneSeeds, usedSceneSeed].slice(-6)));
+        } catch {
+          // Storage can be unavailable in private/restricted WebViews. Diversity
+          // still works for this request through variationKey.
+        }
       }
       return opening;
     } catch (error) {

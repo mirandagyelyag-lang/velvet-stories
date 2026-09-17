@@ -1,0 +1,108 @@
+const INSTANT_STORY_CONFLICT_SEEDS = [
+  "A friend-group disagreement is already underway because two people have incompatible versions of the same event. Nobody has enough proof to end it yet.",
+  "A private message, screenshot, rumor, or confidence has reached the wrong person. The important question is not only who did it, but who is protecting whom and why.",
+  "A decision affecting several people has real social consequences, and at least two people want incompatible outcomes. The lead character has a stake that is not romance.",
+  "A loyalty conflict is already active: supporting one person will damage trust with another. Nobody gets to solve it with one perfect speech.",
+  "Someone has accused the user or the lead character of something consequential, but the room contains conflicting evidence and incomplete information.",
+  "A prior promise, lie, omission, or cover-up has surfaced in front of other people. The truth is only partially known and every response changes a relationship.",
+  "Someone important is missing, unreachable, late, or in trouble enough to matter, and the group disagrees about what responsibility they have. Stop before the group cleanly resolves what to do.",
+  "An earlier action has produced a new consequence now: another person is angry, embarrassed, exposed, excluded, blamed, or forced to choose a side.",
+  "Two established relationships collide. The lead character cannot protect one bond without putting pressure on another, and the user has room to challenge either side.",
+];
+
+function instantStorySceneSeed(draft, idea = "") {
+  const cleanIdea = cleanPromptValue(idea, 220);
+  if (cleanIdea) return `USER-SPECIFIED DIRECTION: ${cleanIdea}`;
+
+  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
+  const ensemble = /\b(?:friend group|group of|same group|friends|team|teammates|roommates|siblings|family|coworkers|colleagues|crew|club|social circle)\b/.test(profile);
+  const conflictHeavy = /\b(?:rival|enemy|enemies|betray|secret|trust|jealous|conflict|argument|fight|protect|loyal|danger|rumor|reputation)\b/.test(profile);
+
+  const pool = [...INSTANT_STORY_CONFLICT_SEEDS];
+  if (!ensemble) {
+    pool.push(
+      "A consequential outside problem is already affecting the lead character and the user from different directions. A third force can be an institution, family member, coworker, rival, obligation, rumor, or off-screen person with a real stake.",
+      "The lead character learns something incomplete that changes what they are willing to do next. The user is implicated in the situation but is not reduced to a romantic objective."
+    );
+  }
+  if (conflictHeavy) {
+    pool.push(
+      "A known pressure point from the character profile becomes public at the worst possible moment. The lead character must manage reputation, loyalty, and incomplete truth at once."
+    );
+  }
+
+  const index = Math.floor(Math.random() * pool.length);
+  return `CONFLICT STRUCTURE: ${pool[index]}`;
+}
+
+function instantStoryFallbackOpening(draft, idea = "", sceneSeed = "") {
+  const name = cleanPromptValue(draft?.name, 70) || "Alex";
+  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
+  const male = /\b(?:he|him|his|boyfriend|man|guy|king|prince)\b/.test(profile);
+  const female = /\b(?:she|her|hers|girlfriend|woman|girl|queen|princess)\b/.test(profile);
+  const subject = male ? "he" : female ? "she" : "they";
+  const possessive = male ? "his" : female ? "her" : "their";
+  const Subject = subject[0].toUpperCase() + subject.slice(1);
+  const social = /\b(?:friend group|group of|same group|friends|team|roommates|social|popular|campus king|campus prince)\b/.test(profile);
+
+  if (social) return `The argument had already gone past the point where anyone could pretend it was casual. One person in the group had a screenshot open on their phone; another was insisting the message had been forwarded out of context. The accusation had changed twice in five minutes, but the newest version put your name in the middle of it.
+
+${name} had listened long enough to hear the contradictions before ${subject} finally stepped in.
+
+“No. Start again.”
+
+Someone across the room scoffed. “You heard me.”
+
+“I heard three different versions.” ${name} held out a hand for the phone. “That’s the problem.”
+
+The screenshot showed only part of the conversation. No timestamp on the first message. No proof of who had sent it outside the group. Enough to make everyone angry, not enough to make anyone right.
+
+A friend said your name again and added, “Ask her, then.”
+
+${name} did not immediately turn the room into a trial. ${Subject} chose instead to keep the phone, keeping the half-finished accusation from becoming the accepted story just because it had been repeated the loudest.
+
+“You wanted to say it,” ${name} said, looking back at the person who had started this. “So say the part you keep leaving out.”
+
+The room went quiet.
+
+The other person’s expression changed.
+
+${name} noticed.
+
+“Yeah,” ${subject} said. “That part.”`;
+
+  return `${name} had been in the middle of a tense conversation when a new message changed the shape of it. Someone connected to ${possessive} life had repeated a private claim as fact, and another person had just contradicted it with information neither side had mentioned before.
+
+${name} read the message twice.
+
+“That doesn’t match.”
+
+The person across from ${name} answered too quickly. “You don’t know that.”
+
+“I know what you told me ten minutes ago.”
+
+That was enough to make the room quieter.
+
+The disagreement was no longer about one message. If the new version was true, somebody had lied. If it was false, somebody was trying to redirect blame before the rest of the story surfaced.
+
+${name} set the phone down instead of sending the first angry reply that came to mind. ${Subject} chose to leave the accusation unanswered for the moment, which only made the other person more impatient.
+
+“Well?”
+
+${name} looked at the screen again.
+
+“No.”
+
+“No what?”
+
+“No, you don’t get to skip to the ending.” ${Subject} pushed the phone back across the table. “Start with what happened before this.”
+
+The other person did not reach for it.
+
+That hesitation changed more than an answer would have.
+
+${name} waited.
+
+“Go on,” ${subject} said.`;
+}
+

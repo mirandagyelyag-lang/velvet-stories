@@ -9,11 +9,21 @@ export function instantStoryQualityIssues(opening:unknown,draft:Record<string,un
   if(/\b(?:spotting|noticed|found|saw) you (?:near|by|at|beside|across|standing|waiting|reading|looking)|\byou (?:stood|waited|walked|sat|leaned|were standing|were waiting)\b/.test(t)) issues.push("unstaged_user_placement");
   if(/\bif i (?:buy|pick|choose|get) .{0,80}\bif i (?:buy|pick|choose|get)\b|\bpoor life choices\b|\bsubsidiz(?:e|ing)\b.{0,45}\blife choices\b/.test(t)) issues.push("sitcom_choice_monologue");
   if(/\b(?:energy drinks?|beef jerky|sour gummies|spicy chips|junk food)\b/.test(t)&&/\b(?:road trip|state line|three hundred miles|aux cord|caffeine)\b/.test(t)) issues.push("generic_roadtrip_snack_scene");
+  if(/\bdid you (?:actually )?(?:bring|remember|forget|finish|send|tell|ask|call|text)\b|\bare we going to\b.{0,70}\bagain\b/.test(t)) issues.push("invented_user_history_prompt");
+
+  if(/\b(?:saved|defended|kept) (?:you |your |the )?(?:a )?seat\b|\bdrove across (?:campus|town)\b|\bwaiting (?:for you )?(?:beside|by) (?:his |her |their )?car\b|\bordered (?:an )?extra\b.{0,40}\b(?:your usual|your favorite|for you)\b|\blost bracelet\b/.test(t)) issues.push("romance_first_setup");
+  if(/(?:\bwhich one\?|\byour choice[.!?]?|\bwhat do you want to do\?|\bquiet evening or the drive\b|\bstay or go\?|\bcome with me[.!?]?)(?:["”’']\s*)?$/i.test(raw.trim())) issues.push("forced_binary_choice");
+  const ending=norm(raw.slice(-650));
+  if(/\b(?:the others|everyone|they all) (?:left|went home|followed|headed out)\b|\b(?:the argument|the fight|the problem) (?:was|is) over\b|\bthat settled it\b/.test(ending)) issues.push("premature_resolution");
 
   const profile=norm(Object.values(draft||{}).join(" "));
   const npcMatches=[...raw.matchAll(/\b([A-Z][a-z]{2,})(?:'s)?\s+(?:is|was|will|would|wants?|needs?|thinks?|says?|said|asks?|asked|complains?|complained|called|texted|expects?)\b/g)].map((m)=>m[1]);
   const common=new Set(["The","He","She","They","You","His","Her","Their","Someone","Everyone"]);
-  if(npcMatches.some((name)=>!common.has(name)&&!profile.includes(name.toLowerCase()))) issues.push("invented_named_npc");
+  const unknownNpcNames=[...new Set(npcMatches.filter((name)=>!common.has(name)&&!profile.includes(name.toLowerCase())))];
+  const socialBasis=/\b(?:friend group|group of|same group|friends|team|teammates|roommates|siblings|family|coworkers|colleagues|crew|club|social circle|popular|campus king|campus prince)\b/.test(profile);
+  const genericNpcProp=/\b(?:energy drinks?|beef jerky|sour gummies|spicy chips|junk food|road trip|aux cord|snack run)\b/.test(t);
+  if(unknownNpcNames.length&&(!socialBasis||genericNpcProp)) issues.push("invented_named_npc");
+  if(unknownNpcNames.length>3) issues.push("npc_name_overload");
 
   const explicitAttraction=/\b(?:already likes|likes you|likes the user|has feelings for you|attracted to you|into you|flirts openly|never hidden how much|goes out of (?:his|her|their) way|le gustas|siente algo por ti)\b/.test(profile);
   const behavioralProof=/\b(?:saved|kept|set aside|ordered (?:an )?extra|brought|remembered|made time|changed (?:his|her|their) plan|cancelled|canceled|came back|waited|chose|picked yours|your usual|your favorite|for you|gave up|offered (?:his|her|their)|noticed before)\b/.test(t);
@@ -27,7 +37,7 @@ export function instantStoryLooksComplete(opening: unknown, finishReason: unknow
   const words = text.split(/\s+/).filter(Boolean);
   const finish = String(finishReason || "").toUpperCase();
 
-  if (!text || words.length < 130 || words.length > 280) return false;
+  if (!text || words.length < 130 || words.length > 420) return false;
   if (["MAX_TOKENS", "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "MALFORMED_FUNCTION_CALL"].includes(finish)) return false;
   if (/[’'][A-Za-z]{0,2}$/.test(text)) return false;
   if (/[,:;\-–—]$/.test(text)) return false;
@@ -58,6 +68,10 @@ export function instantStoryHasTemplateLeak(opening: unknown) {
     /\bheld back by the way .{0,80} normally protects what matters\b/i,
     /\bmake(?:s)? room for your answer instead of deciding it for you\b/i,
     /\bwhat happens next depends on what you choose to say\b/i,
+    /\bthere was no invented emergency\b/i,
+    /\bwithout turning (?:the problem|it) into a speech\b/i,
+    /\bkept the useful option open for you\b/i,
+    /\brefusal to waste it by circling the same question\b/i,
     /\bis already in the middle of (?:a )?(?:home kitchen, living room|.+\bor\b.+\bor\b.+),? occupied with something connected to\b/i,
     /\bit affects what .{1,80} notices and what (?:they|he|she) choose(?:s)? not to say\b/i,
   ];

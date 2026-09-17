@@ -10,7 +10,7 @@ const pkg = JSON.parse(
 );
 
 const velvetVersion = pkg.version;
-const velvetRelease = "Velvet Rose · No Frame";
+const velvetRelease = "Clear Instant Openings · Natural Fallback Prose";
 
 function upsertMetaTag(html, name, content) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

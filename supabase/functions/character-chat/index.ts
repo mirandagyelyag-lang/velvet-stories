@@ -21,6 +21,7 @@ import { generationOrchestratorV346Issues, sanitizeGenerationOrchestratorV346Rep
 import { recoveryIntegrityV347Issues, sanitizeRecoveryIntegrityV347Reply } from "./engine/recovery-integrity-v347.ts";
 import { performanceMobileV348Issues } from "./engine/performance-mobile-v348.ts";
 import { instantStoryLooksComplete } from "./engine/instant-story-v3492.ts";
+import { instantStorySceneFamily, instantStorySceneSeed } from "./engine/instant-story-diversity-v35245.ts";
 import { buildVoiceAuditDirectiveV34911, voiceAuditV34911Issues } from "./engine/character-voice-audit-v34911.ts";
 import { buildHumanCognitionBriefV34930, humanCognitionV34930Issues } from "./engine/human-cognition-pipeline-v34930.ts";
 import { buildIndividualHumanPsycheV34931, individualHumanPsycheV34931Issues } from "./engine/individual-human-psyche-v34931.ts";
@@ -41,9 +42,9 @@ import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engin
 import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
 import { immediateTurnContinuityIssues } from "./engine/immediate-turn-continuity-v35213.js";
 import { behavioralTurnIntegrityIssues, sanitizeBehavioralTurnIntegrity } from "./engine/behavioral-turn-integrity-v35224.js";
-import { buildSceneMomentumBarrierV35236, enforceSceneMomentumBarrierV35236, sanitizeSceneMomentumBarrierV35236, sceneMomentumBarrierV35236Issues } from "./engine/scene-momentum-barrier-v35236.js";
+import { buildSceneMomentumBarrierV35236, sanitizeSceneMomentumBarrierV35236, sceneMomentumBarrierV35236Issues } from "./engine/scene-momentum-barrier-v35236.js";
 import { buildGroundedLastResortReply, establishedAttractionOpportunityIssues } from "./engine/established-attraction-opportunity-v35219.js";
-import { enforceFinalDelegatedChoiceBarrier } from "./engine/final-turn-barrier-v35223.js";
+import { finalizeRegressionSafeTurnV35237 } from "./engine/regression-shield-v35237.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -262,7 +263,13 @@ Deno.serve(async (request) => {
     }
 
     if (action === "instant_story") {
-      return await handleInstantStory({ apiKey, draft: body?.draft, idea: body?.idea });
+      return await handleInstantStory({
+        apiKey,
+        draft: body?.draft,
+        idea: body?.idea,
+        variationKey: body?.variationKey,
+        recentSceneSeeds: body?.recentSceneSeeds,
+      });
     }
 
     if (action === "character_generate") {
@@ -346,7 +353,13 @@ Deno.serve(async (request) => {
       : classifyTurnIntent(latestUserMessage, messages);
     const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
     const selectedMemories = selectLongStoryMemories(loaded.memories, { recentText: messages.slice(-20).map((message) => message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content).join(" "), latestUserMessage, characterName: configuredCharacter.name, userName: userIdentity.name });
-    const selectedLore = selectRelevantLore(loaded.loreEntries, messages, loaded.groupCharacters);
+    // An opening rewrite has no preceding transcript from which relevance can
+    // be inferred. Keep the lorebook available instead of accidentally giving
+    // Instant Story an empty world merely because its rejected opening was cut
+    // from the branch.
+    const selectedLore = openingRegeneration
+      ? (Array.isArray(loaded.loreEntries) ? loaded.loreEntries.slice(0, 8) : [])
+      : selectRelevantLore(loaded.loreEntries, messages, loaded.groupCharacters);
     const developmentState = resolveCharacterDevelopmentBranch(
       loaded.conversation.character_development,
       configuredCharacter.relationship,
@@ -470,6 +483,7 @@ Deno.serve(async (request) => {
       regenerationInstruction,
       regenerationFeedback,
       isRegeneration: Boolean(regenerateMessageId),
+      openingRegeneration,
       isCancelled,
     });
   } catch (error) {
@@ -1296,108 +1310,205 @@ function compactInstantStoryDraft(draft) {
   };
 }
 
-const INSTANT_STORY_NON_ACADEMIC_SCENES = [
-  "a quiet neighborhood street after separate plans have just ended",
-  "a crowded restaurant or takeout counter where something practical brings them together",
-  "a grocery store or market during an ordinary errand",
-  "a parking garage or curbside pickup with somewhere real to go next",
-  "a friend's apartment or shared social gathering already in progress",
-  "a family or friend-group event where the character has their own reason to attend",
-  "a train station, bus stop, airport pickup, or other transit moment",
-  "a park, waterfront, lookout, trail, or outdoor public place tied to an actual activity",
-  "a shop, record store, bookstore, arcade, cinema, gallery, or event venue chosen for a specific activity",
-  "the character's work, training, garage, studio, office, club, or hobby space when their profile supports it",
-  "a home kitchen, living room, hallway, balcony, or building entrance when the relationship plausibly allows it",
-];
-
-function instantStorySceneSeed(draft, idea = "") {
-  const cleanIdea = cleanPromptValue(idea, 180);
-  if (cleanIdea) return `USER-SPECIFIED DIRECTION: ${cleanIdea}`;
-  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
-  const specialized = [];
-  if (/race|racing|racer|garage|car|track|circuit|street race/.test(profile)) specialized.push("garage, workshop, roadside stop, gas station, car meet, or race-adjacent place");
-  if (/athlete|captain|team|practice|training|football|soccer|basketball|polo|sport/.test(profile)) specialized.push("training facility, stadium exterior, equipment pickup, recovery stop, or post-practice food run");
-  if (/business|ceo|company|wealth|millionaire|billionaire|family empire|executive/.test(profile)) specialized.push("office after hours, hotel lobby, private event, restaurant, car ride, building entrance, or work-adjacent errand");
-  const pool = specialized.length ? [...specialized, ...INSTANT_STORY_NON_ACADEMIC_SCENES] : INSTANT_STORY_NON_ACADEMIC_SCENES;
-  const index = Math.floor(Math.random() * pool.length);
-  return pool[index];
-}
-
-function instantStoryFallbackOpening(draft, idea = "", sceneSeed = "") {
+export function instantStoryFallbackOpening(draft, idea = "", sceneSeed = "") {
   const name = cleanPromptValue(draft?.name, 70) || "Alex";
   const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
   const male=/\b(?:he|him|his|boyfriend|man|guy|king|prince)\b/.test(profile);
   const female=/\b(?:she|her|hers|girlfriend|woman|girl|queen|princess)\b/.test(profile);
   const subject=male?"he":female?"she":"they";
-  const object=male?"him":female?"her":"them";
-  const possessive=male?"his":female?"her":"their";
   const Subject=subject[0].toUpperCase()+subject.slice(1);
   const openInterest=/\b(?:likes you|likes the user|has feelings for you|attracted to you|into you|flirts openly|never hidden|le gustas|siente algo por ti)\b/.test(profile);
-  const closeFriends=/\b(?:close friends|best friends|same group|friend group|friends for years|group of eight)\b/.test(profile);
 
-  if(/\b(?:race|racing|racer|garage|street race|driver|mechanic)\b/.test(profile)) return `The garage door was only halfway open, leaving a stripe of evening light across the concrete while ${name} stood beside the car with a socket wrench in one hand and a parts invoice in the other. The replacement belt had arrived in the right box and the wrong size, which meant the car could stay dismantled overnight or someone could make the drive back to the supplier before it closed. ${Subject} checked the stamped number once more, then set the useless part on the workbench.
+  if(/\b(?:race|racing|racer|garage|street race|driver|mechanic)\b/.test(profile) && /garage|workshop|roadside|gas station|car meet|race-adjacent/.test(sceneSeed.toLowerCase())) return `The garage door was still half open when ${name} compared the number stamped on the new belt with the one on the invoice. They did not match. The supplier closed in less than an hour, and the car was already dismantled far enough that leaving it until morning would mean abandoning it on the lift overnight.
 
 “They sent the wrong one.”
 
-${name} held out the invoice so you could see the mismatch for yourself. Grease marked ${possessive} wrist, but ${subject} had already cleared the passenger seat and put the keys beside your usual drink. ${openInterest ? `${Subject} did not bother pretending either detail was accidental.` : `${Subject} kept the decision practical.`}
+${Subject} placed the useless belt beside the invoice and wiped one hand on a shop rag. The keys to the other car were already on the workbench. ${openInterest ? `${Subject} had waited to make the decision until you were included, even though going alone would have been easier.` : `${Subject} had narrowed the problem down to two workable options.`}
 
-“I can leave the car here and deal with it tomorrow,” ${subject} said, “or we go now and make them fix it tonight.”
+“I can lock up and deal with it tomorrow,” ${subject} said. “Or we leave now and make them exchange it before they close.”
 
-${Subject} picked up the keys but did not head for the door yet. “If you come with me, you choose the music. That is the only generous offer you’re getting.”`;
+${Subject} picked up the keys, but stayed beside the workbench instead of heading for the door. “I vote for fixing it tonight. I’m not deciding the rest of your evening for you, though.”
 
-  if(closeFriends||/\b(?:campus king|campus prince|popular|heartthrob|social)\b/.test(profile)) return `The apartment kitchen had become the unofficial supply station for the evening, and ${name} was standing behind the island sorting takeout containers while the rest of the group argued in the living room. Two drinks were missing, one order had been labeled incorrectly, and the restaurant had stopped answering its phone. ${name} checked the receipt, separated the food that was still warm, and pushed one untouched container away from the others before anyone could claim it.
+The wrong belt landed back in its box. “If we go, we have about five minutes before traffic makes the decision for us.”`;
 
-“They forgot yours.”
+  const seed = sceneSeed.toLowerCase();
+  const family = instantStorySceneFamily(seed);
+  const plan = family === "transit"
+    ? { place: "the station concourse", task: "checking the departure board against a booking on the phone", problem: "The earlier service had been cancelled, and the last useful connection left from another platform in twelve minutes", object: "the two replacement tickets", first: "We can take the direct one tomorrow", second: "or catch the connection tonight and deal with the transfer" }
+    : family === "outdoor"
+      ? { place: "the trail entrance", task: "studying the closure map beside the locked gate", problem: "The usual path had closed without warning, and the ranger's notice showed one shorter public route and one long detour back through town", object: "the folded route map", first: "We can take the short route before sunset", second: "or call it and get dinner in town" }
+      : family === "culture_leisure"
+        ? { place: "the venue box office", task: "comparing the printed booking with the seats still showing on the clerk's screen", problem: "The reservation had been split across two rows, and the clerk could hold a better pair for only five minutes", object: "the corrected seat slips", first: "We keep what they gave us", second: "or switch now and stop pretending separate rows are fine" }
+        : family === "work_event"
+          ? { place: "the building lobby after closing", task: "sorting a marked-up folder before the security desk locked the lifts", problem: "One signature was missing, and leaving the file overnight would push the entire appointment into next week", object: "the unsigned page", first: "I can leave it for Monday", second: "or we take the copy upstairs now and finish it properly" }
+          : family === "market"
+            ? { place: "the market service counter", task: "checking a receipt against the bagged order", problem: "One essential item had been substituted with the wrong thing, and the stall that carried the right one was already packing up", object: "the receipt and the unopened substitute", first: "We can accept this and improvise", second: "or cross the market before they close" }
+            : family === "friend_gathering"
+              ? { place: "a friend's living room before the rest of the guests arrived", task: "testing the borrowed speakers after one channel abruptly died", problem: "The host was still out collecting people, and the only working setup meant moving the music to the balcony or borrowing a smaller speaker from downstairs", object: "the loose audio cable", first: "We move everything outside and pretend that was the plan", second: "or I go downstairs and ask for the spare" }
+              : family === "family_event"
+                ? { place: "the entrance to a family dinner", task: "fixing the place cards after two extra relatives appeared without warning", problem: "The table could fit everyone only if the formal seating plan was abandoned, and nobody else wanted to be the person who changed it", object: "the stack of place cards", first: "We keep this diplomatic disaster", second: "or we move four names and accept the complaints" }
+                : family === "training"
+                  ? { place: "the locked equipment room after training", task: "checking the returned gear against the coach's list", problem: "One numbered bag was missing and the facility manager was about to close the building for the night", object: "the equipment checklist", first: "I sign for the missing bag and sort it tomorrow", second: "or we check the west stands before they lock those too" }
+                  : family === "parking_pickup"
+                    ? { place: "the curbside pickup lane", task: "watching a staff member wheel out the wrong order for the second time", problem: "The correct item was ready inside, but leaving the car meant losing the loading space while a line formed behind it", object: "the pickup confirmation", first: "I circle the block and come back", second: "or you hold the spot while I fix this inside" }
+                    : family === "restaurant"
+                      ? { place: "the restaurant host stand", task: "reading the reservation change on the manager's tablet", problem: "The booked table had been given away, but a quiet counter pair and a larger table with the group were both available immediately", object: "the reservation card", first: "We take the loud table and stay with everyone", second: "or take the counter before somebody else does" }
+                      : family === "home_building"
+                        ? { place: "the apartment hallway", task: "holding the instructions for a shelf that had arrived with two incompatible brackets", problem: "The delivery crew had already left, and the half-built frame could not stay across the doorway overnight", object: "the two mismatched brackets", first: "We take it apart and start over tomorrow", second: "or improvise the last support and get it out of the hall" }
+                        : family === "neighborhood"
+                          ? { place: "the end of a neighborhood street", task: "reading the temporary closure signs around a community night market", problem: "The usual route home was blocked, while the open side street led straight through the stalls and a small live set already starting", object: "the folded neighborhood map", first: "We take the long way around", second: "or cut through and see whether this is worth the noise" }
+                          : { place: "the building entrance", task: "checking a delivery notice against the package left with the concierge", problem: "The label was right but the contents listed on the receipt were not, and the courier would only return once tonight", object: "the delivery slip", first: "I can send it back untouched", second: "or open it now and make sure they fix the right mistake" };
 
-${Subject} said it without looking at the label again. ${closeFriends ? `After years in the same group, ${subject} knew your order well enough to catch the mistake before you did.` : `${Subject} had noticed the mistake before anyone else.`} ${openInterest ? `The fact that ${subject} had also ordered a spare of the thing you usually chose was much harder to explain as coincidence.` : `${Subject} had kept a spare option aside.`}
+  return `${name} stood at ${plan.place}, ${plan.task}. ${plan.problem}. ${Subject} read the details twice, then set ${plan.object} on the nearest clear surface.
 
-“You can take mine,” ${name} said, already reaching for ${possessive} keys, “or I can go back and make them fix it.”
+“Of course they wait until now to mention it.”
 
-A friend called from the next room asking whether everything was ready. ${name} answered, “Almost,” then looked to you instead of making the decision alone. “Which one?”`;
+${Subject} had already spoken to the person in charge and confirmed that both alternatives were real. ${openInterest ? `Going ahead alone would have been easier, but ${subject} had waited because the decision affected both of you.` : `Neither alternative was perfect, but at least the immediate problem was clear.`}
 
-  return `${name} was at the kitchen counter with a phone propped beside an open notebook, finishing a task that had clearly started before you entered the room. A delivery had arrived with one item missing, and the confirmation email offered only two options: accept the incomplete order tonight or collect the replacement in person before closing. ${Subject} crossed out the useless order number and called the shop once more. It went straight to voicemail.
+“${plan.first},” ${subject} said. “Or ${plan.second.replace(/^or\s+/i, "")}.”
 
-“Of course it did.”
+${Subject} checked the time, then explained the consequence without dressing it up. Waiting meant losing tonight's option; leaving now meant committing to the extra effort immediately.
 
-${name} set the phone down and slid the email across the counter where you could read it. ${Subject} had already gathered ${possessive} keys and jacket, but ${subject} had not decided whether the errand was worth losing the rest of the evening.
+“I’d rather handle it now,” ${subject} admitted. “But I’m not going to pretend that only costs me time.”
 
-“I can leave it until tomorrow,” ${subject} said. “That would be the sensible option.”
+${Subject} gathered what the faster option required, but stopped before committing either of you to it. ${plan.object.charAt(0).toUpperCase() + plan.object.slice(1)} remained between the two possibilities.
 
-The keys stayed in ${possessive} palm. ${Subject} glanced toward the door, then back at you. “Unfortunately, I’m considering the stupid option.”
+“Tell me which inconvenience you hate less,” ${subject} said. “I can work with either one.”`;
+}
 
-${name} waited a beat. “Tell me whether you want the quiet evening or the drive. I can live with either.”`;
+// CONFLICT-FIRST STORY ENGINE 3.52.47
+const INSTANT_STORY_CONFLICT_SEEDS_V35247 = [
+  "A friend-group disagreement is already underway because two people have incompatible versions of the same event. Nobody has enough proof to end it yet.",
+  "A private message, screenshot, rumor, or confidence has reached the wrong person. The important question is what was omitted and who benefits from the new version.",
+  "Someone in the social circle has taken a side before hearing the full story, creating a loyalty problem that cannot be solved by one clever line.",
+  "A promise, secret, or boundary has been broken and more than one person has a defensible reason to be angry. The lead character must decide what they will actually stand behind.",
+  "A public accusation is spreading faster than the facts. Reputation matters only because specific witnesses, relationships, or consequences make it matter.",
+  "Two people both claim to be protecting the same person, but their actions are incompatible. The disagreement exposes a deeper trust problem.",
+  "A real third person with independent history and motives complicates the group dynamic. Jealousy may exist, but it is not the plot and nobody exists only to provoke it.",
+  "Someone has hidden an important part of an event from the group. The omission matters more than the original mistake and the truth has not surfaced yet.",
+  "The group is about to make a decision that will affect someone who is not present. The lead character objects to how the decision is being made, not merely to the outcome.",
+];
+
+function instantStoryConflictSeedV35247(draft, idea = "") {
+  const cleanIdea = cleanPromptValue(idea, 420);
+  if (cleanIdea) return `USER-SPECIFIED DIRECTION: ${cleanIdea}`;
+  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
+  const ensemble = /\b(?:friend group|group of|same group|friends|team|teammates|roommates|siblings|family|coworkers|colleagues|crew|club|social circle|popular|campus king|campus prince)\b/.test(profile);
+  const conflictHeavy = /\b(?:guarded|proud|loyal|conflict|argument|fight|protect|danger|rumor|reputation|secret|betray|trust)\b/.test(profile);
+  const pool = [...INSTANT_STORY_CONFLICT_SEEDS_V35247];
+  if (!ensemble) {
+    pool.push(
+      "A consequential outside problem is already affecting the lead character and the user from different directions. A third force may be an institution, family member, coworker, rival, obligation, rumor, or off-screen person with a real stake.",
+      "The lead character learns something incomplete that changes what they are willing to do next. The user is implicated in the situation but is not reduced to a romantic objective."
+    );
+  }
+  if (conflictHeavy) {
+    pool.push("A known pressure point from the character profile becomes public at the worst possible moment. The lead character must manage loyalty, reputation, and incomplete truth at once.");
+  }
+  return `CONFLICT STRUCTURE: ${pool[Math.floor(Math.random() * pool.length)]}`;
+}
+
+function instantStoryConflictFallbackV35247(draft, idea = "", sceneSeed = "") {
+  const name = cleanPromptValue(draft?.name, 70) || "Alex";
+  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
+  const male = /\b(?:he|him|his|boyfriend|man|guy|king|prince)\b/.test(profile);
+  const female = /\b(?:she|her|hers|girlfriend|woman|girl|queen|princess)\b/.test(profile);
+  const subject = male ? "he" : female ? "she" : "they";
+  const Subject = subject[0].toUpperCase() + subject.slice(1);
+  const social = /\b(?:friend group|group of|same group|friends|team|roommates|social|popular|campus king|campus prince)\b/.test(profile);
+
+  if (social) return `The argument had already gone past the point where anyone could pretend it was casual. One person in the group had a screenshot open on their phone; another was insisting the message had been forwarded out of context. The accusation had changed twice in five minutes, but the newest version put your name in the middle of it.
+
+${name} had listened long enough to hear the contradictions before ${subject} finally stepped in.
+
+“No. Start again.”
+
+Someone across the room scoffed. “You heard me.”
+
+“I heard three different versions.” ${name} held out a hand for the phone. “That’s the problem.”
+
+The screenshot showed only part of the conversation. No timestamp on the first message. No proof of who had sent it outside the group. Enough to make everyone angry, not enough to make anyone right.
+
+A friend said your name again and added, “Ask her, then.”
+
+${name} did not immediately turn the room into a trial. ${Subject} chose instead to keep the phone, keeping the half-finished accusation from becoming the accepted story just because it had been repeated the loudest.
+
+“You wanted to say it,” ${name} said, looking back at the person who had started this. “So say the part you keep leaving out.”
+
+The room went quiet.
+
+The other person’s expression changed.
+
+${name} noticed.
+
+“Yeah,” ${subject} said. “That part.”`;
+
+  return `${name} had been in the middle of a tense conversation when a new message changed the shape of it. Someone connected to ${subject} had repeated a private claim as fact, and another person had just contradicted it with information neither side had mentioned before.
+
+${name} read the message twice.
+
+“That doesn’t match.”
+
+The person across from ${name} answered too quickly. “You don’t know that.”
+
+“I know what you told me ten minutes ago.”
+
+That was enough to make the room quieter.
+
+The disagreement was no longer about one message. If the new version was true, somebody had lied. If it was false, somebody was trying to redirect blame before the rest of the story surfaced.
+
+${name} set the phone down instead of sending the first angry reply that came to mind. ${Subject} chose to leave the accusation unanswered for the moment, which only made the other person more impatient.
+
+“Well?”
+
+${name} looked at the screen again.
+
+“No.”
+
+“No what?”
+
+“No, you don’t get to skip to the ending.” ${Subject} pushed the phone back across the table. “Start with what happened before this.”
+
+The other person did not reach for it.
+
+That hesitation changed more than an answer would have.
+
+${name} waited.
+
+“Go on,” ${subject} said.`;
 }
 
 async function handleInstantStory({ apiKey, draft, idea }) {
   const safeDraft = compactInstantStoryDraft(draft);
   const cleanIdea = cleanPromptValue(idea || "", 420);
-  const sceneSeed = instantStorySceneSeed(safeDraft, cleanIdea);
-  const prompt = `Write one substantial opening scene for a private roleplay with this character. TARGET 150-230 WORDS; never return fewer than 130 words. It must read like the beginning of a good novel scene, not a teaser, summary, character advertisement, writing prompt, or tiny exchange. Make it immediately playable, highly specific to this exact character, and materially different from their stored first message.
+  const sceneSeed = instantStoryConflictSeedV35247(safeDraft, cleanIdea);
+  const prompt = `Write one substantial opening scene for a private roleplay with this character. TARGET 260-380 WORDS; hard ceiling 420 words. Never return fewer than 130 words. It must feel like opening a story that was already alive before the first line: people have motives, incomplete information, history, and something meaningful to lose. Do not write a teaser, summary, character advertisement, writing prompt, date setup, or tiny exchange.
 
-INSTANT STORY QUALITY CONTRACT 3.52.6
-- Build one coherent scene with a concrete activity already underway, a grounded reason these two people interact now, a small source of pressure/tension, and a final opening the user can naturally answer.
-- Use the character's actual occupation, social world, habits, contradictions, relationship history, affection style, conflict style and voice fingerprint. At least THREE details must be impossible to swap onto a random attractive character.
-- Preserve the established relationship stage. Do not manufacture instant intimacy, confessions, pet names, possessiveness, hostility, flirting or physical contact.
-- If the profile explicitly says the character already likes the user, flirts openly, or goes out of their way for them, make that established attraction clearly perceptible through one specific choice or cost. Do not erase it in the name of slow burn.
-- Output ONLY finished story prose. Never print, paraphrase, splice, or expose profile fields, scene-seed alternatives, quality-contract language, instructions, placeholders, or phrases such as “Between you sits,” “Their response carries,” “concrete reason,” or “what happens next depends on what you choose.”
-- Give the character an independent purpose that would exist without the user. The user may affect it, but must not become the center of the entire world.
-- Use 3-6 purposeful narration sentences and 3-7 natural spoken lines or fragments. Dialogue should carry personality; narration should carry physical situation and consequence.
-- Write only the character, established NPCs and observable environment. Never write the user's dialogue, thoughts, feelings, decisions, reaction, arrival, posture or unstaged movement.
-- Do not begin with “Hey,” “There you are,” “You're late,” “Didn't think you'd come,” “Got a minute?”, an accidental collision, spilled drink, dropped object, seat dispute or generic invitation.
-- Ban generic hooks: “I need you for something,” “something changed,” mysterious unnamed emergencies, surprise messages, arbitrary strangers and cliffhangers that hide the actual premise.
-- No room/weather/outfit inventory, cinematic gaze/smirk/jaw choreography, therapy language, quote-card banter, exposition disguised as dialogue or paragraph fragments masquerading as depth.
-- Do not write convenience-store/energy-drink/jerky/snack-road-trip filler. Do not manufacture a comedic shopping dilemma or an invented named friend to make the character sound social.
-- Never place or move the user inside the opening (“you stood near…”, “spotting you by…”, “you waited…”). Begin only from the character, established NPCs, and environment; leave the user's entrance, position and response unwritten.
-- Do not explain personality with “the kind of focus he reserved for,” “expression shifted from X to softer,” “fluid and purposeful,” or a lingering gaze. Personality and attraction must change an actual decision.
-- Keep one narration POV and one tense throughout. Finish every sentence and quotation. Use the language of the profile or idea.
-- End after the character makes one clear, character-specific move that creates a genuine choice for the user. Do not state that the choice belongs to the user; simply leave room for it.
+CONFLICT-FIRST STORY ENGINE 3.52.47
+- STORY BEFORE ROMANCE: the central problem must still matter if all romantic attraction were removed. Attraction may color a decision, loyalty, attention, restraint, jealousy, or risk, but it is never the whole plot.
+- START IN MOTION: begin after a real situation has already started. Someone has said, done, hidden, misunderstood, exposed, lost, promised, broken, discovered, or refused something consequential.
+- THREE ACTIVE FORCES: when the profile supports a social world, use at least THREE forces with different interests. These can be the lead character, user, established friend(s), family, teammate, coworker, rival, institution, rumor, obligation, or consequence. Do not build a flat lead+user+decorative-NPC triangle.
+- NPC AUTONOMY: supporting people have their own loyalties, information, grudges, mistakes, priorities, and relationships with each other. They do not exist to grin at flirting, announce jealousy, praise the lead, or conveniently leave.
+- REAL STAKES: arguments must be about things that can genuinely damage trust or change relationships: lies, betrayal, secrecy, exposing private information, taking sides, abandonment, broken promises, cover-ups, reputation with a causal basis, conflicting loyalties, safety, responsibility, or a consequential misunderstanding. Do NOT inflate takeout, parking, errands, rides, missing orders, seats, weather, minor scheduling, or ordinary inconvenience into dramatic conflict.
+- QUESTIONS, NOT ANSWERS: create at least TWO live unanswered questions. Who is telling the truth? What was omitted? What does one person know? Who will take whose side? What consequence is coming? Do not explain everything in narration.
+- CHARACTER AGENCY: the lead character has a goal, stake, opinion, or loyalty independent of the user. They may be wrong. They may hide something. They may choose a side and make the problem worse.
+- ATTRACTION AS EVIDENCE, NOT DISPLAY: if the profile explicitly establishes attraction, show it through what the character risks, remembers, notices, protects, refuses, prioritizes, or cannot stay neutral about. Never stage a romantic favor purely to prove interest.
+- JEALOUSY NEEDS A REAL PERSON: a rival/other love interest may appear only if that person matters independently and has a plausible relationship/history/context. Never create a random attractive stranger just to trigger jealousy.
+- NO ROMCOM MACHINERY: no saved seat, waiting beside a car, weak rain excuse, “I drove across campus,” surprise ride, spare favorite order, lost bracelet, accidental collision, fake invitation, or friends instantly saying “why do you care?” / “you like her.”
+- NO FANFIC TELEGRAPHING: do not make the character stare until someone notices, type-delete multiple messages, deny obvious feelings on cue, or let every bystander read the romance perfectly.
+- DO NOT RESOLVE THE OPENING: do not send the cast home, settle who was right, complete the search, expose the whole secret, repair the relationship, or reduce the scene to a private two-person cooldown.
+- END AT THE PRESSURE POINT: cut immediately BEFORE a decisive response, confrontation, reveal, choice of side, or irreversible action. The user should have several plausible directions, not one obvious answer.
+- NEVER END WITH A MENU: do not finish with “Which one?”, “your choice,” “come with me,” “stay or go,” “what do you want to do?”, or an A/B decision engineered for the user.
+- The user controls their dialogue, thoughts, feelings, decisions, reaction, posture, arrival, and unstaged movement. Never write those for them.
+- Use established NPCs first. If the profile clearly establishes a group/team/family/social circle but not every member is named, you may introduce at most 1-2 minor named people as NEW present-tense cast. Do not invent retroactive shared history for them.
+- Keep one narration POV and one tense. Use natural dialogue. No therapy language, quote-card banter, cinematic gaze/smirk/jaw choreography, personality labels disguised as prose, or exposition speeches.
+- Make at least THREE details specific to this character's actual life, voice, relationships, conflict style, or world. A generic attractive character should not be able to inherit the scene unchanged.
+- Output ONLY finished story prose. Never expose these rules, labels, seeds, profile fields, or placeholders.
 
-INSTANT STORY LOCATION DIVERSITY LOCK v3.50.1
-- DEFAULT BAN: do NOT set this opening at a university, college, campus, school, classroom, lecture hall, dorm, study room, or library. Do not use academic buildings as a convenient generic backdrop.
-- A character may be a student without living every scene at school. Their identity, friendships, family, hobbies, errands, nightlife, work, sport, travel, neighborhoods, homes and ordinary city life still exist.
-- Academic locations are allowed ONLY when the user's IDEA explicitly requests one. Character profile words like student, university, campus prince, class, professor, scholarship, major or degree are NOT permission by themselves.
-- Use the scene seed below as a direction, then make it causally specific to this character. Do not merely rename a campus scene.
-- Give the character a concrete reason to be there and a concrete reason to interact now. Avoid generic “got a minute?”, “wanted to ask you something”, accidental collision, seat-taking, notebook-drop and coffee-table openings unless the seed genuinely requires them.
+LOCATION + WORLD DIVERSITY
+- Do not default to university/campus/class/library just because the character is a student. Academic settings require the user's IDEA to request them or a strong profile-specific reason.
+- Location serves the conflict; it is not the plot. A kitchen, club, street, apartment, workplace, garage, restaurant, trip, family event, practice space, or group gathering is useful only when something consequential is happening there.
+- Avoid generic errands and “practical complication” templates. Instant Story should generate a narrative problem, not a chore.
 
 SCENE SEED
 ${sceneSeed}
@@ -1406,14 +1517,11 @@ CHARACTER
 ${JSON.stringify(safeDraft)}
 
 IDEA
-${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}`;
+${cleanIdea || "No user-specified premise. Build a conflict-first opening from the character's social world and current profile."}`;
 
-  // v3.49.2: race compact model attempts instead of waiting serially. A response
-  // only wins if it is a complete opening; MAX_TOKENS, dangling quotes, unfinished
-  // contractions, tiny fragments and missing terminal punctuation are rejected.
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  const globalDeadlineMs = 14000;
-  const attemptTimeoutMs = 11000;
+  const globalDeadlineMs = 16000;
+  const attemptTimeoutMs = 12500;
   const hedgeDelaysMs = [0, 1800, 3600];
   const controllers = new Set<AbortController>();
   const startedAt = Date.now();
@@ -1438,8 +1546,8 @@ ${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
-            maxOutputTokens: 1800,
-            temperature: 0.9,
+            maxOutputTokens: 2200,
+            temperature: 0.92,
             thinkingConfig: { thinkingLevel: "MEDIUM" },
           },
         }),
@@ -1451,7 +1559,7 @@ ${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}
       const opening = extractCandidateText(data).trim();
       const finishReason = String(candidate?.finishReason || "");
       if (!instantStoryLooksComplete(opening, finishReason, safeDraft)) {
-        console.warn("[character-chat] instant story rejected incomplete output", {
+        console.warn("[character-chat] instant story rejected by conflict-first quality gate", {
           model,
           finishReason,
           words: opening.split(/\s+/).filter(Boolean).length,
@@ -1471,10 +1579,7 @@ ${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}
   const deadline = new Promise((resolve) => setTimeout(() => resolve(null), globalDeadlineMs));
 
   try {
-    const winner = await Promise.race([
-      Promise.any(attempts).catch(() => null),
-      deadline,
-    ]);
+    const winner = await Promise.race([Promise.any(attempts).catch(() => null), deadline]);
     if (winner?.opening) {
       console.log("[character-chat] instant story completed", {
         model: winner.model,
@@ -1488,10 +1593,10 @@ ${cleanIdea || "No user-specified setting. Follow the non-academic scene seed."}
     controllers.forEach((controller) => controller.abort());
   }
 
-  console.warn("[character-chat] instant story using complete local fallback", { durationMs: Date.now() - startedAt });
-  const fallbackOpening = instantStoryFallbackOpening(safeDraft, cleanIdea, sceneSeed);
+  console.warn("[character-chat] instant story using conflict-first local fallback", { durationMs: Date.now() - startedAt });
+  const fallbackOpening = instantStoryConflictFallbackV35247(safeDraft, cleanIdea, sceneSeed);
   if (!instantStoryLooksComplete(fallbackOpening, "STOP", safeDraft)) {
-    console.error("[character-chat] instant story fallback failed quality gate");
+    console.error("[character-chat] conflict-first fallback failed quality gate");
     return json({ error: "Instant Story could not produce a complete opening. Please try again." }, 503);
   }
   return json({ opening: fallbackOpening, source: "local_fallback" });
@@ -3449,29 +3554,129 @@ function parseModelEnvelope(raw): ModelEnvelope {
   }
 }
 
-function buildCompactLiveRecoveryPrompt({ character = {}, messages = [], latestUserMessage = "", scene = {}, userName = "" } = {}) {
-  const transcript = (Array.isArray(messages) ? messages : []).slice(-10).map((message) => {
-    const speaker = message?.sender === "user" ? (userName || "User") : (character?.name || "Character");
-    return `${speaker}: ${cleanPromptValue(message?.content, 900)}`;
+function buildCompactLiveRecoveryPrompt({
+  character = {}, messages = [], latestUserMessage = "", scene = {}, userIdentity = {},
+  memories = [], loreEntries = [], storyRecap = "", unresolvedThreads = [],
+  relationshipState = {}, castState = {}, intelligenceState = {}, rejectedResponses = [],
+  regenerationInstruction = "", regenerationFeedback = [], isRegeneration = false,
+  openingRegeneration = false, turnContract = {},
+} = {}) {
+  const userName = cleanPromptValue(userIdentity?.name, 100) || "User";
+  const transcript = (Array.isArray(messages) ? messages : []).slice(-16).map((message) => {
+    const speaker = message?.sender === "user" ? userName : (character?.name || "Character");
+    return `${speaker}: ${cleanPromptValue(message?.content, 1000)}`;
   }).filter((line) => line.split(": ").at(-1)).join("\n");
+  const rejected = (Array.isArray(rejectedResponses) ? rejectedResponses : [])
+    .slice(-4)
+    .map((item, index) => `Rejected ${index + 1}: ${cleanPromptValue(item, openingRegeneration ? 1000 : 700)}`)
+    .join("\n") || "none";
+  const feedback = feedbackDirectives(regenerationFeedback).map((item) => `- ${item}`).join("\n") || "none";
+  const persona = [
+    `Name: ${userName}`,
+    `Pronouns: ${cleanPromptValue(userIdentity?.pronouns, 80)}`,
+    `Age: ${cleanPromptValue(userIdentity?.age, 40)}`,
+    `Role: ${cleanPromptValue(userIdentity?.role, 180)}`,
+    `Appearance: ${cleanPromptValue(userIdentity?.appearance, 500)}`,
+    `Personality: ${cleanPromptValue(userIdentity?.personality, 500)}`,
+    `Background: ${cleanPromptValue(userIdentity?.background, 650)}`,
+    `Goals/preferences: ${cleanPromptValue(`${userIdentity?.goals || ""} ${userIdentity?.preferences || ""}`, 500)}`,
+    `Boundaries: ${cleanPromptValue(userIdentity?.boundaries, 420)}`,
+  ].join("\n");
+  const normalRegenerationContract = `NORMAL MESSAGE REGENERATION — SAME BRANCH, NEW RESPONSE
+- The rejected character message is NOT canon, but everything before it is canon.
+- Resume from the exact physical and conversational state immediately after LATEST USER TURN.
+- Preserve location, time, people present, posture, possessions, unfinished actions, knowledge, relationship stage, emotional residue, promises and open threads.
+- Answer the same user act/question. Do not jump to a new scene, reset the relationship, replay an earlier beat, or invent a different user action.
+- Produce a genuinely different response: change the character's decision, conversational tactic, dialogue and beat structure—not just synonyms, gestures or sentence order.
+- Do not mention the rejected version or the act of regenerating.`;
+  const openingRegenerationContract = `INSTANT STORY REGENERATION — NEW OPENING, SAME PEOPLE AND WORLD
+- This is an opening with NO prior user turn. Never continue the rejected opening and never reply to an imaginary action by the user.
+- Keep the configured character identity, relationship premise, user persona, lore, boundaries and story preferences.
+- The rejected opening is NOT canon. Choose a materially different scenario skeleton: different immediate situation, activity, entrance, tension and dialogue—not a reskin of its location or props.
+- Establish where they are, why the character and user are in contact, what is happening now and one playable point of interaction.
+- Do not narrate the user's dialogue, thoughts, feelings, decisions or unstaged movement. Leave the user room to answer.
+- Write 150-230 words and never fewer than 130. Use 3-6 purposeful narration sentences and 3-7 natural spoken lines or fragments. This must be a complete scene opening, not a tiny exchange, teaser, fragment, generic mystery hook or summary.
+- Do not default to a university, classroom, lab, dorm, library or campus merely because the character is a student. Use their wider life unless the configured scenario specifically requires an academic setting.
+- Never manufacture prior behavior or possessions for the user through lines such as “did you bring your notes?”, “are we doing this again?”, “you always forget”, or another unsupported shared anecdote.
+- Do not mention regeneration.`;
+  const modeContract = openingRegeneration
+    ? openingRegenerationContract
+    : isRegeneration
+      ? normalRegenerationContract
+      : "NEW TURN — Continue the current canon from the latest user turn.";
   return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
+
+GENERATION MODE
+${modeContract}
+
+CREATOR DIRECTION
+${cleanPromptValue(regenerationInstruction, 700) || "none"}
+
+FEEDBACK TO FIX
+${feedback}
+
+REJECTED OUTPUTS — NEVER COPY OR PARAPHRASE
+${rejected}
 
 CHARACTER
 Name: ${cleanPromptValue(character?.name, 100)}
 Personality: ${cleanPromptValue(character?.personality, 900)}
 Relationship: ${cleanPromptValue(character?.relationship, 900)}
 Voice: ${cleanPromptValue(character?.speaking_style || character?.voice || character?.dialogue_style, 600)}
+Speech mechanics: ${cleanPromptValue(character?.speech_style, 520)}
+Vocabulary: ${cleanPromptValue(character?.voice_vocabulary, 360)}
+Humor: ${cleanPromptValue(character?.humor_style, 300)}
+Conflict: ${cleanPromptValue(character?.conflict_style, 300)}
+Affection: ${cleanPromptValue(character?.affection_style, 300)}
+Avoid: ${cleanPromptValue(character?.voice_avoidances, 360)}
+World: ${cleanPromptValue(character?.world || character?.scenario, 650)}
+Boundaries: ${cleanPromptValue(character?.boundaries, 360)}
+
+USER PERSONA — CONTEXT ONLY; NEVER WRITE FOR THEM
+${persona}
 
 CURRENT SCENE
 ${cleanPromptValue(JSON.stringify(scene || {}), 1000)}
+
+DURABLE CONTINUITY
+Recap: ${cleanPromptValue(storyRecap, 800)}
+Open threads: ${cleanPromptValue(JSON.stringify(unresolvedThreads || []), 700)}
+Relevant memories: ${cleanPromptValue(JSON.stringify((Array.isArray(memories) ? memories : []).slice(0, 6).map((item) => item?.content || item)), 900)}
+Relevant lore: ${cleanPromptValue(JSON.stringify((Array.isArray(loreEntries) ? loreEntries : []).slice(0, 5).map((item) => ({ name:item?.name, content:item?.content }))), 800)}
+Relationship state: ${cleanPromptValue(JSON.stringify(relationshipState || {}), 700)}
+Cast/presence state: ${cleanPromptValue(JSON.stringify(castState || {}), 650)}
+Active plans/commitments: ${cleanPromptValue(JSON.stringify({
+    commitments: intelligenceState?.commitments || [],
+    unfinished: intelligenceState?.unfinished_business || [],
+    plan: intelligenceState?.autonomous_plan || {},
+    activePlans: turnContract?.storyDynamics?.activePlans || [],
+  }), 850)}
 
 RECENT VISIBLE TRANSCRIPT
 ${transcript || "No earlier visible turn."}
 
 LATEST USER TURN
-${cleanPromptValue(latestUserMessage, 1200)}
+${cleanPromptValue(latestUserMessage, 1600) || (openingRegeneration ? "None — this is a fresh opening." : "none")}
 
-Continue from the literal final state. Respect the user's choice, possessions, location and boundaries. Do not invent a user habit, feeling, action, shared history, plan or object transfer. Answer the latest meaning once; do not repeat a settled offer. If the user says "I trust you", "you choose", "surprise me", "up to you", or equivalent, they delegated the decision: choose one concrete option and move; never hand the choice back. Keep established attraction visible through one natural character-specific choice when relevant, never through control. A short complete answer is valid.`;
+${openingRegeneration ? "Build a fresh playable opening from the profile and durable world context. The rejected opening contributes only negative evidence about what not to repeat." : "Continue from the literal final state. Respect the user's choice, possessions, location and boundaries. Do not invent a user habit, feeling, action, shared history, plan or object transfer. Answer the latest meaning once; do not repeat a settled offer. If the user says \"I trust you\", \"you choose\", \"surprise me\", \"up to you\", or equivalent, they delegated the decision: choose one concrete option and move; never hand the choice back. Keep established attraction visible through one natural character-specific choice when relevant, never through control. A short complete answer is valid."}
+
+REAL-CONVERSATION CALIBRATION v3.52.40
+- React to what was actually said before advancing plot. Do not answer a different, more dramatic version of the user's line.
+- Speak in the character's real-time bandwidth. Casual young adults usually use contractions, ordinary vocabulary, incomplete thoughts and uneven sentence lengths; wealth, popularity, danger or intelligence do not automatically create formal or theatrical speech.
+- Do not turn every line into banter, a comeback, a quote, a challenge, a flirt, a rhetorical question or a hidden confession. Some turns are simply an answer, a practical comment, a quiet admission, a subject change or no dialogue at all.
+- Never paraphrase the user's sentence back to them, diagnose their emotion, announce subtext, summarize the relationship, or explain what the character's own expression/silence means.
+- Stop when the conversational job is done. Do not append a hook or question merely to force the user to answer.
+- Distinct voice comes from what this person notices, avoids, admits, misunderstands and chooses—not repeated catchphrases, constant sarcasm, slang sprinkled onto generic lines, or cinematic body-language choreography.
+- Preserve imperfect humanity: the character may hesitate, answer only part of something, choose the wrong word, correct themselves, become briefly awkward, or leave an implication unfinished when profile and moment support it. Never manufacture these as decoration.
+- Read the visible dialogue aloud privately. If it sounds like an author performing a character instead of a person talking, simplify it once.`;
+}
+
+function enforceOpeningRegenerationQuality(issues = [], result = {}, openingRegeneration = false, character = {}) {
+  const next = Array.isArray(issues) ? [...issues] : [];
+  if (openingRegeneration && !instantStoryLooksComplete(result?.reply, result?.finishReason || "STOP", character)) {
+    next.push("instant_opening_incomplete_or_ungrounded");
+  }
+  return [...new Set(next)];
 }
 
 // PURE_NARRATIVE_HELPERS_START
@@ -6032,6 +6237,7 @@ const CONTINUITY_GUARD_ISSUES = new Set([
   "unsolicited_offscreen_lead_contact",
 ]);
 const BLOCKING_NARRATIVE_ISSUES = new Set([
+  "instant_opening_incomplete_or_ungrounded",
   "immediate_user_choice_overridden",
   "delegated_choice_returned",
   "immediate_event_truth_rewritten",
@@ -6136,6 +6342,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // continuity merging protects stored canon. Only structural failures or severe
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
+  "instant_opening_incomplete_or_ungrounded",
   "meaningful_turn_no_move",
   "meaningful_turn_stalled_regeneration",
   "turn_state_commitment_reversal",
@@ -7844,6 +8051,7 @@ async function streamRoleplayV19({
   regenerationInstruction,
   regenerationFeedback,
   isRegeneration,
+  openingRegeneration = false,
   isCancelled,
 }) {
   const stream = new ReadableStream({
@@ -7869,7 +8077,10 @@ async function streamRoleplayV19({
       // v3.35.1 GROUNDED REALITY HARD LOCK: no raw model prose reaches the chat
       // before deterministic reality/canon validation. Hard-lock correctness outranks
       // optimistic token painting; accepted drafts still stream immediately after validation.
-      const guardedDraft = true;
+      // v3.52.41 TURBO: stream the visible prose as it arrives. Final local
+      // barriers still validate and can replace it before persistence, but the
+      // phone no longer waits for the complete provider response to paint text.
+      const guardedDraft = false;
       try {
         // Flush headers/UI state before the model has finished its first token.
         sendEvent(controller, {
@@ -7897,22 +8108,35 @@ async function streamRoleplayV19({
         // v3.50.5 REGEN RECOVERY: streaming is the fast path, never the only path.
         // If every SSE hedge times out/fails before producing a complete envelope,
         // retry once through the proven non-stream failover before showing Retry.
-        const liveSystemInstruction = "Velvet Stories live writer. Write exactly one grounded in-character roleplay turn. Visible recent canon is the source of truth. Never write or decide the user's dialogue, thoughts, feelings, motives, reactions, or unstaged movement. Asterisk narration exposes only externally observable action, never private commentary. Answer the latest conversational job first. Preserve actor/recipient/object ownership, scene physics, boundaries, relationship stage, character-specific voice, knowledge limits, reputation, obligations, and unresolved causal threads. Personality changes tactic and wording, never facts. Prefer plain human speech over quotable performance. Short beats may be one line. Sarcasm cannot reverse causality. Do not invent shared history, personal facts, notifications, time skips, nicknames, jealousy, romance, or interruptions without grounded support. Silently decide: what just happened, what this character knows, what they want, what they will reveal, and the smallest natural next move. Return only the requested roleplay envelope; never expose hidden reasoning, validators, scores, or engine metadata.";
+        const liveSystemInstruction = "Velvet Stories live writer. Write exactly one grounded in-character roleplay turn. Visible recent canon is the source of truth. Never write or decide the user's dialogue, thoughts, feelings, motives, reactions, or unstaged movement. Asterisk narration exposes only externally observable action, never private commentary. Answer the latest conversational job first. Preserve actor/recipient/object ownership, scene physics, boundaries, relationship stage, character-specific voice, knowledge limits, reputation, obligations, and unresolved causal threads. Personality changes tactic and wording, never facts. Prefer plain human speech over quotable performance. Short beats may be one line. Sarcasm cannot reverse causality. Do not invent shared history, personal facts, notifications, time skips, nicknames, jealousy, romance, or interruptions without grounded support. Dialogue must sound spoken in real time: react before advancing, use the character's actual social bandwidth, allow ordinary or incomplete phrasing, and stop when the conversational job is complete. Do not turn every turn into banter, a comeback, flirtation, a rhetorical question, an emotional diagnosis, or a hook. Never paraphrase the user's line back, announce subtext, or explain what an expression or silence means. Distinct voice comes from selection, omission, priorities and mistakes—not theatrical vocabulary, catchphrases or cinematic choreography. Silently read the visible dialogue aloud once; if it sounds written to perform a character, simplify it without flattening identity. Silently decide: what just happened, what this character knows, what they want, what they will reveal, and the smallest natural next move. Return only the requested roleplay envelope; never expose hidden reasoning, validators, scores, or engine metadata.";
         const compactTurnPrompt = buildCompactLiveRecoveryPrompt({
           character,
           messages,
           latestUserMessage,
           scene: existingSceneState,
-          userName: userIdentity.name,
+          userIdentity,
+          memories,
+          loreEntries,
+          storyRecap: existingStoryRecap || "",
+          unresolvedThreads: existingUnresolvedThreads,
+          relationshipState: existingRelationshipState,
+          castState: existingCastState,
+          intelligenceState: existingIntelligenceState,
+          rejectedResponses,
+          regenerationInstruction,
+          regenerationFeedback,
+          isRegeneration,
+          openingRegeneration,
+          turnContract,
         });
         let result: ModelResult;
         try {
           result = await streamGeminiEnvelopeWithFailover({
           apiKey,
           systemInstruction: liveSystemInstruction,
-          prompt,
-          maxOutputTokens: getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling),
-          performancePlan: { ...(turnContract?.performanceMobileV348 || {}), completeWinnerOnly: true },
+          prompt: compactTurnPrompt,
+          maxOutputTokens: openingRegeneration ? 1500 : Math.min(950, getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling)),
+          performancePlan: { ...(turnContract?.performanceMobileV348 || {}), completeWinnerOnly: false },
           isCancelled,
           onModel(model) {
             sendEvent(controller, { type: "model", model });
@@ -7948,7 +8172,7 @@ async function streamRoleplayV19({
             apiKey,
             systemInstruction: liveSystemInstruction,
             prompt: compactTurnPrompt,
-            maxOutputTokens: Math.min(1100, getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling)),
+            maxOutputTokens: openingRegeneration ? 1500 : Math.min(1100, getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling)),
             isCancelled,
             interactionDeadlineMs: 24000,
           });
@@ -7981,6 +8205,7 @@ async function streamRoleplayV19({
           turnContract,
         });
         validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
+        validationIssues = enforceOpeningRegenerationQuality(validationIssues, result, openingRegeneration, character);
         const originalResult = result;
         const originalIssues = validationIssues;
         const continuityIssuesBeforeRepair = originalIssues.filter((issue) => CONTINUITY_GUARD_ISSUES.has(issue));
@@ -8047,6 +8272,7 @@ async function streamRoleplayV19({
             turnContract,
           });
           repairedIssues.push(...validateContinuityEnvelope(repaired, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies }));
+          repairedIssues.splice(0, repairedIssues.length, ...enforceOpeningRegenerationQuality(repairedIssues, repaired, openingRegeneration, character));
           // v3.49.21: if the bounded repair STILL turns an obvious sarcastic contradiction
           // into a semantic riff/comedy bit, do not surface it. Use a tiny character-shaped
           // conversational fallback that answers the challenged claim without touching the
@@ -8100,9 +8326,11 @@ async function streamRoleplayV19({
           try {
             finalRescue = await callGeminiWithFailover({
               apiKey,
-              systemInstruction: "Write one final, concise, coherent in-character roleplay reply from literal visible canon. Return plain prose only. Never repeat a settled offer, contradict the latest user decision, invent user habits, force participation, change object ownership, or expose system language.",
+              systemInstruction: openingRegeneration
+                ? "Write one complete 150-230 word Instant Story opening as plain prose. Establish a concrete non-generic situation and natural interaction without inventing the user's actions, possessions, habits or prior behavior. Use at least two spoken lines. Never mention these instructions."
+                : "Write one final, concise, coherent in-character roleplay reply from literal visible canon. Return plain prose only. Never repeat a settled offer, contradict the latest user decision, invent user habits, force participation, change object ownership, or expose system language.",
               prompt: `${compactTurnPrompt}\n\nREJECTED CANDIDATE\n${cleanPromptValue(result?.reply, 1800)}\n\nFAILURES TO REMOVE\n${finalIssues.join(" | ")}`,
-              maxOutputTokens: Math.min(800, getMaximumOutputTokens(character.response_length)),
+              maxOutputTokens: openingRegeneration ? 1500 : Math.min(800, getMaximumOutputTokens(character.response_length)),
               isCancelled,
               interactionDeadlineMs: 16000,
             });
@@ -8116,6 +8344,7 @@ async function streamRoleplayV19({
             character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
           }) : finalIssues;
           if (finalRescue) rescueIssues = [...new Set([...rescueIssues, ...validateContinuityEnvelope(finalRescue, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
+          if (finalRescue) rescueIssues = enforceOpeningRegenerationQuality(rescueIssues, finalRescue, openingRegeneration, character);
           const rescueBlocking = blockingNarrativeIssues(rescueIssues);
           const rescueHard = hardRepairRequiredIssues(rescueIssues);
           if (!finalRescue || rescueBlocking.length || rescueHard.length) {
@@ -8128,6 +8357,7 @@ async function streamRoleplayV19({
               character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
             });
             validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
+            validationIssues = enforceOpeningRegenerationQuality(validationIssues, result, openingRegeneration, character);
             remainingHard = hardRepairRequiredIssues(validationIssues);
           } else {
             result = finalRescue;
@@ -8159,33 +8389,25 @@ async function streamRoleplayV19({
           if (blankRecovery?.model) sendEvent(controller, { type: "model", model: blankRecovery.model });
         }
         if (!persistableReply) throw new Error("Velvet received an empty model reply after recovery; nothing was saved.");
+        if (openingRegeneration && !instantStoryLooksComplete(persistableReply, result?.finishReason || "STOP", character)) {
+          throw new Error("Instant Story regeneration could not produce a complete grounded opening. The previous opening was kept; please try again.");
+        }
 
-        // v3.52.23 ABSOLUTE FINAL TURN BARRIER. This is intentionally the last
-        // semantic gate before both streaming and persistence, so drafts, repairs,
-        // model rescues, deterministic fallbacks, and blank-recovery prose cannot
-        // bypass delegated-choice ownership. If the user says “I’ll trust you”,
-        // Velvet must make one grounded choice instead of returning a menu/“your call”.
-        const finalBarrier = enforceFinalDelegatedChoiceBarrier({
+        // v3.52.37 REGRESSION SHIELD. One final composition layer now owns the
+        // interaction between delegated-choice ownership and live-scene continuity.
+        // Existing valid prose passes through untouched; a fix from one barrier is
+        // re-checked by the other before anything is streamed or persisted.
+        const regressionFinal = finalizeRegressionSafeTurnV35237({
           reply: persistableReply,
           latestUserMessage,
           recentUserMessages,
           recentCharacterReplies,
           character,
         });
-        persistableReply = String(finalBarrier.reply || "").trim();
-        if (finalBarrier.replaced) {
-          console.warn("[character-chat] final delegated-choice barrier replaced invalid prose", {
-            issues: finalBarrier.originalIssues || [],
-          });
-        }
-
-        const sceneMomentumFinal = enforceSceneMomentumBarrierV35236({
-          reply: persistableReply, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
-        });
-        persistableReply = String(sceneMomentumFinal.reply || persistableReply).trim();
-        if (sceneMomentumFinal.replaced) {
-          console.warn("[character-chat] v3.52.36 live-scene barrier replaced invalid scene motion", {
-            issues: sceneMomentumFinal.originalIssues || [],
+        persistableReply = String(regressionFinal.reply || "").trim();
+        if (regressionFinal.replaced) {
+          console.warn("[character-chat] v3.52.37 regression shield repaired final prose", {
+            issues: regressionFinal.originalIssues || [],
           });
         }
 
@@ -8197,19 +8419,15 @@ async function streamRoleplayV19({
         absoluteFinalIssues = [...new Set([...absoluteFinalIssues, ...validateContinuityEnvelope({ ...result, reply: persistableReply }, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
         const absoluteFinalBlocking = blockingNarrativeIssues(absoluteFinalIssues);
         const absoluteFinalHard = hardRepairRequiredIssues(absoluteFinalIssues);
-        if (absoluteFinalBlocking.length || absoluteFinalHard.length || finalBarrier.issues?.length) {
-          const absoluteIssues = [...new Set([...absoluteFinalBlocking, ...absoluteFinalHard, ...(finalBarrier.issues || [])])];
+        if (absoluteFinalBlocking.length || absoluteFinalHard.length || regressionFinal.issues?.length) {
+          const absoluteIssues = [...new Set([...absoluteFinalBlocking, ...absoluteFinalHard, ...(regressionFinal.issues || [])])];
           const deterministicFinal = buildGroundedLastResortReply({
             character, latestUserMessage, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: absoluteIssues,
           });
-          const deterministicBarrier = enforceFinalDelegatedChoiceBarrier({
+          const deterministicBarrier = finalizeRegressionSafeTurnV35237({
             reply: deterministicFinal, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
           });
           persistableReply = String(deterministicBarrier.reply || deterministicFinal || "").trim();
-          const deterministicSceneBarrier = enforceSceneMomentumBarrierV35236({
-            reply: persistableReply, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
-          });
-          persistableReply = String(deterministicSceneBarrier.reply || persistableReply).trim();
           absoluteFinalIssues = validateNarrativeReply(persistableReply, {
             characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
             finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
@@ -8227,7 +8445,7 @@ async function streamRoleplayV19({
               const forcedCommitment = buildGroundedLastResortReply({
                 character, latestUserMessage, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: delegatedStillOpen,
               });
-              const forcedBarrier = enforceFinalDelegatedChoiceBarrier({
+              const forcedBarrier = finalizeRegressionSafeTurnV35237({
                 reply: forcedCommitment, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
               });
               persistableReply = String(forcedBarrier.reply || forcedCommitment || persistableReply).trim();
@@ -8238,7 +8456,7 @@ async function streamRoleplayV19({
 
         if (!persistableReply) throw new Error("Velvet final turn barrier produced no safe reply; nothing was saved.");
         result = { ...result, reply: persistableReply };
-        await streamFinalReply(persistableReply, "v35223-absolute-final-turn-barrier");
+        await streamFinalReply(persistableReply, "v35237-regression-shield");
 
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: persistableReply })
@@ -8598,7 +8816,7 @@ async function streamGeminiEnvelopeWithFailover({
     const previous = hedgeDelays.length ? hedgeDelays[hedgeDelays.length - 1] : 0;
     hedgeDelays.push(Math.min(5200, previous + 1150));
   }
-  const overallDeadlineMs = Math.max(9000, Math.min(30000, Number(performancePlan?.overallDeadlineMs) || 10500));
+  const overallDeadlineMs = Math.max(5500, Math.min(18000, Number(performancePlan?.overallDeadlineMs) || 7200));
   const deadlineAt = Date.now() + overallDeadlineMs;
   // v3.49.3: a model does not win merely because it emitted the first fragment.
   // Guarded chat cannot show raw draft text anyway, so keep hedges alive until one
@@ -8753,7 +8971,7 @@ async function streamGeminiEnvelopeWithFailover({
             await delay(model === GEMINI_MODEL ? 320 : 520);
             if (!settled && !winnerModel && !await isCancelled()) {
               response = await makeStreamRequest(mode);
-              if (response.ok) return { response, message: "" };
+              if (response.ok) return { response, message: "", mode };
               errorText = await response.text().catch(() => "");
               diagnostic = extractGeminiHttpDiagnostic(errorText);
               message = diagnostic.message || `Gemini returned ${response.status}`;
@@ -8762,13 +8980,13 @@ async function streamGeminiEnvelopeWithFailover({
             }
           }
         }
-        return { response, message };
+        return { response, message, mode };
       };
 
-      let { response, message } = await runStreamAttempt("bare");
+      let { response, message, mode: activeMode } = await runStreamAttempt("bare");
       if (!response.ok && response.status === 400) {
         emitAttempt({ phase: "compatibility-fallback", model, mode: "json", status: 400, reason: "bare_transport_rejected" });
-        ({ response, message } = await runStreamAttempt("json"));
+        ({ response, message, mode: activeMode } = await runStreamAttempt("json"));
       }
       if (!response.ok) {
         quotaReached ||= response.status === 429;
@@ -8796,7 +9014,11 @@ async function streamGeminiEnvelopeWithFailover({
           const piece = extractCandidateTextRaw(data);
           if (piece) structured += piece;
           finishReason = String(data?.candidates?.[0]?.finishReason || finishReason || "");
-          const partialReply = extractPartialJsonStringField(structured, "reply");
+          // The Turbo lane requests plain prose. Stream that prose directly;
+          // structured compatibility mode still extracts only the reply field.
+          const partialReply = activeMode === "bare"
+            ? structured
+            : extractPartialJsonStringField(structured, "reply");
           if (partialReply.length <= latestReply.length) continue;
           latestReply = partialReply;
           recoverableReplies.set(model, { reply: latestReply, finishReason, updatedAt: Date.now() });

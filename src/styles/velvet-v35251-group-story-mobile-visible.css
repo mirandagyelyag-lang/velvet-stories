@@ -1,0 +1,89 @@
+/* Velvet Stories v3.52.51
+   Mobile Stories header: make Group Story unmistakably visible and tappable.
+   Also reserve room below the fixed mobile navigation.
+*/
+
+@media (max-width: 760px) {
+  .chats-page--reference {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .reference-stories-hero {
+    position: relative !important;
+  }
+
+  .reference-stories-hero__actions {
+    position: absolute !important;
+    top: calc(env(safe-area-inset-top) + 10px) !important;
+    right: 16px !important;
+    z-index: 30 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 9px !important;
+    width: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  .reference-stories-group {
+    width: auto !important;
+    min-width: 92px !important;
+    height: 48px !important;
+    padding: 0 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    color: color-mix(in srgb, var(--accent) 86%, #f6d6df) !important;
+    background: color-mix(in srgb, var(--surface) 82%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border)) !important;
+    border-radius: 999px !important;
+    box-shadow: 0 10px 28px rgba(0,0,0,.18) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+  }
+
+  .reference-stories-group svg {
+    width: 20px !important;
+    height: 20px !important;
+    flex: 0 0 auto !important;
+    opacity: 1 !important;
+  }
+
+  .reference-stories-group span {
+    display: inline !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    white-space: nowrap !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    font-weight: 800 !important;
+    letter-spacing: .11em !important;
+    text-transform: uppercase !important;
+  }
+
+  .reference-stories-new {
+    width: 48px !important;
+    min-width: 48px !important;
+    height: 48px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .reference-stories-group {
+    min-width: 82px !important;
+    padding-inline: 11px !important;
+  }
+
+  .reference-stories-group span {
+    font-size: 9px !important;
+    letter-spacing: .08em !important;
+  }
+}

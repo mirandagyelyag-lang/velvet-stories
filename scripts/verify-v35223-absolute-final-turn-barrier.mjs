@@ -56,9 +56,9 @@ assert.doesNotMatch(neutralFixed.reply, /your call|up to you|or we can/i);
 assert.doesNotMatch(neutralFixed.reply, /get you to myself|wanted .* time with you|steal you/i);
 
 const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts", import.meta.url), "utf8");
-assert.match(edge, /ABSOLUTE FINAL TURN BARRIER/);
-assert.match(edge, /enforceFinalDelegatedChoiceBarrier\(\{/);
-const barrierPos = edge.indexOf("ABSOLUTE FINAL TURN BARRIER");
+assert.match(edge, /v3\.52\.37 REGRESSION SHIELD/);
+assert.match(edge, /finalizeRegressionSafeTurnV35237\(\{/);
+const barrierPos = edge.indexOf("v3.52.37 REGRESSION SHIELD");
 const blankRecoveryPos = edge.indexOf("all-local-candidates-empty");
 const savePos = edge.indexOf("const savedMessage = replacementMessage");
 assert.ok(blankRecoveryPos >= 0 && barrierPos > blankRecoveryPos, "final barrier must run after blank recovery");
@@ -72,5 +72,5 @@ console.log("PASS  established/open attraction remains visibly present in the re
 console.log("PASS  already-valid committed replies pass through untouched");
 console.log("PASS  neutral relationships commit without invented romance");
 console.log("PASS  deterministic last resort is revalidated instead of clearing issues blindly");
-console.log("PASS  final barrier runs after blank recovery and before persistence/streaming");
+console.log("PASS  delegated-choice protection is retained inside the regression shield after blank recovery and before persistence/streaming");
 console.log("\n7 absolute-final-turn-barrier checks passed.");

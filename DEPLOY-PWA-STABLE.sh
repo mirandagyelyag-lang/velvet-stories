@@ -119,7 +119,7 @@ echo "Alias: https://${ALIAS}"
 echo ""
 
 echo "=== PASO 1/7 · VERIFICADORES ==="
-if ! npm run verify:stability; then
+if ! npm run verify:release; then
   finish_fail "La verificación de estabilidad falló."
 fi
 

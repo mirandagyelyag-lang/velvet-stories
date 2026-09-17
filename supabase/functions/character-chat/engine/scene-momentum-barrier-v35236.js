@@ -144,10 +144,17 @@ export function enforceSceneMomentumBarrierV35236({ reply = "", latestUserMessag
   let fallback = "";
   if (transit && isMicroBeat(latestUserMessage)) {
     fallback = careContext
-      ? `${name} kept their attention on the road, glancing over only once before lowering their voice. \"Okay. Rest for a minute.\" He let the car stay quiet instead of rushing the drive.`
-      : `${name} kept driving, letting the small reaction land instead of rushing the scene forward.`;
+      ? `${name} kept attention on the road and glanced over once. "Okay. Rest for a minute." The car kept moving, quiet for the next stretch.`
+      : `${name} kept driving. "Okay." The car stayed quiet for the next stretch.`;
   } else if (originalIssues.includes("live_scene_user_destination_overridden")) {
-    fallback = `${name} paused rather than deciding for you. \"Okay. Your call on where you want to go.\"`;
+    const destination = explicitUserDestination(latestUserMessage);
+    const destinationLabel = destination === "dorm" ? "your dorm"
+      : destination === "room" ? "your room"
+      : destination === "home" ? "home"
+      : destination === "apartment" ? "your apartment"
+      : destination === "house" ? "your house"
+      : "where you said";
+    fallback = `${name} gave a short nod. "Okay. ${destinationLabel}."`;
   } else if (transit) {
     fallback = `${name} kept their attention on the road and continued from the drive already underway.`;
   } else {

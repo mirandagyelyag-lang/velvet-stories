@@ -9,7 +9,7 @@ assert.match(edge, /TARGET 150-230 WORDS/);
 assert.match(edge, /never return fewer than 130 words/);
 assert.match(edge, /thinkingLevel: "MEDIUM"/);
 assert.match(edge, /maxOutputTokens: 1800/);
-assert.match(edge, /globalDeadlineMs = 14000/);
+assert.match(edge, /globalDeadlineMs = 6500/);
 assert.match(client, /instantWords\.length < 130/);
 assert.match(client, /controller\.abort\(\), 26000/);
 

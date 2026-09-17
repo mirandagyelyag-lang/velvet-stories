@@ -14,10 +14,10 @@ assert.match(protectedFlow, /const rescueBlocking = blockingNarrativeIssues\(res
 assert.match(protectedFlow, /buildGroundedLastResortReply/);
 assert.doesNotMatch(protectedFlow, /Velvet could not produce a coherent reply without contradicting your latest turn/);
 assert.doesNotMatch(protectedFlow, /streamFinalReply\(result\.reply, "validated-protected-final"\)/);
-const absoluteBarrierStart = edge.indexOf("ABSOLUTE FINAL TURN BARRIER", persistenceStart);
+const absoluteBarrierStart = edge.indexOf("v3.52.37 REGRESSION SHIELD", persistenceStart);
 const saveStart = edge.indexOf("const savedMessage = replacementMessage", absoluteBarrierStart);
 const absoluteFinalFlow = edge.slice(absoluteBarrierStart, saveStart);
-assert.match(absoluteFinalFlow, /streamFinalReply\(persistableReply, "v35223-absolute-final-turn-barrier"\)/);
+assert.match(absoluteFinalFlow, /streamFinalReply\(persistableReply, "v35237-regression-shield"\)/);
 assert.ok(edge.indexOf("compact final rescue rejected") < absoluteBarrierStart);
 
 console.log("PASS  bounded repair receives the compact visible-canon prompt");

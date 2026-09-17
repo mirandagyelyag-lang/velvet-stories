@@ -1,0 +1,50 @@
+/* Velvet Stories v3.52.38 · one continuous canvas across the whole app.
+   Every authenticated Velvet route uses the same page owner. Individual
+   screens stay transparent, so a short page can never reveal a second band. */
+
+html.velvet-burgundy-route:not([data-velvet-page="chat"]):not([data-velvet-page="studio"]) {
+  min-height: 100%;
+  background: var(--stories-canvas) !important;
+  background-image: none !important;
+}
+
+body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) {
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  background: var(--stories-atmosphere) !important;
+  background-color: var(--stories-canvas) !important;
+}
+
+body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio)::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+
+body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) #root,
+body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .app,
+body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .app__content,
+body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .velvet-route-stage {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .velvet-route-stage > :first-child {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Route roots such as Characters and Stories inherited a full atmospheric
+   gradient plus a fixed pseudo-layer from the old per-page design. The color
+   alone was transparent, but the inherited background-image still ended at
+   the route's content height and produced a horizontal seam. Body is now the
+   only canvas painter everywhere. */
+body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .velvet-route-stage > :first-child::before,
+body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .velvet-route-stage > :first-child::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+}

@@ -12,10 +12,10 @@ const client = readFileSync(new URL("../src/context/CharactersContext.jsx", impo
 const fallbackBody = edge.slice(edge.indexOf("function instantStoryFallbackOpening"), edge.indexOf("async function handleInstantStory"));
 
 assert.doesNotMatch(fallbackBody, /Between you sits \$\{relationship\}/);
-assert.match(fallbackBody, /They forgot yours/);
-assert.match(fallbackBody, /ordered a spare/);
+assert.match(fallbackBody, /had waited because the decision affected both of you/);
+assert.match(fallbackBody, /family === "friend_gathering"/);
 assert.match(edge, /If the profile explicitly says the character already likes the user/);
-assert.match(edge, /instant story fallback failed quality gate/);
+assert.match(edge, /instant story fallback failed structural completion/);
 assert.match(client, /const leakedTemplate =/);
 
 console.log("PASS  the exact leaked-template opening is rejected");

@@ -77,6 +77,11 @@ import "./styles/velvet-v3520-whole-app-stabilization.css";
 import "./styles/velvet-v35233-stories-bottom-tail.css";
 import "./styles/velvet-v35234-single-canvas.css";
 import "./styles/velvet-v35235-one-background-owner.css";
+import "./styles/velvet-v35238-unified-app-canvas.css";
+import "./styles/velvet-v35248-group-story-scroll.css";
+import "./styles/velvet-v35249-group-story-hard-scroll.css";
+import "./styles/velvet-v35250-group-story-top-panel.css";
+import "./styles/velvet-v35251-group-story-mobile-visible.css";
 
 installMobileViewportLock();
 installInteractionReliability();
