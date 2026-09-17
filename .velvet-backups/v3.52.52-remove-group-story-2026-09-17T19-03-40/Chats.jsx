@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Bug, Check, ChevronRight, Copy, Crown, Download, FolderHeart, FolderPlus, Heart, HeartOff, History, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Bug, Check, ChevronRight, Copy, Crown, Download, FolderHeart, FolderPlus, Heart, HeartOff, History, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, UsersRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
@@ -8,6 +8,7 @@ import { supabase } from "../services/supabase";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { useTheme } from "../context/ThemeContext";
+import GroupStoryModal from "../components/GroupStoryModal";
 import SwipeToTrash from "../components/SwipeToTrash";
 import {
   createStorySafetySnapshotV34915,
@@ -50,6 +51,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   const [menuId, setMenuId] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
+  const [groupStoryOpen, setGroupStoryOpen] = useState(false);
   const [recoverySnapshots, setRecoverySnapshots] = useState([]);
   const [collections, setCollections] = useState([]);
   const [collectionDialog, setCollectionDialog] = useState(null);
@@ -103,7 +105,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   }, [search, user?.id, conversations.length]);
 
   useEffect(() => {
-    if (!pickerOpen) return undefined;
+    if (!pickerOpen && !groupStoryOpen) return undefined;
 
     const root = document.documentElement;
     const body = document.body;
@@ -114,7 +116,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       root.classList.remove("velvet-story-launcher-open");
       body.classList.remove("velvet-story-launcher-open");
     };
-  }, [pickerOpen]);
+  }, [pickerOpen, groupStoryOpen]);
 
   useEffect(() => {
     if (!menuId) return undefined;
@@ -239,6 +241,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       setConversations((rows || []).map((row) => ({
         ...row,
         character: characters.find((item) => item.id === row.character_id),
+        groupCharacters: row.group_mode ? (row.group_character_ids || []).map((id) => characters.find((item) => item.id === id)).filter(Boolean) : [],
         latestMessage: latestByConversation.get(row.id),
       })));
     } catch (requestError) {
@@ -419,6 +422,9 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         intelligence_state: conversation.intelligence_state || {},
         story_recap: conversation.story_recap || conversation.summary || null,
         unresolved_threads: conversation.unresolved_threads || [],
+        group_mode: Boolean(conversation.group_mode),
+        group_character_ids: conversation.group_character_ids || [],
+        group_title: conversation.group_title || null,
         cover_url: conversation.cover_url || null,
         cover_title: conversation.cover_title || null,
         cover_mood: conversation.cover_mood || null,
@@ -499,7 +505,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       if (activeCollection && (!activeCollection.storyIds.includes(conversation.id) || conversation.trashed_at)) return false;
       if (!value) return true;
       const character = conversation.character;
-      const shallow = normalizedStorySearchV34915(`${conversation.title || ""} ${character?.name || ""} ${character?.role || ""} ${conversation.latestMessage?.content || ""}`);
+      const shallow = normalizedStorySearchV34915(`${conversation.title || ""} ${character?.name || ""} ${(conversation.groupCharacters || []).map((item) => item.name).join(" ")} ${character?.role || ""} ${conversation.latestMessage?.content || ""}`);
       return shallow.includes(value) || deepMatchConversationIds.has(conversation.id);
     });
   }, [conversations, search, view, pendingDeletionIds, collections, deepMatchConversationIds]);
@@ -586,6 +592,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
               <button type="button" onClick={() => setEditingId(null)} aria-label="Cancel rename"><X size={15}/></button>
             </form>
           ) : <h3>{title}</h3>}
+          {conversation.group_mode && <small className="reference-story-row__group">Group Story · {(conversation.groupCharacters || []).map((item)=>item.name).join(" · ")}</small>}
           <p>{preview}</p>
           <time>{formatShelfDate(conversation.updated_at)}</time>
         </div>
@@ -660,6 +667,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     );
   }
 
+
   return (
     <section className="chats-page chats-page--reference">
       <header className="reference-stories-hero">
@@ -672,6 +680,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
           <span className="reference-stories-title__line reference-stories-title__line--right" />
         </div>
         <div className="reference-stories-hero__actions">
+          <button className="reference-stories-group" type="button" onClick={() => setGroupStoryOpen(true)} aria-label="New Group Story"><UsersRound size={22}/><span>Group</span></button>
           <button className="reference-stories-new" type="button" onClick={() => setPickerOpen(true)} aria-label="New story"><Sparkles size={26}/></button>
         </div>
       </header>
@@ -780,7 +789,9 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         </div>, document.body
       )}
 
-{pickerOpen && (
+      {groupStoryOpen && <GroupStoryModal onClose={() => setGroupStoryOpen(false)} onOpenStory={onOpenCharacter}/>}
+
+      {pickerOpen && (
         <div className="conversation-picker-backdrop" onMouseDown={() => !creatingId && setPickerOpen(false)}>
           <section className={`conversation-picker conversation-picker--editorial${pickerExpanded ? " is-expanded" : ""}`} onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="conversation-picker-title">
             <button type="button" className="velvet-sheet-grabber velvet-sheet-grabber--interactive" aria-label={pickerExpanded ? "Lower character picker" : "Expand character picker"} onClick={() => setPickerExpanded((value) => !value)} onPointerDown={(event) => { event.currentTarget.setPointerCapture?.(event.pointerId); setPickerDragStartY(event.clientY); }} onPointerUp={(event) => { if (pickerDragStartY == null) return; const delta = event.clientY - pickerDragStartY; if (delta < -24) setPickerExpanded(true); if (delta > 24) setPickerExpanded(false); setPickerDragStartY(null); }} />
