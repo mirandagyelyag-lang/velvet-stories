@@ -67,6 +67,14 @@ export function updateRelationshipEmotionCoreV35266({
   previous={},character={},relationship={},latestUserMessage="",reply="",messageId=""
 }={}){
   const state=normalizeRelationshipEmotionCoreV35266(previous,character,relationship);
+  const undoSnapshot={
+    version:state.version,turns_observed:state.turns_observed,
+    attachment:state.attachment,trust:state.trust,attraction:state.attraction,longing:state.longing,
+    jealousy:state.jealousy,protectiveness:state.protectiveness,guilt:state.guilt,fear_of_loss:state.fear_of_loss,
+    resentment:state.resentment,awareness_of_feelings:state.awareness_of_feelings,vulnerability:state.vulnerability,
+    unresolved_intensity:state.unresolved_intensity,
+    active_threads:state.active_threads.map(t=>({...t}))
+  };
   const u=norm(latestUserMessage),r=norm(reply),p=profileText(character,relationship);
   const romanticSeed=state.attraction>=20 || /\b(?:romance|romantic|crush|attract|enemies to lovers|friends to lovers|dating|in love|likes you|into you)\b/.test(p);
   const userLeaves=hasAny(u,[/\b(?:i storm off|i stormed off|i walk away|i walked away|i leave|i left|i walk out|i walked out|i run off|i ran off|me voy|me fui|me largo|me alejo|salgo)\b/]);
@@ -169,6 +177,7 @@ export function updateRelationshipEmotionCoreV35266({
     .filter(t=>t.strength>=18&&t.age<=18)
     .slice(-6);
 
+  state.undo_snapshot=undoSnapshot;
   return state;
 }
 
