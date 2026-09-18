@@ -47,6 +47,7 @@ import { buildGroundedLastResortReply, establishedAttractionOpportunityIssues } 
 import { finalizeRegressionSafeTurnV35237 } from "./engine/regression-shield-v35237.js";
 
 import { buildImmutableEventTruthV35254, immutableEventTruthV35254Issues } from "./engine/immutable-event-truth-v35254.js";
+import { buildMotivationPersistenceV35255, motivationPersistenceV35255Issues } from "./engine/motivation-persistence-v35255.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -425,7 +426,13 @@ Deno.serve(async (request) => {
       recentMessages: messages.slice(-24),
       character: configuredCharacter,
     });
-    const continuityLockedPromptV35254 = `${prompt}\n\n${immutableEventTruthV35254}`;
+    const motivationPersistenceV35255 = buildMotivationPersistenceV35255({
+      latestUserMessage: latestUserRecord?.content || "",
+      recentUserMessages: messages.filter((m) => m?.sender === "user").slice(-8).map((m) => m?.content || ""),
+      recentCharacterReplies: messages.filter((m) => m?.sender === "character").slice(-8).map((m) => m?.content || ""),
+      character: configuredCharacter,
+    });
+    const continuityLockedPromptV35254 = `${prompt}\n\n${immutableEventTruthV35254}\n\n${motivationPersistenceV35255}`;
 
     const rawIsCancelled = () => generationId
       ? isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)
@@ -7382,6 +7389,12 @@ function validateNarrativeReply(reply = "", options = {}) {
     recentUserMessages: options.recentUserMessages || [],
     recentCharacterReplies: options.recentCharacterReplies || [],
     character: options.character || {},
+  })) issues.push(issue);
+  for (const issue of motivationPersistenceV35255Issues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
   for (const issue of meaningfulTurnGateV34950Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
