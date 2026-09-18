@@ -25,6 +25,7 @@ import {
   MessageSquareQuote,
   MapPin,
   MoreHorizontal,
+  Music2,
   Pencil,
   Palette,
   RefreshCw,
@@ -184,6 +185,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [failedGeneration, setFailedGeneration] = useState(null);
   const [retryingGeneration, setRetryingGeneration] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [spotifyOpen, setSpotifyOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -341,6 +343,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       const text = formatBugReport({ includePrivate: false, note: "Copied from the active chat menu." });
       await navigator.clipboard.writeText(text);
       setMenuOpen(false);
+    setSpotifyOpen(false);
       showActionNotice("Debug report copied ✓", "neutral", 1600);
     } catch (error) {
       console.warn("Could not copy Velvet debug report:", error);
@@ -2319,8 +2322,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         ...(chatHeroImage ? { "--character-presence-image": `url(${JSON.stringify(chatHeroImage)})` } : {}),
       }}
     >
-      <SpotifyPlayer storyId={conversation?.conversationId || conversationId} />
-      {typeof document !== "undefined" && createPortal((<header
+{typeof document !== "undefined" && createPortal((<header
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
       >
@@ -2336,6 +2338,16 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           </button>
         </div>
         <button
+          className={`chat__icon-button chat__spotify-button${spotifyOpen ? " is-open" : ""}`}
+          type="button"
+          onClick={() => { setMenuOpen(false); setSpotifyOpen((current) => !current); }}
+          aria-label="Spotify player"
+          aria-expanded={spotifyOpen}
+        >
+          <Music2 size={19} />
+        </button>
+
+        <button
           className="chat__icon-button chat__more"
           onClick={() => setMenuOpen((current) => !current)}
           aria-label="Conversation options"
@@ -2343,6 +2355,13 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         >
           <MoreHorizontal size={20} />
         </button>
+
+        {spotifyOpen && typeof document !== "undefined" && createPortal((
+          <div className="velvet-spotify-host">
+            <div className="velvet-spotify-backdrop" onClick={() => setSpotifyOpen(false)} />
+            <SpotifyPlayer storyId={conversation?.conversationId || conversationId} />
+          </div>
+        ), document.body)}
 
         {menuOpen && typeof document !== "undefined" && createPortal((
           <div className="chat__menu-backdrop" onClick={(event) => event.target === event.currentTarget && setMenuOpen(false)}>
