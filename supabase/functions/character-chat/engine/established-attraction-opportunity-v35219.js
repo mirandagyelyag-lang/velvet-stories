@@ -43,17 +43,17 @@ function fallbackTemperament(character = {}) {
 
 function pursuitFallback({ name, character }) {
   const temperament = fallbackTemperament(character);
-  if (temperament === "warm") return name + ' goes after you instead of letting the distance grow. “Wait.” He catches up without reaching for you. “I know you’re angry. I’m not leaving it like this.”';
-  if (temperament === "guarded") return name + ' goes after you, faster than his expression gives away. “Wait.” He catches up and keeps his hands to himself. “I heard what you said. I’m not pretending it didn’t land.”';
-  if (temperament === "proud") return name + ' goes after you immediately. If someone tries to get his attention, he cuts them off without slowing. “Not now.” He catches up. “You can be pissed at me. I’m still not leaving it like that.”';
-  return name + ' goes after you instead of staying behind. “Wait.” He catches up. “I’m not letting that be the last thing between us.”';
+  if (temperament === "warm") return name + ' goes after you instead of letting the distance grow. “Wait.” ' + name + ' catches up without reaching for you. “I know you’re angry. I’m not leaving it like this.”';
+  if (temperament === "guarded") return name + ' goes after you faster than the expression on their face gives away. “Wait.” ' + name + ' catches up without reaching for you. “I heard what you said. I’m not pretending it didn’t land.”';
+  if (temperament === "proud") return name + ' goes after you immediately. If someone tries to get their attention, ' + name + ' cuts them off without slowing. “Not now.” ' + name + ' catches up. “You can be pissed at me. I’m still not leaving it like that.”';
+  return name + ' goes after you instead of staying behind. “Wait.” ' + name + ' catches up. “I’m not letting that be the last thing between us.”';
 }
 
 function emotionalFallback({ name, character }) {
   const temperament = fallbackTemperament(character);
   if (temperament === "warm") return name + ' stops trying to smooth it over. “I know saying I didn’t mean to doesn’t make it hurt less.”';
-  if (temperament === "guarded") return name + ' goes quiet for a beat. “I heard you.” His voice is flatter now, stripped of the usual defense. “I’m not brushing that off.”';
-  if (temperament === "proud") return name + ' loses the comeback before it reaches his mouth. “Yeah. I heard you.” He holds your gaze. “I’m not going to argue my way out of that.”';
+  if (temperament === "guarded") return name + ' goes quiet for a beat. “I heard you.” The usual defense is gone from the next line. “I’m not brushing that off.”';
+  if (temperament === "proud") return name + ' loses the comeback before it lands. “Yeah. I heard you.” ' + name + ' doesn’t look away. “I’m not going to argue my way out of that.”';
   return name + ' doesn’t dodge it. “I heard you. I’m not pretending that makes it fine.”';
 }
 
