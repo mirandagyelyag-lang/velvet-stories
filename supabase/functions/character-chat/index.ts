@@ -48,6 +48,7 @@ import { finalizeRegressionSafeTurnV35237 } from "./engine/regression-shield-v35
 
 import { buildImmutableEventTruthV35254, immutableEventTruthV35254Issues } from "./engine/immutable-event-truth-v35254.js";
 import { buildMotivationPersistenceV35255, motivationPersistenceV35255Issues } from "./engine/motivation-persistence-v35255.js";
+import { buildEmotionalRelationshipCoreV35263, emotionalRelationshipCoreV35263Issues } from "./engine/emotional-relationship-core-v35263.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2311,6 +2312,15 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     latestUserMessage: latestUserRecord?.content || "",
     character,
   });
+  const emotionalRelationshipCoreV35263 = buildEmotionalRelationshipCoreV35263({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+    mind: conversation.intelligence_state?.character_mind || {},
+    behavior: conversation.intelligence_state?.human_behavior_state || {},
+    relationship: conversation.relationship_state || conversation.relationship || {},
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2456,7 +2466,9 @@ ${sceneMomentumBarrierV35236}
 
 ${meaningfulTurnGateV34950}
 
-PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line.
+${emotionalRelationshipCoreV35263}
+
+PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line. Emotional Relationship Core 3.52.63 is intentionally injected as a narrow causal bridge so serious feeling changes behavior without restoring the old competing style stack.
 
 HUMAN SOCIAL INTELLIGENCE 3.49.32 · READ THE ROOM, NOT THE TROPE
 - Social meaning comes from context, relationship, audience, status, timing and uncertainty, not from romance tropes.
@@ -3673,6 +3685,13 @@ LATEST USER TURN
 ${cleanPromptValue(latestUserMessage, 1600) || (openingRegeneration ? "None — this is a fresh opening." : "none")}
 
 ${openingRegeneration ? "Build a fresh playable opening from the profile and durable world context. The rejected opening contributes only negative evidence about what not to repeat." : "Continue from the literal final state. Respect the user's choice, possessions, location and boundaries. Do not invent a user habit, feeling, action, shared history, plan or object transfer. Answer the latest meaning once; do not repeat a settled offer. If the user says \"I trust you\", \"you choose\", \"surprise me\", \"up to you\", or equivalent, they delegated the decision: choose one concrete option and move; never hand the choice back. Keep established attraction visible through one natural character-specific choice when relevant, never through control. A short complete answer is valid."}
+
+EMOTIONAL RELATIONSHIP CORE 3.52.63
+- Serious emotional meaning outranks banter and logistics. If the user says they are tired of everything, overwhelmed, hurt, or accuses this character of making things worse, let that land before offering to leave, get water, change rooms, drive home or solve a practical problem.
+- If this character has established attachment or romantic feelings, show that through changed attention, priorities, restraint, guilt, fear, protectiveness, jealousy, vulnerability or staying power according to their personality. Do not force a confession.
+- If the character caused the hurt, technical innocence is not an emotional response. They may defend themselves later, but first respond to the relational meaning.
+- Keep emotional residue across turns. Do not snap back into normal teasing after a serious beat without a real repair or redirect.
+- Care must sound like this character, never a therapist, counselor or customer-service script.
 
 REAL-CONVERSATION CALIBRATION v3.52.40
 - React to what was actually said before advancing plot. Do not answer a different, more dramatic version of the user's line.
@@ -6472,6 +6491,12 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "emotion_nervous_system_jealousy_label",
   "emotion_nervous_system_instant_reset",
   "emotion_nervous_system_explanation_dump",
+  "emotional_bid_unregistered",
+  "emotional_bid_practical_escape",
+  "relational_hurt_deflected",
+  "emotional_care_therapized",
+  "distress_forced_romance_confession",
+  "attachment_failed_to_affect_behavior",
   "agency_user_orbit_totalization",
   "agency_compulsory_availability",
   "agency_destiny_motive",
@@ -7285,6 +7310,13 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (emotionIssuesForScore.length) score -= Math.min(54, 22 + emotionIssuesForScore.length * 8);
   const agencyDesireIssuesForScore = independentAgencyDesireV34935Issues(reply, latest, recent);
   const relationshipAttachmentIssuesForScore = relationshipAttachmentV34936Issues(reply, latest, recent);
+  const emotionalRelationshipIssuesForScore = emotionalRelationshipCoreV35263Issues({
+    reply,
+    latestUserMessage: latest,
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: recent,
+    character: options.character || {},
+  });
   const spontaneityIssuesForScore = humanSpontaneityAntiPatternV34937Issues(reply, latest, recent);
   const knowledgeUncertaintyIssuesForScore = humanKnowledgeUncertaintyV34938Issues(reply, latest, recent);
   const naturalDialogueIssuesForScore = naturalDialogueResetV34940Issues(reply, latest, recent);
@@ -7300,6 +7332,7 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   const plainSpeechIssuesForScore = plainSpeechFirstV34941Issues(reply, latest, recent);
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (relationshipAttachmentIssuesForScore.length) score -= Math.min(56, 24 + relationshipAttachmentIssuesForScore.length * 8);
+  if (emotionalRelationshipIssuesForScore.length) score -= Math.min(92, 52 + emotionalRelationshipIssuesForScore.length * 12);
   if (spontaneityIssuesForScore.length) score -= Math.min(56, 24 + spontaneityIssuesForScore.length * 8);
   if (naturalDialogueIssuesForScore.length) score -= Math.min(70, 36 + naturalDialogueIssuesForScore.length * 10);
   if (leanCoreIssuesForScore.length) score -= Math.min(80, 40 + leanCoreIssuesForScore.length * 12);
@@ -7377,6 +7410,13 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of humanEmotionNervousSystemV34934Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of independentAgencyDesireV34935Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of relationshipAttachmentV34936Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of emotionalRelationshipCoreV35263Issues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    character: options.character || {},
+  })) issues.push(issue);
   for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of leanDialogueCoreV34942Issues(text, options.latestUserMessage || "")) issues.push(issue);
