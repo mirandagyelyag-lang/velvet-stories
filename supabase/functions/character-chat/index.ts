@@ -50,6 +50,7 @@ import { buildImmutableEventTruthV35254, immutableEventTruthV35254Issues } from 
 import { buildMotivationPersistenceV35255, motivationPersistenceV35255Issues } from "./engine/motivation-persistence-v35255.js";
 import { buildEmotionalRelationshipCoreV35263, emotionalRelationshipCoreV35263Issues } from "./engine/emotional-relationship-core-v35263.js";
 import { buildPursuitEmotionPriorityV35265, pursuitEmotionPriorityV35265Issues } from "./engine/pursuit-emotion-priority-v35265.js";
+import { buildPersistentEmotionalLifeV35266, updateRelationshipEmotionCoreV35266 } from "./engine/persistent-emotional-life-v35266.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2080,10 +2081,11 @@ function buildNarrativePromptV3({
   }).join("\n\n") || "none";
   const compactStateV3500 = JSON.stringify({
     relationship: conversation.relationship_state || {},
+    emotional_life: conversation.intelligence_state?.relationship_emotion_core || {},
     scene: conversation.scene_state || {},
     recap: cleanPromptValue(conversation.story_recap || conversation.summary || "", 900),
     unfinished: Array.isArray(conversation.intelligence_state?.unfinished_business) ? conversation.intelligence_state.unfinished_business.slice(-5) : [],
-  }).slice(0, 4200);
+  }).slice(0, 5200);
   const regenV3500 = openingRegeneration
     ? `Write a materially different opening from this rejected one: ${clean(openingSeed, 700)}`
     : isRegeneration
@@ -3645,6 +3647,14 @@ function buildCompactLiveRecoveryPrompt({
     : isRegeneration
       ? normalRegenerationContract
       : "NEW TURN — Continue the current canon from the latest user turn.";
+  const persistentEmotionalLifeV35266 = buildPersistentEmotionalLifeV35266({
+    state: isRegeneration
+      ? (intelligenceState?.relationship_emotion_core?.undo_snapshot || intelligenceState?.relationship_emotion_core || {})
+      : (intelligenceState?.relationship_emotion_core || {}),
+    character,
+    relationship: relationshipState || {},
+    latestUserMessage,
+  });
   return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
 
 GENERATION MODE
@@ -3685,6 +3695,10 @@ Open threads: ${cleanPromptValue(JSON.stringify(unresolvedThreads || []), 700)}
 Relevant memories: ${cleanPromptValue(JSON.stringify((Array.isArray(memories) ? memories : []).slice(0, 6).map((item) => item?.content || item)), 900)}
 Relevant lore: ${cleanPromptValue(JSON.stringify((Array.isArray(loreEntries) ? loreEntries : []).slice(0, 5).map((item) => ({ name:item?.name, content:item?.content }))), 800)}
 Relationship state: ${cleanPromptValue(JSON.stringify(relationshipState || {}), 700)}
+
+PERSISTENT EMOTIONAL LIFE
+${persistentEmotionalLifeV35266}
+
 Cast/presence state: ${cleanPromptValue(JSON.stringify(castState || {}), 650)}
 Active plans/commitments: ${cleanPromptValue(JSON.stringify({
     commitments: intelligenceState?.commitments || [],
@@ -8607,6 +8621,17 @@ async function streamRoleplayV19({
         update.scene_state = nextPhysicalState.scene;
         update.cast_state = nextPhysicalState.cast;
         update.intelligence_state = applyIntelligenceContinuity(existingIntelligenceState, result.continuity_update, result.mind_update, result.story_drive, result.post_turn_reflection, result.human_behavior_update, result.presence_update);
+        const emotionalBaseV35266 = isRegeneration
+          ? (existingIntelligenceState?.relationship_emotion_core?.undo_snapshot || existingIntelligenceState?.relationship_emotion_core || {})
+          : (existingIntelligenceState?.relationship_emotion_core || {});
+        update.intelligence_state.relationship_emotion_core = updateRelationshipEmotionCoreV35266({
+          previous: emotionalBaseV35266,
+          character,
+          relationship: update.relationship_state || existingRelationshipState || {},
+          latestUserMessage,
+          reply: result.reply,
+          messageId: savedMessage.id,
+        });
         const resolvedCommitments = compactTextList(result.continuity_update?.resolved_commitments, 8, 260);
         const newCommitments = compactTextList(result.continuity_update?.commitments, 8, 260);
         const presenceOpen = compactTextList(result.presence_update?.unfinished_business_add, 6, 320);
