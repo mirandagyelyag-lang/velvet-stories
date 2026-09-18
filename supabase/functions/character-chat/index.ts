@@ -3648,7 +3648,9 @@ function buildCompactLiveRecoveryPrompt({
       ? normalRegenerationContract
       : "NEW TURN — Continue the current canon from the latest user turn.";
   const persistentEmotionalLifeV35266 = buildPersistentEmotionalLifeV35266({
-    state: intelligenceState?.relationship_emotion_core || {},
+    state: isRegeneration
+      ? (intelligenceState?.relationship_emotion_core?.undo_snapshot || intelligenceState?.relationship_emotion_core || {})
+      : (intelligenceState?.relationship_emotion_core || {}),
     character,
     relationship: relationshipState || {},
     latestUserMessage,
@@ -8619,8 +8621,11 @@ async function streamRoleplayV19({
         update.scene_state = nextPhysicalState.scene;
         update.cast_state = nextPhysicalState.cast;
         update.intelligence_state = applyIntelligenceContinuity(existingIntelligenceState, result.continuity_update, result.mind_update, result.story_drive, result.post_turn_reflection, result.human_behavior_update, result.presence_update);
+        const emotionalBaseV35266 = isRegeneration
+          ? (existingIntelligenceState?.relationship_emotion_core?.undo_snapshot || existingIntelligenceState?.relationship_emotion_core || {})
+          : (existingIntelligenceState?.relationship_emotion_core || {});
         update.intelligence_state.relationship_emotion_core = updateRelationshipEmotionCoreV35266({
-          previous: existingIntelligenceState?.relationship_emotion_core || {},
+          previous: emotionalBaseV35266,
           character,
           relationship: update.relationship_state || existingRelationshipState || {},
           latestUserMessage,
