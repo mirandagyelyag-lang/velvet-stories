@@ -30,7 +30,7 @@ export function buildIndependentAgencyDesireV34935({character={},mind={},behavio
  'NO RETROACTIVE MOTIVE INVENTION: when asked why they did something, use the grounded event chain and existing motives. Never invent a prettier hidden reason after the fact.',
  'NO DESTINY LANGUAGE: avoid making ordinary choices sound inevitable, fated, magnetic, impossible to resist, or “always about you” unless creator canon explicitly establishes that register.',
  'NO HEROIC SERVICE LOOP: caring is not constant rescuing, checking, protecting, fixing, escorting, feeding, monitoring or sacrificing. Help only when person + context + cost support it.',
- 'NO AUTOMATIC PURSUIT: distance, silence, leaving or another social contact does not automatically trigger chasing, following, calling, jealousy, confrontation or a grand gesture.',
+ 'CREATOR PURSUIT OVERRIDE: when the user visibly leaves/storms off/walks away from the live interaction, follow them unless they explicitly said not to follow, leave them alone, go away, stay away, back off, or give them space. This creator rule outranks the default anti-orbit heuristic; personality decides HOW the character follows, not whether they ignore the departure.',
  'BOREDOM + MUNDANITY EXIST: people sometimes do nothing interesting, finish chores, scroll, eat, wait, study, drive, shower, sleep or end a conversation. Ordinary life is not narrative failure.',
  'ENDINGS ARE ALLOWED: a scene or conversation may end cleanly because the character has somewhere to be, wants privacy, is tired, or the topic is done. Never create a hook solely to prevent an ending.',
  'AUTONOMY WITHOUT HOSTILITY: independence does not mean coldness. Warm people still have priorities; guarded people can still choose closeness. Agency changes choices, not kindness by default.',
@@ -49,7 +49,8 @@ export function independentAgencyDesireV34935Issues(reply='',latestUserMessage='
  if(/\b(?:i'll drop everything|i can cancel everything|i'm always available for you|i'll always come running|anytime, anywhere, no matter what)\b/.test(t) && !/\b(?:emergency|danger|hospital|urgent)\b/.test(latest+recent)) issues.push('agency_compulsory_availability');
  if(/\b(?:fate|destiny|magnetic pull|couldn't stay away|could not stay away|something always pulls me back to you|inevitable)\b/.test(t) && !/\b(?:fate|destiny|inevitable|magnetic)\b/.test(latest)) issues.push('agency_destiny_motive');
  if(/\b(?:i had to make sure you were okay|someone has to look after you|someone has to keep an eye on you|i'm not letting you out of my sight)\b/.test(t) && !/\b(?:hurt|injured|sick|danger|unsafe|help|okay\?|not okay|hospital)\b/.test(latest+recent)) issues.push('agency_heroic_service_loop');
- if(/\b(?:i followed you|i came after you|i chased after you|i couldn't let you leave|i could not let you leave)\b/.test(t) && /\b(?:leave|left|go|going)\b/.test(latest) && !/\b(?:follow me|come with me|wait for me|come after)\b/.test(latest)) issues.push('agency_automatic_pursuit');
+ const noPursuit=/\b(?:leave me alone|stop following me|dont follow me|do not follow me|dont come after me|do not come after me|go away|stay away|back off|give me space|i need space|let me go)\b/.test(latest);
+ if(noPursuit && /\b(?:followed|came after|chased after|went after|walked after|caught up|matched .* pace)\b/.test(t)) issues.push('agency_pursuit_boundary_violation');
  if((t.match(/\b(?:for you|because of you|to see you|with you)\b/g)||[]).length>=4) issues.push('agency_user_orbit_density');
  if(/\b(?:i have a life too|i do have a life, you know|believe it or not, i have a life)\b/.test(t)) issues.push('agency_autonomy_theater');
  return [...new Set(issues)];
