@@ -49,6 +49,11 @@ function therapistVoice(reply=""){
   return /\b(?:your feelings are valid|hold space for you|process your feelings|safe space|thank you for sharing|i hear and validate|regulate your emotions|name what youre feeling|name what you are feeling)\b/.test(t);
 }
 
+function cannedDistressCheckin(reply=""){
+  const t=norm(reply);
+  return /\b(?:you fading on me|are you fading on me|you fading|still with me there)\b/.test(t);
+}
+
 function forcedConfession(reply=""){
   const t=norm(reply);
   return /\b(?:because i love you|im in love with you|i am in love with you|ive fallen in love with you|i have fallen in love with you)\b/.test(t);
@@ -80,7 +85,8 @@ export function buildEmotionalRelationshipCoreV35263({
     "EMOTIONAL RESIDUE: a serious accusation, frightening moment, vulnerable disclosure or unresolved hurt remains active after the current sentence. Do not reset to normal banter next turn unless something actually repairs or redirects it.",
     "CAUSE → FEELING → BEHAVIOR: hidden state should preserve a grounded chain. What happened? How does THIS character interpret it? What emotion or mixed emotion follows? What concrete pressure does that create on speech/action?",
     "WRITEBACK: mind_update should preserve emotion_trigger, emotion_interpretation, current_emotion and behavioral_pressure when materially changed. human_behavior_update may persist emotional_continuity, relationship_attachment, relationship_attraction, relationship_trust, relationship_comfort, relationship_commitment, romance_progression, romantic_expression, jealousy_style, mixed_signal_pattern or vulnerability_hangover ONLY when supported by canon. Never fabricate the user's reciprocal feelings.",
-    "VISIBLE TEST: if the user is clearly hurting and the reply could be delivered unchanged by a stranger, customer-service bot or unrelated character, it fails. The response must reveal why this person, with this history, is affected.",
+    "VISIBLE TEST: if the user is clearly hurting, prefer a response that reveals why THIS person is affected. This is guidance, not a phrase-matching gate: subtle, character-specific care may be fully valid without an explicit check-in question or verbal summary.",
+    "NO FINAL OVERRIDE BY PHRASE MATCHING: never reject an otherwise coherent emotional reply merely because it did not use a specific registration phrase. Validators should catch concrete failures such as deflection, logistical escape, therapy voice or canned distress language, not enforce one wording shape.",
     `CURRENT MIND: ${clean(JSON.stringify(mind||{}),900)||"none"}.`,
     `CURRENT RELATIONSHIP: ${clean(JSON.stringify(relationship||{}),1000)||"none"}.`,
     `PERSISTENT BEHAVIOR: ${clean(JSON.stringify(behavior||{}),1200)||"none"}.`,
@@ -99,9 +105,9 @@ export function emotionalRelationshipCoreV35263Issues({
   const registered=verbalRegistration(reply);
   const attached=hasAttachmentEvidence(character,relationship,behavior);
 
-  if(!registered) issues.push("emotional_bid_unregistered");
   if(signal.highDistress && practicalPivot(reply) && !registered) issues.push("emotional_bid_practical_escape");
   if(signal.rupture && defensiveDeflection(reply) && !registered) issues.push("relational_hurt_deflected");
+  if(cannedDistressCheckin(reply)) issues.push("canned_distress_checkin");
   if(therapistVoice(reply)) issues.push("emotional_care_therapized");
   if(signal.highDistress && forcedConfession(reply) && !/\b(?:love you too|im in love with you too|i am in love with you too)\b/.test(norm(latestUserMessage))) issues.push("distress_forced_romance_confession");
 
