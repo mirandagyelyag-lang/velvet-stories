@@ -9,6 +9,7 @@ export default function SpotifyPlayer({ storyId }) {
   const playerRef=useRef(null);
   const [deviceId,setDeviceId]=useState("");
   const [connected,setConnected]=useState(false);
+  const [connecting,setConnecting]=useState(false);
   const [expanded,setExpanded]=useState(false);
   const [state,setState]=useState(null);
   const [error,setError]=useState("");
@@ -44,6 +45,18 @@ export default function SpotifyPlayer({ storyId }) {
     return()=>{alive=false; playerRef.current?.disconnect?.(); playerRef.current=null};
   },[]);
 
+  async function connectSpotify(){
+    if(connecting)return;
+    setConnecting(true);
+    setError("");
+    try{
+      await beginSpotifyLogin();
+    }catch(e){
+      console.error("Spotify connect failed:",e);
+      setError(e?.message || "Spotify login could not start.");
+      setConnecting(false);
+    }
+  }
   async function resumeSaved(){
     if(!saved?.uri||!deviceId)return;
     try{
@@ -79,7 +92,7 @@ export default function SpotifyPlayer({ storyId }) {
   if(!connected) return (
     <aside className="velvet-spotify velvet-spotify--connect">
       <Music2 size={18}/><div><strong>Spotify</strong><small>{error||"Premium · private player"}</small></div>
-      <button type="button" onClick={()=>beginSpotifyLogin().catch(e=>setError(e.message))}>Connect</button>
+      <button type="button" disabled={connecting} onClick={connectSpotify}>{connecting?"Opening…":"Connect"}</button>
     </aside>
   );
   return (

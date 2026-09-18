@@ -40,15 +40,30 @@ export function disconnectSpotify() {
   localStorage.removeItem(TOKEN_KEY);
 }
 export async function beginSpotifyLogin() {
-  if (!CLIENT_ID) throw new Error("Add VITE_SPOTIFY_CLIENT_ID to .env first.");
-  const verifier=randomVerifier();
+  if (!CLIENT_ID) throw new Error("Spotify Client ID is missing from this production build.");
+  if (!window.isSecureContext || !window.crypto?.subtle) {
+    throw new Error("Spotify login needs a secure HTTPS context.");
+  }
+
+  const verifier = randomVerifier();
+  const codeChallenge = await challenge(verifier);
   localStorage.setItem(VERIFIER_KEY, verifier);
-  const url=new URL("https://accounts.spotify.com/authorize");
-  url.search=new URLSearchParams({
-    client_id:CLIENT_ID, response_type:"code", redirect_uri:redirectUri(),
-    scope:SCOPES, code_challenge_method:"S256", code_challenge:await challenge(verifier),
+
+  const url = new URL("https://accounts.spotify.com/authorize");
+  url.search = new URLSearchParams({
+    client_id: CLIENT_ID,
+    response_type: "code",
+    redirect_uri: redirectUri(),
+    scope: SCOPES,
+    code_challenge_method: "S256",
+    code_challenge: codeChallenge,
+    show_dialog: "true",
   }).toString();
-  window.location.assign(url.toString());
+
+  const target = url.toString();
+  sessionStorage.setItem("velvet:spotify:last-auth-url", target);
+  window.location.href = target;
+  return target;
 }
 export async function finishSpotifyLoginFromUrl() {
   const url=new URL(window.location.href);
