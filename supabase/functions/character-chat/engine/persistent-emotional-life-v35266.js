@@ -56,15 +56,30 @@ export function normalizeRelationshipEmotionCoreV35266(previous={},character={},
       strength:clamp(t?.strength),
       source_message_id:clean(t?.source_message_id,120),
       age:clamp(t?.age,0,999)
-    })):[]
+    })):[],
+    last_user_beat_signature:clean(prev.last_user_beat_signature,700)
   };
 }
 
 function hasAny(text,patterns=[]){return patterns.some(p=>p.test(text));}
 function decay(v,amount){return clamp(num(v)-amount);}
+function isSilentMarker(value=""){
+  const raw=String(value||"").trim();
+  return /^\[(?:SILENT_CONTINUE|RETURN_MAIN_POV)/.test(raw) || /^[.…。]+$/u.test(raw);
+}
+function effectiveUserBeat(latestUserMessage="",recentUserMessages=[]){
+  if(!isSilentMarker(latestUserMessage)) return String(latestUserMessage||"");
+  const recent=Array.isArray(recentUserMessages)?recentUserMessages:[];
+  for(let i=recent.length-1;i>=0;i--){
+    const candidate=String(recent[i]||"").trim();
+    if(candidate && !isSilentMarker(candidate)) return candidate;
+  }
+  return String(latestUserMessage||"");
+}
+function beatSignature(value=""){return norm(value).slice(0,700);}
 
 export function updateRelationshipEmotionCoreV35266({
-  previous={},character={},relationship={},latestUserMessage="",reply="",messageId=""
+  previous={},character={},relationship={},latestUserMessage="",recentUserMessages=[],reply="",messageId=""
 }={}){
   const state=normalizeRelationshipEmotionCoreV35266(previous,character,relationship);
   const undoSnapshot={
@@ -73,9 +88,14 @@ export function updateRelationshipEmotionCoreV35266({
     jealousy:state.jealousy,protectiveness:state.protectiveness,guilt:state.guilt,fear_of_loss:state.fear_of_loss,
     resentment:state.resentment,awareness_of_feelings:state.awareness_of_feelings,vulnerability:state.vulnerability,
     unresolved_intensity:state.unresolved_intensity,
-    active_threads:state.active_threads.map(t=>({...t}))
+    active_threads:state.active_threads.map(t=>({...t})),
+    last_user_beat_signature:state.last_user_beat_signature
   };
-  const u=norm(latestUserMessage),r=norm(reply),p=profileText(character,relationship);
+  const effective=effectiveUserBeat(latestUserMessage,recentUserMessages);
+  const carried=isSilentMarker(latestUserMessage)&&effective!==String(latestUserMessage||"");
+  const signature=beatSignature(effective);
+  const carriedAlreadyProcessed=carried&&signature&&signature===state.last_user_beat_signature;
+  const u=norm(effective),r=norm(reply),p=profileText(character,relationship);
   const romanticSeed=state.attraction>=20 || /\b(?:romance|romantic|crush|attract|enemies to lovers|friends to lovers|dating|in love|likes you|into you)\b/.test(p);
   const userLeaves=hasAny(u,[/\b(?:i storm off|i stormed off|i walk away|i walked away|i leave|i left|i walk out|i walked out|i run off|i ran off|me voy|me fui|me largo|me alejo|salgo)\b/]);
   const noPursuit=hasAny(u,[/\b(?:leave me alone|dont follow me|do not follow me|go away|stay away|back off|give me space|i need space|no me sigas|dejame sola|dejame solo|vete|alejate)\b/]);
@@ -93,63 +113,68 @@ export function updateRelationshipEmotionCoreV35266({
   state.turns_observed=clamp(state.turns_observed+1,0,10000);
 
   // Slow ambient bond growth. Relationships deepen through repeated contact, not every sentence.
-  if(state.turns_observed%4===0 && clean(latestUserMessage,200).length>8){
+  if(state.turns_observed%4===0 && clean(effective,200).length>8){
     state.attachment=clamp(state.attachment+1);
     if(state.trust<55) state.trust=clamp(state.trust+1);
   }
 
-  if(userAffection){
-    state.attachment=clamp(state.attachment+3);
-    state.trust=clamp(state.trust+4);
-    state.vulnerability=clamp(state.vulnerability+2);
-    if(romanticSeed) state.attraction=clamp(state.attraction+2);
-    state.longing=clamp(state.longing+2);
-    state.active_threads.push(makeThread("warmth",latestUserMessage,58,messageId));
+  if(!carriedAlreadyProcessed){
+    if(userAffection){
+      state.attachment=clamp(state.attachment+3);
+      state.trust=clamp(state.trust+4);
+      state.vulnerability=clamp(state.vulnerability+2);
+      if(romanticSeed) state.attraction=clamp(state.attraction+2);
+      state.longing=clamp(state.longing+2);
+      state.active_threads.push(makeThread("warmth",effective,58,messageId));
+    }
+  
+    if(userDistress){
+      state.protectiveness=clamp(state.protectiveness+2);
+      state.attachment=clamp(state.attachment+1);
+      state.vulnerability=clamp(state.vulnerability+1);
+      state.active_threads.push(makeThread("concern",effective,52,messageId));
+    }
+  
+    if(rupture){
+      state.unresolved_intensity=clamp(state.unresolved_intensity+14);
+      state.resentment=clamp(state.resentment+4);
+      state.guilt=clamp(state.guilt+(characterRepair?8:4));
+      state.fear_of_loss=clamp(state.fear_of_loss+6);
+      state.active_threads.push(makeThread("rupture",effective,78,messageId));
+    }
+  
+    if(userLeaves && !noPursuit){
+      state.fear_of_loss=clamp(state.fear_of_loss+8);
+      state.unresolved_intensity=clamp(state.unresolved_intensity+8);
+      if(characterPursuit) state.attachment=clamp(state.attachment+1);
+      state.active_threads.push(makeThread("separation_pressure",effective,72,messageId));
+    }
+  
+    if(userRepair || characterRepair){
+      state.trust=clamp(state.trust+2);
+      state.guilt=decay(state.guilt,userRepair?5:2);
+      state.resentment=decay(state.resentment,4);
+      state.unresolved_intensity=decay(state.unresolved_intensity,7);
+      state.active_threads.push(makeThread("repair",effective||reply,52,messageId));
+    }
+  
+    if(userRejection){
+      state.fear_of_loss=clamp(state.fear_of_loss+7);
+      state.resentment=clamp(state.resentment+3);
+      state.vulnerability=clamp(state.vulnerability+3);
+      state.unresolved_intensity=clamp(state.unresolved_intensity+8);
+    }
+  
+    if(thirdPartyRomance && romanticSeed && state.attachment>=25){
+      state.jealousy=clamp(state.jealousy+3);
+      state.longing=clamp(state.longing+1);
+    }
+    if(characterJealous && romanticSeed) state.jealousy=clamp(state.jealousy+2);
+    if(characterCare) state.protectiveness=clamp(state.protectiveness+1);
+  
+  
+    if(signature) state.last_user_beat_signature=signature;
   }
-
-  if(userDistress){
-    state.protectiveness=clamp(state.protectiveness+2);
-    state.attachment=clamp(state.attachment+1);
-    state.vulnerability=clamp(state.vulnerability+1);
-    state.active_threads.push(makeThread("concern",latestUserMessage,52,messageId));
-  }
-
-  if(rupture){
-    state.unresolved_intensity=clamp(state.unresolved_intensity+14);
-    state.resentment=clamp(state.resentment+4);
-    state.guilt=clamp(state.guilt+(characterRepair?8:4));
-    state.fear_of_loss=clamp(state.fear_of_loss+6);
-    state.active_threads.push(makeThread("rupture",latestUserMessage,78,messageId));
-  }
-
-  if(userLeaves && !noPursuit){
-    state.fear_of_loss=clamp(state.fear_of_loss+8);
-    state.unresolved_intensity=clamp(state.unresolved_intensity+8);
-    if(characterPursuit) state.attachment=clamp(state.attachment+1);
-    state.active_threads.push(makeThread("separation_pressure",latestUserMessage,72,messageId));
-  }
-
-  if(userRepair || characterRepair){
-    state.trust=clamp(state.trust+2);
-    state.guilt=decay(state.guilt,userRepair?5:2);
-    state.resentment=decay(state.resentment,4);
-    state.unresolved_intensity=decay(state.unresolved_intensity,7);
-    state.active_threads.push(makeThread("repair",latestUserMessage||reply,52,messageId));
-  }
-
-  if(userRejection){
-    state.fear_of_loss=clamp(state.fear_of_loss+7);
-    state.resentment=clamp(state.resentment+3);
-    state.vulnerability=clamp(state.vulnerability+3);
-    state.unresolved_intensity=clamp(state.unresolved_intensity+8);
-  }
-
-  if(thirdPartyRomance && romanticSeed && state.attachment>=25){
-    state.jealousy=clamp(state.jealousy+3);
-    state.longing=clamp(state.longing+1);
-  }
-  if(characterJealous && romanticSeed) state.jealousy=clamp(state.jealousy+2);
-  if(characterCare) state.protectiveness=clamp(state.protectiveness+1);
 
   // Slow romantic accumulation. Attraction never appears from zero without romantic canon.
   if(romanticSeed && state.attachment>=28 && state.turns_observed%5===0) state.attraction=clamp(state.attraction+1);
@@ -164,7 +189,7 @@ export function updateRelationshipEmotionCoreV35266({
   if(!romanticSeed) state.awareness_of_feelings=Math.min(state.awareness_of_feelings,20);
 
   // Gentle decay for short-lived pressure, never for core bond.
-  if(!rupture&&!userLeaves){
+  if(!rupture&&!userLeaves && !carried){
     state.jealousy=decay(state.jealousy,1);
     state.guilt=decay(state.guilt,1);
     state.fear_of_loss=decay(state.fear_of_loss,1);
@@ -191,14 +216,17 @@ function topFeelings(state){
 }
 
 export function buildPersistentEmotionalLifeV35266({
-  state={},character={},relationship={},latestUserMessage=""
+  state={},character={},relationship={},latestUserMessage="",recentUserMessages=[]
 }={}){
   const s=normalizeRelationshipEmotionCoreV35266(state,character,relationship);
+  const effective=effectiveUserBeat(latestUserMessage,recentUserMessages);
+  const carried=isSilentMarker(latestUserMessage)&&effective!==String(latestUserMessage||"");
   const top=topFeelings(s);
   const threads=s.active_threads.map(t=>`${t.type}(${t.strength}): ${clean(t.cause,120)}`).join(" | ")||"none";
   const awarenessGap=Math.max(0,Math.max(s.attachment,s.attraction,s.longing)-s.awareness_of_feelings);
   return [
-    "PERSISTENT EMOTIONAL LIFE 3.52.66 · PER-CONVERSATION STATE (hidden; never expose numbers or labels):",
+    "PERSISTENT EMOTIONAL LIFE 3.52.67 · PER-CONVERSATION STATE (hidden; never expose numbers or labels):",
+    carried?`SILENT CONTINUE CARRIES THE PREVIOUS USER BEAT: ${clean(effective,500)}. Silence is not a reset. Continue the emotional/physical consequence already in motion.`:"",
     `Attachment ${s.attachment}/100 | trust ${s.trust} | attraction ${s.attraction} | longing ${s.longing} | jealousy ${s.jealousy} | protectiveness ${s.protectiveness} | guilt ${s.guilt} | fear-of-loss ${s.fear_of_loss} | resentment ${s.resentment} | vulnerability ${s.vulnerability} | awareness ${s.awareness_of_feelings} | unresolved ${s.unresolved_intensity}.`,
     `Dominant pressures: ${top.join(", ")||"none yet"}. Active emotional threads: ${threads}.`,
     "THIS STATE IS CAUSAL: it must alter selection, attention, priorities, restraint, initiative, repair attempts, what is hard to ignore, and what follows the character into later turns. Do not merely mention an emotion.",
@@ -214,6 +242,6 @@ export function buildPersistentEmotionalLifeV35266({
     s.longing>=35?"LONGING PRESSURE: create grounded reasons to remain near, seek contact, remember, or make time when causally plausible. Do not fabricate emergencies or stalk.":"",
     s.unresolved_intensity>=30?"UNRESOLVED PRESSURE: do not snap back into normal banter or unrelated logistics until the live beat genuinely redirects or repairs the issue.":"",
     "STATE IS PRIVATE TO THIS CONVERSATION. Never copy feelings from another character, another chat, or another relationship.",
-    `Latest user turn: ${clean(latestUserMessage,500)||"none"}.`
+    `Latest user turn: ${clean(latestUserMessage,500)||"none"}. Effective live beat: ${clean(effective,500)||"none"}.`
   ].filter(Boolean).join("\n");
 }
