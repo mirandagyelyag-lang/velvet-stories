@@ -14,7 +14,7 @@ const SCOPES = [
 export const spotifyConfigured = Boolean(CLIENT_ID);
 
 function redirectUri() {
-  return `${window.location.origin}/`;
+  return `${window.location.origin}${window.location.pathname}`;
 }
 function b64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))

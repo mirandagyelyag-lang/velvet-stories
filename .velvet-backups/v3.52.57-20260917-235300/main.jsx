@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import { Capacitor } from "@capacitor/core";
 
 import App from "./App";
-import SpotifyAuthBootstrap from "./components/SpotifyAuthBootstrap";
 import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
 
 import { AuthProvider } from "./context/AuthContext";
@@ -80,7 +79,6 @@ import "./styles/velvet-v35234-single-canvas.css";
 import "./styles/velvet-v35235-one-background-owner.css";
 import "./styles/velvet-v35238-unified-app-canvas.css";
 import "./styles/velvet-v35256-spotify.css";
-import "./styles/velvet-v35257-spotify-chat-ui-fix.css";
 
 installMobileViewportLock();
 installInteractionReliability();
@@ -155,7 +153,6 @@ createRoot(document.getElementById("root")).render(
                   <PersonasProvider>
                     <LorebooksProvider>
                       <ChatsProvider>
-                        <SpotifyAuthBootstrap />
                         <App />
                       </ChatsProvider>
                     </LorebooksProvider>
