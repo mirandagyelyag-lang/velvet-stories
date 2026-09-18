@@ -46,7 +46,6 @@ import { buildSceneMomentumBarrierV35236, sanitizeSceneMomentumBarrierV35236, sc
 import { buildGroundedLastResortReply, establishedAttractionOpportunityIssues } from "./engine/established-attraction-opportunity-v35219.js";
 import { finalizeRegressionSafeTurnV35237 } from "./engine/regression-shield-v35237.js";
 
-import { buildImmutableEventTruthV35254, immutableEventTruthV35254Issues } from "./engine/immutable-event-truth-v35254.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -421,12 +420,6 @@ Deno.serve(async (request) => {
       turnContract,
     });
 
-    const immutableEventTruthV35254 = buildImmutableEventTruthV35254({
-      recentMessages: messages.slice(-24),
-      character: configuredCharacter,
-    });
-    const continuityLockedPromptV35254 = `${prompt}\n\n${immutableEventTruthV35254}`;
-
     const rawIsCancelled = () => generationId
       ? isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)
       : Promise.resolve(false);
@@ -450,7 +443,7 @@ Deno.serve(async (request) => {
     // reaches the phone before continuity metadata has finished generating.
     return streamRoleplayV19({
       apiKey,
-      prompt: continuityLockedPromptV35254,
+      prompt,
       messages,
       character: configuredCharacter,
       latestUserMessage,
@@ -7377,12 +7370,6 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of spokenNaturalnessV34944Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
-  for (const issue of immutableEventTruthV35254Issues({
-    reply: text,
-    recentUserMessages: options.recentUserMessages || [],
-    recentCharacterReplies: options.recentCharacterReplies || [],
-    character: options.character || {},
-  })) issues.push(issue);
   for (const issue of meaningfulTurnGateV34950Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
   for (const issue of behavioralTurnIntegrityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
