@@ -45,6 +45,7 @@ export async function beginSpotifyLogin() {
     throw new Error("Spotify login needs a secure HTTPS context.");
   }
 
+  sessionStorage.setItem("velvet:spotify:return:v2", window.location.href);
   const verifier = randomVerifier();
   const codeChallenge = await challenge(verifier);
   localStorage.setItem(VERIFIER_KEY, verifier);

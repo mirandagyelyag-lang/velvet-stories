@@ -82,6 +82,7 @@ import "./styles/velvet-v35238-unified-app-canvas.css";
 import "./styles/velvet-v35256-spotify.css";
 import "./styles/velvet-v35257-spotify-chat-ui-fix.css";
 import "./styles/velvet-v35258-spotify-header.css";
+import "./styles/velvet-v35260-spotify-callback.css";
 
 installMobileViewportLock();
 installInteractionReliability();

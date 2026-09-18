@@ -16,6 +16,12 @@ export default function SpotifyPlayer({ storyId }) {
   const [volume,setVolume]=useState(0.55);
   const saved=useMemo(()=>{try{return JSON.parse(localStorage.getItem(storyKey(storyId))||"null")}catch{return null}},[storyId]);
 
+  useEffect(()=>{
+    const onConnected=()=>window.location.reload();
+    window.addEventListener("velvet:spotify-connected",onConnected);
+    return()=>window.removeEventListener("velvet:spotify-connected",onConnected);
+  },[]);
+
   useEffect(()=>{ let alive=true;
     (async()=>{
       try{
