@@ -78,6 +78,7 @@ import "./styles/velvet-v35233-stories-bottom-tail.css";
 import "./styles/velvet-v35234-single-canvas.css";
 import "./styles/velvet-v35235-one-background-owner.css";
 import "./styles/velvet-v35238-unified-app-canvas.css";
+import "./styles/velvet-v35256-spotify.css";
 
 installMobileViewportLock();
 installInteractionReliability();

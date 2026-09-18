@@ -51,6 +51,7 @@ import {
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import RoleplayText from "../components/RoleplayText";
+import SpotifyPlayer from "../components/SpotifyPlayer";
 import MemoryBookDrawer from "../components/MemoryBookDrawer";
 import StoryTimelineDrawer from "../components/StoryTimelineDrawer";
 import StorySafeStudioDrawer from "../components/StorySafeStudioDrawer";
@@ -2309,7 +2310,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
   return (
     <section
-      className={`chat chat--story-${storyTheme}${readingMode ? " chat--reading" : ""}${compactMobileChat ? " chat--compact-mobile" : ""}${conversation?.ambientMode && conversation.ambientMode !== "none" ? ` chat--ambient-${conversation.ambientMode}` : ""}`}
+      className={`chat chat--story-${storyTheme}${readingMode ? " chat--reading" : ""}${compactMobileChat ? " chat--compact-mobile" : ""}`}
       data-reading-width={settings.readingWidth || "comfortable"}
       data-character-tint={characterTint}
       data-reading-font={settings.readingFont || "clean"}
@@ -2318,6 +2319,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         ...(chatHeroImage ? { "--character-presence-image": `url(${JSON.stringify(chatHeroImage)})` } : {}),
       }}
     >
+      <SpotifyPlayer storyId={conversation?.conversationId || conversationId} />
       {typeof document !== "undefined" && createPortal((<header
         className={`chat__header${chatHeroImage ? " chat__header--cover" : ""}`}
         style={chatHeroImage ? { "--chat-hero-image": `url(${JSON.stringify(chatHeroImage)})` } : undefined}
