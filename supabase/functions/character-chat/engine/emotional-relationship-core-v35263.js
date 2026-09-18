@@ -3,7 +3,7 @@
 // serious user beats cannot be reduced to logistics, banter or generic support.
 
 const clean=(v="",n=1400)=>String(v??"").replace(/\s+/g," ").trim().slice(0,n);
-const norm=(v="")=>clean(v,9000).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’]/g,"'");
+const norm=(v="")=>clean(v,9000).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’']/g,"");
 
 function userSignal(latest=""){
   const t=norm(latest);
