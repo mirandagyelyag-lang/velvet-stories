@@ -3654,6 +3654,7 @@ function buildCompactLiveRecoveryPrompt({
     character,
     relationship: relationshipState || {},
     latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-8).map((m)=>String(m?.content||"")),
   });
   return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
 
@@ -8479,7 +8480,7 @@ async function streamRoleplayV19({
           const rescueBlocking = blockingNarrativeIssues(rescueIssues);
           const rescueHard = hardRepairRequiredIssues(rescueIssues);
           if (!finalRescue || rescueBlocking.length || rescueHard.length) {
-            const lastResortReply = buildGroundedLastResortReply({ character, latestUserMessage, recentCharacterReplies, issues: [...finalIssues, ...rescueBlocking, ...rescueHard] });
+            const lastResortReply = buildGroundedLastResortReply({ character, latestUserMessage, recentUserMessages, recentCharacterReplies, issues: [...finalIssues, ...rescueBlocking, ...rescueHard] });
             console.error("[character-chat] compact final rescue rejected; using deterministic grounded reply", { blocking: rescueBlocking, hard: rescueHard });
             result = { ...(finalRescue || result), reply: lastResortReply };
             validationIssues = validateNarrativeReply(result.reply, {
@@ -8553,7 +8554,7 @@ async function streamRoleplayV19({
         if (absoluteFinalBlocking.length || absoluteFinalHard.length || regressionFinal.issues?.length) {
           const absoluteIssues = [...new Set([...absoluteFinalBlocking, ...absoluteFinalHard, ...(regressionFinal.issues || [])])];
           const deterministicFinal = buildGroundedLastResortReply({
-            character, latestUserMessage, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: absoluteIssues,
+            character, latestUserMessage, recentUserMessages, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: absoluteIssues,
           });
           const deterministicBarrier = finalizeRegressionSafeTurnV35237({
             reply: deterministicFinal, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
@@ -8574,7 +8575,7 @@ async function streamRoleplayV19({
             const delegatedStillOpen = Array.isArray(deterministicBarrier.issues) ? deterministicBarrier.issues : [];
             if (delegatedStillOpen.length) {
               const forcedCommitment = buildGroundedLastResortReply({
-                character, latestUserMessage, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: delegatedStillOpen,
+                character, latestUserMessage, recentUserMessages, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: delegatedStillOpen,
               });
               const forcedBarrier = finalizeRegressionSafeTurnV35237({
                 reply: forcedCommitment, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
@@ -8629,6 +8630,7 @@ async function streamRoleplayV19({
           character,
           relationship: update.relationship_state || existingRelationshipState || {},
           latestUserMessage,
+          recentUserMessages,
           reply: result.reply,
           messageId: savedMessage.id,
         });
