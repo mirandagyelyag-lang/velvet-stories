@@ -49,6 +49,7 @@ import { finalizeRegressionSafeTurnV35237 } from "./engine/regression-shield-v35
 import { buildImmutableEventTruthV35254, immutableEventTruthV35254Issues } from "./engine/immutable-event-truth-v35254.js";
 import { buildMotivationPersistenceV35255, motivationPersistenceV35255Issues } from "./engine/motivation-persistence-v35255.js";
 import { buildEmotionalRelationshipCoreV35263, emotionalRelationshipCoreV35263Issues } from "./engine/emotional-relationship-core-v35263.js";
+import { buildPursuitEmotionPriorityV35265, pursuitEmotionPriorityV35265Issues } from "./engine/pursuit-emotion-priority-v35265.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2321,6 +2322,12 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     behavior: conversation.intelligence_state?.human_behavior_state || {},
     relationship: conversation.relationship_state || conversation.relationship || {},
   });
+  const pursuitEmotionPriorityV35265 = buildPursuitEmotionPriorityV35265({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2467,6 +2474,8 @@ ${sceneMomentumBarrierV35236}
 ${meaningfulTurnGateV34950}
 
 ${emotionalRelationshipCoreV35263}
+
+${pursuitEmotionPriorityV35265}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line. Emotional Relationship Core 3.52.63 is intentionally injected as a narrow causal bridge so serious feeling changes behavior without restoring the old competing style stack.
 
@@ -3361,6 +3370,12 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     charged_beat_stalled: "Make one character-specific consequential choice without overriding the user's movement or boundaries.",
     charged_beat_abandoned: "Continue the already active charged beat from the final physical state.",
     charged_departure_dropped: "Because the user visibly moved, choose a profile-specific follow-through only if boundaries allow; never restrain or block.",
+    required_pursuit_missing: "Creator rule: the user actually left this live interaction. Move after them in the same turn. Personality controls how, but staying put, watching, or merely calling from behind fails.",
+    departure_passively_released: "Do not let the user simply walk away. Follow physically unless they explicitly forbade pursuit. Do not grab, block, restrain or corner them.",
+    departure_priority_stolen_by_npc: "The user's departure owns this beat. Defer the casual NPC/obligation in one clause or ignore it and continue following.",
+    pursuit_emotion_flattened: "Keep the physical pursuit, but let a grounded emotion or unfinished relational need visibly alter priority. Do not explain feelings like a therapist.",
+    pursuit_boundary_violated: "The user explicitly forbade pursuit or asked for space. Stop following immediately and respect the boundary.",
+    agency_pursuit_boundary_violation: "The user explicitly forbade pursuit or asked for space. Remove the follow/chase and respect the boundary.",
     kinetic_tension_deflated: "Add one earned active choice, not static staring or atmosphere.",
     npc_dialogue_tic_loop: "Let the NPC speak plainly or stay silent; remove sitcom commentary and repeated mannerisms.",
     unsolicited_offscreen_lead_contact: "Remove the convenient message/call and let the newly established scene breathe.",
@@ -3692,6 +3707,14 @@ EMOTIONAL RELATIONSHIP CORE 3.52.63
 - If the character caused the hurt, technical innocence is not an emotional response. They may defend themselves later, but first respond to the relational meaning.
 - Keep emotional residue across turns. Do not snap back into normal teasing after a serious beat without a real repair or redirect.
 - Care must sound like this character, never a therapist, counselor or customer-service script.
+
+PURSUIT + EMOTIONAL PRIORITY 3.52.65
+- CREATOR RULE: if the user actually leaves, storms off, walks away, runs off, exits the room/party, or goes home during the live interaction, the character follows in the same turn unless the user explicitly said not to follow, leave them alone, go away, stay away, back off, or give them space.
+- Following requires physical movement after the user. Watching them go, calling one word from the same place, staying behind, returning to friends/work, or letting another person interrupt does not count.
+- Personality controls HOW the pursuit looks; it never decides to ignore the departure.
+- The pursuit must carry emotional weight. Guilt, anger, concern, fear of losing the moment, attachment, jealousy, hurt, stubbornness or an unfinished need to answer should change priority without turning into therapy-speak.
+- Ordinary NPCs and obligations cannot steal this beat. Defer them and keep moving.
+- Never grab, block, restrain, corner or touch the user merely because pursuit is required. Explicit no-pursuit/no-touch boundaries override everything.
 
 REAL-CONVERSATION CALIBRATION v3.52.40
 - React to what was actually said before advancing plot. Do not answer a different, more dramatic version of the user's line.
@@ -6501,7 +6524,12 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "agency_compulsory_availability",
   "agency_destiny_motive",
   "agency_heroic_service_loop",
-  "agency_automatic_pursuit",
+  "agency_pursuit_boundary_violation",
+  "required_pursuit_missing",
+  "departure_passively_released",
+  "departure_priority_stolen_by_npc",
+  "pursuit_emotion_flattened",
+  "pursuit_boundary_violated",
   "agency_user_orbit_density",
   "agency_autonomy_theater",
   "unsupported_user_reason_claim",
@@ -6754,7 +6782,12 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "agency_compulsory_availability",
   "agency_destiny_motive",
   "agency_heroic_service_loop",
-  "agency_automatic_pursuit",
+  "agency_pursuit_boundary_violation",
+  "required_pursuit_missing",
+  "departure_passively_released",
+  "departure_priority_stolen_by_npc",
+  "pursuit_emotion_flattened",
+  "pursuit_boundary_violated",
   "agency_user_orbit_density",
   "agency_autonomy_theater",
   "knowledge_uncertainty_overconfident_inference",
@@ -6808,7 +6841,8 @@ function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = 
 
   // High-tension micro beats and departures are the exact places where an optimistic
   // raw stream can expose a draft that the validator is about to reject.
-  if (chargedCharacter && ["challenge", "charged_nonverbal", "confrontation", "confrontation_exit", "user_exit"].includes(kind)) return true;
+  if (["confrontation_exit", "user_exit"].includes(kind)) return true;
+  if (chargedCharacter && ["challenge", "charged_nonverbal", "confrontation"].includes(kind)) return true;
 
   // Clarification and vulnerable-flirt questions are small but high-risk for hollow
   // pseudo-clever banter. Validate them before display without slowing ordinary Q&A.
@@ -7323,6 +7357,11 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
     recentCharacterReplies: recent,
     character: options.character || {},
   });
+  const pursuitEmotionIssuesForScore = pursuitEmotionPriorityV35265Issues({
+    reply,
+    latestUserMessage: latest,
+    recentUserMessages: options.recentUserMessages || [],
+  });
   const spontaneityIssuesForScore = humanSpontaneityAntiPatternV34937Issues(reply, latest, recent);
   const knowledgeUncertaintyIssuesForScore = humanKnowledgeUncertaintyV34938Issues(reply, latest, recent);
   const naturalDialogueIssuesForScore = naturalDialogueResetV34940Issues(reply, latest, recent);
@@ -7339,6 +7378,7 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (agencyDesireIssuesForScore.length) score -= Math.min(56, 24 + agencyDesireIssuesForScore.length * 8);
   if (relationshipAttachmentIssuesForScore.length) score -= Math.min(56, 24 + relationshipAttachmentIssuesForScore.length * 8);
   if (emotionalRelationshipIssuesForScore.length) score -= Math.min(92, 52 + emotionalRelationshipIssuesForScore.length * 12);
+  if (pursuitEmotionIssuesForScore.length) score -= Math.min(100, 72 + pursuitEmotionIssuesForScore.length * 12);
   if (spontaneityIssuesForScore.length) score -= Math.min(56, 24 + spontaneityIssuesForScore.length * 8);
   if (naturalDialogueIssuesForScore.length) score -= Math.min(70, 36 + naturalDialogueIssuesForScore.length * 10);
   if (leanCoreIssuesForScore.length) score -= Math.min(80, 40 + leanCoreIssuesForScore.length * 12);
@@ -7422,6 +7462,11 @@ function validateNarrativeReply(reply = "", options = {}) {
     recentUserMessages: options.recentUserMessages || [],
     recentCharacterReplies: options.recentCharacterReplies || [],
     character: options.character || {},
+  })) issues.push(issue);
+  for (const issue of pursuitEmotionPriorityV35265Issues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
   })) issues.push(issue);
   for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
