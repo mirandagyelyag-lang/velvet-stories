@@ -1,9 +1,11 @@
-import { StrictMode } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Capacitor } from "@capacitor/core";
 
 import App from "./App";
 import SpotifyAuthBootstrap from "./components/SpotifyAuthBootstrap";
+import { SpotifyProvider } from "./context/SpotifyContext";
+import SpotifyLibrary from "./components/SpotifyLibrary";
 import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
 
 import { AuthProvider } from "./context/AuthContext";
@@ -83,6 +85,7 @@ import "./styles/velvet-v35256-spotify.css";
 import "./styles/velvet-v35257-spotify-chat-ui-fix.css";
 import "./styles/velvet-v35258-spotify-header.css";
 import "./styles/velvet-v35260-spotify-callback.css";
+import "./styles/velvet-v35262-global-spotify.css";
 
 installMobileViewportLock();
 installInteractionReliability();
@@ -145,6 +148,12 @@ window.addEventListener("unhandledrejection", (event) => {
   recordVelvetRuntimeError(event.reason, "unhandled-rejection");
 });
 
+function SpotifyGlobalMount(){
+  const [open,setOpen]=useState(false);
+  useEffect(()=>{const fn=()=>setOpen(v=>!v);window.addEventListener("velvet:spotify-toggle",fn);return()=>window.removeEventListener("velvet:spotify-toggle",fn)},[]);
+  return <SpotifyLibrary open={open} onClose={()=>setOpen(false)}/>;
+}
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <VelvetErrorBoundary>
@@ -157,8 +166,11 @@ createRoot(document.getElementById("root")).render(
                   <PersonasProvider>
                     <LorebooksProvider>
                       <ChatsProvider>
-                        <SpotifyAuthBootstrap />
-                        <App />
+                        <SpotifyProvider>
+                          <SpotifyAuthBootstrap />
+                          <SpotifyGlobalMount />
+                          <App />
+                        </SpotifyProvider>
                       </ChatsProvider>
                     </LorebooksProvider>
                   </PersonasProvider>

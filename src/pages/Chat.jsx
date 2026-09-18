@@ -52,7 +52,6 @@ import {
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import RoleplayText from "../components/RoleplayText";
-import SpotifyPlayer from "../components/SpotifyPlayer";
 import MemoryBookDrawer from "../components/MemoryBookDrawer";
 import StoryTimelineDrawer from "../components/StoryTimelineDrawer";
 import StorySafeStudioDrawer from "../components/StorySafeStudioDrawer";
@@ -185,7 +184,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [failedGeneration, setFailedGeneration] = useState(null);
   const [retryingGeneration, setRetryingGeneration] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [spotifyOpen, setSpotifyOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -2338,11 +2336,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           </button>
         </div>
         <button
-          className={`chat__icon-button chat__spotify-button${spotifyOpen ? " is-open" : ""}`}
+          className={`chat__icon-button chat__spotify-button`}
           type="button"
-          onClick={() => { setMenuOpen(false); setSpotifyOpen((current) => !current); }}
+          onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent("velvet:spotify-toggle")); }}
           aria-label="Spotify player"
-          aria-expanded={spotifyOpen}
+          aria-expanded="false"
         >
           <Music2 size={19} />
         </button>
