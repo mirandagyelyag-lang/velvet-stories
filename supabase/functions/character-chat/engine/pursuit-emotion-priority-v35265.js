@@ -11,6 +11,21 @@ function explicitNoPursuit(value=""){
   return /\b(?:leave me alone|stop following me|dont follow me|do not follow me|dont come after me|do not come after me|go away|stay away|back off|give me space|i need space|let me go|no me sigas|no vengas detras|no vengas detrás|dejame sola|dejame solo|déjame sola|déjame solo|vete|alejate|aléjate|dame espacio)\b/.test(t);
 }
 
+function isSilentMarker(value=""){
+  const raw=String(value||"").trim();
+  return /^\[(?:SILENT_CONTINUE|RETURN_MAIN_POV)/.test(raw) || /^[.…。]+$/u.test(raw);
+}
+
+function effectiveUserBeat(latestUserMessage="",recentUserMessages=[]){
+  if(!isSilentMarker(latestUserMessage)) return String(latestUserMessage||"");
+  const recent=Array.isArray(recentUserMessages)?recentUserMessages:[];
+  for(let i=recent.length-1;i>=0;i--){
+    const candidate=String(recent[i]||"").trim();
+    if(candidate && !isSilentMarker(candidate)) return candidate;
+  }
+  return String(latestUserMessage||"");
+}
+
 function actualDeparture(value=""){
   const raw=String(value||"");
   const t=norm(raw);
@@ -38,20 +53,22 @@ function npcDiversion(reply=""){
 
 function pursuitFeelsMotivated(reply=""){
   const t=norm(reply);
-  // Do not require an emotion label. Changed priority, urgency, an unfinished
-  // argument, apology, anger, guilt, concern or refusal to let the moment die all count.
-  return /\b(?:wait|hey|hold on|not done|were not done|we are not done|im not done|i am not done|dont walk away|do not walk away|you can be mad|youre mad|you are mad|i didnt mean|i did not mean|im sorry|i am sorry|i fucked up|i messed up|that was on me|i made it worse|i hurt you|i need to answer|let me answer|listen|not like this|cant leave it like this|cannot leave it like this|not letting this end like this|not now|can wait|figure it out|barely looked|without slowing|kept moving)\b/.test(t)
-    || activePursuit(reply);
+  // Physical movement alone is not emotional follow-through. There must also be
+  // a visible relational reason, unfinished conflict, concern, accountability or
+  // changed priority. This prevents sterile "followed a few paces back" prose.
+  return /\b(?:wait|hey|hold on|not done|were not done|we are not done|im not done|i am not done|dont walk away|do not walk away|you can be mad|youre mad|you are mad|i didnt mean|i did not mean|im sorry|i am sorry|i fucked up|i messed up|that was on me|i made it worse|i hurt you|i need to answer|let me answer|listen|not like this|cant leave it like this|cannot leave it like this|not letting this end like this|not now|can wait|figure it out|barely looked|without slowing|kept moving|im coming with you|i am coming with you|you dont get to disappear|you do not get to disappear|im not letting this go|i am not letting this go)\b/.test(t);
 }
 
 export function buildPursuitEmotionPriorityV35265({
   character={},latestUserMessage="",recentUserMessages=[],recentCharacterReplies=[]
 }={}){
+  const effective=effectiveUserBeat(latestUserMessage,recentUserMessages);
   const boundary=explicitNoPursuit([...(Array.isArray(recentUserMessages)?recentUserMessages.slice(-3):[]),latestUserMessage].join(" | "));
-  const departed=actualDeparture(latestUserMessage);
+  const departed=actualDeparture(effective);
+  const carried=isSilentMarker(latestUserMessage)&&effective!==String(latestUserMessage||"");
   return [
-    "PURSUIT + EMOTIONAL PRIORITY 3.52.65 · CREATOR INVARIANT (hidden):",
-    `LATEST USER: ${clean(latestUserMessage,700)||"none"}. DEPARTURE=${departed?"YES":"no"}. NO-PURSUIT BOUNDARY=${boundary?"YES":"no"}.`,
+    "PURSUIT + EMOTIONAL PRIORITY 3.52.67 · CREATOR INVARIANT (hidden):",
+    `LATEST USER: ${clean(latestUserMessage,700)||"none"}. EFFECTIVE BEAT: ${clean(effective,700)||"none"}. CARRIED THROUGH SILENCE=${carried?"YES":"no"}. DEPARTURE=${departed?"YES":"no"}. NO-PURSUIT BOUNDARY=${boundary?"YES":"no"}.`,
     "DEFAULT PURSUIT RULE: if the user physically leaves, storms off, walks away, runs off, exits the room/party, or goes home during the live interaction, THIS CHARACTER FOLLOWS IN THE SAME TURN unless the user explicitly said not to follow, to leave them alone, go away, stay away, back off, or give them space.",
     "THIS IS CREATOR CANON, NOT A PERSONALITY GUESS. Shy, proud, cold, angry, confident, gentle, jealous, practical and guarded characters all obey the pursuit rule. Personality determines HOW: briskly, reluctantly, angrily, quietly, awkwardly, stubbornly, apologetically, etc.",
     "PURSUIT MEANS MOVEMENT. Watching the user leave, tracking them with the eyes, calling one word from the same spot, staying put, returning to friends/work, or letting an NPC interruption take over does NOT satisfy the rule.",
@@ -68,7 +85,8 @@ export function pursuitEmotionPriorityV35265Issues({
   reply="",latestUserMessage="",recentUserMessages=[]
 }={}){
   const context=[...(Array.isArray(recentUserMessages)?recentUserMessages.slice(-3):[]),latestUserMessage].join(" | ");
-  if(!actualDeparture(latestUserMessage)) return [];
+  const effective=effectiveUserBeat(latestUserMessage,recentUserMessages);
+  if(!actualDeparture(effective)) return [];
   if(explicitNoPursuit(context)) {
     return activePursuit(reply) ? ["pursuit_boundary_violated"] : [];
   }
