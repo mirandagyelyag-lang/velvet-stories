@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ExternalLink, Music2, Pause, Play, SkipBack, SkipForward, Unplug, Volume2 } from "lucide-react";
-import { beginSpotifyLogin, disconnectSpotify, finishSpotifyLoginFromUrl, loadSpotifySdk, spotifyApi, spotifyConfigured, spotifyToken } from "../services/spotify";
+import { beginSpotifyLogin, disconnectSpotify, loadSpotifySdk, spotifyApi, spotifyConfigured, spotifyToken } from "../services/spotify";
 
 const storyKey=(id)=>`velvet:spotify:story:${id||"unknown"}:v1`;
 const fmt=(ms)=>`${Math.floor((ms||0)/60000)}:${String(Math.floor(((ms||0)%60000)/1000)).padStart(2,"0")}`;
@@ -22,34 +22,68 @@ export default function SpotifyPlayer({ storyId }) {
     return()=>window.removeEventListener("velvet:spotify-connected",onConnected);
   },[]);
 
-  useEffect(()=>{ let alive=true;
+  useEffect(()=>{ let alive=true; let player=null;
     (async()=>{
       try{
-        await finishSpotifyLoginFromUrl();
+        setError("Starting Spotify player…");
         const token=await spotifyToken();
-        if(!token||!spotifyConfigured||!alive) return;
+        if(!token) { if(alive)setError("Spotify authorization is missing. Connect again."); return; }
+        if(!spotifyConfigured||!alive) return;
+
         const Spotify=await loadSpotifySdk();
         if(!alive) return;
-        const player=new Spotify.Player({name:"Velvet Stories",getOAuthToken:async cb=>cb(await spotifyToken()),volume});
+
+        player=new Spotify.Player({
+          name:"Velvet Stories",
+          getOAuthToken:async cb=>{
+            try{
+              const fresh=await spotifyToken();
+              if(!fresh) throw new Error("Spotify token unavailable.");
+              cb(fresh);
+            }catch(e){
+              if(alive)setError(e?.message||"Spotify authentication failed.");
+            }
+          },
+          volume
+        });
         playerRef.current=player;
-        player.addListener("ready",({device_id})=>{setDeviceId(device_id);setConnected(true)});
-        player.addListener("not_ready",()=>setConnected(false));
-        player.addListener("authentication_error",({message})=>setError(message||"Spotify authentication failed."));
-        player.addListener("account_error",()=>setError("Spotify Premium is required for Velvet playback."));
-        player.addListener("playback_error",({message})=>setError(message||"Spotify playback failed."));
-        player.addListener("player_state_changed",(s)=>{
-          if(!s)return; setState(s);
-          const track=s.track_window?.current_track;
+
+        player.addListener("ready",({device_id})=>{
+          if(!alive)return;
+          setDeviceId(device_id);
+          setConnected(true);
+          setConnecting(false);
+          setError("");
+        });
+        player.addListener("not_ready",({device_id}={})=>{
+          if(!alive)return;
+          setConnected(false);
+          setError(device_id?"Spotify device went offline.":"Spotify player is not ready.");
+        });
+        player.addListener("initialization_error",({message})=>alive&&setError(message||"Spotify player initialization failed."));
+        player.addListener("authentication_error",({message})=>alive&&setError(message||"Spotify authentication failed."));
+        player.addListener("account_error",({message})=>alive&&setError(message||"Spotify Premium account could not start playback."));
+        player.addListener("playback_error",({message})=>alive&&setError(message||"Spotify playback failed."));
+        player.addListener("player_state_changed",(next)=>{
+          if(!next)return;
+          setState(next);
+          const track=next.track_window?.current_track;
           if(track&&storyId) localStorage.setItem(storyKey(storyId),JSON.stringify({
-            uri:track.uri, position:s.position||0, name:track.name,
-            artist:track.artists?.map(a=>a.name).join(", ")||"", image:track.album?.images?.[0]?.url||""
+            uri:track.uri,position:next.position||0,name:track.name,
+            artist:track.artists?.map(a=>a.name).join(", ")||"",
+            image:track.album?.images?.[0]?.url||""
           }));
         });
-        await player.connect();
-      }catch(e){ if(alive)setError(e.message||"Spotify could not start."); }
+
+        const ok=await player.connect();
+        if(!ok&&alive)setError("Spotify SDK loaded, but the Velvet player could not connect.");
+      }catch(e){
+        console.error("Velvet Spotify player boot failed:",e);
+        if(alive)setError(e?.message||"Spotify player could not start.");
+      }
     })();
-    return()=>{alive=false; playerRef.current?.disconnect?.(); playerRef.current=null};
-  },[]);
+    return()=>{alive=false; try{player?.disconnect?.()}catch{} if(playerRef.current===player)playerRef.current=null};
+  },[storyId]);
 
   async function connectSpotify(){
     if(connecting)return;

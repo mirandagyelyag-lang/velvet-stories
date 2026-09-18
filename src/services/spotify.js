@@ -117,16 +117,61 @@ export async function spotifyApi(path, options={}) {
 }
 let sdkPromise;
 export function loadSpotifySdk() {
-  if(window.Spotify) return Promise.resolve(window.Spotify);
-  if(sdkPromise) return sdkPromise;
-  sdkPromise=new Promise((resolve,reject)=>{
-    window.onSpotifyWebPlaybackSDKReady=()=>resolve(window.Spotify);
-    const old=document.querySelector('script[data-velvet-spotify-sdk]');
-    if(old) return;
-    const s=document.createElement("script");
-    s.src="https://sdk.scdn.co/spotify-player.js"; s.async=true; s.dataset.velvetSpotifySdk="1";
-    s.onerror=()=>reject(new Error("Spotify player SDK could not load."));
-    document.head.appendChild(s);
+  if (window.Spotify?.Player) return Promise.resolve(window.Spotify);
+  if (sdkPromise) return sdkPromise;
+
+  sdkPromise = new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      if (window.Spotify?.Player) {
+        settled = true;
+        clearTimeout(timeout);
+        resolve(window.Spotify);
+      }
+    };
+
+    const previousReady = window.onSpotifyWebPlaybackSDKReady;
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      try { previousReady?.(); } catch {}
+      finish();
+    };
+
+    let script = document.querySelector('script[data-velvet-spotify-sdk]');
+    if (!script) {
+      script = document.createElement("script");
+      script.src = "https://sdk.scdn.co/spotify-player.js";
+      script.async = true;
+      script.dataset.velvetSpotifySdk = "1";
+      document.head.appendChild(script);
+    }
+
+    script.addEventListener("load", finish, { once: true });
+    script.addEventListener("error", () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      sdkPromise = null;
+      reject(new Error("Spotify Web Playback SDK could not load."));
+    }, { once: true });
+
+    const poll = setInterval(() => {
+      if (window.Spotify?.Player) {
+        clearInterval(poll);
+        finish();
+      }
+    }, 100);
+
+    const timeout = setTimeout(() => {
+      clearInterval(poll);
+      if (settled) return;
+      settled = true;
+      sdkPromise = null;
+      reject(new Error("Spotify player timed out while starting."));
+    }, 12000);
+
+    finish();
   });
+
   return sdkPromise;
 }
