@@ -9,8 +9,6 @@ const SCOPES = [
   "user-read-playback-state",
   "user-modify-playback-state",
   "user-read-currently-playing",
-  "playlist-read-private",
-  "playlist-read-collaborative",
 ].join(" ");
 
 export const spotifyConfigured = Boolean(CLIENT_ID);
