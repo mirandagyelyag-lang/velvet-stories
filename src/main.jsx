@@ -4,6 +4,7 @@ import { Capacitor } from "@capacitor/core";
 
 import App from "./App";
 import SpotifyAuthBootstrap from "./components/SpotifyAuthBootstrap";
+import SpotifyHub from "./components/SpotifyHub";
 import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
 
 import { AuthProvider } from "./context/AuthContext";
@@ -83,6 +84,7 @@ import "./styles/velvet-v35256-spotify.css";
 import "./styles/velvet-v35257-spotify-chat-ui-fix.css";
 import "./styles/velvet-v35258-spotify-header.css";
 import "./styles/velvet-v35260-spotify-callback.css";
+import "./styles/velvet-v35269-spotify-hub.css";
 
 installMobileViewportLock();
 installInteractionReliability();
@@ -158,6 +160,7 @@ createRoot(document.getElementById("root")).render(
                     <LorebooksProvider>
                       <ChatsProvider>
                         <SpotifyAuthBootstrap />
+                        <SpotifyHub />
                         <App />
                       </ChatsProvider>
                     </LorebooksProvider>
