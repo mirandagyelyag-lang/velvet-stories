@@ -174,3 +174,69 @@
     scroll-padding-bottom: var(--velvet-mobile-content-clearance);
   }
 }
+
+
+/* v3.52.84 NON-OVERLAY MOBILE DOCK */
+@media (max-width: 760px) {
+  :root {
+    --velvet-mobile-dock-gap: 40px;
+    --velvet-mobile-dock-guard-height: calc(
+      var(--velvet-mobile-nav-height, 66px) +
+      var(--velvet-mobile-nav-bottom, max(10px, env(safe-area-inset-bottom))) +
+      var(--velvet-mobile-dock-gap)
+    );
+    --velvet-mobile-route-tail: calc(
+      var(--velvet-mobile-dock-guard-height) + 24px
+    );
+  }
+
+  /* The dock is no longer visually transparent to route content.
+     This creates a solid protected shelf behind it, plus ~1 cm above it,
+     so cards/text cannot remain visible underneath the navigation. */
+  .app:not(.app--chat)::after {
+    content: "";
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 95;
+    height: var(--velvet-mobile-dock-guard-height);
+    pointer-events: none;
+    background: var(--background);
+  }
+
+  /* Put the scrolling tail on the route wrapper itself so every normal
+     screen, present and future, can lift its last control fully above
+     the protected dock shelf. */
+  .app:not(.app--chat) .velvet-route-stage {
+    box-sizing: border-box;
+    padding-bottom: var(--velvet-mobile-route-tail) !important;
+  }
+
+  /* Keep only a small intrinsic page ending. v3.52.83 used large
+     per-page padding, which did not prevent mid-scroll overlap. */
+  .app:not(.app--chat) :where(
+    .chats-page,
+    .character-profile,
+    .memories-page,
+    .personas-page,
+    .lore-page,
+    .profile-page,
+    .settings-page
+  ) {
+    padding-bottom: 24px !important;
+  }
+
+  .mobile-nav {
+    z-index: 100 !important;
+  }
+
+  .mobile-global-search {
+    z-index: 101 !important;
+  }
+
+  html,
+  body {
+    scroll-padding-bottom: var(--velvet-mobile-route-tail);
+  }
+}
