@@ -32,6 +32,20 @@ function artistFor(track) {
   return track?.artists?.map((artist) => artist.name).filter(Boolean).join(", ") || "Spotify";
 }
 
+function primaryArtist(track) {
+  const artist = track?.artists?.[0];
+  if (!artist?.name) return null;
+  return { id: artist.id || "", name: artist.name };
+}
+
+function trackHasArtist(track, anchor) {
+  if (!anchor) return false;
+  return (track?.artists || []).some((artist) => {
+    if (anchor.id && artist?.id) return artist.id === anchor.id;
+    return String(artist?.name || "").toLowerCase() === String(anchor.name || "").toLowerCase();
+  });
+}
+
 function readLastTrack() {
   try {
     return JSON.parse(localStorage.getItem(LAST_TRACK_KEY) || "null");
@@ -74,6 +88,16 @@ function friendlySpotifyError(error) {
 
 export default function SpotifyHub() {
   const playerRef = useRef(null);
+  const deviceIdRef = useRef("");
+  const artistChainRef = useRef(null);
+  const artistAutoplayTimerRef = useRef(null);
+  const artistAutoplayBusyRef = useRef(false);
+  const artistAutoplaySeqRef = useRef(0);
+  const artistAutoplayHistoryRef = useRef([]);
+  const captureArtistOnNextRef = useRef(false);
+  const manualTrackUriRef = useRef("");
+  const lastTrackUriRef = useRef("");
+  const liveSearchSeqRef = useRef(0);
   const [open, setOpen] = useState(false);
   const [authorized, setAuthorized] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -90,6 +114,84 @@ export default function SpotifyHub() {
   const [tracks, setTracks] = useState([]);
   const [homeLoaded, setHomeLoaded] = useState(false);
   const [query, setQuery] = useState("");
+  const [searchBusy, setSearchBusy] = useState(false);
+
+  function clearArtistAutoplayTimer() {
+    if (artistAutoplayTimerRef.current) {
+      window.clearTimeout(artistAutoplayTimerRef.current);
+      artistAutoplayTimerRef.current = null;
+    }
+  }
+
+  function rememberArtistTrack(uri) {
+    if (!uri) return;
+    const next = [uri, ...artistAutoplayHistoryRef.current.filter((item) => item !== uri)].slice(0, 8);
+    artistAutoplayHistoryRef.current = next;
+  }
+
+  async function findNextArtistTrack(anchor, currentUri) {
+    if (!anchor?.name) return null;
+    const cleanArtist = anchor.name.replace(/"/g, "").trim();
+    if (!cleanArtist) return null;
+
+    const data = await spotifyApi(
+      `/search?q=${encodeURIComponent(`artist:"${cleanArtist}"`)}&type=track&limit=10`,
+    );
+    const candidates = (data?.tracks?.items || [])
+      .filter((track) => track?.uri?.startsWith("spotify:track:"))
+      .filter((track) => track.uri !== currentUri)
+      .filter((track) => trackHasArtist(track, anchor));
+
+    if (!candidates.length) return null;
+
+    const fresh = candidates.filter((track) => !artistAutoplayHistoryRef.current.includes(track.uri));
+    const pool = fresh.length ? fresh : candidates;
+    const index = artistAutoplaySeqRef.current % pool.length;
+    artistAutoplaySeqRef.current += 1;
+    return pool[index];
+  }
+
+  async function playNextFromSameArtist(anchor, currentTrack) {
+    if (artistAutoplayBusyRef.current || !anchor || !deviceIdRef.current) return;
+    artistAutoplayBusyRef.current = true;
+    clearArtistAutoplayTimer();
+
+    try {
+      const nextTrack = await findNextArtistTrack(anchor, currentTrack?.uri);
+      if (!nextTrack?.uri) return;
+
+      artistChainRef.current = anchor;
+      rememberArtistTrack(currentTrack?.uri);
+      rememberArtistTrack(nextTrack.uri);
+      setOptimisticTrack(nextTrack);
+      saveLastTrack(nextTrack, 0);
+
+      await spotifyApi(`/me/player/play?device_id=${encodeURIComponent(deviceIdRef.current)}`, {
+        method: "PUT",
+        body: JSON.stringify({ uris: [nextTrack.uri] }),
+      });
+    } catch (autoplayError) {
+      setError(friendlySpotifyError(autoplayError));
+    } finally {
+      artistAutoplayBusyRef.current = false;
+    }
+  }
+
+  function scheduleArtistAutoplay(nextState, currentTrack) {
+    clearArtistAutoplayTimer();
+    if (!currentTrack?.uri || nextState?.paused || !nextState?.duration) return;
+
+    const anchor = artistChainRef.current || primaryArtist(currentTrack);
+    if (!anchor) return;
+    if (!artistChainRef.current) artistChainRef.current = anchor;
+
+    const remaining = Math.max(0, Number(nextState.duration || 0) - Number(nextState.position || 0));
+    if (!remaining) return;
+
+    artistAutoplayTimerRef.current = window.setTimeout(() => {
+      playNextFromSameArtist(anchor, currentTrack);
+    }, remaining + 180);
+  }
 
   useEffect(() => {
     const toggle = () => {
@@ -144,12 +246,14 @@ export default function SpotifyHub() {
 
         player.addListener("ready", ({ device_id }) => {
           if (!alive) return;
+          deviceIdRef.current = device_id;
           setDeviceId(device_id);
           setConnected(true);
           setError("");
         });
         player.addListener("not_ready", () => {
           if (!alive) return;
+          deviceIdRef.current = "";
           setConnected(false);
           setError("Velvet's Spotify player went offline.");
         });
@@ -169,10 +273,37 @@ export default function SpotifyHub() {
           if (!alive || !nextState) return;
           setPlayerState(nextState);
           const current = nextState.track_window?.current_track;
-          if (current) {
-            setOptimisticTrack(current);
-            saveLastTrack(current, nextState.position || 0);
+          if (!current) {
+            clearArtistAutoplayTimer();
+            return;
           }
+
+          setOptimisticTrack(current);
+          saveLastTrack(current, nextState.position || 0);
+
+          const changedTrack = lastTrackUriRef.current !== current.uri;
+          if (changedTrack) {
+            const currentArtist = primaryArtist(current);
+
+            if (manualTrackUriRef.current === current.uri) {
+              artistChainRef.current = currentArtist;
+              manualTrackUriRef.current = "";
+              captureArtistOnNextRef.current = false;
+            } else if (captureArtistOnNextRef.current || !artistChainRef.current) {
+              artistChainRef.current = currentArtist;
+              captureArtistOnNextRef.current = false;
+            } else if (!trackHasArtist(current, artistChainRef.current)) {
+              const desiredArtist = artistChainRef.current;
+              lastTrackUriRef.current = current.uri;
+              playNextFromSameArtist(desiredArtist, current);
+              return;
+            }
+
+            lastTrackUriRef.current = current.uri;
+            rememberArtistTrack(current.uri);
+          }
+
+          scheduleArtistAutoplay(nextState, current);
         });
 
         const didConnect = await player.connect();
@@ -186,6 +317,7 @@ export default function SpotifyHub() {
 
     return () => {
       alive = false;
+      clearArtistAutoplayTimer();
       try {
         player?.disconnect?.();
       } catch {}
@@ -216,6 +348,47 @@ export default function SpotifyHub() {
       cancelled = true;
     };
   }, [open, authorized, connected, homeLoaded]);
+
+  useEffect(() => {
+    if (!open || !authorized || !connected) return undefined;
+
+    const clean = query.trim();
+    const requestId = ++liveSearchSeqRef.current;
+
+    if (!clean) {
+      setSearchBusy(false);
+      setTracks([]);
+      setTitle("Tu Spotify");
+      setView("home");
+      return undefined;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setSearchBusy(true);
+      setError("");
+
+      try {
+        const data = await spotifyApi(
+          `/search?q=${encodeURIComponent(clean)}&type=track&limit=10`,
+        );
+        if (liveSearchSeqRef.current !== requestId) return;
+
+        setTracks((data?.tracks?.items || []).filter((track) => track?.uri));
+        setTitle(`Buscar · ${clean}`);
+        setView("search");
+      } catch (searchError) {
+        if (liveSearchSeqRef.current === requestId) {
+          setError(friendlySpotifyError(searchError));
+        }
+      } finally {
+        if (liveSearchSeqRef.current === requestId) {
+          setSearchBusy(false);
+        }
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [query, open, authorized, connected]);
 
   async function connectSpotify() {
     if (connecting) return;
@@ -251,6 +424,12 @@ export default function SpotifyHub() {
     playerRef.current = null;
     setAuthorized(false);
     setConnected(false);
+    deviceIdRef.current = "";
+    artistChainRef.current = null;
+    captureArtistOnNextRef.current = false;
+    manualTrackUriRef.current = "";
+    lastTrackUriRef.current = "";
+    clearArtistAutoplayTimer();
     setDeviceId("");
     setPlayerState(null);
     setTracks([]);
@@ -263,6 +442,10 @@ export default function SpotifyHub() {
 
   async function playPlaylistContext(playlist) {
     const contextUri = playlist?.uri || (playlist?.id ? `spotify:playlist:${playlist.id}` : "");
+    artistChainRef.current = null;
+    captureArtistOnNextRef.current = true;
+    manualTrackUriRef.current = "";
+    clearArtistAutoplayTimer();
     if (!contextUri || !deviceId) {
       setError("Spotify is still preparing Velvet's playback device.");
       return false;
@@ -340,24 +523,6 @@ export default function SpotifyHub() {
     }
   }
 
-  async function searchSpotify(event) {
-    event?.preventDefault();
-    const clean = query.trim();
-    if (!clean) return;
-    setBusy(true);
-    setError("");
-    try {
-      const data = await spotifyApi(`/search?q=${encodeURIComponent(clean)}&type=track&limit=10`);
-      setTracks((data?.tracks?.items || []).filter((track) => track?.uri));
-      setTitle(`Buscar · ${clean}`);
-      setView("tracks");
-    } catch (searchError) {
-      setError(friendlySpotifyError(searchError));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function playAt(index) {
     const selected = tracks[index];
     if (!selected?.uri || !deviceId) {
@@ -366,20 +531,20 @@ export default function SpotifyHub() {
     }
 
     setError("");
+    clearArtistAutoplayTimer();
+    artistChainRef.current = primaryArtist(selected);
+    manualTrackUriRef.current = selected.uri;
+    captureArtistOnNextRef.current = false;
+    rememberArtistTrack(selected.uri);
     setOptimisticTrack(selected);
     saveLastTrack(selected, 0);
 
     try {
       await playerRef.current?.activateElement?.();
-      const uris = tracks.map((track) => track?.uri).filter(Boolean);
-      const chosen = uris.indexOf(selected.uri);
-      const orderedUris = chosen >= 0
-        ? [...uris.slice(chosen), ...uris.slice(0, chosen)]
-        : [selected.uri];
 
       await spotifyApi(`/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
         method: "PUT",
-        body: JSON.stringify({ uris: orderedUris.slice(0, 100) }),
+        body: JSON.stringify({ uris: [selected.uri] }),
       });
 
       window.setTimeout(async () => {
@@ -404,6 +569,10 @@ export default function SpotifyHub() {
 
   async function previousTrack() {
     try {
+      clearArtistAutoplayTimer();
+      artistChainRef.current = null;
+      captureArtistOnNextRef.current = true;
+      manualTrackUriRef.current = "";
       await playerRef.current?.previousTrack?.();
     } catch (playError) {
       setError(friendlySpotifyError(playError));
@@ -412,6 +581,10 @@ export default function SpotifyHub() {
 
   async function nextTrack() {
     try {
+      clearArtistAutoplayTimer();
+      artistChainRef.current = null;
+      captureArtistOnNextRef.current = true;
+      manualTrackUriRef.current = "";
       await playerRef.current?.nextTrack?.();
     } catch (playError) {
       setError(friendlySpotifyError(playError));
@@ -496,16 +669,23 @@ export default function SpotifyHub() {
           </div>
         ) : (
           <>
-            <form className="velvet-spotify-search" onSubmit={searchSpotify}>
+            <div className="velvet-spotify-search">
               <Search size={17} />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Busca cualquier canción en Spotify"
                 aria-label="Buscar canciones en Spotify"
+                autoComplete="off"
               />
-              <button type="submit" disabled={busy || !query.trim()}>Buscar</button>
-            </form>
+              {searchBusy ? (
+                <LoaderCircle className="spin" size={16} aria-label="Buscando" />
+              ) : query ? (
+                <button type="button" onClick={() => setQuery("")} aria-label="Limpiar búsqueda">
+                  <X size={15} />
+                </button>
+              ) : null}
+            </div>
 
             <main className="velvet-spotify-panel__content">
               {view === "home" ? (
@@ -518,7 +698,7 @@ export default function SpotifyHub() {
 
                   <div className="velvet-spotify-section-title">
                     <span>Tus playlists</span>
-                    {busy && <LoaderCircle className="spin" size={15} />}
+                    {(busy || searchBusy) && <LoaderCircle className="spin" size={15} />}
                   </div>
 
                   <div className="velvet-spotify-list">
