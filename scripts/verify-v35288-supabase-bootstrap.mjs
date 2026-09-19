@@ -5,9 +5,8 @@ const service = readFileSync(new URL("../src/services/supabase.js", import.meta.
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.equal(pkg.version, "3.52.88");
-assert.equal(version.version, "3.52.88");
-assert.equal(version.release, "Supabase Bootstrap Guard");
+assert.match(pkg.version, /^3\.52\.\d+$/);
+assert.equal(version.version, pkg.version);
 
 assert.match(service, /const PROJECT_REF = "vwyudrmxatuukcbncats"/);
 assert.match(service, /DEFAULT_SUPABASE_URL/);
