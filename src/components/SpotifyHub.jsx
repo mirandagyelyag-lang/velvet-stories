@@ -729,10 +729,10 @@ export default function SpotifyHub() {
                 <>
                   <div className="velvet-spotify-section-title">
                     <span>{title}</span>
-                    {busy && <LoaderCircle className="spin" size={15} />}
+                    {(busy || searchBusy) && <LoaderCircle className="spin" size={15} />}
                   </div>
                   <div className="velvet-spotify-list">
-                    {!busy && tracks.length === 0 && (
+                    {!busy && !searchBusy && tracks.length === 0 && (
                       <p className="velvet-spotify-list__empty">No encontré canciones aquí.</p>
                     )}
                     {tracks.map((track, index) => {
