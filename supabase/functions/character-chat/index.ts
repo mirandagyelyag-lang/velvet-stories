@@ -8452,7 +8452,7 @@ async function streamRoleplayV19({
           ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
           remainingHard = hardRepairRequiredIssues(validationIssues);
         }
-        if (blockingNarrativeIssues(validationIssues).length || remainingHard.length) {
+        if (!FIRST_DRAFT_WINS_V35268 && (blockingNarrativeIssues(validationIssues).length || remainingHard.length)) {
           const finalIssues = [...new Set([...blockingNarrativeIssues(validationIssues), ...remainingHard])];
           console.warn("[character-chat] protected reply remained invalid; starting compact final rescue", { issues: finalIssues });
           let finalRescue: ModelResult | null = null;
