@@ -27,6 +27,7 @@ import { usePersonas } from "../context/PersonasContext";
 import { useLorebooks } from "../context/LorebooksContext";
 import { useTheme } from "../context/ThemeContext";
 import StoryVoiceSheet from "../components/StoryVoiceSheet";
+import MemoryBookDrawer from "../components/MemoryBookDrawer";
 import "../styles/character-detail.css";
 
 export default function CharacterDetail({
@@ -53,6 +54,8 @@ export default function CharacterDetail({
   const [storyLorebookId, setStoryLorebookId] = useState("");
   const [memoryCount, setMemoryCount] = useState(0);
   const [styleOpen, setStyleOpen] = useState(false);
+  const [infoPanel, setInfoPanel] = useState("");
+  const [memoryBookOpen, setMemoryBookOpen] = useState(false);
   const [galleryItems, setGalleryItems] = useState([]);
   const [galleryBusy, setGalleryBusy] = useState(false);
   const [galleryError, setGalleryError] = useState("");
@@ -292,171 +295,66 @@ export default function CharacterDetail({
         </div>
       </section>
 
-      <nav className="v311-profile-deck" aria-label={`${character.name} profile sections`}>
-        <button type="button" onClick={()=>document.querySelector(".character-profile__relationship")?.scrollIntoView({behavior:"smooth",block:"start"})}><Heart size={17}/><span><strong>Relationship</strong><small>{humanRelationshipPhase(latestRelationship.relationship_phase)}</small></span><ChevronRight size={15}/></button>
-        <button type="button" onClick={onOpenMemories}><Brain size={17}/><span><strong>Memories</strong><small>{memoryCount} saved</small></span><ChevronRight size={15}/></button>
-        <button type="button" onClick={()=>document.querySelector(".character-profile__stories")?.scrollIntoView({behavior:"smooth",block:"start"})}><MessageCircle size={17}/><span><strong>Stories</strong><small>{stories.length} recent</small></span><ChevronRight size={15}/></button>
-        <button type="button" onClick={()=>setStyleOpen(true)}><SlidersHorizontal size={17}/><span><strong>Story voice</strong><small>How they feel in chat</small></span><ChevronRight size={15}/></button>
+      <nav className="character-profile__app-actions" aria-label={`${character.name} information`}>
+        <button type="button" onClick={()=>setInfoPanel("about")} aria-label="Open character details">
+          <Sparkles size={19}/>
+          <span>About</span>
+        </button>
+        <button type="button" onClick={()=>setInfoPanel("relationship")} aria-label="Open relationship">
+          <Heart size={19}/>
+          <span>Relationship</span>
+          <small>{humanRelationshipPhase(latestRelationship.relationship_phase)}</small>
+        </button>
+        <button type="button" onClick={()=>setMemoryBookOpen(true)} aria-label="Open memories">
+          <Brain size={19}/>
+          <span>Memories</span>
+          <small>{memoryCount}</small>
+        </button>
+        <button type="button" onClick={()=>setInfoPanel("stories")} aria-label="Open stories">
+          <MessageCircle size={19}/>
+          <span>Stories</span>
+          <small>{stories.length}</small>
+        </button>
+        <button type="button" onClick={()=>setInfoPanel("media")} aria-label="Open photos">
+          <Images size={19}/>
+          <span>Photos</span>
+        </button>
+        <button type="button" onClick={()=>setStyleOpen(true)} aria-label="Open story voice">
+          <SlidersHorizontal size={19}/>
+          <span>Voice</span>
+        </button>
       </nav>
 
-      <section className="v311-profile-media v312-profile-media"><header><div><small>MEDIA</small><h2>Photos & covers</h2><p>A private visual scrapbook that follows this character across your devices.</p></div><button type="button" onClick={()=>mediaInputRef.current?.click()} disabled={galleryBusy}><Upload size={17}/>{galleryBusy?"Adding…":"Add photos"}</button></header><input ref={mediaInputRef} type="file" accept="image/*" multiple hidden onChange={uploadGalleryMedia}/>{galleryError&&<div className="v312-profile-media__error">{galleryError}</div>}<div className="v312-profile-media__grid">{mediaItems.map((src,index)=><figure className="is-core" key={`${src}-${index}`}><img src={src} alt="" loading="lazy" decoding="async"/><figcaption>{index===0?"Profile / cover":"Story cover"}</figcaption></figure>)}{galleryItems.map((item)=><figure key={item.path}><img src={item.url} alt="" loading="lazy" decoding="async"/><button type="button" onClick={()=>deleteGalleryMedia(item)} aria-label="Remove photo" disabled={galleryBusy}><Trash2 size={14}/></button></figure>)}{!mediaItems.length&&!galleryItems.length&&<button type="button" className="v312-profile-media__empty" onClick={()=>mediaInputRef.current?.click()}><Images size={22}/><span>Add the first photo</span></button>}</div></section>
+      <input ref={mediaInputRef} type="file" accept="image/*" multiple hidden onChange={uploadGalleryMedia}/>
 
-      <div className="character-profile__layout">
-        <main className="character-profile__main">
-          {character.relationship && (
-            <section className="character-profile__relationship">
-              <div className="character-profile__section-heading">
-                <span className="character-profile__section-icon"><Heart size={17} /></span>
-                <div>
-                  <small>RELATIONSHIP TO YOU</small>
-                  <h2>Your dynamic</h2>
-                </div>
-              </div>
-              <p>{character.relationship}</p>
-            </section>
-          )}
+      <CharacterInfoSheet
+        mode={infoPanel}
+        onClose={()=>setInfoPanel("")}
+        character={character}
+        stories={stories}
+        loading={loading}
+        latestRelationship={latestRelationship}
+        depth={depth}
+        hasWorldSection={hasWorldSection}
+        hasVoiceSection={hasVoiceSection}
+        mediaItems={mediaItems}
+        galleryItems={galleryItems}
+        galleryBusy={galleryBusy}
+        galleryError={galleryError}
+        onAddPhotos={()=>mediaInputRef.current?.click()}
+        onDeletePhoto={deleteGalleryMedia}
+        onOpenStory={(storyId)=>{ setInfoPanel(""); onOpenStory(character, storyId); }}
+        onNewStory={()=>{ setInfoPanel(""); openStorySetup(); }}
+        onStartOpening={()=>{ setInfoPanel(""); openStorySetup(); }}
+      />
 
-          {character.personality && (
-            <section className="character-profile__section">
-              <div className="character-profile__section-heading">
-                <span className="character-profile__section-icon"><Sparkles size={17} /></span>
-                <div>
-                  <small>CHARACTER CORE</small>
-                  <h2>Personality</h2>
-                </div>
-              </div>
-              <p className="character-profile__long-copy">{character.personality}</p>
-
-              {depth.length > 0 && (
-                <div className="character-profile__dna">
-                  {depth.map((item) => (
-                    <article key={item.label}>
-                      <small>{item.label}</small>
-                      <p>{item.value}</p>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {hasWorldSection && (
-            <section className="character-profile__section">
-              <div className="character-profile__section-heading">
-                <span className="character-profile__section-icon"><BookOpen size={17} /></span>
-                <div>
-                  <small>STORY CONTEXT</small>
-                  <h2>World & scenario</h2>
-                </div>
-              </div>
-
-              <div className="character-profile__context-grid">
-                {character.world && (
-                  <article>
-                    <small>WORLD</small>
-                    <p>{character.world}</p>
-                  </article>
-                )}
-                {character.scenario && (
-                  <article>
-                    <small>SCENARIO</small>
-                    <p>{character.scenario}</p>
-                  </article>
-                )}
-              </div>
-            </section>
-          )}
-
-          {hasVoiceSection && (
-            <section className="character-profile__section character-profile__section--quiet">
-              <div className="character-profile__section-heading">
-                <span className="character-profile__section-icon"><Volume2 size={17} /></span>
-                <div>
-                  <small>BEHAVIOR</small>
-                  <h2>Voice & boundaries</h2>
-                </div>
-              </div>
-
-              <div className="character-profile__context-grid">
-                {character.speechStyle && (
-                  <article>
-                    <small>SPEECH STYLE</small>
-                    <p>{character.speechStyle}</p>
-                  </article>
-                )}
-                {character.boundaries && (
-                  <article>
-                    <small>BOUNDARIES</small>
-                    <p>{character.boundaries}</p>
-                  </article>
-                )}
-              </div>
-            </section>
-          )}
-
-          {character.firstMessage && (
-            <section className="character-profile__opening">
-              <div className="character-profile__opening-label">
-                <Quote size={17} />
-                <span>OPENING SCENE</span>
-              </div>
-              <blockquote>{character.firstMessage}</blockquote>
-              <button onClick={openStorySetup}>
-                Start from the beginning <ChevronRight size={16} />
-              </button>
-            </section>
-          )}
-        </main>
-
-        <aside className="character-profile__aside">
-          <section className="character-profile__stories">
-            <header>
-              <div>
-                <small>YOUR STORIES</small>
-                <h2>With {character.name}</h2>
-              </div>
-              <button onClick={openStorySetup} aria-label="Start new story">
-                <Plus size={17} />
-              </button>
-            </header>
-
-            {loading ? (
-              <p className="character-profile__empty">Loading your stories…</p>
-            ) : stories.length ? (
-              <div className="character-profile__story-list">
-                {stories.map((story, index) => (
-                  <button key={story.id} onClick={() => onOpenStory(character, story.id)}>
-                    <span className="character-profile__story-index">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="character-profile__story-copy">
-                      <strong>{story.title || `${character.name} story`}</strong>
-                      <small>{story.branch_parent_id ? "Branch · " : ""}{formatDate(story.updated_at)}</small>
-                    </span>
-                    <ChevronRight size={16} />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="character-profile__empty character-profile__empty--stories">
-                <MessageCircle size={21} />
-                <p>No stories yet.</p>
-                <button onClick={openStorySetup}>Begin the first one</button>
-              </div>
-            )}
-          </section>
-
-          <section className="character-profile__quick-card">
-            <small>STORY STYLE</small>
-            <div>
-              <span>Response</span>
-              <strong>{formatSetting(character.responseLength)}</strong>
-            </div>
-            <div>
-              <span>Narration</span>
-              <strong>{formatSetting(character.narrationStyle)}</strong>
-            </div>
-          </section>
-        </aside>
-      </div>
+      <MemoryBookDrawer
+        open={memoryBookOpen}
+        onClose={()=>setMemoryBookOpen(false)}
+        character={character}
+        conversationId={latestStory?.id || ""}
+        onCountChange={setMemoryCount}
+      />
 
       <StoryVoiceSheet open={styleOpen} onClose={()=>setStyleOpen(false)} character={character} />
 
@@ -483,6 +381,215 @@ export default function CharacterDetail({
       ), document.body)}
     </section>
   );
+}
+
+
+function CharacterInfoSheet({
+  mode,
+  onClose,
+  character,
+  stories,
+  loading,
+  latestRelationship,
+  depth,
+  hasWorldSection,
+  hasVoiceSection,
+  mediaItems,
+  galleryItems,
+  galleryBusy,
+  galleryError,
+  onAddPhotos,
+  onDeletePhoto,
+  onOpenStory,
+  onNewStory,
+  onStartOpening,
+}) {
+  useEffect(() => {
+    if (!mode || typeof document === "undefined") return undefined;
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const previous = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    return () => {
+      Object.assign(body.style, previous);
+      window.scrollTo(0, scrollY);
+    };
+  }, [mode]);
+
+  if (!mode || typeof document === "undefined") return null;
+
+  const titles = {
+    about: ["CHARACTER", character.name],
+    relationship: ["RELATIONSHIP", "You & " + character.name],
+    stories: ["STORIES", "Your stories together"],
+    media: ["PHOTOS", character.name + " gallery"],
+  };
+  const [eyebrow, title] = titles[mode] || ["CHARACTER", character.name];
+  const relationshipDynamic = latestRelationship?.current_dynamic || character.relationship || "Still unfolding.";
+  const relationshipShift = latestRelationship?.recent_shift || latestRelationship?.turning_points?.at?.(-1)?.impact || latestRelationship?.turning_points?.at?.(-1)?.event || "";
+  const contradictions = Array.isArray(latestRelationship?.active_contradictions) ? latestRelationship.active_contradictions : [];
+  const residue = Array.isArray(latestRelationship?.emotional_residue) ? latestRelationship.emotional_residue : [];
+
+  return createPortal((
+    <div className="character-app-sheet-backdrop" onPointerDown={(event)=>event.target===event.currentTarget&&onClose?.()}>
+      <section className="character-app-sheet" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="character-app-sheet__grab" />
+        <header className="character-app-sheet__header">
+          <div>
+            <small>{eyebrow}</small>
+            <h2>{title}</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close"><X size={19}/></button>
+        </header>
+
+        <div className="character-app-sheet__body">
+          {mode === "about" && (
+            <>
+              {character.personality && (
+                <section className="character-app-sheet__section">
+                  <small>PERSONALITY</small>
+                  <p>{character.personality}</p>
+                </section>
+              )}
+
+              {depth.length > 0 && (
+                <section className="character-app-sheet__section">
+                  <small>CHARACTER CORE</small>
+                  <div className="character-app-sheet__detail-list">
+                    {depth.map((item)=><div key={item.label}><strong>{item.label}</strong><p>{item.value}</p></div>)}
+                  </div>
+                </section>
+              )}
+
+              {hasWorldSection && (
+                <section className="character-app-sheet__section">
+                  <small>WORLD & SCENARIO</small>
+                  <div className="character-app-sheet__detail-list">
+                    {character.world && <div><strong>World</strong><p>{character.world}</p></div>}
+                    {character.scenario && <div><strong>Scenario</strong><p>{character.scenario}</p></div>}
+                  </div>
+                </section>
+              )}
+
+              {hasVoiceSection && (
+                <section className="character-app-sheet__section">
+                  <small>BEHAVIOR</small>
+                  <div className="character-app-sheet__detail-list">
+                    {character.speechStyle && <div><strong>Speech style</strong><p>{character.speechStyle}</p></div>}
+                    {character.boundaries && <div><strong>Boundaries</strong><p>{character.boundaries}</p></div>}
+                  </div>
+                </section>
+              )}
+
+              {character.firstMessage && (
+                <section className="character-app-sheet__section character-app-sheet__opening">
+                  <small>OPENING SCENE</small>
+                  <blockquote>{character.firstMessage}</blockquote>
+                  <button type="button" onClick={onStartOpening}>Start from this opening <ChevronRight size={16}/></button>
+                </section>
+              )}
+            </>
+          )}
+
+          {mode === "relationship" && (
+            <>
+              <section className="character-app-sheet__relationship-hero">
+                <span>{humanRelationshipPhase(latestRelationship?.relationship_phase)}</span>
+                <p>{relationshipDynamic}</p>
+              </section>
+
+              {character.relationship && relationshipDynamic !== character.relationship && (
+                <section className="character-app-sheet__section">
+                  <small>SAVED DYNAMIC</small>
+                  <p>{character.relationship}</p>
+                </section>
+              )}
+
+              {relationshipShift && (
+                <section className="character-app-sheet__section">
+                  <small>RECENT SHIFT</small>
+                  <p>{relationshipShift}</p>
+                </section>
+              )}
+
+              {(contradictions.length > 0 || residue.length > 0) && (
+                <section className="character-app-sheet__section">
+                  <small>WHAT IS STILL ACTIVE</small>
+                  <div className="character-app-sheet__detail-list">
+                    {contradictions.slice(-4).map((item,index)=><div key={`c-${index}`}><strong>Tension</strong><p>{typeof item === "string" ? item : item?.text || item?.detail || JSON.stringify(item)}</p></div>)}
+                    {residue.slice(-4).map((item,index)=><div key={`r-${index}`}><strong>Emotional residue</strong><p>{typeof item === "string" ? item : item?.text || item?.detail || JSON.stringify(item)}</p></div>)}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+
+          {mode === "stories" && (
+            <section className="character-app-sheet__stories">
+              <button type="button" className="character-app-sheet__primary-action" onClick={onNewStory}><Plus size={17}/>New story</button>
+              {loading ? (
+                <p className="character-app-sheet__empty">Loading your stories…</p>
+              ) : stories.length ? (
+                <div className="character-app-sheet__story-list">
+                  {stories.map((story,index)=>(
+                    <button type="button" key={story.id} onClick={()=>onOpenStory(story.id)}>
+                      <span>{String(index+1).padStart(2,"0")}</span>
+                      <div><strong>{story.title || `${character.name} story`}</strong><small>{story.branch_parent_id ? "Branch · " : ""}{formatDate(story.updated_at)}</small></div>
+                      <ChevronRight size={16}/>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="character-app-sheet__empty">
+                  <MessageCircle size={22}/>
+                  <p>No stories yet.</p>
+                  <button type="button" onClick={onNewStory}>Begin the first one</button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {mode === "media" && (
+            <section className="character-app-sheet__media">
+              <button type="button" className="character-app-sheet__primary-action" onClick={onAddPhotos} disabled={galleryBusy}>
+                <Upload size={17}/>{galleryBusy ? "Adding…" : "Add photos"}
+              </button>
+              {galleryError && <p className="character-app-sheet__error">{galleryError}</p>}
+              <div className="character-app-sheet__media-grid">
+                {mediaItems.map((src,index)=>(
+                  <figure key={`${src}-${index}`} className="is-core">
+                    <img src={src} alt="" loading="lazy" decoding="async"/>
+                    <figcaption>{index===0 ? "Profile / cover" : "Story cover"}</figcaption>
+                  </figure>
+                ))}
+                {galleryItems.map((item)=>(
+                  <figure key={item.path}>
+                    <img src={item.url} alt="" loading="lazy" decoding="async"/>
+                    <button type="button" onClick={()=>onDeletePhoto(item)} aria-label="Remove photo" disabled={galleryBusy}><Trash2 size={14}/></button>
+                  </figure>
+                ))}
+              </div>
+              {!mediaItems.length && !galleryItems.length && (
+                <button type="button" className="character-app-sheet__empty-photo" onClick={onAddPhotos}><Images size={24}/><span>Add the first photo</span></button>
+              )}
+            </section>
+          )}
+        </div>
+      </section>
+    </div>
+  ), document.body);
 }
 
 function humanRelationshipPhase(value="") {
