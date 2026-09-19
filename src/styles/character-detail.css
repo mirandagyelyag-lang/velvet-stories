@@ -1044,3 +1044,409 @@
     font-size: .6rem;
   }
 }
+
+
+/* v3.52.82 LARGE ACTION DOCK + INLINE EDIT */
+.character-profile__app-actions {
+  width: min(1040px, calc(100% - 28px));
+  min-height: 118px;
+  margin-top: 22px;
+  grid-template-columns: repeat(6, minmax(112px, 1fr));
+  gap: 10px;
+  padding: 8px;
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.character-profile__app-actions > button {
+  min-height: 98px;
+  grid-template-rows: 46px auto auto;
+  gap: 4px;
+  padding: 10px 8px 9px;
+  border-radius: 21px;
+}
+
+.character-profile__app-actions > button svg {
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+}
+
+.character-profile__app-actions > button span {
+  font-size: .79rem;
+  font-weight: 700;
+}
+
+.character-profile__app-actions > button small {
+  font-size: .6rem;
+  line-height: 1.18;
+}
+
+.character-app-sheet {
+  width: min(780px, 100%);
+  max-height: min(88dvh, 900px);
+}
+
+.character-app-sheet__header {
+  min-height: 78px;
+  padding: 14px 22px 17px;
+}
+
+.character-app-sheet__header h2 {
+  font-size: clamp(2rem, 5vw, 2.65rem);
+}
+
+.character-app-sheet__header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.character-app-sheet__header-actions > button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border-radius: 13px;
+  cursor: pointer;
+  font-size: .69rem;
+  font-weight: 700;
+}
+
+.character-app-sheet__header-actions .character-app-sheet__close {
+  width: 40px;
+  padding: 0;
+  color: var(--text-secondary);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
+.character-app-sheet__edit,
+.character-app-sheet__cancel {
+  color: var(--text-primary);
+  background: var(--background);
+  border: 1px solid var(--border);
+}
+
+.character-app-sheet__save {
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid transparent;
+}
+
+.character-app-sheet__body {
+  padding: 10px 24px calc(28px + env(safe-area-inset-bottom));
+}
+
+.character-app-sheet__identity-summary .character-app-sheet__profile-line {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.character-app-sheet__profile-line strong {
+  font: 600 1.25rem/1.2 "Cormorant Garamond", serif;
+}
+
+.character-app-sheet__profile-line span {
+  color: var(--text-primary);
+  font-size: .88rem;
+  line-height: 1.65;
+}
+
+.character-app-sheet__editor {
+  display: grid;
+  gap: 16px;
+  padding: 12px 0 8px;
+}
+
+.character-app-sheet__editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.character-app-sheet__editor-grid--identity {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr);
+}
+
+.character-app-sheet__field {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.character-app-sheet__field > span {
+  display: grid;
+  gap: 3px;
+  color: var(--text-primary);
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+.character-app-sheet__field > span small {
+  color: var(--text-secondary);
+  font-size: .57rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.character-app-sheet__field input,
+.character-app-sheet__field textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  color: var(--text-primary);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  outline: none;
+  font: inherit;
+  font-size: .82rem;
+  line-height: 1.55;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+.character-app-sheet__field input {
+  min-height: 46px;
+  padding: 0 13px;
+}
+
+.character-app-sheet__field textarea {
+  resize: vertical;
+  min-height: 96px;
+  padding: 11px 13px;
+}
+
+.character-app-sheet__field input:focus,
+.character-app-sheet__field textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.character-app-sheet__field input:disabled,
+.character-app-sheet__field textarea:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.character-app-sheet__story-list {
+  gap: 4px;
+}
+
+.character-app-sheet__story-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.character-app-sheet__story-open {
+  min-width: 0;
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  color: var(--text-primary);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.character-app-sheet__story-open > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.character-app-sheet__story-open strong,
+.character-app-sheet__story-open small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.character-app-sheet__story-open strong {
+  font-size: .8rem;
+}
+
+.character-app-sheet__story-open small {
+  color: var(--text-secondary);
+  font-size: .6rem;
+}
+
+.character-app-sheet__story-index {
+  color: var(--gold);
+  font: 600 .72rem "Cormorant Garamond", serif;
+}
+
+.character-app-sheet__story-rename,
+.character-app-sheet__story-edit-actions button {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--text-secondary);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.character-app-sheet__story-row > input {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  color: var(--text-primary);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font: inherit;
+  outline: none;
+}
+
+.character-app-sheet__story-row:has(> input) {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 9px 0;
+}
+
+.character-app-sheet__story-edit-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.character-app-sheet__media-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.character-app-sheet__media-action {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  color: var(--text-primary);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .character-profile__app-actions {
+    width: 100%;
+    min-height: 108px;
+    grid-template-columns: repeat(6, 92px);
+    gap: 4px;
+    margin-top: 12px;
+    padding: 6px 10px 8px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .character-profile__app-actions > button {
+    min-height: 92px;
+    grid-template-rows: 42px auto auto;
+    padding: 8px 5px;
+  }
+
+  .character-profile__app-actions > button svg {
+    width: 40px;
+    height: 40px;
+    padding: 9px;
+  }
+
+  .character-profile__app-actions > button span {
+    font-size: .72rem;
+  }
+
+  .character-profile__app-actions > button small {
+    font-size: .56rem;
+  }
+
+  .character-app-sheet {
+    max-height: 90dvh;
+  }
+
+  .character-app-sheet__header {
+    min-height: 72px;
+    padding: 12px 13px 14px 16px;
+  }
+
+  .character-app-sheet__header h2 {
+    font-size: 2rem;
+  }
+
+  .character-app-sheet__header-actions {
+    gap: 5px;
+  }
+
+  .character-app-sheet__header-actions > button {
+    min-height: 38px;
+    padding: 0 10px;
+  }
+
+  .character-app-sheet__header-actions .character-app-sheet__close {
+    width: 38px;
+    padding: 0;
+  }
+
+  .character-app-sheet__body {
+    padding: 8px 16px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .character-app-sheet__editor-grid,
+  .character-app-sheet__editor-grid--identity {
+    grid-template-columns: 1fr;
+  }
+
+  .character-app-sheet__field input,
+  .character-app-sheet__field textarea {
+    font-size: 16px;
+  }
+
+  .character-app-sheet__story-row {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+
+  .character-app-sheet__media-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .character-app-sheet__media-actions button {
+    min-width: 0;
+    padding-right: 7px;
+    padding-left: 7px;
+    font-size: .65rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .character-profile__app-actions {
+    grid-template-columns: repeat(6, 86px);
+  }
+
+  .character-profile__app-actions > button {
+    min-height: 88px;
+  }
+}
