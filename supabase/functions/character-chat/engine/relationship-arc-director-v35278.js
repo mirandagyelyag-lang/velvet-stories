@@ -95,10 +95,10 @@ function stageIndexFromState({emotionState={},chemistry={},character={},relation
   return Math.max(idx,explicitCanonFloor(character,relationship));
 }
 
-function previousIndex(behavior={}){
+function previousStage(behavior={}){
   const raw=String(behavior?.relationship_arc_stage||"");
   const idx=STAGES.indexOf(raw);
-  return idx>=0?idx:0;
+  return { exists:idx>=0, index:idx>=0?idx:0 };
 }
 
 function conflictMode(chemistry={},emotionState={}){
@@ -134,12 +134,17 @@ export function deriveRelationshipArcStateV35278({
 }={}){
   const route=tropeRoute(character,relationship);
   const derived=stageIndexFromState({emotionState,chemistry,character,relationship});
-  const prev=previousIndex(behavior);
+  const previous=previousStage(behavior);
+  const prev=previous.index;
   const explicitFloor=explicitCanonFloor(character,relationship);
 
-  // Relationship history does not evaporate after one bad beat. Regression is a
-  // mode (setback/repair), not amnesia. New stages still require evidence.
-  const idx=Math.max(explicitFloor,prev,derived);
+  // First install may catch up to already-earned history. Once an arc stage exists,
+  // one saved turn may advance at most one stage. Setbacks change mode/access instead
+  // of deleting accumulated history.
+  const earned=Math.max(explicitFloor,prev,derived);
+  const idx=previous.exists
+    ? Math.max(explicitFloor,prev,Math.min(earned,prev+1))
+    : Math.max(explicitFloor,derived);
   const stage=STAGES[Math.min(idx,STAGES.length-1)];
   const mode=conflictMode(chemistry,emotionState);
   const routeStep=route.steps[Math.min(idx,route.steps.length-1)]||route.steps.at(-1);
