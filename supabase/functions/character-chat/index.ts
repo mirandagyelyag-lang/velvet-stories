@@ -57,6 +57,7 @@ import { buildAutonomousStoryFlowV35275, autonomousStoryFlowV35275Issues } from 
 import { buildPersistentOffscreenLifeUserGravityV35276, persistentOffscreenLifeUserGravityV35276Issues } from "./engine/persistent-offscreen-life-user-gravity-v35276.js";
 import { buildConsequencesThatStickV35277, consequencesThatStickV35277Issues, inferStickyVisibleConsequenceV35277 } from "./engine/consequences-that-stick-v35277.js";
 import { buildRelationshipArcDirectorV35278, deriveRelationshipArcStateV35278, relationshipArcDirectorV35278Issues } from "./engine/relationship-arc-director-v35278.js";
+import { buildChatScopedNpcCanonV35279, filterAuthorizedCastUpdatesV35279, filterAuthorizedConnectionUpdatesV35279 } from "./engine/chat-scoped-npc-canon-v35279.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -385,7 +386,7 @@ Deno.serve(async (request) => {
       turnIntent,
       sceneState: openingRegeneration ? {} : (loaded.conversation.scene_state || {}),
       castState: openingRegeneration ? {} : (loaded.conversation.cast_state || {}),
-      persistentCast: openingRegeneration ? [] : loaded.persistentCast,
+      persistentCast: loaded.persistentCast,
       storyBible: loaded.storyBible,
       castConnections: loaded.castConnections,
       calendarEvents: loaded.calendarEvents,
@@ -414,6 +415,7 @@ Deno.serve(async (request) => {
       conversation: loaded.conversation,
       character: configuredCharacter,
       groupCharacters: loaded.groupCharacters,
+      persistentCast: loaded.persistentCast,
       userIdentity,
       messages,
       memories: selectedMemories,
@@ -470,6 +472,7 @@ Deno.serve(async (request) => {
       prompt: continuityLockedPromptV35254,
       messages,
       character: configuredCharacter,
+      groupCharacters: loaded.groupCharacters,
       latestUserMessage,
       turnIntent,
       userIdentity,
@@ -491,7 +494,7 @@ Deno.serve(async (request) => {
       latestUserMessageId: latestUserRecord?.id || null,
       existingSceneState: openingRegeneration ? {} : (loaded.conversation.scene_state || {}),
       existingCastState: openingRegeneration ? {} : (loaded.conversation.cast_state || {}),
-      persistentCast: openingRegeneration ? [] : loaded.persistentCast,
+      persistentCast: loaded.persistentCast,
       existingRelationshipState: openingRegeneration ? {} : (loaded.conversation.relationship_state || {}),
       existingIntelligenceState: openingRegeneration ? {} : (loaded.conversation.intelligence_state || {}),
       existingUnresolvedThreads: openingRegeneration ? [] : (loaded.conversation.unresolved_threads || []),
@@ -1658,9 +1661,9 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
   // batch finished, creating an avoidable second network phase.
   const optionalContextPromise = Promise.all([
     supabase.from("story_cast_members")
-      .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, updated_at")
-      .eq("conversation_id", conversationId).eq("user_id", userId)
-      .order("updated_at", { ascending: false }).limit(12),
+      .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, is_user_created, updated_at")
+      .eq("conversation_id", conversationId).eq("user_id", userId).eq("is_user_created", true)
+      .order("updated_at", { ascending: false }).limit(20),
     supabase.from("story_bible_entries").select("id, category, title, content, authority, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(16),
     supabase.from("story_cast_connections").select("id, from_name, to_name, relationship, visibility, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(16),
     supabase.from("story_calendar_events").select("id, title, story_time, details, participants, status, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(12),
@@ -1986,6 +1989,7 @@ function buildNarrativePromptV3({
   conversation,
   character,
   groupCharacters = [],
+  persistentCast = [],
   userIdentity,
   messages,
   memories,
@@ -2395,6 +2399,13 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     recentCharacterReplies: recentCharacterRepliesForVoice,
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
+  const chatScopedNpcCanonV35279 = buildChatScopedNpcCanonV35279({
+    userName: userIdentity?.name || "User",
+    character,
+    groupCharacters,
+    userCreatedNpcs: persistentCast,
+    latestUserMessage: latestUserRecord?.content || "",
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2555,6 +2566,8 @@ ${persistentOffscreenLifeUserGravityV35276}
 ${consequencesThatStickV35277}
 
 ${relationshipArcDirectorV35278}
+
+${chatScopedNpcCanonV35279}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line. Emotional Relationship Core 3.52.63 is intentionally injected as a narrow causal bridge so serious feeling changes behavior without restoring the old competing style stack.
 
@@ -3262,6 +3275,7 @@ SCENE CLOCK + ACTION OWNERSHIP 3.52.5
 HIDDEN STATE OUTPUT
 - mind_update is ${character.name}'s SUBJECTIVE mind after this beat. know = supported facts only. believe may be wrong. misunderstand contains a plausible current error, or empty string. want/avoid/wont_admit/outside_priority and short/mid/long goals must describe this character, not the user. Goals should persist unless an on-page event changes them. attachment_pattern is behavioral shorthand only. microvoice changes slowly. emotion_trigger → emotion_interpretation → current_emotion → behavioral_pressure must form a supported causal chain. anticipated_next/private_intention/expected_outcome/feared_outcome are private forecasts, never guaranteed facts. behavioral_pattern and conflict_pattern require transcript evidence. public_private_mode describes context, not a new personality.
 - connection_updates only records relationships BETWEEN named characters that were evidenced or materially changed. Never invent a bond just to fill the array.
+- v3.52.79 CLOSED NPC CAST: cast_updates NEVER creates identities. It may update only an exact user-created NPC already present in this conversation. connection_updates may use only the user, configured/group characters, and those approved NPCs. Unknown supporting people remain unnamed and produce no cast row.
 - temporal_anchor records only supported story time. Use certainty=unknown when the duration is not established.
 - world_consequence records only practical/social fallout caused by a visible or already-canonical event.
 - offscreen_contact may be recorded only if the reply establishes it or it logically follows a canonical plan/relationship; otherwise record=false.
@@ -3675,7 +3689,7 @@ function parseModelEnvelope(raw): ModelEnvelope {
 }
 
 function buildCompactLiveRecoveryPrompt({
-  character = {}, messages = [], latestUserMessage = "", scene = {}, userIdentity = {},
+  character = {}, groupCharacters = [], persistentCast = [], messages = [], latestUserMessage = "", scene = {}, userIdentity = {},
   memories = [], loreEntries = [], storyRecap = "", unresolvedThreads = [],
   relationshipState = {}, castState = {}, intelligenceState = {}, rejectedResponses = [],
   regenerationInstruction = "", regenerationFeedback = [], isRegeneration = false,
@@ -3791,6 +3805,13 @@ function buildCompactLiveRecoveryPrompt({
     recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-5).map((m)=>String(m?.content||"")),
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
+  const chatScopedNpcCanonV35279 = buildChatScopedNpcCanonV35279({
+    userName,
+    character,
+    groupCharacters,
+    userCreatedNpcs: persistentCast,
+    latestUserMessage,
+  });
   return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
 
 GENERATION MODE
@@ -3852,6 +3873,9 @@ ${consequencesThatStickV35277}
 
 RELATIONSHIP ARC DIRECTOR
 ${relationshipArcDirectorV35278}
+
+CHAT-SCOPED NPC CANON
+${chatScopedNpcCanonV35279}
 
 Cast/presence state: ${cleanPromptValue(JSON.stringify(castState || {}), 650)}
 Active plans/commitments: ${cleanPromptValue(JSON.stringify({
@@ -8361,6 +8385,7 @@ async function streamRoleplayV19({
   prompt,
   messages,
   character,
+  groupCharacters = [],
   latestUserMessage,
   turnIntent,
   userIdentity,
@@ -8455,9 +8480,11 @@ async function streamRoleplayV19({
         // v3.50.5 REGEN RECOVERY: streaming is the fast path, never the only path.
         // If every SSE hedge times out/fails before producing a complete envelope,
         // retry once through the proven non-stream failover before showing Retry.
-        const liveSystemInstruction = "Velvet Stories live writer. Write exactly one grounded in-character roleplay turn. Visible recent canon is the source of truth. Never write or decide the user's dialogue, thoughts, feelings, motives, reactions, or unstaged movement. Asterisk narration exposes only externally observable action, never private commentary. Answer the latest conversational job first. Preserve actor/recipient/object ownership, scene physics, boundaries, relationship stage, character-specific voice, knowledge limits, reputation, obligations, and unresolved causal threads. Personality changes tactic and wording, never facts. Prefer plain human speech over quotable performance. Short beats may be one line. Sarcasm cannot reverse causality. Do not invent shared history, personal facts, notifications, time skips, nicknames, jealousy, romance, or interruptions without grounded support. Dialogue must sound spoken in real time: react before advancing, use the character's actual social bandwidth, allow ordinary or incomplete phrasing, and stop when the conversational job is complete. CREATOR PURSUIT RULE: if the user actually leaves/storms off/walks away from the live interaction, physically follow in the same turn unless the user explicitly forbade pursuit or asked for space; ordinary NPCs and obligations cannot steal that beat. Do not turn every turn into banter, a comeback, flirtation, a rhetorical question, an emotional diagnosis, or a hook. Never paraphrase the user's line back, announce subtext, or explain what an expression or silence means. Distinct voice comes from selection, omission, priorities and mistakes—not theatrical vocabulary, catchphrases or cinematic choreography. Silently read the visible dialogue aloud once; if it sounds written to perform a character, simplify it without flattening identity. Silently decide: what just happened, what this character knows, what they want, what they will reveal, and the smallest natural next move. Return only the requested roleplay envelope; never expose hidden reasoning, validators, scores, or engine metadata.";
+        const liveSystemInstruction = "Velvet Stories live writer. Write exactly one grounded in-character roleplay turn. Visible recent canon is the source of truth. Never write or decide the user's dialogue, thoughts, feelings, motives, reactions, or unstaged movement. Asterisk narration exposes only externally observable action, never private commentary. Answer the latest conversational job first. Preserve actor/recipient/object ownership, scene physics, boundaries, relationship stage, character-specific voice, knowledge limits, reputation, obligations, and unresolved causal threads. Personality changes tactic and wording, never facts. Prefer plain human speech over quotable performance. Short beats may be one line. Sarcasm cannot reverse causality. Do not invent shared history, personal facts, notifications, time skips, nicknames, jealousy, romance, or interruptions without grounded support. NAMED NPC LOCK: never invent a proper name for a supporting person. Only names explicitly listed in CHAT-SCOPED NPC CANON may be used; all other supporting people stay unnamed. Dialogue must sound spoken in real time: react before advancing, use the character's actual social bandwidth, allow ordinary or incomplete phrasing, and stop when the conversational job is complete. CREATOR PURSUIT RULE: if the user actually leaves/storms off/walks away from the live interaction, physically follow in the same turn unless the user explicitly forbade pursuit or asked for space; ordinary NPCs and obligations cannot steal that beat. Do not turn every turn into banter, a comeback, flirtation, a rhetorical question, an emotional diagnosis, or a hook. Never paraphrase the user's line back, announce subtext, or explain what an expression or silence means. Distinct voice comes from selection, omission, priorities and mistakes—not theatrical vocabulary, catchphrases or cinematic choreography. Silently read the visible dialogue aloud once; if it sounds written to perform a character, simplify it without flattening identity. Silently decide: what just happened, what this character knows, what they want, what they will reveal, and the smallest natural next move. Return only the requested roleplay envelope; never expose hidden reasoning, validators, scores, or engine metadata.";
         const compactTurnPrompt = buildCompactLiveRecoveryPrompt({
           character,
+          groupCharacters,
+          persistentCast,
           messages,
           latestUserMessage,
           scene: existingSceneState,
@@ -8934,6 +8961,10 @@ async function streamRoleplayV19({
         });
         await persistStoryConnections({
           supabase, userId, conversationId, connectionUpdates: result.connection_updates,
+          userName: userIdentity?.name || "User",
+          character,
+          groupCharacters,
+          userCreatedNpcs: persistentCast,
         });
         await persistStoryDynamics({
           supabase, userId, conversationId, characterName: character.name,
@@ -9125,9 +9156,15 @@ async function persistStoryDynamics({ supabase, userId, conversationId, characte
   }
 }
 
-async function persistStoryConnections({ supabase, userId, conversationId, connectionUpdates = [] }) {
-  if (!Array.isArray(connectionUpdates) || !connectionUpdates.length) return;
-  const rows = connectionUpdates.slice(0, 6).map((item) => ({
+async function persistStoryConnections({
+  supabase, userId, conversationId, connectionUpdates = [],
+  userName = "", character = {}, groupCharacters = [], userCreatedNpcs = [],
+}) {
+  const authorized = filterAuthorizedConnectionUpdatesV35279(connectionUpdates, {
+    userName, character, groupCharacters, userCreatedNpcs,
+  });
+  if (!authorized.length) return;
+  const rows = authorized.slice(0, 6).map((item) => ({
     user_id: userId, conversation_id: conversationId,
     from_name: cleanPromptValue(item?.from_name, 100),
     to_name: cleanPromptValue(item?.to_name, 100),
@@ -9141,16 +9178,17 @@ async function persistStoryConnections({ supabase, userId, conversationId, conne
 }
 
 async function persistStoryCastMembers({ supabase, userId, conversationId, castUpdates = [], previousMembers = [], scene = {} }) {
-  if (!Array.isArray(castUpdates) || !castUpdates.length) return;
-  const previousByName = new Map((Array.isArray(previousMembers) ? previousMembers : []).map((item) => [normalizeText(item?.name), item]));
+  const approved = (Array.isArray(previousMembers) ? previousMembers : []).filter((item) => item?.is_user_created === true && item?.id && item?.name);
+  const authorizedUpdates = filterAuthorizedCastUpdatesV35279(castUpdates, approved);
+  if (!authorizedUpdates.length || !approved.length) return;
+
+  const previousByName = new Map(approved.map((item) => [normalizeText(item.name), item]));
   const present = new Set((Array.isArray(scene?.present) ? scene.present : []).map(normalizeText));
-  const rows = castUpdates.map((item) => {
-    const name = cleanPromptValue(item?.name, 100);
-    const prior = previousByName.get(normalizeText(name)) || {};
-    return {
-      user_id: userId,
-      conversation_id: conversationId,
-      name,
+
+  for (const item of authorizedUpdates.slice(0, 3)) {
+    const prior = previousByName.get(normalizeText(item?.name));
+    if (!prior?.id) continue;
+    const patch = {
       role: cleanPromptValue(item?.role, 180) || prior.role || "",
       personality_note: cleanPromptValue(item?.personality_note, 320) || prior.personality_note || "",
       relationship: cleanPromptValue(item?.relationship, 320) || prior.relationship || "",
@@ -9158,15 +9196,20 @@ async function persistStoryCastMembers({ supabase, userId, conversationId, castU
       goals: cleanPromptValue([item?.goals, item?.next_intention ? `Next: ${item.next_intention}` : ""].filter(Boolean).join(" | "), 320) || prior.goals || "",
       knowledge: cleanPromptValue(item?.knows, 520) || prior.knowledge || "",
       last_interaction: cleanPromptValue(item?.last_interaction, 520) || prior.last_interaction || "",
-      presence: present.has(normalizeText(name)) ? "present" : "off_scene",
+      presence: present.has(normalizeText(prior.name)) ? "present" : "off_scene",
       status: "active",
       turn_count: Math.max(1, Number(prior.turn_count || 0) + 1),
+      is_user_created: true,
       updated_at: new Date().toISOString(),
     };
-  }).filter((row) => row.name);
-  if (!rows.length) return;
-  const { error } = await supabase.from("story_cast_members").upsert(rows, { onConflict: "conversation_id,name" });
-  if (error && error.code !== "42P01") console.warn("[character-chat] cast persistence failed", { message: error.message });
+    const { error } = await supabase.from("story_cast_members")
+      .update(patch)
+      .eq("id", prior.id)
+      .eq("conversation_id", conversationId)
+      .eq("user_id", userId)
+      .eq("is_user_created", true);
+    if (error && error.code !== "42P01") console.warn("[character-chat] authorized cast update failed", { message: error.message });
+  }
 }
 
 async function streamGeminiEnvelopeWithFailover({
