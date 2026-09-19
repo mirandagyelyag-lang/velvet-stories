@@ -11,7 +11,7 @@ export default function RelationshipDrawer({ open, onClose, character, character
   useEffect(() => {
     if (!open || !conversation?.conversationId) return;
     Promise.all([
-      supabase.from("story_cast_members").select("*").eq("conversation_id", conversation.conversationId).order("updated_at", { ascending: false }),
+      supabase.from("story_cast_members").select("*").eq("conversation_id", conversation.conversationId).eq("is_user_created", true).order("updated_at", { ascending: false }),
       supabase.from("story_chemistry_profiles").select("*").eq("conversation_id", conversation.conversationId).order("updated_at", { ascending: false }),
       supabase.from("story_milestones").select("*").eq("conversation_id", conversation.conversationId).order("created_at", { ascending: false }).limit(8),
     ]).then(([castResult, chemistryResult, milestoneResult]) => {
@@ -98,8 +98,8 @@ export default function RelationshipDrawer({ open, onClose, character, character
 
         <section className="living-cast-editor">
           <h3><Users size={15}/> Living cast</h3>
-          <p>Recurring people keep their own relationship, goals and knowledge instead of resetting every scene.</p>
-          {!livingCast.length && <small>No recurring NPC has earned a durable entry yet.</small>}
+          <p>These are the NPCs you created for this chat. Velvet can evolve their relationship, goals and knowledge, but cannot create new named people.</p>
+          {!livingCast.length && <small>No NPCs created for this chat yet.</small>}
           {livingCast.map((member) => <article key={member.id} className="living-cast-editor__card">
             <header><div><strong>{member.name}</strong><small>{member.presence === "present" ? "In this scene" : "Off scene"} · {member.turn_count || 1} beats</small></div><select value={member.status || "active"} onChange={(event)=>changeCast(member.id,"status",event.target.value)}><option value="active">Active</option><option value="inactive">Inactive</option><option value="departed">Departed</option></select></header>
             <label>Role<input value={member.role || ""} onChange={(event)=>changeCast(member.id,"role",event.target.value)}/></label>
