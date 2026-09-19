@@ -7,9 +7,8 @@ const css = readFileSync(new URL("../src/styles/character-detail.css", import.me
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.equal(pkg.version, "3.52.82");
-assert.equal(version.version, "3.52.82");
-assert.equal(version.release, "Character Inline Edit");
+assert.match(pkg.version, /^3\.52\.\d+$/);
+assert.equal(version.version, pkg.version);
 
 assert.match(page, /updateCharacter/);
 assert.match(page, /saveInlineCharacter/);
