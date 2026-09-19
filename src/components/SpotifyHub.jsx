@@ -64,7 +64,7 @@ function spotifyTrackUrl(track) {
 function friendlySpotifyError(error) {
   const message = String(error?.message || error || "Spotify could not complete that action.");
   if (error?.status === 403 || message.includes("(403)")) {
-    return "Spotify needs fresh library permission. Reconnect once and try again.";
+    return "Spotify blocked this action (403). Velvet will not ask you to reconnect for this again.";
   }
   if (error?.status === 429 || message.includes("(429)")) {
     return "Spotify is rate-limiting requests for a moment. Try again shortly.";
@@ -261,6 +261,33 @@ export default function SpotifyHub() {
     setError("");
   }
 
+  async function playPlaylistContext(playlist) {
+    const contextUri = playlist?.uri || (playlist?.id ? `spotify:playlist:${playlist.id}` : "");
+    if (!contextUri || !deviceId) {
+      setError("Spotify is still preparing Velvet's playback device.");
+      return false;
+    }
+
+    try {
+      await playerRef.current?.activateElement?.();
+      await spotifyApi(`/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
+        method: "PUT",
+        body: JSON.stringify({ context_uri: contextUri }),
+      });
+      setError("");
+      window.setTimeout(async () => {
+        try {
+          const nextState = await playerRef.current?.getCurrentState?.();
+          if (nextState) setPlayerState(nextState);
+        } catch {}
+      }, 450);
+      return true;
+    } catch (playError) {
+      setError(friendlySpotifyError(playError));
+      return false;
+    }
+  }
+
   async function openPlaylist(playlist) {
     if (!playlist?.id) return;
     setBusy(true);
@@ -270,10 +297,25 @@ export default function SpotifyHub() {
       const nextTracks = (data?.items || [])
         .map((entry) => entry?.item || entry?.track)
         .filter((track) => track?.uri?.startsWith("spotify:track:"));
+
+      if (!nextTracks.length) {
+        await playPlaylistContext(playlist);
+        return;
+      }
+
       setTracks(nextTracks);
       setTitle(playlist.name || "Playlist");
       setView("tracks");
     } catch (playlistError) {
+      const isRestrictedPlaylist =
+        playlistError?.status === 403 ||
+        String(playlistError?.message || "").includes("(403)");
+
+      if (isRestrictedPlaylist) {
+        await playPlaylistContext(playlist);
+        return;
+      }
+
       setError(friendlySpotifyError(playlistError));
     } finally {
       setBusy(false);
