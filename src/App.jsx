@@ -596,6 +596,7 @@ function App() {
             setCreatorOpen(true);
           }}
           onOpenMemories={() => navigate("memories")}
+          onCharacterUpdated={setPreviewCharacter}
         />
       );
     }
