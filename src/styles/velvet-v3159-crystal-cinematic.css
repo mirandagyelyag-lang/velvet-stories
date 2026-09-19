@@ -403,3 +403,89 @@
     scroll-padding-bottom: var(--velvet-mobile-page-bottom-space);
   }
 }
+
+
+/* v3.52.87 SINGLE MOBILE DOCK EXCLUSION ZONE */
+@media (max-width: 760px) {
+  :root {
+    --velvet-mobile-nav-height: 66px;
+    --velvet-mobile-nav-bottom: max(10px, env(safe-area-inset-bottom));
+    --velvet-mobile-search-rise: 56px;
+    --velvet-mobile-dock-zone: calc(
+      var(--velvet-mobile-nav-height) +
+      var(--velvet-mobile-nav-bottom) +
+      var(--velvet-mobile-search-rise)
+    );
+  }
+
+  /* Keep native document scrolling. No nested viewport and no forced
+     app height. */
+  .app:not(.app--chat),
+  .app:not(.app--chat) .app__content,
+  .app:not(.app--chat) .velvet-route-stage {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-y: visible !important;
+  }
+
+  .app:not(.app--chat) {
+    min-height: 100dvh !important;
+    overflow-x: clip !important;
+  }
+
+  /* One fixed exclusion zone only. It starts high enough to protect
+     the floating search button and the bottom navigation. */
+  .app:not(.app--chat)::after {
+    content: "";
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 95;
+    height: var(--velvet-mobile-dock-zone);
+    pointer-events: none;
+    background: var(--background);
+  }
+
+  /* One scroll tail only. This is the sole place that reserves space
+     for the exclusion zone, preventing the double-block bug. */
+  .app:not(.app--chat) .velvet-route-stage {
+    box-sizing: border-box;
+    padding-bottom: var(--velvet-mobile-dock-zone) !important;
+  }
+
+  /* Remove older per-page bottom reserves so they cannot stack with
+     the route tail. Keep only a small natural page ending. */
+  .app:not(.app--chat) :where(
+    .chats-page,
+    .character-profile,
+    .memories-page,
+    .personas-page,
+    .lore-page,
+    .profile-page,
+    .settings-page
+  ) {
+    padding-bottom: 12px !important;
+  }
+
+  .mobile-nav {
+    z-index: 100 !important;
+    height: var(--velvet-mobile-nav-height) !important;
+    bottom: var(--velvet-mobile-nav-bottom) !important;
+  }
+
+  .mobile-global-search {
+    z-index: 101 !important;
+    bottom: calc(
+      var(--velvet-mobile-nav-bottom) +
+      var(--velvet-mobile-nav-height) +
+      12px
+    ) !important;
+  }
+
+  html,
+  body {
+    overflow-y: auto !important;
+    scroll-padding-bottom: var(--velvet-mobile-dock-zone);
+  }
+}
