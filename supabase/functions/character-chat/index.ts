@@ -53,6 +53,7 @@ import { buildPursuitEmotionPriorityV35265, pursuitEmotionPriorityV35265Issues }
 import { buildPersistentEmotionalLifeV35266, updateRelationshipEmotionCoreV35266 } from "./engine/persistent-emotional-life-v35266.js";
 import { buildEmotionalMomentumIntegrityV35272, emotionalMomentumIntegrityV35272Issues } from "./engine/emotional-momentum-integrity-v35272.js";
 import { buildCharacterLedStoryV35274, characterLedStoryV35274Issues } from "./engine/character-led-story-v35274.js";
+import { buildAutonomousStoryFlowV35275, autonomousStoryFlowV35275Issues } from "./engine/autonomous-story-flow-v35275.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2348,6 +2349,15 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     scene: conversation.scene_state || {},
     mind: conversation.intelligence_state?.character_mind || {},
   });
+  const autonomousStoryFlowV35275 = buildAutonomousStoryFlowV35275({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-10).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+    relationship: conversation.relationship_state || conversation.relationship || {},
+    scene: conversation.scene_state || {},
+    mind: conversation.intelligence_state?.character_mind || {},
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2500,6 +2510,8 @@ ${pursuitEmotionPriorityV35265}
 ${emotionalMomentumIntegrityV35272}
 
 ${characterLedStoryV35274}
+
+${autonomousStoryFlowV35275}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line. Emotional Relationship Core 3.52.63 is intentionally injected as a narrow causal bridge so serious feeling changes behavior without restoring the old competing style stack.
 
@@ -3693,6 +3705,15 @@ function buildCompactLiveRecoveryPrompt({
     scene: scene || {},
     mind: intelligenceState?.character_mind || {},
   });
+  const autonomousStoryFlowV35275 = buildAutonomousStoryFlowV35275({
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-10).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-5).map((m)=>String(m?.content||"")),
+    character,
+    relationship: relationshipState || {},
+    scene: scene || {},
+    mind: intelligenceState?.character_mind || {},
+  });
   return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
 
 GENERATION MODE
@@ -3742,6 +3763,9 @@ ${emotionalMomentumIntegrityV35272}
 
 CHARACTER-LED STORY
 ${characterLedStoryV35274}
+
+AUTONOMOUS STORY FLOW
+${autonomousStoryFlowV35275}
 
 Cast/presence state: ${cleanPromptValue(JSON.stringify(castState || {}), 650)}
 Active plans/commitments: ${cleanPromptValue(JSON.stringify({
@@ -7540,6 +7564,12 @@ function validateNarrativeReply(reply = "", options = {}) {
     latestUserMessage: options.latestUserMessage || "",
     recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
+  for (const issue of autonomousStoryFlowV35275Issues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
+  })) issues.push(issue);
   for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of leanDialogueCoreV34942Issues(text, options.latestUserMessage || "")) issues.push(issue);
@@ -7562,7 +7592,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of meaningfulTurnGateV34950Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
   for (const issue of behavioralTurnIntegrityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
-  for (const issue of sceneMomentumBarrierV35236Issues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
+  for (const issue of sceneMomentumBarrierV35236Issues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
   for (const issue of plainSpeechFirstV34941Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of naturalDialogueResetV34940Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of socialGravityIssues({

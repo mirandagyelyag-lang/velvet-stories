@@ -1,3 +1,5 @@
+import { autonomousSilentStreakV35275 } from "./autonomous-story-flow-v35275.js";
+
 // Velvet v3.52.36 · Live Scene Momentum Barrier
 // Keeps the immediately established scene state authoritative. A short user beat
 // cannot rewind choreography or silently fast-forward to the next location.
@@ -93,26 +95,35 @@ function groundedTimeAdvance(latestUserMessage = "") {
 export function buildSceneMomentumBarrierV35236({ latestUserMessage = "", recentCharacterReplies = [], recentUserMessages = [], character = {} } = {}) {
   const transit = activeTransit(recentCharacterReplies);
   const micro = isMicroBeat(latestUserMessage);
-  const recent = [...list(recentUserMessages).slice(-3), ...list(recentCharacterReplies).slice(-3)].map((x) => String(x || "").slice(0, 500)).join("\n");
-  return `LIVE SCENE MOMENTUM BARRIER 3.52.36 · THE LAST PHYSICAL STATE WINS
-- Treat the immediately established physical state as hard canon. Do not replay actions that already happened and do not skip ahead merely to keep the scene moving.
-- CURRENT TRANSIT=${transit ? "ACTIVE" : "not confirmed"}; LATEST USER BEAT=${micro ? "MICRO REACTION" : "substantive"}.
+  const silentStreak = autonomousSilentStreakV35275(latestUserMessage, recentUserMessages);
+  const delegatedProgression = silentStreak >= 2;
+  const recent = [...list(recentUserMessages).slice(-4), ...list(recentCharacterReplies).slice(-4)].map((x) => String(x || "").slice(0, 500)).join("\n");
+  return `LIVE SCENE MOMENTUM BARRIER 3.52.75 · THE LAST PHYSICAL STATE WINS
+- Treat the immediately established physical state as hard canon. Do not replay actions that already happened and do not skip ahead merely to manufacture excitement.
+- CURRENT TRANSIT=${transit ? "ACTIVE" : "not confirmed"}; LATEST USER BEAT=${micro ? "MICRO REACTION" : "substantive"}; SILENT HANDOFF STREAK=${silentStreak}; DELEGATED PROGRESSION=${delegatedProgression ? "YES" : "no"}.
 - If transit is ACTIVE, the character is already in the moving vehicle. Do NOT reopen doors, re-enter the driver seat, fasten the same seatbelt again, or restart the engine unless an explicit stop/exit happened after the drive began.
-- A nod, sigh, “okay”, closing eyes, silence, or another tiny reaction advances only the emotional beat. It does NOT grant permission to fast-forward several blocks, arrive, park, cut the engine, move indoors, wake the user at the destination, or resolve the scene’s logistics.
-- Let short beats breathe. One glance, one line, one practical adjustment, silence, or continued driving is enough.
+- ${delegatedProgression
+    ? "REPEATED SILENT HANDOFF OVERRIDE: the user has intentionally kept the character in control. The character/world may now progress beyond a micro-reaction. Character-owned actions may complete, grounded time may pass, and already-committed transit may reach its established destination. Never invent a new destination or an unspoken user decision."
+    : "A single nod, sigh, okay, silence, '.', or another tiny reaction advances only the immediate beat. Do not jump several causal steps from ONE microturn."}
+- ${delegatedProgression
+    ? "Do not freeze the story merely because the latest input is short. Preserve causality, then allow one earned transition when it belongs to the character or to motion already underway."
+    : "Let one short beat breathe. One line, one practical adjustment, or continued action is enough."}
+- USER AGENCY FIREWALL: character-owned progression never grants permission to write the user's voluntary movement, dialogue, consent, romantic response, plan, or decision. If the character leaves independently, do not silently relocate the user with them.
 - Preserve live objects and obligations until they are naturally resolved: food, bags, phones, passengers, errands, promised stops, destinations, and unfinished tasks do not vanish because the tone changed.
-- If USER names their own destination, CHARACTER may disagree or offer an alternative, but may not silently replace that destination as a settled fact. The user must get a chance to react before relocation becomes canon.
-- Never compress several causal steps into one turn just to reach the next setting. Arrival needs either explicit elapsed time / transition from the user or enough grounded scene progression to earn it.
+- If USER names their own destination, CHARACTER may disagree or offer an alternative, but may not silently replace that destination as a settled fact.
+- Never compress several unrelated causal steps into one turn. Repeated silent handoff permits earned progression, not teleportation or montage chaos.
 RECENT LIVE CONTEXT:\n${recent || "none"}\nLATEST USER: ${String(latestUserMessage || "").slice(0,700) || "none"}\nCHARACTER: ${String(character?.name || "character").slice(0,100)}`;
 }
 
-export function sceneMomentumBarrierV35236Issues({ reply = "", latestUserMessage = "", recentCharacterReplies = [] } = {}) {
+export function sceneMomentumBarrierV35236Issues({ reply = "", latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [] } = {}) {
   const issues = [];
   const transit = activeTransit(recentCharacterReplies);
   const micro = isMicroBeat(latestUserMessage);
+  const silentStreak = autonomousSilentStreakV35275(latestUserMessage, recentUserMessages);
+  const delegatedProgression = silentStreak >= 2;
   if (transit && restartsVehicle(reply)) issues.push("live_scene_vehicle_rewind");
-  if (transit && micro && !groundedTimeAdvance(latestUserMessage) && arrivalBeat(reply)) issues.push("live_scene_premature_arrival");
-  if (transit && micro && !groundedTimeAdvance(latestUserMessage) && destinationTeleport(reply)) issues.push("live_scene_location_skip");
+  if (transit && micro && !delegatedProgression && !groundedTimeAdvance(latestUserMessage) && arrivalBeat(reply)) issues.push("live_scene_premature_arrival");
+  if (transit && micro && !delegatedProgression && !groundedTimeAdvance(latestUserMessage) && destinationTeleport(reply)) issues.push("live_scene_location_skip");
   if (characterOverridesDestination(reply, latestUserMessage)) issues.push("live_scene_user_destination_overridden");
   return [...new Set(issues)];
 }
@@ -128,11 +139,11 @@ export function sanitizeSceneMomentumBarrierV35236(reply = "", issues = [], cont
 }
 
 export function enforceSceneMomentumBarrierV35236({ reply = "", latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], character = {} } = {}) {
-  const originalIssues = sceneMomentumBarrierV35236Issues({ reply, latestUserMessage, recentCharacterReplies });
+  const originalIssues = sceneMomentumBarrierV35236Issues({ reply, latestUserMessage, recentUserMessages, recentCharacterReplies });
   if (!originalIssues.length) return { reply: String(reply || "").trim(), replaced: false, originalIssues: [], issues: [] };
 
   const sanitized = sanitizeSceneMomentumBarrierV35236(reply, originalIssues, { latestUserMessage });
-  const sanitizedIssues = sceneMomentumBarrierV35236Issues({ reply: sanitized, latestUserMessage, recentCharacterReplies });
+  const sanitizedIssues = sceneMomentumBarrierV35236Issues({ reply: sanitized, latestUserMessage, recentUserMessages, recentCharacterReplies });
   if (sanitized && !sanitizedIssues.length) {
     return { reply: sanitized, replaced: sanitized !== String(reply || "").trim(), originalIssues, issues: [] };
   }
@@ -161,6 +172,6 @@ export function enforceSceneMomentumBarrierV35236({ reply = "", latestUserMessag
     fallback = sanitized || String(reply || "").trim();
   }
 
-  const remaining = sceneMomentumBarrierV35236Issues({ reply: fallback, latestUserMessage, recentCharacterReplies });
+  const remaining = sceneMomentumBarrierV35236Issues({ reply: fallback, latestUserMessage, recentUserMessages, recentCharacterReplies });
   return { reply: fallback.trim(), replaced: true, originalIssues, issues: remaining };
 }
