@@ -615,7 +615,7 @@ export default function SpotifyHub() {
               {error && (
                 <div className="velvet-spotify-now__error">
                   <span>{error}</span>
-                  {(error.includes("permission") || error.includes("403") || error.includes("expired")) && (
+                  {(error.toLowerCase().includes("expired") || error.toLowerCase().includes("session")) && (
                     <button type="button" onClick={reconnectSpotify}>Reconectar</button>
                   )}
                 </div>
