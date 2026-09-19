@@ -1,6 +1,7 @@
 // Velvet Stories v3.52.56 · Spotify PKCE + Web Playback SDK
 const CLIENT_ID = String(import.meta.env.VITE_SPOTIFY_CLIENT_ID || "").trim();
-const TOKEN_KEY = "velvet:spotify:tokens:v1";
+const TOKEN_KEY = "velvet:spotify:tokens:v2";
+const LEGACY_TOKEN_KEYS = ["velvet:spotify:tokens:v1"];
 const VERIFIER_KEY = "velvet:spotify:pkce:v1";
 const SCOPES = [
   "streaming",
@@ -9,6 +10,9 @@ const SCOPES = [
   "user-read-playback-state",
   "user-modify-playback-state",
   "user-read-currently-playing",
+  "playlist-read-private",
+  "playlist-read-collaborative",
+  "user-library-read",
 ].join(" ");
 
 export const spotifyConfigured = Boolean(CLIENT_ID);
@@ -38,6 +42,7 @@ function saveTokens(data) {
 }
 export function disconnectSpotify() {
   localStorage.removeItem(TOKEN_KEY);
+  LEGACY_TOKEN_KEYS.forEach((key) => localStorage.removeItem(key));
 }
 export async function beginSpotifyLogin() {
   if (!CLIENT_ID) throw new Error("Spotify Client ID is missing from this production build.");
@@ -112,7 +117,16 @@ export async function spotifyApi(path, options={}) {
   });
   if(res.status===204) return null;
   if(res.status===401){ disconnectSpotify(); throw new Error("Spotify session expired. Connect again."); }
-  if(!res.ok) throw new Error(`Spotify request failed (${res.status}).`);
+  if(!res.ok) {
+    let detail="";
+    try {
+      const payload=await res.json();
+      detail=String(payload?.error?.message || payload?.message || "").trim();
+    } catch {}
+    const error=new Error(detail ? `Spotify request failed (${res.status}): ${detail}` : `Spotify request failed (${res.status}).`);
+    error.status=res.status;
+    throw error;
+  }
   return res.json();
 }
 let sdkPromise;
