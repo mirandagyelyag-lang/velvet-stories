@@ -16,6 +16,8 @@ import {
   WandSparkles,
   SlidersHorizontal,
   LoaderCircle,
+  Check,
+  Save,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -39,9 +41,10 @@ export default function CharacterDetail({
   onEdit,
   onInstantStory,
   onOpenMemories,
+  onCharacterUpdated,
 }) {
   const [stories, setStories] = useState([]);
-  const { generateInstantStory } = useCharacters();
+  const { generateInstantStory, updateCharacter } = useCharacters();
   const { personas } = usePersonas();
   const { lorebooks } = useLorebooks();
   const { theme } = useTheme();
@@ -60,6 +63,8 @@ export default function CharacterDetail({
   const [galleryBusy, setGalleryBusy] = useState(false);
   const [galleryError, setGalleryError] = useState("");
   const mediaInputRef = useRef(null);
+  const avatarInputRef = useRef(null);
+  const coverInputRef = useRef(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -233,6 +238,89 @@ export default function CharacterDetail({
   const hasWorldSection = Boolean(character.world || character.scenario);
   const hasVoiceSection = Boolean(character.speechStyle || character.boundaries);
 
+  async function saveInlineCharacter(patch = {}) {
+    const payload = {
+      ...character,
+      ...patch,
+      name: String(patch.name ?? character.name ?? "").trim(),
+      role: String(patch.role ?? character.role ?? "").trim(),
+      description: String(patch.description ?? character.description ?? ""),
+      personality: String(patch.personality ?? character.personality ?? ""),
+      relationship: String(patch.relationship ?? character.relationship ?? ""),
+      world: String(patch.world ?? character.world ?? ""),
+      values: String(patch.values ?? character.values ?? ""),
+      fears: String(patch.fears ?? character.fears ?? ""),
+      habits: String(patch.habits ?? character.habits ?? ""),
+      contradictions: String(patch.contradictions ?? character.contradictions ?? ""),
+      coreMotivation: String(patch.coreMotivation ?? character.coreMotivation ?? ""),
+      emotionalDefense: String(patch.emotionalDefense ?? character.emotionalDefense ?? ""),
+      softeningTriggers: String(patch.softeningTriggers ?? character.softeningTriggers ?? ""),
+      growthDirection: String(patch.growthDirection ?? character.growthDirection ?? ""),
+      speechStyle: String(patch.speechStyle ?? character.speechStyle ?? ""),
+      voiceVocabulary: String(patch.voiceVocabulary ?? character.voiceVocabulary ?? ""),
+      humorStyle: String(patch.humorStyle ?? character.humorStyle ?? ""),
+      conflictStyle: String(patch.conflictStyle ?? character.conflictStyle ?? ""),
+      affectionStyle: String(patch.affectionStyle ?? character.affectionStyle ?? ""),
+      verbalTells: String(patch.verbalTells ?? character.verbalTells ?? ""),
+      voiceAvoidances: String(patch.voiceAvoidances ?? character.voiceAvoidances ?? ""),
+      boundaries: String(patch.boundaries ?? character.boundaries ?? ""),
+      scenario: String(patch.scenario ?? character.scenario ?? ""),
+      exampleDialogue: String(patch.exampleDialogue ?? character.exampleDialogue ?? ""),
+      responseLength: patch.responseLength ?? character.responseLength ?? "balanced",
+      narrationStyle: patch.narrationStyle ?? character.narrationStyle ?? "balanced",
+      firstMessage: String(patch.firstMessage ?? character.firstMessage ?? ""),
+      imageUrl: patch.imageUrl ?? character.imageUrl ?? "",
+      coverUrl: patch.coverUrl ?? character.coverUrl ?? "",
+      color: patch.color ?? character.color ?? "#7a2942",
+    };
+    const updated = await updateCharacter(character.id, payload);
+    onCharacterUpdated?.(updated);
+    return updated;
+  }
+
+  async function saveInlineRelationship({ relationship = "", currentDynamic = "" } = {}) {
+    const updated = await saveInlineCharacter({ relationship });
+    if (latestStory?.id) {
+      const nextRelationshipState = {
+        ...latestRelationship,
+        current_dynamic: String(currentDynamic || "").trim(),
+      };
+      const { error } = await supabase
+        .from("conversations")
+        .update({ relationship_state: nextRelationshipState, updated_at: new Date().toISOString() })
+        .eq("id", latestStory.id);
+      if (error) throw error;
+      setStories((current) => current.map((story) => story.id === latestStory.id ? { ...story, relationship_state: nextRelationshipState } : story));
+    }
+    return updated;
+  }
+
+  async function renameStory(storyId, title) {
+    const nextTitle = String(title || "").trim();
+    if (!storyId || !nextTitle) throw new Error("Give this story a name first.");
+    const { error } = await supabase
+      .from("conversations")
+      .update({ title: nextTitle, updated_at: new Date().toISOString() })
+      .eq("id", storyId);
+    if (error) throw error;
+    setStories((current) => current.map((story) => story.id === storyId ? { ...story, title: nextTitle, updated_at: new Date().toISOString() } : story));
+  }
+
+  async function replaceCharacterMedia(event, kind) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    setGalleryBusy(true);
+    setGalleryError("");
+    try {
+      await saveInlineCharacter(kind === "avatar" ? { imageFile: file } : { coverFile: file });
+    } catch (error) {
+      setGalleryError(error?.message || "Could not update that photo.");
+    } finally {
+      setGalleryBusy(false);
+    }
+  }
+
   return (
     <section className="character-profile" style={{ "--character-color": character.color || "var(--accent)" }}>
       <header className="character-profile__topbar">
@@ -326,6 +414,8 @@ export default function CharacterDetail({
       </nav>
 
       <input ref={mediaInputRef} type="file" accept="image/*" multiple hidden onChange={uploadGalleryMedia}/>
+      <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={(event)=>replaceCharacterMedia(event, "avatar")}/>
+      <input ref={coverInputRef} type="file" accept="image/*" hidden onChange={(event)=>replaceCharacterMedia(event, "cover")}/>
 
       <CharacterInfoSheet
         mode={infoPanel}
@@ -346,6 +436,11 @@ export default function CharacterDetail({
         onOpenStory={(storyId)=>{ setInfoPanel(""); onOpenStory(character, storyId); }}
         onNewStory={()=>{ setInfoPanel(""); openStorySetup(); }}
         onStartOpening={()=>{ setInfoPanel(""); openStorySetup(); }}
+        onSaveAbout={saveInlineCharacter}
+        onSaveRelationship={saveInlineRelationship}
+        onRenameStory={renameStory}
+        onChangeAvatar={()=>avatarInputRef.current?.click()}
+        onChangeCover={()=>coverInputRef.current?.click()}
       />
 
       <MemoryBookDrawer
@@ -403,7 +498,20 @@ function CharacterInfoSheet({
   onOpenStory,
   onNewStory,
   onStartOpening,
+  onSaveAbout,
+  onSaveRelationship,
+  onRenameStory,
+  onChangeAvatar,
+  onChangeCover,
 }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [draft, setDraft] = useState({});
+  const [storyEditingId, setStoryEditingId] = useState("");
+  const [storyTitleDraft, setStoryTitleDraft] = useState("");
+  const [storySavingId, setStorySavingId] = useState("");
+
   useEffect(() => {
     if (!mode || typeof document === "undefined") return undefined;
     const body = document.body;
@@ -428,6 +536,15 @@ function CharacterInfoSheet({
     };
   }, [mode]);
 
+  useEffect(() => {
+    setEditing(false);
+    setSaving(false);
+    setSaveError("");
+    setStoryEditingId("");
+    setStoryTitleDraft("");
+    setDraft(buildSheetDraft(mode, character, latestRelationship));
+  }, [mode, character?.id]);
+
   if (!mode || typeof document === "undefined") return null;
 
   const titles = {
@@ -441,22 +558,135 @@ function CharacterInfoSheet({
   const relationshipShift = latestRelationship?.recent_shift || latestRelationship?.turning_points?.at?.(-1)?.impact || latestRelationship?.turning_points?.at?.(-1)?.event || "";
   const contradictions = Array.isArray(latestRelationship?.active_contradictions) ? latestRelationship.active_contradictions : [];
   const residue = Array.isArray(latestRelationship?.emotional_residue) ? latestRelationship.emotional_residue : [];
+  const canEditWholeSheet = mode === "about" || mode === "relationship";
+
+  function updateDraft(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function beginEdit() {
+    setDraft(buildSheetDraft(mode, character, latestRelationship));
+    setSaveError("");
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setDraft(buildSheetDraft(mode, character, latestRelationship));
+    setSaveError("");
+    setEditing(false);
+  }
+
+  async function saveSheet() {
+    if (saving) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      if (mode === "about") {
+        if (!String(draft.name || "").trim()) throw new Error("The character needs a name.");
+        await onSaveAbout?.({
+          name: draft.name,
+          role: draft.role,
+          description: draft.description,
+          personality: draft.personality,
+          values: draft.values,
+          fears: draft.fears,
+          habits: draft.habits,
+          contradictions: draft.contradictions,
+          world: draft.world,
+          scenario: draft.scenario,
+          speechStyle: draft.speechStyle,
+          boundaries: draft.boundaries,
+          firstMessage: draft.firstMessage,
+        });
+      } else if (mode === "relationship") {
+        await onSaveRelationship?.({
+          relationship: draft.relationship,
+          currentDynamic: draft.currentDynamic,
+        });
+      }
+      setEditing(false);
+    } catch (error) {
+      setSaveError(error?.message || "Velvet couldn't save those changes.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveStoryTitle(story) {
+    if (!story?.id || storySavingId) return;
+    setStorySavingId(story.id);
+    setSaveError("");
+    try {
+      await onRenameStory?.(story.id, storyTitleDraft);
+      setStoryEditingId("");
+      setStoryTitleDraft("");
+    } catch (error) {
+      setSaveError(error?.message || "Velvet couldn't rename that story.");
+    } finally {
+      setStorySavingId("");
+    }
+  }
 
   return createPortal((
-    <div className="character-app-sheet-backdrop" onPointerDown={(event)=>event.target===event.currentTarget&&onClose?.()}>
-      <section className="character-app-sheet" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="character-app-sheet-backdrop" onPointerDown={(event)=>event.target===event.currentTarget&&!editing&&onClose?.()}>
+      <section className={`character-app-sheet${editing ? " is-editing" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="character-app-sheet__grab" />
         <header className="character-app-sheet__header">
           <div>
             <small>{eyebrow}</small>
             <h2>{title}</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close"><X size={19}/></button>
+          <div className="character-app-sheet__header-actions">
+            {canEditWholeSheet && !editing && (
+              <button type="button" className="character-app-sheet__edit" onClick={beginEdit}>
+                <Pencil size={16}/><span>Edit</span>
+              </button>
+            )}
+            {editing && (
+              <>
+                <button type="button" className="character-app-sheet__cancel" onClick={cancelEdit} disabled={saving}>Cancel</button>
+                <button type="button" className="character-app-sheet__save" onClick={saveSheet} disabled={saving}>
+                  {saving ? <LoaderCircle className="spin" size={16}/> : <Save size={16}/>}
+                  <span>{saving ? "Saving…" : "Save"}</span>
+                </button>
+              </>
+            )}
+            {!editing && <button type="button" className="character-app-sheet__close" onClick={onClose} aria-label="Close"><X size={19}/></button>}
+          </div>
         </header>
 
         <div className="character-app-sheet__body">
-          {mode === "about" && (
+          {saveError && <p className="character-app-sheet__error" role="status">{saveError}</p>}
+
+          {mode === "about" && editing && (
+            <form className="character-app-sheet__editor" onSubmit={(event)=>{event.preventDefault(); void saveSheet();}}>
+              <div className="character-app-sheet__editor-grid character-app-sheet__editor-grid--identity">
+                <SheetField label="Name" value={draft.name} onChange={(value)=>updateDraft("name", value)} />
+                <SheetField label="Role" value={draft.role} onChange={(value)=>updateDraft("role", value)} />
+              </div>
+              <SheetField label="Short description" value={draft.description} onChange={(value)=>updateDraft("description", value)} textarea rows={3} />
+              <SheetField label="Personality" value={draft.personality} onChange={(value)=>updateDraft("personality", value)} textarea rows={5} />
+              <div className="character-app-sheet__editor-grid">
+                <SheetField label="Values" value={draft.values} onChange={(value)=>updateDraft("values", value)} textarea rows={3} />
+                <SheetField label="Fears" value={draft.fears} onChange={(value)=>updateDraft("fears", value)} textarea rows={3} />
+                <SheetField label="Habits" value={draft.habits} onChange={(value)=>updateDraft("habits", value)} textarea rows={3} />
+                <SheetField label="Contradictions" value={draft.contradictions} onChange={(value)=>updateDraft("contradictions", value)} textarea rows={3} />
+              </div>
+              <SheetField label="World" value={draft.world} onChange={(value)=>updateDraft("world", value)} textarea rows={4} />
+              <SheetField label="Scenario" value={draft.scenario} onChange={(value)=>updateDraft("scenario", value)} textarea rows={4} />
+              <SheetField label="Speech style" value={draft.speechStyle} onChange={(value)=>updateDraft("speechStyle", value)} textarea rows={4} />
+              <SheetField label="Boundaries" value={draft.boundaries} onChange={(value)=>updateDraft("boundaries", value)} textarea rows={4} />
+              <SheetField label="Opening scene" value={draft.firstMessage} onChange={(value)=>updateDraft("firstMessage", value)} textarea rows={6} />
+            </form>
+          )}
+
+          {mode === "about" && !editing && (
             <>
+              <section className="character-app-sheet__section character-app-sheet__identity-summary">
+                <small>PROFILE</small>
+                <div className="character-app-sheet__profile-line"><strong>{character.role || "Character"}</strong><span>{character.description || "No short description yet."}</span></div>
+              </section>
+
               {character.personality && (
                 <section className="character-app-sheet__section">
                   <small>PERSONALITY</small>
@@ -503,7 +733,29 @@ function CharacterInfoSheet({
             </>
           )}
 
-          {mode === "relationship" && (
+          {mode === "relationship" && editing && (
+            <form className="character-app-sheet__editor" onSubmit={(event)=>{event.preventDefault(); void saveSheet();}}>
+              <SheetField
+                label="Relationship to you"
+                hint="The character's saved starting dynamic."
+                value={draft.relationship}
+                onChange={(value)=>updateDraft("relationship", value)}
+                textarea
+                rows={5}
+              />
+              <SheetField
+                label="Current story dynamic"
+                hint={stories.length ? "This changes only the latest story's current relationship state." : "No story exists yet, so this becomes useful once you begin one."}
+                value={draft.currentDynamic}
+                onChange={(value)=>updateDraft("currentDynamic", value)}
+                textarea
+                rows={5}
+                disabled={!stories.length}
+              />
+            </form>
+          )}
+
+          {mode === "relationship" && !editing && (
             <>
               <section className="character-app-sheet__relationship-hero">
                 <span>{humanRelationshipPhase(latestRelationship?.relationship_phase)}</span>
@@ -544,11 +796,37 @@ function CharacterInfoSheet({
               ) : stories.length ? (
                 <div className="character-app-sheet__story-list">
                   {stories.map((story,index)=>(
-                    <button type="button" key={story.id} onClick={()=>onOpenStory(story.id)}>
-                      <span>{String(index+1).padStart(2,"0")}</span>
-                      <div><strong>{story.title || `${character.name} story`}</strong><small>{story.branch_parent_id ? "Branch · " : ""}{formatDate(story.updated_at)}</small></div>
-                      <ChevronRight size={16}/>
-                    </button>
+                    <article key={story.id} className="character-app-sheet__story-row">
+                      {storyEditingId === story.id ? (
+                        <>
+                          <span className="character-app-sheet__story-index">{String(index+1).padStart(2,"0")}</span>
+                          <input
+                            value={storyTitleDraft}
+                            onChange={(event)=>setStoryTitleDraft(event.target.value)}
+                            onKeyDown={(event)=>{ if(event.key==="Enter"){ event.preventDefault(); void saveStoryTitle(story); } }}
+                            autoFocus
+                            aria-label="Story title"
+                          />
+                          <div className="character-app-sheet__story-edit-actions">
+                            <button type="button" onClick={()=>{setStoryEditingId("");setStoryTitleDraft("");}} aria-label="Cancel rename"><X size={15}/></button>
+                            <button type="button" onClick={()=>saveStoryTitle(story)} disabled={storySavingId===story.id || !storyTitleDraft.trim()} aria-label="Save story title">
+                              {storySavingId===story.id ? <LoaderCircle className="spin" size={15}/> : <Check size={15}/>}
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" className="character-app-sheet__story-open" onClick={()=>onOpenStory(story.id)}>
+                            <span className="character-app-sheet__story-index">{String(index+1).padStart(2,"0")}</span>
+                            <div><strong>{story.title || `${character.name} story`}</strong><small>{story.branch_parent_id ? "Branch · " : ""}{formatDate(story.updated_at)}</small></div>
+                            <ChevronRight size={16}/>
+                          </button>
+                          <button type="button" className="character-app-sheet__story-rename" onClick={()=>{setStoryEditingId(story.id);setStoryTitleDraft(story.title || `${character.name} story`);}} aria-label="Rename story">
+                            <Pencil size={15}/>
+                          </button>
+                        </>
+                      )}
+                    </article>
                   ))}
                 </div>
               ) : (
@@ -563,9 +841,13 @@ function CharacterInfoSheet({
 
           {mode === "media" && (
             <section className="character-app-sheet__media">
-              <button type="button" className="character-app-sheet__primary-action" onClick={onAddPhotos} disabled={galleryBusy}>
-                <Upload size={17}/>{galleryBusy ? "Adding…" : "Add photos"}
-              </button>
+              <div className="character-app-sheet__media-actions">
+                <button type="button" className="character-app-sheet__media-action" onClick={onChangeAvatar} disabled={galleryBusy}><Pencil size={16}/><span>Avatar</span></button>
+                <button type="button" className="character-app-sheet__media-action" onClick={onChangeCover} disabled={galleryBusy}><Images size={16}/><span>Cover</span></button>
+                <button type="button" className="character-app-sheet__primary-action" onClick={onAddPhotos} disabled={galleryBusy}>
+                  <Upload size={17}/>{galleryBusy ? "Adding…" : "Add photos"}
+                </button>
+              </div>
               {galleryError && <p className="character-app-sheet__error">{galleryError}</p>}
               <div className="character-app-sheet__media-grid">
                 {mediaItems.map((src,index)=>(
@@ -590,6 +872,43 @@ function CharacterInfoSheet({
       </section>
     </div>
   ), document.body);
+}
+
+function SheetField({ label, hint = "", value = "", onChange, textarea = false, rows = 3, disabled = false }) {
+  return (
+    <label className="character-app-sheet__field">
+      <span>{label}{hint && <small>{hint}</small>}</span>
+      {textarea ? (
+        <textarea rows={rows} value={value || ""} onChange={(event)=>onChange(event.target.value)} disabled={disabled}/>
+      ) : (
+        <input value={value || ""} onChange={(event)=>onChange(event.target.value)} disabled={disabled}/>
+      )}
+    </label>
+  );
+}
+
+function buildSheetDraft(mode, character = {}, latestRelationship = {}) {
+  if (mode === "relationship") {
+    return {
+      relationship: character.relationship || "",
+      currentDynamic: latestRelationship.current_dynamic || character.relationship || "",
+    };
+  }
+  return {
+    name: character.name || "",
+    role: character.role || "",
+    description: character.description || "",
+    personality: character.personality || "",
+    values: character.values || "",
+    fears: character.fears || "",
+    habits: character.habits || "",
+    contradictions: character.contradictions || "",
+    world: character.world || "",
+    scenario: character.scenario || "",
+    speechStyle: character.speechStyle || "",
+    boundaries: character.boundaries || "",
+    firstMessage: character.firstMessage || "",
+  };
 }
 
 function humanRelationshipPhase(value="") {
