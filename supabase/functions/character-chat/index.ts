@@ -64,6 +64,7 @@ const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini
 const GEMINI_RECOVERY_MODEL = Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-3.5-flash";
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
 const VELVET_OWNER_EMAIL = "mirandagyelyag@gmail.com";
+const FIRST_DRAFT_WINS_V35268 = true;
 
 type ModelEnvelope = {
   reply: string;
@@ -8346,7 +8347,7 @@ async function streamRoleplayV19({
         // One bounded repair only for structural or severe user-facing naturalism issues.
         // Continuity metadata never triggers another Gemini call. Deterministic
         // continuity merging protects stored scene state without adding latency.
-        if (blocking.length) {
+        if (!FIRST_DRAFT_WINS_V35268 && blocking.length) {
           console.log("[character-chat] bounded repair started", { issues: blocking, firstDraftDurationMs });
           repairUsed = true;
           // Raw draft prose stays quarantined while repair runs. Only a reply that
@@ -8447,11 +8448,11 @@ async function streamRoleplayV19({
         }
 
         let remainingHard = hardRepairRequiredIssues(validationIssues);
-        if (remainingHard.length) {
+        if (!FIRST_DRAFT_WINS_V35268 && remainingHard.length) {
           ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
           remainingHard = hardRepairRequiredIssues(validationIssues);
         }
-        if (blockingNarrativeIssues(validationIssues).length || remainingHard.length) {
+        if (!FIRST_DRAFT_WINS_V35268 && (blockingNarrativeIssues(validationIssues).length || remainingHard.length)) {
           const finalIssues = [...new Set([...blockingNarrativeIssues(validationIssues), ...remainingHard])];
           console.warn("[character-chat] protected reply remained invalid; starting compact final rescue", { issues: finalIssues });
           let finalRescue: ModelResult | null = null;
@@ -8506,7 +8507,9 @@ async function streamRoleplayV19({
         // the untouched model draft captured before validators. If both are
         // empty, make one clean non-stream recovery call rather than saving a
         // ghost bubble.
-        let persistableReply = String(result?.reply || "").trim() || String(originalResult?.reply || "").trim() || String(modelDraftReply || "").trim();
+        let persistableReply = FIRST_DRAFT_WINS_V35268
+          ? (String(originalResult?.reply || "").trim() || String(modelDraftReply || "").trim())
+          : (String(result?.reply || "").trim() || String(originalResult?.reply || "").trim() || String(modelDraftReply || "").trim());
         if (!persistableReply) {
           sendEvent(controller, { type: "diagnostic", phase: "blank-reply-recovery", reason: "all-local-candidates-empty" });
           const blankRecovery = await callGeminiWithFailover({
@@ -8521,7 +8524,7 @@ async function streamRoleplayV19({
           if (blankRecovery?.model) sendEvent(controller, { type: "model", model: blankRecovery.model });
         }
         if (!persistableReply) throw new Error("Velvet received an empty model reply after recovery; nothing was saved.");
-        if (openingRegeneration && !instantStoryLooksComplete(persistableReply, result?.finishReason || "STOP", character)) {
+        if (!FIRST_DRAFT_WINS_V35268 && openingRegeneration && !instantStoryLooksComplete(persistableReply, result?.finishReason || "STOP", character)) {
           throw new Error("Instant Story regeneration could not produce a complete grounded opening. The previous opening was kept; please try again.");
         }
 
@@ -8536,10 +8539,17 @@ async function streamRoleplayV19({
           recentCharacterReplies,
           character,
         });
-        persistableReply = String(regressionFinal.reply || "").trim();
-        if (regressionFinal.replaced) {
-          console.warn("[character-chat] v3.52.37 regression shield repaired final prose", {
-            issues: regressionFinal.originalIssues || [],
+        if (!FIRST_DRAFT_WINS_V35268) {
+          persistableReply = String(regressionFinal.reply || "").trim();
+          if (regressionFinal.replaced) {
+            console.warn("[character-chat] v3.52.37 regression shield repaired final prose", {
+              issues: regressionFinal.originalIssues || [],
+            });
+          }
+        } else if (regressionFinal.replaced || (regressionFinal.issues || []).length) {
+          console.warn("[character-chat] first-draft-wins kept original prose despite validator findings", {
+            replacedWouldHaveOccurred: Boolean(regressionFinal.replaced),
+            issues: regressionFinal.issues || regressionFinal.originalIssues || [],
           });
         }
 
@@ -8551,7 +8561,7 @@ async function streamRoleplayV19({
         absoluteFinalIssues = [...new Set([...absoluteFinalIssues, ...validateContinuityEnvelope({ ...result, reply: persistableReply }, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
         const absoluteFinalBlocking = blockingNarrativeIssues(absoluteFinalIssues);
         const absoluteFinalHard = hardRepairRequiredIssues(absoluteFinalIssues);
-        if (absoluteFinalBlocking.length || absoluteFinalHard.length || regressionFinal.issues?.length) {
+        if (!FIRST_DRAFT_WINS_V35268 && (absoluteFinalBlocking.length || absoluteFinalHard.length || regressionFinal.issues?.length)) {
           const absoluteIssues = [...new Set([...absoluteFinalBlocking, ...absoluteFinalHard, ...(regressionFinal.issues || [])])];
           const deterministicFinal = buildGroundedLastResortReply({
             character, latestUserMessage, recentUserMessages, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: absoluteIssues,
@@ -8588,7 +8598,7 @@ async function streamRoleplayV19({
 
         if (!persistableReply) throw new Error("Velvet final turn barrier produced no safe reply; nothing was saved.");
         result = { ...result, reply: persistableReply };
-        await streamFinalReply(persistableReply, "v35237-regression-shield");
+        await streamFinalReply(persistableReply, FIRST_DRAFT_WINS_V35268 ? "v35268-first-draft-wins" : "v35237-regression-shield");
 
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: persistableReply })
