@@ -1403,6 +1403,109 @@ ${Subject} gathered what the faster option required, but stopped before committi
 “Tell me which inconvenience you hate less,” ${subject} said. “I can work with either one.”`;
 }
 
+
+// OPENING DNA 3.52.89
+const OPENING_DNA_FAMILIES_V35289 = [
+  {
+    id: "party",
+    label: "party / shared social gathering",
+    source: /\b(?:party|house party|frat|fraternity|birthday|afterparty|gathering|celebration|night out|club|bar|fiesta)\b/i,
+    output: /\b(?:party|guests?|music|drink|living room|kitchen|porch|balcony|backyard|hallway|upstairs|downstairs|crowd|host|frat|fraternity|club|bar|afterparty|gathering)\b/i,
+  },
+  {
+    id: "motors",
+    label: "racing / cars / garage world",
+    source: /\b(?:street race|racing|racer|race|garage|car meet|track|circuit|mechanic|workshop)\b/i,
+    output: /\b(?:race|racing|garage|car|cars|engine|track|circuit|workshop|pit|driver|roadside|gas station)\b/i,
+  },
+  {
+    id: "sports",
+    label: "sports / training world",
+    source: /\b(?:practice|training|stadium|match|game|football|soccer|basketball|rugby|athlete|team practice|locker room)\b/i,
+    output: /\b(?:practice|training|stadium|field|court|game|match|team|locker room|equipment|coach)\b/i,
+  },
+  {
+    id: "campus",
+    label: "university / campus world",
+    source: /\b(?:campus|university|college|class|lecture|library|dorm|student|seminar)\b/i,
+    output: /\b(?:campus|university|college|class|lecture|library|dorm|student|seminar|quad|professor|hall)\b/i,
+  },
+  {
+    id: "work",
+    label: "work / business world",
+    source: /\b(?:office|company|client|meeting|executive|boardroom|coworker|workplace|shift|hotel event)\b/i,
+    output: /\b(?:office|company|client|meeting|boardroom|coworker|work|workplace|shift|lobby|conference|event)\b/i,
+  },
+  {
+    id: "family",
+    label: "family event / home-social world",
+    source: /\b(?:family dinner|family event|wedding|relative|cousin|sibling|parents?|aunt|uncle|family gathering)\b/i,
+    output: /\b(?:family|dinner|wedding|relative|cousin|sibling|parent|aunt|uncle|table|guests?|house|home)\b/i,
+  },
+  {
+    id: "home",
+    label: "home / apartment world",
+    source: /\b(?:apartment|living room|kitchen|bedroom|hallway|balcony|at home|his place|her place|their place)\b/i,
+    output: /\b(?:apartment|living room|kitchen|bedroom|hallway|balcony|house|home|doorway|building)\b/i,
+  },
+];
+
+function openingDnaSourceV35289(draft = {}) {
+  return [
+    cleanPromptValue(draft?.firstMessage || draft?.first_message || "", 1100),
+    cleanPromptValue(draft?.scenario || "", 700),
+    cleanPromptValue(draft?.world || "", 700),
+  ].filter(Boolean).join(" ");
+}
+
+function openingDnaFamilyV35289(draft = {}) {
+  const source = openingDnaSourceV35289(draft);
+  if (!source) return null;
+  return OPENING_DNA_FAMILIES_V35289.find((family) => family.source.test(source)) || null;
+}
+
+function buildOpeningDnaContractV35289(draft = {}, idea = "") {
+  const primaryOpening = cleanPromptValue(draft?.firstMessage || draft?.first_message || "", 1100);
+  const scenario = cleanPromptValue(draft?.scenario || "", 650);
+  const world = cleanPromptValue(draft?.world || "", 650);
+  const cleanIdea = cleanPromptValue(idea || "", 420);
+  const family = openingDnaFamilyV35289(draft);
+
+  if (!primaryOpening && !scenario && !world) {
+    return "No creator opening DNA is configured. Build from the character profile without inventing user history.";
+  }
+
+  return `CREATOR OPENING DNA — HIGHEST AUTHORITY FOR FRESH OPENINGS
+Primary opening: ${primaryOpening || "not specified"}
+Scenario: ${scenario || "not specified"}
+World: ${world || "not specified"}
+Detected narrative ecosystem: ${family?.label || "derive it directly from the creator opening"}
+
+- The primary opening is DESIGN INTENT, not merely sample prose. It defines the kind of place, social ecosystem, relationship geometry, level of familiarity, and recurring life this character belongs to.
+- A fresh Instant Story may change the immediate conflict, room, hour, NPC pressure, who starts the problem, or what information surfaces, but it must still feel like another plausible opening for THIS SAME character.
+- Do NOT use “variety” as permission to teleport into an unrelated scenario family. If the creator opening is a party, stay in the party / house-gathering / afterparty social orbit. If it is racing, stay in the racing/car world. If it is training, stay in the sports world. Apply the same principle to other clearly established ecosystems.
+- Preserve the configured relationship stage. Do not turn established friends into strangers, enemies into casual friends, or existing attraction into instant confession.
+- The creator's explicit IDEA may deliberately relocate or override the setting. When IDEA conflicts with the primary opening, follow IDEA while preserving character identity and relationship continuity.
+- Never copy the primary opening sentence-by-sentence. Preserve its DNA, not its wording.
+${cleanIdea ? `- Explicit creator IDEA for this generation: ${cleanIdea}` : "- No explicit relocation was requested. Stay inside the creator opening's ecosystem."}`;
+}
+
+function instantStoryOpeningAnchorIssuesV35289(opening = "", draft = {}, idea = "") {
+  if (cleanPromptValue(idea || "", 420)) return [];
+  const family = openingDnaFamilyV35289(draft);
+  if (!family) return [];
+  return family.output.test(String(opening || "")) ? [] : ["opening_context_drift"];
+}
+
+function pickInstantConflictSeedV35289(pool = [], variationKey = "", recentSceneSeeds = []) {
+  const recent = new Set((Array.isArray(recentSceneSeeds) ? recentSceneSeeds : []).map((item) => String(item || "").trim()).filter(Boolean));
+  const available = pool.filter((seed) => !recent.has(seed));
+  const candidates = available.length ? available : pool;
+  const entropy = `${variationKey}|${Date.now()}|${Math.random()}`;
+  const hash = [...entropy].reduce((value, character) => ((value * 33) + character.charCodeAt(0)) >>> 0, 5381);
+  return candidates[hash % Math.max(1, candidates.length)] || pool[0] || "";
+}
+
 // CONFLICT-FIRST STORY ENGINE 3.52.47
 const INSTANT_STORY_CONFLICT_SEEDS_V35247 = [
   "A friend-group disagreement is already underway because two people have incompatible versions of the same event. Nobody has enough proof to end it yet.",
@@ -1416,13 +1519,21 @@ const INSTANT_STORY_CONFLICT_SEEDS_V35247 = [
   "The group is about to make a decision that will affect someone who is not present. The lead character objects to how the decision is being made, not merely to the outcome.",
 ];
 
-function instantStoryConflictSeedV35247(draft, idea = "") {
+function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", recentSceneSeeds = []) {
   const cleanIdea = cleanPromptValue(idea, 420);
   if (cleanIdea) return `USER-SPECIFIED DIRECTION: ${cleanIdea}`;
   const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
   const ensemble = /\b(?:friend group|group of|same group|friends|team|teammates|roommates|siblings|family|coworkers|colleagues|crew|club|social circle|popular|campus king|campus prince)\b/.test(profile);
   const conflictHeavy = /\b(?:guarded|proud|loyal|conflict|argument|fight|protect|danger|rumor|reputation|secret|betray|trust)\b/.test(profile);
+  const family = openingDnaFamilyV35289(draft);
   const pool = [...INSTANT_STORY_CONFLICT_SEEDS_V35247];
+  if (family?.id === "party") {
+    pool.push(
+      "Inside the established party/social-gathering world, a private accusation or piece of information reaches the wrong part of the group and changes the room before the facts are clear.",
+      "Inside the established party/social-gathering world, two people arrive with incompatible versions of something that happened earlier that night, forcing the lead character to take a position before the truth is complete.",
+      "Inside the established party/social-gathering world, somebody crosses a real boundary in front of witnesses and the social consequences begin before anyone agrees on what actually happened."
+    );
+  }
   if (!ensemble) {
     pool.push(
       "A consequential outside problem is already affecting the lead character and the user from different directions. A third force may be an institution, family member, coworker, rival, obligation, rumor, or off-screen person with a real stake.",
@@ -1432,7 +1543,7 @@ function instantStoryConflictSeedV35247(draft, idea = "") {
   if (conflictHeavy) {
     pool.push("A known pressure point from the character profile becomes public at the worst possible moment. The lead character must manage loyalty, reputation, and incomplete truth at once.");
   }
-  return `CONFLICT STRUCTURE: ${pool[Math.floor(Math.random() * pool.length)]}`;
+  return `CONFLICT STRUCTURE: ${pickInstantConflictSeedV35289(pool, variationKey, recentSceneSeeds)}`;
 }
 
 function instantStoryConflictFallbackV35247(draft, idea = "", sceneSeed = "") {
@@ -1443,8 +1554,53 @@ function instantStoryConflictFallbackV35247(draft, idea = "", sceneSeed = "") {
   const subject = male ? "he" : female ? "she" : "they";
   const Subject = subject[0].toUpperCase() + subject.slice(1);
   const social = /\b(?:friend group|group of|same group|friends|team|roommates|social|popular|campus king|campus prince)\b/.test(profile);
+  const openingFamily = openingDnaFamilyV35289(draft);
 
-  if (social) return `The argument had already gone past the point where anyone could pretend it was casual. One person in the group had a screenshot open on their phone; another was insisting the message had been forwarded out of context. The accusation had changed twice in five minutes, but the newest version put your name in the middle of it.
+  if (openingFamily?.id === "party") return `The party had already split into smaller conversations by the time an argument broke out near the kitchen. Music still carried in from the living room, but the people closest to the counter had stopped pretending not to listen. Someone had a screenshot open on their phone. Someone else was insisting it had been cropped to make them look guilty. Your name had been dragged into the newest version.
+
+${name} came in from the hallway halfway through it and listened long enough to catch the contradiction.
+
+“No. Start again.”
+
+One of the people by the counter laughed without humor. “You heard me.”
+
+“I heard you change the story twice.” ${name} held out a hand for the phone. “That’s not the same thing.”
+
+The screenshot showed half a conversation, no useful timestamp, and nothing proving who had sent it beyond the party. Enough to turn the room against somebody. Not enough to make the accusation true.
+
+A voice from the living room called your name and asked whether someone should go get you.
+
+${name} looked toward the doorway, then back at the phone.
+
+“No.”
+
+The person beside ${subject} frowned. “No?”
+
+“You made the accusation.” ${name} set the phone on the counter between them. “You explain the part you keep skipping before anybody turns this into her problem.”
+
+For the first time, nobody answered immediately.
+
+The music kept going in the next room.
+
+${name} noticed the hesitation.
+
+“Yeah,” ${subject} said. “That part.”`;
+
+  const anchorLead = openingFamily?.id === "motors"
+    ? "At the garage, with the car world around them,"
+    : openingFamily?.id === "sports"
+      ? "At the training facility, before everyone had fully cleared out,"
+      : openingFamily?.id === "campus"
+        ? "On campus, while the usual flow of students continued around them,"
+        : openingFamily?.id === "work"
+          ? "At the character's workplace, while the workday was still actively unfolding,"
+          : openingFamily?.id === "family"
+            ? "At the family gathering, with other relatives still close enough to hear,"
+            : openingFamily?.id === "home"
+              ? "Inside the apartment, with the rest of the evening still in progress,"
+              : "";
+
+  if (social) return `${anchorLead ? `${anchorLead} ` : ""}The argument had already gone past the point where anyone could pretend it was casual. One person in the group had a screenshot open on their phone; another was insisting the message had been forwarded out of context. The accusation had changed twice in five minutes, but the newest version put your name in the middle of it.
 
 ${name} had listened long enough to hear the contradictions before ${subject} finally stepped in.
 
@@ -1470,7 +1626,7 @@ ${name} noticed.
 
 “Yeah,” ${subject} said. “That part.”`;
 
-  return `${name} had been in the middle of a tense conversation when a new message changed the shape of it. Someone connected to ${subject} had repeated a private claim as fact, and another person had just contradicted it with information neither side had mentioned before.
+  return `${anchorLead ? `${anchorLead} ` : ""}${name} had been in the middle of a tense conversation when a new message changed the shape of it. Someone connected to ${subject} had repeated a private claim as fact, and another person had just contradicted it with information neither side had mentioned before.
 
 ${name} read the message twice.
 
@@ -1505,11 +1661,16 @@ ${name} waited.
 “Go on,” ${subject} said.`;
 }
 
-async function handleInstantStory({ apiKey, draft, idea }) {
+async function handleInstantStory({ apiKey, draft, idea, variationKey = "", recentSceneSeeds = [] }) {
   const safeDraft = compactInstantStoryDraft(draft);
   const cleanIdea = cleanPromptValue(idea || "", 420);
-  const sceneSeed = instantStoryConflictSeedV35247(safeDraft, cleanIdea);
+  const sceneSeed = instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds);
+  const openingDna = buildOpeningDnaContractV35289(safeDraft, cleanIdea);
+  const openingFamily = openingDnaFamilyV35289(safeDraft)?.id || "profile-derived";
   const prompt = `Write one substantial opening scene for a private roleplay with this character. TARGET 260-380 WORDS; hard ceiling 420 words. Never return fewer than 130 words. It must feel like opening a story that was already alive before the first line: people have motives, incomplete information, history, and something meaningful to lose. Do not write a teaser, summary, character advertisement, writing prompt, date setup, or tiny exchange.
+
+OPENING DNA 3.52.89
+${openingDna}
 
 CONFLICT-FIRST STORY ENGINE 3.52.47
 - STORY BEFORE ROMANCE: the central problem must still matter if all romantic attraction were removed. Attraction may color a decision, loyalty, attention, restraint, jealousy, or risk, but it is never the whole plot.
@@ -1532,10 +1693,12 @@ CONFLICT-FIRST STORY ENGINE 3.52.47
 - Make at least THREE details specific to this character's actual life, voice, relationships, conflict style, or world. A generic attractive character should not be able to inherit the scene unchanged.
 - Output ONLY finished story prose. Never expose these rules, labels, seeds, profile fields, or placeholders.
 
-LOCATION + WORLD DIVERSITY
-- Do not default to university/campus/class/library just because the character is a student. Academic settings require the user's IDEA to request them or a strong profile-specific reason.
-- Location serves the conflict; it is not the plot. A kitchen, club, street, apartment, workplace, garage, restaurant, trip, family event, practice space, or group gathering is useful only when something consequential is happening there.
-- Avoid generic errands and “practical complication” templates. Instant Story should generate a narrative problem, not a chore.
+LOCATION + WORLD CONTINUITY
+- The creator's PRIMARY OPENING decides the default narrative ecosystem. Do not choose a random location family just to look diverse.
+- Diversity happens INSIDE that ecosystem: change the pressure, conflict, part of the venue, timing, NPC agenda, information gap, and emotional consequence.
+- If the primary opening is a party, a no-IDEA Instant Story must still belong to the party / house-gathering / afterparty social orbit. Do not jump to a library, office, station, random errand, or unrelated date setup.
+- Do not default to university/campus/class/library merely because the character is a student unless the creator opening itself establishes that ecosystem or IDEA explicitly asks for it.
+- Location serves the conflict; it is not the plot. Avoid generic errands and “practical complication” templates. Instant Story should generate a narrative problem, not a chore.
 
 SCENE SEED
 ${sceneSeed}
@@ -1585,8 +1748,10 @@ ${cleanIdea || "No user-specified premise. Build a conflict-first opening from t
       const candidate = data?.candidates?.[0] || {};
       const opening = extractCandidateText(data).trim();
       const finishReason = String(candidate?.finishReason || "");
-      if (!instantStoryLooksComplete(opening, finishReason, safeDraft)) {
-        console.warn("[character-chat] instant story rejected by conflict-first quality gate", {
+      const anchorIssues = instantStoryOpeningAnchorIssuesV35289(opening, safeDraft, cleanIdea);
+      if (!instantStoryLooksComplete(opening, finishReason, safeDraft) || anchorIssues.length) {
+        console.warn("[character-chat] instant story rejected by conflict-first/opening-DNA quality gate", {
+          anchorIssues,
           model,
           finishReason,
           words: opening.split(/\s+/).filter(Boolean).length,
@@ -1613,7 +1778,7 @@ ${cleanIdea || "No user-specified premise. Build a conflict-first opening from t
         finishReason: winner.finishReason,
         durationMs: Date.now() - startedAt,
       });
-      return json({ opening: winner.opening, source: "ai" });
+      return json({ opening: winner.opening, source: "ai", sceneSeed, openingFamily });
     }
   } finally {
     closed = true;
@@ -1622,11 +1787,12 @@ ${cleanIdea || "No user-specified premise. Build a conflict-first opening from t
 
   console.warn("[character-chat] instant story using conflict-first local fallback", { durationMs: Date.now() - startedAt });
   const fallbackOpening = instantStoryConflictFallbackV35247(safeDraft, cleanIdea, sceneSeed);
-  if (!instantStoryLooksComplete(fallbackOpening, "STOP", safeDraft)) {
-    console.error("[character-chat] conflict-first fallback failed quality gate");
+  const fallbackAnchorIssues = instantStoryOpeningAnchorIssuesV35289(fallbackOpening, safeDraft, cleanIdea);
+  if (!instantStoryLooksComplete(fallbackOpening, "STOP", safeDraft) || fallbackAnchorIssues.length) {
+    console.error("[character-chat] conflict-first fallback failed quality gate", { fallbackAnchorIssues });
     return json({ error: "Instant Story could not produce a complete opening. Please try again." }, 503);
   }
-  return json({ opening: fallbackOpening, source: "local_fallback" });
+  return json({ opening: fallbackOpening, source: "local_fallback", sceneSeed, openingFamily });
 }
 
 async function handleCharacterGenerate({ apiKey, concept }) {
@@ -2097,10 +2263,23 @@ function buildNarrativePromptV3({
     recap: cleanPromptValue(conversation.story_recap || conversation.summary || "", 900),
     unfinished: Array.isArray(conversation.intelligence_state?.unfinished_business) ? conversation.intelligence_state.unfinished_business.slice(-5) : [],
   }).slice(0, 5200);
+  const openingDnaV35289 = buildOpeningDnaContractV35289(character, regenerationInstruction);
   const regenV3500 = openingRegeneration
-    ? `Write a materially different opening from this rejected one: ${clean(openingSeed, 700)}`
+    ? `OPENING REGENERATION 3.52.89
+- Rejected opening is not canon: ${clean(openingSeed, 700)}
+- Preserve CREATOR OPENING DNA below. Change the conflict, immediate pressure, dialogue, NPC agenda, and beat shape without abandoning the creator's narrative ecosystem.
+- Do not invent a prior user action. Do not relocate to a random setting merely to be different.
+- If the creator opening is a party, remain in the party / house-gathering / afterparty social orbit unless the creator direction explicitly requests another setting.
+
+CREATOR OPENING DNA
+${openingDnaV35289}`
     : isRegeneration
-      ? `Regenerate from the SAME branch point. Make a genuinely different choice, not a paraphrase. Optional direction: ${clean(regenerationInstruction || "none", 500)}`
+      ? `NORMAL REGENERATION 3.52.89 — SAME BRANCH
+- Resume from the exact same branch point, location, time, cast, physical facts, relationship stage, and unresolved pressure.
+- Make a genuinely different character choice/tactic, not a paraphrase or gesture swap.
+- Do not safe-reset into bland acknowledgement, passive waiting, therapist language, or a new scene.
+- Never invent a new user action to justify the rewrite.
+- Optional creator direction: ${clean(regenerationInstruction || "none", 500)}`
       : "Continue canon from the last visible turn.";
 
   return `VELVET STORIES 3.50 · CONVERSATION CORE RESET
@@ -2195,6 +2374,9 @@ ${latest || "none"}
 
 GENERATION MODE
 ${regenV3500}
+
+${openingRegeneration ? `PRIMARY CHARACTER OPENING · CREATOR AUTHORITY
+${clean(character.first_message || character.firstMessage || "not specified", 1100)}` : ""}
 
 LANGUAGE
 ${clean(responseLanguage || "match the conversation", 120)}
@@ -3716,23 +3898,29 @@ function buildCompactLiveRecoveryPrompt({
     `Goals/preferences: ${cleanPromptValue(`${userIdentity?.goals || ""} ${userIdentity?.preferences || ""}`, 500)}`,
     `Boundaries: ${cleanPromptValue(userIdentity?.boundaries, 420)}`,
   ].join("\n");
-  const normalRegenerationContract = `NORMAL MESSAGE REGENERATION — SAME BRANCH, NEW RESPONSE
+  const openingDnaV35289 = buildOpeningDnaContractV35289(character, regenerationInstruction);
+  const normalRegenerationContract = `NORMAL MESSAGE REGENERATION 3.52.89 — SAME BRANCH, NEW RESPONSE
 - The rejected character message is NOT canon, but everything before it is canon.
 - Resume from the exact physical and conversational state immediately after LATEST USER TURN.
 - Preserve location, time, people present, posture, possessions, unfinished actions, knowledge, relationship stage, emotional residue, promises and open threads.
-- Answer the same user act/question. Do not jump to a new scene, reset the relationship, replay an earlier beat, or invent a different user action.
-- Produce a genuinely different response: change the character's decision, conversational tactic, dialogue and beat structure—not just synonyms, gestures or sentence order.
+- Answer the same user act/question. Do not jump to a new scene, reset the relationship, replay an earlier beat, add a time skip, introduce a convenient new NPC, or invent a different user action.
+- Produce a genuinely different response: change at least TWO of the character's concrete action, conversational tactic, emotional emphasis, decision, or dialogue opening. Do not merely swap synonyms, gestures, or sentence order.
+- DO NOT SAFE-RESET: a charged beat cannot regenerate into bland acknowledgement, “all right, I'm listening,” therapist language, passive waiting, or handing initiative back to the user.
+- If the latest user turn delegated a choice, make the choice. If it established a departure, confrontation, confession, refusal, or boundary, respond to that exact event rather than dodging sideways.
 - Do not mention the rejected version or the act of regenerating.`;
-  const openingRegenerationContract = `INSTANT STORY REGENERATION — NEW OPENING, SAME PEOPLE AND WORLD
+  const openingRegenerationContract = `INSTANT STORY REGENERATION 3.52.89 — NEW OPENING, SAME CREATOR DNA
 - This is an opening with NO prior user turn. Never continue the rejected opening and never reply to an imaginary action by the user.
 - Keep the configured character identity, relationship premise, user persona, lore, boundaries and story preferences.
-- The rejected opening is NOT canon. Choose a materially different scenario skeleton: different immediate situation, activity, entrance, tension and dialogue—not a reskin of its location or props.
-- Establish where they are, why the character and user are in contact, what is happening now and one playable point of interaction.
+- The rejected opening is NOT canon. Change the immediate conflict, pressure, dialogue, NPC agenda and beat structure, but remain inside CREATOR OPENING DNA unless CREATOR DIRECTION explicitly relocates the scene.
+- “Different” does NOT mean a different random location family. A party opening can regenerate into another part/moment/problem of that party/social world; it cannot silently become a library, office, station, errand or unrelated date.
+- Establish where they are, why the character and user are in contact, what is happening now and one playable pressure point.
 - Do not narrate the user's dialogue, thoughts, feelings, decisions or unstaged movement. Leave the user room to answer.
-- Write 150-230 words and never fewer than 130. Use 3-6 purposeful narration sentences and 3-7 natural spoken lines or fragments. This must be a complete scene opening, not a tiny exchange, teaser, fragment, generic mystery hook or summary.
-- Do not default to a university, classroom, lab, dorm, library or campus merely because the character is a student. Use their wider life unless the configured scenario specifically requires an academic setting.
-- Never manufacture prior behavior or possessions for the user through lines such as “did you bring your notes?”, “are we doing this again?”, “you always forget”, or another unsupported shared anecdote.
-- Do not mention regeneration.`;
+- Write 150-230 words and never fewer than 130. Use purposeful narration plus natural spoken lines. This must be a complete scene opening, not a tiny exchange, teaser, fragment, generic mystery hook or summary.
+- Never manufacture unsupported prior behavior or possessions for the user.
+- Do not mention regeneration.
+
+CREATOR OPENING DNA
+${openingDnaV35289}`;
   const modeContract = openingRegeneration
     ? openingRegenerationContract
     : isRegeneration
@@ -3922,10 +4110,13 @@ REAL-CONVERSATION CALIBRATION v3.52.40
 - Read the visible dialogue aloud privately. If it sounds like an author performing a character instead of a person talking, simplify it once.`;
 }
 
-function enforceOpeningRegenerationQuality(issues = [], result = {}, openingRegeneration = false, character = {}) {
+function enforceOpeningRegenerationQuality(issues = [], result = {}, openingRegeneration = false, character = {}, regenerationInstruction = "") {
   const next = Array.isArray(issues) ? [...issues] : [];
   if (openingRegeneration && !instantStoryLooksComplete(result?.reply, result?.finishReason || "STOP", character)) {
     next.push("instant_opening_incomplete_or_ungrounded");
+  }
+  if (openingRegeneration) {
+    next.push(...instantStoryOpeningAnchorIssuesV35289(result?.reply || "", character, regenerationInstruction));
   }
   return [...new Set(next)];
 }
@@ -8579,7 +8770,7 @@ async function streamRoleplayV19({
           turnContract,
         });
         validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
-        validationIssues = enforceOpeningRegenerationQuality(validationIssues, result, openingRegeneration, character);
+        validationIssues = enforceOpeningRegenerationQuality(validationIssues, result, openingRegeneration, character, regenerationInstruction);
         const originalResult = result;
         const originalIssues = validationIssues;
         const continuityIssuesBeforeRepair = originalIssues.filter((issue) => CONTINUITY_GUARD_ISSUES.has(issue));
@@ -8646,7 +8837,7 @@ async function streamRoleplayV19({
             turnContract,
           });
           repairedIssues.push(...validateContinuityEnvelope(repaired, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies }));
-          repairedIssues.splice(0, repairedIssues.length, ...enforceOpeningRegenerationQuality(repairedIssues, repaired, openingRegeneration, character));
+          repairedIssues.splice(0, repairedIssues.length, ...enforceOpeningRegenerationQuality(repairedIssues, repaired, openingRegeneration, character, regenerationInstruction));
           // v3.49.21: if the bounded repair STILL turns an obvious sarcastic contradiction
           // into a semantic riff/comedy bit, do not surface it. Use a tiny character-shaped
           // conversational fallback that answers the challenged claim without touching the
@@ -8718,7 +8909,7 @@ async function streamRoleplayV19({
             character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
           }) : finalIssues;
           if (finalRescue) rescueIssues = [...new Set([...rescueIssues, ...validateContinuityEnvelope(finalRescue, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
-          if (finalRescue) rescueIssues = enforceOpeningRegenerationQuality(rescueIssues, finalRescue, openingRegeneration, character);
+          if (finalRescue) rescueIssues = enforceOpeningRegenerationQuality(rescueIssues, finalRescue, openingRegeneration, character, regenerationInstruction);
           const rescueBlocking = blockingNarrativeIssues(rescueIssues);
           const rescueHard = hardRepairRequiredIssues(rescueIssues);
           if (!finalRescue || rescueBlocking.length || rescueHard.length) {
@@ -8731,7 +8922,7 @@ async function streamRoleplayV19({
               character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
             });
             validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
-            validationIssues = enforceOpeningRegenerationQuality(validationIssues, result, openingRegeneration, character);
+            validationIssues = enforceOpeningRegenerationQuality(validationIssues, result, openingRegeneration, character, regenerationInstruction);
             remainingHard = hardRepairRequiredIssues(validationIssues);
           } else {
             result = finalRescue;
@@ -8765,6 +8956,9 @@ async function streamRoleplayV19({
           if (blankRecovery?.model) sendEvent(controller, { type: "model", model: blankRecovery.model });
         }
         if (!persistableReply) throw new Error("Velvet received an empty model reply after recovery; nothing was saved.");
+        if (openingRegeneration && instantStoryOpeningAnchorIssuesV35289(persistableReply, character, regenerationInstruction).length) {
+          throw new Error("Opening regeneration drifted away from the creator's primary opening. The previous opening was kept; regenerate again or give Velvet a new setting explicitly.");
+        }
         if (!FIRST_DRAFT_WINS_V35268 && openingRegeneration && !instantStoryLooksComplete(persistableReply, result?.finishReason || "STOP", character)) {
           throw new Error("Instant Story regeneration could not produce a complete grounded opening. The previous opening was kept; please try again.");
         }
