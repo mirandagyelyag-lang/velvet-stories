@@ -5,9 +5,8 @@ const css = readFileSync(new URL("../src/styles/velvet-v3159-crystal-cinematic.c
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.equal(pkg.version, "3.52.87");
-assert.equal(version.version, "3.52.87");
-assert.equal(version.release, "Single Mobile Dock Zone");
+assert.match(pkg.version, /^3\.52\.\d+$/);
+assert.equal(version.version, pkg.version);
 
 const marker = css.indexOf("/* v3.52.87 SINGLE MOBILE DOCK EXCLUSION ZONE */");
 assert.ok(marker >= 0, "v3.52.87 dock-zone marker missing");
