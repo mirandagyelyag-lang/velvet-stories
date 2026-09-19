@@ -167,10 +167,7 @@ export function inferStickyVisibleConsequenceV35277({
     relationship:"Relationship status shift",
   };
   const weights={romantic:3,promise:3,secret:3,conflict:3,relationship:4};
-  const participants=uniq([
-    clean(characterName,100),
-    ...list(scene?.present).map((x)=>clean(x,100)),
-  ]).slice(0,6);
+  const participants=uniq([clean(characterName,100)]).slice(0,6);
 
   return {
     record:true,
