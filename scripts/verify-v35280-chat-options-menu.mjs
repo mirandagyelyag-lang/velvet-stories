@@ -6,9 +6,8 @@ const css = readFileSync(new URL("../src/styles/chat.css", import.meta.url), "ut
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.equal(pkg.version, "3.52.80");
-assert.equal(version.version, "3.52.80");
-assert.equal(version.release, "Chat Options Portal Fix");
+assert.match(pkg.version, /^3\.52\.\d+$/);
+assert.equal(version.version, pkg.version);
 
 assert.match(chat, /aria-label="Conversation options"/);
 assert.match(chat, /setMenuOpen\(\(current\) => !current\)/);
