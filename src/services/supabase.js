@@ -1,21 +1,52 @@
 import { createClient } from "@supabase/supabase-js";
 
 const PROJECT_REF = "vwyudrmxatuukcbncats";
+const DEFAULT_SUPABASE_URL = `https://${PROJECT_REF}.supabase.co`;
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY =
+  "sb_publishable_vpnoAb2BAu1aOKqeWhMFyQ_2dbLHsb4";
 
-const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL ||
-  `https://${PROJECT_REF}.supabase.co`;
-
-const supabasePublishableKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabasePublishableKey) {
-  throw new Error(
-    "Velvet Android is missing its public Supabase client key. " +
-    "Run npm run android:sync from the prepared Android project so the installer can import your existing Velvet .env."
-  );
+function cleanEnvValue(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^["']|["']$/g, "");
 }
+
+function resolveVelvetSupabaseUrl(value) {
+  const candidate = cleanEnvValue(value);
+  if (!candidate) return null;
+
+  try {
+    const parsed = new URL(candidate);
+    const validProtocol = parsed.protocol === "https:" || parsed.protocol === "http:";
+    const validHost = parsed.hostname === `${PROJECT_REF}.supabase.co`;
+
+    if (!validProtocol || !validHost) return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+const configuredUrl = resolveVelvetSupabaseUrl(
+  import.meta.env.VITE_SUPABASE_URL,
+);
+
+const configuredPublishableKey = cleanEnvValue(
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
+);
+
+/*
+ * Velvet is permanently attached to one Supabase project.
+ * Only trust an environment key when the environment URL also points to
+ * that exact project. A malformed/wrong Vercel environment therefore
+ * falls back to the known public client pair instead of crashing startup.
+ */
+const supabaseUrl = configuredUrl || DEFAULT_SUPABASE_URL;
+const supabasePublishableKey =
+  configuredUrl && configuredPublishableKey
+    ? configuredPublishableKey
+    : DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
 export const supabase = createClient(
   supabaseUrl,
