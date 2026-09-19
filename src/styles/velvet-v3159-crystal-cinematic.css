@@ -322,3 +322,84 @@
     scroll-padding-bottom: 0;
   }
 }
+
+
+/* v3.52.86 RESTORE BODY SCROLL + SIMPLE DOCK CLEARANCE */
+@media (max-width: 760px) {
+  :root {
+    --velvet-mobile-nav-height: 66px;
+    --velvet-mobile-nav-bottom: max(10px, env(safe-area-inset-bottom));
+    --velvet-mobile-nav-gap: 40px;
+    --velvet-mobile-page-bottom-space: calc(
+      var(--velvet-mobile-nav-height) +
+      var(--velvet-mobile-nav-bottom) +
+      var(--velvet-mobile-nav-gap)
+    );
+  }
+
+  /* Undo v3.52.85's nested scroll viewport. Mobile routes go back to
+     normal document scrolling so touch scrolling works everywhere. */
+  .app:not(.app--chat) {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+  }
+
+  .app:not(.app--chat) .app__content {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: auto;
+    padding-bottom: 0 !important;
+  }
+
+  .app:not(.app--chat) .velvet-route-stage {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* v3.52.84's fake fixed shelf stays disabled. */
+  .app:not(.app--chat)::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* One simple rule: the page itself owns the bottom breathing room.
+     66px dock + safe-area/10px offset + 40px visual gap. */
+  .app:not(.app--chat) :where(
+    .chats-page,
+    .character-profile,
+    .memories-page,
+    .personas-page,
+    .lore-page,
+    .profile-page,
+    .settings-page
+  ) {
+    padding-bottom: var(--velvet-mobile-page-bottom-space) !important;
+    box-sizing: border-box;
+  }
+
+  .mobile-nav {
+    bottom: var(--velvet-mobile-nav-bottom) !important;
+    height: var(--velvet-mobile-nav-height) !important;
+    z-index: 100 !important;
+  }
+
+  .mobile-global-search {
+    bottom: calc(
+      var(--velvet-mobile-nav-bottom) +
+      var(--velvet-mobile-nav-height) +
+      12px
+    ) !important;
+    z-index: 101 !important;
+  }
+
+  html,
+  body {
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto;
+    scroll-padding-bottom: var(--velvet-mobile-page-bottom-space);
+  }
+}
