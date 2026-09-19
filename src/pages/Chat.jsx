@@ -62,6 +62,7 @@ import RelationshipDrawer from "../components/RelationshipDrawer";
 import StoryWorldDrawer from "../components/StoryWorldDrawer";
 import MessageQualitySheet from "../components/MessageQualitySheet";
 import CanonDoctorSheet from "../components/CanonDoctorSheet";
+import NpcCastDrawer from "../components/NpcCastDrawer";
 import { useChats } from "../context/ChatsContext";
 import { useCharacters } from "../context/CharactersContext";
 import { usePersonas } from "../context/PersonasContext";
@@ -232,6 +233,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [safeStudioOpen, setSafeStudioOpen] = useState(false);
   const [livingWorldOpen, setLivingWorldOpen] = useState(false);
   const [experienceOpen, setExperienceOpen] = useState(false);
+  const [npcCastOpen, setNpcCastOpen] = useState(false);
   const [canonDoctorOpen, setCanonDoctorOpen] = useState(false);
   const [canonDoctorReport, setCanonDoctorReport] = useState(null);
   const [canonDoctorLoading, setCanonDoctorLoading] = useState(false);
@@ -304,7 +306,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }, [sendError, resolvedGenerationError]);
   const chatOverlayOpen = Boolean(
     menuOpen || directorNoteOpen || selectedMessage || controlsOpen || characterProfileOpen ||
-    memoryBookOpen || relationshipOpen || groupPeekCharacter || worldStudioOpen || timelineOpen || storyHubOpen || safeStudioOpen || livingWorldOpen || experienceOpen || canonDoctorOpen || catchUpOpen || qualityMessage
+    memoryBookOpen || relationshipOpen || npcCastOpen || groupPeekCharacter || worldStudioOpen || timelineOpen || storyHubOpen || safeStudioOpen || livingWorldOpen || experienceOpen || canonDoctorOpen || catchUpOpen || qualityMessage
   );
 
   useEffect(() => {
@@ -2385,6 +2387,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); openDirector("next"); }} disabled={!conversationReady || busy}><Sparkles size={17} /> Guide the next beat</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><BookOpen size={17} /> Story Hub</button>
               <div className="chat__menu-section-label">WORLD & CONTINUITY</div>
+              <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setNpcCastOpen(true); }} disabled={!conversationReady || busy}><UsersRound size={17} /> NPC Cast</button>
               <button className="chat__menu-controls" onClick={openCanonDoctor} disabled={!conversationReady || busy}><ShieldCheck size={17} /> Canon Doctor</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setWorldStudioOpen(true); }} disabled={!conversationReady}><Globe2 size={17} /> World Studio</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setTimelineOpen(true); handleRefreshTimeline(); }} disabled={!conversationReady}><Clock3 size={17} /> Story timeline</button>
@@ -2801,6 +2804,16 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         characters={characters}
         persona={personas.find((item) => item.id === conversation?.personaId) || null}
         conversation={conversation}
+      />
+
+      <NpcCastDrawer
+        open={npcCastOpen}
+        onClose={() => setNpcCastOpen(false)}
+        conversationId={conversation?.conversationId}
+        character={character}
+        groupCharacters={groupCast}
+        userName={personas.find((item) => item.id === conversation?.personaId)?.name || "You"}
+        disabled={busy}
       />
 
       <StoryWorldDrawer open={worldStudioOpen} onClose={()=>setWorldStudioOpen(false)} conversationId={conversation?.conversationId}/>
