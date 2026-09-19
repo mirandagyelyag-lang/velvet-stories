@@ -121,3 +121,56 @@
     transform: none !important;
   }
 }
+
+
+/* v3.52.83 MOBILE BOTTOM NAV CLEARANCE */
+@media (max-width: 760px) {
+  :root {
+    --velvet-mobile-nav-height: 66px;
+    --velvet-mobile-nav-bottom: max(10px, env(safe-area-inset-bottom));
+    --velvet-mobile-content-gap: 40px;
+    --velvet-mobile-search-height: 44px;
+    --velvet-mobile-content-clearance: calc(
+      var(--velvet-mobile-nav-height) +
+      var(--velvet-mobile-nav-bottom) +
+      var(--velvet-mobile-content-gap) +
+      var(--velvet-mobile-search-height)
+    );
+  }
+
+  /* One invariant for every normal app route:
+     the final interactive content must be able to clear both the bottom dock
+     and the floating search affordance with a visible breathing zone. */
+  .app:not(.app--chat) :where(
+    .chats-page,
+    .character-profile,
+    .memories-page,
+    .personas-page,
+    .lore-page,
+    .profile-page,
+    .settings-page
+  ) {
+    padding-bottom: var(--velvet-mobile-content-clearance) !important;
+    box-sizing: border-box;
+  }
+
+  /* Keep the chrome values tied to the same measurements instead of
+     scattering magic numbers across mobile CSS. */
+  .mobile-nav {
+    height: var(--velvet-mobile-nav-height) !important;
+    bottom: var(--velvet-mobile-nav-bottom) !important;
+  }
+
+  .mobile-global-search {
+    bottom: calc(
+      var(--velvet-mobile-nav-bottom) +
+      var(--velvet-mobile-nav-height) +
+      12px
+    ) !important;
+  }
+
+  html,
+  body {
+    scroll-padding-bottom: var(--velvet-mobile-content-clearance);
+  }
+}
