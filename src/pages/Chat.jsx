@@ -2348,9 +2348,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
         <button
           className="chat__icon-button chat__more"
+          type="button"
           onClick={() => setMenuOpen((current) => !current)}
           aria-label="Conversation options"
           aria-expanded={menuOpen}
+          aria-haspopup="dialog"
         >
           <MoreHorizontal size={20} />
         </button>
