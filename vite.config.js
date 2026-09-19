@@ -10,7 +10,7 @@ const pkg = JSON.parse(
 );
 
 const velvetVersion = pkg.version;
-const velvetRelease = "Supabase Bootstrap Guard";
+const velvetRelease = "Opening DNA";
 
 function upsertMetaTag(html, name, content) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
