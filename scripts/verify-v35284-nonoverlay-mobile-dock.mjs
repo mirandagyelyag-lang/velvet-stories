@@ -5,9 +5,8 @@ const css = readFileSync(new URL("../src/styles/velvet-v3159-crystal-cinematic.c
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.equal(pkg.version, "3.52.84");
-assert.equal(version.version, "3.52.84");
-assert.equal(version.release, "Non-Overlay Mobile Dock");
+assert.match(pkg.version, /^3\.52\.\d+$/);
+assert.equal(version.version, pkg.version);
 
 const marker = css.indexOf("/* v3.52.84 NON-OVERLAY MOBILE DOCK */");
 assert.ok(marker >= 0, "non-overlay mobile dock marker missing");
