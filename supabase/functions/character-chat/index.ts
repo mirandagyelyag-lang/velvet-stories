@@ -51,6 +51,7 @@ import { buildMotivationPersistenceV35255, motivationPersistenceV35255Issues } f
 import { buildEmotionalRelationshipCoreV35263, emotionalRelationshipCoreV35263Issues } from "./engine/emotional-relationship-core-v35263.js";
 import { buildPursuitEmotionPriorityV35265, pursuitEmotionPriorityV35265Issues } from "./engine/pursuit-emotion-priority-v35265.js";
 import { buildPersistentEmotionalLifeV35266, updateRelationshipEmotionCoreV35266 } from "./engine/persistent-emotional-life-v35266.js";
+import { buildEmotionalMomentumIntegrityV35272, emotionalMomentumIntegrityV35272Issues } from "./engine/emotional-momentum-integrity-v35272.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2331,6 +2332,12 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
+  const emotionalMomentumIntegrityV35272 = buildEmotionalMomentumIntegrityV35272({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -2479,6 +2486,8 @@ ${meaningfulTurnGateV34950}
 ${emotionalRelationshipCoreV35263}
 
 ${pursuitEmotionPriorityV35265}
+
+${emotionalMomentumIntegrityV35272}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line. Emotional Relationship Core 3.52.63 is intentionally injected as a narrow causal bridge so serious feeling changes behavior without restoring the old competing style stack.
 
@@ -3657,6 +3666,12 @@ function buildCompactLiveRecoveryPrompt({
     latestUserMessage,
     recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-8).map((m)=>String(m?.content||"")),
   });
+  const emotionalMomentumIntegrityV35272 = buildEmotionalMomentumIntegrityV35272({
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-8).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-4).map((m)=>String(m?.content||"")),
+    character,
+  });
   return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
 
 GENERATION MODE
@@ -3700,6 +3715,9 @@ Relationship state: ${cleanPromptValue(JSON.stringify(relationshipState || {}), 
 
 PERSISTENT EMOTIONAL LIFE
 ${persistentEmotionalLifeV35266}
+
+EMOTIONAL MOMENTUM INTEGRITY
+${emotionalMomentumIntegrityV35272}
 
 Cast/presence state: ${cleanPromptValue(JSON.stringify(castState || {}), 650)}
 Active plans/commitments: ${cleanPromptValue(JSON.stringify({
@@ -7483,6 +7501,12 @@ function validateNarrativeReply(reply = "", options = {}) {
     reply: text,
     latestUserMessage: options.latestUserMessage || "",
     recentUserMessages: options.recentUserMessages || [],
+  })) issues.push(issue);
+  for (const issue of emotionalMomentumIntegrityV35272Issues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
   for (const issue of humanSpontaneityAntiPatternV34937Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of humanKnowledgeUncertaintyV34938Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
