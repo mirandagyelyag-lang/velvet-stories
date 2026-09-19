@@ -2793,7 +2793,7 @@ ${currentBeatPolicy}
 
 TURN
 Mode: ${turnIntent.kind}; question: ${turnIntent.isQuestion ? "yes" : "no"}; medium: ${turnIntent.medium}; silent streak: ${turnIntent.silentCount}.
-Length: ${getLengthGuidance(character.response_length, turnIntent.kind)}
+Length: ${getLengthGuidance(character.response_length, turnIntent.kind, latestUserRecord?.content || "")}
 ${regeneration}
 Director: ${clean(directorInstruction || "none", 520)}
 Feedback: ${feedback}
@@ -3732,6 +3732,9 @@ ${transcript || "No earlier visible turn."}
 
 LATEST USER TURN
 ${cleanPromptValue(latestUserMessage, 1600) || (openingRegeneration ? "None — this is a fresh opening." : "none")}
+
+REPLY LENGTH
+${openingRegeneration ? "Instant Story opening keeps its dedicated opening length." : getLengthGuidance(character?.response_length, turnIntent?.kind || "", latestUserMessage)}
 
 ${openingRegeneration ? "Build a fresh playable opening from the profile and durable world context. The rejected opening contributes only negative evidence about what not to repeat." : "Continue from the literal final state. Respect the user's choice, possessions, location and boundaries. Do not invent a user habit, feeling, action, shared history, plan or object transfer. Answer the latest meaning once; do not repeat a settled offer. If the user says \"I trust you\", \"you choose\", \"surprise me\", \"up to you\", or equivalent, they delegated the decision: choose one concrete option and move; never hand the choice back. Keep established attraction visible through one natural character-specific choice when relevant, never through control. A short complete answer is valid."}
 
@@ -9835,16 +9838,34 @@ function getUserIdentity(user, persona = null) {
     notes: cleanPromptValue(persona?.notes, 1200),
   };
 }
-function getLengthGuidance(length, kind) {
-  if (kind === "interactive_thread") return "120–320 words when the user explicitly opens an ongoing message/call/chat sub-scene. Show several distinct exchanges and reactions; do not resolve the thread after one or two lines unless the user asked to keep it brief.";
-  if (kind === "reassurance") return "30–80 words; one honest reaction and natural dialogue are enough.";
-  if (kind === "affection") return "45–130 words; show private impact without forcing a speech or confession.";
-  if (kind === "silent_continue") return "20–75 words; the user yielded the turn, so add ONE meaningful beat only: one decision, concise dialogue exchange, purposeful action, social interaction, or consequence. Then stop. Do not pad with repeated props, pen/key/page choreography, watching, leaning, breathing, empty-space description, or atmosphere alone.";
-  if (kind === "return_main_pov") return "45–130 words; re-center the character quickly and naturally.";
-  if (["challenge", "charged_nonverbal"].includes(kind)) return "35–110 words; answer the charged cue with an active, character-specific choice. Keep the tension moving instead of politely conceding, freezing, or ending the scene without cause.";
-  if (length === "short") return "25–80 words; complete, human and unpadded.";
-  if (length === "long") return "100–250 words, only when the moment genuinely needs room.";
-  return "45–140 words. Shorter is better when the social beat already lands.";
+function isSeriousDevelopmentBeat(kind = "", latestUserMessage = "") {
+  const k = String(kind || "").toLowerCase();
+  const latest = normalizeText(latestUserMessage || "");
+  if (["confrontation", "confrontation_exit"].includes(k)) return true;
+  if (/\b(?:cry|crying|cried|sobbing|hurt|heartbroken|break up|breaking up|leave me alone|go away|im done|i am done|tired of everything|cant do this|cannot do this|hate you|love you|i love you|miss you|i miss you|why does it matter|what do you want from me|what the hell you want from me|you never|you always|ruin everything|ruining everything|dont ruin my night|do not ruin my night|furious|terrified|panic|panicking|hospital|death|died|grief|goodbye)\b/.test(latest)) return true;
+  if (k === "reassurance" && /\b(?:hurt|cry|scared|terrified|overwhelmed|panic|awful|terrible|worst|exhausted|miserable)\b/.test(latest)) return true;
+  if (k === "affection" && /\b(?:love you|i love you|miss you|i miss you|need you|dont want to lose you|do not want to lose you)\b/.test(latest)) return true;
+  return false;
+}
+
+function getLengthGuidance(length, kind, latestUserMessage = "") {
+  const serious = isSeriousDevelopmentBeat(kind, latestUserMessage);
+  if (kind === "interactive_thread") {
+    return serious
+      ? "60–140 words only if the ongoing exchange genuinely needs multiple beats. Keep each exchange compact; do not pad."
+      : "40–80 words. Keep the thread brisk and selective; do not simulate a whole conversation when one or two exchanges are enough.";
+  }
+  if (serious) {
+    return "Aim for 40–80 words. You may go up to about 120 only when the emotional beat truly needs development, such as a serious confrontation, confession, rupture, grief, fear or meaningful repair. Do not become verbose just because the scene is emotional.";
+  }
+  if (kind === "silent_continue") return "15–45 words. Add ONE meaningful beat and stop. No atmosphere padding, repeated body-language geometry, or second mini-scene.";
+  if (kind === "return_main_pov") return "20–60 words. Re-center quickly with one useful action or line.";
+  if (["challenge", "charged_nonverbal"].includes(kind)) return "20–60 words. Let one sharp choice or line carry the tension; do not over-explain.";
+  if (kind === "reassurance") return "20–60 words. One honest reaction plus one natural line is enough.";
+  if (kind === "affection") return "20–60 words unless the user made a major confession or vulnerable disclosure.";
+  if (length === "long") return "20–60 words for ordinary beats. Character preference for long replies never overrides this brevity rule; only a genuinely serious beat may expand.";
+  if (length === "short") return "15–50 words. Complete, human and unpadded.";
+  return "20–60 words for ordinary conversation. Prefer the shortest complete human response that moves the scene. Do not write 100–200 words for a casual beat.";
 }
 function getMaximumOutputTokens(length, orchestratedCeiling = null) {
   const base = length === "short" ? 800 : length === "long" ? 1700 : 1200;
