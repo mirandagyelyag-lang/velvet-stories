@@ -52,7 +52,6 @@ import {
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import RoleplayText from "../components/RoleplayText";
-import SpotifyPlayer from "../components/SpotifyPlayer";
 import MemoryBookDrawer from "../components/MemoryBookDrawer";
 import StoryTimelineDrawer from "../components/StoryTimelineDrawer";
 import StorySafeStudioDrawer from "../components/StorySafeStudioDrawer";
@@ -185,7 +184,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [failedGeneration, setFailedGeneration] = useState(null);
   const [retryingGeneration, setRetryingGeneration] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [spotifyOpen, setSpotifyOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -343,7 +341,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       const text = formatBugReport({ includePrivate: false, note: "Copied from the active chat menu." });
       await navigator.clipboard.writeText(text);
       setMenuOpen(false);
-    setSpotifyOpen(false);
       showActionNotice("Debug report copied ✓", "neutral", 1600);
     } catch (error) {
       console.warn("Could not copy Velvet debug report:", error);
@@ -2338,11 +2335,13 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           </button>
         </div>
         <button
-          className={`chat__icon-button chat__spotify-button${spotifyOpen ? " is-open" : ""}`}
+          className="chat__icon-button chat__spotify-button"
           type="button"
-          onClick={() => { setMenuOpen(false); setSpotifyOpen((current) => !current); }}
-          aria-label="Spotify player"
-          aria-expanded={spotifyOpen}
+          onClick={() => {
+            setMenuOpen(false);
+            window.dispatchEvent(new CustomEvent("velvet:spotify-toggle"));
+          }}
+          aria-label="Abrir Spotify"
         >
           <Music2 size={19} />
         </button>
@@ -2355,13 +2354,6 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         >
           <MoreHorizontal size={20} />
         </button>
-
-        {spotifyOpen && typeof document !== "undefined" && createPortal((
-          <div className="velvet-spotify-host">
-            <div className="velvet-spotify-backdrop" onClick={() => setSpotifyOpen(false)} />
-            <SpotifyPlayer storyId={conversation?.conversationId || conversationId} />
-          </div>
-        ), document.body)}
 
         {menuOpen && typeof document !== "undefined" && createPortal((
           <div className="chat__menu-backdrop" onClick={(event) => event.target === event.currentTarget && setMenuOpen(false)}>
