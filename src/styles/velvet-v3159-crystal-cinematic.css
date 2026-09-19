@@ -240,3 +240,85 @@
     scroll-padding-bottom: var(--velvet-mobile-route-tail);
   }
 }
+
+
+/* v3.52.85 MOBILE CONTENT VIEWPORT ABOVE DOCK */
+@media (max-width: 760px) {
+  :root {
+    --velvet-mobile-nav-height: 66px;
+    --velvet-mobile-nav-bottom: max(10px, env(safe-area-inset-bottom));
+    --velvet-mobile-nav-gap: 40px;
+    --velvet-mobile-content-bottom: calc(
+      var(--velvet-mobile-nav-height) +
+      var(--velvet-mobile-nav-bottom) +
+      var(--velvet-mobile-nav-gap)
+    );
+  }
+
+  /* v3.52.84 used a fixed pseudo-shelf plus a route tail, which created
+     a second background block and excessive blank space. Remove both. */
+  .app:not(.app--chat)::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .app:not(.app--chat) {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* The route itself scrolls inside a viewport whose bottom edge is
+     physically above the bottom navigation. Content therefore cannot
+     pass underneath the dock at any scroll position. */
+  .app:not(.app--chat) .app__content {
+    flex: 0 0 auto;
+    width: 100%;
+    height: calc(100dvh - var(--velvet-mobile-content-bottom));
+    min-height: 0;
+    overflow-x: clip;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .app:not(.app--chat) .velvet-route-stage {
+    min-height: 100%;
+    padding-bottom: 0 !important;
+  }
+
+  /* Natural breathing room only. No second fake dock-sized tail. */
+  .app:not(.app--chat) :where(
+    .chats-page,
+    .character-profile,
+    .memories-page,
+    .personas-page,
+    .lore-page,
+    .profile-page,
+    .settings-page
+  ) {
+    padding-bottom: 24px !important;
+  }
+
+  .mobile-nav {
+    bottom: var(--velvet-mobile-nav-bottom) !important;
+    height: var(--velvet-mobile-nav-height) !important;
+    z-index: 100 !important;
+  }
+
+  .mobile-global-search {
+    bottom: calc(
+      var(--velvet-mobile-nav-bottom) +
+      var(--velvet-mobile-nav-height) +
+      12px
+    ) !important;
+    z-index: 101 !important;
+  }
+
+  html,
+  body {
+    scroll-padding-bottom: 0;
+  }
+}
