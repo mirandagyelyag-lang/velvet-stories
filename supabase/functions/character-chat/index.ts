@@ -1498,6 +1498,53 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
   return [...new Set(issues)];
 }
 
+// NATURAL SOCIAL OPENINGS 3.52.95
+function instantStoryNaturalismIssuesV35295(opening = "", draft = {}, idea = "") {
+  const issues = [];
+  const raw = String(opening || "");
+  const narration = instantStoryNarrationOnlyV35292(raw);
+  const profile = `${draft?.description || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""} ${draft?.firstMessage || draft?.first_message || ""}`.toLowerCase();
+  const ideaText = String(idea || "").toLowerCase();
+
+  const quirkyProp = /\b(?:massive|giant|enormous|neon[- ](?:pink|green|yellow)|ridiculous|absurd|oversized|comically large)\b.{0,55}\b(?:inflatable|flamingo|pool float|costume|mascot|lawn chair|novelty|rubber duck|banana suit)\b/i;
+  if (quirkyProp.test(raw) && !quirkyProp.test(profile) && !quirkyProp.test(ideaText)) {
+    issues.push("quirky_gimmick_prop");
+  }
+
+  if (/\b(?:caught your eye|held your gaze|searched your eyes|eyes searching yours|gaze linger(?:ed|ing)|lopsided grin|wry grin|voice (?:dropped|lowered)|closing the distance between you|closed the distance between you|standing comfortably close|stepped closer to you|leaned closer to you|bumped (?:his|her|their) shoulder (?:against|into) yours|nudg(?:ed|ing) your shoulder)\b/i.test(raw)) {
+    issues.push("romcom_choreography_stack");
+  }
+
+  if (/\b(?:as (?:he|she|they) always did|like (?:he|she|they) always did|as usual|the way (?:he|she|they) always|always ended up (?:right )?(?:beside|next to|with) you|always seemed to (?:end up|find a way))\b/i.test(raw)) {
+    issues.push("invented_routine_intimacy");
+  }
+
+  if (/\b(?:beside you|next to you|across from you|behind you|in front of you|standing close to you|by your elbow|nearest your elbow|your shoulder|your arm|your waist|passenger door|passenger seat|front seat)\b/i.test(narration)) {
+    issues.push("assumed_user_physical_placement");
+  }
+
+  const romcomMarkers = [
+    /\bcaught your eye\b/i,
+    /\b(?:lopsided|wry|crooked) grin\b/i,
+    /\bvoice (?:dropping|lowering|dropped|lowered)\b/i,
+    /\b(?:stepped|moved|leaned) closer\b/i,
+    /\b(?:nudged|bumped) your shoulder\b/i,
+    /\bmeant just for you\b/i,
+    /\bthe rest of the (?:room|group|world) (?:fell|faded) away\b/i,
+  ];
+  const romcomCount = romcomMarkers.reduce((count, pattern)=>count + (pattern.test(raw) ? 1 : 0), 0);
+  if (romcomCount >= 2) issues.push("overwritten_romcom_stack");
+
+  if (/\b(?:coffee|diner|cafe|caf[eé]|studying|study session|midterms?|finals?|flashcards?|cheese fries|milkshakes?)\b/i.test(raw)
+    && /\b(?:coffee|study|studying|campus)\b/i.test(profile)
+    && !/\b(?:coffee|diner|cafe|caf[eé]|study|studying|midterms?|flashcards?)\b/i.test(ideaText)) {
+    const setupMatches = raw.match(/\b(?:coffee|diner|cafe|caf[eé]|studying|study session|midterms?|finals?|flashcards?|cheese fries|milkshakes?)\b/gi) || [];
+    if (setupMatches.length >= 3) issues.push("overused_food_study_setup");
+  }
+
+  return [...new Set(issues)];
+}
+
 // OPENING DNA 3.52.89
 const OPENING_DNA_FAMILIES_V35289 = [
   {
@@ -1847,16 +1894,21 @@ LIVING OPENING ENGINE 3.52.92
 - STORY MOVEMENT WITHOUT FIGHTING: ordinary plans, social chaos, teasing, jealousy, spontaneous decisions, changed plans, small problems, playful competition, opportunities, group dynamics, awkwardness, quiet intimacy, and character initiative are the preferred engines.
 - PROPORTIONAL STAKES: do not invent police, coaches, athletic departments, disciplinary consequences, crimes, dangerous secrets, blackmail, betrayals, or reputation disasters unless the configured character/world or explicit IDEA actually supports them.
 - CHARACTER-SPECIFIC LIFE: derive the opening from what THIS person normally does, who they spend time with, their social role, habits, wants, relationship dynamic, and creator opening.
+- NATURALISM OVER QUIRK 3.52.95: do not invent a giant/random novelty object, costume, absurd prop, exaggerated food order, or “look how chaotic they are” gimmick as the whole premise merely to make the scene cute or memorable. Humor should come from people, timing, choices and personality.
+- CHEMISTRY THROUGH CHOICES, NOT CHOREOGRAPHY: show preference/attraction through what the character decides, prioritizes, notices, remembers, changes, risks or initiates. Do not stack “caught your eye”, a crooked/lopsided grin, lowered voice, stepping closer, shoulder bumps and prolonged eye contact as shorthand for chemistry.
+- DO NOT CHOREOGRAPH THE USER: the story may establish a broad shared setting, but do not decide the user's exact seat, body position, distance from the character, physical contact, object placement, or destination. Never put the user in the passenger/front seat, beside the character, against a counter, within touching distance, etc. before the user chooses it.
+- NO INVENTED ROUTINE INTIMACY: avoid “as he always did”, “like usual”, “they always ended up beside you”, or any claim that a repeated intimate habit exists unless the creator explicitly established that exact habit.
+- ROTATE ORDINARY LIFE: do not repeatedly fall back to coffee + food + studying just because those appear in the character scenario. The scenario is a palette, not a three-item menu.
 - OPENING DNA ≠ COPY THE OPENING. Preserve the ecosystem and relationship geometry, but do NOT replay its distinctive props/actions. If the original opening used car keys, front-seat privilege and choosing the music, a new Instant Story should not begin by throwing keys at the user again.
 - USER AGENCY IS SACRED: do not place an object in the user's hand, decide where they are standing/sitting, make them arrive, make them carry something, assign them a secret task, say what they want/feel/know, or make them responsible for a hidden problem. The user has not acted yet.
 - CLOSED NAMED CAST: never invent a new proper name for a supporting person. Use configured names only. Everyone else stays anonymous: “one of his friends”, “a girl by the counter”, “someone from the group”, “a teammate”.
 - NO GENERIC CONFLICT MACHINE: do not default to screenshots, anonymous messages, somebody lying, “start again”, accusations, hidden destinations, mysterious trunks, or secret deliveries just to manufacture stakes.
 - NO FAKE AUTHORITY: do not invent a coach, boss, professor, police officer, dean, department, parent, team rule, or institutional punishment unless the profile/opening/world actually establishes that authority as relevant.
 - CHARACTER INITIATIVE: the lead character should make at least one concrete choice or move that gives the scene direction. Do not finish by making the user choose A/B, explain a mystery they never created, or carry the whole plot.
-- RELATIONSHIP STAGE: preserve the configured dynamic. Attraction can color attention and choices, but do not turn it into instant confession, ownership, or a random love triangle.
+- RELATIONSHIP STAGE: preserve the configured dynamic. Attraction can color attention and choices, but do not turn it into instant confession, ownership, a random love triangle, or automatic physical familiarity.
 - WORLD STAYS ALIVE: if there is a group, party, team, family, workplace or campus around them, let it continue naturally. Do not make every opening collapse into a private two-person confrontation.
 - DIALOGUE SHOULD SOUND SPOKEN. No therapy language, quote-card monologues, cinematic jaw/eye choreography, ominous “the air changed” writing, or narration explaining what every look means.
-- THE CHARACTER CARRIES MOMENTUM: whenever possible, end after the lead character has already chosen or begun the next concrete move. The user may respond, but should not have to invent what happens next.
+- THE CHARACTER CARRIES MOMENTUM: whenever possible, end after the lead character has already chosen or begun the next concrete move. The user may respond, but should not have to invent what happens next. The character may invite the user, but cannot narrate the user's compliance or physically funnel them into a seat/position.
 - END WITH MOMENTUM, NOT A CLIFFHANGER GIMMICK. The character can act, say something, redirect the plan, sit beside the user, interrupt, leave with a purpose, or create a natural opening for response. Do not end on “So what are you hiding?”, “tell me the truth”, “your choice”, or an invented accusation against the user.
 - Output ONLY finished story prose.
 
@@ -1908,11 +1960,13 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const anchorIssues = instantStoryOpeningAnchorIssuesV35289(opening, safeDraft, cleanIdea);
       const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
       const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || anchorIssues.length || groundingIssues.length) {
+      const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || anchorIssues.length || groundingIssues.length || naturalismIssues.length) {
         console.warn("[character-chat] instant story rejected by conflict-first/opening-DNA quality gate", {
           anchorIssues,
           qualityIssues,
           groundingIssues,
+          naturalismIssues,
           model,
           finishReason,
           words: opening.split(/\s+/).filter(Boolean).length,
@@ -1969,6 +2023,10 @@ RULES
 - With no explicit IDEA requesting conflict, do NOT use arguments, fights, accusations, betrayal, confrontations, lies-as-plot, or genuine anger. Use a normal, social, funny, awkward, jealous, spontaneous, competitive, opportunistic, or mildly inconvenient opening instead.
 - Do not reuse phone-message / screenshot / “start again” accusations, mysterious trunks, hidden deliveries, or fake institutional consequences.
 - Do not copy distinctive props/actions from the primary opening.
+- Do not use a giant/random novelty prop or exaggerated quirky gag as the premise.
+- Show chemistry through character choices and priorities, not eye-contact/grin/low-voice/stepping-closer/shoulder-bump choreography.
+- Do not invent routine intimacy such as “as he always does”.
+- Do not decide the user's exact seat, body position, proximity, physical contact, possessions or destination.
 - Do not invent the user's dialogue, feelings, decisions, arrival, posture, possessions, motives, or prior behavior.
 - Do not invent named NPCs.
 - Use at least 2 spoken lines from the lead character.
@@ -1993,7 +2051,8 @@ RULES
       const rescueFinish = String(rescueData?.candidates?.[0]?.finishReason || "");
       const rescueAnchorIssues = instantStoryOpeningAnchorIssuesV35289(rescueOpening, safeDraft, cleanIdea);
       const rescueGroundingIssues = instantStoryGroundingIssuesV35292(rescueOpening, safeDraft, cleanIdea);
-      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueAnchorIssues.length && !rescueGroundingIssues.length) {
+      const rescueNaturalismIssues = instantStoryNaturalismIssuesV35295(rescueOpening, safeDraft, cleanIdea);
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueAnchorIssues.length && !rescueGroundingIssues.length && !rescueNaturalismIssues.length) {
         return json({ opening: rescueOpening, source: "ai_rescue", sceneSeed, openingFamily });
       }
     }
