@@ -1424,7 +1424,7 @@ function instantStoryCandidateUsableV35290(opening = "", finishReason = "", draf
   const text = String(opening || "").trim();
   const words = text.split(/\s+/).filter(Boolean).length;
   const finish = String(finishReason || "").toUpperCase();
-  if (!text || words < 145 || words > 420) return false;
+  if (!text || words < 55 || words > 220) return false;
   if (["MAX_TOKENS", "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "MALFORMED_FUNCTION_CALL"].includes(finish)) return false;
   if (!/[.!?…]["'”’)]?$/.test(text)) return false;
   if (instantStoryHasTemplateLeak(text)) return false;
@@ -1912,7 +1912,7 @@ async function handleInstantStory({ apiKey, draft, idea, variationKey = "", rece
   const sceneSeed = instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds);
   const openingDna = buildOpeningDnaContractV35289(safeDraft, cleanIdea);
   const openingFamily = openingDnaFamilyV35289(safeDraft)?.id || "profile-derived";
-  const prompt = `Write one grounded, playable opening scene for a private roleplay with this character. TARGET 170-260 WORDS; hard ceiling 320. It should feel like a real slice of this character's life already in motion, not a prestige-TV cold open trying to prove that the plot is important.
+  const prompt = `Write one grounded, playable opening scene for a private roleplay with this character. TARGET 70-130 WORDS; hard ceiling 165. It should feel immediate, conversational and easy to continue, not like a polished short story, prestige-TV cold open, or cinematic monologue.
 
 OPENING DNA 3.52.92
 ${openingDna}
@@ -1941,6 +1941,9 @@ LIVING OPENING ENGINE 3.52.92
 - RELATIONSHIP STAGE: preserve the configured dynamic. Attraction can color attention and choices, but do not turn it into instant confession, ownership, a random love triangle, or automatic physical familiarity.
 - WORLD STAYS ALIVE: if there is a group, party, team, family, workplace or campus around them, let it continue naturally. Do not make every opening collapse into a private two-person confrontation.
 - DIALOGUE SHOULD SOUND SPOKEN. No therapy language, quote-card monologues, cinematic jaw/eye choreography, ominous “the air changed” writing, or narration explaining what every look means.
+- SHORT OPENING RHYTHM: prefer 2-5 short narration sentences total and 2-5 spoken lines. Dialogue should carry most of the personality and momentum. Avoid paragraph-long setup, atmospheric scene-setting, and explanatory backstory.
+- START LATE: begin at the moment the character acts, interrupts, decides, redirects, invites, or changes the plan. Skip weather reports, room descriptions, crowd noise, architectural details and “everyone was exhausted” setup unless one detail directly changes what happens.
+- LEAVE AIR IN THE SCENE: do not explain every motive, relationship dynamic, or emotional subtext. Let the character's choice and dialogue imply it.
 - THE CHARACTER CARRIES MOMENTUM: whenever possible, end after the lead character has already chosen or begun the next concrete move. The user may respond, but should not have to invent what happens next. The character may invite the user, but cannot narrate the user's compliance or physically funnel them into a seat/position.
 - END WITH MOMENTUM, NOT A CLIFFHANGER GIMMICK. The character can act, say something, redirect the plan, interrupt, leave with a purpose, commit to a next step, or create a natural opening for response. Do not end on “So what are you hiding?”, “tell me the truth”, “your choice”, or an invented accusation against the user.
 - Output ONLY finished story prose.
@@ -2056,7 +2059,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       ? `\nREJECTED DRAFT TO REPAIR\n${bestRejected.opening}\n\nREJECTION REASONS\n${bestRejected.rejectionReasons.join(", ") || "general completeness/quality"}\n\nIMPORTANT: Repair this draft. Preserve its useful premise, character-specific choices, spoken lines and momentum where possible. Remove or rewrite only the parts that caused rejection. Do NOT invent an unrelated replacement premise unless the draft is unusable.\n`
       : "";
 
-    const rescuePrompt = `Write ONE polished roleplay opening for this exact character. 170-260 words. This is a repair pass, so prioritize coherence, specificity, natural social behavior and user agency over elaborate prose.
+    const rescuePrompt = `Write ONE polished roleplay opening for this exact character. 70-130 words, hard ceiling 165. This is a repair pass, so prioritize immediacy, natural dialogue, character initiative and user agency over elaborate prose.
 
 OPENING DNA
 ${openingDna}
@@ -2081,7 +2084,9 @@ RULES
 - Do not decide the user's exact seat, body position, proximity, physical contact, possessions or destination.
 - Do not invent the user's dialogue, feelings, decisions, arrival, posture, possessions, motives, or prior behavior.
 - Do not invent named NPCs.
-- Use at least 2 spoken lines from the lead character.
+- Use 2-5 spoken lines from the lead character.
+- Keep narration sparse: 2-5 short narration sentences total when possible.
+- Start close to the action instead of explaining the whole setup.
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user.
 - Output only finished prose.`;
 
