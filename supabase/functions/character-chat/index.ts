@@ -1435,6 +1435,17 @@ function instantStoryCandidateUsableV35290(opening = "", finishReason = "", draf
 }
 
 
+
+// INSTANT STORY HASH FIX 3.52.93
+function instantStoryHashV35293(value = "") {
+  let hash = 2166136261;
+  for (const char of String(value || "")) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 // GROUNDED INSTANT STORY 3.52.92
 function instantStoryNarrationOnlyV35292(value = "") {
   return String(value || "")
@@ -1668,7 +1679,7 @@ function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", rec
   const recent = new Set((Array.isArray(recentSceneSeeds) ? recentSceneSeeds : []).map((item)=>String(item||"")));
   const available = lanes.filter((lane)=>![...recent].some((seed)=>seed.includes(`MODE=${lane.id}`)));
   const candidates = available.length ? available : lanes;
-  const chosen = candidates[instantStoryHash(`${variationKey}|${draft?.name || ""}|${Date.now()}|${Math.random()}`) % candidates.length];
+  const chosen = candidates[instantStoryHashV35293(`${variationKey}|${draft?.name || ""}|${Date.now()}|${Math.random()}`) % candidates.length];
 
   const familyDirection = family?.id === "party"
     ? "Stay in the party / house-gathering / afterparty social orbit."
