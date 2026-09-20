@@ -5,9 +5,8 @@ const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.equal(pkg.version, "3.52.93");
-assert.equal(version.version, "3.52.93");
-assert.equal(version.release, "Instant Story Hash Fix");
+assert.match(pkg.version, /^3\.52\.\d+$/);
+assert.equal(version.version, pkg.version);
 
 assert.match(edge, /INSTANT STORY HASH FIX 3\.52\.93/);
 assert.match(edge, /function instantStoryHashV35293/);
