@@ -1542,6 +1542,16 @@ function instantStoryNaturalismIssuesV35295(opening = "", draft = {}, idea = "")
     if (setupMatches.length >= 3) issues.push("overused_food_study_setup");
   }
 
+  if (/\b(?:student union|cafeteria|food court|menu|food order|online order|pizza|napkins?|mushrooms?|snacks?)\b/i.test(raw)
+    && !/\b(?:student union|cafeteria|food court|menu|food order|pizza|napkins?|mushrooms?|snacks?)\b/i.test(ideaText)) {
+    const staticFoodBeats = raw.match(/\b(?:menu|order|ordering|pizza|napkins?|mushrooms?|snacks?|condiment|dispenser)\b/gi) || [];
+    if (staticFoodBeats.length >= 3) issues.push("static_food_logistics");
+  }
+
+  if (/\b(?:smirk (?:tugging|pulling) at the corner of (?:his|her|their) mouth|eyes? (?:slid|sliding|flicked|flicking) (?:sideways )?(?:toward|to) you|gaze (?:found|finding) you)\b/i.test(raw)) {
+    issues.push("stock_flirt_narration");
+  }
+
   return [...new Set(issues)];
 }
 
@@ -1715,7 +1725,7 @@ function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", rec
   const lanes = [
     {
       id: "ordinary_motion",
-      text: "ORDINARY LIFE IN MOTION: a believable plan, outing, hangout, drive, coffee stop, group activity, campus moment, or shared task is already happening. Something small changes the direction of the scene without turning into an argument."
+      text: "ORDINARY LIFE IN MOTION: a believable plan, outing, errand, group activity, spontaneous invitation, shared task, local event, hobby, trip preparation, or everyday obligation is already happening. Something changes the direction of the scene without turning into an argument. Do NOT default to ordering food, coffee, studying, sitting around a campus table, or choosing snacks unless the creator explicitly asked for that."
     },
     {
       id: "character_initiative",
@@ -1743,7 +1753,7 @@ function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", rec
     },
     {
       id: "unexpected_opportunity",
-      text: "UNEXPECTED OPPORTUNITY: something becomes available or possible right now and the lead character decides to act on it. The momentum comes from possibility, not conflict."
+      text: "UNEXPECTED OPPORTUNITY: something becomes available or possible right now and the lead character decides to act on it. Prefer an opportunity that changes what the group/character will actually DO next: tickets, a last-minute opening, an invitation, a spontaneous destination, a challenge, access to something, a changed plan, or a chance tied to the character's own interests. The momentum comes from possibility, not conflict."
     },
   ];
 
@@ -1919,7 +1929,9 @@ LIVING OPENING ENGINE 3.52.92
 - CHEMISTRY THROUGH CHOICES, NOT CHOREOGRAPHY: show preference/attraction through what the character decides, prioritizes, notices, remembers, changes, risks or initiates. Do not stack “caught your eye”, a crooked/lopsided grin, lowered voice, stepping closer, shoulder bumps and prolonged eye contact as shorthand for chemistry.
 - DO NOT CHOREOGRAPH THE USER: the story may establish a broad shared setting, but do not decide the user's exact seat, body position, distance from the character, physical contact, object placement, or destination. Never put the user in the passenger/front seat, beside the character, against a counter, within touching distance, etc. before the user chooses it.
 - NO INVENTED ROUTINE INTIMACY: avoid “as he always did”, “like usual”, “they always ended up beside you”, or any claim that a repeated intimate habit exists unless the creator explicitly established that exact habit.
-- ROTATE ORDINARY LIFE: do not repeatedly fall back to coffee + food + studying just because those appear in the character scenario. The scenario is a palette, not a three-item menu.
+- ROTATE ORDINARY LIFE: do not repeatedly fall back to coffee + food + studying just because those appear in the character scenario. The scenario is a palette, not a three-item menu. When IDEA is empty, treat ordering food, choosing snacks, sitting around a student-union/cafeteria table, coffee runs, and study sessions as LOW-PRIORITY fallback material. Prefer a different slice of the character's life unless one of those activities is genuinely central to the creator opening.
+- MOVE THE STORY STATE: a pleasant conversation is not enough by itself. By the end of the opening, something about the immediate situation should be different because the lead character acted: the plan changed, a destination was chosen, an opportunity was taken, a group activity started, a challenge began, a decision was made, or a concrete next move is already underway. Keep the stakes ordinary if appropriate, but make the scene playable.
+- AVOID STOCK FLIRT NARRATION: do not use “a smirk tugging at the corner of his/her mouth”, “his/her eyes slid toward you”, “eyes flicked to you”, “his/her gaze found you”, or similar glance-and-smirk shorthand to signal chemistry. If attraction matters, show it through decisions, priorities, memory, selective attention, teasing with actual content, or what the character chooses to do.
 - OPENING DNA ≠ COPY THE OPENING. Preserve the ecosystem and relationship geometry, but do NOT replay its distinctive props/actions. If the original opening used car keys, front-seat privilege and choosing the music, a new Instant Story should not begin by throwing keys at the user again.
 - USER AGENCY IS SACRED: do not place an object in the user's hand, decide where they are standing/sitting, make them arrive, make them carry something, assign them a secret task, say what they want/feel/know, or make them responsible for a hidden problem. The user has not acted yet.
 - CLOSED NAMED CAST: never invent a new proper name for a supporting person. Use configured names only. Everyone else stays anonymous: “one of his friends”, “a girl by the counter”, “someone from the group”, “a teammate”.
@@ -2062,6 +2074,9 @@ RULES
 - Do not copy distinctive props/actions from the primary opening.
 - Do not use a giant/random novelty prop or exaggerated quirky gag as the premise.
 - Show chemistry through character choices and priorities, not eye-contact/grin/low-voice/stepping-closer/shoulder-bump choreography.
+- Do not use stock flirt narration such as a smirk tugging at the corner of a mouth, eyes sliding/flicking toward the user, or a gaze “finding” the user.
+- If the draft revolves mainly around ordering food, snacks, coffee, cafeteria/student-union logistics, or studying and IDEA did not explicitly ask for that, redirect the same social setup toward a more active plan, opportunity, outing, challenge, changed destination, or concrete group activity.
+- The ending must change the immediate story state because the lead character has already acted; do not end with only a food order, menu choice, napkin run, or similarly static micro-task.
 - Do not invent routine intimacy such as “as he always does”.
 - Do not decide the user's exact seat, body position, proximity, physical contact, possessions or destination.
 - Do not invent the user's dialogue, feelings, decisions, arrival, posture, possessions, motives, or prior behavior.
