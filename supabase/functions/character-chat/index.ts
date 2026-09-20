@@ -1545,6 +1545,27 @@ function instantStoryNaturalismIssuesV35295(opening = "", draft = {}, idea = "")
   return [...new Set(issues)];
 }
 
+const INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298 = new Set([
+  "invented_user_action_or_state",
+  "invented_user_prop_state",
+  "invented_user_motive",
+  "invented_named_npc",
+  "unsupported_institutional_stakes",
+]);
+
+const INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298 = new Set([
+  "invented_routine_intimacy",
+  "assumed_user_physical_placement",
+]);
+
+function instantStoryHardBlockIssuesV35298(opening = "", draft = {}, idea = "") {
+  const grounding = instantStoryGroundingIssuesV35292(opening, draft, idea)
+    .filter((issue)=>INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298.has(issue));
+  const naturalism = instantStoryNaturalismIssuesV35295(opening, draft, idea)
+    .filter((issue)=>INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298.has(issue));
+  return [...new Set([...grounding, ...naturalism])];
+}
+
 // OPENING DNA 3.52.89
 const OPENING_DNA_FAMILIES_V35289 = [
   {
@@ -2076,12 +2097,40 @@ RULES
       const rescueAnchorIssues = instantStoryOpeningAnchorIssuesV35289(rescueOpening, safeDraft, cleanIdea);
       const rescueGroundingIssues = instantStoryGroundingIssuesV35292(rescueOpening, safeDraft, cleanIdea);
       const rescueNaturalismIssues = instantStoryNaturalismIssuesV35295(rescueOpening, safeDraft, cleanIdea);
-      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueAnchorIssues.length && !rescueGroundingIssues.length && !rescueNaturalismIssues.length) {
-        return json({ opening: rescueOpening, source: "ai_rescue", sceneSeed, openingFamily });
+      const rescueHardBlocks = instantStoryHardBlockIssuesV35298(rescueOpening, safeDraft, cleanIdea);
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length) {
+        return json({
+          opening: rescueOpening,
+          source: "ai_rescue",
+          sceneSeed,
+          openingFamily,
+          softWarnings: [...new Set([...rescueAnchorIssues, ...rescueGroundingIssues, ...rescueNaturalismIssues])]
+            .filter((issue)=>!rescueHardBlocks.includes(issue)),
+        });
       }
     }
   } catch (rescueError) {
     console.warn("[character-chat] constrained Instant Story rescue failed", { error: getErrorMessage(rescueError) });
+  }
+
+  const bestEffort = rejectedInstantCandidates
+    .filter((item)=>String(item?.opening || "").trim())
+    .filter((item)=>instantStoryCandidateUsableV35290(item.opening, item.finishReason, safeDraft))
+    .map((item)=>({
+      ...item,
+      hardBlocks: instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
+    }))
+    .filter((item)=>item.hardBlocks.length === 0)
+    .sort((a,b)=>(a.issueCount || 99) - (b.issueCount || 99))[0] || null;
+
+  if (bestEffort?.opening) {
+    return json({
+      opening: bestEffort.opening,
+      source: "ai_best_effort",
+      sceneSeed,
+      openingFamily,
+      softWarnings: bestEffort.rejectionReasons || [],
+    });
   }
 
   const rejectionSummary = [...new Set(
