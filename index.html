@@ -70,6 +70,26 @@
         window.addEventListener("error", rememberError, true);
         window.addEventListener("unhandledrejection", rememberError);
 
+        // STALE BUNDLE RECOVERY 3.52.99
+        // Vite filenames are content-hashed. If an old cached HTML shell asks
+        // for a bundle removed by a newer deploy, repair immediately instead
+        // of leaving the app blank until the manual 8s rescue appears.
+        window.addEventListener("error", (event) => {
+          try {
+            const target = event?.target;
+            const url = String(target?.src || target?.href || "");
+            const isHashedAsset = /\/assets\/[^/]+\.(?:js|css)(?:\?|$)/i.test(url);
+            if (!isHashedAsset || isNativeVelvet()) return;
+
+            const key = "velvet_stale_asset_repair_v35299";
+            const last = Number(sessionStorage.getItem(key) || 0);
+            if (Date.now() - last < 15000) return;
+            sessionStorage.setItem(key, String(Date.now()));
+
+            Promise.resolve().then(() => repairWebOnly());
+          } catch {}
+        }, true);
+
         async function repairWebOnly() {
           if (isNativeVelvet()) {
             location.reload();
