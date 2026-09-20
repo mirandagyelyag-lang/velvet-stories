@@ -1923,6 +1923,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
   const attemptTimeoutMs = 14500;
   const hedgeDelaysMs = [0, 700, 1400];
   const controllers = new Set<AbortController>();
+  const rejectedInstantCandidates = [];
   const startedAt = Date.now();
   let closed = false;
 
@@ -1962,6 +1963,14 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
       const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
       if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || anchorIssues.length || groundingIssues.length || naturalismIssues.length) {
+        const rejectionReasons = [...anchorIssues, ...groundingIssues, ...naturalismIssues];
+        rejectedInstantCandidates.push({
+          opening,
+          model,
+          finishReason,
+          rejectionReasons,
+          issueCount: rejectionReasons.length + (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) ? 0 : 3),
+        });
         console.warn("[character-chat] instant story rejected by conflict-first/opening-DNA quality gate", {
           anchorIssues,
           qualityIssues,
@@ -2007,7 +2016,14 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
   });
 
   try {
-    const rescuePrompt = `Write ONE fresh roleplay opening for this exact character. 170-260 words. This is a rescue pass, so prioritize coherence and specificity over elaborate prose.
+    const bestRejected = rejectedInstantCandidates
+      .filter((item)=>String(item?.opening || "").trim())
+      .sort((a,b)=>(a.issueCount || 99) - (b.issueCount || 99))[0] || null;
+    const repairContext = bestRejected
+      ? `\nREJECTED DRAFT TO REPAIR\n${bestRejected.opening}\n\nREJECTION REASONS\n${bestRejected.rejectionReasons.join(", ") || "general completeness/quality"}\n\nIMPORTANT: Repair this draft. Preserve its useful premise, character-specific choices, spoken lines and momentum where possible. Remove or rewrite only the parts that caused rejection. Do NOT invent an unrelated replacement premise unless the draft is unusable.\n`
+      : "";
+
+    const rescuePrompt = `Write ONE polished roleplay opening for this exact character. 170-260 words. This is a repair pass, so prioritize coherence, specificity, natural social behavior and user agency over elaborate prose.
 
 OPENING DNA
 ${openingDna}
@@ -2017,7 +2033,7 @@ ${JSON.stringify(safeDraft)}
 
 CONFLICT DIRECTION
 ${sceneSeed}
-
+${repairContext}
 RULES
 - Stay inside the primary opening's ecosystem unless IDEA explicitly relocates it.
 - With no explicit IDEA requesting conflict, do NOT use arguments, fights, accusations, betrayal, confrontations, lies-as-plot, or genuine anger. Use a normal, social, funny, awkward, jealous, spontaneous, competitive, opportunistic, or mildly inconvenient opening instead.
@@ -2068,10 +2084,15 @@ RULES
     console.warn("[character-chat] constrained Instant Story rescue failed", { error: getErrorMessage(rescueError) });
   }
 
+  const rejectionSummary = [...new Set(
+    rejectedInstantCandidates.flatMap((item)=>Array.isArray(item?.rejectionReasons) ? item.rejectionReasons : [])
+  )].slice(0, 8);
+
   return json({
     error: "Velvet couldn't create a fresh enough Instant Story this time. Try again.",
     retryable: true,
     openingFamily,
+    rejectionReasons: rejectionSummary,
   }, 503);
 }
 
