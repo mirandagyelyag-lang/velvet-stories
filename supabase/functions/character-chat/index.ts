@@ -1434,6 +1434,54 @@ function instantStoryCandidateUsableV35290(opening = "", finishReason = "", draf
   return fatal.length === 0;
 }
 
+
+// GROUNDED INSTANT STORY 3.52.92
+function instantStoryNarrationOnlyV35292(value = "") {
+  return String(value || "")
+    .replace(/[“"][^”"]*[”"]/g, " ")
+    .replace(/'[^']*'/g, " ");
+}
+
+function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") {
+  const issues = [];
+  const raw = String(opening || "");
+  const narration = instantStoryNarrationOnlyV35292(raw);
+  const profile = `${draft?.name || ""} ${draft?.role || ""} ${draft?.description || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""} ${draft?.firstMessage || draft?.first_message || ""}`;
+  const profileNorm = profile.toLowerCase();
+  const ideaNorm = String(idea || "").toLowerCase();
+
+  if (/\byou\s+(?:were|had|held|took|grabbed|reached|walked|stood|sat|looked|turned|nodded|smiled|followed|carried|brought|wanted|needed|felt|knew|decided|hesitated|froze|shoved|opened|closed)\b/i.test(narration)) {
+    issues.push("invented_user_action_or_state");
+  }
+  if (/\b(?:against|into|in)\s+your\s+(?:palm|hand|hands|pocket|bag|lap)\b/i.test(narration)) {
+    issues.push("invented_user_prop_state");
+  }
+  if (/\byou(?:'re| are)\s+(?:desperate|eager|nervous|afraid|jealous|angry|excited|dying)\b/i.test(raw)) {
+    issues.push("invented_user_motive");
+  }
+
+  const allowedNameTokens = new Set(
+    (profile.match(/\b[A-Z][a-z]{2,}\b/g) || []).map((name)=>name.toLowerCase())
+  );
+  const humanNameCandidates = [];
+  for (const match of raw.matchAll(/\b([A-Z][a-z]{2,})(?:\s+and\s+([A-Z][a-z]{2,}))?\s+(?:shifted|looked|said|asked|laughed|stood|stepped|turned|walked|moved|answered|glanced|leaned|frowned|smiled|crossed|shoved|held|watched|refused|nodded|sighed|shrugged|muttered|called)\b/g)) {
+    humanNameCandidates.push(match[1], match[2]);
+  }
+  if (humanNameCandidates.filter(Boolean).some((name)=>!allowedNameTokens.has(String(name).toLowerCase()))) {
+    issues.push("invented_named_npc");
+  }
+
+  const unsupportedInstitution = /\b(?:athletic department|disciplinary board|campus police|police|coach|dean|expelled|suspended|arrested|criminal charge)\b/i.test(raw)
+    && !/\b(?:athletic|coach|team|sport|police|crime|criminal|dean|discipline)\b/i.test(profile);
+  if (unsupportedInstitution) issues.push("unsupported_institutional_stakes");
+
+  if (/\bscreenshot\b/i.test(raw) && !/\bscreenshot\b/i.test(profileNorm) && !/\bscreenshot\b/i.test(ideaNorm)) {
+    issues.push("recycled_screenshot_conflict");
+  }
+
+  return [...new Set(issues)];
+}
+
 // OPENING DNA 3.52.89
 const OPENING_DNA_FAMILIES_V35289 = [
   {
@@ -1574,44 +1622,76 @@ const INSTANT_STORY_CONFLICT_SEEDS_V35247 = [
 function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", recentSceneSeeds = []) {
   const cleanIdea = cleanPromptValue(idea, 420);
   if (cleanIdea) return `USER-SPECIFIED DIRECTION: ${cleanIdea}`;
+
   const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
-  const ensemble = /\b(?:friend group|group of|same group|friends|team|teammates|roommates|siblings|family|coworkers|colleagues|crew|club|social circle|popular|campus king|campus prince)\b/.test(profile);
-  const conflictHeavy = /\b(?:guarded|proud|loyal|conflict|argument|fight|protect|danger|rumor|reputation|secret|betray|trust)\b/.test(profile);
   const family = openingDnaFamilyV35289(draft);
-  const pool = [...INSTANT_STORY_CONFLICT_SEEDS_V35247];
-  if (family?.id === "roadtrip") {
-    pool.push(
-      "Inside the established spontaneous road-trip / shared-car-plan world, the group is already committed to going somewhere when a real disagreement, secret, loyalty problem, or unexpected consequence changes the trip before they leave or while they are on the road.",
-      "Inside the established road-trip world, one person in the group has made a decision that affects everyone else, and the lead character has to take initiative without handing the entire scene back to the user.",
-      "Inside the established road-trip world, tension in the friend group surfaces because someone withheld information or changed a plan after everyone had already committed."
-    );
-  }
-  if (family?.id === "friend_group") {
-    pool.push(
-      "Inside the established close-friend-group world, a shared plan is already in motion when one person's choice creates a real loyalty or trust problem inside the group.",
-      "Inside the established close-friend-group world, two friends disagree about what should happen next and the lead character cannot stay neutral without affecting the user.",
-      "Inside the established close-friend-group world, something said in the group chat or during a shared plan exposes a disagreement that has consequences beyond a single joke."
-    );
-  }
-  if (family?.id === "party") {
-    pool.push(
-      "Inside the established party/social-gathering world, a private accusation or piece of information reaches the wrong part of the group and changes the room before the facts are clear.",
-      "Inside the established party/social-gathering world, two people arrive with incompatible versions of something that happened earlier that night, forcing the lead character to take a position before the truth is complete.",
-      "Inside the established party/social-gathering world, somebody crosses a real boundary in front of witnesses and the social consequences begin before anyone agrees on what actually happened."
-    );
-  }
-  if (!ensemble) {
-    pool.push(
-      "A consequential outside problem is already affecting the lead character and the user from different directions. A third force may be an institution, family member, coworker, rival, obligation, rumor, or off-screen person with a real stake.",
-      "The lead character learns something incomplete that changes what they are willing to do next. The user is implicated in the situation but is not reduced to a romantic objective."
-    );
+  const social = /\b(?:friend group|group of|same group|friends|team|roommates|social circle|popular|campus king|campus prince)\b/.test(profile);
+  const attraction = /\b(?:likes you|has feelings for you|attracted|into you|jealous|flirts|romantic tension|le gustas)\b/.test(profile);
+  const conflictHeavy = /\b(?:guarded|proud|argument|fight|rumor|reputation|secret|betray|trust|rival)\b/.test(profile);
+
+  const lanes = [
+    {
+      id: "ordinary_motion",
+      text: "ORDINARY LIFE IN MOTION: a believable plan, outing, hangout, class-adjacent moment, drive, coffee stop, shared task, or group activity is already happening. Something small changes the direction of the scene, but nobody needs to be in danger or accused of anything."
+    },
+    {
+      id: "character_initiative",
+      text: "CHARACTER INITIATIVE: the lead character wants something ordinary and specific and takes the first concrete step. Their choice naturally creates contact with the user without making the user decide the whole scene."
+    },
+    {
+      id: "social_friction",
+      text: "SOCIAL FRICTION: a real but proportionate disagreement, awkwardness, jealousy beat, competing plan, or crossed expectation appears inside the established social world. Keep the stakes human-sized unless the profile already supports something bigger."
+    },
+    {
+      id: "group_chaos",
+      text: "GROUP CHAOS: the established friend/social group is trying to do something together and personalities collide in a funny, annoying, inconvenient, or revealing way. The scene should still work even if nobody is lying, betraying anyone, or facing institutional consequences."
+    },
+    {
+      id: "private_sidebeat",
+      text: "PRIVATE SIDEBEAT INSIDE THE SHARED WORLD: while the larger group or activity continues, the lead character creates a brief side interaction with the user for a character-specific reason. Keep the wider world alive instead of isolating them into instant romance."
+    },
+  ];
+
+  if (attraction) {
+    lanes.push({
+      id: "relationship_tension",
+      text: "RELATIONSHIP TENSION: attraction or jealousy colors an otherwise normal social situation. Show it through where the character places attention, what they choose to do, or how they insert themselves. Do not manufacture a rival, confession, possessive claim, or melodramatic confrontation."
+    });
   }
   if (conflictHeavy) {
-    pool.push("A known pressure point from the character profile becomes public at the worst possible moment. The lead character must manage loyalty, reputation, and incomplete truth at once.");
+    lanes.push({
+      id: "serious_conflict",
+      text: "SERIOUS CONFLICT, USED SPARINGLY: a trust, loyalty, privacy, or reputation problem genuinely matters because the character profile supports it. Keep the facts grounded, do not invent criminal/disciplinary stakes, and do not make the user secretly responsible for the problem."
+    });
   }
-  return `CONFLICT STRUCTURE: ${pickInstantConflictSeedV35289(pool, variationKey, recentSceneSeeds)}`;
-}
 
+  const recent = new Set((Array.isArray(recentSceneSeeds) ? recentSceneSeeds : []).map((item)=>String(item||"")));
+  const available = lanes.filter((lane)=>![...recent].some((seed)=>seed.includes(`MODE=${lane.id}`)));
+  const candidates = available.length ? available : lanes;
+  const chosen = candidates[instantStoryHash(`${variationKey}|${draft?.name || ""}|${Date.now()}|${Math.random()}`) % candidates.length];
+
+  const familyDirection = family?.id === "party"
+    ? "Stay in the party / house-gathering / afterparty social orbit."
+    : family?.id === "roadtrip"
+      ? "Stay in the friend-group / spontaneous outing / car-trip orbit, but DO NOT replay the original keys/front-seat/music beat."
+      : family?.id === "friend_group"
+        ? "Stay centered on the established friend group and their normal shared life."
+        : family?.id === "motors"
+          ? "Stay in the racing/car world without defaulting to a mechanical emergency."
+          : family?.id === "sports"
+            ? "Stay in the sports/training world without inventing coaches, discipline, or team consequences unless configured."
+            : family?.id === "campus"
+              ? "Stay in the university social world without defaulting to a library/classroom."
+              : family?.id === "work"
+                ? "Stay in the work/business world without inventing a career crisis."
+                : family?.id === "family"
+                  ? "Stay in the family-event/home-social world."
+                  : family?.id === "home"
+                    ? "Stay in the home/apartment world."
+                    : "Use the creator opening and profile as the social/world anchor.";
+
+  return `MODE=${chosen.id}\n${chosen.text}\nOPENING-DNA DIRECTION: ${familyDirection}\nSOCIAL WORLD: ${social ? "established" : "not strongly established"}`;
+}
 function instantStoryConflictFallbackV35247(draft, idea = "", sceneSeed = "") {
   const name = cleanPromptValue(draft?.name, 70) || "Alex";
   const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
@@ -1733,48 +1813,35 @@ async function handleInstantStory({ apiKey, draft, idea, variationKey = "", rece
   const sceneSeed = instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds);
   const openingDna = buildOpeningDnaContractV35289(safeDraft, cleanIdea);
   const openingFamily = openingDnaFamilyV35289(safeDraft)?.id || "profile-derived";
-  const prompt = `Write one substantial opening scene for a private roleplay with this character. TARGET 260-380 WORDS; hard ceiling 420 words. Never return fewer than 130 words. It must feel like opening a story that was already alive before the first line: people have motives, incomplete information, history, and something meaningful to lose. Do not write a teaser, summary, character advertisement, writing prompt, date setup, or tiny exchange.
+  const prompt = `Write one grounded, playable opening scene for a private roleplay with this character. TARGET 170-260 WORDS; hard ceiling 320. It should feel like a real slice of this character's life already in motion, not a prestige-TV cold open trying to prove that the plot is important.
 
-OPENING DNA 3.52.89
+OPENING DNA 3.52.92
 ${openingDna}
 
-CONFLICT-FIRST STORY ENGINE 3.52.47
-- STORY BEFORE ROMANCE: the central problem must still matter if all romantic attraction were removed. Attraction may color a decision, loyalty, attention, restraint, jealousy, or risk, but it is never the whole plot.
-- START IN MOTION: begin after a real situation has already started. Someone has said, done, hidden, misunderstood, exposed, lost, promised, broken, discovered, or refused something consequential.
-- FRESH-PLOT RULE 3.52.90: do not default to the same “phone message / screenshot / someone lied / start again” argument across characters. The conflict must arise from THIS opening ecosystem and THIS character's life. A rumor/screenshot conflict is only one possible family, never the universal fallback.
-- THREE ACTIVE FORCES: when the profile supports a social world, use at least THREE forces with different interests. These can be the lead character, user, established friend(s), family, teammate, coworker, rival, institution, rumor, obligation, or consequence. Do not build a flat lead+user+decorative-NPC triangle.
-- NPC AUTONOMY: supporting people have their own loyalties, information, grudges, mistakes, priorities, and relationships with each other. They do not exist to grin at flirting, announce jealousy, praise the lead, or conveniently leave.
-- REAL STAKES: arguments must be about things that can genuinely damage trust or change relationships: lies, betrayal, secrecy, exposing private information, taking sides, abandonment, broken promises, cover-ups, reputation with a causal basis, conflicting loyalties, safety, responsibility, or a consequential misunderstanding. Do NOT inflate takeout, parking, errands, rides, missing orders, seats, weather, minor scheduling, or ordinary inconvenience into dramatic conflict.
-- QUESTIONS, NOT ANSWERS: create at least TWO live unanswered questions. Who is telling the truth? What was omitted? What does one person know? Who will take whose side? What consequence is coming? Do not explain everything in narration.
-- CHARACTER AGENCY: the lead character has a goal, stake, opinion, or loyalty independent of the user. They may be wrong. They may hide something. They may choose a side and make the problem worse.
-- ATTRACTION AS EVIDENCE, NOT DISPLAY: if the profile explicitly establishes attraction, show it through what the character risks, remembers, notices, protects, refuses, prioritizes, or cannot stay neutral about. Never stage a romantic favor purely to prove interest.
-- JEALOUSY NEEDS A REAL PERSON: a rival/other love interest may appear only if that person matters independently and has a plausible relationship/history/context. Never create a random attractive stranger just to trigger jealousy.
-- NO ROMCOM MACHINERY: no saved seat, waiting beside a car, weak rain excuse, “I drove across campus,” surprise ride, spare favorite order, lost bracelet, accidental collision, fake invitation, or friends instantly saying “why do you care?” / “you like her.”
-- NO FANFIC TELEGRAPHING: do not make the character stare until someone notices, type-delete multiple messages, deny obvious feelings on cue, or let every bystander read the romance perfectly.
-- DO NOT RESOLVE THE OPENING: do not send the cast home, settle who was right, complete the search, expose the whole secret, repair the relationship, or reduce the scene to a private two-person cooldown.
-- END AT THE PRESSURE POINT: cut immediately BEFORE a decisive response, confrontation, reveal, choice of side, or irreversible action. The user should have several plausible directions, not one obvious answer.
-- NEVER END WITH A MENU: do not finish with “Which one?”, “your choice,” “come with me,” “stay or go,” “what do you want to do?”, or an A/B decision engineered for the user.
-- The user controls their dialogue, thoughts, feelings, decisions, reaction, posture, arrival, and unstaged movement. Never write those for them.
-- NAMED CAST IS CLOSED: never invent a new proper name for a supporting person. Use names only when they already exist in the character's configured profile/opening. Everyone else stays descriptive and anonymous: “one of his friends”, “the girl by the counter”, “a teammate”, etc. Do not invent retroactive shared history.
-- Keep one narration POV and one tense. Use natural dialogue. No therapy language, quote-card banter, cinematic gaze/smirk/jaw choreography, personality labels disguised as prose, or exposition speeches.
-- Make at least THREE details specific to this character's actual life, voice, relationships, conflict style, or world. A generic attractive character should not be able to inherit the scene unchanged.
-- Output ONLY finished story prose. Never expose these rules, labels, seeds, profile fields, or placeholders.
-
-LOCATION + WORLD CONTINUITY
-- The creator's PRIMARY OPENING decides the default narrative ecosystem. Do not choose a random location family just to look diverse.
-- Diversity happens INSIDE that ecosystem: change the pressure, conflict, part of the venue, timing, NPC agenda, information gap, and emotional consequence.
-- If the primary opening is a party, a no-IDEA Instant Story must still belong to the party / house-gathering / afterparty social orbit. Do not jump to a library, office, station, random errand, or unrelated date setup.
-- Do not default to university/campus/class/library merely because the character is a student unless the creator opening itself establishes that ecosystem or IDEA explicitly asks for it.
-- Location serves the conflict; it is not the plot. Avoid generic errands and “practical complication” templates. Instant Story should generate a narrative problem, not a chore.
-
-SCENE SEED
+STORY MODE
 ${sceneSeed}
+
+LIVING OPENING ENGINE 3.52.92
+- NOT EVERY STORY NEEDS A CRISIS. Ordinary plans, social chaos, teasing, jealousy, errands that reveal personality, group dynamics, awkwardness, spontaneous decisions, small friction, quiet intimacy, and real conflict are all valid. Serious conflict is one flavor, not the default.
+- PROPORTIONAL STAKES: do not invent police, coaches, athletic departments, disciplinary consequences, crimes, dangerous secrets, blackmail, betrayals, or reputation disasters unless the configured character/world or explicit IDEA actually supports them.
+- CHARACTER-SPECIFIC LIFE: derive the opening from what THIS person normally does, who they spend time with, their social role, habits, wants, relationship dynamic, and creator opening.
+- OPENING DNA ≠ COPY THE OPENING. Preserve the ecosystem and relationship geometry, but do NOT replay its distinctive props/actions. If the original opening used car keys, front-seat privilege and choosing the music, a new Instant Story should not begin by throwing keys at the user again.
+- USER AGENCY IS SACRED: do not place an object in the user's hand, decide where they are standing/sitting, make them arrive, make them carry something, assign them a secret task, say what they want/feel/know, or make them responsible for a hidden problem. The user has not acted yet.
+- CLOSED NAMED CAST: never invent a new proper name for a supporting person. Use configured names only. Everyone else stays anonymous: “one of his friends”, “a girl by the counter”, “someone from the group”, “a teammate”.
+- NO GENERIC CONFLICT MACHINE: do not default to screenshots, anonymous messages, somebody lying, “start again”, accusations, hidden destinations, mysterious trunks, or secret deliveries just to manufacture stakes.
+- NO FAKE AUTHORITY: do not invent a coach, boss, professor, police officer, dean, department, parent, team rule, or institutional punishment unless the profile/opening/world actually establishes that authority as relevant.
+- CHARACTER INITIATIVE: the lead character should make at least one concrete choice or move that gives the scene direction. Do not finish by making the user choose A/B, explain a mystery they never created, or carry the whole plot.
+- RELATIONSHIP STAGE: preserve the configured dynamic. Attraction can color attention and choices, but do not turn it into instant confession, ownership, or a random love triangle.
+- WORLD STAYS ALIVE: if there is a group, party, team, family, workplace or campus around them, let it continue naturally. Do not make every opening collapse into a private two-person confrontation.
+- DIALOGUE SHOULD SOUND SPOKEN. No therapy language, quote-card monologues, cinematic jaw/eye choreography, ominous “the air changed” writing, or narration explaining what every look means.
+- END WITH MOMENTUM, NOT A CLIFFHANGER GIMMICK. The character can act, say something, redirect the plan, sit beside the user, interrupt, leave with a purpose, or create a natural opening for response. Do not end on “So what are you hiding?”, “tell me the truth”, “your choice”, or an invented accusation against the user.
+- Output ONLY finished story prose.
 
 CHARACTER
 ${JSON.stringify(safeDraft)}
 
 IDEA
-${cleanIdea || "No user-specified premise. Build a conflict-first opening from the character's social world and current profile."}`;
+${cleanIdea || "No extra premise. Create a fresh story beat from the character's creator-defined life and relationship."}`;
 
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
   const globalDeadlineMs = 23500;
@@ -1817,10 +1884,12 @@ ${cleanIdea || "No user-specified premise. Build a conflict-first opening from t
       const finishReason = String(candidate?.finishReason || "");
       const anchorIssues = instantStoryOpeningAnchorIssuesV35289(opening, safeDraft, cleanIdea);
       const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || anchorIssues.length) {
+      const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || anchorIssues.length || groundingIssues.length) {
         console.warn("[character-chat] instant story rejected by conflict-first/opening-DNA quality gate", {
           anchorIssues,
           qualityIssues,
+          groundingIssues,
           model,
           finishReason,
           words: opening.split(/\s+/).filter(Boolean).length,
@@ -1874,11 +1943,13 @@ ${sceneSeed}
 
 RULES
 - Stay inside the primary opening's ecosystem unless IDEA explicitly relocates it.
-- Do not reuse the generic phone-message / screenshot / “start again” accusation template.
-- Do not invent the user's dialogue, feelings, decisions, arrival, posture, possessions, or prior behavior.
+- Do not default to conflict. A normal, social, funny, awkward, jealous, spontaneous, or mildly tense opening is valid.
+- Do not reuse phone-message / screenshot / “start again” accusations, mysterious trunks, hidden deliveries, or fake institutional consequences.
+- Do not copy distinctive props/actions from the primary opening.
+- Do not invent the user's dialogue, feelings, decisions, arrival, posture, possessions, motives, or prior behavior.
 - Do not invent named NPCs.
 - Use at least 2 spoken lines from the lead character.
-- End on a playable pressure point, not a menu.
+- Give the character initiative and end on a natural playable beat, not a menu or accusation against the user.
 - Output only finished prose.`;
 
     const rescue = await fetch(modelEndpoint(GEMINI_RECOVERY_MODEL), {
@@ -1898,7 +1969,8 @@ RULES
       const rescueOpening = extractCandidateText(rescueData).trim();
       const rescueFinish = String(rescueData?.candidates?.[0]?.finishReason || "");
       const rescueAnchorIssues = instantStoryOpeningAnchorIssuesV35289(rescueOpening, safeDraft, cleanIdea);
-      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueAnchorIssues.length) {
+      const rescueGroundingIssues = instantStoryGroundingIssuesV35292(rescueOpening, safeDraft, cleanIdea);
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueAnchorIssues.length && !rescueGroundingIssues.length) {
         return json({ opening: rescueOpening, source: "ai_rescue", sceneSeed, openingFamily });
       }
     }
