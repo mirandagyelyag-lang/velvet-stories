@@ -1437,6 +1437,18 @@ function instantStoryCandidateUsableV35290(opening = "", finishReason = "", draf
 // OPENING DNA 3.52.89
 const OPENING_DNA_FAMILIES_V35289 = [
   {
+    id: "roadtrip",
+    label: "road trip / spontaneous outing world",
+    source: /\b(?:road trip|driving two hours|drive two hours|trip tonight|car keys|picking the music|front seat|we'?re driving|driving out|weekend trip)\b/i,
+    output: /\b(?:car|drive|driving|road|trip|keys|front seat|music|playlist|gas|stop|highway|ride|leave tonight|heading out)\b/i,
+  },
+  {
+    id: "friend_group",
+    label: "close friend-group / shared-plans world",
+    source: /\b(?:group chat|group of eight|seven of you|eight friends|friend group|same group|all of you|the group|six pairs of eyes|everyone decided)\b/i,
+    output: /\b(?:group|friends?|everyone|someone|one of them|living room|car|plans?|chat|weekend|coffee|movie|hangout|party|trip)\b/i,
+  },
+  {
     id: "party",
     label: "party / shared social gathering",
     source: /\b(?:party|house party|frat|fraternity|birthday|afterparty|gathering|celebration|night out|club|bar|fiesta)\b/i,
@@ -1481,17 +1493,26 @@ const OPENING_DNA_FAMILIES_V35289 = [
 ];
 
 function openingDnaSourceV35289(draft = {}) {
-  return [
-    cleanPromptValue(draft?.firstMessage || draft?.first_message || "", 1100),
-    cleanPromptValue(draft?.scenario || "", 700),
-    cleanPromptValue(draft?.world || "", 700),
-  ].filter(Boolean).join(" ");
+  return {
+    primary: cleanPromptValue(draft?.firstMessage || draft?.first_message || "", 1100),
+    secondary: [
+      cleanPromptValue(draft?.scenario || "", 700),
+      cleanPromptValue(draft?.world || "", 700),
+    ].filter(Boolean).join(" "),
+  };
 }
 
 function openingDnaFamilyV35289(draft = {}) {
   const source = openingDnaSourceV35289(draft);
-  if (!source) return null;
-  return OPENING_DNA_FAMILIES_V35289.find((family) => family.source.test(source)) || null;
+  if (source.primary) {
+    const primaryMatch = OPENING_DNA_FAMILIES_V35289.find((family) => family.source.test(source.primary));
+    if (primaryMatch) return { ...primaryMatch, confidence: "primary" };
+  }
+  if (source.secondary) {
+    const secondaryMatch = OPENING_DNA_FAMILIES_V35289.find((family) => family.source.test(source.secondary));
+    if (secondaryMatch) return { ...secondaryMatch, confidence: "secondary" };
+  }
+  return null;
 }
 
 function buildOpeningDnaContractV35289(draft = {}, idea = "") {
@@ -1511,7 +1532,7 @@ Scenario: ${scenario || "not specified"}
 World: ${world || "not specified"}
 Detected narrative ecosystem: ${family?.label || "derive it directly from the creator opening"}
 
-- The primary opening is DESIGN INTENT, not merely sample prose. It defines the kind of place, social ecosystem, relationship geometry, level of familiarity, and recurring life this character belongs to.
+- The PRIMARY OPENING outranks world/scenario when they point in different directions. It is DESIGN INTENT, not merely sample prose. It defines the kind of social situation, activity, relationship geometry, level of familiarity, and recurring life this character belongs to.
 - A fresh Instant Story may change the immediate conflict, room, hour, NPC pressure, who starts the problem, or what information surfaces, but it must still feel like another plausible opening for THIS SAME character.
 - Do NOT use “variety” as permission to teleport into an unrelated scenario family. If the creator opening is a party, stay in the party / house-gathering / afterparty social orbit. If it is racing, stay in the racing/car world. If it is training, stay in the sports world. Apply the same principle to other clearly established ecosystems.
 - Preserve the configured relationship stage. Do not turn established friends into strangers, enemies into casual friends, or existing attraction into instant confession.
@@ -1524,6 +1545,7 @@ function instantStoryOpeningAnchorIssuesV35289(opening = "", draft = {}, idea = 
   if (cleanPromptValue(idea || "", 420)) return [];
   const family = openingDnaFamilyV35289(draft);
   if (!family) return [];
+  if (family.confidence !== "primary") return [];
   return family.output.test(String(opening || "")) ? [] : ["opening_context_drift"];
 }
 
@@ -1557,6 +1579,20 @@ function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", rec
   const conflictHeavy = /\b(?:guarded|proud|loyal|conflict|argument|fight|protect|danger|rumor|reputation|secret|betray|trust)\b/.test(profile);
   const family = openingDnaFamilyV35289(draft);
   const pool = [...INSTANT_STORY_CONFLICT_SEEDS_V35247];
+  if (family?.id === "roadtrip") {
+    pool.push(
+      "Inside the established spontaneous road-trip / shared-car-plan world, the group is already committed to going somewhere when a real disagreement, secret, loyalty problem, or unexpected consequence changes the trip before they leave or while they are on the road.",
+      "Inside the established road-trip world, one person in the group has made a decision that affects everyone else, and the lead character has to take initiative without handing the entire scene back to the user.",
+      "Inside the established road-trip world, tension in the friend group surfaces because someone withheld information or changed a plan after everyone had already committed."
+    );
+  }
+  if (family?.id === "friend_group") {
+    pool.push(
+      "Inside the established close-friend-group world, a shared plan is already in motion when one person's choice creates a real loyalty or trust problem inside the group.",
+      "Inside the established close-friend-group world, two friends disagree about what should happen next and the lead character cannot stay neutral without affecting the user.",
+      "Inside the established close-friend-group world, something said in the group chat or during a shared plan exposes a disagreement that has consequences beyond a single joke."
+    );
+  }
   if (family?.id === "party") {
     pool.push(
       "Inside the established party/social-gathering world, a private accusation or piece of information reaches the wrong part of the group and changes the room before the facts are clear.",
@@ -1818,11 +1854,58 @@ ${cleanIdea || "No user-specified premise. Build a conflict-first opening from t
     controllers.forEach((controller) => controller.abort());
   }
 
-  console.warn("[character-chat] Instant Story models did not produce an acceptable fresh opening", {
+  console.warn("[character-chat] primary Instant Story attempts did not settle; starting constrained rescue", {
     durationMs: Date.now() - startedAt,
     openingFamily,
     sceneSeed,
   });
+
+  try {
+    const rescuePrompt = `Write ONE fresh roleplay opening for this exact character. 170-260 words. This is a rescue pass, so prioritize coherence and specificity over elaborate prose.
+
+OPENING DNA
+${openingDna}
+
+CHARACTER
+${JSON.stringify(safeDraft)}
+
+CONFLICT DIRECTION
+${sceneSeed}
+
+RULES
+- Stay inside the primary opening's ecosystem unless IDEA explicitly relocates it.
+- Do not reuse the generic phone-message / screenshot / “start again” accusation template.
+- Do not invent the user's dialogue, feelings, decisions, arrival, posture, possessions, or prior behavior.
+- Do not invent named NPCs.
+- Use at least 2 spoken lines from the lead character.
+- End on a playable pressure point, not a menu.
+- Output only finished prose.`;
+
+    const rescue = await fetch(modelEndpoint(GEMINI_RECOVERY_MODEL), {
+      method: "POST",
+      headers: geminiHeaders(apiKey),
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: rescuePrompt }] }],
+        generationConfig: {
+          maxOutputTokens: 1700,
+          temperature: 0.82,
+          thinkingConfig: { thinkingLevel: "LOW" },
+        },
+      }),
+    });
+    const rescueData = await rescue.json().catch(() => ({}));
+    if (rescue.ok) {
+      const rescueOpening = extractCandidateText(rescueData).trim();
+      const rescueFinish = String(rescueData?.candidates?.[0]?.finishReason || "");
+      const rescueAnchorIssues = instantStoryOpeningAnchorIssuesV35289(rescueOpening, safeDraft, cleanIdea);
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueAnchorIssues.length) {
+        return json({ opening: rescueOpening, source: "ai_rescue", sceneSeed, openingFamily });
+      }
+    }
+  } catch (rescueError) {
+    console.warn("[character-chat] constrained Instant Story rescue failed", { error: getErrorMessage(rescueError) });
+  }
+
   return json({
     error: "Velvet couldn't create a fresh enough Instant Story this time. Try again.",
     retryable: true,
