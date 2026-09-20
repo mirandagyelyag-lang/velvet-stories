@@ -10,7 +10,7 @@ const pkg = JSON.parse(
 );
 
 const velvetVersion = pkg.version;
-const velvetRelease = "Natural Social Openings";
+const velvetRelease = "Stale Bundle Recovery";
 
 function upsertMetaTag(html, name, content) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -166,10 +166,25 @@ export default defineConfig(({ mode }) => {
             cleanupOutdatedCaches: true,
             clientsClaim: true,
             skipWaiting: true,
-            navigateFallback: "/index.html",
-            globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2}"],
+            // Never precache index.html. A stale HTML shell can point at hashed
+            // bundles that no longer exist after a Vercel deployment.
+            navigateFallback: null,
+            globPatterns: ["**/*.{js,css,ico,png,svg,webp,woff,woff2}"],
 
             runtimeCaching: [
+              {
+                urlPattern: ({ request }) => request.mode === "navigate",
+                handler: "NetworkFirst",
+                options: {
+                  cacheName: "velvet-navigation",
+                  networkTimeoutSeconds: 4,
+                  cacheableResponse: { statuses: [0, 200] },
+                  expiration: {
+                    maxEntries: 8,
+                    maxAgeSeconds: 60 * 60 * 24,
+                  },
+                },
+              },
               {
                 urlPattern: ({ request, url }) =>
                   request.destination === "image" &&
