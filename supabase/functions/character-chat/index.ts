@@ -1919,9 +1919,9 @@ IDEA
 ${cleanIdea || "No extra premise. Create a fresh story beat from the character's creator-defined life and relationship."}`;
 
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  const globalDeadlineMs = 23500;
-  const attemptTimeoutMs = 19500;
-  const hedgeDelaysMs = [0, 1200, 2400];
+  const globalDeadlineMs = 16500;
+  const attemptTimeoutMs = 14500;
+  const hedgeDelaysMs = [0, 700, 1400];
   const controllers = new Set<AbortController>();
   const startedAt = Date.now();
   let closed = false;
@@ -1945,9 +1945,9 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
-            maxOutputTokens: 2200,
-            temperature: 0.92,
-            thinkingConfig: { thinkingLevel: "MEDIUM" },
+            maxOutputTokens: 1900,
+            temperature: 0.9,
+            thinkingConfig: { thinkingLevel: "LOW" },
           },
         }),
       });
@@ -2033,18 +2033,26 @@ RULES
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user.
 - Output only finished prose.`;
 
-    const rescue = await fetch(modelEndpoint(GEMINI_RECOVERY_MODEL), {
-      method: "POST",
-      headers: geminiHeaders(apiKey),
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: rescuePrompt }] }],
-        generationConfig: {
-          maxOutputTokens: 1700,
-          temperature: 0.82,
-          thinkingConfig: { thinkingLevel: "LOW" },
-        },
-      }),
-    });
+    const rescueController = new AbortController();
+    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 12000);
+    let rescue;
+    try {
+      rescue = await fetch(modelEndpoint(GEMINI_RECOVERY_MODEL), {
+        method: "POST",
+        headers: geminiHeaders(apiKey),
+        signal: rescueController.signal,
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: rescuePrompt }] }],
+          generationConfig: {
+            maxOutputTokens: 1600,
+            temperature: 0.82,
+            thinkingConfig: { thinkingLevel: "LOW" },
+          },
+        }),
+      });
+    } finally {
+      clearTimeout(rescueTimeoutId);
+    }
     const rescueData = await rescue.json().catch(() => ({}));
     if (rescue.ok) {
       const rescueOpening = extractCandidateText(rescueData).trim();
