@@ -4278,7 +4278,7 @@ function buildCompactLiveRecoveryPrompt({
   memories = [], loreEntries = [], storyRecap = "", unresolvedThreads = [],
   relationshipState = {}, castState = {}, intelligenceState = {}, rejectedResponses = [],
   regenerationInstruction = "", regenerationFeedback = [], isRegeneration = false,
-  openingRegeneration = false, turnContract = {},
+  openingRegeneration = false, turnContract = {}, turnIntent = {},
 } = {}) {
   const userName = cleanPromptValue(userIdentity?.name, 100) || "User";
   const transcript = (Array.isArray(messages) ? messages : []).slice(-16).map((message) => {
@@ -9097,6 +9097,7 @@ async function streamRoleplayV19({
           isRegeneration,
           openingRegeneration,
           turnContract,
+          turnIntent,
         });
         let result: ModelResult;
         try {
