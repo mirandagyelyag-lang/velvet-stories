@@ -20,7 +20,7 @@ import { proseIntelligenceV345Issues, sanitizeProseIntelligenceV345Reply } from 
 import { generationOrchestratorV346Issues, sanitizeGenerationOrchestratorV346Reply } from "./engine/generation-orchestrator-v346.ts";
 import { recoveryIntegrityV347Issues, sanitizeRecoveryIntegrityV347Reply } from "./engine/recovery-integrity-v347.ts";
 import { performanceMobileV348Issues } from "./engine/performance-mobile-v348.ts";
-import { instantStoryLooksComplete } from "./engine/instant-story-v3492.ts";
+import { instantStoryHasTemplateLeak, instantStoryLooksComplete, instantStoryQualityIssues } from "./engine/instant-story-v3492.ts";
 import { instantStorySceneFamily, instantStorySceneSeed } from "./engine/instant-story-diversity-v35245.ts";
 import { buildVoiceAuditDirectiveV34911, voiceAuditV34911Issues } from "./engine/character-voice-audit-v34911.ts";
 import { buildHumanCognitionBriefV34930, humanCognitionV34930Issues } from "./engine/human-cognition-pipeline-v34930.ts";
@@ -1404,6 +1404,36 @@ ${Subject} gathered what the faster option required, but stopped before committi
 }
 
 
+
+// FRESH INSTANT STORY 3.52.90
+const INSTANT_STORY_FATAL_ISSUES_V35290 = new Set([
+  "unstaged_user_placement",
+  "sitcom_choice_monologue",
+  "generic_roadtrip_snack_scene",
+  "invented_user_history_prompt",
+  "romance_first_setup",
+  "forced_binary_choice",
+  "premature_resolution",
+  "invented_named_npc",
+  "npc_name_overload",
+]);
+
+function instantStoryCandidateUsableV35290(opening = "", finishReason = "", draft = {}) {
+  if (instantStoryLooksComplete(opening, finishReason, draft)) return true;
+
+  const text = String(opening || "").trim();
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const finish = String(finishReason || "").toUpperCase();
+  if (!text || words < 145 || words > 420) return false;
+  if (["MAX_TOKENS", "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "MALFORMED_FUNCTION_CALL"].includes(finish)) return false;
+  if (!/[.!?…]["'”’)]?$/.test(text)) return false;
+  if (instantStoryHasTemplateLeak(text)) return false;
+
+  const fatal = instantStoryQualityIssues(text, draft)
+    .filter((issue) => INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
+  return fatal.length === 0;
+}
+
 // OPENING DNA 3.52.89
 const OPENING_DNA_FAMILIES_V35289 = [
   {
@@ -1675,6 +1705,7 @@ ${openingDna}
 CONFLICT-FIRST STORY ENGINE 3.52.47
 - STORY BEFORE ROMANCE: the central problem must still matter if all romantic attraction were removed. Attraction may color a decision, loyalty, attention, restraint, jealousy, or risk, but it is never the whole plot.
 - START IN MOTION: begin after a real situation has already started. Someone has said, done, hidden, misunderstood, exposed, lost, promised, broken, discovered, or refused something consequential.
+- FRESH-PLOT RULE 3.52.90: do not default to the same “phone message / screenshot / someone lied / start again” argument across characters. The conflict must arise from THIS opening ecosystem and THIS character's life. A rumor/screenshot conflict is only one possible family, never the universal fallback.
 - THREE ACTIVE FORCES: when the profile supports a social world, use at least THREE forces with different interests. These can be the lead character, user, established friend(s), family, teammate, coworker, rival, institution, rumor, obligation, or consequence. Do not build a flat lead+user+decorative-NPC triangle.
 - NPC AUTONOMY: supporting people have their own loyalties, information, grudges, mistakes, priorities, and relationships with each other. They do not exist to grin at flirting, announce jealousy, praise the lead, or conveniently leave.
 - REAL STAKES: arguments must be about things that can genuinely damage trust or change relationships: lies, betrayal, secrecy, exposing private information, taking sides, abandonment, broken promises, cover-ups, reputation with a causal basis, conflicting loyalties, safety, responsibility, or a consequential misunderstanding. Do NOT inflate takeout, parking, errands, rides, missing orders, seats, weather, minor scheduling, or ordinary inconvenience into dramatic conflict.
@@ -1688,7 +1719,7 @@ CONFLICT-FIRST STORY ENGINE 3.52.47
 - END AT THE PRESSURE POINT: cut immediately BEFORE a decisive response, confrontation, reveal, choice of side, or irreversible action. The user should have several plausible directions, not one obvious answer.
 - NEVER END WITH A MENU: do not finish with “Which one?”, “your choice,” “come with me,” “stay or go,” “what do you want to do?”, or an A/B decision engineered for the user.
 - The user controls their dialogue, thoughts, feelings, decisions, reaction, posture, arrival, and unstaged movement. Never write those for them.
-- Use established NPCs first. If the profile clearly establishes a group/team/family/social circle but not every member is named, you may introduce at most 1-2 minor named people as NEW present-tense cast. Do not invent retroactive shared history for them.
+- NAMED CAST IS CLOSED: never invent a new proper name for a supporting person. Use names only when they already exist in the character's configured profile/opening. Everyone else stays descriptive and anonymous: “one of his friends”, “the girl by the counter”, “a teammate”, etc. Do not invent retroactive shared history.
 - Keep one narration POV and one tense. Use natural dialogue. No therapy language, quote-card banter, cinematic gaze/smirk/jaw choreography, personality labels disguised as prose, or exposition speeches.
 - Make at least THREE details specific to this character's actual life, voice, relationships, conflict style, or world. A generic attractive character should not be able to inherit the scene unchanged.
 - Output ONLY finished story prose. Never expose these rules, labels, seeds, profile fields, or placeholders.
@@ -1710,9 +1741,9 @@ IDEA
 ${cleanIdea || "No user-specified premise. Build a conflict-first opening from the character's social world and current profile."}`;
 
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  const globalDeadlineMs = 16000;
-  const attemptTimeoutMs = 12500;
-  const hedgeDelaysMs = [0, 1800, 3600];
+  const globalDeadlineMs = 23500;
+  const attemptTimeoutMs = 19500;
+  const hedgeDelaysMs = [0, 1200, 2400];
   const controllers = new Set<AbortController>();
   const startedAt = Date.now();
   let closed = false;
@@ -1749,9 +1780,11 @@ ${cleanIdea || "No user-specified premise. Build a conflict-first opening from t
       const opening = extractCandidateText(data).trim();
       const finishReason = String(candidate?.finishReason || "");
       const anchorIssues = instantStoryOpeningAnchorIssuesV35289(opening, safeDraft, cleanIdea);
-      if (!instantStoryLooksComplete(opening, finishReason, safeDraft) || anchorIssues.length) {
+      const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || anchorIssues.length) {
         console.warn("[character-chat] instant story rejected by conflict-first/opening-DNA quality gate", {
           anchorIssues,
+          qualityIssues,
           model,
           finishReason,
           words: opening.split(/\s+/).filter(Boolean).length,
@@ -1785,14 +1818,16 @@ ${cleanIdea || "No user-specified premise. Build a conflict-first opening from t
     controllers.forEach((controller) => controller.abort());
   }
 
-  console.warn("[character-chat] instant story using conflict-first local fallback", { durationMs: Date.now() - startedAt });
-  const fallbackOpening = instantStoryConflictFallbackV35247(safeDraft, cleanIdea, sceneSeed);
-  const fallbackAnchorIssues = instantStoryOpeningAnchorIssuesV35289(fallbackOpening, safeDraft, cleanIdea);
-  if (!instantStoryLooksComplete(fallbackOpening, "STOP", safeDraft) || fallbackAnchorIssues.length) {
-    console.error("[character-chat] conflict-first fallback failed quality gate", { fallbackAnchorIssues });
-    return json({ error: "Instant Story could not produce a complete opening. Please try again." }, 503);
-  }
-  return json({ opening: fallbackOpening, source: "local_fallback", sceneSeed, openingFamily });
+  console.warn("[character-chat] Instant Story models did not produce an acceptable fresh opening", {
+    durationMs: Date.now() - startedAt,
+    openingFamily,
+    sceneSeed,
+  });
+  return json({
+    error: "Velvet couldn't create a fresh enough Instant Story this time. Try again.",
+    retryable: true,
+    openingFamily,
+  }, 503);
 }
 
 async function handleCharacterGenerate({ apiKey, concept }) {
