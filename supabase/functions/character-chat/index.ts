@@ -1556,6 +1556,21 @@ function instantStoryNaturalismIssuesV35295(opening = "", draft = {}, idea = "")
     issues.push("overwritten_literary_prose");
   }
 
+  const inventedPersonalCanon = /\b(?:your (?:mom|mother|dad|father|sister|brother|roommate) (?:called|texted|said)|you always (?:skip|forget|order|choose)|your usual|your favorite|your favourite|everyone calls you|they call you)\b/i;
+  if (inventedPersonalCanon.test(raw) && !inventedPersonalCanon.test(profile) && !inventedPersonalCanon.test(ideaText)) {
+    issues.push("invented_personal_canon");
+  }
+
+  const nicknameLike = /(?:“|")([A-Z][A-Za-z]{1,12})(?:,|!|\?|\.|”|")/g;
+  const possibleNicknames = [...raw.matchAll(nicknameLike)].map((m) => m[1]).filter(Boolean);
+  if (possibleNicknames.length && !possibleNicknames.some((name) => profile.includes(name.toLowerCase()) || ideaText.includes(name.toLowerCase()))) {
+    const spokenNick = possibleNicknames.find((name) => !/^(?:Hey|Come|Look|Wait|Okay|Alright|Fine|Seriously|Actually|No|Yes)$/i.test(name));
+    if (spokenNick) issues.push("invented_user_nickname");
+  }
+
+  const propHits = raw.match(/\b(?:binder|keys?|paper bag|bag|muffin|phone|cup|mug|bottle|book|notebook|folder|backpack|coffee|snack|takeout|menu)\b/gi) || [];
+  if (propHits.length >= 5) issues.push("prop_clutter");
+
   return [...new Set(issues)];
 }
 
@@ -1939,6 +1954,10 @@ LIVING OPENING ENGINE 3.52.92
 - OPENING DNA ≠ COPY THE OPENING. Preserve the ecosystem and relationship geometry, but do NOT replay its distinctive props/actions. If the original opening used car keys, front-seat privilege and choosing the music, a new Instant Story should not begin by throwing keys at the user again.
 - USER AGENCY IS SACRED: do not place an object in the user's hand, decide where they are standing/sitting, make them arrive, make them carry something, assign them a secret task, say what they want/feel/know, or make them responsible for a hidden problem. The user has not acted yet.
 - CLOSED NAMED CAST: never invent a new proper name for a supporting person. Use configured names only. Everyone else stays anonymous: “one of his friends”, “a girl by the counter”, “someone from the group”, “a teammate”.
+- NO INVENTED PERSONAL CANON: do not invent the user's family members, parent calls, siblings, roommates, nicknames, breakfast habits, medical details, schedule habits, favorite foods, routines, or private history unless that exact fact already exists in the character/chat canon.
+- NO FAKE FAMILIARITY SHORTCUTS: do not manufacture intimacy by claiming the user's mom/dad/sibling called, by using an unestablished nickname, by saying “you always skip breakfast”, “your usual”, “your favorite”, or similar invented familiarity.
+- PROP DISCIPLINE: keep physical objects sparse. Usually 1-2 meaningful props are enough. Do not stack binder + keys + bag + food + phone + drink unless each item actually changes the scene.
+- FOOD IS NOT A RELATIONSHIP ENGINE: do not use muffins, coffee, takeout, snacks, favorite orders, or “eat this” caretaking as the default way to show closeness unless food is genuinely central to the creator-defined premise.
 - NO GENERIC CONFLICT MACHINE: do not default to screenshots, anonymous messages, somebody lying, “start again”, accusations, hidden destinations, mysterious trunks, or secret deliveries just to manufacture stakes.
 - NO FAKE AUTHORITY: do not invent a coach, boss, professor, police officer, dean, department, parent, team rule, or institutional punishment unless the profile/opening/world actually establishes that authority as relevant.
 - CHARACTER INITIATIVE: the lead character should make at least one concrete choice or move that gives the scene direction. Do not finish by making the user choose A/B, explain a mystery they never created, or carry the whole plot.
@@ -2095,6 +2114,10 @@ RULES
 - Keep narration sparse: 2-5 short narration sentences total when possible.
 - Start close to the action instead of explaining the whole setup.
 - Use plain, natural prose. Remove ornamental details that do not change the scene, including decorative sighs, steaming drinks, poetic room descriptions, and cinematic facial choreography.
+- Remove any invented personal canon about the user: family contact, nicknames, routines, habits, preferences, favorites, or private history not present in the creator/chat data.
+- Remove invented named professors, classmates, relatives, or other NPCs unless their names are already configured for this chat.
+- Reduce prop clutter. Keep only the one or two objects that actually matter to the beat.
+- Do not use food/caretaking as a shortcut for closeness unless the creator premise explicitly supports it.
 - Rewrite stiff/formal dialogue into speech a real person would actually say unless the creator explicitly defines a formal speaking style.
 - Prefer action before explanation: let the lead character do something concrete, then speak.
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user.
