@@ -267,7 +267,7 @@ export function CharactersProvider({ children }) {
 
   async function generateInstantStory(characterData, idea = "") {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 34000);
+    const timeoutId = setTimeout(() => controller.abort(), 36000);
     const historyKey = `velvet:instant-story-scenes:${characterData?.id || characterData?.name || "character"}`;
     let recentSceneSeeds = [];
     try {
