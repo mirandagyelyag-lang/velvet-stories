@@ -320,8 +320,11 @@ export function CharactersProvider({ children }) {
       const genericInstantStory = /\b(?:flickering neon|the kind of .{0,55} (?:he|she|they) usually reserved for|expression shifted from .{0,80} to something (?:much )?softer|gaze lingering .{0,30} too long|spotting you (?:near|by|at|beside)|poor life choices|saved (?:you|your|the) (?:a )?seat|defended this seat|drove across (?:campus|town)|ordered (?:an )?extra.{0,40}(?:your usual|your favorite)|quiet evening or the drive)\b/i.test(opening);
       const visiblyComplete = /[.!?…][\"'”’)]?$/.test(opening) && !/[’'][A-Za-z]{0,2}$/.test(opening);
       if (!opening) throw new Error("Velvet returned an empty Instant Story. Try again.");
-      if (instantWords.length < 130 || !visiblyComplete || leakedTemplate || genericInstantStory) {
+      if (instantWords.length < 55 || !visiblyComplete) {
         throw new Error("Velvet received a cut-off Instant Story instead of a complete opening. Try again.");
+      }
+      if (leakedTemplate || genericInstantStory) {
+        throw new Error("Velvet received an overly generic Instant Story. Try again.");
       }
       const usedSceneSeed = String(data?.sceneSeed || "").trim();
       if (usedSceneSeed) {
