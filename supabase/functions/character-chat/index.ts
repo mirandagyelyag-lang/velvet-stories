@@ -1552,6 +1552,10 @@ function instantStoryNaturalismIssuesV35295(opening = "", draft = {}, idea = "")
     issues.push("stock_flirt_narration");
   }
 
+  if (/\b(?:brief sigh|soft sigh|steaming (?:bowl|mug|cup)|the room (?:hummed|buzzed)|jaw tightened|expression softened|with measured calm|under the circumstances|if (?:the|this) (?:problem|situation) warrants|formal study|it would be preferable)\b/i.test(raw)) {
+    issues.push("overwritten_literary_prose");
+  }
+
   return [...new Set(issues)];
 }
 
@@ -1944,6 +1948,9 @@ LIVING OPENING ENGINE 3.52.92
 - SHORT OPENING RHYTHM: prefer 2-5 short narration sentences total and 2-5 spoken lines. Dialogue should carry most of the personality and momentum. Avoid paragraph-long setup, atmospheric scene-setting, and explanatory backstory.
 - START LATE: begin at the moment the character acts, interrupts, decides, redirects, invites, or changes the plan. Skip weather reports, room descriptions, crowd noise, architectural details and “everyone was exhausted” setup unless one detail directly changes what happens.
 - LEAVE AIR IN THE SCENE: do not explain every motive, relationship dynamic, or emotional subtext. Let the character's choice and dialogue imply it.
+- PLAIN HUMAN PROSE: prefer ordinary concrete verbs and nouns over decorative literary phrasing. Avoid prose such as “with a brief sigh”, “the steaming bowl”, “the room hummed around them”, “his jaw tightened”, “her expression softened”, or other ornamental narration unless the detail materially changes the scene.
+- NATURAL SPEECH OVER FORMAL SPEECH: characters should not sound like polished essays. Avoid phrases such as “if the situation warrants”, “formal study”, “under the circumstances”, “it would be preferable”, or similarly stiff phrasing unless that character is explicitly written to speak that way.
+- ACTION BEFORE EXPLANATION: when possible, let the character close the book, grab the keys, stand up, change the plan, leave, call someone, start the car, or otherwise act first. Then use one or two spoken lines to reveal why.
 - THE CHARACTER CARRIES MOMENTUM: whenever possible, end after the lead character has already chosen or begun the next concrete move. The user may respond, but should not have to invent what happens next. The character may invite the user, but cannot narrate the user's compliance or physically funnel them into a seat/position.
 - END WITH MOMENTUM, NOT A CLIFFHANGER GIMMICK. The character can act, say something, redirect the plan, interrupt, leave with a purpose, commit to a next step, or create a natural opening for response. Do not end on “So what are you hiding?”, “tell me the truth”, “your choice”, or an invented accusation against the user.
 - Output ONLY finished story prose.
@@ -2087,6 +2094,9 @@ RULES
 - Use 2-5 spoken lines from the lead character.
 - Keep narration sparse: 2-5 short narration sentences total when possible.
 - Start close to the action instead of explaining the whole setup.
+- Use plain, natural prose. Remove ornamental details that do not change the scene, including decorative sighs, steaming drinks, poetic room descriptions, and cinematic facial choreography.
+- Rewrite stiff/formal dialogue into speech a real person would actually say unless the creator explicitly defines a formal speaking style.
+- Prefer action before explanation: let the lead character do something concrete, then speak.
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user.
 - Output only finished prose.`;
 
