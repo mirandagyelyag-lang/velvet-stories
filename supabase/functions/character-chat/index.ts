@@ -1729,7 +1729,7 @@ function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", rec
   if (attraction) {
     lanes.push({
       id: "quiet_relationship_tension",
-      text: "QUIET RELATIONSHIP TENSION: attraction or jealousy colors an otherwise normal social moment through attention, initiative, proximity, priorities, or a choice. No confrontation, random rival, possessive claim, accusation, or confession."
+      text: "QUIET RELATIONSHIP TENSION: attraction or jealousy colors an otherwise normal social moment through attention, initiative, timing, priorities, or a choice. No forced proximity, confrontation, random rival, possessive claim, accusation, or confession."
     });
   }
 
@@ -1909,7 +1909,7 @@ LIVING OPENING ENGINE 3.52.92
 - WORLD STAYS ALIVE: if there is a group, party, team, family, workplace or campus around them, let it continue naturally. Do not make every opening collapse into a private two-person confrontation.
 - DIALOGUE SHOULD SOUND SPOKEN. No therapy language, quote-card monologues, cinematic jaw/eye choreography, ominous “the air changed” writing, or narration explaining what every look means.
 - THE CHARACTER CARRIES MOMENTUM: whenever possible, end after the lead character has already chosen or begun the next concrete move. The user may respond, but should not have to invent what happens next. The character may invite the user, but cannot narrate the user's compliance or physically funnel them into a seat/position.
-- END WITH MOMENTUM, NOT A CLIFFHANGER GIMMICK. The character can act, say something, redirect the plan, sit beside the user, interrupt, leave with a purpose, or create a natural opening for response. Do not end on “So what are you hiding?”, “tell me the truth”, “your choice”, or an invented accusation against the user.
+- END WITH MOMENTUM, NOT A CLIFFHANGER GIMMICK. The character can act, say something, redirect the plan, interrupt, leave with a purpose, commit to a next step, or create a natural opening for response. Do not end on “So what are you hiding?”, “tell me the truth”, “your choice”, or an invented accusation against the user.
 - Output ONLY finished story prose.
 
 CHARACTER
