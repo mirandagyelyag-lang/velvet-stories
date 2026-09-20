@@ -6,9 +6,9 @@ const ctx = readFileSync(new URL("../src/context/CharactersContext.jsx", import.
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.equal(pkg.version, "3.52.96");
-assert.equal(version.version, "3.52.96");
-assert.equal(version.release, "Instant Story Timeout Recovery");
+assert.ok(/^3\.52\.(?:9[6-9]|[1-9]\d{2,})$/.test(pkg.version));
+assert.ok(/^3\.52\.(?:9[6-9]|[1-9]\d{2,})$/.test(version.version));
+assert.ok(["Instant Story Timeout Recovery", "Instant Story Repair Rescue"].includes(version.release));
 
 assert.match(edge, /const globalDeadlineMs = 16500;/);
 assert.match(edge, /const attemptTimeoutMs = 14500;/);
