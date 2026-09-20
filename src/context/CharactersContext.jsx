@@ -267,7 +267,7 @@ export function CharactersProvider({ children }) {
 
   async function generateInstantStory(characterData, idea = "") {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 26000);
+    const timeoutId = setTimeout(() => controller.abort(), 34000);
     const historyKey = `velvet:instant-story-scenes:${characterData?.id || characterData?.name || "character"}`;
     let recentSceneSeeds = [];
     try {
@@ -283,11 +283,13 @@ export function CharactersProvider({ children }) {
       const accessToken = sessionData?.session?.access_token;
       if (sessionError || !accessToken) throw new Error("Your session expired. Sign in again.");
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || supabase.supabaseUrl;
+      // Use the already validated Supabase client configuration. Raw Vite env
+      // values may be redacted by local Vercel pulls (e.g. "[SENSITIVE]").
+      const supabaseUrl = supabase.supabaseUrl;
       const publishableKey =
+        supabase.supabaseKey ||
         import.meta.env.VITE_SUPABASE_ANON_KEY ||
         import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-        supabase.supabaseKey ||
         "";
       if (!supabaseUrl) throw new Error("Velvet couldn't reach Instant Story.");
 
