@@ -1490,6 +1490,11 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
     issues.push("recycled_screenshot_conflict");
   }
 
+  const explicitConflictRequested = /\b(?:fight|argument|argue|confront|confrontation|betray|betrayal|accuse|accusation|angry|furious|big conflict|serious conflict|pelea|discusi[oó]n|confrontaci[oó]n|traici[oó]n)\b/i.test(String(idea || ""));
+  if (!explicitConflictRequested && /\b(?:an argument|the argument|arguing|accus(?:e|ed|ation)|betray(?:ed|al)|confront(?:ed|ation)|a fight|fighting|shouted|yelled|furious|stormed off|you lied|he lied|she lied|they lied|tell me the truth)\b/i.test(raw)) {
+    issues.push("unrequested_interpersonal_conflict");
+  }
+
   return [...new Set(issues)];
 }
 
@@ -1638,41 +1643,46 @@ function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", rec
   const family = openingDnaFamilyV35289(draft);
   const social = /\b(?:friend group|group of|same group|friends|team|roommates|social circle|popular|campus king|campus prince)\b/.test(profile);
   const attraction = /\b(?:likes you|has feelings for you|attracted|into you|jealous|flirts|romantic tension|le gustas)\b/.test(profile);
-  const conflictHeavy = /\b(?:guarded|proud|argument|fight|rumor|reputation|secret|betray|trust|rival)\b/.test(profile);
 
   const lanes = [
     {
       id: "ordinary_motion",
-      text: "ORDINARY LIFE IN MOTION: a believable plan, outing, hangout, class-adjacent moment, drive, coffee stop, shared task, or group activity is already happening. Something small changes the direction of the scene, but nobody needs to be in danger or accused of anything."
+      text: "ORDINARY LIFE IN MOTION: a believable plan, outing, hangout, drive, coffee stop, group activity, campus moment, or shared task is already happening. Something small changes the direction of the scene without turning into an argument."
     },
     {
       id: "character_initiative",
-      text: "CHARACTER INITIATIVE: the lead character wants something ordinary and specific and takes the first concrete step. Their choice naturally creates contact with the user without making the user decide the whole scene."
+      text: "CHARACTER INITIATIVE: the lead character wants something ordinary and specific and acts first. They propose, redirect, decide, include, invite, leave, stay, organize, or improvise without asking the user to manufacture the story."
     },
     {
-      id: "social_friction",
-      text: "SOCIAL FRICTION: a real but proportionate disagreement, awkwardness, jealousy beat, competing plan, or crossed expectation appears inside the established social world. Keep the stakes human-sized unless the profile already supports something bigger."
+      id: "spontaneous_detour",
+      text: "SPONTANEOUS DETOUR: an existing plan changes for a fun, inconvenient, curious, or character-specific reason. The lead character embraces or redirects the detour instead of turning it into conflict."
     },
     {
       id: "group_chaos",
-      text: "GROUP CHAOS: the established friend/social group is trying to do something together and personalities collide in a funny, annoying, inconvenient, or revealing way. The scene should still work even if nobody is lying, betraying anyone, or facing institutional consequences."
+      text: "GROUP CHAOS WITHOUT FIGHTING: the established friend/social group is trying to do something together and the scene becomes messy, funny, competitive, badly organized, or unexpectedly revealing. Nobody is accused, betrayed, or genuinely angry."
+    },
+    {
+      id: "small_problem",
+      text: "SMALL REAL-WORLD PROBLEM: something goes mildly wrong and gives the character something to DO. Keep it proportionate: inconvenience, timing, logistics, weather, a missed plan, a harmless mistake, or a social complication. No crisis escalation."
     },
     {
       id: "private_sidebeat",
-      text: "PRIVATE SIDEBEAT INSIDE THE SHARED WORLD: while the larger group or activity continues, the lead character creates a brief side interaction with the user for a character-specific reason. Keep the wider world alive instead of isolating them into instant romance."
+      text: "PRIVATE SIDEBEAT INSIDE THE SHARED WORLD: while the larger activity continues, the lead character creates a brief side interaction with the user for a character-specific reason, then keeps the wider world moving."
+    },
+    {
+      id: "playful_competition",
+      text: "PLAYFUL COMPETITION: a game, challenge, bet, teasing contest, team split, choice of activity, or harmless one-upmanship gives the scene energy. Keep it genuinely playful, not hostile."
+    },
+    {
+      id: "unexpected_opportunity",
+      text: "UNEXPECTED OPPORTUNITY: something becomes available or possible right now and the lead character decides to act on it. The momentum comes from possibility, not conflict."
     },
   ];
 
   if (attraction) {
     lanes.push({
-      id: "relationship_tension",
-      text: "RELATIONSHIP TENSION: attraction or jealousy colors an otherwise normal social situation. Show it through where the character places attention, what they choose to do, or how they insert themselves. Do not manufacture a rival, confession, possessive claim, or melodramatic confrontation."
-    });
-  }
-  if (conflictHeavy) {
-    lanes.push({
-      id: "serious_conflict",
-      text: "SERIOUS CONFLICT, USED SPARINGLY: a trust, loyalty, privacy, or reputation problem genuinely matters because the character profile supports it. Keep the facts grounded, do not invent criminal/disciplinary stakes, and do not make the user secretly responsible for the problem."
+      id: "quiet_relationship_tension",
+      text: "QUIET RELATIONSHIP TENSION: attraction or jealousy colors an otherwise normal social moment through attention, initiative, proximity, priorities, or a choice. No confrontation, random rival, possessive claim, accusation, or confession."
     });
   }
 
@@ -1682,26 +1692,26 @@ function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", rec
   const chosen = candidates[instantStoryHashV35293(`${variationKey}|${draft?.name || ""}|${Date.now()}|${Math.random()}`) % candidates.length];
 
   const familyDirection = family?.id === "party"
-    ? "Stay in the party / house-gathering / afterparty social orbit."
+    ? "Stay in the party / house-gathering / afterparty social orbit, using normal social movement rather than a fight."
     : family?.id === "roadtrip"
       ? "Stay in the friend-group / spontaneous outing / car-trip orbit, but DO NOT replay the original keys/front-seat/music beat."
       : family?.id === "friend_group"
         ? "Stay centered on the established friend group and their normal shared life."
         : family?.id === "motors"
-          ? "Stay in the racing/car world without defaulting to a mechanical emergency."
+          ? "Stay in the racing/car world without defaulting to a mechanical emergency or confrontation."
           : family?.id === "sports"
-            ? "Stay in the sports/training world without inventing coaches, discipline, or team consequences unless configured."
+            ? "Stay in the sports/training world without inventing coaches, discipline, team punishment, or fights."
             : family?.id === "campus"
-              ? "Stay in the university social world without defaulting to a library/classroom."
+              ? "Stay in the university social world without defaulting to a library/classroom or conflict."
               : family?.id === "work"
-                ? "Stay in the work/business world without inventing a career crisis."
+                ? "Stay in the work/business world without inventing a career crisis or argument."
                 : family?.id === "family"
-                  ? "Stay in the family-event/home-social world."
+                  ? "Stay in the family-event/home-social world without defaulting to family drama."
                   : family?.id === "home"
                     ? "Stay in the home/apartment world."
                     : "Use the creator opening and profile as the social/world anchor.";
 
-  return `MODE=${chosen.id}\n${chosen.text}\nOPENING-DNA DIRECTION: ${familyDirection}\nSOCIAL WORLD: ${social ? "established" : "not strongly established"}`;
+  return `MODE=${chosen.id}\n${chosen.text}\nOPENING-DNA DIRECTION: ${familyDirection}\nSOCIAL WORLD: ${social ? "established" : "not strongly established"}\nDEFAULT CONFLICT POLICY: no fights, arguments, accusations, betrayals, confrontations, or serious interpersonal conflict unless the creator explicitly requested them in IDEA.`;
 }
 function instantStoryConflictFallbackV35247(draft, idea = "", sceneSeed = "") {
   const name = cleanPromptValue(draft?.name, 70) || "Alex";
@@ -1833,7 +1843,8 @@ STORY MODE
 ${sceneSeed}
 
 LIVING OPENING ENGINE 3.52.92
-- NOT EVERY STORY NEEDS A CRISIS. Ordinary plans, social chaos, teasing, jealousy, errands that reveal personality, group dynamics, awkwardness, spontaneous decisions, small friction, quiet intimacy, and real conflict are all valid. Serious conflict is one flavor, not the default.
+- DEFAULT NO-FIGHT POLICY 3.52.94: when IDEA is empty, do NOT build the opening around a fight, argument, accusation, betrayal, confrontation, somebody lying, or people being genuinely angry at each other. Conflict is opt-in through IDEA, not the default source of momentum.
+- STORY MOVEMENT WITHOUT FIGHTING: ordinary plans, social chaos, teasing, jealousy, spontaneous decisions, changed plans, small problems, playful competition, opportunities, group dynamics, awkwardness, quiet intimacy, and character initiative are the preferred engines.
 - PROPORTIONAL STAKES: do not invent police, coaches, athletic departments, disciplinary consequences, crimes, dangerous secrets, blackmail, betrayals, or reputation disasters unless the configured character/world or explicit IDEA actually supports them.
 - CHARACTER-SPECIFIC LIFE: derive the opening from what THIS person normally does, who they spend time with, their social role, habits, wants, relationship dynamic, and creator opening.
 - OPENING DNA ≠ COPY THE OPENING. Preserve the ecosystem and relationship geometry, but do NOT replay its distinctive props/actions. If the original opening used car keys, front-seat privilege and choosing the music, a new Instant Story should not begin by throwing keys at the user again.
@@ -1845,6 +1856,7 @@ LIVING OPENING ENGINE 3.52.92
 - RELATIONSHIP STAGE: preserve the configured dynamic. Attraction can color attention and choices, but do not turn it into instant confession, ownership, or a random love triangle.
 - WORLD STAYS ALIVE: if there is a group, party, team, family, workplace or campus around them, let it continue naturally. Do not make every opening collapse into a private two-person confrontation.
 - DIALOGUE SHOULD SOUND SPOKEN. No therapy language, quote-card monologues, cinematic jaw/eye choreography, ominous “the air changed” writing, or narration explaining what every look means.
+- THE CHARACTER CARRIES MOMENTUM: whenever possible, end after the lead character has already chosen or begun the next concrete move. The user may respond, but should not have to invent what happens next.
 - END WITH MOMENTUM, NOT A CLIFFHANGER GIMMICK. The character can act, say something, redirect the plan, sit beside the user, interrupt, leave with a purpose, or create a natural opening for response. Do not end on “So what are you hiding?”, “tell me the truth”, “your choice”, or an invented accusation against the user.
 - Output ONLY finished story prose.
 
@@ -1954,7 +1966,7 @@ ${sceneSeed}
 
 RULES
 - Stay inside the primary opening's ecosystem unless IDEA explicitly relocates it.
-- Do not default to conflict. A normal, social, funny, awkward, jealous, spontaneous, or mildly tense opening is valid.
+- With no explicit IDEA requesting conflict, do NOT use arguments, fights, accusations, betrayal, confrontations, lies-as-plot, or genuine anger. Use a normal, social, funny, awkward, jealous, spontaneous, competitive, opportunistic, or mildly inconvenient opening instead.
 - Do not reuse phone-message / screenshot / “start again” accusations, mysterious trunks, hidden deliveries, or fake institutional consequences.
 - Do not copy distinctive props/actions from the primary opening.
 - Do not invent the user's dialogue, feelings, decisions, arrival, posture, possessions, motives, or prior behavior.
@@ -2468,7 +2480,7 @@ function buildNarrativePromptV3({
   const regenV3500 = openingRegeneration
     ? `OPENING REGENERATION 3.52.89
 - Rejected opening is not canon: ${clean(openingSeed, 700)}
-- Preserve CREATOR OPENING DNA below. Change the conflict, immediate pressure, dialogue, NPC agenda, and beat shape without abandoning the creator's narrative ecosystem.
+- Preserve CREATOR OPENING DNA below. Change the immediate situation, activity, social beat, dialogue, character initiative, and scene shape without abandoning the creator's narrative ecosystem. Do not introduce a fight merely to make the regeneration feel different.
 - Do not invent a prior user action. Do not relocate to a random setting merely to be different.
 - If the creator opening is a party, remain in the party / house-gathering / afterparty social orbit unless the creator direction explicitly requests another setting.
 
@@ -4112,7 +4124,8 @@ function buildCompactLiveRecoveryPrompt({
   const openingRegenerationContract = `INSTANT STORY REGENERATION 3.52.89 — NEW OPENING, SAME CREATOR DNA
 - This is an opening with NO prior user turn. Never continue the rejected opening and never reply to an imaginary action by the user.
 - Keep the configured character identity, relationship premise, user persona, lore, boundaries and story preferences.
-- The rejected opening is NOT canon. Change the immediate conflict, pressure, dialogue, NPC agenda and beat structure, but remain inside CREATOR OPENING DNA unless CREATOR DIRECTION explicitly relocates the scene.
+- The rejected opening is NOT canon. Change the immediate situation, activity, dialogue, social energy, character initiative and beat structure, but remain inside CREATOR OPENING DNA unless CREATOR DIRECTION explicitly relocates the scene.
+- A regeneration does NOT need a fight or bigger stakes. Prefer a different slice of ordinary life over manufacturing conflict.
 - “Different” does NOT mean a different random location family. A party opening can regenerate into another part/moment/problem of that party/social world; it cannot silently become a library, office, station, errand or unrelated date.
 - Establish where they are, why the character and user are in contact, what is happening now and one playable pressure point.
 - Do not narrate the user's dialogue, thoughts, feelings, decisions or unstaged movement. Leave the user room to answer.
