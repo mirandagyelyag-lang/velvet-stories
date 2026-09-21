@@ -74,17 +74,19 @@ export default function NpcCastDrawer({
 
     setLoading(false);
 
-    if (characterResult.error) {
-      setError(characterResult.error.message);
-      return;
-    }
-    if (storyResult.error) {
-      setError(storyResult.error.message);
+    const loadErrors = [];
+    if (characterResult.error) loadErrors.push("Character NPCs: " + characterResult.error.message);
+    else setCharacterItems(characterResult.data || []);
+
+    if (storyResult.error) loadErrors.push("Story NPCs: " + storyResult.error.message);
+    else setStoryItems(storyResult.data || []);
+
+    if (loadErrors.length) {
+      setError(loadErrors.join(" · "));
       return;
     }
 
-    setCharacterItems(characterResult.data || []);
-    setStoryItems(storyResult.data || []);
+    setError("");
   }
 
   useEffect(() => {
@@ -204,67 +206,27 @@ export default function NpcCastDrawer({
     setError("");
     setNotice("");
 
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData?.user?.id) {
-      setBusy("");
-      setError("Your session expired. Sign in again.");
-      return;
-    }
-
     const existing = editingId ? allItems.find((item) => item.id === editingId && item.__scope === scope) : null;
     let result;
 
     if (scope === "character") {
-      if (editingId) {
-        result = await supabase
-          .from("character_npcs")
-          .update({ ...next, updated_at: new Date().toISOString() })
-          .eq("id", editingId)
-          .eq("character_id", character.id)
-          .select()
-          .single();
-      } else {
-        result = await supabase
-          .from("character_npcs")
-          .insert({
-            user_id: authData.user.id,
-            character_id: character.id,
-            ...next,
-          })
-          .select()
-          .single();
-      }
-    } else if (editingId) {
-      result = await supabase
-        .from("story_cast_members")
-        .update({
-          ...next,
-          is_user_created: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", editingId)
-        .eq("conversation_id", conversationId)
-        .eq("is_user_created", true)
-        .select()
-        .single();
+      result = await supabase.rpc("save_character_npc", {
+        p_character_id: character.id,
+        p_npc_id: editingId || null,
+        p_name: next.name,
+        p_role: next.role,
+        p_relationship: next.relationship,
+        p_personality_note: next.personality_note,
+      });
     } else {
-      result = await supabase
-        .from("story_cast_members")
-        .insert({
-          user_id: authData.user.id,
-          conversation_id: conversationId,
-          ...next,
-          current_dynamic: "",
-          goals: "",
-          knowledge: "",
-          last_interaction: "",
-          presence: "off_scene",
-          status: "active",
-          turn_count: 0,
-          is_user_created: true,
-        })
-        .select()
-        .single();
+      result = await supabase.rpc("save_story_npc", {
+        p_conversation_id: conversationId,
+        p_npc_id: editingId || null,
+        p_name: next.name,
+        p_role: next.role,
+        p_relationship: next.relationship,
+        p_personality_note: next.personality_note,
+      });
     }
 
     if (result.error) {
@@ -273,20 +235,25 @@ export default function NpcCastDrawer({
       return;
     }
 
+    const saved = result.data && typeof result.data === "object" ? result.data : null;
+    if (!saved?.id) {
+      setBusy("");
+      setError("Velvet saved the NPC but could not read it back. Tap Retry before changing anything else.");
+      return;
+    }
+
     if (existing?.name && !sameName(existing.name, next.name)) {
       await clearStaleNpcRuntime(existing.name);
-    } else {
-      await bumpStoryRevision();
     }
 
     if (scope === "character") {
       setCharacterItems((current) => editingId
-        ? current.map((item) => item.id === editingId ? result.data : item)
-        : [...current, result.data]);
+        ? current.map((item) => item.id === editingId ? saved : item)
+        : [...current, saved]);
     } else {
       setStoryItems((current) => editingId
-        ? current.map((item) => item.id === editingId ? result.data : item)
-        : [...current, result.data]);
+        ? current.map((item) => item.id === editingId ? saved : item)
+        : [...current, saved]);
     }
 
     setBusy("");
@@ -310,23 +277,19 @@ export default function NpcCastDrawer({
     setError("");
     setNotice("");
 
-    if (scope === "conversation") {
-      await Promise.all([
-        supabase.from("story_cast_connections").delete().eq("conversation_id", conversationId).eq("from_name", item.name),
-        supabase.from("story_cast_connections").delete().eq("conversation_id", conversationId).eq("to_name", item.name),
-        supabase.from("story_knowledge_entries").delete().eq("conversation_id", conversationId).eq("character_name", item.name),
-        supabase.from("story_chemistry_profiles").delete().eq("conversation_id", conversationId).eq("character_name", item.name),
-      ]);
-    }
+    const { data: deleted, error: deleteError } = scope === "character"
+      ? await supabase.rpc("delete_character_npc", {
+          p_character_id: character.id,
+          p_npc_id: item.id,
+        })
+      : await supabase.rpc("delete_story_npc", {
+          p_conversation_id: conversationId,
+          p_npc_id: item.id,
+        });
 
-    const deleteQuery = scope === "character"
-      ? supabase.from("character_npcs").delete().eq("id", item.id).eq("character_id", character.id)
-      : supabase.from("story_cast_members").delete().eq("id", item.id).eq("conversation_id", conversationId).eq("is_user_created", true);
-
-    const { error: deleteError } = await deleteQuery;
-    if (deleteError) {
+    if (deleteError || deleted !== true) {
       setBusy("");
-      setError(deleteError.message);
+      setError(deleteError?.message || "Velvet could not remove that NPC. Nothing was changed.");
       return;
     }
 
@@ -483,7 +446,12 @@ export default function NpcCastDrawer({
           {!loading && storyItems.map((item) => renderCard(item, "conversation"))}
         </section>
 
-        {(notice || error) && <div className={"npc-cast-notice" + (error ? " is-error" : "")} role="status">{error || notice}</div>}
+        {(notice || error) && (
+          <div className={"npc-cast-notice" + (error ? " is-error" : "")} role="status">
+            <span>{error || notice}</span>
+            {error && <button type="button" onClick={load} disabled={loading || Boolean(busy)}>Retry</button>}
+          </div>
+        )}
       </aside>
     </div>
   ), document.body);
