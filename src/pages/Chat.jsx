@@ -1171,19 +1171,12 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
     const cleanMessage = message.trim();
     if (!conversationReady) return;
-    if (cleanMessage === ".") {
-      setMessage("");
-      setSilentCue("");
-      clearGenerationFailure();
-      if (busy) handleStop();
-      return;
-    }
     if (busy) return;
 
     const dotsOnly = /^[.…。]+$/u.test(cleanMessage);
     const compactDots = cleanMessage.replace(/[…。]/gu, ".");
     const returnToMainPov = dotsOnly && compactDots === "..";
-    const silentContinue = dotsOnly && compactDots.length >= 3;
+    const silentContinue = dotsOnly && (compactDots === "." || compactDots.length >= 3);
     const messageToSend = cleanMessage === "" || returnToMainPov || silentContinue
       ? (returnToMainPov ? RETURN_MAIN_POV_MESSAGE : SILENT_CONTINUE_MESSAGE)
       : cleanMessage;
