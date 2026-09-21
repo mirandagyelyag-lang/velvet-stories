@@ -2235,6 +2235,10 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
       .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, is_user_created, updated_at")
       .eq("conversation_id", conversationId).eq("user_id", userId).eq("is_user_created", true)
       .order("updated_at", { ascending: false }).limit(20),
+    supabase.from("character_npcs")
+      .select("id, character_id, name, role, personality_note, relationship, created_at, updated_at")
+      .in("character_id", groupCharacterIds).eq("user_id", userId)
+      .order("updated_at", { ascending: false }).limit(40),
     supabase.from("story_bible_entries").select("id, category, title, content, authority, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(16),
     supabase.from("story_cast_connections").select("id, from_name, to_name, relationship, visibility, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(16),
     supabase.from("story_calendar_events").select("id, title, story_time, details, participants, status, updated_at").eq("conversation_id", conversationId).eq("user_id", userId).order("updated_at", { ascending: false }).limit(12),
@@ -2289,9 +2293,12 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
 
   // v3 cast + World Studio context is optional during rolling deploys. Fetch it
   // in ONE parallel phase so every reply does not pay an extra Supabase round trip.
-  const [persistentCastResult, storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult] = await optionalContextPromise;
+  const [persistentCastResult, characterNpcsResult, storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult] = await optionalContextPromise;
   if (persistentCastResult.error && persistentCastResult.error.code !== "42P01") {
     console.warn("[character-chat] persistent cast unavailable", { message: persistentCastResult.error.message });
+  }
+  if (characterNpcsResult.error && characterNpcsResult.error.code !== "42P01") {
+    console.warn("[character-chat] character NPC canon unavailable", { message: characterNpcsResult.error.message });
   }
   for (const optional of [storyBibleResult, castConnectionsResult, calendarResult, correctionsResult, arcsResult, knowledgeResult, consequencesResult, chemistryResult, plansResult, conflictsResult, milestonesResult]) {
     if (optional.error && optional.error.code !== "42P01") console.warn("[character-chat] optional story context unavailable", { message: optional.error.message });
@@ -2314,7 +2321,24 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
       return memory.source === "manual" || Boolean(memory.is_canon) || Boolean(memory.is_pinned);
     }).slice(0, 24),
     loreEntries: loreResult.data || [],
-    persistentCast: persistentCastResult.data || [],
+    persistentCast: [
+      ...(characterNpcsResult.data || []).map((item) => ({
+        ...item,
+        is_user_created: true,
+        npc_scope: "character",
+        current_dynamic: "",
+        goals: "",
+        knowledge: "",
+        last_interaction: "",
+        presence: "off_scene",
+        status: "active",
+        turn_count: 0,
+      })),
+      ...(persistentCastResult.data || []).map((item) => ({
+        ...item,
+        npc_scope: "conversation",
+      })),
+    ],
     storyBible: storyBibleResult.data || [],
     castConnections: castConnectionsResult.data || [],
     calendarEvents: calendarResult.data || [],
@@ -9779,7 +9803,12 @@ async function persistStoryConnections({
 }
 
 async function persistStoryCastMembers({ supabase, userId, conversationId, castUpdates = [], previousMembers = [], scene = {} }) {
-  const approved = (Array.isArray(previousMembers) ? previousMembers : []).filter((item) => item?.is_user_created === true && item?.id && item?.name);
+  const approved = (Array.isArray(previousMembers) ? previousMembers : []).filter((item) =>
+    item?.is_user_created === true &&
+    item?.npc_scope !== "character" &&
+    item?.id &&
+    item?.name
+  );
   const authorizedUpdates = filterAuthorizedCastUpdatesV35279(castUpdates, approved);
   if (!authorizedUpdates.length || !approved.length) return;
 
