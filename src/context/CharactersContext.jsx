@@ -269,12 +269,20 @@ export function CharactersProvider({ children }) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 36000);
     const historyKey = `velvet:instant-story-scenes:${characterData?.id || characterData?.name || "character"}`;
+    const openingHistoryKey = `velvet:instant-story-openings:${characterData?.id || characterData?.name || "character"}`;
     let recentSceneSeeds = [];
+    let recentOpenings = [];
     try {
       const stored = JSON.parse(localStorage.getItem(historyKey) || "[]");
       recentSceneSeeds = Array.isArray(stored) ? stored.filter(Boolean).slice(-6) : [];
     } catch {
       recentSceneSeeds = [];
+    }
+    try {
+      const stored = JSON.parse(localStorage.getItem(openingHistoryKey) || "[]");
+      recentOpenings = Array.isArray(stored) ? stored.map((item) => String(item || "").trim()).filter(Boolean).slice(-4) : [];
+    } catch {
+      recentOpenings = [];
     }
     const variationKey = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 
@@ -307,6 +315,7 @@ export function CharactersProvider({ children }) {
           idea: String(idea || "").slice(0, 700),
           variationKey,
           recentSceneSeeds,
+          recentOpenings,
         }),
       });
 
@@ -327,13 +336,17 @@ export function CharactersProvider({ children }) {
         throw new Error("Velvet received an overly generic Instant Story. Try again.");
       }
       const usedSceneSeed = String(data?.sceneSeed || "").trim();
-      if (usedSceneSeed) {
-        try {
+      try {
+        if (usedSceneSeed) {
           localStorage.setItem(historyKey, JSON.stringify([...recentSceneSeeds, usedSceneSeed].slice(-6)));
-        } catch {
-          // Storage can be unavailable in private/restricted WebViews. Diversity
-          // still works for this request through variationKey.
         }
+        localStorage.setItem(
+          openingHistoryKey,
+          JSON.stringify([...recentOpenings, opening.slice(0, 1400)].slice(-4))
+        );
+      } catch {
+        // Storage can be unavailable in private/restricted WebViews. Diversity
+        // still works for this request through variationKey.
       }
       return opening;
     } catch (error) {
