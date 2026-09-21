@@ -282,6 +282,7 @@ Deno.serve(async (request) => {
         idea: body?.idea,
         variationKey: body?.variationKey,
         recentSceneSeeds: body?.recentSceneSeeds,
+        recentOpenings: body?.recentOpenings,
       });
     }
 
@@ -2090,7 +2091,32 @@ ${name} waited.
 “Go on,” ${subject} said.`;
 }
 
-async function handleInstantStory({ apiKey, draft, idea, variationKey = "", recentSceneSeeds = [] }) {
+function instantStorySimilarityV3539(a = "", b = "") {
+  const stop = new Set(["the","and","that","with","this","from","into","then","when","your","you","his","her","their","they","them","was","were","are","for","but","not","out","had","has","have","just","one","two","she","him","its","too","all","get","got"]);
+  const words = (value) => new Set(
+    String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .match(/[a-z0-9]{3,}/g)?.filter((word) => !stop.has(word)) || []
+  );
+  const left = words(a);
+  const right = words(b);
+  if (!left.size || !right.size) return 0;
+  let overlap = 0;
+  for (const word of left) if (right.has(word)) overlap += 1;
+  const union = new Set([...left, ...right]).size;
+  return union ? overlap / union : 0;
+}
+
+function instantStoryTooSimilarV3539(opening = "", recentOpenings = []) {
+  return (Array.isArray(recentOpenings) ? recentOpenings : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .some((item) => instantStorySimilarityV3539(opening, item) >= 0.52);
+}
+
+async function handleInstantStory({ apiKey, draft, idea, variationKey = "", recentSceneSeeds = [], recentOpenings = [] }) {
   const safeDraft = compactInstantStoryDraft(draft);
   const cleanIdea = cleanPromptValue(idea || "", 420);
   const sceneSeed = instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds);
@@ -2189,8 +2215,9 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
       const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
       const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || anchorIssues.length || groundingIssues.length || naturalismIssues.length) {
-        const rejectionReasons = [...anchorIssues, ...groundingIssues, ...naturalismIssues];
+      const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || anchorIssues.length || groundingIssues.length || naturalismIssues.length || similarityIssue.length) {
+        const rejectionReasons = [...qualityIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...similarityIssue];
         rejectedInstantCandidates.push({
           opening,
           model,
@@ -2318,7 +2345,8 @@ RULES
       const rescueGroundingIssues = instantStoryGroundingIssuesV35292(rescueOpening, safeDraft, cleanIdea);
       const rescueNaturalismIssues = instantStoryNaturalismIssuesV35295(rescueOpening, safeDraft, cleanIdea);
       const rescueHardBlocks = instantStoryHardBlockIssuesV35298(rescueOpening, safeDraft, cleanIdea);
-      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length) {
+      const rescueTooSimilar = instantStoryTooSimilarV3539(rescueOpening, recentOpenings);
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescueTooSimilar) {
         return json({
           opening: rescueOpening,
           source: "ai_rescue",
@@ -2341,6 +2369,7 @@ RULES
       hardBlocks: instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
     }))
     .filter((item)=>item.hardBlocks.length === 0)
+    .filter((item)=>!instantStoryTooSimilarV3539(item.opening, recentOpenings))
     .sort((a,b)=>(a.issueCount || 99) - (b.issueCount || 99))[0] || null;
 
   if (bestEffort?.opening) {
@@ -2351,6 +2380,64 @@ RULES
       openingFamily,
       softWarnings: bestEffort.rejectionReasons || [],
     });
+  }
+
+  // v3.53.9 LAST-LANE RESCUE
+  // One tiny final pass is cheaper than handing the creator a dead button.
+  // It still obeys the hard user-agency and named-cast gates.
+  try {
+    const emergencyController = new AbortController();
+    const emergencyTimeoutId = setTimeout(() => emergencyController.abort(), 5200);
+    let emergencyResponse;
+    try {
+      emergencyResponse = await fetch(modelEndpoint(GEMINI_EMERGENCY_MODEL), {
+        method: "POST",
+        headers: geminiHeaders(apiKey),
+        signal: emergencyController.signal,
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: `Write one fresh, natural roleplay opening for the exact character below. 65-115 words. Use 1-4 short spoken lines. The lead character must make a meaningful choice that changes what happens next. Do not invent the user's actions, feelings, position, possessions, history, family, nickname, or dialogue. Do not invent named NPCs. Avoid food-order/study filler, stock flirting, decorative prose, forced A/B choices, accusations, screenshots, mystery packages, and routine intimacy. Do not repeat the recent openings. Output only finished prose.
+
+CHARACTER
+${JSON.stringify(safeDraft)}
+
+STORY DIRECTION
+${sceneSeed}
+
+RECENT OPENINGS TO AVOID
+${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3).map((item)=>String(item || "").slice(0,420)))}` }] }],
+          generationConfig: {
+            maxOutputTokens: 1100,
+            temperature: 1.0,
+            thinkingConfig: { thinkingLevel: "LOW" },
+          },
+        }),
+      });
+    } finally {
+      clearTimeout(emergencyTimeoutId);
+    }
+    const emergencyData = await emergencyResponse.json().catch(() => ({}));
+    if (emergencyResponse.ok) {
+      const emergencyOpening = extractCandidateText(emergencyData).trim();
+      const emergencyFinish = String(emergencyData?.candidates?.[0]?.finishReason || "");
+      const emergencyHardBlocks = instantStoryHardBlockIssuesV35298(emergencyOpening, safeDraft, cleanIdea);
+      const emergencyQuality = instantStoryQualityIssues(emergencyOpening, safeDraft)
+        .filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
+      if (
+        instantStoryCandidateUsableV35290(emergencyOpening, emergencyFinish, safeDraft) &&
+        !emergencyHardBlocks.length &&
+        !emergencyQuality.length &&
+        !instantStoryTooSimilarV3539(emergencyOpening, recentOpenings)
+      ) {
+        return json({
+          opening: emergencyOpening,
+          source: "ai_emergency_rescue",
+          sceneSeed,
+          openingFamily,
+        });
+      }
+    }
+  } catch (emergencyError) {
+    console.warn("[character-chat] emergency Instant Story rescue failed", { error: getErrorMessage(emergencyError) });
   }
 
   const rejectionSummary = [...new Set(
