@@ -9,6 +9,7 @@ const EMPTY_DRAFT = {
   role: "",
   relationship: "",
   personality_note: "",
+  scope: "character",
 };
 
 function clean(value = "", max = 500) {
@@ -28,13 +29,23 @@ export default function NpcCastDrawer({
   userName = "You",
   disabled = false,
 }) {
-  const [items, setItems] = useState([]);
+  const [characterItems, setCharacterItems] = useState([]);
+  const [storyItems, setStoryItems] = useState([]);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [editingId, setEditingId] = useState("");
+  const [editingScope, setEditingScope] = useState("");
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+
+  const allItems = useMemo(
+    () => [
+      ...characterItems.map((item) => ({ ...item, __scope: "character" })),
+      ...storyItems.map((item) => ({ ...item, __scope: "conversation" })),
+    ],
+    [characterItems, storyItems]
+  );
 
   const reservedNames = useMemo(() => [
     clean(userName, 100),
@@ -43,39 +54,59 @@ export default function NpcCastDrawer({
   ].filter(Boolean), [userName, character?.name, groupCharacters]);
 
   async function load() {
-    if (!conversationId) return;
+    if (!conversationId || !character?.id) return;
     setLoading(true);
     setError("");
-    const { data, error: loadError } = await supabase
-      .from("story_cast_members")
-      .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, is_user_created, created_at, updated_at")
-      .eq("conversation_id", conversationId)
-      .eq("is_user_created", true)
-      .order("created_at", { ascending: true });
+
+    const [characterResult, storyResult] = await Promise.all([
+      supabase
+        .from("character_npcs")
+        .select("id, character_id, name, role, personality_note, relationship, created_at, updated_at")
+        .eq("character_id", character.id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("story_cast_members")
+        .select("id, name, role, personality_note, relationship, current_dynamic, goals, knowledge, last_interaction, presence, status, turn_count, is_user_created, created_at, updated_at")
+        .eq("conversation_id", conversationId)
+        .eq("is_user_created", true)
+        .order("created_at", { ascending: true }),
+    ]);
+
     setLoading(false);
-    if (loadError) {
-      setError(loadError.message);
+
+    if (characterResult.error) {
+      setError(characterResult.error.message);
       return;
     }
-    setItems(data || []);
+    if (storyResult.error) {
+      setError(storyResult.error.message);
+      return;
+    }
+
+    setCharacterItems(characterResult.data || []);
+    setStoryItems(storyResult.data || []);
   }
 
   useEffect(() => {
-    if (!open || !conversationId) return;
+    if (!open || !conversationId || !character?.id) return;
     setDraft(EMPTY_DRAFT);
     setEditingId("");
+    setEditingScope("");
     setNotice("");
     setError("");
     load();
-  }, [open, conversationId]);
+  }, [open, conversationId, character?.id]);
 
   function startEdit(item) {
+    const scope = item.__scope || "conversation";
     setEditingId(item.id);
+    setEditingScope(scope);
     setDraft({
       name: item.name || "",
       role: item.role || "",
       relationship: item.relationship || "",
       personality_note: item.personality_note || "",
+      scope,
     });
     setNotice("");
     setError("");
@@ -83,6 +114,7 @@ export default function NpcCastDrawer({
 
   function resetDraft() {
     setEditingId("");
+    setEditingScope("");
     setDraft(EMPTY_DRAFT);
     setNotice("");
     setError("");
@@ -143,25 +175,28 @@ export default function NpcCastDrawer({
 
   async function saveNpc(event) {
     event.preventDefault();
-    if (disabled || !conversationId) return;
+    if (disabled || !conversationId || !character?.id) return;
 
+    const scope = editingScope || draft.scope || "character";
     const next = {
       name: clean(draft.name, 100),
       role: clean(draft.role, 180),
       relationship: clean(draft.relationship, 320),
       personality_note: clean(draft.personality_note, 320),
     };
+
     if (!next.name) {
       setError("Give the NPC a name first.");
       return;
     }
     if (reservedNames.some((name) => sameName(name, next.name))) {
-      setError("That name already belongs to you or a main character in this chat.");
+      setError("That name already belongs to you or a main character.");
       return;
     }
-    const duplicate = items.find((item) => item.id !== editingId && sameName(item.name, next.name));
+
+    const duplicate = allItems.find((item) => !(item.id === editingId && item.__scope === scope) && sameName(item.name, next.name));
     if (duplicate) {
-      setError("That NPC already exists in this chat.");
+      setError(`${next.name} already exists in this character's NPC canon.`);
       return;
     }
 
@@ -176,9 +211,30 @@ export default function NpcCastDrawer({
       return;
     }
 
-    const existing = editingId ? items.find((item) => item.id === editingId) : null;
+    const existing = editingId ? allItems.find((item) => item.id === editingId && item.__scope === scope) : null;
     let result;
-    if (editingId) {
+
+    if (scope === "character") {
+      if (editingId) {
+        result = await supabase
+          .from("character_npcs")
+          .update({ ...next, updated_at: new Date().toISOString() })
+          .eq("id", editingId)
+          .eq("character_id", character.id)
+          .select()
+          .single();
+      } else {
+        result = await supabase
+          .from("character_npcs")
+          .insert({
+            user_id: authData.user.id,
+            character_id: character.id,
+            ...next,
+          })
+          .select()
+          .single();
+      }
+    } else if (editingId) {
       result = await supabase
         .from("story_cast_members")
         .update({
@@ -213,7 +269,7 @@ export default function NpcCastDrawer({
 
     if (result.error) {
       setBusy("");
-      setError(result.error.code === "23505" ? "That NPC already exists in this chat." : result.error.message);
+      setError(result.error.code === "23505" ? "That NPC already exists." : result.error.message);
       return;
     }
 
@@ -223,37 +279,51 @@ export default function NpcCastDrawer({
       await bumpStoryRevision();
     }
 
-    setItems((current) => {
-      if (editingId) return current.map((item) => item.id === editingId ? result.data : item);
-      return [...current, result.data];
-    });
+    if (scope === "character") {
+      setCharacterItems((current) => editingId
+        ? current.map((item) => item.id === editingId ? result.data : item)
+        : [...current, result.data]);
+    } else {
+      setStoryItems((current) => editingId
+        ? current.map((item) => item.id === editingId ? result.data : item)
+        : [...current, result.data]);
+    }
+
     setBusy("");
     const wasEditing = Boolean(editingId);
     setEditingId("");
+    setEditingScope("");
     setDraft(EMPTY_DRAFT);
-    setNotice(wasEditing ? next.name + " updated." : next.name + " added to this story.");
+    setNotice(
+      wasEditing
+        ? next.name + " updated."
+        : scope === "character"
+          ? next.name + " added to every " + (character?.name || "character") + " chat."
+          : next.name + " added only to this story."
+    );
   }
 
   async function removeNpc(item) {
     if (disabled || !item?.id) return;
+    const scope = item.__scope || "conversation";
     setBusy(item.id);
     setError("");
     setNotice("");
 
-    await Promise.all([
-      supabase.from("story_cast_connections").delete().eq("conversation_id", conversationId).eq("from_name", item.name),
-      supabase.from("story_cast_connections").delete().eq("conversation_id", conversationId).eq("to_name", item.name),
-      supabase.from("story_knowledge_entries").delete().eq("conversation_id", conversationId).eq("character_name", item.name),
-      supabase.from("story_chemistry_profiles").delete().eq("conversation_id", conversationId).eq("character_name", item.name),
-    ]);
+    if (scope === "conversation") {
+      await Promise.all([
+        supabase.from("story_cast_connections").delete().eq("conversation_id", conversationId).eq("from_name", item.name),
+        supabase.from("story_cast_connections").delete().eq("conversation_id", conversationId).eq("to_name", item.name),
+        supabase.from("story_knowledge_entries").delete().eq("conversation_id", conversationId).eq("character_name", item.name),
+        supabase.from("story_chemistry_profiles").delete().eq("conversation_id", conversationId).eq("character_name", item.name),
+      ]);
+    }
 
-    const { error: deleteError } = await supabase
-      .from("story_cast_members")
-      .delete()
-      .eq("id", item.id)
-      .eq("conversation_id", conversationId)
-      .eq("is_user_created", true);
+    const deleteQuery = scope === "character"
+      ? supabase.from("character_npcs").delete().eq("id", item.id).eq("character_id", character.id)
+      : supabase.from("story_cast_members").delete().eq("id", item.id).eq("conversation_id", conversationId).eq("is_user_created", true);
 
+    const { error: deleteError } = await deleteQuery;
     if (deleteError) {
       setBusy("");
       setError(deleteError.message);
@@ -261,10 +331,38 @@ export default function NpcCastDrawer({
     }
 
     await clearStaleNpcRuntime(item.name);
-    setItems((current) => current.filter((entry) => entry.id !== item.id));
+
+    if (scope === "character") {
+      setCharacterItems((current) => current.filter((entry) => entry.id !== item.id));
+    } else {
+      setStoryItems((current) => current.filter((entry) => entry.id !== item.id));
+    }
+
     if (editingId === item.id) resetDraft();
     setBusy("");
-    setNotice(item.name + " removed. Velvet can no longer use that name in this chat.");
+    setNotice(
+      scope === "character"
+        ? item.name + " removed from " + (character?.name || "this character") + "'s canon."
+        : item.name + " removed from this story."
+    );
+  }
+
+  function renderCard(item, scope) {
+    const scoped = { ...item, __scope: scope };
+    return (
+      <article className="npc-cast-card" key={scope + ":" + item.id}>
+        <div className="npc-cast-card__avatar">{item.name?.slice(0, 1)?.toUpperCase() || "?"}</div>
+        <div className="npc-cast-card__body">
+          <strong>{item.name}</strong>
+          <span>{item.role || "NPC"}</span>
+          {item.relationship && <p>{item.relationship}</p>}
+        </div>
+        <div className="npc-cast-card__actions">
+          <button type="button" onClick={() => startEdit(scoped)} disabled={disabled || Boolean(busy)} aria-label={"Edit " + item.name}><Pencil size={15}/></button>
+          <button type="button" onClick={() => removeNpc(scoped)} disabled={disabled || Boolean(busy)} aria-label={"Remove " + item.name}><Trash2 size={15}/></button>
+        </div>
+      </article>
+    );
   }
 
   if (!open || typeof document === "undefined") return null;
@@ -274,9 +372,9 @@ export default function NpcCastDrawer({
       <aside className="npc-cast-drawer" role="dialog" aria-modal="true" aria-label="NPC cast">
         <header className="npc-cast-drawer__header">
           <div>
-            <span><UsersRound size={15}/> CHAT CAST</span>
+            <span><UsersRound size={15}/> NPC CANON</span>
             <h2>Your NPCs</h2>
-            <p>Only people you create here are allowed to have names in this conversation.</p>
+            <p>Choose whether an NPC belongs to {character?.name || "this character"} forever or only to this story.</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close NPC cast"><X size={20}/></button>
         </header>
@@ -284,16 +382,41 @@ export default function NpcCastDrawer({
         <section className="npc-cast-rule">
           <ShieldCheck size={18}/>
           <div>
-            <strong>Closed named cast</strong>
-            <p>Velvet may still use unnamed people like “a classmate” or “the bartender”, but it cannot invent Chloe, Tyler, Madison, or reuse an NPC from another chat.</p>
+            <strong>Two-level named cast</strong>
+            <p>Character NPCs can recur in every chat for this character. Story NPCs stay locked to this conversation. Velvet still cannot invent extra named people.</p>
           </div>
         </section>
 
         <form className="npc-cast-form" onSubmit={saveNpc}>
           <div className="npc-cast-form__title">
             <span>{editingId ? <Pencil size={16}/> : <Plus size={16}/>}</span>
-            <div><strong>{editingId ? "Edit NPC" : "Create NPC"}</strong><small>Exists only in this story</small></div>
+            <div>
+              <strong>{editingId ? "Edit NPC" : "Create NPC"}</strong>
+              <small>{(editingScope || draft.scope) === "character" ? "Character canon · every chat" : "Story canon · this chat only"}</small>
+            </div>
           </div>
+
+          {!editingId && (
+            <div className="npc-cast-scope" role="group" aria-label="NPC scope">
+              <button
+                type="button"
+                className={draft.scope === "character" ? "is-active" : ""}
+                onClick={() => setDraft((current) => ({ ...current, scope: "character" }))}
+              >
+                Character NPC
+                <small>Every {character?.name || "character"} chat</small>
+              </button>
+              <button
+                type="button"
+                className={draft.scope === "conversation" ? "is-active" : ""}
+                onClick={() => setDraft((current) => ({ ...current, scope: "conversation" }))}
+              >
+                Story NPC
+                <small>This chat only</small>
+              </button>
+            </div>
+          )}
+
           <label>
             Name
             <input
@@ -309,7 +432,7 @@ export default function NpcCastDrawer({
             <input
               value={draft.role}
               onChange={(event) => setDraft((current) => ({ ...current, role: event.target.value }))}
-              placeholder="Chase's teammate, roommate, classmate..."
+              placeholder="Best friend, sister, rival..."
               maxLength={180}
             />
           </label>
@@ -343,25 +466,21 @@ export default function NpcCastDrawer({
 
         <section className="npc-cast-list">
           <div className="npc-cast-list__heading">
-            <div><strong>Allowed named NPCs</strong><small>{items.length} in this chat</small></div>
+            <div><strong>Character NPCs</strong><small>{characterItems.length} across every chat</small></div>
             <UserRound size={17}/>
           </div>
           {loading && <p className="npc-cast-empty">Loading cast...</p>}
-          {!loading && !items.length && <p className="npc-cast-empty">No NPCs yet. Until you add one, supporting people stay unnamed.</p>}
-          {items.map((item) => (
-            <article className="npc-cast-card" key={item.id}>
-              <div className="npc-cast-card__avatar">{item.name?.slice(0, 1)?.toUpperCase() || "?"}</div>
-              <div className="npc-cast-card__body">
-                <strong>{item.name}</strong>
-                <span>{item.role || "NPC"}</span>
-                {item.relationship && <p>{item.relationship}</p>}
-              </div>
-              <div className="npc-cast-card__actions">
-                <button type="button" onClick={() => startEdit(item)} disabled={disabled || Boolean(busy)} aria-label={"Edit " + item.name}><Pencil size={15}/></button>
-                <button type="button" onClick={() => removeNpc(item)} disabled={disabled || Boolean(busy)} aria-label={"Remove " + item.name}><Trash2 size={15}/></button>
-              </div>
-            </article>
-          ))}
+          {!loading && !characterItems.length && <p className="npc-cast-empty">No persistent NPCs yet.</p>}
+          {!loading && characterItems.map((item) => renderCard(item, "character"))}
+        </section>
+
+        <section className="npc-cast-list">
+          <div className="npc-cast-list__heading">
+            <div><strong>Story NPCs</strong><small>{storyItems.length} in this chat only</small></div>
+            <UserRound size={17}/>
+          </div>
+          {!loading && !storyItems.length && <p className="npc-cast-empty">No chat-only NPCs yet.</p>}
+          {!loading && storyItems.map((item) => renderCard(item, "conversation"))}
         </section>
 
         {(notice || error) && <div className={"npc-cast-notice" + (error ? " is-error" : "")} role="status">{error || notice}</div>}
