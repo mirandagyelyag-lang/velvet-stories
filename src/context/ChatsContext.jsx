@@ -1012,6 +1012,64 @@ export function ChatsProvider({
       }
     }
 
+
+    function scheduleDeferredPersistedReplyRecovery(reason = "background-deferred-recovery") {
+      if (typeof window === "undefined") return;
+      let stopped = false;
+      let attempts = 0;
+      let timerId = 0;
+      const maxAttempts = 40;
+
+      const cleanup = () => {
+        if (stopped) return;
+        stopped = true;
+        if (timerId) window.clearTimeout(timerId);
+        window.removeEventListener("online", triggerNow);
+        document?.removeEventListener?.("visibilitychange", triggerNow);
+      };
+
+      const schedule = () => {
+        if (stopped || attempts >= maxAttempts) {
+          cleanup();
+          return;
+        }
+        const hidden = typeof document !== "undefined" && document.hidden;
+        timerId = window.setTimeout(runCheck, hidden ? 12000 : 2600);
+      };
+
+      const runCheck = async () => {
+        if (stopped) return;
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          schedule();
+          return;
+        }
+        attempts += 1;
+        const recovered = await recoverPersistedReplyForThisTurn(reason);
+        if (recovered) {
+          cleanup();
+          try {
+            window.dispatchEvent(new CustomEvent("velvet:reply-recovered", {
+              detail: { characterId, conversationId: conversation.conversationId },
+            }));
+          } catch {}
+          return;
+        }
+        schedule();
+      };
+
+      function triggerNow() {
+        if (stopped) return;
+        if (typeof document !== "undefined" && document.hidden) return;
+        if (timerId) window.clearTimeout(timerId);
+        timerId = 0;
+        void runCheck();
+      }
+
+      window.addEventListener("online", triggerNow);
+      document?.addEventListener?.("visibilitychange", triggerNow);
+      schedule();
+    }
+
     try {
       const {
         data: sessionData,
@@ -1156,7 +1214,23 @@ export function ChatsProvider({
       }
 
       if (backgroundAccepted) {
-        throw new Error("Background generation ended unexpectedly.");
+        const recovered = await recoverPersistedReplyForThisTurn("background-final-recovery");
+        if (recovered) return recovered;
+
+        // The server accepted the durable job. Do not turn a slow background
+        // completion into a scary Retry card. Unlock the composer now and keep
+        // recovering quietly; returning to the app triggers an immediate check.
+        scheduleDeferredPersistedReplyRecovery("background-resume-recovery");
+        updateGenerationTrace(diagnosticTraceRef, {
+          phase: "background-pending",
+          status: "pending",
+          recovery: "visibility-and-online-recovery",
+        });
+        return {
+          message: null,
+          learnedMemoryCount: 0,
+          pendingRecovery: true,
+        };
       }
 
       if (!shouldUseBackgroundDelivery) {
