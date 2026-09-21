@@ -2667,28 +2667,46 @@ export function ChatsProvider({
     if (!conversation?.conversationId) throw new Error("The conversation is not ready yet.");
     const conversationId = conversation.conversationId;
 
-    const [conversationResult, messagesResult, memoriesResult, alternativesResult, knowledgeResult] = await Promise.all([
+    const [
+      conversationResult,
+      messagesResult,
+      memoriesResult,
+      alternativesResult,
+      knowledgeResult,
+      storyNpcsResult,
+      characterNpcsResult,
+      castConnectionsResult,
+    ] = await Promise.all([
       supabase.from("conversations").select("*").eq("id", conversationId).eq("user_id", user.id).single(),
       supabase.from("messages").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase.from("memories").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase.from("message_alternatives").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
       supabase.from("story_knowledge_entries").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("updated_at", { ascending: true }),
+      supabase.from("story_cast_members").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).eq("is_user_created", true).order("created_at", { ascending: true }),
+      supabase.from("character_npcs").select("*").eq("character_id", characterId).eq("user_id", user.id).order("created_at", { ascending: true }),
+      supabase.from("story_cast_connections").select("*").eq("conversation_id", conversationId).eq("user_id", user.id).order("created_at", { ascending: true }),
     ]);
     if (conversationResult.error) throw conversationResult.error;
     if (messagesResult.error) throw messagesResult.error;
     if (memoriesResult.error) throw memoriesResult.error;
     if (alternativesResult.error) console.warn("Could not include response alternatives in snapshot:", alternativesResult.error);
     if (knowledgeResult.error && knowledgeResult.error.code !== "42P01") console.warn("Could not include story knowledge in snapshot:", knowledgeResult.error);
+    if (storyNpcsResult.error) throw storyNpcsResult.error;
+    if (characterNpcsResult.error) throw characterNpcsResult.error;
+    if (castConnectionsResult.error && castConnectionsResult.error.code !== "42P01") throw castConnectionsResult.error;
 
     return {
-      schema: 2,
-      velvetVersion: "2.6.0",
+      schema: 3,
+      velvetVersion: "3.53.8",
       capturedAt: new Date().toISOString(),
       conversation: conversationResult.data,
       messages: messagesResult.data || [],
       memories: memoriesResult.data || [],
       alternatives: alternativesResult.data || [],
       knowledge: knowledgeResult.error ? [] : (knowledgeResult.data || []),
+      storyNpcs: storyNpcsResult.data || [],
+      characterNpcs: characterNpcsResult.data || [],
+      castConnections: castConnectionsResult.error ? [] : (castConnectionsResult.data || []),
     };
   }
 
@@ -2752,6 +2770,19 @@ export function ChatsProvider({
     const { error: messagesDeleteError } = await supabase.from("messages").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
     if (messagesDeleteError) throw messagesDeleteError;
 
+    if (Array.isArray(payload.storyNpcs)) {
+      const { error } = await supabase.from("story_cast_members").delete().eq("conversation_id", conversationId).eq("user_id", user.id).eq("is_user_created", true);
+      if (error) throw error;
+    }
+    if (Array.isArray(payload.castConnections)) {
+      const { error } = await supabase.from("story_cast_connections").delete().eq("conversation_id", conversationId).eq("user_id", user.id);
+      if (error && error.code !== "42P01") throw error;
+    }
+    if (Array.isArray(payload.characterNpcs)) {
+      const { error } = await supabase.from("character_npcs").delete().eq("character_id", characterId).eq("user_id", user.id);
+      if (error) throw error;
+    }
+
     if (payload.messages.length) {
       const messageRows = payload.messages.map((row) => ({
         ...row,
@@ -2790,6 +2821,37 @@ export function ChatsProvider({
       }));
       const { error } = await supabase.from("story_knowledge_entries").insert(rows);
       if (error && error.code !== "42P01") console.warn("Could not restore story knowledge:", error);
+    }
+
+    if (Array.isArray(payload.storyNpcs) && payload.storyNpcs.length) {
+      const rows = payload.storyNpcs.map((row) => ({
+        ...row,
+        conversation_id: conversationId,
+        user_id: user.id,
+        is_user_created: true,
+      }));
+      const { error } = await supabase.from("story_cast_members").insert(rows);
+      if (error) throw error;
+    }
+
+    if (Array.isArray(payload.characterNpcs) && payload.characterNpcs.length) {
+      const rows = payload.characterNpcs.map((row) => ({
+        ...row,
+        character_id: characterId,
+        user_id: user.id,
+      }));
+      const { error } = await supabase.from("character_npcs").insert(rows);
+      if (error) throw error;
+    }
+
+    if (Array.isArray(payload.castConnections) && payload.castConnections.length) {
+      const rows = payload.castConnections.map((row) => ({
+        ...row,
+        conversation_id: conversationId,
+        user_id: user.id,
+      }));
+      const { error } = await supabase.from("story_cast_connections").insert(rows);
+      if (error && error.code !== "42P01") throw error;
     }
 
     const source = payload.conversation || {};
@@ -2837,7 +2899,7 @@ export function ChatsProvider({
     const snapshot = await collectStorySnapshot(characterId);
     return {
       type: "velvet-story-backup",
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       snapshot,
     };
