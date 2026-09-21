@@ -1,5 +1,6 @@
-// Velvet Stories v3.52.79 · Chat-Scoped NPC Canon
-// Named supporting people are explicitly created by the user per conversation.
+// Velvet Stories v3.53.7 · Two-Level NPC Canon
+// Character NPCs persist across every chat for that character.
+// Conversation NPCs exist only inside the story where the creator made them.
 // The model may animate approved NPCs, but it may not mint identities.
 
 const clean=(v="",n=1200)=>String(v??"").replace(/\s+/g," ").trim().slice(0,n);
@@ -21,9 +22,10 @@ export function allowedNamedPeopleV35279({
 function npcSummary(npcs=[]){
   return list(npcs)
     .filter((item)=>item?.is_user_created!==false && clean(item?.name,100))
-    .slice(0,20)
+    .slice(0,30)
     .map((item)=>[
       clean(item?.name,100),
+      `scope=${item?.npc_scope==="character"?"character":"conversation"}`,
       clean(item?.role,180)?`role=${clean(item.role,180)}`:"",
       clean(item?.relationship,240)?`relationship=${clean(item.relationship,240)}`:"",
       clean(item?.personality_note,280)?`personality=${clean(item.personality_note,280)}`:"",
@@ -38,25 +40,27 @@ export function buildChatScopedNpcCanonV35279({
   userName="",character={},groupCharacters=[],userCreatedNpcs=[],latestUserMessage=""
 }={}){
   const allowed=allowedNamedPeopleV35279({userName,character,groupCharacters,userCreatedNpcs});
-  const npcNames=list(userCreatedNpcs)
-    .filter((item)=>item?.is_user_created!==false)
-    .map((item)=>clean(item?.name,100))
-    .filter(Boolean);
+  const characterNpcs=list(userCreatedNpcs).filter((item)=>item?.is_user_created!==false&&item?.npc_scope==="character");
+  const conversationNpcs=list(userCreatedNpcs).filter((item)=>item?.is_user_created!==false&&item?.npc_scope!=="character");
+  const characterNames=characterNpcs.map((item)=>clean(item?.name,100)).filter(Boolean);
+  const conversationNames=conversationNpcs.map((item)=>clean(item?.name,100)).filter(Boolean);
 
   return [
-    "CHAT-SCOPED NPC CANON 3.52.79 · CLOSED NAMED CAST (highest-priority story canon):",
+    "TWO-LEVEL NPC CANON 3.53.7 · CLOSED NAMED CAST (highest-priority story canon):",
     `ALLOWED NAMED PEOPLE IN THIS CONVERSATION: ${allowed.length?allowed.join(" | "):"none"}.`,
-    `USER-CREATED NPCs FOR THIS CHAT ONLY: ${npcNames.length?npcNames.join(" | "):"none"}.`,
-    "HARD RULE: do NOT invent, generate, assign, reveal, or reuse ANY other human/character proper name. No surprise Chloe, Madison, Tyler, ex, roommate, teammate, professor, bartender, sibling, friend, date, rival or stranger may receive a name unless that exact person was created by the user in THIS conversation.",
-    "CHAT ISOLATION: an NPC from another conversation does not exist here. Identical spellings in separate chats are separate records and never share memories, personality, relationships, knowledge or history.",
+    `CHARACTER NPCs · persistent across every chat for this character: ${characterNames.length?characterNames.join(" | "):"none"}.`,
+    `STORY NPCs · local to this conversation only: ${conversationNames.length?conversationNames.join(" | "):"none"}.`,
+    "HARD RULE: do NOT invent, generate, assign, reveal, or reuse ANY other human/character proper name. No surprise Chloe, Madison, Tyler, ex, roommate, teammate, professor, bartender, sibling, friend, date, rival or stranger may receive a name unless that exact person was created by the user.",
+    "SCOPE LAW: character-scope NPCs are canon members of this character's world and may recur naturally across this character's separate chats. Conversation-scope NPCs belong ONLY to this story and must never leak into another conversation.",
+    "CHARACTER ISOLATION: a character-scope NPC belongs only to the character it was created for. Do not reuse that NPC for a different lead character unless the creator separately creates them there.",
     "ANONYMOUS PEOPLE ARE ALLOWED. When the world needs someone who is not in the approved cast, keep them descriptive and unnamed: 'a girl from his class', 'one of his teammates', 'the bartender', 'a professor', 'someone from the party'. Do not later give that anonymous person a name unless the user creates the NPC.",
     "NO NAME PROMOTION: do not turn a role label into initials, a nickname, first name, surname, pet name, handle or convenient recurring identity. A recurring anonymous role stays anonymous until user-created.",
-    "OLD TEXT DOES NOT AUTHORIZE A NAME. If an older generated message, compressed memory, stale cast state, consequence, rumor or hidden note contains a person-name that is not on the current allowed list, treat that name as quarantined legacy text. Do not repeat, revive, connect, remember or propagate it.",
-    "USER MESSAGE DOES NOT AUTO-CREATE AN NPC. If the latest user turn casually mentions an unapproved name, respond to the meaning without promoting that name into persistent cast. Only the explicit NPC editor creates named supporting characters.",
-    "APPROVED NPCs MAY LIVE. The model may update an approved NPC's goals, availability, relationship dynamics, knowledge and consequences when visible canon earns it. It may never create a new named row.",
+    "OLD TEXT DOES NOT AUTHORIZE A NAME. If older generated text, compressed memory, stale cast state, consequence, rumor or hidden note contains a person-name that is not on the current allowed list, treat that name as quarantined legacy text. Do not repeat, revive, connect, remember or propagate it.",
+    "USER MESSAGE DOES NOT AUTO-CREATE AN NPC. Casually mentioning an unapproved name does not add it to canon. Only the NPC editor creates named supporting characters.",
+    "APPROVED NPCs MAY LIVE. The model may evolve an approved NPC's goals, availability, relationships, knowledge and consequences when visible canon earns it. It may never create a new named identity.",
     "PLACES/BRANDS ARE NOT PEOPLE. This lock applies to people/characters, not grounded place names, universities, teams, brands, songs or organizations already in canon.",
-    "CAST METADATA OUTPUT: cast_updates may contain ONLY exact approved NPC names. connection_updates may reference only the user, lead/group characters, and approved NPCs. If no approved NPC exists, output no NPC cast update.",
-    npcNames.length
+    "CAST METADATA OUTPUT: cast_updates may contain ONLY exact approved NPC names. connection_updates may reference only the user, lead/group characters, and approved NPCs.",
+    (characterNames.length||conversationNames.length)
       ? `APPROVED NPC DETAILS:\n${npcSummary(userCreatedNpcs)}`
       : "APPROVED NPC DETAILS: none. Keep all supporting people anonymous.",
     `LATEST USER TURN: ${clean(latestUserMessage,600)||"none"}.`,
