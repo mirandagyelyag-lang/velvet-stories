@@ -618,6 +618,118 @@ function canonDoctorTranscript(messages: any[] = []) {
     return `[${id}] CHARACTER: ${raw}`;
   }).join("\n\n");
 }
+
+function normalizeNpcDoctorName(value = "") {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function buildNpcConsistencyAudit({
+  leadName = "",
+  personaName = "",
+  characterNpcs = [],
+  storyNpcs = [],
+  connections = [],
+  castState = {},
+} = {}) {
+  const characterByName = new Map();
+  const storyByName = new Map();
+  for (const item of Array.isArray(characterNpcs) ? characterNpcs : []) {
+    const key = normalizeNpcDoctorName(item?.name);
+    if (key) characterByName.set(key, item);
+  }
+  for (const item of Array.isArray(storyNpcs) ? storyNpcs : []) {
+    const key = normalizeNpcDoctorName(item?.name);
+    if (key) storyByName.set(key, item);
+  }
+
+  const duplicateScopeNames = [...characterByName.keys()]
+    .filter((key) => storyByName.has(key))
+    .map((key) => characterByName.get(key)?.name || storyByName.get(key)?.name)
+    .filter(Boolean);
+
+  const missingRelationshipNames = [...characterByName.values(), ...storyByName.values()]
+    .filter((item) => !String(item?.relationship || "").trim())
+    .map((item) => String(item?.name || "").trim())
+    .filter(Boolean);
+
+  const allowed = new Set([
+    normalizeNpcDoctorName(leadName),
+    normalizeNpcDoctorName(personaName),
+    "you",
+    "user",
+    ...characterByName.keys(),
+    ...storyByName.keys(),
+  ].filter(Boolean));
+
+  const orphanConnections = (Array.isArray(connections) ? connections : []).filter((item) => {
+    const from = normalizeNpcDoctorName(item?.from_name);
+    const to = normalizeNpcDoctorName(item?.to_name);
+    return !from || !to || !allowed.has(from) || !allowed.has(to);
+  });
+
+  const castKeys = castState && typeof castState === "object" && !Array.isArray(castState)
+    ? Object.keys(castState)
+    : [];
+  const staleCastKeys = castKeys.filter((name) => {
+    const key = normalizeNpcDoctorName(name);
+    if (!key || allowed.has(key)) return false;
+    return /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]+(?:\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]+)+$/.test(String(name || "").trim());
+  });
+
+  const findings = [];
+  for (const name of duplicateScopeNames.slice(0, 8)) {
+    findings.push({
+      type: "npc_duplicate_scope",
+      severity: "medium",
+      messageId: "",
+      evidence: name,
+      reason: "This named NPC exists in both character-wide canon and this story's local cast. Keep one scope so Velvet has a single identity source.",
+    });
+  }
+  for (const name of missingRelationshipNames.slice(0, 8)) {
+    findings.push({
+      type: "npc_missing_relationship",
+      severity: "low",
+      messageId: "",
+      evidence: name,
+      reason: "This NPC has no relationship description, so the model has less grounding for how they belong in the character's world.",
+    });
+  }
+  for (const item of orphanConnections.slice(0, 8)) {
+    findings.push({
+      type: "npc_orphan_reference",
+      severity: "high",
+      messageId: "",
+      evidence: `${String(item?.from_name || "?")} → ${String(item?.to_name || "?")}`,
+      reason: "This social connection points to a name that is no longer part of the approved cast.",
+    });
+  }
+  for (const name of staleCastKeys.slice(0, 8)) {
+    findings.push({
+      type: "npc_stale_cast_state",
+      severity: "medium",
+      messageId: "",
+      evidence: name,
+      reason: "This old named cast entry remains in story state even though that identity is no longer approved.",
+    });
+  }
+
+  return {
+    findings,
+    duplicateScopeNames,
+    missingRelationshipNames,
+    orphanConnectionIds: orphanConnections.map((item) => item?.id).filter(Boolean),
+    staleCastKeys,
+    characterNpcCount: characterByName.size,
+    storyNpcCount: storyByName.size,
+  };
+}
+
 async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, apply = false, suppliedPlan = null }) {
   const [conversationResult, messagesResult, memoriesResult, knowledgeResult, characterResult] = await Promise.all([
     supabase.from("conversations").select("*").eq("id", conversationId).eq("user_id", userId).single(),
@@ -634,7 +746,34 @@ async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, app
   const messages = messagesResult.data || [];
   const memories = memoriesResult.data || [];
   const knowledge = knowledgeResult.data || [];
-  const deterministicFindings = canonDoctorPrivateLeakFindings(messages);
+
+  const [characterNpcResult, storyNpcResult, connectionResult, leadResult, personaResult] = await Promise.all([
+    supabase.from("character_npcs").select("id, name, role, relationship, personality_note").eq("character_id", conversation.character_id).eq("user_id", userId),
+    supabase.from("story_cast_members").select("id, name, role, relationship, personality_note").eq("conversation_id", conversationId).eq("user_id", userId).eq("is_user_created", true),
+    supabase.from("story_cast_connections").select("id, from_name, to_name, relationship").eq("conversation_id", conversationId).eq("user_id", userId),
+    supabase.from("characters").select("name").eq("id", conversation.character_id).eq("user_id", userId).maybeSingle(),
+    conversation.persona_id
+      ? supabase.from("personas").select("name").eq("id", conversation.persona_id).eq("user_id", userId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  if (characterNpcResult.error && characterNpcResult.error.code !== "42P01") throw new Error(characterNpcResult.error.message);
+  if (storyNpcResult.error && storyNpcResult.error.code !== "42P01") throw new Error(storyNpcResult.error.message);
+  if (connectionResult.error && connectionResult.error.code !== "42P01") throw new Error(connectionResult.error.message);
+
+  const npcAudit = buildNpcConsistencyAudit({
+    leadName: leadResult.data?.name || "",
+    personaName: personaResult.data?.name || "",
+    characterNpcs: characterNpcResult.data || [],
+    storyNpcs: storyNpcResult.data || [],
+    connections: connectionResult.data || [],
+    castState: conversation.cast_state || {},
+  });
+
+  const deterministicFindings = [
+    ...canonDoctorPrivateLeakFindings(messages),
+    ...npcAudit.findings,
+  ];
 
   let report: any;
   if (apply && suppliedPlan && typeof suppliedPlan === "object") {
@@ -665,6 +804,15 @@ async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, app
     }
   }
 
+  report.npcConsistency = {
+    characterNpcCount: npcAudit.characterNpcCount,
+    storyNpcCount: npcAudit.storyNpcCount,
+    duplicateScopeNames: npcAudit.duplicateScopeNames,
+    missingRelationshipNames: npcAudit.missingRelationshipNames,
+    orphanConnectionCount: npcAudit.orphanConnectionIds.length,
+    staleCastKeys: npcAudit.staleCastKeys,
+  };
+
   if (!apply) return json({ report, messageCount: messages.length, memoryCount: memories.length });
 
   const plan = normalizeCanonDoctorPlan(report?.repairPlan || suppliedPlan || {});
@@ -673,6 +821,9 @@ async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, app
   let relationshipState = scrubPersistentState(conversation.relationship_state || {}, prunePhrases);
   let developmentState = scrubPersistentState(conversation.character_development || {}, prunePhrases);
   let castState = scrubPersistentState(conversation.cast_state || {}, prunePhrases);
+  if (castState && typeof castState === "object" && !Array.isArray(castState)) {
+    for (const staleKey of npcAudit.staleCastKeys) delete castState[staleKey];
+  }
   if (plan.clearUserAssumptions) {
     if (intelligenceState?.human_behavior_state) intelligenceState.human_behavior_state.relationship_user_view = "";
     if (intelligenceState?.presence_engine_state) intelligenceState.presence_engine_state.bad_day_state = "";
@@ -722,6 +873,18 @@ async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, app
     const { error } = await supabase.from("story_knowledge_entries").delete().in("id", knowledgeIds).eq("conversation_id", conversationId).eq("user_id", userId);
     if (error && error.code !== "42P01") throw new Error(error.message);
   }
+  let npcConnectionsRemoved = 0;
+  if (npcAudit.orphanConnectionIds.length) {
+    const { error } = await supabase
+      .from("story_cast_connections")
+      .delete()
+      .in("id", npcAudit.orphanConnectionIds)
+      .eq("conversation_id", conversationId)
+      .eq("user_id", userId);
+    if (error && error.code !== "42P01") throw new Error(error.message);
+    if (!error) npcConnectionsRemoved = npcAudit.orphanConnectionIds.length;
+  }
+
   return json({
     applied: true,
     report,
@@ -730,6 +893,8 @@ async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, app
       knowledgeRemoved: knowledgeIds.length,
       prunePhrases: prunePhrases.length,
       threadsRebuilt: plan.cleanUnresolvedThreads.length,
+      npcConnectionsRemoved,
+      staleCastEntriesRemoved: npcAudit.staleCastKeys.length,
     },
     updated: updatedConversation || patch,
   });
