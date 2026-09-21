@@ -63,6 +63,7 @@ import StoryWorldDrawer from "../components/StoryWorldDrawer";
 import MessageQualitySheet from "../components/MessageQualitySheet";
 import CanonDoctorSheet from "../components/CanonDoctorSheet";
 import NpcCastDrawer from "../components/NpcCastDrawer";
+import PanelErrorBoundary from "../components/PanelErrorBoundary";
 import { useChats } from "../context/ChatsContext";
 import { useCharacters } from "../context/CharactersContext";
 import { usePersonas } from "../context/PersonasContext";
@@ -2740,25 +2741,29 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         onThemeChange={applyStoryTheme}
       />
 
-      <StoryTimelineDrawer
-        open={timelineOpen}
-        onClose={() => setTimelineOpen(false)}
-        conversation={conversation}
-        onRefresh={handleRefreshTimeline}
-        refreshing={refreshingTimeline}
-        onJumpToMessage={jumpToStoryMessage}
-      />
+      <PanelErrorBoundary label="Timeline" onReset={() => setTimelineOpen(false)}>
+        <StoryTimelineDrawer
+          open={timelineOpen}
+          onClose={() => setTimelineOpen(false)}
+          conversation={conversation}
+          onRefresh={handleRefreshTimeline}
+          refreshing={refreshingTimeline}
+          onJumpToMessage={jumpToStoryMessage}
+        />
+      </PanelErrorBoundary>
 
-      <StoryHubDrawer
-        open={storyHubOpen}
-        onClose={() => setStoryHubOpen(false)}
-        character={character}
-        characters={characters}
-        persona={personas.find((item) => item.id === conversation?.personaId) || null}
-        lorebook={lorebooks.find((item) => item.id === conversation?.lorebookId) || null}
-        onJumpToMessage={jumpToStoryMessage}
-        onOpenConversation={openStoryConversation}
-      />
+      <PanelErrorBoundary label="Story Hub" onReset={() => setStoryHubOpen(false)}>
+        <StoryHubDrawer
+          open={storyHubOpen}
+          onClose={() => setStoryHubOpen(false)}
+          character={character}
+          characters={characters}
+          persona={personas.find((item) => item.id === conversation?.personaId) || null}
+          lorebook={lorebooks.find((item) => item.id === conversation?.lorebookId) || null}
+          onJumpToMessage={jumpToStoryMessage}
+          onOpenConversation={openStoryConversation}
+        />
+      </PanelErrorBoundary>
 
       {catchUpOpen && conversation?.storyRecap && typeof document !== "undefined" && createPortal((
         <div className="catchup-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setCatchUpOpen(false)}>
@@ -2776,40 +2781,48 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         </div>
       ), document.body)}
 
-      <CanonDoctorSheet
-        open={canonDoctorOpen}
-        onClose={() => !canonDoctorApplying && setCanonDoctorOpen(false)}
-        report={canonDoctorReport}
-        loading={canonDoctorLoading}
-        applying={canonDoctorApplying}
-        error={canonDoctorError}
-        applied={canonDoctorApplied}
-        onRepair={repairCanonDoctor}
-        onRescan={scanCanonDoctor}
-      />
+      <PanelErrorBoundary label="Canon Doctor" onReset={() => setCanonDoctorOpen(false)}>
+        <CanonDoctorSheet
+          open={canonDoctorOpen}
+          onClose={() => !canonDoctorApplying && setCanonDoctorOpen(false)}
+          report={canonDoctorReport}
+          loading={canonDoctorLoading}
+          applying={canonDoctorApplying}
+          error={canonDoctorError}
+          applied={canonDoctorApplied}
+          onRepair={repairCanonDoctor}
+          onRescan={scanCanonDoctor}
+        />
+      </PanelErrorBoundary>
 
       <MessageQualitySheet open={Boolean(qualityMessage)} message={qualityMessage} character={character} onClose={()=>setQualityMessage(null)} onRate={rateQuality} />
 
-      <RelationshipDrawer
-        open={relationshipOpen}
-        onClose={() => setRelationshipOpen(false)}
-        character={relationshipCharacter || character}
-        characters={characters}
-        persona={personas.find((item) => item.id === conversation?.personaId) || null}
-        conversation={conversation}
-      />
+      <PanelErrorBoundary label="Relationship" onReset={() => setRelationshipOpen(false)}>
+        <RelationshipDrawer
+          open={relationshipOpen}
+          onClose={() => setRelationshipOpen(false)}
+          character={relationshipCharacter || character}
+          characters={characters}
+          persona={personas.find((item) => item.id === conversation?.personaId) || null}
+          conversation={conversation}
+        />
+      </PanelErrorBoundary>
 
-      <NpcCastDrawer
-        open={npcCastOpen}
-        onClose={() => setNpcCastOpen(false)}
-        conversationId={conversation?.conversationId}
-        character={character}
-        groupCharacters={groupCast}
-        userName={personas.find((item) => item.id === conversation?.personaId)?.name || "You"}
-        disabled={busy}
-      />
+      <PanelErrorBoundary label="NPC Cast" onReset={() => setNpcCastOpen(false)}>
+        <NpcCastDrawer
+          open={npcCastOpen}
+          onClose={() => setNpcCastOpen(false)}
+          conversationId={conversation?.conversationId}
+          character={character}
+          groupCharacters={groupCast}
+          userName={personas.find((item) => item.id === conversation?.personaId)?.name || "You"}
+          disabled={busy}
+        />
+      </PanelErrorBoundary>
 
-      <StoryWorldDrawer open={worldStudioOpen} onClose={()=>setWorldStudioOpen(false)} conversationId={conversation?.conversationId}/>
+      <PanelErrorBoundary label="World Studio" onReset={() => setWorldStudioOpen(false)}>
+        <StoryWorldDrawer open={worldStudioOpen} onClose={()=>setWorldStudioOpen(false)} conversationId={conversation?.conversationId}/>
+      </PanelErrorBoundary>
 
       {controlsOpen && (
         <div className="chat-controls-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !savingControls && setControlsOpen(false)}>
