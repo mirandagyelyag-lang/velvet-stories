@@ -40,6 +40,7 @@ import { buildSpokenNaturalnessV34944, spokenNaturalnessV34944Issues } from "./e
 import { buildMicroContinuityV34945, microContinuityV34945Issues } from "./engine/micro-continuity-v34945.js";
 import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engine/turn-state-ledger-v34946.js";
 import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
+import { buildSemanticStoryMomentumV35310, semanticStoryMomentumIssues } from "./engine/semantic-story-momentum-v35310.js";
 import { immediateTurnContinuityIssues } from "./engine/immediate-turn-continuity-v35213.js";
 import { behavioralTurnIntegrityIssues, sanitizeBehavioralTurnIntegrity } from "./engine/behavioral-turn-integrity-v35224.js";
 import { buildSceneMomentumBarrierV35236, sanitizeSceneMomentumBarrierV35236, sceneMomentumBarrierV35236Issues } from "./engine/scene-momentum-barrier-v35236.js";
@@ -71,7 +72,7 @@ const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini
 const GEMINI_RECOVERY_MODEL = Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-3.5-flash";
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
 const VELVET_OWNER_EMAIL = "mirandagyelyag@gmail.com";
-const FIRST_DRAFT_WINS_V35268 = true;
+const FIRST_DRAFT_WINS_V35268 = false;
 
 type ModelEnvelope = {
   reply: string;
@@ -2139,6 +2140,12 @@ ${openingDna}
 STORY MODE
 ${sceneSeed}
 
+SEMANTIC MOMENTUM 3.53.10
+- A meaningful opening changes the social, emotional or practical situation. Walking, keys, doors, phones, drinks, coffee orders and banter are blocking, not the plot.
+- Never declare the user's next movement or participation. Invite, insist, choose your own action, but leave the user's action open.
+- Never invent the user's order, favorite, usual, routine or other personal preference.
+- Campus + coffee + study logistics cannot be the opening engine. If that setting appears, something more meaningful must actually happen.
+
 LIVING OPENING ENGINE 3.52.92
 - DEFAULT NO-FIGHT POLICY 3.52.94: when IDEA is empty, do NOT build the opening around a fight, argument, accusation, betrayal, confrontation, somebody lying, or people being genuinely angry at each other. Conflict is opt-in through IDEA, not the default source of momentum.
 - STORY MOVEMENT WITHOUT FIGHTING: ordinary plans, social chaos, teasing, jealousy, spontaneous decisions, changed plans, small problems, playful competition, opportunities, group dynamics, awkwardness, quiet intimacy, and character initiative are the preferred engines.
@@ -2224,9 +2231,17 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
       const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
       const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
+      const semanticIssues = semanticStoryMomentumIssues({
+        reply: opening,
+        latestUserMessage: "",
+        recentUserMessages: [],
+        recentCharacterReplies: recentOpenings,
+        character: safeDraft,
+        opening: true,
+      });
       const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || anchorIssues.length || groundingIssues.length || naturalismIssues.length || similarityIssue.length) {
-        const rejectionReasons = [...qualityIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...similarityIssue];
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || anchorIssues.length || groundingIssues.length || naturalismIssues.length || semanticIssues.length || similarityIssue.length) {
+        const rejectionReasons = [...qualityIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...semanticIssues, ...similarityIssue];
         rejectedInstantCandidates.push({
           opening,
           model,
@@ -2354,8 +2369,14 @@ RULES
       const rescueGroundingIssues = instantStoryGroundingIssuesV35292(rescueOpening, safeDraft, cleanIdea);
       const rescueNaturalismIssues = instantStoryNaturalismIssuesV35295(rescueOpening, safeDraft, cleanIdea);
       const rescueHardBlocks = instantStoryHardBlockIssuesV35298(rescueOpening, safeDraft, cleanIdea);
+      const rescueSemanticIssues = semanticStoryMomentumIssues({
+        reply: rescueOpening,
+        recentCharacterReplies: recentOpenings,
+        character: safeDraft,
+        opening: true,
+      });
       const rescueTooSimilar = instantStoryTooSimilarV3539(rescueOpening, recentOpenings);
-      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescueTooSimilar) {
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescueSemanticIssues.length && !rescueTooSimilar) {
         return json({
           opening: rescueOpening,
           source: "ai_rescue",
@@ -2431,10 +2452,17 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
       const emergencyHardBlocks = instantStoryHardBlockIssuesV35298(emergencyOpening, safeDraft, cleanIdea);
       const emergencyQuality = instantStoryQualityIssues(emergencyOpening, safeDraft)
         .filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
+      const emergencySemanticIssues = semanticStoryMomentumIssues({
+        reply: emergencyOpening,
+        recentCharacterReplies: recentOpenings,
+        character: safeDraft,
+        opening: true,
+      });
       if (
         instantStoryCandidateUsableV35290(emergencyOpening, emergencyFinish, safeDraft) &&
         !emergencyHardBlocks.length &&
         !emergencyQuality.length &&
+        !emergencySemanticIssues.length &&
         !instantStoryTooSimilarV3539(emergencyOpening, recentOpenings)
       ) {
         return json({
@@ -3198,6 +3226,12 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     latestUserMessage: latestUserRecord?.content || "",
     character,
   });
+  const semanticStoryMomentumV35310 = buildSemanticStoryMomentumV35310({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+  });
   const emotionalRelationshipCoreV35263 = buildEmotionalRelationshipCoreV35263({
     latestUserMessage: latestUserRecord?.content || "",
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
@@ -3422,6 +3456,8 @@ ${turnStateLedgerV34946}
 ${sceneMomentumBarrierV35236}
 
 ${meaningfulTurnGateV34950}
+
+${semanticStoryMomentumV35310}
 
 ${emotionalRelationshipCoreV35263}
 
@@ -4403,6 +4439,11 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     recovery_internal_exposure_v347: "Remove checkpoint, retry, database or idempotency language from visible prose.",
     performance_internal_exposure_v348: "Remove latency, failover, streaming or performance-plan language from visible prose.",
     narrative_naturalism_overwrite: "Cut ornamental introspection and stock cinematic body prose. Prefer one simple meaningful action or a shorter sentence. Do not intensify ordinary beats to sound literary.",
+    semantic_user_movement_assumed: "Do not decide the user's movement or participation. Rewrite so the character acts on their own side and leaves the user's next action open.",
+    semantic_invented_user_preference: "Remove the invented preference, order, routine or familiarity. Use only user preferences established in visible canon.",
+    semantic_campus_coffee_study_fallback: "Keep the grounded setting if needed, but replace campus/coffee/study logistics as the engine with one meaningful social, emotional or practical development.",
+    semantic_blocking_banter_stall: "Remove prop choreography and empty banter as the main beat. Make one concrete semantic change to the relationship, plan, conflict, decision, information or consequence.",
+    semantic_repeated_grin_mannerism: "Do not use another grin/smile as the character's default reaction. Choose a different character-specific response or omit the gesture.",
   };
   const uniqueIssues = [...new Set(issues || [])];
   const directions = uniqueIssues.map((issue) => `- ${issue}: ${issueDirections[issue] || "Fix this continuity or naturalness failure while preserving the literal transcript."}`).join("\n");
@@ -4650,6 +4691,12 @@ ${openingDnaV35289}`;
     scene: scene || {},
     mind: intelligenceState?.character_mind || {},
   });
+  const semanticStoryMomentumV35310 = buildSemanticStoryMomentumV35310({
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-8).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-5).map((m)=>String(m?.content||"")),
+    character,
+  });
   const persistentOffscreenLifeUserGravityV35276 = buildPersistentOffscreenLifeUserGravityV35276({
     latestUserMessage,
     recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-10).map((m)=>String(m?.content||"")),
@@ -4743,6 +4790,9 @@ ${characterLedStoryV35274}
 
 AUTONOMOUS STORY FLOW
 ${autonomousStoryFlowV35275}
+
+SEMANTIC STORY MOMENTUM
+${semanticStoryMomentumV35310}
 
 PERSISTENT OFF-SCREEN LIFE + USER GRAVITY
 ${persistentOffscreenLifeUserGravityV35276}
@@ -7371,6 +7421,10 @@ const CONTINUITY_GUARD_ISSUES = new Set([
 ]);
 const BLOCKING_NARRATIVE_ISSUES = new Set([
   "instant_opening_incomplete_or_ungrounded",
+  "semantic_user_movement_assumed",
+  "semantic_invented_user_preference",
+  "semantic_campus_coffee_study_fallback",
+  "semantic_blocking_banter_stall",
   "immediate_user_choice_overridden",
   "delegated_choice_returned",
   "immediate_event_truth_rewritten",
@@ -7476,6 +7530,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 // user-facing naturalism violations spend the one optional repair call.
 const REPAIR_TRIGGER_ISSUES = new Set([
   "instant_opening_incomplete_or_ungrounded",
+  "semantic_repeated_grin_mannerism",
   "meaningful_turn_no_move",
   "meaningful_turn_stalled_regeneration",
   "turn_state_commitment_reversal",
@@ -8610,6 +8665,14 @@ function validateNarrativeReply(reply = "", options = {}) {
     recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
   for (const issue of meaningfulTurnGateV34950Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
+  for (const issue of semanticStoryMomentumIssues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    character: options.character || {},
+    opening: Boolean(options.openingRegeneration),
+  })) issues.push(issue);
   for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
   for (const issue of behavioralTurnIntegrityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
   for (const issue of sceneMomentumBarrierV35236Issues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
@@ -9334,7 +9397,7 @@ async function streamRoleplayV19({
       // v3.52.41 TURBO: stream the visible prose as it arrives. Final local
       // barriers still validate and can replace it before persistence, but the
       // phone no longer waits for the complete provider response to paint text.
-      const guardedDraft = false;
+      const guardedDraft = true;
       try {
         // Flush headers/UI state before the model has finished its first token.
         sendEvent(controller, {
