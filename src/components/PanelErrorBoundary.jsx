@@ -1,3 +1,4 @@
+import "../styles/panel-error-boundary.css";
 import { Component } from "react";
 
 class PanelErrorBoundary extends Component {
