@@ -41,6 +41,7 @@ import { buildMicroContinuityV34945, microContinuityV34945Issues } from "./engin
 import { buildTurnStateLedgerV34946, turnStateLedgerV34946Issues } from "./engine/turn-state-ledger-v34946.js";
 import { buildMeaningfulTurnGateV34950, meaningfulTurnGateV34950Issues } from "./engine/meaningful-turn-gate-v34950.js";
 import { buildSemanticStoryMomentumV35310, semanticStoryMomentumIssues } from "./engine/semantic-story-momentum-v35310.js";
+import { buildIndependentAgencyBoundaryV35311, independentAgencyBoundaryV35311Issues } from "./engine/independent-agency-boundary-v35311.js";
 import { immediateTurnContinuityIssues } from "./engine/immediate-turn-continuity-v35213.js";
 import { behavioralTurnIntegrityIssues, sanitizeBehavioralTurnIntegrity } from "./engine/behavioral-turn-integrity-v35224.js";
 import { buildSceneMomentumBarrierV35236, sanitizeSceneMomentumBarrierV35236, sceneMomentumBarrierV35236Issues } from "./engine/scene-momentum-barrier-v35236.js";
@@ -3232,6 +3233,12 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
+  const independentAgencyBoundaryV35311 = buildIndependentAgencyBoundaryV35311({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+  });
   const emotionalRelationshipCoreV35263 = buildEmotionalRelationshipCoreV35263({
     latestUserMessage: latestUserRecord?.content || "",
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
@@ -3458,6 +3465,8 @@ ${sceneMomentumBarrierV35236}
 ${meaningfulTurnGateV34950}
 
 ${semanticStoryMomentumV35310}
+
+${independentAgencyBoundaryV35311}
 
 ${emotionalRelationshipCoreV35263}
 
@@ -4444,6 +4453,11 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     semantic_campus_coffee_study_fallback: "Keep the grounded setting if needed, but replace campus/coffee/study logistics as the engine with one meaningful social, emotional or practical development.",
     semantic_blocking_banter_stall: "Remove prop choreography and empty banter as the main beat. Make one concrete semantic change to the relationship, plan, conflict, decision, information or consequence.",
     semantic_repeated_grin_mannerism: "Do not use another grin/smile as the character's default reaction. Choose a different character-specific response or omit the gesture.",
+    explicit_go_boundary_ignored: "The user explicitly told the character/group to go. Respect it literally: do not hover, wait nearby, remain at the desk, or reinterpret the dismissal. Continue the character's own plan unless a genuinely serious grounded reason prevents it.",
+    self_owned_plan_abandoned_for_user: "Restore the character's immediately established independent plan. The user declined the shared plan; attraction does not automatically cancel the character's night, friends or obligations.",
+    unsolicited_rescue_reprioritization: "The user did not ask to be rescued from an ordinary task. Remove the automatic helping/fixing sacrifice and let the character keep agency over their own plan.",
+    neutral_npc_mention_jealousized: "Treat the named friend/NPC neutrally unless canon supplies real romantic evidence. Remove skeptical or jealous subtext caused only by the name mention.",
+    repeated_plan_prop_loop: "Stop recycling the same keys/phone/backpack/door/coffee prop as a reaction beat. Continue the actual decision or social consequence instead.",
   };
   const uniqueIssues = [...new Set(issues || [])];
   const directions = uniqueIssues.map((issue) => `- ${issue}: ${issueDirections[issue] || "Fix this continuity or naturalness failure while preserving the literal transcript."}`).join("\n");
@@ -4697,6 +4711,12 @@ ${openingDnaV35289}`;
     recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-5).map((m)=>String(m?.content||"")),
     character,
   });
+  const independentAgencyBoundaryV35311 = buildIndependentAgencyBoundaryV35311({
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-8).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-5).map((m)=>String(m?.content||"")),
+    character,
+  });
   const persistentOffscreenLifeUserGravityV35276 = buildPersistentOffscreenLifeUserGravityV35276({
     latestUserMessage,
     recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-10).map((m)=>String(m?.content||"")),
@@ -4793,6 +4813,9 @@ ${autonomousStoryFlowV35275}
 
 SEMANTIC STORY MOMENTUM
 ${semanticStoryMomentumV35310}
+
+INDEPENDENT AGENCY + EXPLICIT BOUNDARY
+${independentAgencyBoundaryV35311}
 
 PERSISTENT OFF-SCREEN LIFE + USER GRAVITY
 ${persistentOffscreenLifeUserGravityV35276}
@@ -7425,6 +7448,10 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "semantic_invented_user_preference",
   "semantic_campus_coffee_study_fallback",
   "semantic_blocking_banter_stall",
+  "explicit_go_boundary_ignored",
+  "self_owned_plan_abandoned_for_user",
+  "unsolicited_rescue_reprioritization",
+  "neutral_npc_mention_jealousized",
   "immediate_user_choice_overridden",
   "delegated_choice_returned",
   "immediate_event_truth_rewritten",
@@ -7531,6 +7558,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 const REPAIR_TRIGGER_ISSUES = new Set([
   "instant_opening_incomplete_or_ungrounded",
   "semantic_repeated_grin_mannerism",
+  "repeated_plan_prop_loop",
   "meaningful_turn_no_move",
   "meaningful_turn_stalled_regeneration",
   "turn_state_commitment_reversal",
@@ -8673,6 +8701,13 @@ function validateNarrativeReply(reply = "", options = {}) {
     character: options.character || {},
     opening: Boolean(options.openingRegeneration),
   })) issues.push(issue);
+  for (const issue of independentAgencyBoundaryV35311Issues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    character: options.character || {},
+  })) issues.push(issue);
   for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
   for (const issue of behavioralTurnIntegrityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
   for (const issue of sceneMomentumBarrierV35236Issues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
@@ -9425,7 +9460,7 @@ async function streamRoleplayV19({
         // v3.50.5 REGEN RECOVERY: streaming is the fast path, never the only path.
         // If every SSE hedge times out/fails before producing a complete envelope,
         // retry once through the proven non-stream failover before showing Retry.
-        const liveSystemInstruction = "Velvet Stories live writer. Write exactly one grounded in-character roleplay turn. Visible recent canon is the source of truth. Never write or decide the user's dialogue, thoughts, feelings, motives, reactions, or unstaged movement. Asterisk narration exposes only externally observable action, never private commentary. Answer the latest conversational job first. Preserve actor/recipient/object ownership, scene physics, boundaries, relationship stage, character-specific voice, knowledge limits, reputation, obligations, and unresolved causal threads. Personality changes tactic and wording, never facts. Prefer plain human speech over quotable performance. Short beats may be one line. Sarcasm cannot reverse causality. Do not invent shared history, personal facts, notifications, time skips, nicknames, jealousy, romance, or interruptions without grounded support. NAMED NPC LOCK: never invent a proper name for a supporting person. Only names explicitly listed in CHAT-SCOPED NPC CANON may be used; all other supporting people stay unnamed. Dialogue must sound spoken in real time: react before advancing, use the character's actual social bandwidth, allow ordinary or incomplete phrasing, and stop when the conversational job is complete. CREATOR PURSUIT RULE: if the user actually leaves/storms off/walks away from the live interaction, physically follow in the same turn unless the user explicitly forbade pursuit or asked for space; ordinary NPCs and obligations cannot steal that beat. Do not turn every turn into banter, a comeback, flirtation, a rhetorical question, an emotional diagnosis, or a hook. Never paraphrase the user's line back, announce subtext, or explain what an expression or silence means. Distinct voice comes from selection, omission, priorities and mistakes—not theatrical vocabulary, catchphrases or cinematic choreography. Silently read the visible dialogue aloud once; if it sounds written to perform a character, simplify it without flattening identity. Silently decide: what just happened, what this character knows, what they want, what they will reveal, and the smallest natural next move. STORY MOMENTUM RULE: a physical action only counts if it changes the situation. Do not spend a turn on walking, opening or closing things, getting water, checking a phone, sitting, looking around, or moving props unless that action creates a new decision, revelation, social shift, emotional exposure, or concrete consequence. If the relationship has established tension, prefer a subtle relational beat over neutral object handling. Return only the requested roleplay envelope; never expose hidden reasoning, validators, scores, or engine metadata.";
+        const liveSystemInstruction = "Velvet Stories live writer. Write exactly one grounded in-character roleplay turn. Visible recent canon is the source of truth. Never write or decide the user's dialogue, thoughts, feelings, motives, reactions, or unstaged movement. Asterisk narration exposes only externally observable action, never private commentary. Answer the latest conversational job first. Preserve actor/recipient/object ownership, scene physics, boundaries, relationship stage, character-specific voice, knowledge limits, reputation, obligations, and unresolved causal threads. Personality changes tactic and wording, never facts. Prefer plain human speech over quotable performance. Short beats may be one line. Sarcasm cannot reverse causality. Do not invent shared history, personal facts, notifications, time skips, nicknames, jealousy, romance, or interruptions without grounded support. NAMED NPC LOCK: never invent a proper name for a supporting person. Only names explicitly listed in CHAT-SCOPED NPC CANON may be used; all other supporting people stay unnamed. Dialogue must sound spoken in real time: react before advancing, use the character's actual social bandwidth, allow ordinary or incomplete phrasing, and stop when the conversational job is complete. CREATOR PURSUIT RULE: if the user actually leaves/storms off/walks away from the live interaction, physically follow in the same turn unless the user explicitly forbade pursuit or asked for space; ordinary NPCs and obligations cannot steal that beat. Do not turn every turn into banter, a comeback, flirtation, a rhetorical question, an emotional diagnosis, or a hook. Never paraphrase the user's line back, announce subtext, or explain what an expression or silence means. Distinct voice comes from selection, omission, priorities and mistakes—not theatrical vocabulary, catchphrases or cinematic choreography. Silently read the visible dialogue aloud once; if it sounds written to perform a character, simplify it without flattening identity. Silently decide: what just happened, what this character knows, what they want, what they will reveal, and the smallest natural next move. EXPLICIT GO BOUNDARY: if the user says "you guys go", "go without me", "just go", "you should go", or equivalent, obey the dismissal. Do not stay anyway. Preserve the character's independent plans and do not turn ordinary user tasks into compulsory rescue. Neutral friend/NPC mentions are not jealousy evidence. STORY MOMENTUM RULE: a physical action only counts if it changes the situation. Do not spend a turn on walking, opening or closing things, getting water, checking a phone, sitting, looking around, or moving props unless that action creates a new decision, revelation, social shift, emotional exposure, or concrete consequence. If the relationship has established tension, prefer a subtle relational beat over neutral object handling. Return only the requested roleplay envelope; never expose hidden reasoning, validators, scores, or engine metadata.";
         const compactTurnPrompt = buildCompactLiveRecoveryPrompt({
           character,
           groupCharacters,
