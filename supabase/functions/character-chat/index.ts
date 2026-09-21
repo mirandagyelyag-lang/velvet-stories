@@ -799,9 +799,18 @@ async function handleCanonDoctor({ apiKey, supabase, userId, conversationId, app
     if (deterministicFindings.length) {
       const existingKeys = new Set(report.findings.map((item:any)=>`${item.type}:${item.messageId}`));
       report.findings = [...deterministicFindings.filter((item:any)=>!existingKeys.has(`${item.type}:${item.messageId}`)), ...report.findings].slice(0, 20);
-      report.status = "repair_recommended";
-      report.score = Math.min(Number(report.score) || 100, Math.max(0, 92 - deterministicFindings.length * 12));
-      if (!report.summary) report.summary = "Canon Doctor found persistent-state risks that should be cleaned before continuing this story.";
+      const repairableDeterministic = deterministicFindings.filter((item:any) =>
+        !["npc_duplicate_scope", "npc_missing_relationship"].includes(String(item?.type || ""))
+      );
+      if (repairableDeterministic.length) {
+        report.status = "repair_recommended";
+        report.score = Math.min(Number(report.score) || 100, Math.max(0, 92 - repairableDeterministic.length * 12));
+        if (!report.summary) report.summary = "Canon Doctor found persistent-state risks that should be cleaned before continuing this story.";
+      } else if (report.status === "clean") {
+        report.status = "review";
+        report.score = Math.min(Number(report.score) || 100, 96);
+        if (!report.summary) report.summary = "Canon is stable, with a few NPC setup details worth reviewing.";
+      }
     }
   }
 
