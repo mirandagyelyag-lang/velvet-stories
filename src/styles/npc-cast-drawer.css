@@ -278,3 +278,22 @@
 .npc-cast-scope button{min-height:58px;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:9px 10px;background:rgba(255,255,255,.025);color:rgba(247,237,241,.72);text-align:left;font:inherit;font-size:12px}
 .npc-cast-scope button small{display:block;margin-top:3px;color:rgba(247,237,241,.42);font-size:10px}
 .npc-cast-scope button.is-active{border-color:rgba(215,153,179,.42);background:rgba(145,61,95,.16);color:#f7edf1}
+
+
+.npc-cast-notice{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.npc-cast-notice button{
+  flex:0 0 auto;
+  min-height:30px;
+  padding:0 10px;
+  border-radius:9px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.07);
+  color:inherit;
+  font:inherit;
+  font-weight:650;
+}
