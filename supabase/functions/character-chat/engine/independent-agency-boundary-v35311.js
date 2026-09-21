@@ -1,4 +1,4 @@
-// Velvet Stories v3.53.11 · Independent Agency + Explicit Boundary Gate
+// Velvet Stories v3.53.12 · Independent Agency + Explicit Boundary Gate
 
 const clean=(v="",n=12000)=>String(v??"").replace(/\s+/g," ").trim().slice(0,n);
 const norm=(v="")=>clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[’‘]/g,"'");
@@ -33,6 +33,20 @@ function replyCancelsOwnPlanForUser(reply=""){
   const cancel=/\b(?:forget (?:the|that)|never mind (?:the|that)|screw (?:the|that)|skip (?:the|that)|i'm staying|im staying|i am staying|i'll stay|ill stay|not going anywhere|i'll be right here|ill be right here|i'm not leaving|im not leaving)\b/.test(t);
   const service=/\b(?:i'll help|ill help|i can help|let me help|help you|i'll do it with you|ill do it with you|knock out .* for you|finish .* with you|stay and help)\b/.test(t);
   return cancel || (service && /\b(?:instead|forget|stay|not leaving|right here)\b/.test(t));
+}
+
+function passiveDeclineDeadEnd(reply=""){
+  const t=norm(reply);
+  const tiny=/^(?:okay|ok|alright|fine|sure|got it|understood)[.!…]*$/.test(t);
+  const passive=/\b(?:stops instead of pushing|doesn't push|does not push|lets? it go|leaves? it there|says? nothing else)\b/.test(t);
+  return tiny || passive;
+}
+
+function flimsyStayJustification(reply=""){
+  const t=norm(reply);
+  const stay=/\b(?:i'm staying|im staying|i am staying|i'll stay|ill stay|rather (?:be|stay|hang out) here|not worth it|not going)\b/.test(t);
+  const devalue=/\b(?:by myself|alone|they(?:'d| would) just|he(?:'d| would) just|she(?:'d| would) just|crowd|not worth it|boring anyway|didn't really want|did not really want)\b/.test(t);
+  return stay && devalue;
 }
 
 function replyIgnoresDismissal(reply=""){
@@ -74,10 +88,14 @@ export function buildIndependentAgencyBoundaryV35311({
   latestUserMessage="",recentUserMessages=[],recentCharacterReplies=[],character={}
 }={}){
   return [
-    "INDEPENDENT AGENCY + EXPLICIT BOUNDARY 3.53.11 · HARD TURN LAW:",
+    "INDEPENDENT AGENCY + EXPLICIT BOUNDARY 3.53.12 · HARD TURN LAW:",
     "Caring about the user does not erase the character's friends, plans, deadlines, interests, pride or independent evening.",
     "If the user explicitly says 'you guys go', 'go without me', 'just go', 'you should go', or equivalent, treat it literally. Do not stay anyway, hover nearby, wait at the desk, or reinterpret the dismissal as a request for devotion.",
-    "If the user declines a shared plan, the character may keep their own plan. Attraction can color the goodbye, but it does not automatically cancel their night.",
+    "If the user declines a shared plan, DEFAULT TO CONTINUITY OF THE CHARACTER'S OWN PLAN. Attraction may color the reaction, but 'I can't go', 'I have work', 'I need to finish my project', or equivalent is NOT a hidden request for the character to stay.",
+    "Do not turn an ordinary scheduling conflict into a devotion test. The character must not cancel tickets, friends, parties, practice, work, dates, errands or other established plans merely because the user cannot join.",
+    "If the character changes or cancels a plan for the user, there must be a NEW concrete cause in the current turn: an explicit request for help/company, a serious safety/emotional event, or a character-specific conflict strong enough to outweigh the original desire. Mere attraction is insufficient.",
+    "When the user cannot join, preserve BOTH truths: the character can genuinely wish the user were coming AND still go. A brief attempt to persuade, a disappointed line, a practical alternative, or a later text can show care without collapsing independent life.",
+    "Never invent a flimsy excuse about friends, the event, the crowd, or the plan after the user points out that the character was going with other people. Do not retroactively devalue a plan just to justify staying with the user.",
     "Do not convert every ordinary user problem into a service opportunity. If the user did not ask for help, a project/deadline/task is not a reason to instantly abandon the character's established plan and rescue them.",
     "A direct request to leave or go overrides pursuit because the user is explicitly dismissing the character, not silently walking away.",
     "Mentioning a friend or NPC is neutral unless canon creates a romantic reason for jealousy. Do not answer 'Right. Jules. Sure' merely because the user names someone else.",
@@ -103,6 +121,12 @@ export function independentAgencyBoundaryV35311Issues({
   if(sentAway && replyIgnoresDismissal(text)) issues.push("explicit_go_boundary_ignored");
   if(declined && hasPlan && !askedHelp && !serious && replyCancelsOwnPlanForUser(text)) {
     issues.push("self_owned_plan_abandoned_for_user");
+  }
+  if(declined && hasPlan && !askedHelp && !serious && passiveDeclineDeadEnd(text)) {
+    issues.push("declined_plan_passive_dead_end");
+  }
+  if(declined && hasPlan && !askedHelp && !serious && flimsyStayJustification(text)) {
+    issues.push("retroactive_plan_devaluation_to_orbit_user");
   }
   if(declined && !askedHelp && !serious && /\b(?:i'll help|ill help|i can help|let me help|help you|stay and help)\b/.test(norm(text)) && replyCancelsOwnPlanForUser(text)) {
     issues.push("unsolicited_rescue_reprioritization");
