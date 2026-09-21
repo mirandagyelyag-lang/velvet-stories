@@ -12,6 +12,10 @@ const TYPE_LABELS = {
   contradiction: "Contradiction",
   stale_thread: "Stale thread",
   memory_contamination: "Memory contamination",
+  npc_duplicate_scope: "Duplicate NPC scope",
+  npc_missing_relationship: "NPC missing relationship",
+  npc_orphan_reference: "Orphan NPC reference",
+  npc_stale_cast_state: "Stale NPC state",
   other: "State inconsistency",
 };
 
@@ -21,7 +25,12 @@ export default function CanonDoctorSheet({ open, onClose, report, loading, apply
   const high = findings.filter((item) => item.severity === "high").length;
   const medium = findings.filter((item) => item.severity === "medium").length;
   const repairStats = applied && typeof applied === "object" ? applied : {};
-  const repairedCount = Number(repairStats.memoriesSuperseded || 0) + Number(repairStats.knowledgeRemoved || 0) + Number(repairStats.prunePhrases || 0);
+  const repairedCount =
+    Number(repairStats.memoriesSuperseded || 0) +
+    Number(repairStats.knowledgeRemoved || 0) +
+    Number(repairStats.prunePhrases || 0) +
+    Number(repairStats.npcConnectionsRemoved || 0) +
+    Number(repairStats.staleCastEntriesRemoved || 0);
   return createPortal(
     <div className="canon-doctor-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !applying && onClose?.()}>
       <section className="canon-doctor" role="dialog" aria-modal="true" aria-label="Canon Doctor">
@@ -33,7 +42,7 @@ export default function CanonDoctorSheet({ open, onClose, report, loading, apply
         {loading ? <div className="canon-doctor__loading"><LoaderCircle className="spin" size={24}/><strong>Auditing this story…</strong><span>Checking POV privacy, boundaries, canon, memories and physical continuity.</span></div> : null}
         {error ? <div className="canon-doctor__error"><AlertTriangle size={18}/><span>{error}</span></div> : null}
         {applied ? <div className="canon-doctor__success"><CheckCircle2 size={19}/><div><strong>Story state repaired</strong><span>{repairedCount > 0
-          ? `Cleaned ${Number(repairStats.memoriesSuperseded || 0)} memories, ${Number(repairStats.knowledgeRemoved || 0)} knowledge entries and ${Number(repairStats.prunePhrases || 0)} contaminated state phrases.`
+          ? `Cleaned ${Number(repairStats.memoriesSuperseded || 0)} memories, ${Number(repairStats.knowledgeRemoved || 0)} knowledge entries, ${Number(repairStats.npcConnectionsRemoved || 0)} orphan NPC links and ${Number(repairStats.staleCastEntriesRemoved || 0)} stale cast entries.`
           : "Persistent state was normalized and a fresh story revision was created. No saved contaminated entries needed deletion."}</span><small>Your visible messages were not changed. A safety snapshot was created first.</small></div></div> : null}
 
         {!loading && report ? <>
@@ -52,6 +61,15 @@ export default function CanonDoctorSheet({ open, onClose, report, loading, apply
           {(report?.canon?.unsupported?.length || report?.canon?.contradictions?.length) ? <div className="canon-doctor__canon-box">
             {report.canon.unsupported?.length ? <div><strong>Unsupported state</strong>{report.canon.unsupported.slice(0,5).map((item,index)=><span key={index}>{item}</span>)}</div> : null}
             {report.canon.contradictions?.length ? <div><strong>Contradictions</strong>{report.canon.contradictions.slice(0,5).map((item,index)=><span key={index}>{item}</span>)}</div> : null}
+          </div> : null}
+          {report?.npcConsistency ? <div className="canon-doctor__canon-box">
+            <div>
+              <strong>NPC consistency</strong>
+              <span>{Number(report.npcConsistency.characterNpcCount || 0)} character NPCs · {Number(report.npcConsistency.storyNpcCount || 0)} story NPCs</span>
+              {report.npcConsistency.duplicateScopeNames?.length ? <span>Duplicate scope: {report.npcConsistency.duplicateScopeNames.slice(0,4).join(", ")}</span> : null}
+              {report.npcConsistency.orphanConnectionCount ? <span>{report.npcConsistency.orphanConnectionCount} orphan social link(s)</span> : null}
+              {report.npcConsistency.staleCastKeys?.length ? <span>Stale cast state: {report.npcConsistency.staleCastKeys.slice(0,4).join(", ")}</span> : null}
+            </div>
           </div> : null}
         </> : null}
 
