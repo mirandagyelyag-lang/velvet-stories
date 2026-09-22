@@ -1635,6 +1635,17 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
   const raw = String(opening || "");
   const narration = instantStoryNarrationOnlyV35292(raw);
   const profile = `${draft?.name || ""} ${draft?.role || ""} ${draft?.description || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""} ${draft?.firstMessage || draft?.first_message || ""}`;
+
+  // v3.53.13 POV firewall: Instant Story is always narrated from/about the lead
+  // character. The user is addressed as "you"; the model may never become the
+  // user's first-person narrator or author an unstated user action.
+  const firstPersonNarration = /(^|[.!?]\s+)(?:I|I'm|I've|I'd|I'll|My|Mine|Me)\b|\b(?:under|beneath|around|against|behind|beside) my\s+(?:boots?|feet|hands?|body|shoulder|back|head)\b/i;
+  if (firstPersonNarration.test(narration)) {
+    issues.push("user_first_person_pov");
+  }
+  if (/\b(?:I|we)\s+(?:turned|grabbed|walked|sat|stood|looked|spotted|noticed|reached|headed|arrived|came|went|felt|knew|wanted|decided|hesitated)\b/i.test(narration)) {
+    issues.push("user_first_person_action");
+  }
   const profileNorm = profile.toLowerCase();
   const ideaNorm = String(idea || "").toLowerCase();
 
@@ -1753,6 +1764,8 @@ function instantStoryNaturalismIssuesV35295(opening = "", draft = {}, idea = "")
 
 const INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298 = new Set([
   "invented_user_action_or_state",
+  "user_first_person_pov",
+  "user_first_person_action",
   "invented_user_prop_state",
   "invented_user_motive",
   "invented_named_npc",
@@ -2147,7 +2160,8 @@ SEMANTIC MOMENTUM 3.53.10
 - Never invent the user's order, favorite, usual, routine or other personal preference.
 - Campus + coffee + study logistics cannot be the opening engine. If that setting appears, something more meaningful must actually happen.
 
-LIVING OPENING ENGINE 3.52.92
+LIVING OPENING ENGINE 3.53.13
+- POV FIREWALL: narrate ONLY the lead character/world in third person. The user is always "you". Never narrate as "I/me/my/we/us" on the user's behalf, and never write the user's unstated actions, perceptions, thoughts, feelings, posture, arrival, movement or choices.
 - DEFAULT NO-FIGHT POLICY 3.52.94: when IDEA is empty, do NOT build the opening around a fight, argument, accusation, betrayal, confrontation, somebody lying, or people being genuinely angry at each other. Conflict is opt-in through IDEA, not the default source of momentum.
 - STORY MOVEMENT WITHOUT FIGHTING: ordinary plans, social chaos, teasing, jealousy, spontaneous decisions, changed plans, small problems, playful competition, opportunities, group dynamics, awkwardness, quiet intimacy, and character initiative are the preferred engines.
 - PROPORTIONAL STAKES: do not invent police, coaches, athletic departments, disciplinary consequences, crimes, dangerous secrets, blackmail, betrayals, or reputation disasters unless the configured character/world or explicit IDEA actually supports them.
@@ -2314,6 +2328,7 @@ CONFLICT DIRECTION
 ${sceneSeed}
 ${repairContext}
 RULES
+- POV FIREWALL: third-person lead-character narration only. Address the user as "you". Never use I/me/my/we/us in narration as the user's POV, and never author an unstated user action, perception, feeling, thought, arrival, movement or choice.
 - Stay inside the primary opening's ecosystem unless IDEA explicitly relocates it.
 - With no explicit IDEA requesting conflict, do NOT use arguments, fights, accusations, betrayal, confrontations, lies-as-plot, or genuine anger. Use a normal, social, funny, awkward, jealous, spontaneous, competitive, opportunistic, or mildly inconvenient opening instead.
 - Do not reuse phone-message / screenshot / “start again” accusations, mysterious trunks, hidden deliveries, or fake institutional consequences.
@@ -2426,7 +2441,7 @@ RULES
         headers: geminiHeaders(apiKey),
         signal: emergencyController.signal,
         body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: `Write one fresh, natural roleplay opening for the exact character below. 65-115 words. Use 1-4 short spoken lines. The lead character must make a meaningful choice that changes what happens next. Do not invent the user's actions, feelings, position, possessions, history, family, nickname, or dialogue. Do not invent named NPCs. Avoid food-order/study filler, stock flirting, decorative prose, forced A/B choices, accusations, screenshots, mystery packages, and routine intimacy. Do not repeat the recent openings. Output only finished prose.
+          contents: [{ role: "user", parts: [{ text: `Write one fresh, natural roleplay opening for the exact character below. 65-115 words. Use 1-4 short spoken lines. The lead character must make a meaningful choice that changes what happens next. Use third-person lead-character narration only; address the user as "you" and never narrate as I/me/my/we/us on the user's behalf. Do not invent the user's actions, feelings, position, possessions, history, family, nickname, or dialogue. Do not invent named NPCs. Avoid food-order/study filler, stock flirting, decorative prose, forced A/B choices, accusations, screenshots, mystery packages, and routine intimacy. Do not repeat the recent openings. Output only finished prose.
 
 CHARACTER
 ${JSON.stringify(safeDraft)}
