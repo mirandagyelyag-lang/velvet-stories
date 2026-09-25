@@ -10,7 +10,7 @@ const pkg = JSON.parse(
 );
 
 const velvetVersion = pkg.version;
-const velvetRelease = "Stale Bundle Recovery";
+const velvetRelease = "Network-Only Navigation Recovery";
 
 function upsertMetaTag(html, name, content) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -173,17 +173,11 @@ export default defineConfig(({ mode }) => {
 
             runtimeCaching: [
               {
+                // Velvet depends on live Supabase data, so a cached HTML shell is
+                // more dangerous than useful. Never serve stale navigation HTML:
+                // an older shell can reference hashed JS chunks removed by a newer deploy.
                 urlPattern: ({ request }) => request.mode === "navigate",
-                handler: "NetworkFirst",
-                options: {
-                  cacheName: "velvet-navigation",
-                  networkTimeoutSeconds: 4,
-                  cacheableResponse: { statuses: [0, 200] },
-                  expiration: {
-                    maxEntries: 8,
-                    maxAgeSeconds: 60 * 60 * 24,
-                  },
-                },
+                handler: "NetworkOnly",
               },
               {
                 urlPattern: ({ request, url }) =>
