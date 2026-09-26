@@ -158,6 +158,23 @@ export function npcEcosystemIssues(args:IssueArgs={}):string[]{
   if(/\b(?:nobody else mattered|everyone else disappeared|the rest of the world faded away|it was like nobody else existed)\b/i.test(reply) && nodes.length>=2) issues.push("ship_bubble_social_erasure");
   if(/\b(?:out of nowhere|for no reason|randomly)\b.{0,100}\b(?:racer|crew|mechanic|teammate|coach|business associate|family friend|ex)\b/i.test(reply)) issues.push("cross_circle_collision_without_cause");
 
+  const latest=norm(args.latestUserMessage||"");
+  const recentReplies=norm(list(args.recentCharacterReplies).slice(-5).join(" | "));
+  const recurringCandidates=list(engine.recurringCandidates).map(norm);
+  const activeThreads=norm(list(engine.activeNpcThreads).join(" | "));
+  for(const npc of nodes){
+    const name=text(npc.name); const key=norm(name);
+    if(!name || !key || !n.includes(key)) continue;
+    const userSummoned=latest.includes(key);
+    const recentlyActive=recentReplies.includes(key);
+    const groundedCandidate=recurringCandidates.includes(key);
+    const activeThread=activeThreads.includes(key);
+    const present=/present in the live scene/i.test(text(npc.availability));
+    if(!userSummoned && !recentlyActive && !groundedCandidate && !activeThread && !present){
+      issues.push("npc_unsolicited_activation");
+      break;
+    }
+  }
   const repeatedGeneric=sentences.filter((s)=>/\b(?:a classmate|a teammate|a friend|a mechanic|a girl from class|a guy from class)\b/i.test(s));
   if(repeatedGeneric.length>=2 && list(engine.recurringCandidates).length>0) issues.push("recurring_npc_fragmentation");
 
