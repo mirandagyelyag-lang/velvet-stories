@@ -39,6 +39,27 @@
 }
 
 /* Exact coordinates of the shipped owner login artwork (1672 × 941). */
+.auth__owner-email-mask {
+  position: absolute;
+  z-index: 3;
+  left: 38.86%;
+  top: 52.42%;
+  width: 15.8%;
+  height: 2.45%;
+  display: flex;
+  align-items: center;
+  padding: 0 0.25%;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #20090c;
+  box-shadow: 0 0 5px 5px #20090c;
+  color: #f1d5c8;
+  font: 600 clamp(10px, 0.86vw, 15px)/1.1 Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .auth__owner-password-shell {
   position: absolute;
   left: 34.33%;
