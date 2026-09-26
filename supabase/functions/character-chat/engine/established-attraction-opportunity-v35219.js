@@ -49,8 +49,30 @@ function pursuitFallback({ name, character }) {
   return name + ' goes after you instead of staying behind. “Wait.” ' + name + ' catches up. “I’m not letting that be the last thing between us.”';
 }
 
-function emotionalFallback({ name, character }) {
+function emotionalFallback({ name, character, latestUserMessage = "" }) {
   const temperament = fallbackTemperament(character);
+  const turn = normalize(latestUserMessage);
+
+  // High-salience disclosures need a reaction to what was actually said, not
+  // a generic therapist prompt. Keep the character active without inventing
+  // the user's feelings or solving the problem for them.
+  if (/\b(?:pill|pills|med|meds|medication|medicine|dose|prescription)\b/.test(turn)) {
+    return name + '’s expression changes at once. “Your pills?” The teasing drops out completely. ' +
+      name + ' stays close, attention fixed on you. “Okay. When were you supposed to take them?”';
+  }
+
+  if (/\b(?:shitty day|bad day|awful day|rough day|terrible day|hard day|cried|crying|panic|panicking|scared|upset|hurt|overwhelmed)\b/.test(turn)) {
+    if (temperament === "proud") {
+      return name + ' loses the comeback before it lands. “Okay. That was me being an ass.” ' +
+        name + ' stays put instead of retreating into a joke. “What happened?”';
+    }
+    if (temperament === "guarded") {
+      return name + ' goes still for a beat, the usual deflection gone. “Okay.” ' +
+        name + ' stays close instead of changing the subject. “What happened?”';
+    }
+    return name + '’s attention sharpens. “Okay.” ' + name + ' stays with you instead of smoothing it over. “What happened?”';
+  }
+
   if (temperament === "warm") return name + ' stops trying to smooth it over. “I know saying I didn’t mean to doesn’t make it hurt less.”';
   if (temperament === "guarded") return name + ' goes quiet for a beat. “I heard you.” The usual defense is gone from the next line. “I’m not brushing that off.”';
   if (temperament === "proud") return name + ' loses the comeback before it lands. “Yeah. I heard you.” ' + name + ' doesn’t look away. “I’m not going to argue my way out of that.”';
@@ -156,14 +178,26 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
   if (pursuitFailures.some((issue) => failures.has(issue))) return pursuitFallback({ name, character });
 
   const emotionalFailures = ["emotional_bid_practical_escape","relational_hurt_deflected","canned_distress_checkin","emotional_care_therapized","attachment_failed_to_affect_behavior","therapist_service_voice","perfect_empathy_package","therapeutic_deescalation_pivot"];
-  if (emotionalFailures.some((issue) => failures.has(issue))) return emotionalFallback({ name, character });
+  if (emotionalFailures.some((issue) => failures.has(issue))) return emotionalFallback({ name, character, latestUserMessage: effectiveTurn });
 
   if (/\b(?:dont|do not|no|stop|leave it|never mind|won t|wont|can t|cant)\b/.test(normalizedTurn)) return name + " stops instead of pushing the point. “Okay.”";
   if (/\?$|\b(?:what|why|who|where|when|how|which)\b/.test(normalizedTurn)) return name + " answers without dressing it up. “I don’t know yet.”";
 
   const temperament = fallbackTemperament(character);
-  if (temperament === "proud") return name + " drops the automatic comeback. “Fine. Say it.”";
-  if (temperament === "guarded") return name + " stays with the moment instead of changing the subject. “Go on.”";
-  if (temperament === "warm") return name + " gives the moment his full attention. “I’m here.”";
-  return name + " keeps his attention on you. “Go on.”";
+
+  // Never leak engine-language such as "stays with the moment" into visible
+  // prose. Last-resort replies must still sound like an actual character turn.
+  if (/\b(?:pill|pills|med|meds|medication|medicine|dose|prescription)\b/.test(normalizedTurn)) {
+    return name + '’s expression changes. “Your pills?” ' + name + ' focuses on you properly now. “When were you supposed to take them?”';
+  }
+  if (/\b(?:shitty day|bad day|awful day|rough day|terrible day|hard day|cried|crying|panic|panicking|scared|upset|hurt|overwhelmed)\b/.test(normalizedTurn)) {
+    if (temperament === "proud") return name + ' loses the comeback. “Okay. What happened?”';
+    if (temperament === "guarded") return name + ' goes quiet, attention settling fully on you. “What happened?”';
+    return name + ' turns fully toward you. “What happened?”';
+  }
+
+  if (temperament === "proud") return name + ' drops the automatic comeback. “Fine. Say it.”';
+  if (temperament === "guarded") return name + ' goes quiet, watching you for a beat. “I’m listening.”';
+  if (temperament === "warm") return name + ' gives you their full attention. “I’m here.”';
+  return name + ' stays focused on you. “I’m listening.”';
 }
