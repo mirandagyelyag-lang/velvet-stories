@@ -215,6 +215,12 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
 export function relationshipChemistryIssues({reply="",engine={},latestUserMessage="",recentCharacterReplies=[]}:{reply?:string;engine?:Partial<RelationshipChemistryV2>;latestUserMessage?:string;recentCharacterReplies?:string[]}={}){
   const issues:string[]=[];
   const t=norm(reply);
+  const recent=norm((Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-4).join(" | "));
+  const chemistryMarkers=/\b(?:flirt|teas(?:e|es|ed|ing)|jealous|jealousy|smirk|grin|closer|low voice|lowered voice|tension|charged|heat|desire|want you|kiss|touch|waist|eyes? on you|gaze|attracted|chemistry)\b/g;
+  const currentChem=(t.match(chemistryMarkers)||[]).length;
+  const recentChem=(recent.match(chemistryMarkers)||[]).length;
+  const mundaneBeat=!/\b(?:kiss|date|jealous|confess|love|flirt|touch|bed|sex|party|club|bar|afterparty|relationship|crush)\b/.test(norm(latestUserMessage));
+  if(mundaneBeat && currentChem>=3 && recentChem>=7) issues.push("chemistry_pressure_saturation");
   const jealousyEvidence=engine?.jealousy?.evidence||[];
   const jealousyLanguage=/\b(?:jealous|possessive|who is (?:he|she)|who s (?:he|she)|who's (?:he|she)|your boyfriend|your girlfriend|mine|back off|stay away from (?:her|him)|jaw (?:tightened|clenched)|fists? clenched)\b/.test(t);
   if(jealousyLanguage&&!jealousyEvidence.length) issues.push("jealousy_without_grounded_evidence");
