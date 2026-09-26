@@ -61,6 +61,7 @@ import { buildConsequencesThatStickV35277, consequencesThatStickV35277Issues, in
 import { buildRelationshipArcDirectorV35278, deriveRelationshipArcStateV35278, relationshipArcDirectorV35278Issues } from "./engine/relationship-arc-director-v35278.js";
 import { buildChatScopedNpcCanonV35279, filterAuthorizedCastUpdatesV35279, filterAuthorizedConnectionUpdatesV35279 } from "./engine/chat-scoped-npc-canon-v35279.js";
 import { buildUnifiedNarrativeStateV35312, unifiedNarrativeStateIssuesV35312, instantStoryStateFamilyIssuesV35312 } from "./engine/unified-narrative-state-v35312.js";
+import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2157,6 +2158,8 @@ ${sceneSeed}
 
 SEMANTIC MOMENTUM 3.53.10
 - A meaningful opening changes the social, emotional or practical situation. Walking, keys, doors, phones, drinks, coffee orders and banter are blocking, not the plot.
+
+${instantStoryCharacterFingerprintV35313(safeDraft)}
 - Never declare the user's next movement or participation. Invite, insist, choose your own action, but leave the user's action open.
 - Never invent the user's order, favorite, usual, routine or other personal preference.
 - Campus + coffee + study logistics cannot be the opening engine. If that setting appears, something more meaningful must actually happen.
@@ -3352,6 +3355,16 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     scene: conversation.scene_state || {},
     opening: openingRegeneration,
   });
+  const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
+    character,
+    latestUserMessage: latestUserRecord?.content || "",
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    relationshipState: conversation.relationship_state || conversation.relationship || {},
+    intelligenceState: conversation.intelligence_state || {},
+    persistentCast,
+    isRegeneration,
+    rejectedResponses: [],
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -3520,6 +3533,8 @@ ${relationshipArcDirectorV35278}
 ${chatScopedNpcCanonV35279}
 
 ${unifiedNarrativeStateV35312}
+
+${characterFingerprintPayoffV35313}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line. Emotional Relationship Core 3.52.63 is intentionally injected as a narrow causal bridge so serious feeling changes behavior without restoring the old competing style stack.
 
@@ -4227,7 +4242,8 @@ SCENE CLOCK + ACTION OWNERSHIP 3.52.5
 HIDDEN STATE OUTPUT
 - mind_update is ${character.name}'s SUBJECTIVE mind after this beat. know = supported facts only. believe may be wrong. misunderstand contains a plausible current error, or empty string. want/avoid/wont_admit/outside_priority and short/mid/long goals must describe this character, not the user. Goals should persist unless an on-page event changes them. attachment_pattern is behavioral shorthand only. microvoice changes slowly. emotion_trigger → emotion_interpretation → current_emotion → behavioral_pressure must form a supported causal chain. anticipated_next/private_intention/expected_outcome/feared_outcome are private forecasts, never guaranteed facts. behavioral_pattern and conflict_pattern require transcript evidence. public_private_mode describes context, not a new personality.
 - connection_updates only records relationships BETWEEN named characters that were evidenced or materially changed. Never invent a bond just to fill the array.
-- v3.53.12 may additionally persist narrative_state_snapshot as a compact summary of unresolved consequence, character-side relationship pressure, active authorized-NPC pressure, recent scene family and next character intent. It may summarize visible/canonical facts only and never invent the user's feelings, consent or future action.
+- v3.53.12 may additionally persist narrative_state_snapshot as a compact summary of unresolved consequence, character-side relationship pressure, active authorized-NPC pressure, recent scene family and next character intent.
+- v3.53.13 may additionally persist character_fingerprint_state as a compact summary of character-side jealousy expression, vulnerability defense, conflict tactic, repair style, silence style and latest earned payoff. Ground it only in visible/canonical evidence. It may summarize visible/canonical facts only and never invent the user's feelings, consent or future action.
 - v3.52.79 CLOSED NPC CAST: cast_updates NEVER creates identities. It may update only an exact user-created NPC already present in this conversation. connection_updates may use only the user, configured/group characters, and those approved NPCs. Unknown supporting people remain unnamed and produce no cast row.
 - temporal_anchor records only supported story time. Use certainty=unknown when the duration is not established.
 - world_consequence records only practical/social fallout caused by a visible or already-canonical event.
@@ -4817,6 +4833,17 @@ ${openingDnaV35289}`;
     scene,
     opening: openingRegeneration,
   });
+  const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
+    character,
+    latestUserMessage,
+    recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-6).map((m)=>String(m?.content||"")),
+    relationshipState: relationshipState || {},
+    intelligenceState: intelligenceState || {},
+    persistentCast,
+    isRegeneration,
+    rejectedResponses,
+    regenerationInstruction,
+  });
   return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
 
 GENERATION MODE
@@ -4890,6 +4917,9 @@ ${chatScopedNpcCanonV35279}
 
 UNIFIED NARRATIVE STATE
 ${unifiedNarrativeStateV35312}
+
+CHARACTER FINGERPRINT + SCENE PAYOFF
+${characterFingerprintPayoffV35313}
 
 Cast/presence state: ${cleanPromptValue(JSON.stringify(castState || {}), 650)}
 Active plans/commitments: ${cleanPromptValue(JSON.stringify({
@@ -8828,6 +8858,16 @@ function validateNarrativeReply(reply = "", options = {}) {
     worldConsequences: options.turnContract?.worldConsequencesCausalTimeline || {},
     opening: Boolean(options.openingRegeneration),
   })) issues.push(issue);
+  for (const issue of characterFingerprintPayoffIssuesV35313({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    character: options.character || {},
+    relationshipState: options.continuity?.relationshipState || {},
+    intelligenceState: options.continuity?.intelligenceState || {},
+    isRegeneration: Boolean(options.isRegeneration),
+    rejectedResponses: options.rejectedResponses || [],
+  })) issues.push(issue);
   for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
   for (const issue of behavioralTurnIntegrityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
   for (const issue of sceneMomentumBarrierV35236Issues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
@@ -9312,6 +9352,7 @@ function applyIntelligenceContinuity(previous: any = {}, update: any = {}, mindU
     relationship_arc_last_shift: keep("relationship_arc_last_shift", 520),
     relationship_arc_next_gate: keep("relationship_arc_next_gate", 520),
     narrative_state_snapshot: keep("narrative_state_snapshot", 1000),
+    character_fingerprint_state: keep("character_fingerprint_state", 1000),
   };
   const priorThreads = compactTextList(prior.conversation_threads, 10, 320);
   const threadAdds = compactTextList(humanBehaviorUpdate?.conversation_threads_add, 5, 320);
