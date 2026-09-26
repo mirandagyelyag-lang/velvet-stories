@@ -57,6 +57,10 @@ export default function Auth() {
         />
 
         <form className="auth__owner-overlay" onSubmit={handleSubmit} aria-label="Private Velvet login">
+          <div className="auth__owner-email-mask" aria-label="Remembered account">
+            m*************@g****.com
+          </div>
+
           <div className="auth__owner-password-shell">
             <input
               className="auth__owner-password"
