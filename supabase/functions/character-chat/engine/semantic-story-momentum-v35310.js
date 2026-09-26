@@ -91,6 +91,14 @@ function blockingBanterStall(reply=""){
   return blocking>=2 && !hasMeaningfulStateChange(reply) && Boolean(banter||questionOnly||words<=55);
 }
 
+function convenientPlotTrigger(reply="", recentCharacterReplies=[]){
+  const t=norm(reply);
+  const recent=norm((Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-6):[]).join(" | "));
+  const miracle=/\b(?:someone (?:tossed|threw|handed|offered)|an? (?:invitation|ticket|set of keys|opportunity) (?:appeared|landed|showed up)|perfect timing|just then|right then|suddenly someone|a message came in|the phone buzzed with|someone called with)\b/.test(t);
+  const triggerNouns=(t.match(/\b(?:keys?|tickets?|invite|invitation|reservation|ride|car|party|afterparty|table|booking|event|passes)\b/g)||[]);
+  if(!miracle || !triggerNouns.length) return false;
+  return !triggerNouns.some((noun)=>recent.includes(noun.replace(/s$/,"")));
+}
 function repeatedMannerism(reply="", recentCharacterReplies=[]){
   const t=norm(reply);
   const current=/\b(?:grin|grinned|grinning|smile|smiled|smiling)\b/.test(t);
@@ -128,5 +136,6 @@ export function semanticStoryMomentumIssues({
   if(campusCoffeeStudyFallback(text,opening)) issues.push("semantic_campus_coffee_study_fallback");
   if(blockingBanterStall(text)) issues.push("semantic_blocking_banter_stall");
   if(repeatedMannerism(text,recentCharacterReplies)) issues.push("semantic_repeated_grin_mannerism");
+  if(convenientPlotTrigger(text,recentCharacterReplies)) issues.push("semantic_convenient_plot_trigger");
   return [...new Set(issues)];
 }
