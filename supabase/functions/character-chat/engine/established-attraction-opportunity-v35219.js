@@ -49,7 +49,27 @@ function pursuitFallback({ name, character }) {
   return name + ' goes after you instead of staying behind. “Wait.” ' + name + ' catches up. “I’m not letting that be the last thing between us.”';
 }
 
-function emotionalFallback({ name, character, latestUserMessage = "" }) {
+function chooseFreshFallback(candidates = [], recentCharacterReplies = []) {
+  const recent = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : [])
+    .slice(-4)
+    .map((item) => normalize(item));
+  const pool = candidates.filter(Boolean);
+  if (!pool.length) return "";
+  const fresh = pool.find((candidate) => !recent.some((item) => {
+    const current = normalize(candidate);
+    if (!current || !item) return false;
+    if (item === current) return true;
+    const a = new Set(current.split(/\s+/).filter((word) => word.length > 3));
+    const b = new Set(item.split(/\s+/).filter((word) => word.length > 3));
+    if (!a.size || !b.size) return false;
+    let overlap = 0;
+    for (const word of a) if (b.has(word)) overlap += 1;
+    return overlap / Math.min(a.size, b.size) >= 0.72;
+  }));
+  return fresh || pool[pool.length - 1];
+}
+
+function emotionalFallback({ name, character, latestUserMessage = "", recentCharacterReplies = [] }) {
   const temperament = fallbackTemperament(character);
   const turn = normalize(latestUserMessage);
 
@@ -57,20 +77,33 @@ function emotionalFallback({ name, character, latestUserMessage = "" }) {
   // a generic therapist prompt. Keep the character active without inventing
   // the user's feelings or solving the problem for them.
   if (/\b(?:pill|pills|med|meds|medication|medicine|dose|prescription)\b/.test(turn)) {
-    return name + '’s expression changes at once. “Your pills?” The teasing drops out completely. ' +
-      name + ' stays close, attention fixed on you. “Okay. When were you supposed to take them?”';
+    return chooseFreshFallback([
+      name + '’s expression changes at once. “Your pills?” The teasing drops out completely. ' + name + ' stays close, attention fixed on you. “When were you supposed to take them?”',
+      name + ' stops dead. “Wait. Your medication?” The joke is gone now. ' + name + ' stays with you instead of filling the silence. “How late are you?”',
+      name + '’s face shifts immediately. “Your pills?” ' + name + ' keeps their attention on you, no teasing left. “Okay. Tell me when you were meant to take them.”',
+    ], recentCharacterReplies);
   }
 
   if (/\b(?:shitty day|bad day|awful day|rough day|terrible day|hard day|cried|crying|panic|panicking|scared|upset|hurt|overwhelmed)\b/.test(turn)) {
     if (temperament === "proud") {
-      return name + ' loses the comeback before it lands. “Okay. That was me being an ass.” ' +
-        name + ' stays put instead of retreating into a joke. “What happened?”';
+      return chooseFreshFallback([
+        name + ' loses the comeback before it lands. “Okay. That was me being an ass.” ' + name + ' stays put, the joke abandoned. “What happened?”',
+        name + '’s expression changes. “Okay.” The easy comeback never comes. “Start wherever you want.”',
+        name + ' stops trying to win the exchange. “Fine. I’m here.” The next beat is quieter, without another jab.',
+      ], recentCharacterReplies);
     }
     if (temperament === "guarded") {
-      return name + ' goes still for a beat, the usual deflection gone. “Okay.” ' +
-        name + ' stays close instead of changing the subject. “What happened?”';
+      return chooseFreshFallback([
+        name + ' goes still for a beat, the usual deflection gone. “Okay.” ' + name + ' stays close. “What happened?”',
+        name + '’s attention settles fully on you. “All right.” No joke follows.',
+        name + ' goes quiet, not withdrawing this time. “I heard you.”',
+      ], recentCharacterReplies);
     }
-    return name + '’s attention sharpens. “Okay.” ' + name + ' stays with you instead of smoothing it over. “What happened?”';
+    return chooseFreshFallback([
+      name + '’s attention sharpens. “Okay.” ' + name + ' stays with you. “What happened?”',
+      name + ' turns fully toward you. “All right. I’m here.”',
+      name + ' lets the moment land instead of filling it. “Okay.”',
+    ], recentCharacterReplies);
   }
 
   if (temperament === "warm") return name + ' stops trying to smooth it over. “I know saying I didn’t mean to doesn’t make it hurt less.”';
@@ -178,7 +211,7 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
   if (pursuitFailures.some((issue) => failures.has(issue))) return pursuitFallback({ name, character });
 
   const emotionalFailures = ["emotional_bid_practical_escape","relational_hurt_deflected","canned_distress_checkin","emotional_care_therapized","attachment_failed_to_affect_behavior","therapist_service_voice","perfect_empathy_package","therapeutic_deescalation_pivot"];
-  if (emotionalFailures.some((issue) => failures.has(issue))) return emotionalFallback({ name, character, latestUserMessage: effectiveTurn });
+  if (emotionalFailures.some((issue) => failures.has(issue))) return emotionalFallback({ name, character, latestUserMessage: effectiveTurn, recentCharacterReplies });
 
   if (/\b(?:dont|do not|no|stop|leave it|never mind|won t|wont|can t|cant)\b/.test(normalizedTurn)) return name + " stops instead of pushing the point. “Okay.”";
   if (/\?$|\b(?:what|why|who|where|when|how|which)\b/.test(normalizedTurn)) return name + " answers without dressing it up. “I don’t know yet.”";
@@ -196,8 +229,24 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     return name + ' turns fully toward you. “What happened?”';
   }
 
-  if (temperament === "proud") return name + ' drops the automatic comeback. “Fine. Say it.”';
-  if (temperament === "guarded") return name + ' goes quiet, watching you for a beat. “I’m listening.”';
-  if (temperament === "warm") return name + ' gives you their full attention. “I’m here.”';
-  return name + ' stays focused on you. “I’m listening.”';
+  if (temperament === "proud") return chooseFreshFallback([
+    name + ' drops the automatic comeback. “Fine. Say it.”',
+    name + ' lets the comeback die. “All right.”',
+    name + ' stops performing for a second. “I heard you.”',
+  ], recentCharacterReplies);
+  if (temperament === "guarded") return chooseFreshFallback([
+    name + ' goes quiet, watching you for a beat. “I’m listening.”',
+    name + ' stays where they are, attention fixed on you. “All right.”',
+    name + ' doesn’t fill the silence this time. “I heard you.”',
+  ], recentCharacterReplies);
+  if (temperament === "warm") return chooseFreshFallback([
+    name + ' gives you their full attention. “I’m here.”',
+    name + ' stays close without crowding you. “Okay.”',
+    name + ' softens, attention staying with you. “I heard you.”',
+  ], recentCharacterReplies);
+  return chooseFreshFallback([
+    name + ' stays focused on you. “I’m listening.”',
+    name + ' gives the moment their full attention. “All right.”',
+    name + ' doesn’t look away. “I heard you.”',
+  ], recentCharacterReplies);
 }
