@@ -46,6 +46,18 @@ function userOrbiting(reply=""){
   return hits>=4;
 }
 
+function seriousUserBeat(value=""){
+  const t=norm(value);
+  return /\b(?:bad day|rough day|shitty day|awful day|terrible day|hard day|hurt|upset|cry|cried|crying|panic|panicking|scared|overwhelmed|pill|pills|med|meds|medication|medicine|dose|prescription|dont care|you dont care)\b/.test(t);
+}
+
+function emotionallyPassiveReply(reply=""){
+  const t=norm(reply);
+  const questions=(String(reply||"").match(/\?/g)||[]).length;
+  const passive=/\b(?:im listening|i m listening|go on|tell me|what happened|are you okay|okay|alright|all right|i hear you|im here|i m here)\b/.test(t);
+  const ownedMove=/\b(?:apolog(?:ize|ized|izes)|admit(?:s|ted)?|decid(?:e|es|ed)|refus(?:e|es|ed)|stay(?:s|ed)?|leave(?:s|ft)?|call(?:s|ed)?|text(?:s|ed)?|put(?:s)? away|stop(?:s|ped)?|drop(?:s|ped)? the joke|cuts? off|turns? down|changes? the plan|takes? responsibility|owns? it|sets? .* aside)\b/.test(t);
+  return passive && questions>=1 && !ownedMove;
+}
 export function buildCharacterLedStoryV35274({
   character={},relationship={},scene={},mind={},latestUserMessage="",recentUserMessages=[],recentCharacterReplies=[]
 }={}){
@@ -87,6 +99,7 @@ export function characterLedStoryV35274Issues({
   if(isSilent(latestUserMessage) && passiveDeadEnd(reply)) issues.push("silent_handoff_dead_end");
   if(isSilent(latestUserMessage) && handsBackDecision(reply)) issues.push("silent_handoff_returned_to_user");
   if(userOrbiting(reply)) issues.push("character_led_story_user_orbit_density");
+  if(seriousUserBeat(latestUserMessage) && emotionallyPassiveReply(reply)) issues.push("serious_turn_passive_response");
 
   const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-3):[]).map(norm).join(" | ");
   if(/\b(?:what do you want to do|your call|you decide|up to you)\b/.test(norm(reply))
