@@ -52,3 +52,48 @@ export function instantStorySceneSeed(draft: Record<string, unknown> = {}, idea 
   const entropy = `${variationKey}|${Date.now()}|${Math.random()}|${draft?.name || ""}`;
   return candidates[instantStoryHash(entropy) % candidates.length];
 }
+
+function academicUniverse(value = "") {
+  const t = String(value || "").toLowerCase();
+  return /\b(?:campus|university|college|fraternity|frat\b|sorority|dorm|lecture|professor|student union|student-union|classroom|seminar|library|classmate|freshman|freshmen|campus party|campus rush)\b/.test(t);
+}
+
+function chaseProfile(draft: Record<string, unknown> = {}) {
+  return /\bchase\s+beaumont\b/i.test(String(draft?.name || ""));
+}
+
+export function instantStoryUniverseIssues(
+  opening: unknown,
+  draft: Record<string, unknown> = {},
+  recentOpenings: unknown[] = [],
+  idea = ""
+) {
+  if (!chaseProfile(draft)) return [];
+  const explicit = String(idea || "").toLowerCase();
+  if (/\b(?:campus|university|college|frat|fraternity|dorm|lecture|classroom|student)\b/.test(explicit)) return [];
+
+  const recent = (Array.isArray(recentOpenings) ? recentOpenings : []).slice(-5);
+  const academicRecent = recent.filter((item) => academicUniverse(String(item || ""))).length;
+  if (academicRecent >= 1 && academicUniverse(String(opening || ""))) {
+    return ["chase_academic_universe_repeat"];
+  }
+  return [];
+}
+
+export function instantStoryUniverseDirective(
+  draft: Record<string, unknown> = {},
+  recentOpenings: unknown[] = [],
+  idea = ""
+) {
+  if (!chaseProfile(draft) || String(idea || "").trim()) return "";
+  const recent = (Array.isArray(recentOpenings) ? recentOpenings : []).slice(-5);
+  const academicRecent = recent.filter((item) => academicUniverse(String(item || ""))).length;
+  if (!academicRecent) return "";
+
+  return [
+    "CHASE UNIVERSE ROTATION:",
+    "Recent Chase openings are saturated with university/campus life. Keep his social confidence, party energy, romantic/sexual tension, jealousy potential and crowded-world chemistry, but DO NOT set this opening at a university, campus, fraternity, dorm, lecture, classroom, student union, library, or campus diner.",
+    "Prefer an adult social environment outside academia: house party unrelated to school, birthday, rooftop, club, bar, hotel event, concert/afterparty, festival, wedding/engagement event, beach/lake house, pool party, holiday party, friend-group trip, upscale dinner that turns social, private event, or another grounded non-campus gathering.",
+    "Do not lower the tension just because the setting changed. Change the WORLD, not Chase."
+  ].join("\n");
+}
