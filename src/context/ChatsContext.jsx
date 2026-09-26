@@ -1,3 +1,4 @@
+import { insertMessageOnce, queuedMessageId } from "../utils/chatReliability";
 import {
   createContext,
   useContext,
@@ -562,6 +563,7 @@ export function ChatsProvider({
     if (!alreadyQueued) {
       const nextQueue = [...offlineQueueRef.current, {
         localId: optimisticId,
+        serverId: queuedMessageId({ localId: optimisticId }),
         characterId,
         conversationId,
         content: pendingMessage.content,
@@ -588,30 +590,32 @@ export function ChatsProvider({
       while (queue.length && navigator.onLine) {
         const item = queue[0];
         try {
-          const { data, error } = await supabase
-            .from("messages")
-            .insert({
-              conversation_id: item.conversationId,
-              user_id: user.id,
-              sender: "user",
-              content: item.content,
-              reply_to_message_id: isProbablyUuid(item.replyToMessageId) ? item.replyToMessageId : null,
-              reply_preview: item.replyPreview || null,
-              reply_sender: item.replySender || null,
-            })
-            .select()
-            .single();
-          if (error) throw error;
+          const serverId = queuedMessageId(item) || crypto.randomUUID();
+          if (item.serverId !== serverId) {
+            item.serverId = serverId;
+            persistOfflineQueue(offlineQueueRef.current.map((entry) => entry.localId === item.localId ? { ...entry, serverId } : entry));
+          }
+          const data = await insertMessageOnce(supabase, {
+            id: serverId,
+            conversation_id: item.conversationId,
+            user_id: user.id,
+            sender: "user",
+            content: item.content,
+            reply_to_message_id: isProbablyUuid(item.replyToMessageId) ? item.replyToMessageId : null,
+            reply_preview: item.replyPreview || null,
+            reply_sender: item.replySender || null,
+          });
 
           const savedMessage = convertDatabaseMessage(data);
           setChats((currentChats) => {
             const currentChat = currentChats[item.characterId];
-            if (!currentChat) return currentChats;
+            if (!currentChat || currentChat.conversationId !== item.conversationId) return currentChats;
             return {
               ...currentChats,
               [item.characterId]: {
                 ...currentChat,
-                messages: (currentChat.messages || []).map((message) => message.id === item.localId ? savedMessage : message),
+                messages: [...(currentChat.messages || []).filter((message) => message.id !== item.localId && message.id !== savedMessage.id), savedMessage]
+                  .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
               },
             };
           });
@@ -622,7 +626,7 @@ export function ChatsProvider({
             .eq("id", item.conversationId)
             .eq("user_id", user.id);
 
-          queue = queue.slice(1);
+          queue = offlineQueueRef.current.filter((entry) => entry.localId !== item.localId);
           persistOfflineQueue(queue);
           try {
             window.dispatchEvent(new CustomEvent("velvet:offline-queue", { detail: { state: "sent", characterId: item.characterId, count: queue.length } }));
@@ -691,21 +695,16 @@ export function ChatsProvider({
     }
 
     try {
-      const { data, error } = await supabase
-        .from("messages")
-        .insert({
-          conversation_id: conversation.conversationId,
-          user_id: user.id,
-          sender,
-          content: trimmedContent,
-          reply_to_message_id: safeReplyId,
-          reply_preview: options.replyPreview ? String(options.replyPreview).slice(0, 280) : null,
-          reply_sender: options.replySender || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await insertMessageOnce(supabase, {
+        id: queuedMessageId({ localId: optimisticId }) || crypto.randomUUID(),
+        conversation_id: conversation.conversationId,
+        user_id: user.id,
+        sender,
+        content: trimmedContent,
+        reply_to_message_id: safeReplyId,
+        reply_preview: options.replyPreview ? String(options.replyPreview).slice(0, 280) : null,
+        reply_sender: options.replySender || null,
+      });
 
       const newMessage = convertDatabaseMessage(data);
 
@@ -2456,37 +2455,24 @@ export function ChatsProvider({
     );
   }
 
-  async function reloadConversationMessages(
-    characterId
-  ) {
-    const conversation =
-      chats[characterId];
-
-    if (
-      !conversation
-        ?.conversationId
-    ) {
-      return [];
-    }
-
+  async function reloadConversationMessages(characterId, { preserveHistory = false } = {}) {
+    const conversation = chats[characterId];
+    if (!conversation?.conversationId) return [];
     const page = await loadConversationMessages(conversation.conversationId);
-
-    setChats(
-      (currentChats) => ({
-        ...currentChats,
-
-        [characterId]: {
-          ...currentChats[
-            characterId
-          ],
-
-          messages: page.messages,
-          hasMoreMessages: page.hasMore,
-          loadingEarlierMessages: false,
-        },
-      })
-    );
-
+    setChats((current) => {
+      const chat = current[characterId];
+      if (chat?.conversationId !== conversation.conversationId) return current;
+      const firstAt = page.messages[0]?.createdAt;
+      const retained = preserveHistory && firstAt
+        ? (chat.messages || []).filter((item) => item.isPending || item.isStreaming || new Date(item.createdAt) < new Date(firstAt))
+        : (chat.messages || []).filter((item) => item.isPending);
+      const merged = new Map([...retained, ...page.messages].map((item) => [item.id, item]));
+      return { ...current, [characterId]: { ...chat,
+        messages: [...merged.values()].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
+        hasMoreMessages: preserveHistory && retained.length ? chat.hasMoreMessages : page.hasMore,
+        loadingEarlierMessages: false,
+      } };
+    });
     return page.messages;
   }
 
@@ -2634,8 +2620,9 @@ export function ChatsProvider({
     if (error) throw error;
     const incoming = (around || []).map(convertDatabaseMessage);
     setChats((current) => {
+      if (current[characterId]?.conversationId !== conversation.conversationId) return current;
       const existing = current[characterId]?.messages || [];
-      const map = new Map(existing.filter((item) => !item.isStreaming).map((item) => [item.id, item]));
+      const map = new Map(existing.map((item) => [item.id, item]));
       incoming.forEach((item) => map.set(item.id, item));
       const merged = [...map.values()].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       return { ...current, [characterId]: { ...current[characterId], messages: merged } };

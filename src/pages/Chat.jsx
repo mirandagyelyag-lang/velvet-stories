@@ -1,3 +1,4 @@
+import { replyForTurn, saveDraft } from "../utils/chatReliability";
 import {
   Activity,
   AlertCircle,
@@ -228,6 +229,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [groupPeekCharacter, setGroupPeekCharacter] = useState(null);
   const [storyTheme, setStoryTheme] = useState("velvet");
   const [draftSavedAt, setDraftSavedAt] = useState(0);
+  const [draftConversationId, setDraftConversationId] = useState("");
   const [worldStudioOpen, setWorldStudioOpen] = useState(false);
   const [silentCue, setSilentCue] = useState("");
   const [timelineOpen, setTimelineOpen] = useState(false);
@@ -260,6 +262,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const generationRunRef = useRef(0);
   const failedGenerationRef = useRef(null);
   const retryInFlightRef = useRef(false);
+  const submissionRunRef = useRef(0);
   const variantGenerationLockRef = useRef(false);
   const versionOperationSeqRef = useRef(0);
   const returnMainPovAfterStopRef = useRef(false);
@@ -272,7 +275,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const preserveScrollOnKeyboardRef = useRef(null);
   const keyboardOpenRef = useRef(false);
   const previousConversationRef = useRef("");
-  const previousVisibleMessageCountRef = useRef(0);
+  const previousVisibleMessagesRef = useRef({ conversationId: "", ids: new Set(), latestAt: 0 });
   const resumeReloadAtRef = useRef(0);
   const scrollAnchorRestoreRef = useRef("");
   const messages = getCharacterMessages(character.id);
@@ -287,7 +290,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const expectedIndex = canonicalTurnMessages.findIndex((item) => item.id === failedGeneration.expectedUserMessageId);
     return expectedIndex >= 0 && canonicalTurnMessages.slice(expectedIndex + 1).some((item) => item.sender === "character");
   })();
-  const resolvedGenerationError = failedGeneration?.mode === "regenerate"
+  const resolvedGenerationError = ["regenerate", "send"].includes(failedGeneration?.mode)
     ? false
     : (failedTurnHasCompletedReply || (!failedGeneration && currentTurnHasCompletedReply));
   const visibleSendError = sendError && isReplyGenerationErrorMessage(sendError) && resolvedGenerationError ? "" : sendError;
@@ -354,7 +357,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
   function rememberGenerationFailure(error, context = {}) {
     const next = {
-      mode: context.mode === "regenerate" ? "regenerate" : "reply",
+      mode: ["regenerate", "send"].includes(context.mode) ? context.mode : "reply",
       expectedUserMessageId: context.expectedUserMessageId || "",
       regenerateMessageId: context.regenerateMessageId || "",
       instruction: context.instruction || "",
@@ -640,86 +643,50 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }
 
   useEffect(() => {
-    const id = conversation?.conversationId;
-    if (!id) return;
-    const savedDraft = localStorage.getItem(`velvet_draft_${id}`) || "";
-    setMessage(savedDraft);
+    const id = conversation?.conversationId || "";
+    let text = "", reply = null, note = "";
     try {
-      const savedReply = JSON.parse(localStorage.getItem(`velvet_reply_draft_${id}`) || "null");
-      setReplyTo(savedReply && savedReply.id ? savedReply : null);
-      const savedDirectorNote = localStorage.getItem(`velvet_director_note_${id}`) || "";
-      setDirectorNote(savedDirectorNote);
-      setDirectorNoteOpen(Boolean(savedDirectorNote));
-    } catch {
-      setReplyTo(null);
-    }
+      if (id) {
+        text = localStorage.getItem(`velvet_draft_${id}`) || "";
+        note = localStorage.getItem(`velvet_director_note_${id}`) || "";
+        try { reply = JSON.parse(localStorage.getItem(`velvet_reply_draft_${id}`) || "null"); } catch {}
+      }
+    } catch {}
+    setMessage(text);
+    setReplyTo(reply?.id ? reply : null);
+    setDirectorNote(note);
+    setDirectorNoteOpen(Boolean(note));
+    setDraftConversationId(id);
+    setDraftSavedAt(0);
     window.requestAnimationFrame(() => resizeComposer());
   }, [conversation?.conversationId]);
 
   useEffect(() => {
     const id = conversation?.conversationId;
     if (!id) return;
-    localStorage.setItem(`velvet_chat_seen_v2114_${id}`, new Date().toISOString());
+    try { localStorage.setItem(`velvet_chat_seen_v2114_${id}`, new Date().toISOString()); } catch {}
   }, [conversation?.conversationId, messages.length]);
 
   useEffect(() => {
     const id = conversation?.conversationId;
-    if (!id) return;
-    try {
-      if (message) {
-        localStorage.setItem(`velvet_draft_${id}`, message);
-        setDraftSavedAt(Date.now());
-      } else {
-        localStorage.removeItem(`velvet_draft_${id}`);
-        setDraftSavedAt(0);
-      }
-    } catch (error) {
-      console.debug("Velvet draft storage unavailable:", error);
-    }
-  }, [message, conversation?.conversationId]);
-
-  useEffect(() => {
-    const id = conversation?.conversationId;
-    if (!id) return;
-    try {
-      if (replyTo?.id) localStorage.setItem(`velvet_reply_draft_${id}`, JSON.stringify(replyTo));
-      else localStorage.removeItem(`velvet_reply_draft_${id}`);
-    } catch (error) {
-      console.debug("Velvet reply draft storage unavailable:", error);
-    }
-  }, [replyTo, conversation?.conversationId]);
-
-  useEffect(() => {
-    const id = conversation?.conversationId;
-    if (!id) return;
-    try {
-      if (directorNote.trim()) localStorage.setItem(`velvet_director_note_${id}`, directorNote);
-      else localStorage.removeItem(`velvet_director_note_${id}`);
-    } catch (error) {
-      console.debug("Velvet director-note storage unavailable:", error);
-    }
-  }, [directorNote, conversation?.conversationId]);
-
-
-  useEffect(() => {
-    const id = conversation?.conversationId;
-    if (!id) return undefined;
-    const persistCriticalDraft = () => {
-      try {
-        if (message) localStorage.setItem(`velvet_draft_${id}`, message);
-        if (replyTo?.id) localStorage.setItem(`velvet_reply_draft_${id}`, JSON.stringify(replyTo));
-        if (directorNote.trim()) localStorage.setItem(`velvet_director_note_${id}`, directorNote);
-      } catch {}
+    // A conversation change renders once with the previous composer's state.
+    // Wait for hydration before allowing any write under the new story's key.
+    if (!id || draftConversationId !== id) return undefined;
+    const persist = () => {
+      let saved = false;
+      try { saved = saveDraft(localStorage, id, { message, replyTo, directorNote }); } catch {}
+      return saved;
     };
-    window.addEventListener("pagehide", persistCriticalDraft);
-    const onVisibility = () => { if (document.visibilityState === "hidden") persistCriticalDraft(); };
+    setDraftSavedAt(persist() && message ? Date.now() : 0);
+    const onVisibility = () => { if (document.visibilityState === "hidden") persist(); };
+    window.addEventListener("pagehide", persist);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      persistCriticalDraft();
-      window.removeEventListener("pagehide", persistCriticalDraft);
+      // Do not write a stale effect closure over a newer draft during cleanup.
+      window.removeEventListener("pagehide", persist);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [conversation?.conversationId, message, replyTo, directorNote]);
+  }, [conversation?.conversationId, draftConversationId, message, replyTo, directorNote]);
 
   useEffect(() => {
     const id = conversation?.conversationId;
@@ -843,30 +810,36 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const id = conversation?.conversationId;
     const owner = scrollContainerRef.current;
     if (!id || conversationLoading || !owner) return undefined;
-    let frame = 0;
-
-    // v3.49.9: restore the first visible message + pixel offset, not just a raw
-    // scrollTop. This survives font/image/layout changes and full app restarts.
-    if (scrollAnchorRestoreRef.current !== id) {
-      scrollAnchorRestoreRef.current = id;
+    let cancelled = false;
+    let restored = scrollAnchorRestoreRef.current === id;
+    const saved = readChatAnchor(id);
+    const save = () => {
+      if (restored && !keyboardOpenRef.current) persistChatAnchor(id, owner);
+    };
+    async function restore() {
+      if (restored) return;
+      stickToBottomRef.current = saved?.mode !== "reading";
+      if (saved?.mode === "reading" && saved.anchorId && !messages.some((item) => item.id === saved.anchorId)) {
+        try { await loadMessageIntoView(character.id, saved.anchorId); } catch {}
+      }
       requestAnimationFrame(() => requestAnimationFrame(() => {
-        const restored = restoreChatAnchor(id, owner);
-        if (restored) {
-          stickToBottomRef.current = false;
-          setShowJumpToBottom(true);
-        }
+        if (cancelled) return;
+        const didRestore = saved?.mode === "reading" && restoreChatAnchor(id, owner);
+        if (!didRestore) owner.scrollTo({ top: owner.scrollHeight, behavior: "auto" });
+        stickToBottomRef.current = !didRestore;
+        setShowJumpToBottom(Boolean(didRestore));
+        setUnreadWhileReading(0);
+        scrollAnchorRestoreRef.current = id;
+        restored = true;
       }));
     }
-
-    const save = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => persistChatAnchor(id, owner));
-    };
+    void restore();
     owner.addEventListener("scroll", save, { passive: true });
+    window.addEventListener("pagehide", save);
     return () => {
-      save();
-      cancelAnimationFrame(frame);
+      cancelled = true;
       owner.removeEventListener("scroll", save);
+      window.removeEventListener("pagehide", save);
     };
   }, [conversation?.conversationId, conversationLoading, chatResumeRevision]);
 
@@ -913,10 +886,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
     if (conversationChanged) {
       previousConversationRef.current = currentConversationId;
-      stickToBottomRef.current = true;
+      stickToBottomRef.current = readChatAnchor(currentConversationId)?.mode !== "reading";
     }
 
-    if (conversationChanged || stickToBottomRef.current) {
+    if (stickToBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({
         behavior: conversationChanged || characterStreaming ? "auto" : "smooth",
       });
@@ -924,22 +897,24 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   }, [messages.length, latestMessageContent, isTyping, conversationLoading, characterStreaming, conversation?.conversationId]);
 
   useEffect(() => {
-    const previous = previousVisibleMessageCountRef.current;
-    const current = visibleMessages.length;
-    previousVisibleMessageCountRef.current = current;
-    if (!previous || current <= previous || stickToBottomRef.current) return;
-    const added = visibleMessages.slice(previous);
-    const characterAdds = added.filter((item) => item.sender === "character" && !item.isStreaming).length;
-    if (characterAdds > 0) {
-      setUnreadWhileReading((value) => Math.min(99, value + characterAdds));
+    const id = conversation?.conversationId;
+    const completed = visibleMessages.filter((item) => !item.isStreaming && !item.isPending);
+    const previous = previousVisibleMessagesRef.current;
+    const latestAt = Math.max(0, ...completed.map((item) => new Date(item.createdAt).getTime() || 0));
+    previousVisibleMessagesRef.current = { conversationId: id, ids: new Set(completed.map((item) => item.id)), latestAt };
+    if (previous.conversationId !== id || !previous.ids.size || stickToBottomRef.current) return;
+    const added = completed.filter((item) => item.sender === "character" && !previous.ids.has(item.id) && new Date(item.createdAt).getTime() >= previous.latestAt);
+    if (added.length) {
+      setUnreadWhileReading((value) => Math.min(99, value + added.length));
       setShowJumpToBottom(true);
     }
-  }, [visibleMessages.length]);
+  }, [messages, conversation?.conversationId]);
 
   useEffect(() => {
     const id = conversation?.conversationId;
     if (!id || !conversationReady) return undefined;
     let hiddenAt = 0;
+    let cancelled = false;
     const persistNow = () => {
       if (scrollContainerRef.current) persistChatAnchor(id, scrollContainerRef.current);
     };
@@ -954,8 +929,9 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       const wasReading = !stickToBottomRef.current;
       const saved = wasReading ? captureChatAnchor(scrollContainerRef.current) : null;
       if (wasReading && scrollContainerRef.current) persistChatAnchor(id, scrollContainerRef.current);
-      try { await reloadConversationMessages(character.id); } catch {}
+      try { await reloadConversationMessages(character.id, { preserveHistory: true }); } catch {}
       requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (cancelled) return;
         if (wasReading && saved && scrollContainerRef.current) {
           const anchor = readChatAnchor(id) || saved;
           if (anchor?.mode === "reading") restoreChatAnchor(id, scrollContainerRef.current, { force: true });
@@ -974,7 +950,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     window.addEventListener("velvet:app-resume", onResume);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      persistNow();
+      cancelled = true;
       window.removeEventListener("velvet:app-pause", onPause);
       window.removeEventListener("velvet:app-resume", onResume);
       document.removeEventListener("visibilitychange", onVisibility);
@@ -1173,8 +1149,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     // a timer from an older generation and accidentally cancel itself.
 
     const cleanMessage = message.trim();
-    if (!conversationReady) return;
-    if (busy) return;
+    if (!conversationReady || draftConversationId !== conversation?.conversationId) return;
+    if (busy || submissionRunRef.current) return;
 
     const dotsOnly = /^[.…。]+$/u.test(cleanMessage);
     const compactDots = cleanMessage.replace(/[…。]/gu, ".");
@@ -1196,6 +1172,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     // allowed to change the UI state of a newer generation when its async
     // catch/finally finishes later.
     const runId = ++generationRunRef.current;
+    submissionRunRef.current = runId;
 
     const replyForThisMessage = replyTo;
     const adaptiveReplyHint = buildAdaptiveReplyHint(messageToSend);
@@ -1232,11 +1209,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       setReplyTo(null);
       setDirectorNote("");
       setDirectorNoteOpen(false);
-      if (conversation?.conversationId) {
-        localStorage.removeItem(`velvet_draft_${conversation.conversationId}`);
-        localStorage.removeItem(`velvet_reply_draft_${conversation.conversationId}`);
-        localStorage.removeItem(`velvet_director_note_${conversation.conversationId}`);
-      }
+      try { saveDraft(localStorage, conversation?.conversationId, { message: "", replyTo: null, directorNote: "" }); } catch {}
       window.requestAnimationFrame(() => resizeComposer());
       if (settings.haptics) navigator.vibrate?.(6);
 
@@ -1294,9 +1267,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           source: "send",
         });
       } else {
-        setSendError(translateMessageError(error.message));
+        rememberGenerationFailure(error, { mode: "send", source: "send-save" });
       }
     } finally {
+      if (submissionRunRef.current === runId) submissionRunRef.current = 0;
       // Critical: an older stopped request must not turn off the Stop button
       // or typing state belonging to a newer request.
       if (generationRunRef.current === runId) {
@@ -1313,6 +1287,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     // five more Stop calls for the next second; those timers could catch a new
     // regeneration/send and kill it immediately.
     generationRunRef.current += 1;
+    submissionRunRef.current = 0;
     versionOperationSeqRef.current += 1;
     stoppedRef.current = true;
     returnMainPovAfterStopRef.current = true;
@@ -1337,24 +1312,18 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   async function retryGeneration() {
     if (busy || !conversationReady || retryInFlightRef.current) return;
 
+    const remembered = failedGenerationRef.current || failedGeneration;
+    if (remembered?.mode === "send") {
+      await handleSubmit({ preventDefault() {} });
+      return;
+    }
     retryInFlightRef.current = true;
     const runId = ++generationRunRef.current;
-    const remembered = failedGenerationRef.current || failedGeneration;
     const canonical = (conversation?.messages || []).filter((item) => !item.isStreaming);
     const latestVisibleUser = [...canonical].reverse().find((item) => item.sender === "user") || null;
-    const latestCharacter = [...canonical].reverse().find((item) => item.sender === "character") || null;
-    const latestUserIndex = canonical.map((item) => item.sender).lastIndexOf("user");
-    const latestCharacterIndex = canonical.map((item) => item.sender).lastIndexOf("character");
-    const legacyLooksLikeRegeneration = Boolean(
-      latestCharacter &&
-      isReplyGenerationErrorMessage(sendError) &&
-      latestCharacterIndex > latestUserIndex
-    );
-    const inferredFailure = remembered || (
-      legacyLooksLikeRegeneration
-        ? { mode: "regenerate", regenerateMessageId: latestCharacter.id, instruction: "", feedbackCodes: [], source: "legacy-error" }
-        : { mode: "reply", expectedUserMessageId: latestVisibleUser?.id || "", source: "legacy-error" }
-    );
+    const inferredFailure = remembered || {
+      mode: "reply", expectedUserMessageId: latestVisibleUser?.id || "", source: "retry-reply",
+    };
 
     try {
       stoppedRef.current = false;
@@ -1387,11 +1356,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         // First reconcile with Supabase. If the reply actually finished while
         // the phone was offline, Retry becomes an instant recovery instead of
         // sending a duplicate generation request.
-        const refreshed = await reloadConversationMessages(character.id).catch(() => []);
-        const expectedIndex = refreshed.findIndex((item) => item.id === expectedUserMessageId);
-        const alreadyFinished = expectedIndex >= 0
-          ? refreshed.slice(expectedIndex + 1).find((item) => item.sender === "character" && !item.isStreaming)
-          : null;
+        const refreshed = await reloadConversationMessages(character.id, { preserveHistory: true });
+        const alreadyFinished = replyForTurn(refreshed, expectedUserMessageId);
 
         if (!alreadyFinished) {
           await generateCharacterReply(character.id, { expectedUserMessageId, diagnosticSource: inferredFailure?.source || "retry-reply" });
@@ -2656,7 +2622,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         {(message.trim() || offlineQueueSize > 0) && (
           <div className="v312-composer-state" aria-live="polite">
             {offlineQueueSize > 0 ? <button type="button" onClick={()=>flushOfflineQueue?.()}><WifiOff size={11}/>{offlineQueueSize} queued</button> : null}
-            {message.trim() ? <span>Draft saved{draftSavedAt ? "" : ""}</span> : null}
+            {message.trim() && draftSavedAt ? <span>Draft saved</span> : null}
           </div>
         )}
 
