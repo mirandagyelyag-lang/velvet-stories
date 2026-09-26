@@ -4314,6 +4314,9 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     micro_turn_padding: "Shrink this to a true human micro-turn. Remove decorative movement, extra explanation, invented momentum and unnecessary scene business. One short line, gesture, or silence can be complete.",
     compulsory_followup_question: "Remove the automatic follow-up question. On serious or vulnerable turns, react first and ask at most ONE necessary question. Do not chain question after question. Let the reply end naturally on a statement, gesture, silence, unfinished thought, or clean topic landing unless this exact character genuinely needs information.",
     user_reference_pronoun_drift: "Keep the user in second person throughout visible narration. If the scene addresses the user as you, do not suddenly narrate the same person as her/hers, him/his, or them/theirs. Rewrite those references back to you/your unless a distinct established NPC is clearly the referent.",
+    serious_turn_passive_response: "The user gave a serious or vulnerable beat. Do not answer with acknowledgement-plus-question only. Give the character ONE owned response first: drop the joke, admit fault, choose to stay, change a plan, set something aside, refuse to leave, or make another character-specific decision. At most one necessary question may follow.",
+    npc_unsolicited_activation: "Remove the unsupported NPC entrance. A named NPC may enter only if already present, recently active, explicitly mentioned by the user, or driven by an active recorded thread/availability. Do not use an NPC as filler, jealousy garnish, or a momentum button.",
+    structural_response_template_repeat: "Change the architecture of the response, not only the words. Do not repeat the recent gesture→dialogue→question, narration→quip→question, or identical paragraph/ending shape. Choose a different conversational move and ending rhythm.",
     forced_topic_shift: "Do not manufacture a new topic to keep the exchange alive. Stay with the current activity/topic or let the conversation go quiet. Remove filler pivots like 'anyway' or 'by the way' unless the shift was already motivated.",
     answer_before_flourish_violation: "Move the literal answer into the first spoken clause. Cut the long pre-answer narration or attitude display. Character voice may shape the answer after the user can actually hear it.",
     unstaged_user_movement_inference: "Keep the user in their last visibly established position. Spoken intent or social closure is not movement; remove all departure and pursuit choreography.",
@@ -7314,7 +7317,7 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const sceneIntelligenceHard = ["decorative_environment_filler", "forced_scene_extension", "reentry_transient_state_leak", "unearned_world_collision", "scene_stagnation_loop", "silence_overwritten", "environment_wallpaper_overload"];
   const discourseHard = ["recent_line_echo", "clarification_echo_before_answer", "phantom_event_claim", "unresolved_reference_claim", "clarification_reference_unresolved", "social_gravity_priority_intrusion"];
   const evolutionHard = ["instant_personality_rewrite", "relationship_personality_replacement", "growth_exposition_without_behavior", "growth_regression_reset", "unearned_offscreen_transformation", "relationship_growth_globalized"];
-  const npcEcosystemHard = ["npc_protagonist_orbit_collapse", "npc_puppet_consensus", "telepathic_social_spread", "npc_relationship_history_reset", "recurring_npc_identity_reset", "group_turn_crowding", "ship_bubble_social_erasure", "cross_circle_collision_without_cause", "recurring_npc_fragmentation"];
+  const npcEcosystemHard = ["npc_protagonist_orbit_collapse", "npc_puppet_consensus", "telepathic_social_spread", "npc_relationship_history_reset", "recurring_npc_identity_reset", "group_turn_crowding", "ship_bubble_social_erasure", "cross_circle_collision_without_cause", "recurring_npc_fragmentation", "npc_unsolicited_activation"];
   const calendarLifeHard = ["invented_precise_schedule", "unsupported_temporal_language", "time_jump_without_transition", "due_commitment_erased", "schedule_collision_ignored", "travel_time_broken", "active_transit_plan_abandoned", "routine_overprecision", "message_count_used_as_clock"];
   const causalTimelineHard = ["unsupported_consequence_without_cause", "active_consequence_magically_reset", "consequence_residue_erased", "rumor_promoted_to_fact", "resolved_or_cancelled_event_reactivated", "major_offscreen_event_without_causal_window", "consequence_budget_overflow", "minor_event_overcanonized"];
   const sceneDirectorHard = ["scene_thread_dump_overload", "dormant_thread_forced_onscreen", "ungrounded_scene_interruption", "user_momentum_hijacked", "cooldown_escalation_spike", "romance_gravity_monopoly", "director_forced_cliffhanger", "group_scene_roll_call", "background_actor_overactivation", "screen_time_selection_bypassed", "scene_pattern_recycled"];
@@ -7645,6 +7648,9 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "compulsory_followup_question",
   "forced_topic_shift",
   "user_reference_pronoun_drift",
+  "serious_turn_passive_response",
+  "npc_unsolicited_activation",
+  "structural_response_template_repeat",
   "agency_commitment_inertia_break",
   "gratuitous_external_hook",
   "initiative_budget_overflow",
@@ -7846,6 +7852,9 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "natural_dialogue_callback_loop",
   "context_dump_exposition_v346",
   "user_reference_pronoun_drift",
+  "serious_turn_passive_response",
+  "npc_unsolicited_activation",
+  "structural_response_template_repeat",
   "user_staged_scene_retcon",
   "distance_boundary_override",
   "spatial_relationship_broken",
