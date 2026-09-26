@@ -52,5 +52,9 @@ export function humanEmotionNervousSystemV34934Issues(reply='',latestUserMessage
  if(/\b(?:jealous|jealousy)\b/.test(t) && !/\b(?:jealous|jealousy|date|boyfriend|girlfriend|crush|flirt|kiss|relationship|together)\b/.test(latest+recent) && recent.length<40) issues.push('emotion_nervous_system_jealousy_label');
  if(/\b(?:all the anger (?:vanishes|melts away)|instantly calm|immediately calm|anger disappears|tension vanishes instantly)\b/.test(t)) issues.push('emotion_nervous_system_instant_reset');
  if((t.match(/\b(?:he feels|she feels|he's feeling|she's feeling|emotion|emotionally|deep down|underneath it all)\b/g)||[]).length>=3) issues.push('emotion_nervous_system_explanation_dump');
+ const vulnerable=/\b(?:bad day|rough day|shitty day|hurt|upset|cry|cried|crying|scared|overwhelmed|dont care|you dont care|forgot my pills|forgot my meds)\b/.test(latest);
+ const polishedCare=(t.match(/\b(?:i understand|i hear you|you dont have to|take your time|im here|tell me what happened|what do you need|you can tell me|whenever youre ready)\b/g)||[]).length;
+ const imperfection=/\b(?:sorry|i messed up|i was being an ass|i dont know what to say|wait|shit|damn|give me a second|i shouldnt have|that came out wrong)\b/.test(t);
+ if(vulnerable && polishedCare>=3 && !imperfection) issues.push('emotion_overoptimized_repair');
  return [...new Set(issues)];
 }
