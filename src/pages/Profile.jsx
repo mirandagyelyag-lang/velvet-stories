@@ -28,6 +28,18 @@ import "../styles/profile.css";
 
 const EMPTY_STATS = { stories: 0, memories: 0 };
 
+function maskEmail(value = "") {
+  const email = String(value || "").trim();
+  const [local = "", domain = ""] = email.split("@");
+  if (!local || !domain) return "Signed in to Velvet";
+
+  const [domainName = "", ...domainRest] = domain.split(".");
+  const maskedLocal = `${local.slice(0, 1) || "*"}${"*".repeat(Math.max(4, local.length - 1))}`;
+  const maskedDomain = `${domainName.slice(0, 1) || "*"}****`;
+  const suffix = domainRest.length ? `.${domainRest.join(".")}` : "";
+  return `${maskedLocal}@${maskedDomain}${suffix}`;
+}
+
 function Profile({
   onManageCharacters,
   onManagePersonas,
@@ -51,9 +63,10 @@ function Profile({
   const [draft, setDraft] = useState({ displayName: "", tagline: "", quote: "", avatarUrl: "" });
 
   const metadata = user?.user_metadata || {};
-  const displayName = metadata.display_name || user?.email?.split("@")[0] || "Velvet owner";
+  const displayName = metadata.display_name || "Velvet owner";
   const tagline = metadata.profile_tagline || "Private story collector.";
-  const quote = metadata.profile_quote || user?.email || "Your private library, your rules.";
+  const maskedEmail = maskEmail(user?.email);
+  const quote = metadata.profile_quote || "Your private library, your rules.";
   const avatarUrl = metadata.avatar_url || metadata.picture || "";
   const initial = displayName.trim().charAt(0).toUpperCase() || "V";
 
@@ -229,10 +242,10 @@ function Profile({
         <div className="profile-access-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setAccessOpen(false)}>
           <section className="profile-access-panel" role="dialog" aria-modal="true" aria-labelledby="profile-access-title">
             <header><div><p>PROFILE & ACCESS</p><h2 id="profile-access-title">Your private account</h2></div><button type="button" onClick={() => setAccessOpen(false)} aria-label="Close Profile and Access"><X size={20}/></button></header>
-            <div className="profile-access-panel__identity"><div className="profile-access-panel__avatar">{avatarUrl ? <img src={avatarUrl} alt=""/> : <span>{initial}</span>}</div><div><strong>{displayName}</strong><small>{user?.email || "Signed in to Velvet"}</small></div></div>
+            <div className="profile-access-panel__identity"><div className="profile-access-panel__avatar">{avatarUrl ? <img src={avatarUrl} alt=""/> : <span>{initial}</span>}</div><div><strong>{displayName}</strong><small>{maskedEmail}</small></div></div>
             <div className="profile-access-panel__status"><ShieldCheck size={18}/><div><strong>Private account</strong><p>Your stories, characters and memories are tied to this signed-in account. Velvet does not publish a public profile.</p></div></div>
             <div className="profile-access-panel__rows">
-              <div><span>Account</span><strong>{user?.email || "Signed in"}</strong></div>
+              <div><span>Account</span><strong>{maskedEmail}</strong></div>
               <div><span>Session</span><strong>Active on this device</strong></div>
               <div><span>Library access</span><strong>Private</strong></div>
             </div>
