@@ -60,6 +60,7 @@ import { buildPersistentOffscreenLifeUserGravityV35276, persistentOffscreenLifeU
 import { buildConsequencesThatStickV35277, consequencesThatStickV35277Issues, inferStickyVisibleConsequenceV35277 } from "./engine/consequences-that-stick-v35277.js";
 import { buildRelationshipArcDirectorV35278, deriveRelationshipArcStateV35278, relationshipArcDirectorV35278Issues } from "./engine/relationship-arc-director-v35278.js";
 import { buildChatScopedNpcCanonV35279, filterAuthorizedCastUpdatesV35279, filterAuthorizedConnectionUpdatesV35279 } from "./engine/chat-scoped-npc-canon-v35279.js";
+import { buildUnifiedNarrativeStateV35312, unifiedNarrativeStateIssuesV35312, instantStoryStateFamilyIssuesV35312 } from "./engine/unified-narrative-state-v35312.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2255,8 +2256,9 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
         opening: true,
       });
       const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || anchorIssues.length || groundingIssues.length || naturalismIssues.length || semanticIssues.length || similarityIssue.length) {
-        const rejectionReasons = [...qualityIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...semanticIssues, ...similarityIssue];
+      const unifiedOpeningIssues = instantStoryStateFamilyIssuesV35312(opening, recentOpenings);
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || anchorIssues.length || groundingIssues.length || naturalismIssues.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
+        const rejectionReasons = [...qualityIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
         rejectedInstantCandidates.push({
           opening,
           model,
@@ -3334,6 +3336,22 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     userCreatedNpcs: persistentCast,
     latestUserMessage: latestUserRecord?.content || "",
   });
+  const unifiedNarrativeStateV35312 = buildUnifiedNarrativeStateV35312({
+    character,
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-10).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    relationshipState: conversation.relationship_state || conversation.relationship || {},
+    intelligenceState: conversation.intelligence_state || {},
+    chemistry: turnContract?.relationshipChemistryV2 || {},
+    worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
+    storyConsequences: turnContract?.worldConsequencesCausalTimeline?.activeChains || [],
+    unresolvedThreads: conversation.unresolved_threads || [],
+    persistentCast,
+    castConnections: turnContract?.npcEcosystemSocialNetworkV3?.connections || [],
+    scene: conversation.scene_state || {},
+    opening: openingRegeneration,
+  });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
     character,
     recentReplies: recentCharacterRepliesForVoice,
@@ -3500,6 +3518,8 @@ ${consequencesThatStickV35277}
 ${relationshipArcDirectorV35278}
 
 ${chatScopedNpcCanonV35279}
+
+${unifiedNarrativeStateV35312}
 
 PROMPT SIMPLIFICATION 3.49.42: previous v3.49.30-v3.49.41 humanization/style briefs are intentionally NOT injected here. Their state/validators remain available, but they no longer compete to write the visible line. Emotional Relationship Core 3.52.63 is intentionally injected as a narrow causal bridge so serious feeling changes behavior without restoring the old competing style stack.
 
@@ -4207,6 +4227,7 @@ SCENE CLOCK + ACTION OWNERSHIP 3.52.5
 HIDDEN STATE OUTPUT
 - mind_update is ${character.name}'s SUBJECTIVE mind after this beat. know = supported facts only. believe may be wrong. misunderstand contains a plausible current error, or empty string. want/avoid/wont_admit/outside_priority and short/mid/long goals must describe this character, not the user. Goals should persist unless an on-page event changes them. attachment_pattern is behavioral shorthand only. microvoice changes slowly. emotion_trigger → emotion_interpretation → current_emotion → behavioral_pressure must form a supported causal chain. anticipated_next/private_intention/expected_outcome/feared_outcome are private forecasts, never guaranteed facts. behavioral_pattern and conflict_pattern require transcript evidence. public_private_mode describes context, not a new personality.
 - connection_updates only records relationships BETWEEN named characters that were evidenced or materially changed. Never invent a bond just to fill the array.
+- v3.53.12 may additionally persist narrative_state_snapshot as a compact summary of unresolved consequence, character-side relationship pressure, active authorized-NPC pressure, recent scene family and next character intent. It may summarize visible/canonical facts only and never invent the user's feelings, consent or future action.
 - v3.52.79 CLOSED NPC CAST: cast_updates NEVER creates identities. It may update only an exact user-created NPC already present in this conversation. connection_updates may use only the user, configured/group characters, and those approved NPCs. Unknown supporting people remain unnamed and produce no cast row.
 - temporal_anchor records only supported story time. Use certainty=unknown when the duration is not established.
 - world_consequence records only practical/social fallout caused by a visible or already-canonical event.
@@ -4780,6 +4801,22 @@ ${openingDnaV35289}`;
     userCreatedNpcs: persistentCast,
     latestUserMessage,
   });
+  const unifiedNarrativeStateV35312 = buildUnifiedNarrativeStateV35312({
+    character,
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-10).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-6).map((m)=>String(m?.content||"")),
+    relationshipState: relationshipState || {},
+    intelligenceState: intelligenceState || {},
+    chemistry: turnContract?.relationshipChemistryV2 || {},
+    worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
+    storyConsequences: turnContract?.worldConsequencesCausalTimeline?.activeChains || [],
+    unresolvedThreads,
+    persistentCast,
+    castConnections: turnContract?.npcEcosystemSocialNetworkV3?.connections || [],
+    scene,
+    opening: openingRegeneration,
+  });
   return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
 
 GENERATION MODE
@@ -4850,6 +4887,9 @@ ${relationshipArcDirectorV35278}
 
 CHAT-SCOPED NPC CANON
 ${chatScopedNpcCanonV35279}
+
+UNIFIED NARRATIVE STATE
+${unifiedNarrativeStateV35312}
 
 Cast/presence state: ${cleanPromptValue(JSON.stringify(castState || {}), 650)}
 Active plans/commitments: ${cleanPromptValue(JSON.stringify({
@@ -8779,6 +8819,15 @@ function validateNarrativeReply(reply = "", options = {}) {
     recentCharacterReplies: options.recentCharacterReplies || [],
     character: options.character || {},
   })) issues.push(issue);
+  for (const issue of unifiedNarrativeStateIssuesV35312({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    character: options.character || {},
+    worldConsequences: options.turnContract?.worldConsequencesCausalTimeline || {},
+    opening: Boolean(options.openingRegeneration),
+  })) issues.push(issue);
   for (const issue of immediateTurnContinuityIssues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push(issue);
   for (const issue of behavioralTurnIntegrityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
   for (const issue of sceneMomentumBarrierV35236Issues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [] })) issues.push(issue);
@@ -9262,6 +9311,7 @@ function applyIntelligenceContinuity(previous: any = {}, update: any = {}, mindU
     relationship_arc_mode: keep("relationship_arc_mode", 100),
     relationship_arc_last_shift: keep("relationship_arc_last_shift", 520),
     relationship_arc_next_gate: keep("relationship_arc_next_gate", 520),
+    narrative_state_snapshot: keep("narrative_state_snapshot", 1000),
   };
   const priorThreads = compactTextList(prior.conversation_threads, 10, 320);
   const threadAdds = compactTextList(humanBehaviorUpdate?.conversation_threads_add, 5, 320);
