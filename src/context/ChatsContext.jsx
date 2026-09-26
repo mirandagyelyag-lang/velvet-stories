@@ -1875,6 +1875,27 @@ export function ChatsProvider({
     return data;
   }
 
+  async function undoLastReply(characterId, messageId) {
+    const conversation = chats[characterId];
+    if (!conversation?.conversationId || !user?.id) throw new Error("Open a story first.");
+    const { data, error } = await supabase.rpc("velvet_undo_last_reply", {
+      p_conversation_id: conversation.conversationId,
+      p_message_id: messageId,
+    });
+    if (error) throw error;
+    setChats((current) => {
+      if (current[characterId]?.conversationId !== conversation.conversationId) return current;
+      return { ...current, [characterId]: {
+        ...current[characterId],
+        messages: (current[characterId]?.messages || []).filter((item) => item.id !== messageId),
+        summary: "", sceneState: {}, storyTimeline: [], intelligenceState: {}, storyRecap: "",
+        relationshipState: {}, characterDevelopment: {}, castState: {}, storyChapters: [],
+        activeChapter: {}, unfinishedThreads: [], storyRevision: data.story_revision,
+      } };
+    });
+    return data;
+  }
+
   async function deleteMessage(characterId, messageId) {
     stopGeneration(characterId);
     const currentMessages = chats[characterId]?.messages || [];
@@ -3083,6 +3104,7 @@ export function ChatsProvider({
         runCanonDoctor,
         updateConversationSettings,
         deleteMessage,
+        undoLastReply,
         updateMessage,
         editCharacterMessageInPlace,
         editMessageAndRemoveFollowing,

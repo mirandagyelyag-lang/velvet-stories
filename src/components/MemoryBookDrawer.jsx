@@ -11,7 +11,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "../services/supabase";
 
@@ -37,6 +37,7 @@ const EMPTY_DRAFT = {
 };
 
 export default function MemoryBookDrawer({ open, onClose, character, conversationId, onCountChange }) {
+  const loadSequence = useRef(0);
   const [memories, setMemories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -50,7 +51,13 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
   const [cleaning, setCleaning] = useState(false);
 
   useEffect(() => {
+    setEditorOpen(false);
+    setEditingMemory(null);
+    setMemories([]);
+    setSearch("");
+    setFilter("all");
     if (open && character?.id) loadMemories();
+    return () => { loadSequence.current += 1; };
   }, [open, character?.id, conversationId]);
 
   useEffect(() => {
@@ -81,6 +88,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
   }, [open]);
 
   async function loadMemories() {
+    const sequence = ++loadSequence.current;
     setLoading(true);
     setError("");
     try {
@@ -93,6 +101,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
         .order("is_pinned", { ascending: false })
         .order("importance", { ascending: false })
         .order("updated_at", { ascending: false });
+      if (sequence !== loadSequence.current) return;
       if (requestError) throw requestError;
       const visible = (data || []).filter(
         (memory) => memory.scope === "character" || memory.conversation_id === conversationId,
@@ -100,10 +109,11 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
       setMemories(visible);
       onCountChange?.(visible.length);
     } catch (requestError) {
+      if (sequence !== loadSequence.current) return;
       console.error("Memory book load failed:", requestError);
       setError("Velvet couldn't open this memory book.");
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   }
 
@@ -180,21 +190,24 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
   async function saveMemory(event) {
     event.preventDefault();
     const content = draft.content.trim();
-    if (!content || !character?.id || !conversationId) return;
+    if (saving || !content || !character?.id || !conversationId) return;
     setSaving(true);
     setError("");
     try {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || !authData?.user) throw authError || new Error("No active session");
 
+      const corrected = Boolean(editingMemory && content !== editingMemory.content?.trim());
+      const protectedMemory = Boolean(draft.isCanon || corrected);
       const payload = {
         content,
         category: draft.category,
         importance: Number(draft.importance),
         scope: draft.scope,
-        is_pinned: Boolean(draft.isPinned || draft.isCanon),
-        is_canon: Boolean(draft.isCanon),
-        why_remembered: draft.isCanon
+        is_pinned: Boolean(draft.isPinned || protectedMemory),
+        is_canon: protectedMemory,
+        ...(corrected ? { source: "manual", source_message_id: null, source_excerpt: null } : {}),
+        why_remembered: protectedMemory
           ? "Marked as canon by you. Velvet should treat this as authoritative continuity."
           : (editingMemory?.why_remembered || "Added manually so Velvet can preserve this detail."),
         updated_at: new Date().toISOString(),
@@ -297,9 +310,9 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
           <div>
             <span><BookOpen size={16} />MEMORY BOOK 3.0</span>
             <h2>What {character?.name} remembers</h2>
-            <p>Velvet learns automatically. Mark a memory as canon when it must never be contradicted.</p>
+            <p>Edit what is wrong, add what matters, or choose Never forget. Corrections are protected from automatic rewriting.</p>
           </div>
-          <button className="memory-book__close" onClick={onClose}><X size={19} /></button>
+          <button className="memory-book__close" onClick={onClose} disabled={saving} aria-label="Close memory book"><X size={19} /></button>
         </header>
 
         <div className="memory-book__scroll">
@@ -355,7 +368,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
               <span><ShieldCheck size={16} /><strong>Canon</strong><small>Authoritative continuity. Automatic learning cannot rewrite its wording.</small></span>
             </label>
             <footer>
-              <button type="button" onClick={() => setEditorOpen(false)}>Cancel</button>
+              <button type="button" disabled={saving} onClick={() => setEditorOpen(false)}>Cancel</button>
               <button type="submit" disabled={saving || !draft.content.trim()}>{saving ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}{editingMemory ? "Save memory" : "Add memory"}</button>
             </footer>
           </form>
@@ -395,8 +408,8 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
               <div>
                 <button className={memory.is_canon ? "is-canon" : ""} onClick={() => toggleCanon(memory)} disabled={workingId === memory.id} title={memory.is_canon ? "Remove canon status" : "Mark as canon"}><ShieldCheck size={15} /></button>
                 <button onClick={() => togglePin(memory)} disabled={workingId === memory.id} title={memory.is_pinned ? "Unpin" : "Never forget"}>{memory.is_pinned ? <PinOff size={15} /> : <Pin size={15} />}</button>
-                <button onClick={() => openEdit(memory)}><Pencil size={15} /></button>
-                <button className="danger" onClick={() => removeMemory(memory)} disabled={workingId === memory.id}><Trash2 size={15} /></button>
+                <button onClick={() => openEdit(memory)} aria-label="Edit memory" title="Edit memory" disabled={Boolean(workingId)}><Pencil size={15} /></button>
+                <button className="danger" aria-label="Delete memory" title="Delete memory" onClick={() => removeMemory(memory)} disabled={workingId === memory.id}><Trash2 size={15} /></button>
               </div>
             </footer>
           </article>

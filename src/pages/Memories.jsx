@@ -177,16 +177,19 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
   async function saveMemory(event) {
     event.preventDefault();
     const content = draft.content.trim();
-    if (!content || !draftCharacterId) return;
+    if (saving || !content || !draftCharacterId) return;
     const activeForCharacter = memories.filter((memory) => !memory.superseded_at && memory.character_id === draftCharacterId);
     const duplicate = activeForCharacter.some((memory) => memory.id !== editingMemory?.id && normalize(memory.content) === normalize(content));
     if (duplicate) return setError("That character already remembers this. Edit or replace the existing memory instead.");
 
     try {
       setSaving(true); setError("");
+      const corrected = Boolean(editingMemory && content !== editingMemory.content?.trim());
+      const protectedMemory = Boolean(draft.isCanon || corrected);
       const payload = {
-        content, category: draft.category, importance: draft.isImportant ? 5 : Number(draft.importance), is_pinned: Boolean(draft.isPinned || draft.isCanon), is_canon: Boolean(draft.isCanon), scope: draft.scope,
-        why_remembered: draft.isCanon ? "Marked as canon by you. Velvet should treat this as authoritative continuity." : "Added manually so Velvet can preserve this detail.",
+        ...(corrected ? { source_message_id: null, source_excerpt: null } : {}),
+        content, category: draft.category, importance: draft.isImportant ? 5 : Number(draft.importance), is_pinned: Boolean(draft.isPinned || protectedMemory), is_canon: protectedMemory, scope: draft.scope,
+        why_remembered: protectedMemory ? "Marked as canon by you. Velvet should treat this as authoritative continuity." : "Added manually so Velvet can preserve this detail.",
         updated_at: new Date().toISOString(), source: "manual",
       };
       let saved;

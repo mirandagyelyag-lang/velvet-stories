@@ -141,6 +141,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     updateConversationSettings,
     deleteConversation,
     deleteMessage,
+    undoLastReply,
     editMessageAndRemoveFollowing,
     editCharacterMessageInPlace,
     rewindToMessage,
@@ -566,7 +567,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   // VELVET_GENERATION_MANAGER_V1
   // Never lock sending merely because a stale temporary bubble exists.
   // The context generation manager is the authoritative busy state.
-  const busy = sending || characterGenerating;
+  const busy = sending || characterGenerating || actionLoading;
+  const lastStoredMessage = (conversation?.messages || []).filter((item) => !item.isStreaming).at(-1);
   // v3.49.3 SINGLE GENERATION SURFACE
   // Normal send/retry already has the typing indicator + streamed bubble. Do not
   // stack a second floating "Thinking/Writing" pill on top of that. Explicit
@@ -1588,6 +1590,29 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     setAlternatives([]);
   }
 
+  async function handleUndoLastReply(messageId = lastStoredMessage?.id) {
+    if (busy || !messageId || lastStoredMessage?.sender !== "character") return;
+    setActionLoading(true);
+    setMenuOpen(false);
+    closeActionsAfterAction();
+    setSendError("");
+    try {
+      const approved = await confirmAction({
+        title: "Esto no pasó",
+        message: "Remove the last reply and the automatic memories and story consequences from that turn? Your message and memories you protected will stay.",
+        confirmLabel: "Remove reply",
+      });
+      if (!approved) return;
+      await undoLastReply(character.id, messageId);
+      setReplyTo(null);
+      showActionNotice("Reply and its automatic memories removed ✓");
+    } catch (error) {
+      setSendError(error.message || "Couldn't undo this reply. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   async function runAction(action, event) {
     event?.preventDefault?.();
     event?.stopPropagation?.();
@@ -2369,12 +2394,13 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                 </span>
               </label>
               <div className="chat__menu-quick">
-                <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Current story</small></span></button>
+                <button type="button" onClick={() => { setMenuOpen(false); setMemoryBookOpen(true); }} disabled={!conversationReady}><Brain size={17}/><span>Memory Book<small>Edit · Protect · Remember</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); openRelationshipFor(character); }} disabled={!conversationReady}><HeartHandshake size={17}/><span>Relationship<small>Story pulse</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Activity size={17}/><span>AI Status<small>Velvet Doctor</small></span></button>
                 <button type="button" onClick={() => { setMenuOpen(false); onOpenDiagnostics?.(); }}><Bug size={17}/><span>Report a problem<small>Private by default</small></span></button>
               </div>
               <div className="chat__menu-section-label">STORY</div>
+              <button className="chat__menu-controls" onClick={() => handleUndoLastReply()} disabled={busy || lastStoredMessage?.sender !== "character"}><RotateCcw size={17} /> Esto no pasó</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); onOpenMemories?.(); }}><Brain size={17} /> Memories 2.5</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setControlsOpen(true); }} disabled={!conversationReady}><SlidersHorizontal size={17} /> Story settings</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setReadingMode((current) => !current); }}><Eye size={17} /> {readingMode ? "Exit immersive mode" : "Immersive mode"}</button>
@@ -3018,6 +3044,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                 )}
                 {selectedMessage.sender === "character" ? (
                   <>
+                    {selectedMessage.id === lastStoredMessage?.id && (
+                      <button type="button" className="message-sheet__branch-feature" disabled={busy} onClick={() => handleUndoLastReply(selectedMessage.id)}>
+                        <RotateCcw size={19} /><span><strong>Esto no pasó</strong><small>Remove this reply and what Velvet learned from it.</small></span>
+                      </button>
+                    )}
                     <p className="message-sheet__refine-note">
                       What went wrong? Velvet will use the reason now and learn it globally after you choose it twice.
                     </p>
