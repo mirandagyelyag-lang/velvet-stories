@@ -4312,7 +4312,8 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     epistemic_status_collapse: "Keep rumor/suspicion as rumor/suspicion. Replace certainty with character-appropriate uncertainty and never promote it to fact without new evidence.",
     response_weight_mismatch: "Match the scale of the reply to the live beat. For a tiny mundane user turn, give a compact natural answer/action instead of an interpretive monologue.",
     micro_turn_padding: "Shrink this to a true human micro-turn. Remove decorative movement, extra explanation, invented momentum and unnecessary scene business. One short line, gesture, or silence can be complete.",
-    compulsory_followup_question: "Remove the automatic follow-up question. Let the reply end naturally on a statement, gesture, silence, unfinished thought, or clean topic landing unless this exact character genuinely needs to ask something.",
+    compulsory_followup_question: "Remove the automatic follow-up question. On serious or vulnerable turns, react first and ask at most ONE necessary question. Do not chain question after question. Let the reply end naturally on a statement, gesture, silence, unfinished thought, or clean topic landing unless this exact character genuinely needs information.",
+    user_reference_pronoun_drift: "Keep the user in second person throughout visible narration. If the scene addresses the user as you, do not suddenly narrate the same person as her/hers, him/his, or them/theirs. Rewrite those references back to you/your unless a distinct established NPC is clearly the referent.",
     forced_topic_shift: "Do not manufacture a new topic to keep the exchange alive. Stay with the current activity/topic or let the conversation go quiet. Remove filler pivots like 'anyway' or 'by the way' unless the shift was already motivated.",
     answer_before_flourish_violation: "Move the literal answer into the first spoken clause. Cut the long pre-answer narration or attitude display. Character voice may shape the answer after the user can actually hear it.",
     unstaged_user_movement_inference: "Keep the user in their last visibly established position. Spoken intent or social closure is not movement; remove all departure and pursuit choreography.",
@@ -5870,10 +5871,23 @@ function hasInventedDebateEvidence(reply = "", latestUserMessage = "") {
   return claims.some(({ claim, support }) => claim.test(text) && !support.test(latest));
 }
 function hasUserMotiveOverride(reply = "", latestUserMessage = "", recentUserMessages = []) {
-  const text = normalizeText(reply), latest = normalizeText(latestUserMessage), recent = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])].map(normalizeText).filter(Boolean).join(" ");
-  const userSeeking = /\bi (?:was|am|have been|ve been)?\s*(?:looking|searching) for you\b|\bi (?:was|am)?\s*trying to find you\b|\bi (?:came|went|walked|stepped|headed) (?:out|outside|here|there).{0,45}\b(?:for you|to see you)\b|\bi (?:wanted|needed|was trying|am trying) to (?:get|have) your attention\b|\bi wanted your attention\b/.test(recent);
-  if (userSeeking) return false;
-  return /\byou (?:were|are|have been|ve been)?\s*(?:looking|searching) for me\b|\byou (?:were|are)?\s*trying to find me\b|\byou (?:came|went|walked|stepped|headed) (?:out|outside|here|there).{0,45}\b(?:for me|to see me)\b|\byou (?:wanted|needed|were trying|are trying) to (?:get|have) my attention\b|\byou wanted my attention\b|\byou (?:were|are|got) jealous\b/.test(text);
+  const text = normalizeText(reply);
+  const recent = [latestUserMessage, ...(Array.isArray(recentUserMessages) ? recentUserMessages : [])]
+    .map(normalizeText).filter(Boolean).join(" ");
+
+  const supported = [
+    { claim: /\byou (?:were|are|have been|ve been)?\s*(?:looking|searching) for me\b/, user: /\bi (?:was|am|have been|ve been)?\s*(?:looking|searching) for you\b/ },
+    { claim: /\byou (?:were|are)?\s*trying to find me\b/, user: /\bi (?:was|am)?\s*trying to find you\b/ },
+    { claim: /\byou (?:came|went|walked|stepped|headed) (?:out|outside|here|there).{0,45}\b(?:for me|to see me)\b/, user: /\bi (?:came|went|walked|stepped|headed) (?:out|outside|here|there).{0,45}\b(?:for you|to see you)\b/ },
+    { claim: /\byou (?:wanted|needed|were trying|are trying) to (?:get|have) my attention\b|\byou wanted my attention\b/, user: /\bi (?:wanted|needed|was trying|am trying) to (?:get|have) your attention\b|\bi wanted your attention\b/ },
+    { claim: /\byou (?:were|are|got) jealous\b/, user: /\bi (?:was|am|got) jealous\b|\bi(?:'|’)m jealous\b/ },
+    { claim: /\byou (?:were|are) testing me\b|\byou wanted to test me\b/, user: /\bi (?:was|am) testing you\b|\bi wanted to test you\b/ },
+    { claim: /\byou wanted to (?:see|know|find out) if i(?:'|’)d\b|\byou wanted to (?:see|know|find out) whether i\b/, user: /\bi wanted to (?:see|know|find out) if you(?:'|’)d\b|\bi wanted to (?:see|know|find out) whether you\b/ },
+    { claim: /\byou (?:did|said|asked) that (?:because|so) (?:you )?(?:could|would|wanted|needed)\b/, user: /\bi (?:did|said|asked) (?:that|it) because\b|\bi wanted to\b|\bi needed to\b/ },
+    { claim: /\byou were trying to make me jealous\b|\byou wanted to make me jealous\b/, user: /\bi (?:was )?trying to make you jealous\b|\bi wanted to make you jealous\b/ },
+  ];
+
+  return supported.some(({ claim, user }) => claim.test(text) && !user.test(recent));
 }
 function hasRejectedPursuitFramingPersistence(reply = "", latestUserMessage = "") {
   const text = normalizeText(reply), latest = normalizeText(latestUserMessage);
@@ -7562,6 +7576,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "orchestrator_system_exposure",
   "recovery_internal_exposure_v347",
   "performance_internal_exposure_v348",
+  "user_reference_pronoun_drift",
 ]);
 // VELVET_SPEED_REPAIR_BUDGET_V282
 // VELVET_QUICK_REPLY_LANE_V21029: style-only issues never spend the second model call.
@@ -7629,6 +7644,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "micro_turn_padding",
   "compulsory_followup_question",
   "forced_topic_shift",
+  "user_reference_pronoun_drift",
   "agency_commitment_inertia_break",
   "gratuitous_external_hook",
   "initiative_budget_overflow",
@@ -7829,6 +7845,7 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "natural_dialogue_unearned_proximity",
   "natural_dialogue_callback_loop",
   "context_dump_exposition_v346",
+  "user_reference_pronoun_drift",
   "user_staged_scene_retcon",
   "distance_boundary_override",
   "spatial_relationship_broken",
@@ -8402,14 +8419,34 @@ function hasCompulsoryFollowupQuestion(reply = "", latestUserMessage = "", recen
   const visible = visibleUserSpeechForTurnTaking(latestUserMessage);
   const userWords = normalizeText(visible).split(/\s+/).filter(Boolean).length;
   const userAsked = /\?/.test(visible);
-  const highImpact = isHighImpactTurnText(latestUserMessage);
-  if (highImpact) return false;
+  const highImpact = isHighImpactTurnText(latestUserMessage)
+    || /\b(?:bad day|rough day|shitty day|awful day|terrible day|hard day|pill|pills|med|meds|medication|medicine|dose|prescription|panic|panicking|scared|overwhelmed|upset|crying|cried)\b/i.test(String(latestUserMessage || ""));
   const profile = normalizeText(`${character?.speech_style || ""} ${character?.personality || ""} ${character?.voice_vocabulary || ""}`);
   const explicitlyQuestionHeavy = /\b(?:inquisitive|asks lots of questions|asks questions|question-heavy|curious interviewer)\b/.test(profile);
   const recentQuestionEnds = (Array.isArray(recentReplies) ? recentReplies : []).slice(-3).filter((item) => dialogueEndsInQuestion(item)).length;
+  const currentQuestions = dialogueQuestionCount(reply);
+
+  if (highImpact) {
+    if (currentQuestions >= 2) return true;
+    if (recentQuestionEnds >= 1 && !userAsked) return true;
+    return false;
+  }
+
   if (!userAsked && userWords <= 6 && !explicitlyQuestionHeavy) return true;
   return recentQuestionEnds >= 2 && !explicitlyQuestionHeavy;
 }
+function hasUserReferencePronounDrift(reply = "", latestUserMessage = "") {
+  const raw = String(reply || "");
+  if (!/\byou\b/i.test(raw) && !/\byour\b/i.test(raw)) return false;
+  const narration = stripDialogue(raw);
+  const drift = /\b(?:gaze|eyes?|look|attention|arms?|hand|hands?)\b[^.!?\n]{0,80}\b(?:hers|his|theirs|her|him|them)\b/i.test(narration)
+    || /\b(?:toward|towards|around|beside|behind|in front of|down at|up at)\s+(?:her|him|them)\b/i.test(narration);
+  if (!drift) return false;
+
+  const latest = normalizeText(latestUserMessage);
+  return !/\b(?:she|her|he|him|they|them|girl|guy|boy|friend|victoria|npc)\b/.test(latest);
+}
+
 function hasForcedTopicShift(reply = "", latestUserMessage = "") {
   if (isHighImpactTurnText(latestUserMessage)) return false;
   const visible = visibleUserSpeechForTurnTaking(latestUserMessage);
@@ -8590,6 +8627,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasResponseWeightMismatch(text, options.latestUserMessage || "")) issues.push("response_weight_mismatch");
   if (hasMicroTurnPadding(text, options.latestUserMessage || "")) issues.push("micro_turn_padding");
   if (hasCompulsoryFollowupQuestion(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("compulsory_followup_question");
+  if (hasUserReferencePronounDrift(text, options.latestUserMessage || "")) issues.push("user_reference_pronoun_drift");
   if (hasForcedTopicShift(text, options.latestUserMessage || "")) issues.push("forced_topic_shift");
   if (hasAnswerBeforeFlourishViolation(text, options.latestUserMessage || "", turnIntent)) issues.push("answer_before_flourish_violation");
   for (const issue of groundedRealityIssues({
