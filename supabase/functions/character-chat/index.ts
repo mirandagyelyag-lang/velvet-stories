@@ -2748,7 +2748,7 @@ async function resolveGenerationBranch({ supabase, messages, regenerateMessageId
   const rejectedResponses = [...new Set([
     ...(data || []).map((item) => String(item.content || "").trim()),
     String(replacementMessage.content || "").trim(),
-  ].filter(Boolean))].slice(-8);
+  ].filter(Boolean))].slice(-24);
 
   return {
     messages: messages.slice(0, targetIndex),
@@ -6381,6 +6381,22 @@ function hasRepeatedRecentSignature(reply = "", recentReplies = []) {
   }
   return false;
 }
+function matchesRejectedRegeneration(reply = "", rejectedResponses = []) {
+  const current = String(reply || "").trim();
+  if (!current) return false;
+  const normalizedCurrent = normalizeText(current);
+  return (Array.isArray(rejectedResponses) ? rejectedResponses : []).some((rejected) => {
+    const old = String(rejected || "").trim();
+    if (!old) return false;
+    const normalizedOld = normalizeText(old);
+    if (normalizedCurrent === normalizedOld) return true;
+    if (replySimilarity(current, old) >= 0.72) return true;
+    const currentDialogue = extractDialogueLines(current).join(" ");
+    const oldDialogue = extractDialogueLines(old).join(" ");
+    return currentDialogue && oldDialogue && replySimilarity(currentDialogue, oldDialogue) >= 0.78;
+  });
+}
+
 function developmentText(value = "", maximum = 600) {
   return String(value || "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, maximum);
 }
@@ -10024,6 +10040,32 @@ async function streamRoleplayV19({
           if (blankRecovery?.model) sendEvent(controller, { type: "model", model: blankRecovery.model });
         }
         if (!persistableReply) throw new Error("Velvet received an empty model reply after recovery; nothing was saved.");
+
+        // v3.53.23 REGENERATION NOVELTY VETO: Regenerate means genuinely different.
+        // Every previously rejected alternative for this message is a hard negative,
+        // including deterministic rescue prose. Do not persist an exact or near-repeat.
+        if (isRegeneration && matchesRejectedRegeneration(persistableReply, rejectedResponses)) {
+          console.warn("[character-chat] regeneration candidate matched rejected history; forcing fresh recovery", {
+            rejectedCount: Array.isArray(rejectedResponses) ? rejectedResponses.length : 0,
+          });
+          const rejectedHistory = (Array.isArray(rejectedResponses) ? rejectedResponses : []).slice(-12)
+            .map((item, index) => `REJECTED ${index + 1}: ${cleanPromptValue(item, 700)}`).join("\n");
+          const noveltyRecovery = await callGeminiWithFailover({
+            apiKey,
+            systemInstruction: "Write a genuinely different in-character continuation from the same literal canon. Plain prose only. Do not paraphrase, recycle, or cosmetically rewrite any rejected response.",
+            prompt: `${prompt}\n\nREGENERATION NOVELTY LOCK\nThe user explicitly rejected the responses below. None may be repeated or paraphrased. Change the character's tactic, wording, and immediate action while preserving canon and user agency.\n${rejectedHistory}`,
+            maxOutputTokens: getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling),
+            isCancelled,
+            interactionDeadlineMs: 18000,
+          });
+          const freshReply = String(noveltyRecovery?.reply || "").trim();
+          if (freshReply && !matchesRejectedRegeneration(freshReply, rejectedResponses)) {
+            persistableReply = freshReply;
+            if (noveltyRecovery?.model) sendEvent(controller, { type: "model", model: noveltyRecovery.model });
+          } else {
+            throw new Error("Velvet could not produce a genuinely different regeneration. The previous response was kept.");
+          }
+        }
         // 3.53.19: semantic Opening DNA drift is advisory only. Do not discard a
         // complete regenerated opening because a regex family classifier disagrees.
         if (!FIRST_DRAFT_WINS_V35268 && openingRegeneration && !instantStoryCandidateUsableV35290(persistableReply, result?.finishReason || "STOP", character)) {
