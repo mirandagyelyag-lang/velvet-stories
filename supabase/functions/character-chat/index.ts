@@ -9997,8 +9997,24 @@ async function streamRoleplayV19({
           const rescueBlocking = blockingNarrativeIssues(rescueIssues);
           const rescueHard = hardRepairRequiredIssues(rescueIssues);
           if (!finalRescue || rescueBlocking.length || rescueHard.length) {
-            const lastResortReply = buildGroundedLastResortReply({ character, latestUserMessage, recentUserMessages, recentCharacterReplies, issues: [...finalIssues, ...rescueBlocking, ...rescueHard] });
-            console.error("[character-chat] compact final rescue rejected; using deterministic grounded reply", { blocking: rescueBlocking, hard: rescueHard });
+            let lastResortReply = buildGroundedLastResortReply({ character, latestUserMessage, recentUserMessages, recentCharacterReplies, issues: [...finalIssues, ...rescueBlocking, ...rescueHard] });
+            if (!String(lastResortReply || "").trim()) {
+              console.warn("[character-chat] no canned last-resort available; requesting fresh character-specific continuation");
+              const rejectedHistory = (Array.isArray(rejectedResponses) ? rejectedResponses : []).slice(-12)
+                .map((item, index) => `REJECTED ${index + 1}: ${cleanPromptValue(item, 650)}`).join("\n");
+              const freshLastResort = await callGeminiWithFailover({
+                apiKey,
+                systemInstruction: "Write one concise, natural, character-specific roleplay continuation. Plain prose only. Do not use generic acknowledgement beats such as nodding + 'All right', 'Okay', or 'Fine'. Do not explain narrative technique. Preserve literal canon and user agency.",
+                prompt: `${compactTurnPrompt}\n\nCANNED-FALLBACK BAN\nDo not use: gives a short nod; nods once; nods; All right; Okay; Fine as a standalone acknowledgement. Make a concrete character-specific choice grounded in the current scene.\n\nPREVIOUSLY REJECTED\n${rejectedHistory}`,
+                maxOutputTokens: Math.min(700, getMaximumOutputTokens(character.response_length)),
+                isCancelled,
+                interactionDeadlineMs: 18000,
+              });
+              lastResortReply = String(freshLastResort?.reply || "").trim();
+              if (freshLastResort?.model) sendEvent(controller, { type: "model", model: freshLastResort.model });
+            }
+            if (!lastResortReply) throw new Error("Velvet could not produce a fresh in-character continuation; the previous response was kept.");
+            console.error("[character-chat] compact final rescue rejected; using grounded last-resort reply", { blocking: rescueBlocking, hard: rescueHard });
             result = { ...(finalRescue || result), reply: lastResortReply };
             validationIssues = validateNarrativeReply(result.reply, {
               characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
