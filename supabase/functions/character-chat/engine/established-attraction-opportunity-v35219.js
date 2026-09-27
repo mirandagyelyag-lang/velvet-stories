@@ -69,6 +69,16 @@ function chooseFreshFallback(candidates = [], recentCharacterReplies = []) {
   return fresh || pool[pool.length - 1];
 }
 
+function followThroughFallback({ name, recentCharacterReplies = [] }) {
+  const recent = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
+  if (/\broof\b/.test(recent)) return name + ' keeps moving toward the roof stairs. “Yeah. That’s why we’re getting out of there.”';
+  if (/\bpatio\b/.test(recent)) return name + ' keeps heading for the patio instead of stopping the plan. “Yeah. Come on.”';
+  if (/\b(?:side exit|exit|outside|fire door)\b/.test(recent)) return name + ' keeps moving through the exit. “Yeah. Come on.”';
+  if (/\b(?:car|parking lot)\b/.test(recent)) return name + ' keeps heading for the car. “Yeah. Come on.”';
+  if (/\b(?:diner|drive thru|drive through)\b/.test(recent)) return name + ' keeps the plan moving. “Yeah. We’re still going.”';
+  return name + ' keeps moving instead of stopping the moment cold. “Yeah. Come on.”';
+}
+
 function emotionalFallback({ name, character, latestUserMessage = "", recentCharacterReplies = [] }) {
   const temperament = fallbackTemperament(character);
   const turn = normalize(latestUserMessage);
@@ -207,6 +217,10 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     return name + " makes the decision instead of handing it back to you. “I’ve got it. Come on.”";
   }
 
+  if (failures.has("active_plan_followthrough_dropped")) {
+    return followThroughFallback({ name, recentCharacterReplies });
+  }
+
   const pursuitFailures = ["required_pursuit_missing","departure_passively_released","departure_priority_stolen_by_npc","pursuit_emotion_flattened","passive_exit_after_rupture","charged_departure_dropped"];
   if (pursuitFailures.some((issue) => failures.has(issue))) return pursuitFallback({ name, character });
 
@@ -235,9 +249,9 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     name + ' stops performing for a second. “I heard you.”',
   ], recentCharacterReplies);
   if (temperament === "guarded") return chooseFreshFallback([
-    name + ' goes quiet, watching you for a beat. “I’m listening.”',
-    name + ' stays where they are, attention fixed on you. “All right.”',
-    name + ' doesn’t fill the silence this time. “I heard you.”',
+    name + ' lets the silence sit without turning it into an interview. “All right.”',
+    name + ' stays with the thread instead of handing it back. “Yeah.”',
+    name + ' drops the automatic deflection. “I heard you.”',
   ], recentCharacterReplies);
   if (temperament === "warm") return chooseFreshFallback([
     name + ' gives you their full attention. “I’m here.”',
@@ -245,8 +259,8 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     name + ' softens, attention staying with you. “I heard you.”',
   ], recentCharacterReplies);
   return chooseFreshFallback([
-    name + ' stays focused on you. “I’m listening.”',
-    name + ' gives the moment their full attention. “All right.”',
-    name + ' doesn’t look away. “I heard you.”',
+    name + ' answers the beat instead of waiting for you to carry it. “Yeah.”',
+    name + ' stays with the thread. “All right.”',
+    name + ' doesn’t dodge it. “I heard you.”',
   ], recentCharacterReplies);
 }
