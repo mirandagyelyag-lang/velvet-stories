@@ -11,6 +11,33 @@ function resolutionVector(v=""){return /\b(?:apolog|admit|explain|clarif|promise
 function logisticsDeflation(v=""){const t=norm(v);return /\b(?:water|drink|food|coffee|drive you home|ride home|sit down|breathe|rest|sleep|agua|bebida|comida|caf[eé]|llevarte a casa|sentarte|respira|descansa|dormir)\b/.test(t)&&!/\b(?:because|care|matter|hurt|jealous|sorry|stay|leave|want|admit|refuse|choose|promise|porque|import|herid|celos|perdon|qued|irte|quiero|admit|rechaz|eleg|promet)\w*\b/.test(t);}
 function genericJealousy(v=""){return /\b(?:who was that guy|who is that guy|who was he|who is he|is that your boyfriend|are you dating him|do you like him|quien era ese tipo|quien es ese tipo|es tu novio|estas saliendo con el|te gusta el)\b/.test(norm(v));}
 function payoffSignal(v=""){return /\b(?:admit|choose|chose|refuse|left|leave|stay|stayed|tell the truth|apolog|promise|step back|give space|invite|cancelled|admite|elige|rechaza|se fue|irse|queda|dice la verdad|disculpa|promete|se aleja|da espacio|invita|cancela)\b/.test(norm(v));}
+
+function chargedApproachPending(recent=[]){
+  const rs=list(recent).slice(-3);
+  if(!rs.length)return false;
+  const last=norm(rs[rs.length-1]||"");
+  const context=norm(rs.join(" | "));
+  const approach=/\b(?:started|began|headed|walked|crossed|moved|made his way|made her way|came|went|stepped)\b.{0,70}\b(?:toward|towards|over to|across)\b.{0,80}\b(?:you|where you|her|him)\b/.test(last)
+    || /\b(?:closed the distance|came over|approached you|approached her|approached him)\b/.test(last);
+  const charged=/\b(?:jealous|doesnt mean i have to like|does not mean i have to like|dont like him|don t like him|dont like her|don t like her|who is that|who was that|talking to (?:him|her)|laughing with (?:him|her)|celos|no significa que tenga que gustarme|no me gusta)\b/.test(context);
+  return approach&&charged;
+}
+function arrivalPayoffSignal(v=""){
+  const t=norm(v);
+  const direct=/\b(?:who(?:s| is| was) (?:your|that|he|she)|you two know|how do you know|friend of yours|your friend|that guy|that girl|him again|her again|talking to him|talking to her|came over because|i came over because|wanted your attention|want your attention|come with me|dance with me|stay with me|join me|im stealing you|i m stealing you|mind if i join|can i join|move over|let me in|introduce me|are you two|dating him|dating her|like him|like her|te conozco|quien es|tu amigo|tu amiga|ese tipo|esa chica|estas saliendo|te gusta|vine porque|ven conmigo)\b/.test(t);
+  const interpersonal=/\b(?:jealous|bothered|annoyed|irritated|didnt like|did not like|dont like|don t like|wanted to interrupt|cut in|interrupted|claimed|challenged|asked|invited|refused|admitted|celos|molest|no me gusto|interrump|pregunt|invit|admit)\w*\b/.test(t);
+  return direct||interpersonal;
+}
+function npcDeflectionAfterApproach(reply="",recent=[],persistentCast=[]){
+  if(!chargedApproachPending(recent))return false;
+  const t=norm(reply);
+  if(arrivalPayoffSignal(reply))return false;
+  const names=list(persistentCast).map(x=>norm(x?.name||"")).filter(Boolean);
+  const namedNpc=names.some(n=>n&&t.split(/\s+/).includes(n));
+  const genericNpc=/\b(?:my friend|his friend|her friend|one of his friends|one of her friends|the bartender|someone else|somebody else|another guy|another girl|another friend)\b/.test(t);
+  const sideBusiness=/\b(?:bartender|champagne|hydration|drink|drinks|bar|kitchen|music|playlist|game|bet|parking|keys|phone|texted|called)\b/.test(t);
+  return (namedNpc||genericNpc)&&sideBusiness;
+}
 function tensionAccumulated(recent=[],emotion={},relationship={}){
   const count=list(recent).slice(-6).filter(isCharged).length;
   const numeric=Math.max(Number(emotion?.unresolved_intensity)||0,Number(emotion?.jealousy)||0,Number(emotion?.resentment)||0,Number(relationship?.tension)||0);
@@ -56,6 +83,8 @@ export function buildCharacterFingerprintPayoffV35313({
     charged?"8) ANTI-CLIMAX LOCK: do not replace the charged beat with food, water, rides, rest or polite logistics. Practical care may support the emotional answer, not substitute for it.":"8) ANTI-CLIMAX LOCK: logistics cannot replace the scene's real social or emotional job.",
     (isRegeneration||list(rejectedResponses).length)?"9) REGENERATION DIVERGENCE: change at least two structural dimensions from rejected output: decision, tactic, emotional emphasis, dialogue opening, NPC use, scene use or outcome.":"9) REGENERATION SAFETY: keep the response structurally specific so alternate branches can truly differ.",
     payoff?"10) PAYOFF DUE: tension has accumulated. Deliver one earned concrete consequence now if the live scene permits it: admission, invitation, refusal, changed access, pursuit, boundary, apology, withdrawal or decision.":"10) PAYOFF CALIBRATION: do not force milestones early, but do not stall once repeated evidence earns a concrete consequence.",
+    chargedApproachPending(recentCharacterReplies)?"11) ARRIVAL PAYOFF LOCK: the character deliberately approached because of an active charged social beat. Their first interaction after arriving MUST address, alter or complicate that exact beat. A joke, unrelated observation, NPC anecdote or small talk is not a payoff.":"11) ARRIVAL PAYOFF LOCK: when a character approaches because of jealousy, hurt, attraction, suspicion or another active tension, the arrival must pay off the reason for approaching.",
+    "12) NPC DEFLECTION FIREWALL: supporting NPCs may remain alive in the scene, but they cannot become an escape hatch from the lead interaction. Resolve or advance the active interpersonal beat before pivoting attention to an NPC's unrelated business.",
     "DIFFERENTIATION TEST: if another lead character's name could replace this one with almost no change, rewrite the decision/disclosure style.",
     "PERSISTENCE: human_behavior_update.character_fingerprint_state may store current jealousy expression, vulnerability defense, conflict tactic, repair style, silence style and latest earned payoff using only visible canon.",
     "AUTHORIZED NPCS="+(list(persistentCast).map(x=>clean(x?.name,80)).filter(Boolean).slice(0,12).join(" | ")||"none")
@@ -64,7 +93,7 @@ export function buildCharacterFingerprintPayoffV35313({
 
 export function characterFingerprintPayoffIssuesV35313({
   reply="",latestUserMessage="",recentCharacterReplies=[],character={},relationshipState={},
-  intelligenceState={},isRegeneration=false,rejectedResponses=[]
+  intelligenceState={},persistentCast=[],isRegeneration=false,rejectedResponses=[]
 }={}){
   const issues=[];
   const behavior=intelligenceState?.human_behavior_state||{};
@@ -75,6 +104,8 @@ export function characterFingerprintPayoffIssuesV35313({
   if(genericJealousy(reply)&&(Number(emotion?.jealousy)||0)>=20)issues.push("generic_jealousy_interrogation");
   if(conflict&&list(recentCharacterReplies).slice(-5).filter(isConflict).length>=3&&!resolutionVector(reply))issues.push("conflict_loop_without_development");
   if(tensionAccumulated(recentCharacterReplies,emotion,relationshipState)&&!payoffSignal(reply)&&words(reply).length>22)issues.push("earned_scene_payoff_stalled");
+  if(chargedApproachPending(recentCharacterReplies)&&!arrivalPayoffSignal(reply))issues.push("charged_arrival_payoff_evaded");
+  if(npcDeflectionAfterApproach(reply,recentCharacterReplies,persistentCast))issues.push("charged_beat_deflected_to_npc");
   const fp=fingerprint(character,behavior);
   if(fp.length>80&&/\b(?:all right im listening|okay im listening|fair enough|your choice|whatever you want)\b/.test(norm(reply)))issues.push("fingerprint_collapsed_to_generic_line");
   if(isRegeneration||list(rejectedResponses).length){
