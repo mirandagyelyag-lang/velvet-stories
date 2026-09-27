@@ -4588,6 +4588,8 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     self_owned_plan_abandoned_for_user: "Restore the character's immediately established independent plan. The user declined the shared plan; attraction does not automatically cancel the character's night, friends or obligations.",
     boundary_respect_personality_shutdown: "Respect the user's resistance literally, but do not switch the character off. Remove further pressure or intrusion, then continue from the character's side with one self-owned, character-specific action, choice or line that keeps the scene alive. Never answer with only 'Okay.' or narration that they simply stop pushing.",
     invented_medication_quantity: "Remove any medication or pill count the user did not explicitly state. Preserve only the fact they actually disclosed; never infer a number, dose or quantity.",
+    explicit_user_speech_ignored: "Respond to the user's explicit spoken words before or while reacting to their physical gesture. Do not answer only the stage direction. For a brief apology, acknowledge or question the apology naturally in this character's voice.",
+    vehicle_character_entry_omitted: "Restore the missing physical bridge before any driving action: establish the character getting into the driver's side / behind the wheel, concisely and naturally. Do not narrate every micro-step.",
     unsolicited_rescue_reprioritization: "The user did not ask to be rescued from an ordinary task. Remove the automatic helping/fixing sacrifice and let the character keep agency over their own plan.",
     neutral_npc_mention_jealousized: "Treat the named friend/NPC neutrally unless canon supplies real romantic evidence. Remove skeptical or jealous subtext caused only by the name mention.",
     repeated_plan_prop_loop: "Stop recycling the same keys/phone/backpack/door/coffee prop as a reaction beat. Continue the actual decision or social consequence instead.",
@@ -8804,6 +8806,21 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
 function repairTriggerIssues(issues = []) {
   return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => REPAIR_TRIGGER_ISSUES.has(issue));
 }
+function missesExplicitUserSpeech(reply = "", latestUserMessage = "") {
+  const raw = String(latestUserMessage || "").trim();
+  const spoken = raw.replace(/\*[^*]*\*/gs, " ").replace(/\s+/g, " ").trim();
+  if (!spoken || spoken.split(/\s+/).length > 8) return false;
+  const key = normalizeText(spoken);
+  const r = normalizeText(reply);
+  if (/^(?:sorry|my bad|oops|excuse me|pardon me)$/.test(key)) {
+    return !/\b(?:sorry|apolog|what for|for what|don t be|dont be|you re fine|youre fine|it s fine|its fine|fine|no need|nothing to|why are you|why re you)\b/.test(r);
+  }
+  if (/^(?:thanks|thank you|thx)$/.test(key)) {
+    return !/\b(?:welcome|sure|course|anytime|don t mention|dont mention|no problem|nothing)\b/.test(r);
+  }
+  return false;
+}
+
 function hasInventedMedicationQuantity(reply = "", latestUserMessage = "", recentUserMessages = []) {
   const r = normalizeText(reply);
   const context = normalizeText([...(Array.isArray(recentUserMessages) ? recentUserMessages.slice(-6) : []), latestUserMessage].join(" | "));
@@ -8829,6 +8846,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasPersistentBehaviorBoundaryViolation(text, options.recentUserMessages || [], options.latestUserMessage || "")) issues.push("persistent_behavior_boundary_violation");
   if (hasUserSelfReportOverride(text, options.recentUserMessages || [], options.latestUserMessage || "")) issues.push("user_self_report_overridden");
   if (hasInventedMedicationQuantity(text, options.latestUserMessage || "", options.recentUserMessages || [])) issues.push("invented_medication_quantity");
+  if (missesExplicitUserSpeech(text, options.latestUserMessage || "")) issues.push("explicit_user_speech_ignored");
   if (hasPrivateCausalInference(text, options.latestUserMessage || "")) issues.push("private_causal_inference");
   if (hasAmbiguousNonverbalMindread(text, options.latestUserMessage || "")) issues.push("ambiguous_nonverbal_mindread");
   if (hasSecretKnowledgeLeak(text, options.knowledgeLedger || [], options.characterName || "", options.latestUserMessage || "")) issues.push("secret_knowledge_leak");
