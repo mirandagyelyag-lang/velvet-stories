@@ -249,18 +249,15 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     return name + ' turns fully toward you. “What happened?”';
   }
 
-  // Generic validation failure: keep the story alive with concrete, diegetic behavior.
-  // Never narrate repair concepts such as "thread", "deflection", "handing it back",
-  // "carrying the beat", "performing", or "automatic comeback".
+  // v3.53.22: Generic last-resort output must be ordinary fiction, never an
+  // explanation of narrative technique. Prefer a simple physical/social continuation
+  // already supported by the visible scene.
   const recent = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
-  if (/\b(?:side exit|exit|outside|roof|patio)\b/.test(recent)) {
-    return name + ' continues toward the quieter spot they already chose. “Come on.”';
-  }
-  if (/\b(?:party|basement|bar|friends|team|crowd)\b/.test(recent)) {
-    return name + ' turns their attention back to the room for a moment, making their own next move instead of waiting. “Give me a second.”';
-  }
-  if (temperament === "proud") return name + ' makes a decision and acts on it rather than filling the pause with another comeback. “Fine.”';
-  if (temperament === "guarded") return name + ' shifts focus to what they were already doing and keeps the scene moving. “All right.”';
-  if (temperament === "warm") return name + ' gives the moment room, then continues with their own next step. “Okay.”';
-  return name + ' makes their own next move instead of leaving the scene suspended. “All right.”';
+  if (/\b(?:car|parking lot|drive|home)\b/.test(recent)) return name + ' reaches for the car keys. “Come on. I’ll drive.”';
+  if (/\b(?:side exit|exit|outside|roof|patio)\b/.test(recent)) return name + ' heads toward the spot they had already picked. “Come on.”';
+  if (/\b(?:party|basement|bar|friends|team|crowd)\b/.test(recent)) return name + ' glances back toward the noise inside. “Give me a second.”';
+  if (temperament === "proud") return name + ' exhales through their nose. “Fine.”';
+  if (temperament === "guarded") return name + ' gives a short nod. “All right.”';
+  if (temperament === "warm") return name + ' nods once. “Okay.”';
+  return name + ' nods. “All right.”';
 }
