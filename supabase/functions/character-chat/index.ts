@@ -1896,18 +1896,49 @@ Detected narrative ecosystem: ${family?.label || "derive it directly from the cr
 - The PRIMARY OPENING outranks world/scenario when they point in different directions. It is DESIGN INTENT, not merely sample prose. It defines the kind of social situation, activity, relationship geometry, level of familiarity, and recurring life this character belongs to.
 - A fresh Instant Story may change the immediate conflict, room, hour, NPC pressure, who starts the problem, or what information surfaces, but it must still feel like another plausible opening for THIS SAME character.
 - Do NOT use “variety” as permission to teleport into an unrelated scenario family. If the creator opening is a party, stay in the party / house-gathering / afterparty social orbit. If it is racing, stay in the racing/car world. If it is training, stay in the sports world. Apply the same principle to other clearly established ecosystems.
+- 3.53.17 FLEXIBLE ECOSYSTEM RULE: preserve the social/activity WORLD, not literal location words. A party may move from living room → roof → driveway → patio → afterparty; a friend-group world may move between the group's normal plans; a road trip may stop for gas/food/lookout. Do not force the same room, prop or sentence vocabulary just to prove continuity.
 - Preserve the configured relationship stage. Do not turn established friends into strangers, enemies into casual friends, or existing attraction into instant confession.
 - The creator's explicit IDEA may deliberately relocate or override the setting. When IDEA conflicts with the primary opening, follow IDEA while preserving character identity and relationship continuity.
 - Never copy the primary opening sentence-by-sentence. Preserve its DNA, not its wording.
 ${cleanIdea ? `- Explicit creator IDEA for this generation: ${cleanIdea}` : "- No explicit relocation was requested. Stay inside the creator opening's ecosystem."}`;
 }
 
+const OPENING_DNA_COMPATIBLE_FAMILIES_V35317 = new Map([
+  ["party", new Set(["party", "friend_group", "home", "family"])],
+  ["friend_group", new Set(["friend_group", "party", "home", "family", "roadtrip"])],
+  ["home", new Set(["home", "friend_group", "party", "family"])],
+  ["family", new Set(["family", "home", "friend_group", "party"])],
+  ["roadtrip", new Set(["roadtrip", "motors", "friend_group"])],
+  ["motors", new Set(["motors", "roadtrip"])],
+  ["sports", new Set(["sports"])],
+  ["campus", new Set(["campus"])],
+  ["work", new Set(["work"])],
+]);
+
+function openingDnaOutputFamiliesV35317(opening = "") {
+  const text = String(opening || "");
+  return OPENING_DNA_FAMILIES_V35289
+    .filter((candidate) => candidate.output.test(text))
+    .map((candidate) => candidate.id);
+}
+
 function instantStoryOpeningAnchorIssuesV35289(opening = "", draft = {}, idea = "") {
   if (cleanPromptValue(idea || "", 420)) return [];
   const family = openingDnaFamilyV35289(draft);
-  if (!family) return [];
-  if (family.confidence !== "primary") return [];
-  return family.output.test(String(opening || "")) ? [] : ["opening_context_drift"];
+  if (!family || family.confidence !== "primary") return [];
+
+  // 3.53.17: preserve the creator's ecosystem without demanding literal anchor
+  // vocabulary in every regeneration. A party can move to a roof, driveway,
+  // stairwell or quiet corner without repeating "party/music/crowd". Only flag
+  // drift when the replacement positively reads as a different incompatible
+  // narrative universe.
+  const detected = openingDnaOutputFamiliesV35317(opening);
+  if (!detected.length) return [];
+
+  const compatible = OPENING_DNA_COMPATIBLE_FAMILIES_V35317.get(family.id) || new Set([family.id]);
+  if (detected.some((id) => compatible.has(id))) return [];
+
+  return ["opening_context_drift"];
 }
 
 function pickInstantConflictSeedV35289(pool = [], variationKey = "", recentSceneSeeds = []) {
@@ -4754,6 +4785,7 @@ function buildCompactLiveRecoveryPrompt({
 - The rejected opening is NOT canon. Change the immediate situation, activity, dialogue, social energy, character initiative and beat structure, but remain inside CREATOR OPENING DNA unless CREATOR DIRECTION explicitly relocates the scene.
 - A regeneration does NOT need a fight or bigger stakes. Prefer a different slice of ordinary life over manufacturing conflict.
 - “Different” does NOT mean a different random location family. A party opening can regenerate into another part/moment/problem of that party/social world; it cannot silently become a library, office, station, errand or unrelated date.
+- Preserve the ecosystem semantically, not by keyword repetition. Roof, patio, driveway, hallway, street outside the house, or afterparty can all be valid continuations of a party-world opening even if the new prose never says the word "party".
 - Establish where they are, why the character and user are in contact, what is happening now and one playable pressure point.
 - Do not narrate the user's dialogue, thoughts, feelings, decisions or unstaged movement. Leave the user room to answer.
 - Write 150-230 words and never fewer than 130. Use purposeful narration plus natural spoken lines. This must be a complete scene opening, not a tiny exchange, teaser, fragment, generic mystery hook or summary.
