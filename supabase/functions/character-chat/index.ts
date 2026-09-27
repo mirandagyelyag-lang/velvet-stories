@@ -2301,7 +2301,11 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       });
       const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
       const unifiedOpeningIssues = instantStoryStateFamilyIssuesV35312(opening, recentOpenings);
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || anchorIssues.length || groundingIssues.length || naturalismIssues.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
+      // 3.53.19: Opening DNA is a generation compass, not a destructive classifier.
+      // Lexical family detection can misread a valid semantic continuation (for example,
+      // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
+      // diagnostics/repair context, but never reject an otherwise valid opening for it.
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || groundingIssues.length || naturalismIssues.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
         const rejectionReasons = [...qualityIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
         rejectedInstantCandidates.push({
           opening,
@@ -5056,9 +5060,9 @@ function enforceOpeningRegenerationQuality(issues = [], result = {}, openingRege
   if (openingRegeneration && !instantStoryCandidateUsableV35290(result?.reply, result?.finishReason || "STOP", character)) {
     next.push("instant_opening_incomplete_or_ungrounded");
   }
-  if (openingRegeneration) {
-    next.push(...instantStoryOpeningAnchorIssuesV35289(result?.reply || "", character, regenerationInstruction));
-  }
+  // 3.53.19: do not promote heuristic Opening DNA drift to a hard regeneration issue.
+  // The primary opening still shapes the generation prompt; explicit quality/grounding
+  // validators remain authoritative.
   return [...new Set(next)];
 }
 
@@ -10007,9 +10011,8 @@ async function streamRoleplayV19({
           if (blankRecovery?.model) sendEvent(controller, { type: "model", model: blankRecovery.model });
         }
         if (!persistableReply) throw new Error("Velvet received an empty model reply after recovery; nothing was saved.");
-        if (openingRegeneration && instantStoryOpeningAnchorIssuesV35289(persistableReply, character, regenerationInstruction).length) {
-          throw new Error("Opening regeneration drifted away from the creator's primary opening. The previous opening was kept; regenerate again or give Velvet a new setting explicitly.");
-        }
+        // 3.53.19: semantic Opening DNA drift is advisory only. Do not discard a
+        // complete regenerated opening because a regex family classifier disagrees.
         if (!FIRST_DRAFT_WINS_V35268 && openingRegeneration && !instantStoryCandidateUsableV35290(persistableReply, result?.finishReason || "STOP", character)) {
           throw new Error("Instant Story regeneration could not produce a complete grounded opening. The previous opening was kept; please try again.");
         }
