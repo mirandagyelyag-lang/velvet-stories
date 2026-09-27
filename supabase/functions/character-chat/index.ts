@@ -10126,10 +10126,12 @@ async function streamRoleplayV19({
           const deterministicFinal = buildGroundedLastResortReply({
             character, latestUserMessage, recentUserMessages, recentCharacterReplies: [...recentCharacterReplies, persistableReply], issues: absoluteIssues,
           });
-          const deterministicBarrier = finalizeRegressionSafeTurnV35237({
-            reply: deterministicFinal, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
-          });
-          persistableReply = String(deterministicBarrier.reply || deterministicFinal || "").trim();
+          const deterministicBarrier = deterministicFinal
+            ? finalizeRegressionSafeTurnV35237({
+                reply: deterministicFinal, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
+              })
+            : { reply: persistableReply, issues: [] };
+          persistableReply = String(deterministicBarrier.reply || deterministicFinal || persistableReply || "").trim();
           absoluteFinalIssues = validateNarrativeReply(persistableReply, {
             characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
             finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
