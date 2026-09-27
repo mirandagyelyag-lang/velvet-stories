@@ -9004,6 +9004,7 @@ function validateNarrativeReply(reply = "", options = {}) {
     character: options.character || {},
     relationshipState: options.continuity?.relationshipState || {},
     intelligenceState: options.continuity?.intelligenceState || {},
+    persistentCast: options.persistentCast || [],
     isRegeneration: Boolean(options.isRegeneration),
     rejectedResponses: options.rejectedResponses || [],
   })) issues.push(issue);
