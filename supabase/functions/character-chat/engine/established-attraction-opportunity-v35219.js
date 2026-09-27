@@ -227,13 +227,19 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
   const emotionalFailures = ["emotional_bid_practical_escape","relational_hurt_deflected","canned_distress_checkin","emotional_care_therapized","attachment_failed_to_affect_behavior","therapist_service_voice","perfect_empathy_package","therapeutic_deescalation_pivot"];
   if (emotionalFailures.some((issue) => failures.has(issue))) return emotionalFallback({ name, character, latestUserMessage: effectiveTurn, recentCharacterReplies });
 
-  if (/\b(?:dont|do not|no|stop|leave it|never mind|won t|wont|can t|cant)\b/.test(normalizedTurn)) return name + " stops instead of pushing the point. “Okay.”";
+  if (/\b(?:dont|do not|no|stop|leave it|never mind|won t|wont|can t|cant)\b/.test(normalizedTurn)) {
+    const recent = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
+    if (/\b(?:exit|outside|roof|patio|party|friends|team|bar|basement)\b/.test(recent)) {
+      return name + ' gives the point up without crowding you further, then turns back toward the room and their own night. “Fine.”';
+    }
+    return name + ' backs off the point without disappearing from the scene. “Fine.”';
+  }
   if (/\?$|\b(?:what|why|who|where|when|how|which)\b/.test(normalizedTurn)) return name + " answers without dressing it up. “I don’t know yet.”";
 
   const temperament = fallbackTemperament(character);
 
-  // Never leak engine-language such as "stays with the moment" into visible
-  // prose. Last-resort replies must still sound like an actual character turn.
+  // v3.53.21: Last-resort prose is user-visible fiction, never validator commentary.
+  // It must describe an actual character choice/action, not explain what the engine is doing.
   if (/\b(?:pill|pills|med|meds|medication|medicine|dose|prescription)\b/.test(normalizedTurn)) {
     return name + '’s expression changes. “Your pills?” ' + name + ' focuses on you properly now. “When were you supposed to take them?”';
   }
@@ -243,24 +249,18 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     return name + ' turns fully toward you. “What happened?”';
   }
 
-  if (temperament === "proud") return chooseFreshFallback([
-    name + ' drops the automatic comeback. “Fine. Say it.”',
-    name + ' lets the comeback die. “All right.”',
-    name + ' stops performing for a second. “I heard you.”',
-  ], recentCharacterReplies);
-  if (temperament === "guarded") return chooseFreshFallback([
-    name + ' lets the silence sit without turning it into an interview. “All right.”',
-    name + ' stays with the thread instead of handing it back. “Yeah.”',
-    name + ' drops the automatic deflection. “I heard you.”',
-  ], recentCharacterReplies);
-  if (temperament === "warm") return chooseFreshFallback([
-    name + ' gives you their full attention. “I’m here.”',
-    name + ' stays close without crowding you. “Okay.”',
-    name + ' softens, attention staying with you. “I heard you.”',
-  ], recentCharacterReplies);
-  return chooseFreshFallback([
-    name + ' answers the beat instead of waiting for you to carry it. “Yeah.”',
-    name + ' stays with the thread. “All right.”',
-    name + ' doesn’t dodge it. “I heard you.”',
-  ], recentCharacterReplies);
+  // Generic validation failure: keep the story alive with concrete, diegetic behavior.
+  // Never narrate repair concepts such as "thread", "deflection", "handing it back",
+  // "carrying the beat", "performing", or "automatic comeback".
+  const recent = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
+  if (/\b(?:side exit|exit|outside|roof|patio)\b/.test(recent)) {
+    return name + ' continues toward the quieter spot they already chose. “Come on.”';
+  }
+  if (/\b(?:party|basement|bar|friends|team|crowd)\b/.test(recent)) {
+    return name + ' turns their attention back to the room for a moment, making their own next move instead of waiting. “Give me a second.”';
+  }
+  if (temperament === "proud") return name + ' makes a decision and acts on it rather than filling the pause with another comeback. “Fine.”';
+  if (temperament === "guarded") return name + ' shifts focus to what they were already doing and keeps the scene moving. “All right.”';
+  if (temperament === "warm") return name + ' gives the moment room, then continues with their own next step. “Okay.”';
+  return name + ' makes their own next move instead of leaving the scene suspended. “All right.”';
 }
