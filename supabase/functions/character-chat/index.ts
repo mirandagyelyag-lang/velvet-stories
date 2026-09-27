@@ -4788,7 +4788,7 @@ function buildCompactLiveRecoveryPrompt({
 - Preserve the ecosystem semantically, not by keyword repetition. Roof, patio, driveway, hallway, street outside the house, or afterparty can all be valid continuations of a party-world opening even if the new prose never says the word "party".
 - Establish where they are, why the character and user are in contact, what is happening now and one playable pressure point.
 - Do not narrate the user's dialogue, thoughts, feelings, decisions or unstaged movement. Leave the user room to answer.
-- Write 150-230 words and never fewer than 130. Use purposeful narration plus natural spoken lines. This must be a complete scene opening, not a tiny exchange, teaser, fragment, generic mystery hook or summary.
+- TARGET 70-130 WORDS; hard ceiling 165. A concise 55+ word opening is acceptable when it establishes the scene, contains audible dialogue, ends cleanly, and gives the user a playable beat. Do not pad a good opening just to hit an old length target.
 - Never manufacture unsupported prior behavior or possessions for the user.
 - Do not mention regeneration.
 
@@ -5053,7 +5053,7 @@ REAL-CONVERSATION CALIBRATION v3.52.40
 
 function enforceOpeningRegenerationQuality(issues = [], result = {}, openingRegeneration = false, character = {}, regenerationInstruction = "") {
   const next = Array.isArray(issues) ? [...issues] : [];
-  if (openingRegeneration && !instantStoryLooksComplete(result?.reply, result?.finishReason || "STOP", character)) {
+  if (openingRegeneration && !instantStoryCandidateUsableV35290(result?.reply, result?.finishReason || "STOP", character)) {
     next.push("instant_opening_incomplete_or_ungrounded");
   }
   if (openingRegeneration) {
@@ -10010,7 +10010,7 @@ async function streamRoleplayV19({
         if (openingRegeneration && instantStoryOpeningAnchorIssuesV35289(persistableReply, character, regenerationInstruction).length) {
           throw new Error("Opening regeneration drifted away from the creator's primary opening. The previous opening was kept; regenerate again or give Velvet a new setting explicitly.");
         }
-        if (!FIRST_DRAFT_WINS_V35268 && openingRegeneration && !instantStoryLooksComplete(persistableReply, result?.finishReason || "STOP", character)) {
+        if (!FIRST_DRAFT_WINS_V35268 && openingRegeneration && !instantStoryCandidateUsableV35290(persistableReply, result?.finishReason || "STOP", character)) {
           throw new Error("Instant Story regeneration could not produce a complete grounded opening. The previous opening was kept; please try again.");
         }
 
