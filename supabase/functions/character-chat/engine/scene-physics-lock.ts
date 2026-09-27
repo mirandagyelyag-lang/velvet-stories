@@ -175,6 +175,15 @@ function microPerception(reply = "") {
   return /\b(?:tiny|small|faint|brief|subtle|slight) (?:flicker|shift|change|twitch).{0,28}\b(?:eyes?|expression|face|mouth)\b|\b(?:watched|saw|noticed|caught) you (?:roll|blink|flinch|smile|frown|look|glance)\b|\byour (?:eyes?|expression|face) (?:gave|showed|flickered|shifted)\b/.test(text);
 }
 
+function userEnteredVehicleWithoutCharacter(latestUserMessage = "", previousScene = {}, characterName = "") {
+  const latest = normalized(latestUserMessage);
+  const userEntered = /\b(?:i)\s+(?:get|got|climb|climbed|slide|slid)\s+(?:in|into)\b.{0,35}\b(?:car|passenger|seat)\b|\b(?:i)\s+(?:get|got)\s+in\b/.test(latest);
+  if (!userEntered) return false;
+  const charBody = bodyEntry(previousScene, characterName);
+  const prior = normalized(`${charBody?.state || ""} ${charBody?.anchor || ""}`);
+  return !/driving|driver|inside car|in car/.test(prior);
+}
+
 function vehicleDriverContinuityBreak(reply = "", latestUserMessage = "", previousScene = {}, characterName = "") {
   const text = normalized(reply);
   const latest = normalized(latestUserMessage);
@@ -188,7 +197,8 @@ function vehicleDriverContinuityBreak(reply = "", latestUserMessage = "", previo
   const explicitDriverEntry = /\b(?:gets?|got|slides?|slid|climbs?|climbed|settles?|settled|drops?|dropped) (?:in|into|behind)\b.{0,45}\b(?:driver|wheel|car|seat)\b|\b(?:behind the wheel|driver'?s seat)\b.{0,30}\b(?:gets?|got|slides?|slid|settles?|settled|sits?|sat)\b/.test(text);
   if (explicitDriverEntry) return false;
   const userJustEntered = /\b(?:i|we)\s+(?:get|got|climb|climbed|slide|slid)\s+(?:in|into)\b.{0,35}\b(?:car|passenger|seat)\b|\b(?:get|got|climb|climbed|slide|slid)\s+(?:in|into)\s+(?:the )?car\b/.test(latest);
-  const carContext = userJustEntered || /\b(?:car|passenger|driver|curb|parking)\b/.test(normalized(previousScene?.location || "") + " " + normalized(previousScene?.activity || ""));
+  const carContext = userJustEntered || userEnteredVehicleWithoutCharacter(latestUserMessage, previousScene, characterName)
+    || /\b(?:car|passenger|driver|curb|parking)\b/.test(normalized(previousScene?.location || "") + " " + normalized(previousScene?.activity || ""));
   return carContext;
 }
 
@@ -235,6 +245,11 @@ export function scenePhysicsIssues({ reply = "", latestUserMessage = "", recentC
   }
 
   if (vehicleDriverContinuityBreak(reply, latestUserMessage, previousScene, characterName)) issues.push("vehicle_driver_transition_missing");
+  if (userEnteredVehicleWithoutCharacter(latestUserMessage, previousScene, characterName)
+      && /\b(?:steering wheel|brake|accelerator|starts? (?:the )?car|pulls? away|driv(?:e|es|ing)|drove|merg(?:e|es|ed|ing))\b/.test(text)
+      && !/\b(?:gets?|got|slides?|slid|climbs?|climbed|settles?|settled)\b.{0,55}\b(?:driver|wheel|car|seat)\b/.test(text)) {
+    issues.push("vehicle_character_entry_omitted");
+  }
 
   const visibilityBlocked = blockedVisibility(latestUserMessage, previousScene, userName, characterName);
   if (visibilityBlocked && microPerception(reply)) issues.push("line_of_sight_violation");
@@ -263,7 +278,7 @@ export function sanitizeScenePhysicsReply(reply = "", issues = []) {
   const physicalHard = new Set([
     "body_state_redundant_transition", "spatial_anchor_teleport", "object_possession_break", "object_state_rewind",
     "line_of_sight_violation", "interaction_geometry_violation", "precise_time_invention", "unsupported_elapsed_time_claim",
-    "door_state_continuity_break", "repeated_action_fingerprint", "vehicle_driver_transition_missing",
+    "door_state_continuity_break", "repeated_action_fingerprint", "vehicle_driver_transition_missing", "vehicle_character_entry_omitted",
   ]);
   if ([...active].some((item) => physicalHard.has(item))) {
     parts = parts.filter((piece) => {
@@ -276,7 +291,7 @@ export function sanitizeScenePhysicsReply(reply = "", issues = []) {
       if (active.has("precise_time_invention") && hasPreciseClock(piece)) return false;
       if (active.has("unsupported_elapsed_time_claim") && /\b(?:hours|all morning|all afternoon|all evening|all night)\b/.test(p)) return false;
       if (active.has("door_state_continuity_break") && /\b(?:open doorway|open door|door stood open)\b/.test(p)) return false;
-      if (active.has("vehicle_driver_transition_missing") && /\b(?:steering wheel|behind the wheel|starts? (?:the )?car|pulls? away from (?:the )?curb|merg(?:e|es|ed|ing) into|driv(?:e|es|ing)|drove)\b/.test(p) && !/\b(?:gets?|got|slides?|slid|climbs?|climbed|settles?|settled)\b.{0,45}\b(?:driver|wheel|car|seat)\b/.test(p)) return false;
+      if ((active.has("vehicle_driver_transition_missing") || active.has("vehicle_character_entry_omitted")) && /\b(?:steering wheel|brake|accelerator|behind the wheel|starts? (?:the )?car|pulls? away from (?:the )?curb|merg(?:e|es|ed|ing) into|driv(?:e|es|ing)|drove)\b/.test(p) && !/\b(?:gets?|got|slides?|slid|climbs?|climbed|settles?|settled)\b.{0,55}\b(?:driver|wheel|car|seat)\b/.test(p)) return false;
       if (active.has("repeated_action_fingerprint") && extractActionFingerprints(piece).length) return false;
       return true;
     });
