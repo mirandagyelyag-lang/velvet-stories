@@ -249,15 +249,9 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     return name + ' turns fully toward you. “What happened?”';
   }
 
-  // v3.53.22: Generic last-resort output must be ordinary fiction, never an
-  // explanation of narrative technique. Prefer a simple physical/social continuation
-  // already supported by the visible scene.
-  const recent = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
-  if (/\b(?:car|parking lot|drive|home)\b/.test(recent)) return name + ' reaches for the car keys. “Come on. I’ll drive.”';
-  if (/\b(?:side exit|exit|outside|roof|patio)\b/.test(recent)) return name + ' heads toward the spot they had already picked. “Come on.”';
-  if (/\b(?:party|basement|bar|friends|team|crowd)\b/.test(recent)) return name + ' glances back toward the noise inside. “Give me a second.”';
-  if (temperament === "proud") return name + ' exhales through their nose. “Fine.”';
-  if (temperament === "guarded") return name + ' gives a short nod. “All right.”';
-  if (temperament === "warm") return name + ' nods once. “Okay.”';
-  return name + ' nods. “All right.”';
+  // v3.53.24: There is deliberately NO generic canned acknowledgement here.
+  // A deterministic "nod / all right / okay / fine" rescue became a cross-character
+  // repetition factory. Returning an empty sentinel forces the caller to obtain a
+  // fresh model-written continuation instead of manufacturing stock prose.
+  return "";
 }
