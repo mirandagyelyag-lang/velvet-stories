@@ -1,4 +1,4 @@
-// Velvet Stories v3.53.12 · Independent Agency + Explicit Boundary Gate
+// Velvet Stories v3.53.20 · Independent Agency + Explicit Boundary Gate
 
 const clean=(v="",n=12000)=>String(v??"").replace(/\s+/g," ").trim().slice(0,n);
 const norm=(v="")=>clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[’‘]/g,"'");
@@ -40,6 +40,19 @@ function passiveDeclineDeadEnd(reply=""){
   const tiny=/^(?:okay|ok|alright|fine|sure|got it|understood)[.!…]*$/.test(t);
   const passive=/\b(?:stops instead of pushing|doesn't push|does not push|lets? it go|leaves? it there|says? nothing else)\b/.test(t);
   return tiny || passive;
+}
+
+function userResistsCurrentAdvance(value=""){
+  const t=norm(value);
+  return /\b(?:can't you see (?:that )?i(?:'m| am) busy|cant you see (?:that )?i(?:'m| am) busy|i(?:'m| am) busy|leave me alone|back off|stop pushing|don't push|dont push|not now|give me a minute|i was talking to|i(?:'m| am) talking to|let me finish|you're interrupting|youre interrupting)\b/.test(t);
+}
+
+function boundaryRespectBecomesPersonalityShutdown(reply=""){
+  const t=norm(reply);
+  const tinyDialogue=/^(?:(?:[a-z' ]{0,45}\s)?[“"]?(?:okay|ok|alright|fine|sure|got it)[.!…]?[”"]?)$/.test(t);
+  const shutdown=/\b(?:stops instead of pushing|doesn't push|does not push|backs off and says nothing|lets? it go|leaves? it there|drops? it|says? nothing else|falls? silent)\b/.test(t);
+  const continuation=/\b(?:friends?|team|party|game|plan|later|catch you|see you|i(?:'ll| will)|going|back to|returns?|heads?|joins?|tells?|decides?|invites?|asks?|calls?|texts?)\b/.test(t);
+  return tinyDialogue || (shutdown && !continuation);
 }
 
 function flimsyStayJustification(reply=""){
@@ -98,6 +111,8 @@ export function buildIndependentAgencyBoundaryV35311({
     "Never invent a flimsy excuse about friends, the event, the crowd, or the plan after the user points out that the character was going with other people. Do not retroactively devalue a plan just to justify staying with the user.",
     "Do not convert every ordinary user problem into a service opportunity. If the user did not ask for help, a project/deadline/task is not a reason to instantly abandon the character's established plan and rescue them.",
     "A direct request to leave or go overrides pursuit because the user is explicitly dismissing the character, not silently walking away.",
+    "BOUNDARY ≠ PERSONALITY SHUTDOWN: if the user is busy, annoyed, says not now, says stop pushing, or wants to finish another interaction, stop the intrusive behavior immediately but DO NOT collapse the character into 'Okay.' + silence. Respect the user's space while preserving the character's personality, independent agenda and story momentum.",
+    "After resistance to a flirt, interruption or invitation, the character may redirect, make one character-specific remark, return to friends/their own plan, create a later consequence, or choose a different non-coercive action. They must not pressure the user again in the same beat, but the scene must remain alive.",
     "Mentioning a friend or NPC is neutral unless canon creates a romantic reason for jealousy. Do not answer 'Right. Jules. Sure' merely because the user names someone else.",
     "Independent agency is continuity: if the character wanted the bonfire, party, practice, work, friends or another plan one turn ago, keep that desire alive unless something genuinely important changes it.",
     "Do not prove attachment through compulsory availability. Sometimes the caring response is a normal goodbye and then the character actually goes.",
@@ -116,6 +131,7 @@ export function independentAgencyBoundaryV35311Issues({
   const declined=userDeclinesSharedPlan(latestUserMessage);
   const hasPlan=recentOwnPlan(recentCharacterReplies);
   const askedHelp=userAskedForHelp(latestUserMessage);
+  const resisted=userResistsCurrentAdvance(latestUserMessage);
   const serious=seriousReason([latestUserMessage,...(Array.isArray(recentUserMessages)?recentUserMessages.slice(-3):[])].join(" | "));
 
   if(sentAway && replyIgnoresDismissal(text)) issues.push("explicit_go_boundary_ignored");
@@ -131,6 +147,7 @@ export function independentAgencyBoundaryV35311Issues({
   if(declined && !askedHelp && !serious && /\b(?:i'll help|ill help|i can help|let me help|help you|stay and help)\b/.test(norm(text)) && replyCancelsOwnPlanForUser(text)) {
     issues.push("unsolicited_rescue_reprioritization");
   }
+  if(resisted && boundaryRespectBecomesPersonalityShutdown(text)) issues.push("boundary_respect_personality_shutdown");
   if(neutralCompanionJealousized(text,latestUserMessage)) issues.push("neutral_npc_mention_jealousized");
   if(repeatedPlanProp(text,recentCharacterReplies)) issues.push("repeated_plan_prop_loop");
 
