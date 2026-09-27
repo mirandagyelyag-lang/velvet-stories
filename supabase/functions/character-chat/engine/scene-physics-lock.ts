@@ -175,6 +175,23 @@ function microPerception(reply = "") {
   return /\b(?:tiny|small|faint|brief|subtle|slight) (?:flicker|shift|change|twitch).{0,28}\b(?:eyes?|expression|face|mouth)\b|\b(?:watched|saw|noticed|caught) you (?:roll|blink|flinch|smile|frown|look|glance)\b|\byour (?:eyes?|expression|face) (?:gave|showed|flickered|shifted)\b/.test(text);
 }
 
+function vehicleDriverContinuityBreak(reply = "", latestUserMessage = "", previousScene = {}, characterName = "") {
+  const text = normalized(reply);
+  const latest = normalized(latestUserMessage);
+  const usesDriverPosition = /\b(?:hands? (?:tighten|tightens|rest|rests|grip|grips) on (?:the )?steering wheel|behind the wheel|starts? (?:the )?car|pulls? away from (?:the )?curb|merg(?:e|es|ed|ing) into (?:traffic|the road)|driv(?:e|es|ing)|drove)\b/.test(text);
+  if (!usesDriverPosition) return false;
+  const charBody = bodyEntry(previousScene, characterName);
+  const priorState = normalized(charBody?.state || "");
+  const priorAnchor = normalized(charBody?.anchor || "");
+  const alreadyDriving = /driving|driver/.test(priorState) || /driver/.test(priorAnchor);
+  if (alreadyDriving) return false;
+  const explicitDriverEntry = /\b(?:gets?|got|slides?|slid|climbs?|climbed|settles?|settled|drops?|dropped) (?:in|into|behind)\b.{0,45}\b(?:driver|wheel|car|seat)\b|\b(?:behind the wheel|driver'?s seat)\b.{0,30}\b(?:gets?|got|slides?|slid|settles?|settled|sits?|sat)\b/.test(text);
+  if (explicitDriverEntry) return false;
+  const userJustEntered = /\b(?:i|we)\s+(?:get|got|climb|climbed|slide|slid)\s+(?:in|into)\b.{0,35}\b(?:car|passenger|seat)\b|\b(?:get|got|climb|climbed|slide|slid)\s+(?:in|into)\s+(?:the )?car\b/.test(latest);
+  const carContext = userJustEntered || /\b(?:car|passenger|driver|curb|parking)\b/.test(normalized(previousScene?.location || "") + " " + normalized(previousScene?.activity || ""));
+  return carContext;
+}
+
 function closeRangeAction(reply = "") {
   const text = normalized(reply);
   return /\bwhisper(?:ed|s|ing)?\b|\b(?:touch(?:ed|es|ing)?|brush(?:ed|es|ing)?|grab(?:bed|s|bing)?|take|took|hold|held|reach(?:ed|es|ing)? for) (?:your|her|his|their) (?:hand|arm|wrist|shoulder|waist|back|face|cheek)\b|\bhand (?:on|against) (?:your|her|his|their)\b/.test(text);
@@ -217,6 +234,8 @@ export function scenePhysicsIssues({ reply = "", latestUserMessage = "", recentC
     }
   }
 
+  if (vehicleDriverContinuityBreak(reply, latestUserMessage, previousScene, characterName)) issues.push("vehicle_driver_transition_missing");
+
   const visibilityBlocked = blockedVisibility(latestUserMessage, previousScene, userName, characterName);
   if (visibilityBlocked && microPerception(reply)) issues.push("line_of_sight_violation");
 
@@ -244,7 +263,7 @@ export function sanitizeScenePhysicsReply(reply = "", issues = []) {
   const physicalHard = new Set([
     "body_state_redundant_transition", "spatial_anchor_teleport", "object_possession_break", "object_state_rewind",
     "line_of_sight_violation", "interaction_geometry_violation", "precise_time_invention", "unsupported_elapsed_time_claim",
-    "door_state_continuity_break", "repeated_action_fingerprint",
+    "door_state_continuity_break", "repeated_action_fingerprint", "vehicle_driver_transition_missing",
   ]);
   if ([...active].some((item) => physicalHard.has(item))) {
     parts = parts.filter((piece) => {
@@ -257,6 +276,7 @@ export function sanitizeScenePhysicsReply(reply = "", issues = []) {
       if (active.has("precise_time_invention") && hasPreciseClock(piece)) return false;
       if (active.has("unsupported_elapsed_time_claim") && /\b(?:hours|all morning|all afternoon|all evening|all night)\b/.test(p)) return false;
       if (active.has("door_state_continuity_break") && /\b(?:open doorway|open door|door stood open)\b/.test(p)) return false;
+      if (active.has("vehicle_driver_transition_missing") && /\b(?:steering wheel|behind the wheel|starts? (?:the )?car|pulls? away from (?:the )?curb|merg(?:e|es|ed|ing) into|driv(?:e|es|ing)|drove)\b/.test(p) && !/\b(?:gets?|got|slides?|slid|climbs?|climbed|settles?|settled)\b.{0,45}\b(?:driver|wheel|car|seat)\b/.test(p)) return false;
       if (active.has("repeated_action_fingerprint") && extractActionFingerprints(piece).length) return false;
       return true;
     });
