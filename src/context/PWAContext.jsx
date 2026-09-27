@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { lockVelvetPortrait } from "../utils/lockOrientation";
@@ -84,6 +84,7 @@ function WebPWAProvider({ children }) {
   const [checkingForUpdate, setCheckingForUpdate] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateProblem, setUpdateProblem] = useState("");
+  const autoUpdateStartedRef = useRef(false);
 
   const {
     offlineReady: [offlineReady, setOfflineReady],
@@ -129,16 +130,41 @@ function WebPWAProvider({ children }) {
       if (!response.ok) throw new Error(`Version check returned ${response.status}`);
       const payload = await response.json();
       const remote = String(payload?.version || "").trim();
+      const available = Boolean(remote && compareVersions(remote, VELVET_VERSION) > 0);
       if (remote) {
         setServerVersion(remote);
-        if (compareVersions(remote, VELVET_VERSION) <= 0) {
+        if (!available) {
           setNeedRefresh(false);
           setUpdateProblem("");
           clearSatisfiedPendingUpdate(remote);
         }
       }
       try { await forceServiceWorkerNetworkCheck(); } catch {}
-      return { available: Boolean(remote && compareVersions(remote, VELVET_VERSION) > 0), version: remote };
+
+      // v3.53.15: a web PWA must not stay stranded on an older Velvet bundle.
+      // Once the network confirms a newer server build, apply it automatically.
+      if (available && !autoUpdateStartedRef.current) {
+        autoUpdateStartedRef.current = true;
+        setUpdating(true);
+        try {
+          localStorage.setItem(UPDATE_PENDING_KEY, JSON.stringify({
+            target: remote,
+            from: VELVET_VERSION,
+            at: Date.now(),
+          }));
+        } catch {}
+        try {
+          await clearVelvetCaches();
+          await updateServiceWorker(true);
+          setNeedRefresh(false);
+          window.setTimeout(() => window.location.reload(), 650);
+        } catch (updateError) {
+          autoUpdateStartedRef.current = false;
+          setUpdating(false);
+          setUpdateProblem(updateError?.message || "Velvet detected an update but could not apply it automatically.");
+        }
+      }
+      return { available, version: remote };
     } catch (error) {
       if (!silent) setUpdateProblem(error?.message || "Could not check for updates.");
       return { available: false, version: serverVersion || "", error };
