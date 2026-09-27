@@ -4586,6 +4586,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     explicit_go_boundary_ignored: "The user explicitly told the character/group to go. Respect it literally: do not hover, wait nearby, remain at the desk, or reinterpret the dismissal. Continue the character's own plan unless a genuinely serious grounded reason prevents it.",
     self_owned_plan_abandoned_for_user: "Restore the character's immediately established independent plan. The user declined the shared plan; attraction does not automatically cancel the character's night, friends or obligations.",
     boundary_respect_personality_shutdown: "Respect the user's resistance literally, but do not switch the character off. Remove further pressure or intrusion, then continue from the character's side with one self-owned, character-specific action, choice or line that keeps the scene alive. Never answer with only 'Okay.' or narration that they simply stop pushing.",
+    invented_medication_quantity: "Remove any medication or pill count the user did not explicitly state. Preserve only the fact they actually disclosed; never infer a number, dose or quantity.",
     unsolicited_rescue_reprioritization: "The user did not ask to be rescued from an ordinary task. Remove the automatic helping/fixing sacrifice and let the character keep agency over their own plan.",
     neutral_npc_mention_jealousized: "Treat the named friend/NPC neutrally unless canon supplies real romantic evidence. Remove skeptical or jealous subtext caused only by the name mention.",
     repeated_plan_prop_loop: "Stop recycling the same keys/phone/backpack/door/coffee prop as a reaction beat. Continue the actual decision or social consequence instead.",
@@ -8786,6 +8787,16 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
 function repairTriggerIssues(issues = []) {
   return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => REPAIR_TRIGGER_ISSUES.has(issue));
 }
+function hasInventedMedicationQuantity(reply = "", latestUserMessage = "", recentUserMessages = []) {
+  const r = normalizeText(reply);
+  const context = normalizeText([...(Array.isArray(recentUserMessages) ? recentUserMessages.slice(-6) : []), latestUserMessage].join(" | "));
+  const medMention = /\b(?:pill|pills|tablet|tablets|medication|medicine|meds|dose|doses|sleeping pill|sleeping pills)\b/.test(r);
+  if (!medMention) return false;
+  const quantity = r.match(/\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\s+(?:sleeping\s+)?(?:pill|pills|tablet|tablets|doses?)\b/);
+  if (!quantity) return false;
+  return !context.includes(quantity[0]);
+}
+
 function validateNarrativeReply(reply = "", options = {}) {
   const issues = [];
   const text = String(reply || "").trim();
@@ -8800,6 +8811,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasPrivateNarrationLeak(text, options.latestUserMessage || "")) issues.push("private_narration_leak");
   if (hasPersistentBehaviorBoundaryViolation(text, options.recentUserMessages || [], options.latestUserMessage || "")) issues.push("persistent_behavior_boundary_violation");
   if (hasUserSelfReportOverride(text, options.recentUserMessages || [], options.latestUserMessage || "")) issues.push("user_self_report_overridden");
+  if (hasInventedMedicationQuantity(text, options.latestUserMessage || "", options.recentUserMessages || [])) issues.push("invented_medication_quantity");
   if (hasPrivateCausalInference(text, options.latestUserMessage || "")) issues.push("private_causal_inference");
   if (hasAmbiguousNonverbalMindread(text, options.latestUserMessage || "")) issues.push("ambiguous_nonverbal_mindread");
   if (hasSecretKnowledgeLeak(text, options.knowledgeLedger || [], options.characterName || "", options.latestUserMessage || "")) issues.push("secret_knowledge_leak");
