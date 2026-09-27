@@ -58,6 +58,26 @@ function emotionallyPassiveReply(reply=""){
   const ownedMove=/\b(?:apolog(?:ize|ized|izes)|admit(?:s|ted)?|decid(?:e|es|ed)|refus(?:e|es|ed)|stay(?:s|ed)?|leave(?:s|ft)?|call(?:s|ed)?|text(?:s|ed)?|put(?:s)? away|stop(?:s|ped)?|drop(?:s|ped)? the joke|cuts? off|turns? down|changes? the plan|takes? responsibility|owns? it|sets? .* aside)\b/.test(t);
   return passive && questions>=1 && !ownedMove;
 }
+
+function priorTurnStartedPlan(recentCharacterReplies=[]){
+  const last=norm((Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).at(-1)||"");
+  if(!last) return false;
+  const invitation=/\b(?:come on|lets go|let s go|we can|i ll take|i will take|i m taking|i am taking|follow me|this way|your choice)\b/.test(last);
+  const motion=/\b(?:headed|heading|started toward|started towards|turned toward|turned towards|pushed .* door open|opened .* door|led the way|walked toward|walked towards|went toward|went towards|side exit|stairs|roof|patio|outside|car|parking lot|diner|drive thru|drive through)\b/.test(last);
+  return invitation||motion;
+}
+
+function userCancelledPriorPlan(latestUserMessage=""){
+  const t=norm(latestUserMessage);
+  return /\b(?:stop|wait|dont|do not|no i|nope|stay here|not going|not coming|leave me|go without me|i wont follow|i will not follow|cancel that|never mind)\b/.test(t);
+}
+
+function passiveFollowThroughDrop(reply=""){
+  const t=norm(reply);
+  const passive=/\b(?:im listening|i m listening|go on|tell me|tell me more|what happened|say it|your choice|up to you|you decide|i hear you)\b/.test(t);
+  const continuation=/\b(?:keeps? (?:walking|moving|going)|continues?|heads?|headed|leads?|led|steps? (?:outside|through|onto|into|toward|towards)|takes? the stairs|starts? up|opens? .* door|closes? .* door|reaches? the|gets? outside|moves? toward|moves? towards|keeps? the door|holds? the door)\b/.test(t);
+  return passive&&!continuation;
+}
 export function buildCharacterLedStoryV35274({
   character={},relationship={},scene={},mind={},latestUserMessage="",recentUserMessages=[],recentCharacterReplies=[]
 }={}){
@@ -84,6 +104,9 @@ export function buildCharacterLedStoryV35274({
     "BOUNDARIES STILL WIN. Taking initiative never overrides explicit 'leave me alone', no-touch, no-follow, safety, or consent boundaries.",
     "SHORT DOES NOT MEAN PASSIVE. One 20–60 word response can still contain a decision, action, text, invitation, refusal, reveal, social interruption or consequence. Do not compensate for initiative with 200 words.",
     "AVOID DEAD-END ENDINGS: 'he waited', 'she watched', 'your call', 'what do you want to do?', or atmospheric silence alone are not sufficient when the user has handed over momentum.",
+    priorTurnStartedPlan(recentCharacterReplies) && !userCancelledPriorPlan(latestUserMessage)
+      ? "FOLLOW-THROUGH LOCK 3.53.16: the previous character turn already started a plan, transition, invitation or movement and the user did not cancel it. CONTINUE, MODIFY or EXPLICITLY CANCEL that character-owned plan in this reply. Do not freeze into 'I'm listening', 'go on', 'tell me', generic silence, or hand the scene back to the user."
+      : "FOLLOW-THROUGH LOCK 3.53.16: no active prior-plan carryover is required this turn.",
     `CHARACTER: ${clean(character?.name,90)} | personality=${clean(character?.personality,500)} | role=${clean(character?.role||character?.occupation,240)}.`,
     `CURRENT SELF-OWNED GOAL: ${clean(mind?.current_goal||mind?.active_goal||mind?.private_intention||"none explicitly established",360)}. SCENE: ${clean(scene?.activity||scene?.location||"unknown",320)}.`,
     `RECENT USER: ${clean(recentU,800)||"none"}. RECENT CHARACTER: ${clean(recentC,1000)||"none"}.`,
@@ -100,6 +123,9 @@ export function characterLedStoryV35274Issues({
   if(isSilent(latestUserMessage) && handsBackDecision(reply)) issues.push("silent_handoff_returned_to_user");
   if(userOrbiting(reply)) issues.push("character_led_story_user_orbit_density");
   if(seriousUserBeat(latestUserMessage) && emotionallyPassiveReply(reply)) issues.push("serious_turn_passive_response");
+  if(priorTurnStartedPlan(recentCharacterReplies) && !userCancelledPriorPlan(latestUserMessage) && passiveFollowThroughDrop(reply)) {
+    issues.push("active_plan_followthrough_dropped");
+  }
 
   const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-3):[]).map(norm).join(" | ");
   if(/\b(?:what do you want to do|your call|you decide|up to you)\b/.test(norm(reply))
