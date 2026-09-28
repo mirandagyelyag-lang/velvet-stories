@@ -17,6 +17,16 @@ export function instantStoryQualityIssues(opening:unknown,draft:Record<string,un
   if(/\b(?:the others|everyone|they all) (?:left|went home|followed|headed out)\b|\b(?:the argument|the fight|the problem) (?:was|is) over\b|\bthat settled it\b/.test(ending)) issues.push("premature_resolution");
 
   const profile=norm(Object.values(draft||{}).join(" "));
+  // Life-stage canon: a field of study is not a current profession.
+  // If the current character profile establishes university/student life, Instant Story
+  // must not silently age them into an office, firm, client, or professional role.
+  const studentCanon=/\b(?:university|college|student|studying|studies|campus|classes|classmates|architecture student|law student|medical student)\b/.test(profile);
+  const professionalizedStudent=studentCanon&&(
+    /\b(?:his|her|their) (?:office|firm|client|clients|workday|work schedule|professional practice)\b/.test(t)||
+    /\b(?:at the office|late at the office|leaving the office|back at the office|private office|architecture firm|architectural firm|client meeting|site meeting|working late)\b/.test(t)||
+    /\b(?:load-bearing calculations|site models?|project deadline|blueprints? spread across (?:his|her|their) desk)\b/.test(t)
+  );
+  if(professionalizedStudent) issues.push("life_stage_professionalization");
   const npcMatches=[...raw.matchAll(/\b([A-Z][a-z]{2,})(?:'s)?\s+(?:is|was|will|would|wants?|needs?|thinks?|says?|said|asks?|asked|complains?|complained|called|texted|expects?)\b/g)].map((m)=>m[1]);
   const common=new Set(["The","He","She","They","You","His","Her","Their","Someone","Everyone"]);
   const unknownNpcNames=[...new Set(npcMatches.filter((name)=>!common.has(name)&&!profile.includes(name.toLowerCase())))];
