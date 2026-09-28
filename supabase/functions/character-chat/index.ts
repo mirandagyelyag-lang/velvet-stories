@@ -59,7 +59,7 @@ import { buildAutonomousStoryFlowV35275, autonomousStoryFlowV35275Issues } from 
 import { buildPersistentOffscreenLifeUserGravityV35276, persistentOffscreenLifeUserGravityV35276Issues } from "./engine/persistent-offscreen-life-user-gravity-v35276.js";
 import { buildConsequencesThatStickV35277, consequencesThatStickV35277Issues, inferStickyVisibleConsequenceV35277 } from "./engine/consequences-that-stick-v35277.js";
 import { buildRelationshipArcDirectorV35278, deriveRelationshipArcStateV35278, relationshipArcDirectorV35278Issues } from "./engine/relationship-arc-director-v35278.js";
-import { buildChatScopedNpcCanonV35279, filterAuthorizedCastUpdatesV35279, filterAuthorizedConnectionUpdatesV35279 } from "./engine/chat-scoped-npc-canon-v35279.js";
+import { buildChatScopedNpcCanonV35279, chatScopedNpcCanonV35279Issues, filterAuthorizedCastUpdatesV35279, filterAuthorizedConnectionUpdatesV35279 } from "./engine/chat-scoped-npc-canon-v35279.js";
 import { buildUnifiedNarrativeStateV35312, unifiedNarrativeStateIssuesV35312, instantStoryStateFamilyIssuesV35312 } from "./engine/unified-narrative-state-v35312.js";
 import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
@@ -7837,6 +7837,12 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "semantic_repeated_grin_mannerism",
   "repeated_plan_prop_loop",
   "meaningful_turn_no_move",
+  "direct_clarity_demand_evaded",
+  "initiated_confrontation_without_intent_payoff",
+  "repeated_delivery_choreography",
+  "npc_disembodied_speaker",
+  "npc_retroactive_identity_assignment",
+  "unapproved_named_npc_visible",
   "meaningful_turn_stalled_regeneration",
   "turn_state_commitment_reversal",
   "turn_state_fake_user_readiness",
@@ -9085,6 +9091,16 @@ function validateNarrativeReply(reply = "", options = {}) {
     persistentCast: options.persistentCast || [],
     isRegeneration: Boolean(options.isRegeneration),
     rejectedResponses: options.rejectedResponses || [],
+  })) issues.push(issue);
+  for (const issue of chatScopedNpcCanonV35279Issues({
+    reply: text,
+    allowedNames: [
+      options.userName || "",
+      options.characterName || options.character?.name || "",
+      ...(Array.isArray(options.groupCharacters) ? options.groupCharacters.map((item)=>String(item?.name||"")) : []),
+      ...(Array.isArray(options.persistentCast) ? options.persistentCast.map((item)=>String(item?.name||"")) : []),
+    ].filter(Boolean),
+    recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
   for (const issue of livingWorldCalendarIssuesV35314({
     reply: text,
