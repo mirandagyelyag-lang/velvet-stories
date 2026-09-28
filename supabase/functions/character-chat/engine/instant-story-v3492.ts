@@ -18,6 +18,18 @@ export function instantStoryQualityIssues(opening:unknown,draft:Record<string,un
   const inventedUserHabit=/\b(?:you (?:always|usually|never|constantly|keep|tend to|forget to)|your usual|your favorite|statistically speaking|\d+ (?:days?|times?) out of \d+)\b/.test(t);
   if(inventedFamilyHistory||inventedUserHabit) issues.push("invented_personal_history_from_closeness");
 
+  // USER AGENCY BARRIER: an opening may establish the external scene, but it may
+  // never puppeteer the user. The lead character can observe what the user has
+  // already supplied in canon/chat, not manufacture a fresh gesture, expression,
+  // decision, feeling, thought, line of dialogue or bodily reaction for them.
+  const authoredUserAction=/\b(?:you|your)\s+(?:gave|give|threw|throw|shot|shoot|offered|offer|nodded|nod|shook|shake|shrugged|shrug|smiled|smile|grinned|grin|laughed|laugh|sighed|sigh|rolled|roll|glared|glare|stared|stare|looked|look|glanced|glance|turned|turn|stepped|step|walked|walk|followed|follow|reached|reach|grabbed|grab|took|take|sat|sit|stood|stand|leaned|lean|crossed|cross|froze|freeze|flinched|flinch|blushed|blush|hesitated|hesitate|paused|pause|answered|answer|replied|reply|said|say|asked|ask|agreed|agree|refused|refuse|decided|decide|chose|choose)\b/.test(t)||
+    /\b(?:the|a|your)\s+(?:skeptical|annoyed|confused|surprised|hurt|angry|nervous|shy|embarrassed|amused|worried|blank|sharp|cold|warm|soft)\s+(?:look|glance|stare|expression|smile|grin)\s+(?:you|on your face|you gave|you threw)\b/.test(t);
+  const authoredUserInterior=/\byou\s+(?:felt|feel|thought|think|wondered|wonder|wanted|want|needed|need|realized|realize|knew|know|hoped|hope|wished|wish|hated|hate|loved|love|liked|like|feared|fear|remembered|remember)\b/.test(t);
+  const inventedUserBodyFact=/\b(?:we both know|you know how you get|how you get when|you get when|you tend to get|your)\b.{0,55}\b(?:blood sugar|blood pressure|glucose|migraine|headache|dizzy|dizziness|faint|fainting|shaky|nauseous|panic attack|anxiety attack|allergic|allergy|medication|meds)\b/.test(t);
+  if(authoredUserAction) issues.push("user_action_or_reaction_puppeteered");
+  if(authoredUserInterior) issues.push("user_inner_state_puppeteered");
+  if(inventedUserBodyFact) issues.push("invented_user_health_or_body_fact");
+
   if(/\b(?:saved|defended|kept) (?:you |your |the )?(?:a )?seat\b|\bdrove across (?:campus|town)\b|\bwaiting (?:for you )?(?:beside|by) (?:his |her |their )?car\b|\bordered (?:an )?extra\b.{0,40}\b(?:your usual|your favorite|for you)\b|\blost bracelet\b/.test(t)) issues.push("romance_first_setup");
   if(/(?:\bwhich one\?|\byour choice[.!?]?|\bwhat do you want to do\?|\bquiet evening or the drive\b|\bstay or go\?|\bcome with me[.!?]?)(?:["”’']\s*)?$/i.test(raw.trim())) issues.push("forced_binary_choice");
   const ending=norm(raw.slice(-650));
