@@ -84,11 +84,41 @@ export function buildCharacterFingerprintPayoffV35313({
     (isRegeneration||list(rejectedResponses).length)?"9) REGENERATION DIVERGENCE: change at least two structural dimensions from rejected output: decision, tactic, emotional emphasis, dialogue opening, NPC use, scene use or outcome.":"9) REGENERATION SAFETY: keep the response structurally specific so alternate branches can truly differ.",
     payoff?"10) PAYOFF DUE: tension has accumulated. Deliver one earned concrete consequence now if the live scene permits it: admission, invitation, refusal, changed access, pursuit, boundary, apology, withdrawal or decision.":"10) PAYOFF CALIBRATION: do not force milestones early, but do not stall once repeated evidence earns a concrete consequence.",
     chargedApproachPending(recentCharacterReplies)?"11) ARRIVAL PAYOFF LOCK: the character deliberately approached because of an active charged social beat. Their first interaction after arriving MUST address, alter or complicate that exact beat. A joke, unrelated observation, NPC anecdote or small talk is not a payoff.":"11) ARRIVAL PAYOFF LOCK: when a character approaches because of jealousy, hurt, attraction, suspicion or another active tension, the arrival must pay off the reason for approaching.",
-    "12) NPC DEFLECTION FIREWALL: supporting NPCs may remain alive in the scene, but they cannot become an escape hatch from the lead interaction. Resolve or advance the active interpersonal beat before pivoting attention to an NPC's unrelated business.",
+    "12) NPC DEFLECTION FIREWALL: supporting NPCs may remain alive in the scene, but they cannot become an escape hatch from the lead interaction. Resolve or advance the active interpersonal beat before pivoting attention to an NPC\'s unrelated business.",
+    "13) INITIATED-CONFRONTATION INTENT LOCK: if the lead deliberately starts, interrupts, follows, isolates, stops, or reopens a charged conversation, they MUST already have a concrete immediate want. They may be conflicted about deeper feelings, but cannot answer a direct what-do-you-want challenge with I don\'t know yet / not sure / nothing / forget it unless visible canon explicitly establishes genuine confusion.",
+    "14) CLARITY AFTER CHALLENGE: when the user says what do you want, what does that mean, drop the game, be serious, say it plainly, or equivalent, answer the substance in ordinary spoken language before any teasing, metaphor, counter-question, or mysterious line.",
+    "15) STYLE ECHO FIREWALL: do not recycle the same delivery choreography across nearby turns. Especially avoid repeated voice/tone dropping, gaze holding/staying locked, stepping closer, easy/steady cadence, or equivalent cosmetic rewrites. Change the conversational tactic, not the adjective.",
     "DIFFERENTIATION TEST: if another lead character's name could replace this one with almost no change, rewrite the decision/disclosure style.",
     "PERSISTENCE: human_behavior_update.character_fingerprint_state may store current jealousy expression, vulnerability defense, conflict tactic, repair style, silence style and latest earned payoff using only visible canon.",
     "AUTHORIZED NPCS="+(list(persistentCast).map(x=>clean(x?.name,80)).filter(Boolean).slice(0,12).join(" | ")||"none")
   ].join("\n");
+}
+
+function directClarityDemand(value=""){
+  return /\b(?:what (?:do|did) you want|what you want|what does (?:that|this) (?:even )?mean|what are you (?:trying to )?say|drop (?:the|your) (?:game|act)|stop (?:playing|dodging|deflecting)|be serious|say it (?:plainly|straight)|just say it|answer me)\b/.test(norm(value));
+}
+function evasiveAfterClarity(value=""){
+  const t=norm(value);
+  return /\b(?:i dont know(?: yet)?|not sure(?: yet)?|nothing|never mind|forget it|does it matter|why do you care|you tell me|figure it out)\b/.test(t)
+    || /\b(?:only one keeping score|if you have to ask|you know what i mean|you know exactly what i mean)\b/.test(t);
+}
+function initiatedChargedBeat(recent=[]){
+  const t=norm(list(recent).slice(-3).join(" "));
+  return /\b(?:outside\. now|come with me|we need to talk|going somewhere|stepped (?:directly )?into (?:your|the) path|blocked (?:your|the) path|followed (?:you|after)|caught up|pulled .* aside|stopped you)\b/.test(t);
+}
+function repeatedDeliveryChoreography(reply="",recent=[]){
+  const family=(v)=>{
+    const t=norm(v); const hits=[];
+    if(/\b(?:voice|tone) (?:drop|drops|dropped|dropping|lower|lowers|lowered|lowering)\b/.test(t))hits.push("lowered_delivery");
+    if(/\b(?:gaze|eyes) (?:stayed|staying|held|holding|locked|fixed)\b/.test(t))hits.push("fixed_gaze");
+    if(/\b(?:easy|steady|smooth) (?:cadence|rhythm|drawl|tone)\b/.test(t))hits.push("performed_cadence");
+    if(/\b(?:stepped|moved) (?:directly )?(?:closer|into .* path)\b/.test(t))hits.push("proximity_move");
+    return hits;
+  };
+  const now=family(reply);
+  if(!now.length)return false;
+  const old=list(recent).slice(-5).flatMap(family);
+  return now.some((x)=>old.filter((y)=>y===x).length>=1);
 }
 
 export function characterFingerprintPayoffIssuesV35313({
@@ -101,6 +131,9 @@ export function characterFingerprintPayoffIssuesV35313({
   const charged=isCharged(latestUserMessage)||isCharged(list(recentCharacterReplies).slice(-2).join(" "));
   const conflict=isConflict(latestUserMessage)||isConflict(list(recentCharacterReplies).slice(-2).join(" "));
   if(charged&&logisticsDeflation(reply))issues.push("charged_scene_logistics_deflation");
+  if(directClarityDemand(latestUserMessage)&&evasiveAfterClarity(reply))issues.push("direct_clarity_demand_evaded");
+  if(directClarityDemand(latestUserMessage)&&initiatedChargedBeat(recentCharacterReplies)&&!resolutionVector(reply)&&words(reply).length<34)issues.push("initiated_confrontation_without_intent_payoff");
+  if(repeatedDeliveryChoreography(reply,recentCharacterReplies))issues.push("repeated_delivery_choreography");
   if(genericJealousy(reply)&&(Number(emotion?.jealousy)||0)>=20)issues.push("generic_jealousy_interrogation");
   if(conflict&&list(recentCharacterReplies).slice(-5).filter(isConflict).length>=3&&!resolutionVector(reply))issues.push("conflict_loop_without_development");
   if(tensionAccumulated(recentCharacterReplies,emotion,relationshipState)&&!payoffSignal(reply)&&words(reply).length>22)issues.push("earned_scene_payoff_stalled");
