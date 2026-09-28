@@ -2482,19 +2482,15 @@ RULES
 
   const bestEffort = rejectedInstantCandidates
     .filter((item)=>String(item?.opening || "").trim())
-    .map((item)=>{
-      const opening = String(item.opening || "").trim();
-      const words = opening.split(/\s+/).filter(Boolean).length;
-      return {
-        ...item,
-        hardBlocks: [...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea), ...instantStoryPremiseGateIssues(opening, safeDraft)],
-        similarity: instantStoryMaxSimilarityV3539(opening, recentOpenings),
-        deliverable: words >= 45 && words <= 240 && /[.!?…]["'”’)]?$/.test(opening) && !instantStoryHasTemplateLeak(opening),
-      };
-    })
-    .filter((item)=>item.deliverable && item.hardBlocks.length === 0)
-    // Editorial/style/freshness issues are warnings here, not a dead button.
-    // Prefer the least repetitive complete candidate that passed every hard block.
+    .filter((item)=>instantStoryCandidateUsableV35290(item.opening, item.finishReason, safeDraft))
+    .map((item)=>({
+      ...item,
+      hardBlocks: [...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea), ...instantStoryPremiseGateIssues(item.opening, safeDraft)],
+      similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
+    }))
+    .filter((item)=>item.hardBlocks.length === 0)
+    // Never dead-end the button merely because a safe opening shares character DNA.
+    // Prefer the least similar safe candidate, then the one with fewer soft issues.
     .sort((a,b)=>(a.similarity-b.similarity) || ((a.issueCount || 99) - (b.issueCount || 99)))[0] || null;
 
   if (bestEffort?.opening) {
