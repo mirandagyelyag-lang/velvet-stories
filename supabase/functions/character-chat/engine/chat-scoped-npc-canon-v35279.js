@@ -53,7 +53,9 @@ export function buildChatScopedNpcCanonV35279({
     "HARD RULE: do NOT invent, generate, assign, reveal, or reuse ANY other human/character proper name. No surprise Chloe, Madison, Tyler, ex, roommate, teammate, professor, bartender, sibling, friend, date, rival or stranger may receive a name unless that exact person was created by the user.",
     "SCOPE LAW: character-scope NPCs are canon members of this character's world and may recur naturally across this character's separate chats. Conversation-scope NPCs belong ONLY to this story and must never leak into another conversation.",
     "CHARACTER ISOLATION: a character-scope NPC belongs only to the character it was created for. Do not reuse that NPC for a different lead character unless the creator separately creates them there.",
-    "ANONYMOUS PEOPLE ARE ALLOWED. When the world needs someone who is not in the approved cast, keep them descriptive and unnamed: 'a girl from his class', 'one of his teammates', 'the bartender', 'a professor', 'someone from the party'. Do not later give that anonymous person a name unless the user creates the NPC.",
+    "ANONYMOUS PEOPLE ARE ALLOWED. When the world needs someone who is not in the approved cast, keep them descriptive and unnamed: \'a girl from his class\', \'one of his teammates\', \'the bartender\', \'a professor\', \'someone from the party\'. Do not later give that anonymous person a name unless the user creates the NPC.",
+    "NO DISEMBODIED SPEAKERS: an anonymous NPC may not suddenly speak as bare he/she/they with no visible introduction or role anchor. Establish who is speaking in the same beat (for example, one of his friends at the doorway) before their dialogue. Never make the reader reverse-engineer who just spoke.",
+    "NO RETROACTIVE BAPTISM: an anonymous person from an earlier turn may not acquire an approved NPC name later merely because the model decides they were that NPC. If Victoria is going to speak, identify Victoria when she enters/speaks the first time. Identity must be established forward, never patched backward.",
     "NO NAME PROMOTION: do not turn a role label into initials, a nickname, first name, surname, pet name, handle or convenient recurring identity. A recurring anonymous role stays anonymous until user-created.",
     "OLD TEXT DOES NOT AUTHORIZE A NAME. If older generated text, compressed memory, stale cast state, consequence, rumor or hidden note contains a person-name that is not on the current allowed list, treat that name as quarantined legacy text. Do not repeat, revive, connect, remember or propagate it.",
     "USER MESSAGE DOES NOT AUTO-CREATE AN NPC. Casually mentioning an unapproved name does not add it to canon. Only the NPC editor creates named supporting characters.",
@@ -97,7 +99,7 @@ export function filterAuthorizedConnectionUpdatesV35279(connectionUpdates=[],{
 }
 
 export function chatScopedNpcCanonV35279Issues({
-  reply="",allowedNames=[],castUpdates=[],connectionUpdates=[]
+  reply="",allowedNames=[],castUpdates=[],connectionUpdates=[],recentCharacterReplies=[]
 }={}){
   const issues=[];
   const allowed=new Set(list(allowedNames).map(norm).filter(Boolean));
@@ -122,6 +124,26 @@ export function chatScopedNpcCanonV35279Issues({
   const speakerLabels=[...raw.matchAll(/(?:^|\n)\s*([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})?)\s*:/g)].map((m)=>m[1]);
   if([...introduced,...speakerLabels].some((name)=>!allowed.has(norm(name)))){
     issues.push("unapproved_named_npc_visible");
+  }
+
+  // A new supporting speaker must be legible at the moment they enter. Bare
+  // pronoun attribution after dialogue ("There you are," she said) creates a
+  // phantom person whose identity can be rewritten on the following turn.
+  const startsWithBareNpcSpeaker=/^\s*["“][^"”]{1,180}["”][,\s]*(?:he|she|they)\s+(?:said|called|asked|added|cut in|replied)\b/i.test(raw);
+  const anchoredAnonymous=/\b(?:a|an|one of|the)\s+(?:girl|guy|boy|woman|man|friend|classmate|teammate|coworker|bartender|server|student|guest|host|roommate|professor|neighbor|neighbour|someone|person)\b/i.test(raw);
+  const approvedNamedVisible=[...allowed].some((name)=>name&&norm(raw).includes(name));
+  if(startsWithBareNpcSpeaker&&!anchoredAnonymous&&!approvedNamedVisible){
+    issues.push("npc_disembodied_speaker");
+  }
+
+  // If the previous generated beat left a person anonymous, do not silently
+  // identify that same pronoun-only person as a named NPC on the next turn.
+  const recent=list(recentCharacterReplies).slice(-1).join(" ");
+  const priorBare=/["”][,\s]*(?:he|she|they)\s+(?:said|called|asked|added|cut in|replied)\b/i.test(recent)
+    && !/\b(?:a|an|one of|the)\s+(?:girl|guy|boy|woman|man|friend|classmate|teammate|coworker|bartender|server|student|guest|host|roommate|professor|neighbor|neighbour|someone|person)\b/i.test(recent);
+  const namedNow=[...allowed].filter((name)=>name&&norm(raw).includes(name));
+  if(priorBare&&namedNow.length&&/\b(?:he|she|they|her|him|their)\b/i.test(raw)){
+    issues.push("npc_retroactive_identity_assignment");
   }
 
   return [...new Set(issues)];
