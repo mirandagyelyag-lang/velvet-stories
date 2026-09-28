@@ -2179,11 +2179,20 @@ function instantStorySimilarityV3539(a = "", b = "") {
   return union ? overlap / union : 0;
 }
 
-function instantStoryTooSimilarV3539(opening = "", recentOpenings = []) {
-  return (Array.isArray(recentOpenings) ? recentOpenings : [])
+function instantStoryMaxSimilarityV3539(opening = "", recentOpenings = []) {
+  const scores = (Array.isArray(recentOpenings) ? recentOpenings : [])
+    .slice(-5)
     .map((item) => String(item || "").trim())
     .filter(Boolean)
-    .some((item) => instantStorySimilarityV3539(opening, item) >= 0.52);
+    .map((item) => instantStorySimilarityV3539(opening, item));
+  return scores.length ? Math.max(...scores) : 0;
+}
+
+function instantStoryTooSimilarV3539(opening = "", recentOpenings = []) {
+  // Same-character openings naturally reuse world/relationship vocabulary.
+  // Reject only strong lexical echoes; scene-family + semantic gates separately
+  // catch repeated narrative skeletons.
+  return instantStoryMaxSimilarityV3539(opening, recentOpenings) >= 0.66;
 }
 
 async function handleInstantStory({ apiKey, draft, idea, variationKey = "", recentSceneSeeds = [], recentOpenings = [] }) {
@@ -2477,10 +2486,12 @@ RULES
     .map((item)=>({
       ...item,
       hardBlocks: [...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea), ...instantStoryPremiseGateIssues(item.opening, safeDraft)],
+      similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
     }))
     .filter((item)=>item.hardBlocks.length === 0)
-    .filter((item)=>!instantStoryTooSimilarV3539(item.opening, recentOpenings))
-    .sort((a,b)=>(a.issueCount || 99) - (b.issueCount || 99))[0] || null;
+    // Never dead-end the button merely because a safe opening shares character DNA.
+    // Prefer the least similar safe candidate, then the one with fewer soft issues.
+    .sort((a,b)=>(a.similarity-b.similarity) || ((a.issueCount || 99) - (b.issueCount || 99)))[0] || null;
 
   if (bestEffort?.opening) {
     return json({
