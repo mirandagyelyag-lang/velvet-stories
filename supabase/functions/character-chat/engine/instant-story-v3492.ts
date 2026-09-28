@@ -32,6 +32,50 @@ export function instantStoryQualityIssues(opening:unknown,draft:Record<string,un
   return [...new Set(issues)];
 }
 
+
+function premiseNorm(value:unknown){return norm(value).replace(/[^a-z0-9' ]+/g," ");}
+
+function leadHasConcreteWant(opening:unknown){
+  const t=premiseNorm(opening);
+  const desire=/\b(?:wants?|wanted|decides?|decided|chooses?|chose|refuses?|refused|stays?|stayed|leaves?|left|invites?|invited|asks?|asked|tells?|told|admits?|admitted|cancels?|cancelled|changes?|changed|commits?|committed|keeps?|kept|drops?|dropped|turns? down|turned down|gives? up|gave up)\b/.test(t);
+  const consequence=/\b(?:instead|because|even though|rather than|cost|risk|miss|lose|give up|cancel|leave|stay|choose|pick|turn down|before|after|despite|but)\b/.test(t);
+  return desire&&consequence;
+}
+
+function disposableNpcRescue(opening:unknown){
+  const t=premiseNorm(opening);
+  const nuisance=/\b(?:boring|tedious|drone|droning|trapped|cornered|wouldnt stop talking|won't stop talking|wont stop talking|conversation.*too long|cry for help)\b/.test(t);
+  const rescue=/\b(?:escape|rescue|save you|saving you|get you out|drag you away|pull you away|stepped between|inserted himself|inserted herself|cut .* off|interrupted .* mid sentence)\b/.test(t);
+  const realPressure=/\b(?:jealous|jealousy|rumor|date|dating|kiss|ex|leave with|leaving with|invited|turned .* down|chose|choice|promise|secret|admit|confess|refuse|stay|cancel|risk|consequence)\b/.test(t);
+  return nuisance&&rescue&&!realPressure;
+}
+
+function hollowEscapeEnding(opening:unknown){
+  const t=premiseNorm(opening);
+  const escape=/\b(?:ready to escape|want to escape|lets get out of here|let's get out of here|come with me|lets go|let's go|save you from|rescue you from)\b/.test(t);
+  const consequence=/\b(?:because|instead|even though|cancel|miss|lose|risk|turn down|refuse|stay|leave with|choose|chose|decision|promise|admit|reveal|jealous)\b/.test(t);
+  return escape&&!consequence;
+}
+
+function genericInterchangeableLead(opening:unknown,draft:Record<string,unknown>={}){
+  const t=premiseNorm(opening);
+  const profile=premiseNorm(Object.values(draft||{}).join(" "));
+  const generic=/\b(?:effortless grin|infuriating grin|theatrical boredom|leaning against|drifted over|seamlessly|apologies|second opinion|cry for help|ready to escape)\b/.test(t);
+  const profileSignals=profile.split(/\s+/).filter((w)=>w.length>=7&&!["character","relationship","personality","description","scenario"].includes(w));
+  const distinctive=profileSignals.some((w)=>t.includes(w));
+  return generic&&!distinctive;
+}
+
+export function instantStoryPremiseGateIssues(opening:unknown,draft:Record<string,unknown>={}){
+  const issues:string[]=[];
+  const raw=String(opening||"");
+  if(disposableNpcRescue(raw)) issues.push("premise_disposable_npc_rescue");
+  if(hollowEscapeEnding(raw)) issues.push("premise_hollow_escape");
+  if(genericInterchangeableLead(raw,draft)) issues.push("premise_interchangeable_character");
+  if(!leadHasConcreteWant(raw)) issues.push("premise_no_concrete_character_want");
+  return [...new Set(issues)];
+}
+
 export function instantStoryLooksComplete(opening: unknown, finishReason: unknown = "", draft:Record<string,unknown>={}) {
   const text = String(opening || "").trim();
   const words = text.split(/\s+/).filter(Boolean);
@@ -53,6 +97,7 @@ export function instantStoryLooksComplete(opening: unknown, finishReason: unknow
   if (/\b(?:i need you for something|something changed|got a minute|didn'?t think you'?d come)\b/i.test(text)) return false;
   if (instantStoryHasTemplateLeak(text)) return false;
   if (instantStoryQualityIssues(text,draft).length) return false;
+  if (instantStoryPremiseGateIssues(text,draft).length) return false;
 
   return true;
 }
