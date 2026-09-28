@@ -2514,6 +2514,12 @@ RULES
       hardBlocks: [
         ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
         ...instantStoryPremiseGateIssues(item.opening, safeDraft),
+        ...characterIdentityGateIssuesV35321({
+          reply: item.opening,
+          character: safeDraft,
+          recentCharacterReplies: recentOpenings,
+          opening: true,
+        }),
       ],
       similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
     }))
