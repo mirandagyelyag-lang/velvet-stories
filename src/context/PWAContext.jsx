@@ -84,7 +84,6 @@ function WebPWAProvider({ children }) {
   const [checkingForUpdate, setCheckingForUpdate] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateProblem, setUpdateProblem] = useState("");
-  const autoUpdateStartedRef = useRef(false);
 
   const {
     offlineReady: [offlineReady, setOfflineReady],
@@ -141,29 +140,9 @@ function WebPWAProvider({ children }) {
       }
       try { await forceServiceWorkerNetworkCheck(); } catch {}
 
-      // v3.53.15: a web PWA must not stay stranded on an older Velvet bundle.
-      // Once the network confirms a newer server build, apply it automatically.
-      if (available && !autoUpdateStartedRef.current) {
-        autoUpdateStartedRef.current = true;
-        setUpdating(true);
-        try {
-          localStorage.setItem(UPDATE_PENDING_KEY, JSON.stringify({
-            target: remote,
-            from: VELVET_VERSION,
-            at: Date.now(),
-          }));
-        } catch {}
-        try {
-          await clearVelvetCaches();
-          await updateServiceWorker(true);
-          setNeedRefresh(false);
-          window.setTimeout(() => window.location.reload(), 650);
-        } catch (updateError) {
-          autoUpdateStartedRef.current = false;
-          setUpdating(false);
-          setUpdateProblem(updateError?.message || "Velvet detected an update but could not apply it automatically.");
-        }
-      }
+      // v3.53.26: updates are user-confirmed again.
+      // Detection sets serverUpdateAvailable so PWAStatus stays visible until
+      // the user explicitly taps Update now.
       return { available, version: remote };
     } catch (error) {
       if (!silent) setUpdateProblem(error?.message || "Could not check for updates.");
