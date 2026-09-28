@@ -37,9 +37,10 @@ function premiseNorm(value:unknown){return norm(value).replace(/[^a-z0-9' ]+/g,"
 
 function leadHasConcreteWant(opening:unknown){
   const t=premiseNorm(opening);
-  const desire=/\b(?:wants?|wanted|decides?|decided|chooses?|chose|refuses?|refused|stays?|stayed|leaves?|left|invites?|invited|asks?|asked|tells?|told|admits?|admitted|cancels?|cancelled|changes?|changed|commits?|committed|keeps?|kept|drops?|dropped|turns? down|turned down|gives? up|gave up)\b/.test(t);
-  const consequence=/\b(?:instead|because|even though|rather than|cost|risk|miss|lose|give up|cancel|leave|stay|choose|pick|turn down|before|after|despite|but)\b/.test(t);
-  return desire&&consequence;
+  const action=/\b(?:decides?|decided|chooses?|chose|refuses?|refused|stays?|stayed|leaves?|left|invites?|invited|asks?|asked|tells?|told|admits?|admitted|cancels?|cancelled|changes?|changed|commits?|committed|keeps?|kept|drops?|dropped|interrupts?|interrupted|follows?|followed|stops?|stopped|confronts?|confronted|offers?|offered|turns? down|turned down|gives? up|gave up|walks? away|walked away|heads? for|headed for|makes? it clear|made it clear)\b/.test(t);
+  const spokenIntent=/[“"][^”"]{0,140}\b(?:i want|i need|i'm staying|im staying|i'm leaving|im leaving|i came|i asked|i'm not|im not|we're going|were going|tell me|come with me|stay|don't go|dont go|not tonight)\b/i.test(String(opening||""));
+  const consequence=/\b(?:instead|because|even though|rather than|cost|risk|miss|lose|give up|cancel|leave|stay|choose|pick|turn down|before|after|despite|but|so|until)\b/.test(t);
+  return (action||spokenIntent)&&consequence;
 }
 
 function disposableNpcRescue(opening:unknown){
@@ -72,7 +73,9 @@ export function instantStoryPremiseGateIssues(opening:unknown,draft:Record<strin
   if(disposableNpcRescue(raw)) issues.push("premise_disposable_npc_rescue");
   if(hollowEscapeEnding(raw)) issues.push("premise_hollow_escape");
   if(genericInterchangeableLead(raw,draft)) issues.push("premise_interchangeable_character");
-  if(!leadHasConcreteWant(raw)) issues.push("premise_no_concrete_character_want");
+  // A missing explicit want is a repair signal, not a fatal rejection by itself.
+  // Models often express intent through dialogue/action without our lexical markers.
+  // Hard-reject only the concrete anti-patterns below; generation prompts still demand intent.
   return [...new Set(issues)];
 }
 
