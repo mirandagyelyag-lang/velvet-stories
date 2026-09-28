@@ -87,7 +87,8 @@ export function buildCharacterFingerprintPayoffV35313({
     "12) NPC DEFLECTION FIREWALL: supporting NPCs may remain alive in the scene, but they cannot become an escape hatch from the lead interaction. Resolve or advance the active interpersonal beat before pivoting attention to an NPC\'s unrelated business.",
     "13) INITIATED-CONFRONTATION INTENT LOCK: if the lead deliberately starts, interrupts, follows, isolates, stops, or reopens a charged conversation, they MUST already have a concrete immediate want. They may be conflicted about deeper feelings, but cannot answer a direct what-do-you-want challenge with I don\'t know yet / not sure / nothing / forget it unless visible canon explicitly establishes genuine confusion.",
     "14) CLARITY AFTER CHALLENGE: when the user says what do you want, what does that mean, drop the game, be serious, say it plainly, or equivalent, answer the substance in ordinary spoken language before any teasing, metaphor, counter-question, or mysterious line.",
-    "15) STYLE ECHO FIREWALL: do not recycle the same delivery choreography across nearby turns. Especially avoid repeated voice/tone dropping, gaze holding/staying locked, stepping closer, easy/steady cadence, or equivalent cosmetic rewrites. Change the conversational tactic, not the adjective.",
+    "15) INITIATIVE OWNERSHIP: if the lead initiated, interrupted, pulled the user aside, invited them away, or otherwise created the private interaction, do not immediately rewrite history by teasing or accusing the user as though they chased him, missed him, wanted his attention, or could not stand competition. The lead owns the move he just made.",
+    "16) STYLE ECHO FIREWALL: do not recycle the same delivery choreography across nearby turns. Especially avoid repeated voice/tone dropping, gaze holding/staying locked, stepping closer, easy/steady cadence, or equivalent cosmetic rewrites. Change the conversational tactic, not the adjective.",
     "DIFFERENTIATION TEST: if another lead character's name could replace this one with almost no change, rewrite the decision/disclosure style.",
     "PERSISTENCE: human_behavior_update.character_fingerprint_state may store current jealousy expression, vulnerability defense, conflict tactic, repair style, silence style and latest earned payoff using only visible canon.",
     "AUTHORIZED NPCS="+(list(persistentCast).map(x=>clean(x?.name,80)).filter(Boolean).slice(0,12).join(" | ")||"none")
@@ -105,6 +106,12 @@ function evasiveAfterClarity(value=""){
 function initiatedChargedBeat(recent=[]){
   const t=norm(list(recent).slice(-3).join(" "));
   return /\b(?:outside\. now|come with me|we need to talk|going somewhere|stepped (?:directly )?into (?:your|the) path|blocked (?:your|the) path|followed (?:you|after)|caught up|pulled .* aside|stopped you)\b/.test(t);
+}
+function initiativeReversalBlame(reply="",recent=[]){
+  const prior=norm(list(recent).slice(-2).join(" "));
+  const leadInitiated=/\b(?:come with me|coming outside with me|outside with me|follow me|we need to talk|pulled .* aside|caught .* sleeve|stepped .* into your space|interrupted|abandoning whatever conversation)\b/.test(prior);
+  const blamesUser=/\b(?:couldn'?t stand the competition|miss my company|you followed me|you came after me|you wanted my attention|jealous|trying to get my attention)\b/.test(norm(reply));
+  return leadInitiated&&blamesUser;
 }
 function repeatedDeliveryChoreography(reply="",recent=[]){
   const family=(v)=>{
@@ -134,6 +141,7 @@ export function characterFingerprintPayoffIssuesV35313({
   if(directClarityDemand(latestUserMessage)&&evasiveAfterClarity(reply))issues.push("direct_clarity_demand_evaded");
   if(directClarityDemand(latestUserMessage)&&initiatedChargedBeat(recentCharacterReplies)&&!resolutionVector(reply)&&words(reply).length<34)issues.push("initiated_confrontation_without_intent_payoff");
   if(repeatedDeliveryChoreography(reply,recentCharacterReplies))issues.push("repeated_delivery_choreography");
+  if(initiativeReversalBlame(reply,recentCharacterReplies))issues.push("initiative_reversal_blame");
   if(genericJealousy(reply)&&(Number(emotion?.jealousy)||0)>=20)issues.push("generic_jealousy_interrogation");
   if(conflict&&list(recentCharacterReplies).slice(-5).filter(isConflict).length>=3&&!resolutionVector(reply))issues.push("conflict_loop_without_development");
   if(tensionAccumulated(recentCharacterReplies,emotion,relationshipState)&&!payoffSignal(reply)&&words(reply).length>22)issues.push("earned_scene_payoff_stalled");
