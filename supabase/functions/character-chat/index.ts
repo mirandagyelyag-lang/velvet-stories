@@ -2617,7 +2617,7 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
 
   const [characterResult, personaResult, messagesResult, memoriesResult, loreResult, groupCharactersResult] = await Promise.all([
     supabase.from("characters")
-      .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, voice_vocabulary, humor_style, conflict_style, affection_style, verbal_tells, voice_avoidances, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
+      .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, voice_vocabulary, humor_style, conflict_style, affection_style, verbal_tells, voice_avoidances, boundaries, scenario, example_dialogue, response_length, narration_style, first_message, emotional_dna")
       .eq("id", conversation.character_id).eq("user_id", userId).single(),
     conversation.persona_id
       ? supabase.from("personas")
@@ -2644,7 +2644,7 @@ async function loadContext({ supabase, conversationId, userId }): Promise<Loaded
       : Promise.resolve({ data: [], error: null }),
     groupCharacterIds.length > 1
       ? supabase.from("characters")
-        .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, voice_vocabulary, humor_style, conflict_style, affection_style, verbal_tells, voice_avoidances, boundaries, scenario, example_dialogue, response_length, narration_style, first_message")
+        .select("id, name, role, description, personality, relationship, world, character_values, fears, habits, contradictions, core_motivation, emotional_defense, softening_triggers, growth_direction, speech_style, voice_vocabulary, humor_style, conflict_style, affection_style, verbal_tells, voice_avoidances, boundaries, scenario, example_dialogue, response_length, narration_style, first_message, emotional_dna")
         .in("id", groupCharacterIds).eq("user_id", userId)
       : Promise.resolve({ data: [], error: null }),
   ]);
