@@ -33,6 +33,27 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
 
   if(name==="rowan hayes"){
     if(/\byou feel\b.{0,90}\bbecause\b|\bwhat youre really feeling\b|\blet me tell you what you feel\b/.test(t))issues.push("rowan_observation_became_therapy");
+
+    // Rowan's creator premise is near-family intimacy: he belongs naturally around
+    // the user's family and knows the household rhythm. Openings should use that
+    // earned familiarity as relationship texture, not flatten him into a generic
+    // attentive campus boy. Do not require literal family mentions every time.
+    if(opening){
+      const source=norm([
+        character?.relationship,
+        character?.description,
+        character?.personality,
+        character?.scenario,
+        character?.world,
+        character?.firstMessage,
+        character?.first_message,
+      ].filter(Boolean).join(" "));
+      const familyPremise=/\b(?:like (?:a )?brother|practically (?:a )?brother|family friend|grew up|childhood|famil(?:y|ies)|parents?|mom|mother|dad|father|sibling|brother)\b/.test(source);
+      const genericCampusCare=/\b(?:campus|quad|lecture|class|library)\b/.test(t)&&
+        /\b(?:umbrella|coffee|snack|paper bag|walk|walking|forgot to eat|forget to eat)\b/.test(t);
+      const earnedFamiliarity=/\b(?:your (?:mom|mother|dad|father|parents?|family|sister|brother)|our families|your house|your place|back home|since we were|grew up|usual|already knew|didnt need to ask|doesnt need to ask)\b/.test(t);
+      if(familyPremise&&genericCampusCare&&!earnedFamiliarity)issues.push("rowan_family_bond_flattened_to_generic_campus_care");
+    }
   }
 
   if(name==="alexander bennett"){
