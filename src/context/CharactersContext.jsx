@@ -206,7 +206,28 @@ export function CharactersProvider({ children }) {
 
     if (error) throw error;
 
-    const updatedCharacter = convertDatabaseCharacter(data);
+    // Save integrity: never let the UI claim success while the persisted
+    // character still contains an older profile. Re-read the canonical row
+    // after the write and verify the narrative fields Instant Story consumes.
+    const { data: persisted, error: verifyError } = await supabase
+      .from("characters")
+      .select("*")
+      .eq("id", characterId)
+      .single();
+    if (verifyError) throw verifyError;
+
+    const criticalFields = [
+      "name", "role", "description", "personality", "relationship", "world",
+      "character_values", "habits", "growth_direction", "scenario", "first_message",
+    ];
+    const mismatchedFields = criticalFields.filter((field) =>
+      String(persisted?.[field] ?? "").trim() !== String(databaseCharacter?.[field] ?? "").trim()
+    );
+    if (mismatchedFields.length) {
+      throw new Error(`Velvet couldn't verify the saved character fields: ${mismatchedFields.join(", ")}. Your previous profile is still intact.`);
+    }
+
+    const updatedCharacter = convertDatabaseCharacter(persisted);
     setCharacters((currentCharacters) =>
       currentCharacters.map((character) =>
         character.id === characterId ? updatedCharacter : character
