@@ -92,8 +92,11 @@ function compactNpcState(persistentCast=[], castConnections=[]){
       .map(c=>text(`${c.from_name}→${c.to_name}: ${c.relationship||""}`,180));
     return {
       name,
-      role:text(npc?.role,120),
-      relationship:text(npc?.relationship,180),
+      identity_spine:{
+        role:text(npc?.role,160),
+        relationship:text(npc?.relationship,240),
+        personality:text(npc?.personality_note,240),
+      },
       current_dynamic:text(npc?.current_dynamic,180),
       goal:text(npc?.goals,180),
       knowledge:text(npc?.knowledge,180),
@@ -144,7 +147,7 @@ export function buildUnifiedNarrativeStateV35312({
     `CHARACTER VOICE DNA: ${text(voiceDNA,1500)||text(character?.name,100)||"character profile"}.`,
     "1) CONSEQUENCES SURVIVE SCENE CHANGES. A new room, day or activity does not clear hurt, jealousy, promises, refusals, attraction, awkwardness, repair debt, plans or knowledge. Carry the strongest unresolved pressure behaviorally until canon resolves or redirects it.",
     "2) NO PERSONALITY RESET. Write the decision, attention, disclosure level and wording this specific character would choose. Do not fall back to generic agreeable lines, therapist language, polished banter, or a neutral assistant voice.",
-    "3) NPCs HAVE STATE. Authorized NPCs keep their own goals, loyalties, knowledge, irritation, attraction, availability and relationships. Do not flatten them into props for the lead. Never invent a new proper-name NPC.",
+    "3) NPC IDENTITY SPINE + LIVE STATE. For each authorized NPC, role + creator-authored relationship + personality are the permanent identity spine; goals + knowledge + current_dynamic + status + earned feelings are live state. Reconstruct the spine whenever the NPC appears, especially after absence/time skips. Live state can evolve but must remain compatible with the spine. Do not flatten NPCs into props, swap their narrative jobs, or invent a new proper-name NPC.",
     "4) RELATIONSHIP IS MULTI-AXIS. Attraction, trust, jealousy, resentment, comfort/vulnerability and commitment can move independently. One intense beat cannot magically raise them all. Preserve asymmetry and repair debt.",
     "5) REPEAT MEANING, NOT STRUCTURE. Do not recycle the same scene family, jealousy choreography, kitchen/food beat, car-key beat, hallway intercept, generic party triangle, or identical emotional beat merely with different nouns.",
     "6) INSTANT STORY MEMORY. Openings should rotate slices of the character's life and social ecosystem. A preferred atmosphere may recur, but not the same narrative skeleton twice in a short window.",
