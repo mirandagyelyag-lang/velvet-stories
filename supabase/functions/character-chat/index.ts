@@ -20,7 +20,7 @@ import { proseIntelligenceV345Issues, sanitizeProseIntelligenceV345Reply } from 
 import { generationOrchestratorV346Issues, sanitizeGenerationOrchestratorV346Reply } from "./engine/generation-orchestrator-v346.ts";
 import { recoveryIntegrityV347Issues, sanitizeRecoveryIntegrityV347Reply } from "./engine/recovery-integrity-v347.ts";
 import { performanceMobileV348Issues } from "./engine/performance-mobile-v348.ts";
-import { instantStoryHasTemplateLeak, instantStoryLooksComplete, instantStoryQualityIssues } from "./engine/instant-story-v3492.ts";
+import { instantStoryHasTemplateLeak, instantStoryLooksComplete, instantStoryQualityIssues, instantStoryPremiseGateIssues } from "./engine/instant-story-v3492.ts";
 import { instantStorySceneFamily, instantStorySceneSeed } from "./engine/instant-story-diversity-v35245.ts";
 import { buildVoiceAuditDirectiveV34911, voiceAuditV34911Issues } from "./engine/character-voice-audit-v34911.ts";
 import { buildHumanCognitionBriefV34930, humanCognitionV34930Issues } from "./engine/human-cognition-pipeline-v34930.ts";
@@ -2234,7 +2234,7 @@ LIVING OPENING ENGINE 3.53.13
 - FOOD IS NOT A RELATIONSHIP ENGINE: do not use muffins, coffee, takeout, snacks, favorite orders, or “eat this” caretaking as the default way to show closeness unless food is genuinely central to the creator-defined premise.
 - NO GENERIC CONFLICT MACHINE: do not default to screenshots, anonymous messages, somebody lying, “start again”, accusations, hidden destinations, mysterious trunks, or secret deliveries just to manufacture stakes.
 - NO FAKE AUTHORITY: do not invent a coach, boss, professor, police officer, dean, department, parent, team rule, or institutional punishment unless the profile/opening/world actually establishes that authority as relevant.
-- CHARACTER INITIATIVE: the lead character should make at least one concrete choice or move that gives the scene direction. Do not finish by making the user choose A/B, explain a mystery they never created, or carry the whole plot.
+- PREMISE GATE: before writing, know what the lead character concretely wants in THIS scene and what their choice costs, risks, gives up, exposes, or changes. A pleasant interruption is not a premise.\n- NO DISPOSABLE-NPC RESCUE: do not create a boring/annoying stranger solely so the lead can interrupt, rescue the user, or offer an escape. A third person may matter only if their presence creates a real social/relationship consequence.\n- CHARACTER-SPECIFIC PRESSURE: the opening must contain at least one choice or pressure that would change materially if a different Velvet character replaced the lead. Generic charm, teasing, rescue, eye contact, or an invitation are not enough.\n- CHARACTER INITIATIVE: the lead character should make at least one concrete choice or move that gives the scene direction. Do not finish by making the user choose A/B, explain a mystery they never created, or carry the whole plot.
 - RELATIONSHIP STAGE: preserve the configured dynamic. Attraction can color attention and choices, but do not turn it into instant confession, ownership, a random love triangle, or automatic physical familiarity.
 - WORLD STAYS ALIVE: if there is a group, party, team, family, workplace or campus around them, let it continue naturally. Do not make every opening collapse into a private two-person confrontation.
 - DIALOGUE SHOULD SOUND SPOKEN. No therapy language, quote-card monologues, cinematic jaw/eye choreography, ominous “the air changed” writing, or narration explaining what every look means.
@@ -2296,6 +2296,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const finishReason = String(candidate?.finishReason || "");
       const anchorIssues = instantStoryOpeningAnchorIssuesV35289(opening, safeDraft, cleanIdea);
       const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
+      const premiseIssues = instantStoryPremiseGateIssues(opening, safeDraft);
       const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
       const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
       const identityIssuesV35321 = characterIdentityGateIssuesV35321({ reply: opening, character: safeDraft, recentCharacterReplies: recentOpenings, opening: true });
@@ -2313,8 +2314,8 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       // Lexical family detection can misread a valid semantic continuation (for example,
       // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
       // diagnostics/repair context, but never reject an otherwise valid opening for it.
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
-        const rejectionReasons = [...qualityIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
+        const rejectionReasons = [...qualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
         rejectedInstantCandidates.push({
           opening,
           model,
@@ -2325,6 +2326,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
         console.warn("[character-chat] instant story rejected by conflict-first/opening-DNA quality gate", {
           anchorIssues,
           qualityIssues,
+          premiseIssues,
           groundingIssues,
           naturalismIssues,
           model,
@@ -2443,6 +2445,7 @@ RULES
       const rescueGroundingIssues = instantStoryGroundingIssuesV35292(rescueOpening, safeDraft, cleanIdea);
       const rescueNaturalismIssues = instantStoryNaturalismIssuesV35295(rescueOpening, safeDraft, cleanIdea);
       const rescueHardBlocks = instantStoryHardBlockIssuesV35298(rescueOpening, safeDraft, cleanIdea);
+      const rescuePremiseIssues = instantStoryPremiseGateIssues(rescueOpening, safeDraft);
       const rescueIdentityIssuesV35321 = characterIdentityGateIssuesV35321({ reply: rescueOpening, character: safeDraft, recentCharacterReplies: recentOpenings, opening: true });
       const rescueSemanticIssues = semanticStoryMomentumIssues({
         reply: rescueOpening,
@@ -2451,7 +2454,7 @@ RULES
         opening: true,
       });
       const rescueTooSimilar = instantStoryTooSimilarV3539(rescueOpening, recentOpenings);
-      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescueIdentityIssuesV35321.length && !rescueSemanticIssues.length && !rescueTooSimilar) {
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescuePremiseIssues.length && !rescueIdentityIssuesV35321.length && !rescueSemanticIssues.length && !rescueTooSimilar) {
         return json({
           opening: rescueOpening,
           source: "ai_rescue",
@@ -2471,7 +2474,7 @@ RULES
     .filter((item)=>instantStoryCandidateUsableV35290(item.opening, item.finishReason, safeDraft))
     .map((item)=>({
       ...item,
-      hardBlocks: instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
+      hardBlocks: [...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea), ...instantStoryPremiseGateIssues(item.opening, safeDraft)],
     }))
     .filter((item)=>item.hardBlocks.length === 0)
     .filter((item)=>!instantStoryTooSimilarV3539(item.opening, recentOpenings))
@@ -2525,6 +2528,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
       const emergencyOpening = extractCandidateText(emergencyData).trim();
       const emergencyFinish = String(emergencyData?.candidates?.[0]?.finishReason || "");
       const emergencyHardBlocks = instantStoryHardBlockIssuesV35298(emergencyOpening, safeDraft, cleanIdea);
+      const emergencyPremiseIssues = instantStoryPremiseGateIssues(emergencyOpening, safeDraft);
       const emergencyQuality = instantStoryQualityIssues(emergencyOpening, safeDraft)
         .filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
       const emergencySemanticIssues = semanticStoryMomentumIssues({
@@ -2537,6 +2541,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
         instantStoryCandidateUsableV35290(emergencyOpening, emergencyFinish, safeDraft) &&
         !emergencyHardBlocks.length &&
         !emergencyQuality.length &&
+        !emergencyPremiseIssues.length &&
         !emergencySemanticIssues.length &&
         !instantStoryTooSimilarV3539(emergencyOpening, recentOpenings)
       ) {
