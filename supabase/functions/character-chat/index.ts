@@ -2574,8 +2574,30 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
     rejectedInstantCandidates.flatMap((item)=>Array.isArray(item?.rejectionReasons) ? item.rejectionReasons : [])
   )].slice(0, 8);
 
+  const lastUsableDraft = rejectedInstantCandidates
+    .filter((item)=>String(item?.opening || "").trim())
+    .map((item)=>({
+      ...item,
+      hardBlocks: [
+        ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
+        ...instantStoryPremiseGateIssues(item.opening, safeDraft),
+      ],
+    }))
+    .filter((item)=>item.hardBlocks.length === 0)
+    .sort((a,b)=>(a.issueCount || 99) - (b.issueCount || 99))[0] || null;
+
+  if (lastUsableDraft?.opening) {
+    return json({
+      opening: String(lastUsableDraft.opening).trim(),
+      source: "ai_last_resort",
+      sceneSeed,
+      openingFamily,
+      softWarnings: lastUsableDraft.rejectionReasons || rejectionSummary,
+    });
+  }
+
   return json({
-    error: "Velvet couldn't create a fresh enough Instant Story this time. Try again.",
+    error: "Velvet couldn't create an Instant Story this time. Try again.",
     retryable: true,
     openingFamily,
     rejectionReasons: rejectionSummary,
