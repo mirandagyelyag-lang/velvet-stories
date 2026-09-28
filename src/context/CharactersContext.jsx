@@ -521,6 +521,7 @@ function characterDraftPayload(characterData = {}) {
     responseLength: characterData.responseLength || "balanced",
     narrationStyle: characterData.narrationStyle || "balanced",
     firstMessage: characterData.firstMessage || "",
+    emotionalDna: characterData.emotionalDna && typeof characterData.emotionalDna === "object" ? characterData.emotionalDna : {},
   };
 }
 
@@ -576,6 +577,7 @@ function convertDatabaseCharacter(character) {
     boundaries: character.boundaries || "",
     scenario: character.scenario || "",
     exampleDialogue: character.example_dialogue || "",
+    emotionalDna: character.emotional_dna && typeof character.emotional_dna === "object" ? character.emotional_dna : {},
 
     responseLength: character.response_length,
     narrationStyle: character.narration_style,
