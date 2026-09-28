@@ -51,8 +51,15 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
       const familyPremise=/\b(?:like (?:a )?brother|practically (?:a )?brother|family friend|grew up|childhood|famil(?:y|ies)|parents?|mom|mother|dad|father|sibling|brother)\b/.test(source);
       const genericCampusCare=/\b(?:campus|quad|lecture|class|library)\b/.test(t)&&
         /\b(?:umbrella|coffee|snack|paper bag|walk|walking|forgot to eat|forget to eat)\b/.test(t);
-      const earnedFamiliarity=/\b(?:your (?:mom|mother|dad|father|parents?|family|sister|brother)|our families|your house|your place|back home|since we were|grew up|usual|already knew|didnt need to ask|doesnt need to ask)\b/.test(t);
+      const earnedFamiliarity=/\b(?:your (?:mom|mother|dad|father|parents?|family|sister|brother)|our families|your house|your place|back home|since we were|grew up|already knew|didnt need to ask|doesnt need to ask)\b/.test(t);
       if(familyPremise&&genericCampusCare&&!earnedFamiliarity)issues.push("rowan_family_bond_flattened_to_generic_campus_care");
+
+      // Near-family does NOT authorize Velvet to manufacture specific shared history.
+      // Rowan may know the family and move naturally around them, but concrete habits,
+      // messages, errands, possessions or past events must come from supplied canon.
+      const inventedFamilyFact=/\b(?:your (?:mom|mother|dad|father|parents?|sister|brother))\s+(?:sent|told|asked|called|texted|packed|made|gave|left|warned|said|claims?|always|usually)\b/.test(t);
+      const inventedHabit=/\b(?:you (?:always|usually|never|constantly|keep|tend to|forget to)|your usual|your favorite|statistically speaking|\d+ (?:days?|times?) out of \d+)\b/.test(t);
+      if(familyPremise&&(inventedFamilyFact||inventedHabit))issues.push("rowan_invented_family_history_or_user_habit");
     }
   }
 
