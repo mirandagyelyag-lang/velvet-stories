@@ -122,14 +122,29 @@ function WebPWAProvider({ children }) {
     if (!navigator.onLine) return { available: false, version: serverVersion || "" };
     if (!silent) setCheckingForUpdate(true);
     try {
-      const response = await fetch(`/velvet-version.json?ts=${Date.now()}`, {
-        cache: "no-store",
-        headers: { "cache-control": "no-cache" },
-      });
-      if (!response.ok) throw new Error(`Version check returned ${response.status}`);
-      const payload = await response.json();
-      const remote = String(payload?.version || "").trim();
-      const available = Boolean(remote && compareVersions(remote, VELVET_VERSION) > 0);
+      // Release discovery must not depend on Vercel noticing the Git commit.
+      // Primary source is the deployed manifest; GitHub main is an independent
+      // fallback so the update pill can still announce a freshly published release.
+      const manifestUrls = [
+        `/velvet-version.json?ts=${Date.now()}`,
+        `https://raw.githubusercontent.com/mirandagyelyag-lang/velvet-stories/main/public/velvet-version.json?ts=${Date.now()}`,
+      ];
+      const results = await Promise.allSettled(manifestUrls.map(async (url) => {
+        const response = await fetch(url, {
+          cache: "no-store",
+          headers: { "cache-control": "no-cache" },
+        });
+        if (!response.ok) throw new Error(`Version check returned ${response.status}`);
+        return response.json();
+      }));
+      const versions = results
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => String(result.value?.version || "").trim())
+        .filter(Boolean)
+        .sort(compareVersions);
+      const remote = versions.at(-1) || "";
+      if (!remote) throw new Error("No release manifest could be reached.");
+      const available = Boolean(compareVersions(remote, VELVET_VERSION) > 0);
       if (remote) {
         setServerVersion(remote);
         if (!available) {
