@@ -45,15 +45,15 @@ function leadHasConcreteWant(opening:unknown){
 
 function disposableNpcRescue(opening:unknown){
   const t=premiseNorm(opening);
-  const nuisance=/\b(?:boring|tedious|drone|droning|trapped|cornered|wouldnt stop talking|won't stop talking|wont stop talking|conversation.*too long|cry for help)\b/.test(t);
-  const rescue=/\b(?:escape|rescue|save you|saving you|get you out|drag you away|pull you away|stepped between|inserted himself|inserted herself|cut .* off|interrupted .* mid sentence)\b/.test(t);
+  const nuisance=/\b(?:boring|tedious|drone|droning|trapped|cornered|small talk|conversation|talking to|whoever you were talking to|wouldnt stop talking|won't stop talking|wont stop talking|conversation.*too long|cry for help)\b/.test(t);
+  const rescue=/\b(?:escape|rescue|save you|saving you|get you out|drag you away|pull you away|stepped between|inserted himself|inserted herself|cut .* off|interrupted .* mid sentence|didn'?t wait .* finish|come on|coming outside with me|outside with me|back door|patio)\b/.test(t);
   const realPressure=/\b(?:jealous|jealousy|rumor|date|dating|kiss|ex|leave with|leaving with|invited|turned .* down|chose|choice|promise|secret|admit|confess|refuse|stay|cancel|risk|consequence)\b/.test(t);
   return nuisance&&rescue&&!realPressure;
 }
 
 function hollowEscapeEnding(opening:unknown){
   const t=premiseNorm(opening);
-  const escape=/\b(?:ready to escape|want to escape|lets get out of here|let's get out of here|come with me|lets go|let's go|save you from|rescue you from)\b/.test(t);
+  const escape=/\b(?:ready to escape|want to escape|lets get out of here|let's get out of here|come with me|come on|you'?re coming (?:outside )?with me|outside with me|lets go|let's go|save you from|rescue you from|this air is suffocating|die of small talk)\b/.test(t);
   const consequence=/\b(?:because|instead|even though|cancel|miss|lose|risk|turn down|refuse|stay|leave with|choose|chose|decision|promise|admit|reveal|jealous)\b/.test(t);
   return escape&&!consequence;
 }
