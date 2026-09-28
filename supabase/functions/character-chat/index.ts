@@ -66,6 +66,7 @@ import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instan
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
+import { deriveEmotionalAftercareV35322, buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -3425,6 +3426,16 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
   });
   const emotionalDnaRouterV35321 = buildEmotionalDnaRouterV35321({ character, supportState: emotionalSupportStateV35321 });
+  const emotionalAftercareStateV35322 = deriveEmotionalAftercareV35322({
+    character,
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
+  });
+  const emotionalAftercareV35322 = buildEmotionalAftercareV35322({
+    character,
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
+  });
   const characterIdentityGateV35321 = buildCharacterIdentityGateV35321({ character });
   const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
     character,
@@ -3623,6 +3634,8 @@ ${unifiedNarrativeStateV35312}
 ${emotionalDnaRouterV35321}
 
 ${emotionalSupportPriorityV35321}
+
+${emotionalAftercareV35322}
 
 ${characterIdentityGateV35321}
 
@@ -4945,6 +4958,16 @@ ${openingDnaV35289}`;
     recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-6).map((m)=>String(m?.content||"")),
   });
   const emotionalDnaRouterV35321 = buildEmotionalDnaRouterV35321({ character, supportState: emotionalSupportStateV35321 });
+  const emotionalAftercareStateV35322 = deriveEmotionalAftercareV35322({
+    character,
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-6).map((m)=>String(m?.content||"")),
+  });
+  const emotionalAftercareV35322 = buildEmotionalAftercareV35322({
+    character,
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-6).map((m)=>String(m?.content||"")),
+  });
   const characterIdentityGateV35321 = buildCharacterIdentityGateV35321({ character });
   const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
     character,
@@ -5050,6 +5073,9 @@ ${emotionalDnaRouterV35321}
 
 EMOTIONAL SUPPORT PRIORITY
 ${emotionalSupportPriorityV35321}
+
+EMOTIONAL AFTERCARE
+${emotionalAftercareV35322}
 
 CHARACTER IDENTITY GATE
 ${characterIdentityGateV35321}
@@ -9046,6 +9072,12 @@ function validateNarrativeReply(reply = "", options = {}) {
     reply: text,
     latestUserMessage: options.latestUserMessage || "",
     recentUserMessages: options.recentUserMessages || [],
+  })) issues.push(issue);
+  for (const issue of emotionalAftercareIssuesV35322({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    character: options.character || {},
   })) issues.push(issue);
   for (const issue of characterIdentityGateIssuesV35321({
     reply: text,
