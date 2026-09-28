@@ -63,6 +63,9 @@ import { buildChatScopedNpcCanonV35279, filterAuthorizedCastUpdatesV35279, filte
 import { buildUnifiedNarrativeStateV35312, unifiedNarrativeStateIssuesV35312, instantStoryStateFamilyIssuesV35312 } from "./engine/unified-narrative-state-v35312.js";
 import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
+import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
+import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
+import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1521,6 +1524,7 @@ function compactInstantStoryDraft(draft) {
     boundaries: field("boundaries", 420),
     exampleDialogue: field("exampleDialogue", 650),
     firstMessage: field("firstMessage", 520),
+    emotional_dna: source?.emotional_dna && typeof source.emotional_dna === "object" ? source.emotional_dna : (source?.emotionalDna && typeof source.emotionalDna === "object" ? source.emotionalDna : {}),
   };
 }
 
@@ -2200,6 +2204,8 @@ SEMANTIC MOMENTUM 3.53.10
 
 ${instantStoryCharacterFingerprintV35313(safeDraft)}
 
+${instantStoryEmotionalDnaV35321(safeDraft)}
+
 ${instantStoryLivingWorldV35314({ character: safeDraft })}
 - Never declare the user's next movement or participation. Invite, insist, choose your own action, but leave the user's action open.
 - Never invent the user's order, favorite, usual, routine or other personal preference.
@@ -2291,6 +2297,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
       const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
       const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
+      const identityIssuesV35321 = characterIdentityGateIssuesV35321({ reply: opening, character: safeDraft, recentCharacterReplies: recentOpenings, opening: true });
       const semanticIssues = semanticStoryMomentumIssues({
         reply: opening,
         latestUserMessage: "",
@@ -2305,8 +2312,8 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       // Lexical family detection can misread a valid semantic continuation (for example,
       // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
       // diagnostics/repair context, but never reject an otherwise valid opening for it.
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || groundingIssues.length || naturalismIssues.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
-        const rejectionReasons = [...qualityIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
+        const rejectionReasons = [...qualityIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
         rejectedInstantCandidates.push({
           opening,
           model,
@@ -2435,6 +2442,7 @@ RULES
       const rescueGroundingIssues = instantStoryGroundingIssuesV35292(rescueOpening, safeDraft, cleanIdea);
       const rescueNaturalismIssues = instantStoryNaturalismIssuesV35295(rescueOpening, safeDraft, cleanIdea);
       const rescueHardBlocks = instantStoryHardBlockIssuesV35298(rescueOpening, safeDraft, cleanIdea);
+      const rescueIdentityIssuesV35321 = characterIdentityGateIssuesV35321({ reply: rescueOpening, character: safeDraft, recentCharacterReplies: recentOpenings, opening: true });
       const rescueSemanticIssues = semanticStoryMomentumIssues({
         reply: rescueOpening,
         recentCharacterReplies: recentOpenings,
@@ -2442,13 +2450,13 @@ RULES
         opening: true,
       });
       const rescueTooSimilar = instantStoryTooSimilarV3539(rescueOpening, recentOpenings);
-      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescueSemanticIssues.length && !rescueTooSimilar) {
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescueIdentityIssuesV35321.length && !rescueSemanticIssues.length && !rescueTooSimilar) {
         return json({
           opening: rescueOpening,
           source: "ai_rescue",
           sceneSeed,
           openingFamily,
-          softWarnings: [...new Set([...rescueAnchorIssues, ...rescueGroundingIssues, ...rescueNaturalismIssues])]
+          softWarnings: [...new Set([...rescueAnchorIssues, ...rescueGroundingIssues, ...rescueNaturalismIssues, ...rescueIdentityIssuesV35321])]
             .filter((issue)=>!rescueHardBlocks.includes(issue)),
         });
       }
@@ -3407,6 +3415,17 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     scene: conversation.scene_state || {},
     opening: openingRegeneration,
   });
+  const emotionalSupportStateV35321 = deriveEmotionalSupportPriorityV35321(
+    latestUserRecord?.content || "",
+    messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||""))
+  );
+  const emotionalSupportPriorityV35321 = buildEmotionalSupportPriorityV35321({
+    character,
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
+  });
+  const emotionalDnaRouterV35321 = buildEmotionalDnaRouterV35321({ character, supportState: emotionalSupportStateV35321 });
+  const characterIdentityGateV35321 = buildCharacterIdentityGateV35321({ character });
   const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
     character,
     latestUserMessage: latestUserRecord?.content || "",
@@ -3600,6 +3619,12 @@ ${relationshipArcDirectorV35278}
 ${chatScopedNpcCanonV35279}
 
 ${unifiedNarrativeStateV35312}
+
+${emotionalDnaRouterV35321}
+
+${emotionalSupportPriorityV35321}
+
+${characterIdentityGateV35321}
 
 ${characterFingerprintPayoffV35313}
 
@@ -4910,6 +4935,17 @@ ${openingDnaV35289}`;
     scene,
     opening: openingRegeneration,
   });
+  const emotionalSupportStateV35321 = deriveEmotionalSupportPriorityV35321(
+    latestUserMessage,
+    (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-6).map((m)=>String(m?.content||""))
+  );
+  const emotionalSupportPriorityV35321 = buildEmotionalSupportPriorityV35321({
+    character,
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-6).map((m)=>String(m?.content||"")),
+  });
+  const emotionalDnaRouterV35321 = buildEmotionalDnaRouterV35321({ character, supportState: emotionalSupportStateV35321 });
+  const characterIdentityGateV35321 = buildCharacterIdentityGateV35321({ character });
   const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
     character,
     latestUserMessage,
@@ -5008,6 +5044,15 @@ ${chatScopedNpcCanonV35279}
 
 UNIFIED NARRATIVE STATE
 ${unifiedNarrativeStateV35312}
+
+EMOTIONAL DNA
+${emotionalDnaRouterV35321}
+
+EMOTIONAL SUPPORT PRIORITY
+${emotionalSupportPriorityV35321}
+
+CHARACTER IDENTITY GATE
+${characterIdentityGateV35321}
 
 CHARACTER FINGERPRINT + SCENE PAYOFF
 ${characterFingerprintPayoffV35313}
@@ -8995,6 +9040,17 @@ function validateNarrativeReply(reply = "", options = {}) {
     recentCharacterReplies: options.recentCharacterReplies || [],
     character: options.character || {},
     worldConsequences: options.turnContract?.worldConsequencesCausalTimeline || {},
+    opening: Boolean(options.openingRegeneration),
+  })) issues.push(issue);
+  for (const issue of emotionalSupportPriorityIssuesV35321({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+  })) issues.push(issue);
+  for (const issue of characterIdentityGateIssuesV35321({
+    reply: text,
+    character: options.character || {},
+    recentCharacterReplies: options.recentCharacterReplies || [],
     opening: Boolean(options.openingRegeneration),
   })) issues.push(issue);
   for (const issue of characterFingerprintPayoffIssuesV35313({
