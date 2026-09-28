@@ -2503,6 +2503,43 @@ RULES
     });
   }
 
+  // v3.53.25 GUARANTEED SAFE DELIVERY
+  // Instant Story must not dead-end because of editorial freshness/style gates.
+  // Reuse the best generated candidate only when the existing hard canon,
+  // premise and user-agency gates all pass.
+  const guaranteedSafeCandidate = rejectedInstantCandidates
+    .filter((item)=>String(item?.opening || "").trim())
+    .map((item)=>({
+      ...item,
+      hardBlocks: [
+        ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
+        ...instantStoryPremiseGateIssues(item.opening, safeDraft),
+      ],
+      similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
+    }))
+    .filter((item)=>item.hardBlocks.length === 0)
+    .filter((item)=>{
+      const text = String(item.opening || "").trim();
+      const words = text.split(/\s+/).filter(Boolean).length;
+      const finish = String(item.finishReason || "").toUpperCase();
+      return words >= 45 &&
+        words <= 240 &&
+        !["SAFETY","RECITATION","BLOCKLIST","PROHIBITED_CONTENT","MALFORMED_FUNCTION_CALL"].includes(finish) &&
+        !instantStoryHasTemplateLeak(text) &&
+        /[.!?…]["'”’)]?$/.test(text);
+    })
+    .sort((a,b)=>(a.similarity-b.similarity) || ((a.issueCount || 99)-(b.issueCount || 99)))[0] || null;
+
+  if (guaranteedSafeCandidate?.opening) {
+    return json({
+      opening: guaranteedSafeCandidate.opening,
+      source: "ai_guaranteed_safe",
+      sceneSeed,
+      openingFamily,
+      softWarnings: guaranteedSafeCandidate.rejectionReasons || [],
+    });
+  }
+
   // v3.53.9 LAST-LANE RESCUE
   // One tiny final pass is cheaper than handing the creator a dead button.
   // It still obeys the hard user-agency and named-cast gates.
