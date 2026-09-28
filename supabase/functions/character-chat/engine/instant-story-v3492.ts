@@ -11,6 +11,13 @@ export function instantStoryQualityIssues(opening:unknown,draft:Record<string,un
   if(/\b(?:energy drinks?|beef jerky|sour gummies|spicy chips|junk food)\b/.test(t)&&/\b(?:road trip|state line|three hundred miles|aux cord|caffeine)\b/.test(t)) issues.push("generic_roadtrip_snack_scene");
   if(/\bdid you (?:actually )?(?:bring|remember|forget|finish|send|tell|ask|call|text)\b|\bare we going to\b.{0,70}\bagain\b/.test(t)) issues.push("invented_user_history_prompt");
 
+  // Relationship closeness is not permission to fabricate specific biography.
+  // This catches Instant Story turning broad family/friend intimacy into invented
+  // parental errands, recurring habits, favorites or fake statistics.
+  const inventedFamilyHistory=/\b(?:your (?:mom|mother|dad|father|parents?|sister|brother))\s+(?:sent|told|asked|called|texted|packed|made|gave|left|warned|said|claims?|always|usually)\b/.test(t);
+  const inventedUserHabit=/\b(?:you (?:always|usually|never|constantly|keep|tend to|forget to)|your usual|your favorite|statistically speaking|\d+ (?:days?|times?) out of \d+)\b/.test(t);
+  if(inventedFamilyHistory||inventedUserHabit) issues.push("invented_personal_history_from_closeness");
+
   if(/\b(?:saved|defended|kept) (?:you |your |the )?(?:a )?seat\b|\bdrove across (?:campus|town)\b|\bwaiting (?:for you )?(?:beside|by) (?:his |her |their )?car\b|\bordered (?:an )?extra\b.{0,40}\b(?:your usual|your favorite|for you)\b|\blost bracelet\b/.test(t)) issues.push("romance_first_setup");
   if(/(?:\bwhich one\?|\byour choice[.!?]?|\bwhat do you want to do\?|\bquiet evening or the drive\b|\bstay or go\?|\bcome with me[.!?]?)(?:["”’']\s*)?$/i.test(raw.trim())) issues.push("forced_binary_choice");
   const ending=norm(raw.slice(-650));
