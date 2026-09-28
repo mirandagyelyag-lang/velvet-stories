@@ -2296,6 +2296,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const finishReason = String(candidate?.finishReason || "");
       const anchorIssues = instantStoryOpeningAnchorIssuesV35289(opening, safeDraft, cleanIdea);
       const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
+      const fatalQualityIssues = qualityIssues.filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
       const premiseIssues = instantStoryPremiseGateIssues(opening, safeDraft);
       const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
       const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
@@ -2314,8 +2315,8 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       // Lexical family detection can misread a valid semantic continuation (for example,
       // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
       // diagnostics/repair context, but never reject an otherwise valid opening for it.
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || qualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
-        const rejectionReasons = [...qualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
+        const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
         rejectedInstantCandidates.push({
           opening,
           model,
@@ -2326,6 +2327,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
         console.warn("[character-chat] instant story rejected by conflict-first/opening-DNA quality gate", {
           anchorIssues,
           qualityIssues,
+          fatalQualityIssues,
           premiseIssues,
           groundingIssues,
           naturalismIssues,
@@ -2418,10 +2420,10 @@ RULES
 - Output only finished prose.`;
 
     const rescueController = new AbortController();
-    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 12000);
+    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 14500);
     let rescue;
     try {
-      rescue = await fetch(modelEndpoint(GEMINI_RECOVERY_MODEL), {
+      rescue = await fetch(modelEndpoint(GEMINI_MODEL), {
         method: "POST",
         headers: geminiHeaders(apiKey),
         signal: rescueController.signal,
@@ -2495,7 +2497,7 @@ RULES
   // It still obeys the hard user-agency and named-cast gates.
   try {
     const emergencyController = new AbortController();
-    const emergencyTimeoutId = setTimeout(() => emergencyController.abort(), 5200);
+    const emergencyTimeoutId = setTimeout(() => emergencyController.abort(), 8500);
     let emergencyResponse;
     try {
       emergencyResponse = await fetch(modelEndpoint(GEMINI_EMERGENCY_MODEL), {
