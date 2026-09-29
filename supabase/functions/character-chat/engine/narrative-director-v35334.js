@@ -207,6 +207,7 @@ export function buildNarrativeDirectorV35334({
     `RECENT STORY SKELETONS: ${skeletons.join(" -> ")||"none"}.`,
     `WHY THIS TURN EXISTS: ${purpose}.`,
     "TURN PURPOSE TEST: silently complete 'This turn exists to ____.' If the answer is only keep talking, maintain the vibe, show chemistry, move them somewhere, or fill the beat, rewrite. One clear purpose is enough; do not cram five developments into one turn.",
+    "HUMAN CONSEQUENCES 3.53.38: preserve believable imperfect judgment, limited knowledge, delayed emotional understanding, different emotional timing between people, realistic aftermath, quiet payoffs, and specific behavior changes caused by prior events.",
     `CURRENT SCENE: ${clean(scene?.location||scene?.activity||"unknown",260)}. LATEST USER: ${clean(latestUserMessage,380)||"none"}.`,
   ].join("\n");
 }
