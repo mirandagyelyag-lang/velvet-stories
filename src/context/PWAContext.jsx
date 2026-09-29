@@ -7,6 +7,7 @@ import { VELVET_VERSION } from "../config/version";
 const PWAContext = createContext(null);
 const INSTALL_DISMISSED_KEY = "velvet_install_prompt_dismissed";
 const UPDATE_PENDING_KEY = "velvet_update_pending";
+const UPDATE_ACK_KEY = "velvet_update_acknowledged_version";
 
 export function PWAProvider({ children }) {
   if (Capacitor.isNativePlatform()) {
@@ -84,6 +85,15 @@ function WebPWAProvider({ children }) {
   const [checkingForUpdate, setCheckingForUpdate] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateProblem, setUpdateProblem] = useState("");
+  const [acknowledgedVersion, setAcknowledgedVersion] = useState(() => {
+    try {
+      return localStorage.getItem(UPDATE_ACK_KEY)
+        || localStorage.getItem("velvet:last-healthy-version")
+        || VELVET_VERSION;
+    } catch {
+      return VELVET_VERSION;
+    }
+  });
 
   const {
     offlineReady: [offlineReady, setOfflineReady],
@@ -98,6 +108,12 @@ function WebPWAProvider({ children }) {
   });
 
   const serverUpdateAvailable = Boolean(serverVersion && compareVersions(serverVersion, VELVET_VERSION) > 0);
+  const newestKnownVersion = serverVersion && compareVersions(serverVersion, VELVET_VERSION) > 0
+    ? serverVersion
+    : VELVET_VERSION;
+  const releaseAwaitingAcknowledgement = Boolean(
+    acknowledgedVersion && compareVersions(newestKnownVersion, acknowledgedVersion) > 0,
+  );
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return undefined;
@@ -155,10 +171,11 @@ function WebPWAProvider({ children }) {
       }
       try { await forceServiceWorkerNetworkCheck(); } catch {}
 
-      // v3.53.26: updates are user-confirmed again.
-      // Detection sets serverUpdateAvailable so PWAStatus stays visible until
-      // the user explicitly taps Update now.
-      return { available, version: remote };
+      // v3.53.33: release acknowledgement is independent from whether the newest
+      // JS bundle already slipped in through a refresh. If Velvet advances from
+      // the last version the user explicitly acknowledged, the update pill still
+      // appears so there is always a visible confirmation.
+      return { available: available || compareVersions(remote, acknowledgedVersion) > 0, version: remote };
     } catch (error) {
       if (!silent) setUpdateProblem(error?.message || "Could not check for updates.");
       return { available: false, version: serverVersion || "", error };
@@ -202,6 +219,11 @@ function WebPWAProvider({ children }) {
       await clearVelvetCaches();
       await updateServiceWorker(true);
       setNeedRefresh(false);
+      const acknowledged = serverVersion && compareVersions(serverVersion, VELVET_VERSION) > 0
+        ? serverVersion
+        : VELVET_VERSION;
+      try { localStorage.setItem(UPDATE_ACK_KEY, acknowledged); } catch {}
+      setAcknowledgedVersion(acknowledged);
       window.setTimeout(() => window.location.reload(), 1200);
     } catch (error) {
       setUpdateProblem(error?.message || "The update was interrupted before Velvet could reopen.");
@@ -327,8 +349,9 @@ function WebPWAProvider({ children }) {
     showIOSInstructions, closeIOSInstructions: () => setShowIOSInstructions(false), online, offlineReady,
     dismissOfflineReady: () => setOfflineReady(false), needRefresh, dismissRefresh: () => setNeedRefresh(false), updateApp,
     platform: isIOS() ? "ios" : "other", localVersion: VELVET_VERSION, serverVersion, serverUpdateAvailable,
+    releaseAwaitingAcknowledgement, acknowledgedVersion,
     checkingForUpdate, updating, updateProblem, checkForUpdate, repairUpdate,
-  }), [installPrompt, installed, installDismissed, showIOSInstructions, online, offlineReady, needRefresh, serverVersion, serverUpdateAvailable, checkingForUpdate, updating, updateProblem]);
+  }), [installPrompt, installed, installDismissed, showIOSInstructions, online, offlineReady, needRefresh, serverVersion, serverUpdateAvailable, releaseAwaitingAcknowledgement, acknowledgedVersion, checkingForUpdate, updating, updateProblem]);
 
   return <PWAContext.Provider value={value}>{children}</PWAContext.Provider>;
 }
