@@ -162,6 +162,65 @@ function purposeFor({scene={},latestUserMessage="",unresolvedThreads=[],recentCh
   return `serve the scene objective through a choice consistent with the character's want: ${want}`;
 }
 
+function narrationOnly(v=""){
+  return String(v||"")
+    .replace(/[“"][^”"]*[”"]/g," ")
+    .replace(/[‘'][^’']*[’']/g," ");
+}
+function userAgencyInvented(reply="",latestUserMessage=""){
+  const n=norm(narrationOnly(reply));
+  const latest=norm(latestUserMessage);
+  const verbs=[
+    "smiled","nodded","laughed","blushed","flinched","froze","sighed",
+    "followed","walked","stepped","sat","stood","moved","turned","looked","glanced",
+    "reached","grabbed","took","accepted","agreed","decided","wanted","felt","thought",
+    "realized","knew","remembered","hesitated","leaned","shrugged"
+  ];
+  for(const verb of verbs){
+    const re=new RegExp("\\byou\\s+(?:had\\s+|already\\s+)?"+verb+"\\b");
+    if(!re.test(n)) continue;
+    const stem=verb.replace(/(?:ed|d)$/,"");
+    if(new RegExp("\\b(?:i|i'm|im|i am|me)\\b[^.!?]{0,55}\\b"+stem).test(latest)) continue;
+    return true;
+  }
+  return /\byour\s+(?:heart|stomach|chest)\s+(?:leapt|dropped|tightened|ached|fluttered)\b/.test(n)
+    || /\byou\s+(?:couldn't|could not)\s+help\s+(?:but\s+)?(?:smil|laugh|stare|wonder)/.test(n);
+}
+function pressureLevel(recentCharacterReplies=[]){
+  const t=norm(arr(recentCharacterReplies).slice(-6).join(" | "));
+  let score=0;
+  if(/\b(?:jealous|rival|date|flirt|kiss|attraction|want you|can't stop|cant stop)\b/.test(t)) score+=2;
+  if(/\b(?:argument|fight|hurt|angry|rejected|boundary|betray|apolog|confess|admit)\b/.test(t)) score+=2;
+  if(/\b(?:chose you|picked you|defend|protect|called you back|came back)\b/.test(t)) score+=1;
+  return Math.min(5,score);
+}
+function directionAnchor({scene={},unresolvedThreads=[],recentCharacterReplies=[],latestUserMessage="",character={}}={}){
+  const explicit=clean(scene?.story_direction||scene?.direction||scene?.arc_direction||scene?.scene_objective||scene?.objective||"",360);
+  if(explicit) return explicit;
+  const ranked=prioritizeThreads(unresolvedThreads,recentCharacterReplies);
+  if(ranked[0]?.score>=4) return `let "${ranked[0].label}" keep shaping choices until it is changed or resolved`;
+  return `continue toward ${sceneObjective(scene,latestUserMessage,recentCharacterReplies)} through ${clean(character?.name||"the character",90)}'s established behavior`;
+}
+function decorativeNpcBeat(reply=""){
+  const t=norm(reply);
+  const npc=/\b(?:someone|a friend|his friend|her friend|their friend|roommate|classmate|coworker|teammate|guy|girl)\b/.test(t);
+  const decoration=/\b(?:waved|smiled|laughed|said hi|said hello|walked by|passed by|looked over|glanced over|wandered over)\b/.test(t);
+  return npc && decoration && !storyChange(t);
+}
+function semanticEcho(reply="",recentCharacterReplies=[]){
+  const current=narrativeSkeleton(reply);
+  const recent=arr(recentCharacterReplies).slice(-6);
+  if(current!=="low_signal" && recent.filter((r)=>narrativeSkeleton(r)===current).length>=2) return true;
+  const now=tokenSet(reply);
+  if(now.size<5) return false;
+  return recent.some((r)=>{
+    const prev=tokenSet(r);
+    if(prev.size<5) return false;
+    let shared=0; for(const w of now) if(prev.has(w)) shared++;
+    return shared/Math.min(now.size,prev.size)>=0.62 && !storyChange(reply);
+  });
+}
+
 export function deriveNarrativeDirectorStateV35334({recentCharacterReplies=[],unresolvedThreads=[]}={}){
   const saturation=sceneSaturation(recentCharacterReplies);
   return {
@@ -181,8 +240,10 @@ export function buildNarrativeDirectorV35334({
   const want=characterWant(character,scene);
   const purpose=purposeFor({scene,latestUserMessage,unresolvedThreads,recentCharacterReplies,character});
   const skeletons=arr(recentCharacterReplies).slice(-5).map(narrativeSkeleton);
+  const pressure=pressureLevel(recentCharacterReplies);
+  const direction=directionAnchor({scene,unresolvedThreads,recentCharacterReplies,latestUserMessage,character});
   return [
-    "NARRATIVE DIRECTOR 3.53.34 · SIX SYSTEMS, ONE DECISION:",
+    "NARRATIVE DIRECTOR 3.53.39 · LIVING NARRATIVE ENGINE:",
     `SCENE SATURATION: dialogue-heavy=${state.talk}/5; stagnant=${state.stagnant}/5; OVERRIPE=${state.overripe?"YES":"no"}; NEEDS_EVENT=${state.needsEvent?"YES":"no"}.`,
     "1) SCENE LIFE CYCLE: a scene has a job. Establish -> deepen -> turn -> resolve/transition. Do not keep a scene alive merely because characters can still trade lines. If its emotional/social/practical purpose has already paid off, close or transform it naturally.",
     "2) CONVERSATION -> EVENT: after roughly 2-3 dialogue-heavy turns without a meaningful change, convert the next useful beat into a character/world-owned event: a decision, refusal, reveal, consequence, changed plan, concrete action, social shift, obligation, or earned transition. Do NOT solve this with a random interruption.",
@@ -217,12 +278,22 @@ export function buildNarrativeDirectorV35334({
     "AFTERMATH: strong events leave behavioral residue in access, humor, wording, initiative, avoidance, trust, expectations or distance. Quiet is allowed; reset is not.",
     "QUIET PAYOFFS: changed habits, selective attention, withheld jokes, altered access, boundaries and practical choices count as payoff. Do not inflate every payoff into a dramatic reveal.",
     "BEHAVIORAL CONSEQUENCE MEMORY: preserve event -> specific behavior change, not only event -> permanent label. When a visible event changes future character behavior, human_behavior_update may record the trigger, observable behavior change, scope, and whether it remains active.",
+    "13) LIVE SCENE LEDGER: continuously preserve WHERE the scene is, approximate time, who is present, the last meaningful change, the active pressure, and what is still pending. Never teleport, summon absent people, create props already contradicted by canon, or treat movement as progress.",
+    "14) NARRATIVE DEBT: promises, refusals, secrets, invitations, injuries to trust, unfinished plans and explicit pending questions create debt. Debt does not need immediate payoff, but it stays alive until resolved, superseded, or explicitly abandoned by canon. Prefer consequences of existing debt over a brand-new hook.",
+    "15) CONSEQUENCE LAW: every meaningful user action should change something observable on the character/world side: access, plan, stance, information, initiative, boundary, expectation, risk, trust, or social balance. Do not merely acknowledge and cosmetically continue.",
+    `16) ACCUMULATED INTENSITY: current pressure=${pressure}/5. Emotion may cool naturally, but it must not reset to chapter-one neutrality after repeated jealousy, conflict, attraction, hurt, confession or repair. Carry residue forward through behavior rather than explanatory labels.`,
+    "17) NPC PURPOSE GATE: an NPC enters or acts only to reveal, pressure, interrupt for a grounded reason, compete, help, complicate, witness, enforce a consequence, or pursue their own established goal. No decorative hello-and-evaporate NPCs and no disposable jealousy props.",
+    "18) SEMANTIC ANTI-LOOP: different wording does not make a new beat. Treat structurally equivalent moves as repetition: challenge/race/bet, prop+banter, cross-room attention, car/keys escape, question loops, convenient interruptions, or the same emotional exchange with swapped nouns.",
+    `19) HIDDEN SCENE MISSION: ${purpose}. Never announce this mission in prose. Use it only to decide what the character/world does next.`,
+    "20) USER CHARACTER IS LOCKED: never author the user's movement, gestures, facial expression, bodily response, thoughts, feelings, memory, desire, consent, decision, dialogue, or interpretation unless the user explicitly supplied that exact fact. Create pressure around them, then leave their response open.",
+    `21) STORY-DIRECTION MEMORY: ${direction}. Preserve this direction across turns until visible events change it. Do not emotionally reboot the relationship because the immediate conversation became calmer.`,
+    "METADATA DUTY: when the scene materially changes, scene_update should carry forward the live ledger and story direction; unresolved threads should retain narrative debt; human_behavior_update may retain consequence residue. Do not erase pending state merely because it was not mentioned in the visible prose.",
     `CURRENT SCENE: ${clean(scene?.location||scene?.activity||"unknown",260)}. LATEST USER: ${clean(latestUserMessage,380)||"none"}.`,
   ].join("\n");
 }
 
 export function narrativeDirectorIssuesV35334({
-  reply="",recentCharacterReplies=[],unresolvedThreads=[]
+  reply="",recentCharacterReplies=[],unresolvedThreads=[],latestUserMessage=""
 }={}){
   const issues=[];
   const t=String(reply||"").trim();
@@ -237,10 +308,13 @@ export function narrativeDirectorIssuesV35334({
   if(arr(unresolvedThreads).length && freshConvenientHook(t) && !replyTouchesThread(t,unresolvedThreads)) {
     issues.push("fresh_hook_ignored_unresolved_thread");
   }
-  if(repeatedSkeleton(t,recentCharacterReplies)) {
+  if(repeatedSkeleton(t,recentCharacterReplies) || semanticEcho(t,recentCharacterReplies)) {
     issues.push("narrative_skeleton_echo");
+    issues.push("semantic_scene_loop");
     issues.push("conversation_not_converted_to_event");
   }
+  if(userAgencyInvented(t,latestUserMessage)) issues.push("user_character_authored_by_model");
+  if(decorativeNpcBeat(t)) issues.push("decorative_npc_without_function");
   if(decorativeCallback(t,unresolvedThreads)) {
     issues.push("decorative_callback_without_payoff");
     issues.push("fresh_hook_ignored_unresolved_thread");
@@ -262,5 +336,6 @@ export function narrativeDirectorIssuesV35334({
 
 export const __testV35334={
   storyChange,locationChange,conversationHeavy,sceneSaturation,eventSignal,replyTouchesThread,ladderFor,
-  threadKind,threadPriority,prioritizeThreads,sceneObjective,characterWant,narrativeSkeleton,repeatedSkeleton,decorativeCallback,purposeFor
+  threadKind,threadPriority,prioritizeThreads,sceneObjective,characterWant,narrativeSkeleton,repeatedSkeleton,
+  decorativeCallback,purposeFor,narrationOnly,userAgencyInvented,pressureLevel,directionAnchor,decorativeNpcBeat,semanticEcho
 };
