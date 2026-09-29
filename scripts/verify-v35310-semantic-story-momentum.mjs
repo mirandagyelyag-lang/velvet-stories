@@ -71,6 +71,12 @@ const directive=buildSemanticStoryMomentumV35310({
 assert.match(directive,/FINAL MEANING GATE/);
 assert.match(directive,/BANTER IS NOT MOMENTUM/);
 assert.match(directive,/Never manufacture intimacy through invented preferences/);
+assert.match(directive,/LIVING SCENE ENGINE/);
+assert.match(directive,/PLAYABLE, NOT DECORATIVE/);
+assert.match(directive,/VARIETY FIREWALL/);
+assert.match(directive,/NO SAVIOR ASSUMPTION/);
+assert.match(directive,/CHARACTER HAS A LIFE/);
+assert.match(directive,/Do not force a mystery hook/);
 
 const edge=readFileSync(new URL("../supabase/functions/character-chat/index.ts",import.meta.url),"utf8");
 assert.match(edge,/FIRST_DRAFT_WINS_V35268 = false/);
