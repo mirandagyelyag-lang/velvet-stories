@@ -208,6 +208,10 @@ export function buildNarrativeDirectorV35334({
     `WHY THIS TURN EXISTS: ${purpose}.`,
     "TURN PURPOSE TEST: silently complete 'This turn exists to ____.' If the answer is only keep talking, maintain the vibe, show chemistry, move them somewhere, or fill the beat, rewrite. One clear purpose is enough; do not cram five developments into one turn.",
     "HUMAN CONSEQUENCES 3.53.38: preserve believable imperfect judgment, limited knowledge, delayed emotional understanding, different emotional timing between people, realistic aftermath, quiet payoffs, and specific behavior changes caused by prior events.",
+    "IMPERFECT JUDGMENT: a character may choose badly, notice late, protect pride, or misunderstand limited evidence when that fits their personality. Do not use random stupidity.",
+    "PARTIAL INFORMATION: keep known, suspected, inferred and unknown separate. A suspicion may influence behavior without becoming fact.",
+    "DELAYED PROCESSING: a reaction can happen before the character understands or names the feeling. Do not force instant self-awareness.",
+    "PLAUSIBLE MISREADS: small misunderstandings may change a decision when visible ambiguity supports them, and should resolve through evidence rather than endless conflict.",
     `CURRENT SCENE: ${clean(scene?.location||scene?.activity||"unknown",260)}. LATEST USER: ${clean(latestUserMessage,380)||"none"}.`,
   ].join("\n");
 }
