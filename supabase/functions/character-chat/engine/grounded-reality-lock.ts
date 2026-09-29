@@ -154,6 +154,29 @@ export function hasUserAuthoredSceneBeatIgnored(reply = "", latestUserMessage = 
   return !acknowledgesActor && !acknowledgesAction;
 }
 
+
+export function hasUnsupportedSarcasticActivityClaim(reply = "", latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], character = {}) {
+  const text = normalized(reply);
+  if (!text) return false;
+  const evidence = evidenceText(
+    [...(Array.isArray(recentUserMessages) ? recentUserMessages : []), latestUserMessage],
+    recentCharacterReplies,
+    character,
+  );
+
+  // "A lot on my mind", silence, staring, sadness, etc. do NOT imply the user is
+  // literally performing multiple tasks. Sarcasm may comment on what is observable,
+  // but it may not invent a second activity merely to land a joke.
+  const multitaskClaim = /\b(?:standard|classic|impressive|serious|some|nice|great)?\s*multitask(?:ing|er)?\b/.test(text)
+    || /\b(?:multitask(?:ing|er)?|doing two things at once|doing three things at once|juggling (?:everything|three things|two things|tasks))\b/.test(text);
+  if (multitaskClaim) {
+    const supported = /\b(?:multitask(?:ing|er)?|doing two things at once|doing three things at once|juggling (?:everything|tasks)|while (?:texting|working|studying|eating|driving|walking)|at the same time)\b/.test(evidence);
+    if (!supported) return true;
+  }
+
+  return false;
+}
+
 export function groundedRealityIssues({ reply = "", latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], character = {} } = {}) {
   const issues = [];
   if (hasDeclaredStateDisbelief(reply, recentUserMessages, latestUserMessage)) issues.push("declared_state_disbelief");
@@ -163,12 +186,13 @@ export function groundedRealityIssues({ reply = "", latestUserMessage = "", rece
   if (hasInvisibleHistoryClaim(reply, recentUserMessages, recentCharacterReplies, character)) issues.push("invisible_history_claim");
   if (hasNarrativeNaturalismOverwrite(reply, latestUserMessage)) issues.push("narrative_naturalism_overwrite");
   if (hasUserAuthoredSceneBeatIgnored(reply, latestUserMessage)) issues.push("user_authored_scene_beat_ignored");
+  if (hasUnsupportedSarcasticActivityClaim(reply, latestUserMessage, recentUserMessages, recentCharacterReplies, character)) issues.push("unsupported_sarcastic_activity_claim");
   return [...new Set(issues)];
 }
 
 export function sanitizeGroundedRealityReply(reply = "", issues = []) {
   const hard = new Set(Array.isArray(issues) ? issues : []);
-  const mustStrip = hard.has("declared_state_disbelief") || hard.has("semantic_scope_overreach") || hard.has("inference_distance_exceeded") || hard.has("specificity_escalation") || hard.has("invisible_history_claim");
+  const mustStrip = hard.has("declared_state_disbelief") || hard.has("semantic_scope_overreach") || hard.has("inference_distance_exceeded") || hard.has("specificity_escalation") || hard.has("invisible_history_claim") || hard.has("unsupported_sarcastic_activity_claim");
   if (!mustStrip && !hard.has("narrative_naturalism_overwrite")) return String(reply || "").trim();
   const bad = [
     /\b(?:right\.? let'?s go with that|let'?s go with that|sure\.? if you say so|if you say so|very convincing|keep telling yourself that|you'?re not fine|you'?re not okay|pretending to be fine)\b/i,
@@ -177,6 +201,7 @@ export function sanitizeGroundedRealityReply(reply = "", issues = []) {
     /\b(?:lab check[- ]?in|study group|office hours|practice|training|captain|coach)\b/i,
     /\b(?:i heard you the first time|i already told you|like last time|as usual|search party again|missed practice again)\b/i,
     /\b(?:the impulse to|half a lifetime|fingers? curling|breath caught|breath hitched|the air between us|something in my chest)\b/i,
+    /\b(?:standard|classic|impressive|serious|some|nice|great)?\s*multitask(?:ing|er)?\b/i,
   ];
   const pieces = String(reply || "")
     .split(/(?<=[.!?]["”']?)\s+|\n{2,}/)
