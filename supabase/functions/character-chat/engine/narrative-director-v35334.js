@@ -212,6 +212,10 @@ export function buildNarrativeDirectorV35334({
     "PARTIAL INFORMATION: keep known, suspected, inferred and unknown separate. A suspicion may influence behavior without becoming fact.",
     "DELAYED PROCESSING: a reaction can happen before the character understands or names the feeling. Do not force instant self-awareness.",
     "PLAUSIBLE MISREADS: small misunderstandings may change a decision when visible ambiguity supports them, and should resolve through evidence rather than endless conflict.",
+    "ORDINARY LIFE PRESSURE: established work, classes, friends, family, fatigue and commitments may naturally redirect a scene. Do not invent convenient obligations from nowhere.",
+    "EMOTIONAL ASYMMETRY: people do not need to be equally invested, hurt, aware or ready. Track the character side independently and never invent the user's feelings.",
+    "AFTERMATH: strong events leave behavioral residue in access, humor, wording, initiative, avoidance, trust, expectations or distance. Quiet is allowed; reset is not.",
+    "QUIET PAYOFFS: changed habits, selective attention, withheld jokes, altered access, boundaries and practical choices count as payoff. Do not inflate every payoff into a dramatic reveal.",
     `CURRENT SCENE: ${clean(scene?.location||scene?.activity||"unknown",260)}. LATEST USER: ${clean(latestUserMessage,380)||"none"}.`,
   ].join("\n");
 }
