@@ -249,6 +249,14 @@ export function narrativeDirectorIssuesV35334({
     issues.push("turn_without_clear_purpose");
     issues.push("scene_lifecycle_overstayed");
   }
+  const recentPressure=norm(arr(recentCharacterReplies).slice(-4).join(" | "));
+  if(/\b(?:back to normal|like nothing happened|as if nothing happened|everything was normal|same as always|nothing had changed)\b/.test(norm(t))
+    && /\b(?:kiss|kissed|argument|fight|confess|confessed|rejection|rejected|betray|hurt|apolog|boundary)\b/.test(recentPressure)) {
+    issues.push("scene_lifecycle_overstayed");
+  }
+  if(/\b(?:we both knew|they both knew|they felt the same|the feeling was mutual|equally jealous|equally invested|equally hurt|everyone knew|they all knew|of course he knew|of course she knew|he already knew|she already knew)\b/.test(norm(t))) {
+    issues.push("semantic_scope_overreach");
+  }
   return [...new Set(issues)];
 }
 
