@@ -2640,6 +2640,112 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
     });
   }
 
+  // v3.53.36 NO-DEAD-BUTTON SALVAGE
+  // If every normal candidate was editorially rejected, rewrite the best real draft
+  // against its exact failures instead of returning a dead 503. Hard canon/user-agency
+  // gates still apply to the rewritten result.
+  const salvageSeed = rejectedInstantCandidates
+    .filter((item)=>String(item?.opening || "").trim())
+    .sort((a,b)=>(a.issueCount || 99) - (b.issueCount || 99))[0] || null;
+
+  if (salvageSeed?.opening) {
+    try {
+      const salvageController = new AbortController();
+      const salvageTimeoutId = setTimeout(() => salvageController.abort(), 11000);
+      let salvageResponse;
+      try {
+        salvageResponse = await fetch(modelEndpoint(GEMINI_RECOVERY_MODEL), {
+          method: "POST",
+          headers: geminiHeaders(apiKey),
+          signal: salvageController.signal,
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 70-125 words. The lead character must make one meaningful choice or create one concrete playable development. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. End with a concrete situation, not a question demanding the user invent the plot. Output only the revised prose.
+
+CHARACTER
+${JSON.stringify(safeDraft)}
+
+IDEA
+${cleanIdea || "none"}
+
+SCENE DIRECTION
+${sceneSeed}
+
+REJECTED OPENING
+${String(salvageSeed.opening || "").slice(0,1800)}
+
+FAILURES TO REMOVE
+${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}` }] }],
+            generationConfig: {
+              maxOutputTokens: 1200,
+              temperature: 0.86,
+              thinkingConfig: { thinkingLevel: "LOW" },
+            },
+          }),
+        });
+      } finally {
+        clearTimeout(salvageTimeoutId);
+      }
+
+      const salvageData = await salvageResponse.json().catch(() => ({}));
+      if (salvageResponse.ok) {
+        const salvageOpening = extractCandidateText(salvageData).trim();
+        const salvageFinish = String(salvageData?.candidates?.[0]?.finishReason || "");
+        const salvageHard = instantStoryHardBlockIssuesV35298(salvageOpening, safeDraft, cleanIdea);
+        const salvagePremise = instantStoryPremiseGateIssues(salvageOpening, safeDraft);
+        const salvageNaturalism = instantStoryNaturalismIssuesV35295(salvageOpening, safeDraft, cleanIdea);
+        const salvageIdentity = characterIdentityGateIssuesV35321({
+          reply: salvageOpening,
+          character: safeDraft,
+          recentCharacterReplies: recentOpenings,
+          opening: true,
+        });
+        const salvageSemantic = semanticStoryMomentumIssues({
+          reply: salvageOpening,
+          recentCharacterReplies: recentOpenings,
+          character: safeDraft,
+          opening: true,
+        });
+        const salvageFatalQuality = instantStoryQualityIssues(salvageOpening, safeDraft)
+          .filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
+        const finishUpper = salvageFinish.toUpperCase();
+        const salvageComplete = Boolean(salvageOpening) &&
+          !["SAFETY","RECITATION","BLOCKLIST","PROHIBITED_CONTENT","MALFORMED_FUNCTION_CALL"].includes(finishUpper) &&
+          !instantStoryHasTemplateLeak(salvageOpening) &&
+          /[.!?…]["'”’)]?$/.test(salvageOpening);
+
+        if (
+          salvageComplete &&
+          !salvageHard.length &&
+          !salvagePremise.length &&
+          !salvageNaturalism.length &&
+          !salvageIdentity.length &&
+          !salvageSemantic.length &&
+          !salvageFatalQuality.length
+        ) {
+          return json({
+            opening: salvageOpening,
+            source: "ai_no_dead_button_salvage",
+            sceneSeed,
+            openingFamily,
+            softWarnings: [],
+          });
+        }
+
+        console.warn("[character-chat] no-dead-button salvage remained invalid", {
+          salvageHard,
+          salvagePremise,
+          salvageNaturalism,
+          salvageIdentity,
+          salvageSemantic,
+          salvageFatalQuality,
+          finishReason: salvageFinish,
+        });
+      }
+    } catch (salvageError) {
+      console.warn("[character-chat] no-dead-button salvage failed", { error: getErrorMessage(salvageError) });
+    }
+  }
+
   return json({
     error: "Velvet couldn't create an Instant Story this time. Try again.",
     retryable: true,
