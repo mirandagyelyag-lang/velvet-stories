@@ -62,6 +62,7 @@ import { buildRelationshipArcDirectorV35278, deriveRelationshipArcStateV35278, r
 import { buildChatScopedNpcCanonV35279, chatScopedNpcCanonV35279Issues, filterAuthorizedCastUpdatesV35279, filterAuthorizedConnectionUpdatesV35279 } from "./engine/chat-scoped-npc-canon-v35279.js";
 import { buildUnifiedNarrativeStateV35312, unifiedNarrativeStateIssuesV35312, instantStoryStateFamilyIssuesV35312 } from "./engine/unified-narrative-state-v35312.js";
 import { buildNarrativeDirectorV35334, narrativeDirectorIssuesV35334 } from "./engine/narrative-director-v35334.js";
+import { buildInteractionSalienceV35342, interactionSalienceIssuesV35342 } from "./engine/interaction-salience-v35342.js";
 import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
@@ -3613,6 +3614,12 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     recentCharacterReplies: recentCharacterRepliesForVoice,
     unresolvedThreads: conversation.unresolved_threads || [],
   });
+  const interactionSalienceV35342 = buildInteractionSalienceV35342({
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-12).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    character,
+  });
   const emotionalSupportStateV35321 = deriveEmotionalSupportPriorityV35321(
     latestUserRecord?.content || "",
     messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||""))
@@ -3824,6 +3831,8 @@ ${chatScopedNpcCanonV35279}
 ${unifiedNarrativeStateV35312}
 
 ${narrativeDirectorV35334}
+
+${interactionSalienceV35342}
 
 ${emotionalDnaRouterV35321}
 
@@ -5149,6 +5158,12 @@ ${openingDnaV35289}`;
     recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-6).map((m)=>String(m?.content||"")),
     unresolvedThreads,
   });
+  const interactionSalienceV35342 = buildInteractionSalienceV35342({
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-12).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-8).map((m)=>String(m?.content||"")),
+    character,
+  });
   const emotionalSupportStateV35321 = deriveEmotionalSupportPriorityV35321(
     latestUserMessage,
     (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-6).map((m)=>String(m?.content||""))
@@ -5266,6 +5281,9 @@ ${unifiedNarrativeStateV35312}
 
 NARRATIVE DIRECTOR
 ${narrativeDirectorV35334}
+
+INTERACTION SALIENCE
+${interactionSalienceV35342}
 
 EMOTIONAL DNA
 ${emotionalDnaRouterV35321}
@@ -9272,6 +9290,12 @@ function validateNarrativeReply(reply = "", options = {}) {
     recentCharacterReplies: options.recentCharacterReplies || [],
     unresolvedThreads: options.unresolvedThreads || options.continuity?.unresolvedThreads || [],
     latestUserMessage: options.latestUserMessage || "",
+    character: options.character || {},
+  })) issues.push(issue);
+  for (const issue of interactionSalienceIssuesV35342({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
     character: options.character || {},
   })) issues.push(issue);
   for (const issue of independentAgencyBoundaryV35311Issues({
