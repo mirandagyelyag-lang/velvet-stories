@@ -216,6 +216,7 @@ export function buildNarrativeDirectorV35334({
     "EMOTIONAL ASYMMETRY: people do not need to be equally invested, hurt, aware or ready. Track the character side independently and never invent the user's feelings.",
     "AFTERMATH: strong events leave behavioral residue in access, humor, wording, initiative, avoidance, trust, expectations or distance. Quiet is allowed; reset is not.",
     "QUIET PAYOFFS: changed habits, selective attention, withheld jokes, altered access, boundaries and practical choices count as payoff. Do not inflate every payoff into a dramatic reveal.",
+    "BEHAVIORAL CONSEQUENCE MEMORY: preserve event -> specific behavior change, not only event -> permanent label. When a visible event changes future character behavior, human_behavior_update may record the trigger, observable behavior change, scope, and whether it remains active.",
     `CURRENT SCENE: ${clean(scene?.location||scene?.activity||"unknown",260)}. LATEST USER: ${clean(latestUserMessage,380)||"none"}.`,
   ].join("\n");
 }
