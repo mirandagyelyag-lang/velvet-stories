@@ -5,7 +5,7 @@ import "../styles/pwa-status.css";
 function PWAStatus() {
   const pwa = usePWA();
   const showInstall = pwa.canInstall && !pwa.installed && !pwa.installDismissed;
-  const showUpdate = pwa.needRefresh || pwa.serverUpdateAvailable;
+  const showUpdate = pwa.needRefresh || pwa.serverUpdateAvailable || pwa.releaseAwaitingAcknowledgement;
 
   return <>
     {!pwa.online && (
