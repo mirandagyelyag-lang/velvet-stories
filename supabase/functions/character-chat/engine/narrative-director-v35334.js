@@ -321,6 +321,10 @@ export function buildNarrativeDirectorV35334({
     "18) SEMANTIC ANTI-LOOP: different wording does not make a new beat. Treat structurally equivalent moves as repetition: challenge/race/bet, prop+banter, cross-room attention, car/keys escape, question loops, convenient interruptions, or the same emotional exchange with swapped nouns.",
     `19) HIDDEN SCENE MISSION: ${purpose}. Never announce this mission in prose. Use it only to decide what the character/world does next.`,
     "20) USER CHARACTER IS LOCKED: never author the user's movement, gestures, facial expression, bodily response, thoughts, feelings, memory, desire, consent, decision, dialogue, or interpretation unless the user explicitly supplied that exact fact. Create pressure around them, then leave their response open.",
+    "20A) USER-INITIATED CLOSENESS IS HIGH-SALIENCE: if the user explicitly links arms, holds a hand, hugs, leans in, touches, or otherwise initiates closeness, answer THAT beat before drifting into food, tickets, walking, jokes, group logistics, or scenery. The reaction may be subtle, but it must be character-specific.",
+    "20B) PHYSICAL ACTION IS NOT AN ARGUMENT: never answer an explicit physical gesture with canned agreement such as 'can't argue with that logic', 'fair point', 'good point', or 'that makes sense' unless the user actually made a proposition. Match the semantic type of the user's turn.",
+    "20C) WITHDRAWAL LEAVES RESIDUE: if the user lets go, pulls away, stops holding, or otherwise ends closeness, do not instantly switch attention to NPCs or resume generic group banter as though nothing changed. Respect the action without forcing pursuit, but let it affect tone, attention, distance, initiative, or the next choice.",
+    "20D) ALEXANDER: volunteered closeness must not be flattened into buddy banter. He may tease, but he first registers the difference in access and attention. If the user withdraws after a close beat, he may give space, but the moment should still alter his behavior instead of sending him cheerfully back to the group.",
     `21) STORY-DIRECTION MEMORY: ${direction}. Preserve this direction across turns until visible events change it. Do not emotionally reboot the relationship because the immediate conversation became calmer.`,
     "METADATA DUTY: when the scene materially changes, scene_update should carry forward the live ledger and story direction; unresolved threads should retain narrative debt; human_behavior_update may retain consequence residue. Do not erase pending state merely because it was not mentioned in the visible prose.",
     `CURRENT SCENE: ${clean(scene?.location||scene?.activity||"unknown",260)}. LATEST USER: ${clean(latestUserMessage,380)||"none"}.`,
@@ -328,7 +332,7 @@ export function buildNarrativeDirectorV35334({
 }
 
 export function narrativeDirectorIssuesV35334({
-  reply="",recentCharacterReplies=[],unresolvedThreads=[],latestUserMessage=""
+  reply="",recentCharacterReplies=[],unresolvedThreads=[],latestUserMessage="",character={}
 }={}){
   const issues=[];
   const t=String(reply||"").trim();
@@ -349,6 +353,10 @@ export function narrativeDirectorIssuesV35334({
     issues.push("conversation_not_converted_to_event");
   }
   if(userAgencyInvented(t,latestUserMessage)) issues.push("user_character_authored_by_model");
+  if(physicalActionAgreementMismatch(t,latestUserMessage)) issues.push("physical_action_answered_as_argument");
+  if(closenessDivertedToLogistics(t,latestUserMessage)) issues.push("user_closeness_diverted_to_logistics");
+  if(withdrawalErasedIntoNpcSwitch(t,latestUserMessage)) issues.push("closeness_withdrawal_erased_into_npc_switch");
+  if(relationshipBeatFlattened(t,latestUserMessage,character)) issues.push("alexander_relationship_beat_flattened");
   if(decorativeNpcBeat(t)) issues.push("decorative_npc_without_function");
   if(decorativeCallback(t,unresolvedThreads)) {
     issues.push("decorative_callback_without_payoff");
@@ -372,5 +380,7 @@ export function narrativeDirectorIssuesV35334({
 export const __testV35334={
   storyChange,locationChange,conversationHeavy,sceneSaturation,eventSignal,replyTouchesThread,ladderFor,
   threadKind,threadPriority,prioritizeThreads,sceneObjective,characterWant,narrativeSkeleton,repeatedSkeleton,
-  decorativeCallback,purposeFor,narrationOnly,userAgencyInvented,pressureLevel,directionAnchor,decorativeNpcBeat,semanticEcho
+  decorativeCallback,purposeFor,narrationOnly,userAgencyInvented,pressureLevel,directionAnchor,decorativeNpcBeat,semanticEcho,
+  userInitiatesCloseness,userWithdrawsCloseness,physicalActionAgreementMismatch,closenessDivertedToLogistics,
+  withdrawalErasedIntoNpcSwitch,relationshipBeatFlattened
 };
