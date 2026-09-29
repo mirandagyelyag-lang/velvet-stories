@@ -9271,6 +9271,7 @@ function validateNarrativeReply(reply = "", options = {}) {
     reply: text,
     recentCharacterReplies: options.recentCharacterReplies || [],
     unresolvedThreads: options.unresolvedThreads || options.continuity?.unresolvedThreads || [],
+    latestUserMessage: options.latestUserMessage || "",
   })) issues.push(issue);
   for (const issue of independentAgencyBoundaryV35311Issues({
     reply: text,
