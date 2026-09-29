@@ -91,6 +91,28 @@ function blockingBanterStall(reply=""){
   return blocking>=2 && !hasMeaningfulStateChange(reply) && Boolean(banter||questionOnly||words<=55);
 }
 
+function isAcceptanceHandoff(latestUserMessage=""){
+  const raw=String(latestUserMessage||"").trim();
+  const t=norm(raw);
+  if(!t) return false;
+  const compact=t.replace(/[.!?]+$/g,"").trim();
+  const explicitAgreement=/^(?:ok|okay|yes|yeah|yep|sure|fine|alright|all right|deal|lets go|let's go|im coming|i'm coming|ill come|i'll come|im in|i'm in|i will|ill do it|i'll do it)$/i.test(compact);
+  const followAction=/^\*[^*]{0,120}\b(?:follow|followed|come with|go with|walk with|leave with|head with|join|joined|get in|got in|climb in|climbed in)\b[^*]{0,120}\*\s*[.!?]*$/i.test(raw);
+  const spokenFollow=/\b(?:i(?:'m| am)? coming with you|i(?:'ll| will) come with you|i(?:'ll| will) go with you|i follow you|i followed you|lets go|let's go)\b/i.test(raw);
+  return explicitAgreement||followAction||spokenFollow;
+}
+
+function acceptanceFollowThroughStall(reply="",latestUserMessage=""){
+  if(!isAcceptanceHandoff(latestUserMessage)) return false;
+  const t=norm(reply);
+  if(!t) return false;
+  if(hasMeaningfulStateChange(reply)) return false;
+  const words=t.split(/\s+/).filter(Boolean).length;
+  const mereConfirmation=/\b(?:good|okay|ok|come on|then lets go|then let's go|before (?:he|she|they) sees|wasn'?t listening|not listening|anyway|told you|knew you would|knew you'?d)\b/.test(t);
+  const blocking=blockingActionCount(reply);
+  return words<=110 && (mereConfirmation||blocking>=1);
+}
+
 function convenientPlotTrigger(reply="", recentCharacterReplies=[]){
   const t=norm(reply);
   const recent=norm((Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-6):[]).join(" | "));
@@ -119,6 +141,8 @@ export function buildSemanticStoryMomentumV35310({
     "Never manufacture intimacy through invented preferences: no 'your usual', 'your favorite', specific drink/order/habit, nickname or routine unless visible canon established it.",
     "CAMPUS/COFFEE/STUDY is not banned, but it cannot be the story engine. Coffee, food, class gaps, student-union lines and study logistics are background unless something meaningful happens through them.",
     "BANTER IS NOT MOMENTUM. A joke attached to door-opening, key-handling, walking or ordering is still a stalled turn if the relationship/problem/plan is unchanged.",
+    "ACCEPTANCE HANDOFF: when the user says yes/okay/let's go, follows, joins, gets in, or otherwise accepts the character's proposal, DO NOT spend the next turn confirming the same proposal. The acceptance closes that beat. Immediately create the NEXT earned story beat.",
+    "After an acceptance handoff, physical transit may continue, but movement alone is never enough. Add one grounded development owned by the character/world: a destination choice already compatible with canon, a meaningful question, a reveal, a refusal, a changed plan, a social consequence, a new obligation, or action driven by jealousy/care/pride. Do not fabricate user choices or miraculous interruptions.",
     "Before finalizing, ask silently: if I remove the walking, grin, keys, door, phone and food/drink props, did anything meaningful remain? If not, rewrite the beat.",
     "Latest user: "+(clean(latestUserMessage,320)||"none")+". Recent character pattern: "+(clean((recentCharacterReplies||[]).slice(-3).join(" | "),650)||"none")+".",
     "Character: "+clean(character?.name||"character",90)+".",
@@ -135,6 +159,7 @@ export function semanticStoryMomentumIssues({
   if(unsupportedUserPreference(text,latestUserMessage,recentUserMessages,character)) issues.push("semantic_invented_user_preference");
   if(campusCoffeeStudyFallback(text,opening)) issues.push("semantic_campus_coffee_study_fallback");
   if(blockingBanterStall(text)) issues.push("semantic_blocking_banter_stall");
+  if(acceptanceFollowThroughStall(text,latestUserMessage)) issues.push("semantic_acceptance_without_progression");
   if(repeatedMannerism(text,recentCharacterReplies)) issues.push("semantic_repeated_grin_mannerism");
   if(convenientPlotTrigger(text,recentCharacterReplies)) issues.push("semantic_convenient_plot_trigger");
   return [...new Set(issues)];
