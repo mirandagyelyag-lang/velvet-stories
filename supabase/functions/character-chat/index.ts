@@ -7654,7 +7654,7 @@ function sanitizeSocialRoleAssignment(reply = "", binding = null) {
 }
 
 function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
-  const groundedHard = ["declared_state_disbelief", "semantic_scope_overreach", "inference_distance_exceeded", "specificity_escalation", "invisible_history_claim", "unsupported_concrete_canon_invention", "narrative_naturalism_overwrite"];
+  const groundedHard = ["declared_state_disbelief", "semantic_scope_overreach", "inference_distance_exceeded", "specificity_escalation", "invisible_history_claim", "unsupported_concrete_canon_invention", "narrative_naturalism_overwrite", "unsupported_sarcastic_activity_claim"];
   const agencyHard = ["agency_commitment_inertia_break", "gratuitous_external_hook", "initiative_budget_overflow", "forced_scene_continuation_hook"];
   const physicsHard = ["body_state_redundant_transition", "spatial_anchor_teleport", "object_possession_break", "object_state_rewind", "line_of_sight_violation", "interaction_geometry_violation", "precise_time_invention", "unsupported_elapsed_time_claim", "door_state_continuity_break"];
   const physicsRepair = [...physicsHard, "repeated_action_fingerprint"];
@@ -7827,6 +7827,11 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "semantic_invented_user_preference",
   "semantic_campus_coffee_study_fallback",
   "semantic_blocking_banter_stall",
+  "location_change_without_story_change",
+  "scene_lifecycle_overstayed",
+  "conversation_not_converted_to_event",
+  "fresh_hook_ignored_unresolved_thread",
+  "unsupported_sarcastic_activity_claim",
   "explicit_go_boundary_ignored",
   "self_owned_plan_abandoned_for_user",
   "unsolicited_rescue_reprioritization",
@@ -7938,6 +7943,11 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
 const REPAIR_TRIGGER_ISSUES = new Set([
   "instant_opening_incomplete_or_ungrounded",
   "semantic_repeated_grin_mannerism",
+  "location_change_without_story_change",
+  "scene_lifecycle_overstayed",
+  "conversation_not_converted_to_event",
+  "fresh_hook_ignored_unresolved_thread",
+  "unsupported_sarcastic_activity_claim",
   "repeated_plan_prop_loop",
   "meaningful_turn_no_move",
   "direct_clarity_demand_evaded",
@@ -10074,6 +10084,7 @@ async function streamRoleplayV19({
           groundedAnchors: groundedAgencyAnchors,
           previousScene: existingSceneState,
           turnContract,
+          unresolvedThreads: existingUnresolvedThreads,
         });
         validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
         validationIssues = enforceOpeningRegenerationQuality(validationIssues, result, openingRegeneration, character, regenerationInstruction);
@@ -10119,12 +10130,12 @@ async function streamRoleplayV19({
               result = originalResult;
               validationIssues = originalIssues;
               repairUsed = false;
-              ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
+              ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, unresolvedThreads: existingUnresolvedThreads, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
             } else {
               // A repair timeout must never erase prose the user is already reading.
               result = originalResult;
               validationIssues = originalIssues;
-              ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
+              ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, unresolvedThreads: existingUnresolvedThreads, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
             }
           } else {
           const repairedIssues = validateNarrativeReply(repaired.reply, {
@@ -10153,7 +10164,7 @@ async function streamRoleplayV19({
             repairedIssues.splice(0, repairedIssues.length, ...validateNarrativeReply(repaired.reply, {
               characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
               finishReason: repaired.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
-              character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+              character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract, unresolvedThreads: existingUnresolvedThreads,
             }));
           }
           const repairedFatal = blockingNarrativeIssues(repairedIssues);
@@ -10161,7 +10172,7 @@ async function streamRoleplayV19({
           const originalHard = hardRepairRequiredIssues(originalIssues);
           let repairedHard = hardRepairRequiredIssues(repairedIssues);
           if (originalHard.length && repairedHard.length) {
-            const sanitizedRepair = sanitizeValidatedHardIntentResult(repaired, repairedIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: repaired.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } });
+            const sanitizedRepair = sanitizeValidatedHardIntentResult(repaired, repairedIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: repaired.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, unresolvedThreads: existingUnresolvedThreads, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } });
             repaired = sanitizedRepair.result;
             repairedIssues.splice(0, repairedIssues.length, ...sanitizedRepair.issues);
             repairedHard = hardRepairRequiredIssues(repairedIssues);
@@ -10176,7 +10187,7 @@ async function streamRoleplayV19({
             result = repaired;
             validationIssues = repairedIssues;
           }
-          ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
+          ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, unresolvedThreads: existingUnresolvedThreads, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
           }
         }
 
@@ -10187,7 +10198,7 @@ async function streamRoleplayV19({
 
         let remainingHard = hardRepairRequiredIssues(validationIssues);
         if (!FIRST_DRAFT_WINS_V35268 && remainingHard.length) {
-          ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
+          ({ result, issues: validationIssues } = sanitizeValidatedHardIntentResult(result, validationIssues, { characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent, finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages, character, groundedAnchors: groundedAgencyAnchors, turnContract, unresolvedThreads: existingUnresolvedThreads, continuity: { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies } }));
           remainingHard = hardRepairRequiredIssues(validationIssues);
         }
         if (!FIRST_DRAFT_WINS_V35268 && (blockingNarrativeIssues(validationIssues).length || remainingHard.length)) {
@@ -10212,7 +10223,7 @@ async function streamRoleplayV19({
           let rescueIssues = finalRescue ? validateNarrativeReply(finalRescue.reply, {
             characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
             finishReason: finalRescue.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
-            character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+            character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract, unresolvedThreads: existingUnresolvedThreads,
           }) : finalIssues;
           if (finalRescue) rescueIssues = [...new Set([...rescueIssues, ...validateContinuityEnvelope(finalRescue, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
           if (finalRescue) rescueIssues = enforceOpeningRegenerationQuality(rescueIssues, finalRescue, openingRegeneration, character, regenerationInstruction);
@@ -10241,7 +10252,7 @@ async function streamRoleplayV19({
             validationIssues = validateNarrativeReply(result.reply, {
               characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
               finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
-              character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+              character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract, unresolvedThreads: existingUnresolvedThreads,
             });
             validationIssues = [...new Set([...validationIssues, ...validateContinuityEnvelope(result, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
             validationIssues = enforceOpeningRegenerationQuality(validationIssues, result, openingRegeneration, character, regenerationInstruction);
@@ -10338,7 +10349,7 @@ async function streamRoleplayV19({
         let absoluteFinalIssues = validateNarrativeReply(persistableReply, {
           characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
           finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
-          character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+          character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract, unresolvedThreads: existingUnresolvedThreads,
         });
         absoluteFinalIssues = [...new Set([...absoluteFinalIssues, ...validateContinuityEnvelope({ ...result, reply: persistableReply }, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
         const absoluteFinalBlocking = blockingNarrativeIssues(absoluteFinalIssues);
@@ -10357,7 +10368,7 @@ async function streamRoleplayV19({
           absoluteFinalIssues = validateNarrativeReply(persistableReply, {
             characterName: character.name, userName: userIdentity.name, latestUserMessage, turnIntent,
             finishReason: result.finishReason, rejectedResponses, recentCharacterReplies, recentUserMessages,
-            character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract,
+            character, knowledgeLedger, groundedAnchors: groundedAgencyAnchors, previousScene: existingSceneState, turnContract, unresolvedThreads: existingUnresolvedThreads,
           });
           absoluteFinalIssues = [...new Set([...absoluteFinalIssues, ...validateContinuityEnvelope({ ...result, reply: persistableReply }, { previousScene: existingSceneState, previousCast: existingCastState, previousIntelligence: existingIntelligenceState, latestUserMessage, turnIntent, characterName: character.name, recentUserMessages, recentCharacterReplies })])];
           const unresolvedFinal = [...new Set([...blockingNarrativeIssues(absoluteFinalIssues), ...hardRepairRequiredIssues(absoluteFinalIssues), ...(deterministicBarrier.issues || [])])];
