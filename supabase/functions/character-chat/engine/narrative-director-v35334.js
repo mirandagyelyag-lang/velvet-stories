@@ -180,7 +180,7 @@ function userAgencyInvented(reply="",latestUserMessage=""){
     const re=new RegExp("\\byou\\s+(?:had\\s+|already\\s+)?"+verb+"\\b");
     if(!re.test(n)) continue;
     const stem=verb.replace(/(?:ed|d)$/,"");
-    if(new RegExp("\\b(?:i|i'm|im|i am|me)\\b[^.!?]{0,55}\\b"+stem).test(latest)) continue;
+    if(new RegExp("\\b(?:i|i'm|im|i am|me)\\b[^.!?]{0,55}"+stem).test(latest)) continue;
     return true;
   }
   return /\byour\s+(?:heart|stomach|chest)\s+(?:leapt|dropped|tightened|ached|fluttered)\b/.test(n)
