@@ -80,6 +80,16 @@ function campusCoffeeStudyFallback(reply="", opening=false){
   return campus && coffee && logistics && !hasMeaningfulStateChange(t);
 }
 
+function prematureSceneEscape(reply="", latestUserMessage="", recentCharacterReplies=[]){
+  const t=norm(reply);
+  const context=norm([...(Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-3):[]),latestUserMessage].join(" | "));
+  const escape=/\b(?:my car(?:'s| is)? (?:out back|outside)|car(?:'s| is)? (?:out back|outside)|side exit|front exit|back exit|lets get out of here|let's get out of here|come on lets go|come on let's go|anywhere else|leave this place|heading toward (?:the )?(?:side|front|back)? ?exit|headed toward (?:the )?(?:side|front|back)? ?exit|turned toward (?:the )?(?:side|front|back)? ?exit|headed for (?:the )?(?:side|front|back)? ?exit)\b/.test(t);
+  if(!escape) return false;
+  const liveSocial=/\b(?:guy|girl|friend|someone|somebody|him|her|jealous|flirt|talking to|beside you|next to you|interrupted|competition|attention|mock sympathy|tragic)\b/.test(t+" "+context);
+  const earnedReason=/\b(?:fire|danger|unsafe|closing|closed|kicked out|asked (?:us|them|you) to leave|police|emergency|ambulance|evacuat|appointment|reservation|late for|miss the train|miss the bus|flight)\b/.test(t+" "+context);
+  return liveSocial&&!earnedReason;
+}
+
 function blockingBanterStall(reply=""){
   const t=norm(reply);
   const words=t.split(/\s+/).filter(Boolean).length;
@@ -137,6 +147,10 @@ export function buildSemanticStoryMomentumV35310({
     "A turn changes the story only when the SOCIAL, EMOTIONAL or PRACTICAL situation changes. Body movement and prop handling are blocking, not momentum.",
     "DO NOT count walking, standing, sitting, opening/holding a door, grabbing keys, checking a phone, drinking, looking back, smiling/grinning, driving logistics, ordering food/coffee, or moving objects as the turn's main development.",
     "The character may initiate strongly, but initiative means choosing, revealing, refusing, inviting, confronting, pursuing for a reason, changing a plan for a meaningful reason, asking the question that matters, acting on jealousy/care/pride, or creating a consequence.",
+    "SCENE DEEPENING BEFORE SCENE SWITCHING: when a live social or emotional beat already exists, exploit that beat in the CURRENT location before proposing an exit, car ride, diner run, walk elsewhere, private room, or new destination. Momentum usually means changing the relationship or social balance, not changing the scenery.",
+    "A strong micro-action can be the development when it has interpersonal meaning: stealing the user's drink after interrupting a rival, taking the rival's place, answering for them, joining the conversation, making the rival leave, changing who has access/attention, or asking a pointed question that exposes the character's motive. Props are allowed when they ALTER the social beat instead of merely decorating movement.",
+    "Do not explain a charged action immediately after performing it. Prefer subtext over labels such as 'I'm rescuing you', 'I'm jealous', 'anywhere else is better', or narration that translates the character's behavior for the reader. Let the choice + line carry the meaning.",
+    "LOCATION CHANGE IS EXPENSIVE: only leave the current setting when there is an earned practical deadline, danger, established destination, explicit user choice, or a scene objective that truly requires another place. Never use a car/exit as the default reward for successfully creating tension.",
     "Never decide the user's next movement with declarations such as 'You're walking with me' or 'You're coming with me.' The character may say 'Come with me', start their own action, insist verbally, or leave space for the user to choose.",
     "Never manufacture intimacy through invented preferences: no 'your usual', 'your favorite', specific drink/order/habit, nickname or routine unless visible canon established it.",
     "CAMPUS/COFFEE/STUDY is not banned, but it cannot be the story engine. Coffee, food, class gaps, student-union lines and study logistics are background unless something meaningful happens through them.",
@@ -159,6 +173,7 @@ export function semanticStoryMomentumIssues({
   if(unsupportedUserPreference(text,latestUserMessage,recentUserMessages,character)) issues.push("semantic_invented_user_preference");
   if(campusCoffeeStudyFallback(text,opening)) issues.push("semantic_campus_coffee_study_fallback");
   if(blockingBanterStall(text)) issues.push("semantic_blocking_banter_stall");
+  if(prematureSceneEscape(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_premature_scene_escape");
   if(acceptanceFollowThroughStall(text,latestUserMessage)) issues.push("semantic_acceptance_without_progression");
   if(repeatedMannerism(text,recentCharacterReplies)) issues.push("semantic_repeated_grin_mannerism");
   if(convenientPlotTrigger(text,recentCharacterReplies)) issues.push("semantic_convenient_plot_trigger");
