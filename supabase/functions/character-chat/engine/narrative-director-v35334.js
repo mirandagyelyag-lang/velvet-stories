@@ -227,10 +227,17 @@ export function narrativeDirectorIssuesV35334({
   if(arr(unresolvedThreads).length && freshConvenientHook(t) && !replyTouchesThread(t,unresolvedThreads)) {
     issues.push("fresh_hook_ignored_unresolved_thread");
   }
-  if(repeatedSkeleton(t,recentCharacterReplies)) issues.push("narrative_skeleton_echo");
-  if(decorativeCallback(t,unresolvedThreads)) issues.push("decorative_callback_without_payoff");
+  if(repeatedSkeleton(t,recentCharacterReplies)) {
+    issues.push("narrative_skeleton_echo");
+    issues.push("conversation_not_converted_to_event");
+  }
+  if(decorativeCallback(t,unresolvedThreads)) {
+    issues.push("decorative_callback_without_payoff");
+    issues.push("fresh_hook_ignored_unresolved_thread");
+  }
   if(/\b(?:kept walking|kept driving|kept going|gave a small nod|gave a short nod|said nothing|let the silence|waited|watched)\b/.test(norm(t)) && !storyChange(t)) {
     issues.push("turn_without_clear_purpose");
+    issues.push("scene_lifecycle_overstayed");
   }
   return [...new Set(issues)];
 }
