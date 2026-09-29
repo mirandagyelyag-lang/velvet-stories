@@ -2009,7 +2009,7 @@ function instantStoryConflictSeedV35247(draft, idea = "", variationKey = "", rec
     },
     {
       id: "unexpected_opportunity",
-      text: "UNEXPECTED OPPORTUNITY: something becomes available or possible right now and the lead character decides to act on it. Prefer an opportunity that changes what the group/character will actually DO next: tickets, a last-minute opening, an invitation, a spontaneous destination, a challenge, access to something, a changed plan, or a chance tied to the character's own interests. The momentum comes from possibility, not conflict."
+      text: "UNEXPECTED OPPORTUNITY: something becomes available or possible right now and the lead character decides to act on it. DEFAULT TO AN IN-PLACE SOCIAL OR PRACTICAL CHANGE: claim a role, change a group plan, use new access, take a side, redirect an activity, accept a challenge, reveal a useful option, or make a choice that changes who is involved. Do not default to leaving, driving somewhere, keys, an exit, a spontaneous destination, or 'come with me'. Only relocate when the creator premise already established that destination or movement. The momentum comes from a decision with consequences, not scenery."
     },
   ];
 
@@ -2651,7 +2651,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
   if (salvageSeed?.opening) {
     try {
       const salvageController = new AbortController();
-      const salvageTimeoutId = setTimeout(() => salvageController.abort(), 11000);
+      const salvageTimeoutId = setTimeout(() => salvageController.abort(), 14500);
       let salvageResponse;
       try {
         salvageResponse = await fetch(modelEndpoint(GEMINI_RECOVERY_MODEL), {
@@ -2659,7 +2659,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
           headers: geminiHeaders(apiKey),
           signal: salvageController.signal,
           body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 70-125 words. The lead character must make one meaningful choice or create one concrete playable development. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. End with a concrete situation, not a question demanding the user invent the plot. Output only the revised prose.
+            contents: [{ role: "user", parts: [{ text: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 65-105 words. The lead character must create ONE visible change before the final line: change a plan, social balance, access, expectation, information, responsibility, challenge, boundary, or who is involved. Keep that change inside the current setting unless CHARACTER/IDEA already establishes a destination. Walking, keys, doors, driving, moving rooms, smiling, teasing, props, or banter DO NOT count as the change. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. Avoid ending on 'come on', 'deal', a joke, a generic question, or an invitation that requires the user to invent the next beat. End after the character has already changed something concrete. Output only the revised prose.
 
 CHARACTER
 ${JSON.stringify(safeDraft)}
@@ -2676,8 +2676,8 @@ ${String(salvageSeed.opening || "").slice(0,1800)}
 FAILURES TO REMOVE
 ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}` }] }],
             generationConfig: {
-              maxOutputTokens: 1200,
-              temperature: 0.86,
+              maxOutputTokens: 1800,
+              temperature: 0.78,
               thinkingConfig: { thinkingLevel: "LOW" },
             },
           }),
