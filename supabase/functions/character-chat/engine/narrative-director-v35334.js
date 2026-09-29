@@ -221,6 +221,41 @@ function semanticEcho(reply="",recentCharacterReplies=[]){
   });
 }
 
+function userInitiatesCloseness(value=""){
+  const t=norm(value);
+  return /\b(?:cross(?:ed)? my arm with yours|link(?:ed)? (?:my|our) arms?|hook(?:ed)? my arm (?:through|around) yours|hold(?:ing)? your hand|held your hand|take your hand|took your hand|grab(?:bed)? your hand|hug(?:ged)? you|lean(?:ed)? (?:on|against|into) you|rest(?:ed)? my head (?:on|against) you|touch(?:ed)? your arm|move(?:d)? closer to you)\b/.test(t);
+}
+function userWithdrawsCloseness(value=""){
+  const t=norm(value);
+  return /\b(?:let go (?:of you|of your hand|from your arm)?|pull(?:ed)? away|unlink(?:ed)? (?:our|my) arms?|move(?:d)? away|step(?:ped)? back|stop(?:ped)? holding|drop(?:ped)? your hand|remove(?:d)? my hand)\b/.test(t);
+}
+function physicalActionAgreementMismatch(reply="",latestUserMessage=""){
+  if(!userInitiatesCloseness(latestUserMessage) && !userWithdrawsCloseness(latestUserMessage)) return false;
+  return /^(?:"|')?(?:can't argue with that logic|cant argue with that logic|fair point|good point|that makes sense|can't argue with that|cant argue with that|deal|works for me)\b/.test(norm(reply));
+}
+function closenessDivertedToLogistics(reply="",latestUserMessage=""){
+  if(!userInitiatesCloseness(latestUserMessage)) return false;
+  const r=norm(reply);
+  const logistics=/\b(?:popcorn|caramel|butter|movie|cinema|theater|theatre|tickets?|line|buying|order|food|coffee|snacks?|walking|stride|doors?|parking|seat|screening)\b/.test(r);
+  const salient=/\b(?:linked arms?|your arm|his arm|her arm|hand|hands|hug|closer|close to|pause|paused|caught off guard|surprised|soften|softened|squeeze|squeezed|stayed beside|attention stayed|looked down at|glanced down at)\b/.test(r);
+  return logistics && !salient;
+}
+function withdrawalErasedIntoNpcSwitch(reply="",latestUserMessage=""){
+  if(!userWithdrawsCloseness(latestUserMessage)) return false;
+  const r=norm(reply);
+  const npcSwitch=/\b(?:catch(?:ing)? up to|caught up to|joined|walked over to|went back to|turned to|headed toward)\s+(?:his|her|their)?\s*(?:friends?|group|[a-z]{3,})\b/.test(r);
+  const residue=/\b(?:pause|paused|hesitat|looked back|glanced back|noticed|expression|quiet|annoyed|hurt|confused|wait|hey|sorry|soften|changed|tone|stayed beside|kept pace|gave you room)\b/.test(r);
+  return npcSwitch && !residue;
+}
+function relationshipBeatFlattened(reply="",latestUserMessage="",character={}){
+  if(norm(character?.name||"")!=="alexander bennett") return false;
+  if(!userInitiatesCloseness(latestUserMessage) && !userWithdrawsCloseness(latestUserMessage)) return false;
+  const r=norm(reply);
+  const generic=/\b(?:popcorn|caramel|butter|movie night|cinema sacrilege|punishable offense|ruining movie night|good luck|come on|deal)\b/.test(r);
+  const relational=/\b(?:arm|hand|close|beside|pause|attention|looked down|glanced down|soften|hesitat|stayed|wait|noticed|tone changed|gave you room)\b/.test(r);
+  return generic && !relational;
+}
+
 export function deriveNarrativeDirectorStateV35334({recentCharacterReplies=[],unresolvedThreads=[]}={}){
   const saturation=sceneSaturation(recentCharacterReplies);
   return {
