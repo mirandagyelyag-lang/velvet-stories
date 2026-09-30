@@ -59,7 +59,7 @@ export default function Auth() {
     <main className="auth auth--owner-scene">
       <img
         className="auth__ambient-art"
-        src="/velvet-owner-login-scene.png"
+        src="/velvet-login-bg.webp"
         alt=""
         aria-hidden="true"
         draggable="false"
@@ -69,7 +69,6 @@ export default function Auth() {
       <section className="auth__card" aria-label="Private Velvet login">
         <header className="auth__brand">
           <div className="auth__brand-mark" aria-hidden="true">
-            <img src="/velvet-rose-no-frame-192.png" alt="" draggable="false" />
             <span>VS</span>
             <i>✦</i>
           </div>
