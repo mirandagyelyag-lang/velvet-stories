@@ -63,6 +63,7 @@ import { buildChatScopedNpcCanonV35279, chatScopedNpcCanonV35279Issues, filterAu
 import { buildUnifiedNarrativeStateV35312, unifiedNarrativeStateIssuesV35312, instantStoryStateFamilyIssuesV35312 } from "./engine/unified-narrative-state-v35312.js";
 import { buildNarrativeDirectorV35334, narrativeDirectorIssuesV35334 } from "./engine/narrative-director-v35334.js";
 import { buildInteractionSalienceV35342, interactionSalienceIssuesV35342 } from "./engine/interaction-salience-v35342.js";
+import { buildRelationshipInterpretationV35343, relationshipInterpretationIssuesV35343 } from "./engine/relationship-interpretation-v35343.js";
 import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
@@ -3620,6 +3621,16 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
+  const relationshipInterpretationV35343 = buildRelationshipInterpretationV35343({
+    character,
+    relationshipState: conversation.relationship_state || conversation.relationship || {},
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-12).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    scene: conversation.scene_state || {},
+    behavior: conversation.intelligence_state?.human_behavior_state || {},
+    worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
+  });
   const emotionalSupportStateV35321 = deriveEmotionalSupportPriorityV35321(
     latestUserRecord?.content || "",
     messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||""))
@@ -3833,6 +3844,8 @@ ${unifiedNarrativeStateV35312}
 ${narrativeDirectorV35334}
 
 ${interactionSalienceV35342}
+
+${relationshipInterpretationV35343}
 
 ${emotionalDnaRouterV35321}
 
@@ -5164,6 +5177,16 @@ ${openingDnaV35289}`;
     recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-8).map((m)=>String(m?.content||"")),
     character,
   });
+  const relationshipInterpretationV35343 = buildRelationshipInterpretationV35343({
+    character,
+    relationshipState: relationshipState || {},
+    latestUserMessage,
+    recentUserMessages: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-12).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-8).map((m)=>String(m?.content||"")),
+    scene: scene || {},
+    behavior: intelligenceState?.human_behavior_state || {},
+    worldConsequences: worldConsequences || {},
+  });
   const emotionalSupportStateV35321 = deriveEmotionalSupportPriorityV35321(
     latestUserMessage,
     (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="user").slice(-6).map((m)=>String(m?.content||""))
@@ -5284,6 +5307,9 @@ ${narrativeDirectorV35334}
 
 INTERACTION SALIENCE
 ${interactionSalienceV35342}
+
+RELATIONSHIP INTERPRETATION
+${relationshipInterpretationV35343}
 
 EMOTIONAL DNA
 ${emotionalDnaRouterV35321}
@@ -9296,6 +9322,13 @@ function validateNarrativeReply(reply = "", options = {}) {
     reply: text,
     latestUserMessage: options.latestUserMessage || "",
     recentUserMessages: options.recentUserMessages || [],
+    character: options.character || {},
+  })) issues.push(issue);
+  for (const issue of relationshipInterpretationIssuesV35343({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
     character: options.character || {},
   })) issues.push(issue);
   for (const issue of independentAgencyBoundaryV35311Issues({
