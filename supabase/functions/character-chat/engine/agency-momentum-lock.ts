@@ -121,6 +121,35 @@ export function hasForcedContinuationHook(reply = "", latestUserMessage = "") {
   return bait.some((pattern) => pattern.test(tail));
 }
 
+export function hasInventedUserPhysicalAction(reply = "", latestUserMessage = "") {
+  const rawReply = String(reply || "");
+  const rawUser = String(latestUserMessage || "");
+  if (!rawReply.trim()) return false;
+
+  // User physical actions are canon only when the user actually writes them as actions.
+  // Dialogue, refusal, tone, implication, hesitation, or phrases such as "I'll pass"
+  // must NEVER be converted into movement by the narrator.
+  const explicitUserActions = (rawUser.match(/\*[^*]*\*/gs) || []).join(" ");
+  const actionEvidence = normalized(explicitUserActions);
+
+  const inventedActionPatterns = [
+    /\b(?:watch(?:es|ed|ing)?|see(?:s|ing)?|as) you (?:turn(?:ed|ing)? (?:to )?(?:leave|go)|walk(?:ed|ing)? away|walk(?:ed|ing)? out|leave|left|head(?:ed|ing)? (?:out|away)|step(?:ped|ping)? away|move(?:d|ing)? away|stand|stood|get up|got up|sit|sat|approach(?:ed|ing)?|come closer|follow(?:ed|ing)?|reach(?:ed|ing)?|grab(?:bed|bing)?|pick(?:ed|ing)? up)\b/i,
+    /\byou (?:turn(?:ed|ing)? (?:to )?(?:leave|go)|walk(?:ed|ing)? away|walk(?:ed|ing)? out|leave|left|head(?:ed|ing)? (?:out|away)|step(?:ped|ping)? away|move(?:d|ing)? away|stand|stood|get up|got up|sit|sat|approach(?:ed|ing)?|come closer|follow(?:ed|ing)?|reach(?:ed|ing)?|grab(?:bed|bing)?|pick(?:ed|ing)? up)\b/i,
+  ];
+
+  const matched = inventedActionPatterns.some((pattern) => pattern.test(rawReply));
+  if (!matched) return false;
+
+  const matchingEvidence = [
+    /\b(?:turn|leave|left|go|walk|walked|away|out)\b/,
+    /\b(?:head|headed|step|stepped|move|moved)\b/,
+    /\b(?:stand|stood|get up|got up|sit|sat)\b/,
+    /\b(?:approach|approached|closer|follow|followed)\b/,
+    /\b(?:reach|reached|grab|grabbed|pick|picked)\b/,
+  ];
+  return !matchingEvidence.some((pattern) => pattern.test(actionEvidence));
+}
+
 export function hasAgencyContradiction(reply = "", latestUserMessage = "", recentCharacterReplies = []) {
   const text = normalized(reply);
   const latest = normalized(latestUserMessage);
@@ -136,6 +165,7 @@ export function hasAgencyContradiction(reply = "", latestUserMessage = "", recen
 
 export function agencyMomentumIssues({ reply = "", latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], character = {}, groundedAnchors = [] } = {}) {
   const issues = [];
+  if (hasInventedUserPhysicalAction(reply, latestUserMessage)) issues.push("invented_user_physical_action");
   if (hasAgencyContradiction(reply, latestUserMessage, recentCharacterReplies)) issues.push("agency_commitment_inertia_break");
   if (hasGratuitousExternalHook(reply, latestUserMessage, recentUserMessages, recentCharacterReplies, character, groundedAnchors)) issues.push("gratuitous_external_hook");
   if (hasInitiativeBudgetOverflow(reply, latestUserMessage)) issues.push("initiative_budget_overflow");
@@ -152,6 +182,9 @@ export function sanitizeAgencyMomentumReply(reply = "", issues = []) {
 
   if (active.has("gratuitous_external_hook") || active.has("forced_scene_continuation_hook")) {
     pieces = pieces.filter((piece) => !/\b(?:phone (?:buzzed|rang|lit up|vibrated)|notification|someone (?:knocked|appeared|walked in|came over)|somebody (?:knocked|appeared|walked in|came over)|door (?:opened|swung open)|just then|little did .* know|neither of us knew|what happened next)\b/i.test(piece));
+  }
+  if (active.has("invented_user_physical_action")) {
+    pieces = pieces.filter((piece) => !hasInventedUserPhysicalAction(piece, ""));
   }
   if (active.has("agency_commitment_inertia_break")) {
     pieces = pieces.filter((piece) => !/\b(?:followed you|went after you|chased after you|caught up with you|right behind you|headed out|walked away|left)\b/i.test(piece));
