@@ -335,7 +335,7 @@
   .auth__card {
     width: min(91vw, 390px);
     padding: 20px 15px 18px;
-    border-radius: 25px;
+    border-radius: 26px;
   }
 
   .auth__brand-mark {
@@ -348,40 +348,52 @@
   }
 
   .auth__brand-name {
-    font-size: 1.52rem;
+    font-size: 1.48rem;
   }
 
   .auth__brand-divider {
+    width: 64%;
     margin-top: 10px;
   }
 
   .auth__welcome {
-    margin: 17px 0 17px;
+    margin: 18px 0 18px;
   }
 
   .auth__welcome h1 {
-    font-size: clamp(2.5rem, 11.5vw, 3.2rem);
+    font-size: clamp(2.55rem, 11.5vw, 3.2rem);
   }
 
   .auth__welcome p {
-    font-size: 1.03rem;
+    font-size: 1rem;
   }
 
   .auth__password-row {
-    min-height: 58px;
-    padding: 0 13px;
-    border-radius: 15px;
+    min-height: 60px;
+    padding: 0 14px;
+    border-radius: 17px;
   }
 
   .auth__password-row input {
-    height: 56px;
+    height: 58px;
   }
 
-  
+  .auth__enter {
+    min-height: 62px;
+    font-size: 1.56rem;
+  }
+
+  .auth__private-line {
+    margin-top: 18px;
+    font-size: .7rem;
+    letter-spacing: .18em;
+  }
+}
+
 @media (max-height: 690px) {
   .auth__card {
-    padding-top: 18px;
-    padding-bottom: 16px;
+    padding-top: 17px;
+    padding-bottom: 15px;
   }
 
   .auth__brand-mark {
@@ -394,24 +406,24 @@
   }
 
   .auth__brand-name {
-    font-size: 1.35rem;
+    font-size: 1.32rem;
   }
 
   .auth__brand-divider {
-    margin-top: 8px;
+    margin-top: 7px;
   }
 
   .auth__welcome {
-    margin: 15px 0 15px;
+    margin: 14px 0 14px;
   }
 
   .auth__welcome h1 {
-    font-size: 2.65rem;
+    font-size: 2.55rem;
   }
 
   .auth__welcome p {
     margin-top: 5px;
-    font-size: .95rem;
+    font-size: .93rem;
   }
 
   .auth__password-row {
@@ -423,11 +435,11 @@
   }
 
   .auth__enter {
-    min-height: 58px;
+    min-height: 57px;
   }
 
   .auth__private-line {
-    margin-top: 14px;
+    margin-top: 13px;
   }
 }
 
