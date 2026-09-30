@@ -75,7 +75,7 @@ import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from ".
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "432";
+const VELVET_ENGINE_RELEASE = "433";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -380,7 +380,7 @@ Deno.serve(async (request) => {
       return json({ error: "The conversation changed before Velvet could answer. Try again from the latest message." }, 409);
     }
 
-    const latestUserMessage = openingRegeneration ? "" : String(latestUserRecord?.content || "");
+    const latestUserMessage = openingRegeneration ? "" : sanitizeUserTurnForPerception(String(latestUserRecord?.content || ""));
     const previousCharacterMessage = openingRegeneration
       ? String(branch.replacementMessage?.content || configuredCharacter.first_message || "")
       : ([...messages].reverse().find((message) => message.sender === "character")?.content || "");
@@ -3178,6 +3178,7 @@ function buildNarrativePromptV3({
   turnContract = {},
 }) {
   const clean = (value, limit = 700) => cleanPromptValue(value || "not specified", limit);
+  const latestPerceptibleUserMessage = sanitizeUserTurnForPerception(latestPerceptibleUserMessage);
   const supportingCast = (Array.isArray(groupCharacters) ? groupCharacters : [])
     .filter((item) => item?.id && item.id !== character.id);
   const orchestrator = turnContract?.generationOrchestratorV346 || {};
@@ -3186,7 +3187,7 @@ function buildNarrativePromptV3({
   const memorySlots = Math.max(3, Number(orchestrator.memorySlots || 9));
   const loreSlots = Math.max(1, Number(orchestrator.loreSlots || 4));
   const castSlots = Math.max(2, Number(orchestrator.castSlots || 6));
-  const latest = openingRegeneration ? "" : compactMessageForPrompt(sanitizeUserTurnForPerception(latestUserRecord?.content || ""), 4200);
+  const latest = openingRegeneration ? "" : compactMessageForPrompt(sanitizeUserTurnForPerception(latestPerceptibleUserMessage), 4200);
   const immediate = messages.slice(-immediateCount).map((message) => {
     const speaker = message.sender === "user" ? userIdentity.name : (supportingCast.length ? "STORY CAST" : character.name);
     const content = message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content;
@@ -3244,7 +3245,7 @@ function buildNarrativePromptV3({
     character,
     recentReplies: recentCharacterRepliesForVoice,
     recentUserMessages: messages.filter((message)=>message.sender === "user").slice(-6).map((message)=>String(message.content || "")),
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     turnContract,
     developmentState,
     publicPrivateMode: conversation.intelligence_state?.character_mind?.public_private_mode || "unknown",
@@ -3270,7 +3271,7 @@ function buildNarrativePromptV3({
   const storyBrainV35348 = buildStoryBrainV35348({
     character,
     userName: userIdentity.name,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     scene: conversation.scene_state || {},
@@ -3286,7 +3287,7 @@ function buildNarrativePromptV3({
   });
   const yearningEngineV35349 = buildYearningEngineV35349({
     character,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     relationshipState: conversation.relationship_state || {},
@@ -3296,7 +3297,7 @@ function buildNarrativePromptV3({
   });
   const romanticResidueV35351 = buildRomanticResidueV35351({
     character,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     scene: conversation.scene_state || {},
@@ -3306,7 +3307,7 @@ function buildNarrativePromptV3({
   });
   const directFlirtV35352 = buildDirectFlirtV35352({
     character,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     relationshipState: conversation.relationship_state || {},
@@ -3440,7 +3441,7 @@ ${clean(responseLanguage || "match the conversation", 120)}
 
 Before finalizing, silently verify only three things: (a) who did what, (b) what the latest user beat means here, (c) whether the reply follows from those facts. If any answer is unclear, choose the least assumptive continuation. Hidden continuity fields must be conservative and must never override the visible turn history.`;
   const humanCognitionBriefV34930 = buildHumanCognitionBriefV34930({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3450,7 +3451,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     relationship: conversation.relationship_state || {},
   });
   const individualHumanPsycheV34931 = buildIndividualHumanPsycheV34931({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
     mind: conversation.intelligence_state?.character_mind || {},
@@ -3458,7 +3459,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     relationship: conversation.relationship_state || {},
   });
   const humanSocialIntelligenceV34932 = buildHumanSocialIntelligenceV34932({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3468,7 +3469,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     relationship: conversation.relationship_state || {},
   });
   const humanMemoryPersonalHistoryV34933 = buildHumanMemoryPersonalHistoryV34933({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3480,7 +3481,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     memories: conversation.memories || conversation.intelligence_state?.memories || [],
   });
   const humanEmotionNervousSystemV34934 = buildHumanEmotionNervousSystemV34934({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3490,7 +3491,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     scene: conversation.scene_state || {},
   });
   const independentAgencyDesireV34935 = buildIndependentAgencyDesireV34935({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3502,17 +3503,17 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
   const relationshipAttachmentV34936 = buildRelationshipAttachmentV34936({
     character,
     relationship: conversation.relationship_state || conversation.relationship || {},
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentCharacterReplies: recentCharacterRepliesForVoice,
   });
   const humanSpontaneityAntiPatternV34937 = buildHumanSpontaneityAntiPatternV34937({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character, scene: conversation.scene_state || {}, mind: conversation.intelligence_state?.character_mind || {},
   });
   const humanKnowledgeUncertaintyV34938 = buildHumanKnowledgeUncertaintyV34938({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character, mind: conversation.intelligence_state?.character_mind || {}, scene: conversation.scene_state || {},
@@ -3520,65 +3521,65 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     memories: conversation.memories || conversation.intelligence_state?.memories || [],
   });
   const naturalDialogueResetV34940 = buildNaturalDialogueResetV34940({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
   const plainSpeechFirstV34941 = buildPlainSpeechFirstV34941({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
   const leanDialogueCoreV34942 = buildLeanDialogueCoreV34942({
-    latestUserMessage: latestUserRecord?.content || "", character,
+    latestUserMessage: latestPerceptibleUserMessage, character,
     relationship: conversation.relationship_state || {}, scene: conversation.scene_state || {},
     knowledgeLedger: conversation.intelligence_state?.knowledge_ledger || [],
   });
   const targetAwareDialogueV34943 = buildTargetAwareDialogueV34943({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     character,
     recentContext: recentCharacterRepliesForVoice?.slice(-2).join(" ") || "",
   });
   const spokenNaturalnessV34944 = buildSpokenNaturalnessV34944({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     character,
   });
   const microContinuityV34945 = buildMicroContinuityV34945({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentTurns: messages.slice(-8).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${String(message.content || "")}`),
     character,
   });
   const turnStateLedgerV34946 = buildTurnStateLedgerV34946({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     recentTurns: messages.slice(-10).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${String(message.content || "")}`),
     character,
   });
   const sceneMomentumBarrierV35236 = buildSceneMomentumBarrierV35236({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
   const meaningfulTurnGateV34950 = buildMeaningfulTurnGateV34950({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     character,
   });
   const semanticStoryMomentumV35310 = buildSemanticStoryMomentumV35310({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
   const independentAgencyBoundaryV35311 = buildIndependentAgencyBoundaryV35311({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
   const emotionalRelationshipCoreV35263 = buildEmotionalRelationshipCoreV35263({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3587,19 +3588,19 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     relationship: conversation.relationship_state || conversation.relationship || {},
   });
   const pursuitEmotionPriorityV35265 = buildPursuitEmotionPriorityV35265({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
   const emotionalMomentumIntegrityV35272 = buildEmotionalMomentumIntegrityV35272({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
   });
   const characterLedStoryV35274 = buildCharacterLedStoryV35274({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3608,7 +3609,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     mind: conversation.intelligence_state?.character_mind || {},
   });
   const autonomousStoryFlowV35275 = buildAutonomousStoryFlowV35275({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-10).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3617,7 +3618,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     mind: conversation.intelligence_state?.character_mind || {},
   });
   const persistentOffscreenLifeUserGravityV35276 = buildPersistentOffscreenLifeUserGravityV35276({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-10).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3629,7 +3630,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     userName: userIdentity.name,
   });
   const consequencesThatStickV35277 = buildConsequencesThatStickV35277({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-10).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3646,7 +3647,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     emotionState: conversation.intelligence_state?.relationship_emotion_core || {},
     chemistry: turnContract?.relationshipChemistryV2 || {},
     narrativeArc: turnContract?.narrativeArcIntelligenceV344 || {},
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentCharacterReplies: recentCharacterRepliesForVoice,
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
@@ -3655,11 +3656,11 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     character,
     groupCharacters,
     userCreatedNpcs: persistentCast,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
   });
   const unifiedNarrativeStateV35312 = buildUnifiedNarrativeStateV35312({
     character,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-10).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     relationshipState: conversation.relationship_state || conversation.relationship || {},
@@ -3676,12 +3677,12 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
   const narrativeDirectorV35334 = buildNarrativeDirectorV35334({
     character,
     scene: conversation.scene_state || {},
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentCharacterReplies: recentCharacterRepliesForVoice,
     unresolvedThreads: conversation.unresolved_threads || [],
   });
   const interactionSalienceV35342 = buildInteractionSalienceV35342({
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-12).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     character,
@@ -3689,7 +3690,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
   const relationshipInterpretationV35343 = buildRelationshipInterpretationV35343({
     character,
     relationshipState: conversation.relationship_state || conversation.relationship || {},
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-12).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     scene: conversation.scene_state || {},
@@ -3699,7 +3700,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
   const behaviorBecomesCharacterV35344 = buildBehaviorBecomesCharacterV35344({
     character,
     relationshipState: conversation.relationship_state || conversation.relationship || {},
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-14).map((m)=>String(m.content||"")),
     recentCharacterReplies: recentCharacterRepliesForVoice,
     scene: conversation.scene_state || {},
@@ -3709,24 +3710,24 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     isRegeneration,
   });
   const emotionalSupportStateV35321 = deriveEmotionalSupportPriorityV35321(
-    latestUserRecord?.content || "",
+    latestPerceptibleUserMessage,
     messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||""))
   );
   const emotionalSupportPriorityV35321 = buildEmotionalSupportPriorityV35321({
     character,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
   });
   const emotionalDnaRouterV35321 = buildEmotionalDnaRouterV35321({ character, supportState: emotionalSupportStateV35321 });
   const emotionalAftercareV35322 = buildEmotionalAftercareV35322({
     character,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
   });
   const characterIdentityGateV35321 = buildCharacterIdentityGateV35321({ character });
   const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
     character,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentCharacterReplies: recentCharacterRepliesForVoice,
     relationshipState: conversation.relationship_state || conversation.relationship || {},
     intelligenceState: conversation.intelligence_state || {},
@@ -3736,7 +3737,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
   });
   const livingWorldCalendarV35314 = buildLivingWorldCalendarV35314({
     character,
-    latestUserMessage: latestUserRecord?.content || "",
+    latestUserMessage: latestPerceptibleUserMessage,
     recentCharacterReplies: recentCharacterRepliesForVoice,
     persistentCast,
     castConnections,
@@ -3868,7 +3869,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
 - Preserve who is physically present from scene/cast state. A character outside the scene cannot suddenly speak in person.
 - Independent bonds can differ: one person may trust ${userIdentity.name}, another may be irritated, another may know less. Do not synchronize emotions for convenience.\n- Supporting characters have off-screen continuity too. They may remember a slight, maintain a plan, side with each other, disagree with the lead, leave because they have somewhere else to be, or continue a friendship that does not involve ${userIdentity.name}. Do not use them only as jealousy props, exposition dispensers or applause tracks.` : "";
   const currentBeatPolicy = buildCurrentBeatPolicy({
-    turnIntent, character, latestUserMessage: latestUserRecord?.content || "", messages, openingRegeneration,
+    turnIntent, character, latestUserMessage: latestPerceptibleUserMessage, messages, openingRegeneration,
   });
   const rejectedRegenerationHistory = (Array.isArray(rejectedResponses) ? rejectedResponses : [])
     .slice(-6)
@@ -4251,7 +4252,7 @@ ${currentBeatPolicy}
 
 TURN
 Mode: ${turnIntent.kind}; question: ${turnIntent.isQuestion ? "yes" : "no"}; medium: ${turnIntent.medium}; silent streak: ${turnIntent.silentCount}.
-Length: ${getLengthGuidance(character.response_length, turnIntent.kind, latestUserRecord?.content || "")}
+Length: ${getLengthGuidance(character.response_length, turnIntent.kind, latestPerceptibleUserMessage)}
 ${regeneration}
 Director: ${clean(directorInstruction || "none", 520)}
 Feedback: ${feedback}
