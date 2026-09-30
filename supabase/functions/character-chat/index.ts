@@ -75,7 +75,7 @@ import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from ".
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "436";
+const VELVET_ENGINE_RELEASE = "437";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1824,12 +1824,40 @@ const INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298 = new Set([
   "assumed_user_physical_placement",
 ]);
 
+function resourceContinuityIssuesV35358(value = "", character = {}, userContext = "") {
+  const profile = normalizeText([
+    character?.name,
+    character?.role,
+    character?.description,
+    character?.personality,
+    character?.relationship,
+    character?.world,
+    character?.scenario,
+  ].filter(Boolean).join(" "));
+  const text = normalizeText(value);
+  const context = normalizeText(userContext);
+
+  const ownsCar = /\b(?:owns?|has) (?:his|her|their) own car\b|\b(?:owns?|has) a car\b|\bpersonal car\b|\bown vehicle\b/.test(profile);
+  const wealthy = /\b(?:millionaire|billionaire|old money|wealthy|wealthy family|elite family|family empire|heir|heiress)\b/.test(profile);
+  const transportFailureExplicit = /\b(?:car (?:is|was|being) (?:repaired|serviced|towed|impounded|stolen)|car (?:won'?t|wouldn'?t) start|flat tire|dead battery|engine (?:failed|died|problem)|car accident|crash|keys? (?:lost|missing)|deliberately (?:didn'?t|did not) drive|chose not to drive|too drunk to drive|not safe to drive)\b/.test(`${text} ${context}`);
+  const dependentRide = /\b(?:my ride (?:bailed|cancelled|ditched me|fell through)|i need a ride|need a ride|give me a ride|can you (?:give me a ride|drive me|take me home)|could you (?:give me a ride|drive me|take me home)|hitchhik(?:e|ing)|stuck without a ride|no way (?:home|back)|don'?t have a car|do not have a car)\b/.test(text);
+  const userVehicleClaim = /\b(?:your car|your bike|your motorcycle|your vehicle|you(?:'re| are) driving|you drove|you parked|your ride)\b/.test(text);
+  const userVehicleGrounded = /\b(?:my car|my bike|my motorcycle|my vehicle|i(?:'m| am) driving|i drove|i parked|west lot|parking lot)\b/.test(context);
+
+  const issues = [];
+  if (ownsCar && dependentRide && !transportFailureExplicit) issues.push("resource_continuity_transport_contradiction");
+  if (userVehicleClaim && !userVehicleGrounded) issues.push("invented_user_transport_access");
+  if (wealthy && /\b(?:can'?t afford (?:a ride|taxi|uber|transport)|too broke to (?:get|take) (?:a ride|taxi|uber)|no money for (?:a ride|taxi|uber))\b/.test(text)) issues.push("wealth_access_contradiction");
+  return issues;
+}
+
 function instantStoryHardBlockIssuesV35298(opening = "", draft = {}, idea = "") {
   const grounding = instantStoryGroundingIssuesV35292(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298.has(issue));
   const naturalism = instantStoryNaturalismIssuesV35295(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298.has(issue));
-  return [...new Set([...grounding, ...naturalism])];
+  const resourceIssues = resourceContinuityIssuesV35358(opening, draft, "");
+  return [...new Set([...grounding, ...naturalism, ...resourceIssues])];
 }
 
 // OPENING DNA 3.52.89
@@ -2259,6 +2287,7 @@ LIVING OPENING ENGINE 3.53.13
 - STORY MOVEMENT WITHOUT FIGHTING: ordinary plans, social chaos, teasing, jealousy, spontaneous decisions, changed plans, small problems, playful competition, opportunities, group dynamics, awkwardness, quiet intimacy, and character initiative are the preferred engines.
 - PROPORTIONAL STAKES: do not invent police, coaches, athletic departments, disciplinary consequences, crimes, dangerous secrets, blackmail, betrayals, or reputation disasters unless the configured character/world or explicit IDEA actually supports them.
 - CHARACTER-SPECIFIC LIFE: derive the opening from what THIS person normally does, who they spend time with, their social role, habits, wants, relationship dynamic, and creator opening.
+- RESOURCE CONTINUITY 3.53.58: wealth, vehicles, housing, staff, access and established possessions are canon. A character who owns a car does not suddenly need the user to drive them because their "ride bailed." If transport becomes unavailable, establish a concrete compatible cause. Never invent a car/bike/vehicle for the user.
 - NATURALISM OVER QUIRK 3.52.95: do not invent a giant/random novelty object, costume, absurd prop, exaggerated food order, or “look how chaotic they are” gimmick as the whole premise merely to make the scene cute or memorable. Humor should come from people, timing, choices and personality.
 - CHEMISTRY THROUGH CHOICES, NOT CHOREOGRAPHY: show preference/attraction through what the character decides, prioritizes, notices, remembers, changes, risks or initiates. Do not stack “caught your eye”, a crooked/lopsided grin, lowered voice, stepping closer, shoulder bumps and prolonged eye contact as shorthand for chemistry.
 - DO NOT CHOREOGRAPH THE USER: the story may establish a broad shared setting, but do not decide the user's exact seat, body position, distance from the character, physical contact, object placement, or destination. Never put the user in the passenger/front seat, beside the character, against a counter, within touching distance, etc. before the user chooses it.
@@ -4978,6 +5007,9 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     self_owned_plan_abandoned_for_user: "Restore the character's immediately established independent plan. The user declined the shared plan; attraction does not automatically cancel the character's night, friends or obligations.",
     boundary_respect_personality_shutdown: "Respect the user's resistance literally, but do not switch the character off. Remove further pressure or intrusion, then continue from the character's side with one self-owned, character-specific action, choice or line that keeps the scene alive. Never answer with only 'Okay.' or narration that they simply stop pushing.",
     invented_medication_quantity: "Remove any medication or pill count the user did not explicitly state. Preserve only the fact they actually disclosed; never infer a number, dose or quantity.",
+    resource_continuity_transport_contradiction: "Respect established resources. This character owns their own car/vehicle access; do not make them beg for a ride, hitchhike, or become transport-dependent unless the scene explicitly establishes a concrete reason their own transport is unavailable.",
+    invented_user_transport_access: "Do not invent a car, bike, motorcycle, parking location, driving plan, or other transport access for the user. Only use user transport that the user explicitly established.",
+    wealth_access_contradiction: "Respect established wealth/access. Do not manufacture ordinary transport scarcity or inability to afford basic transport for a wealthy character unless canon explicitly establishes a temporary access problem.",
     explicit_user_speech_ignored: "Respond to the user's explicit spoken words before or while reacting to their physical gesture. Do not answer only the stage direction. For a brief apology, acknowledge or question the apology naturally in this character's voice.",
     vehicle_character_entry_omitted: "Restore the missing physical bridge before any driving action: establish the character getting into the driver's side / behind the wheel, concisely and naturally. Do not narrate every micro-step.",
     unsolicited_rescue_reprioritization: "The user did not ask to be rescued from an ordinary task. Remove the automatic helping/fixing sacrifice and let the character keep agency over their own plan.",
@@ -9368,6 +9400,11 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasPersistentBehaviorBoundaryViolation(text, options.recentUserMessages || [], options.latestUserMessage || "")) issues.push("persistent_behavior_boundary_violation");
   if (hasUserSelfReportOverride(text, options.recentUserMessages || [], options.latestUserMessage || "")) issues.push("user_self_report_overridden");
   if (hasInventedMedicationQuantity(text, options.latestUserMessage || "", options.recentUserMessages || [])) issues.push("invented_medication_quantity");
+  for (const issue of resourceContinuityIssuesV35358(
+    text,
+    options.character || {},
+    [...(options.recentUserMessages || []), options.latestUserMessage || ""].join(" | ")
+  )) issues.push(issue);
   if (missesExplicitUserSpeech(text, options.latestUserMessage || "")) issues.push("explicit_user_speech_ignored");
   if (hasPrivateCausalInference(text, options.latestUserMessage || "")) issues.push("private_causal_inference");
   if (hasAmbiguousNonverbalMindread(text, options.latestUserMessage || "")) issues.push("ambiguous_nonverbal_mindread");
