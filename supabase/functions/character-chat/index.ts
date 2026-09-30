@@ -65,7 +65,7 @@ import { buildNarrativeDirectorV35334, narrativeDirectorIssuesV35334 } from "./e
 import { buildInteractionSalienceV35342, interactionSalienceIssuesV35342 } from "./engine/interaction-salience-v35342.js";
 import { buildRelationshipInterpretationV35343, relationshipInterpretationIssuesV35343 } from "./engine/relationship-interpretation-v35343.js";
 import { buildBehaviorBecomesCharacterV35344, behaviorBecomesCharacterIssuesV35344 } from "./engine/behavior-becomes-character-v35344.js";
-import { buildStoryBrainV35348, storyBrainV35348Issues } from "./engine/story-brain-v35348.js";
+import { buildStoryBrainV35348, storyBrainV35348Issues } from "./engine/story-brain-v35348.js";\nimport { buildYearningEngineV35349, yearningEngineV35349Issues } from "./engine/yearning-engine-v35349.js";
 import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
@@ -3274,6 +3274,16 @@ function buildNarrativePromptV3({
       ...(Array.isArray(regenerationFeedback) ? regenerationFeedback : (regenerationFeedback ? [String(regenerationFeedback)] : [])),
     ],
   });
+  const yearningEngineV35349 = buildYearningEngineV35349({
+    character,
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    relationshipState: conversation.relationship_state || {},
+    intelligenceState: conversation.intelligence_state || {},
+    scene: conversation.scene_state || {},
+    isRegeneration: Boolean(isRegeneration || openingRegeneration),
+  });
   const openingDnaV35289 = buildOpeningDnaContractV35289(character, regenerationInstruction);
   const regenV3500 = openingRegeneration
     ? `OPENING REGENERATION 3.52.89
@@ -3381,6 +3391,8 @@ CURRENT STATE · use only when compatible with visible turns
 ${compactStateV3500}
 
 ${storyBrainV35348}
+
+${yearningEngineV35349}
 
 LATEST USER BEAT
 ${latest || "none"}
@@ -8145,7 +8157,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "semantic_repeated_grin_mannerism",
   "story_brain_stagnation_not_broken",
   "story_brain_regeneration_too_similar",
-  "story_brain_unearned_intensity_jump",
+  "story_brain_unearned_intensity_jump",\n  "yearning_opportunity_flattened",\n  "yearning_declared_as_dependency",\n  "yearning_crossed_into_control",
   "location_change_without_story_change",
   "scene_lifecycle_overstayed",
   "conversation_not_converted_to_event",
@@ -9416,6 +9428,15 @@ function validateNarrativeReply(reply = "", options = {}) {
     intelligenceState: options.continuity?.intelligenceState || {},
     isRegeneration: Boolean(options.isRegeneration || options.openingRegeneration),
     rejectedResponses: options.rejectedResponses || [],
+  })) issues.push(issue);
+  for (const issue of yearningEngineV35349Issues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    character: options.character || {},
+    relationshipState: options.continuity?.relationshipState || {},
+    intelligenceState: options.continuity?.intelligenceState || {},
   })) issues.push(issue);
   for (const issue of emotionalSupportPriorityIssuesV35321({
     reply: text,
