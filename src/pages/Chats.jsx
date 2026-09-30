@@ -216,35 +216,60 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     try {
       setLoading(true);
       setError("");
+
+      // Stories must never wait for the entire message history just to paint the shelf.
+      // Load the conversation rows first so the library becomes usable immediately.
       const { data: rows, error: conversationError } = await supabase
         .from("conversations").select("*")
         .order("is_pinned", { ascending: false })
         .order("updated_at", { ascending: false });
       if (conversationError) throw conversationError;
 
-      const ids = (rows || []).map((row) => row.id);
-      let messages = [];
-      if (ids.length) {
-        const { data, error: messagesError } = await supabase
-          .from("messages").select("conversation_id, content, sender, created_at")
-          .in("conversation_id", ids).order("created_at", { ascending: false });
-        if (messagesError) throw messagesError;
-        messages = data || [];
-      }
-
-      const latestByConversation = new Map();
-      messages.forEach((item) => {
-        if (!latestByConversation.has(item.conversation_id)) latestByConversation.set(item.conversation_id, item);
-      });
-      setConversations((rows || []).map((row) => ({
+      const storyRows = (rows || []).map((row) => ({
         ...row,
         character: characters.find((item) => item.id === row.character_id),
-        latestMessage: latestByConversation.get(row.id),
-      })));
+        latestMessage: null,
+      }));
+
+      setConversations(storyRows);
+      setLoading(false);
+
+      // Preview text is decorative, not a boot dependency. Fetch a bounded recent
+      // slice after the shelf is visible, then enrich cards without blocking Stories.
+      const ids = storyRows.map((row) => row.id);
+      if (!ids.length) return;
+
+      try {
+        const previewLimit = Math.min(900, Math.max(180, ids.length * 5));
+        const { data: messages, error: messagesError } = await supabase
+          .from("messages")
+          .select("conversation_id, content, sender, created_at")
+          .in("conversation_id", ids)
+          .order("created_at", { ascending: false })
+          .limit(previewLimit);
+
+        if (messagesError) throw messagesError;
+
+        const latestByConversation = new Map();
+        (messages || []).forEach((item) => {
+          if (!latestByConversation.has(item.conversation_id)) {
+            latestByConversation.set(item.conversation_id, item);
+          }
+        });
+
+        setConversations((current) => current.map((row) => ({
+          ...row,
+          latestMessage: latestByConversation.get(row.id) || row.latestMessage || null,
+        })));
+      } catch (previewError) {
+        // A failed preview query should never blank or freeze the Stories page.
+        console.warn("Story previews unavailable:", previewError?.message || previewError);
+      }
     } catch (requestError) {
       console.error("Error loading conversations:", requestError);
       setError("We couldn't load your conversations.");
-    } finally { setLoading(false); }
+      setLoading(false);
+    }
   }
 
   async function handleCreate(character) {
