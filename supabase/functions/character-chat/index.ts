@@ -75,7 +75,7 @@ import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from ".
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "431";
+const VELVET_ENGINE_RELEASE = "432";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -461,6 +461,7 @@ Deno.serve(async (request) => {
       storyPreferences,
       openingRegeneration,
       openingSeed: branch.replacementMessage?.content || configuredCharacter.first_message || "",
+      rejectedResponses: branch.rejectedResponses,
       turnContract,
     });
 
@@ -3173,6 +3174,7 @@ function buildNarrativePromptV3({
   storyPreferences,
   openingRegeneration = false,
   openingSeed = "",
+  rejectedResponses = [],
   turnContract = {},
 }) {
   const clean = (value, limit = 700) => cleanPromptValue(value || "not specified", limit);
@@ -3868,10 +3870,19 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
   const currentBeatPolicy = buildCurrentBeatPolicy({
     turnIntent, character, latestUserMessage: latestUserRecord?.content || "", messages, openingRegeneration,
   });
+  const rejectedRegenerationHistory = (Array.isArray(rejectedResponses) ? rejectedResponses : [])
+    .slice(-6)
+    .map((item, index) => `REJECTED ${index + 1}: ${clean(item, 900)}`)
+    .join("\n");
   const regeneration = openingRegeneration
     ? `Create a materially different opening. Do not answer an imaginary user turn. Rejected opening, do not paraphrase: ${clean(openingSeed, 900)}`
     : isRegeneration
-      ? `Rewrite from the same branch point with a different choice and dialogue. Direction: ${clean(regenerationInstruction || "none", 700)}`
+      ? `REGENERATION NOVELTY CONTRACT
+Rewrite from the same literal branch point, but choose a materially different immediate tactic, action, cadence, and dialogue.
+Do NOT paraphrase or cosmetically rewrite any rejected response. If a rejected response chases, intercepts, reassures, apologizes, jokes, questions, withdraws, touches, waits, or explains, do not automatically reuse that same beat. Preserve canon and the user's last action, but change what the character DOES NEXT.
+Direction: ${clean(regenerationInstruction || "none", 700)}
+Previously rejected responses:
+${rejectedRegenerationHistory || "none"}`
       : "This is a new canonical turn.";
 
   return `You are Velvet. Write the next natural beat of a private character roleplay. The visible story reply goes in reply; hidden continuity fields stay terse and factual.
@@ -6790,6 +6801,35 @@ function hasRepeatedRecentSignature(reply = "", recentReplies = []) {
   }
   return false;
 }
+function regenerationBeatFamilies(value = "") {
+  const text = normalizeText(String(value || ""));
+  if (!text) return [];
+  const families = [];
+  const add = (name, pattern) => { if (pattern.test(text)) families.push(name); };
+  add("pursue_intercept", /\b(go(?:es)? after|follow(?:s|ed|ing)?|catch(?:es|ing)? up|hurr(?:y|ies|ied|ying) after|come(?:s)? after|close(?:s|d)? the distance|step(?:s|ped)? after|move(?:s|d)? after)\b/);
+  add("verbal_stop", /\b(wait|hold on|hang on|stop|dont go|do not go|stay)\b/);
+  add("acknowledge_hurt", /\b(i heard|heard what|i know what you said|what you said|it landed|that landed|not pretending|i get it|i understand|i know that hurt|i know i hurt)\b/);
+  add("apology", /\b(im sorry|i am sorry|sorry|i shouldnt have|i should not have|my fault)\b/);
+  add("explain_defend", /\b(let me explain|i can explain|what i meant|thats not what i meant|that is not what i meant|i didnt mean|i did not mean)\b/);
+  add("question_pull", /\b(tell me|answer me|look at me|can we|will you|are you|do you|why did|why are)\b/);
+  add("withdraw_leave", /\b(walk(?:s|ed)? away|turn(?:s|ed)? away|leave(?:s|d)?|backs? off|steps? back|lets? you go|gives? you space)\b/);
+  add("no_touch_distance", /\b(without (?:touching|reaching|grabbing)|doesnt (?:touch|reach|grab)|does not (?:touch|reach|grab)|keeps? (?:his|her|their) hands? to (?:himself|herself|themselves))\b/);
+  add("physical_contact", /\b(grab(?:s|bed)?|catch(?:es)? (?:your )?(?:wrist|arm|hand)|touch(?:es|ed)?|take(?:s)? your hand|pull(?:s|ed)? you)\b/);
+  add("reassure", /\b(im here|i am here|you dont have to|you do not have to|i wont|i will not|i promise)\b/);
+  add("tease_joke", /\b(grin(?:s|ned)?|smirk(?:s|ed)?|teas(?:e|es|ed|ing)|jok(?:e|es|ed|ing)|laugh(?:s|ed|ing)?)\b/);
+  add("invite_plan", /\b(come with me|come on|lets go|let us go|want to go|ill take you|i will take you|stay with me)\b/);
+  return [...new Set(families)];
+}
+function sameRegenerationBeat(current = "", old = "") {
+  const a = regenerationBeatFamilies(current);
+  const b = regenerationBeatFamilies(old);
+  if (!a.length || !b.length) return false;
+  const shared = a.filter((item) => b.includes(item));
+  if (shared.length >= 4) return true;
+  if (shared.length >= 3 && a[0] === b[0]) return true;
+  const highSignal = new Set(["pursue_intercept", "verbal_stop", "acknowledge_hurt", "apology", "explain_defend", "withdraw_leave", "physical_contact", "invite_plan"]);
+  return shared.filter((item) => highSignal.has(item)).length >= 3;
+}
 function matchesRejectedRegeneration(reply = "", rejectedResponses = []) {
   const current = String(reply || "").trim();
   if (!current) return false;
@@ -6802,7 +6842,8 @@ function matchesRejectedRegeneration(reply = "", rejectedResponses = []) {
     if (replySimilarity(current, old) >= 0.72) return true;
     const currentDialogue = extractDialogueLines(current).join(" ");
     const oldDialogue = extractDialogueLines(old).join(" ");
-    return currentDialogue && oldDialogue && replySimilarity(currentDialogue, oldDialogue) >= 0.78;
+    if (currentDialogue && oldDialogue && replySimilarity(currentDialogue, oldDialogue) >= 0.78) return true;
+    return sameRegenerationBeat(current, old);
   });
 }
 
