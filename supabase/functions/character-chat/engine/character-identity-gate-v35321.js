@@ -25,6 +25,23 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
   if(name==="chase beaumont"){
     const inert=/\b(?:small nod|gave a nod|fair enough|all right|alright|okay then|whatever you want)\b/.test(t);
     if(inert&&wordCount(reply)<70)issues.push("chase_electricity_flattened");
+
+    // Chase's creator canon is structural world truth, not optional flavor.
+    // He is a millionaire with his own high-end car, campus-famous, and routinely
+    // receives female attention. The world must never flatten him into an anonymous
+    // student who depends on borrowed transport. Attention does not make him a womanizer.
+    const transportDowngrade=/\b(?:doesnt have (?:a )?car|does not have (?:a )?car|without (?:a )?car|needed (?:a )?ride|asked (?:someone|a friend) for (?:a )?ride|waited for (?:a )?ride|borrowed (?:a|the|his|her|their) car|borrowed (?:a|the|his|her|their) keys|someone elses car|friends car|roommates car|caught the bus because|took the bus because)\b/.test(t);
+    const randomKeysAsTransport=/\b(?:someone|a guy|a girl|a friend|another student)\b.{0,120}\b(?:tossed|threw|handed|passed)\b.{0,60}\b(?:car )?keys\b.{0,160}\b(?:chase )?(?:caught|grabbed|snagged|took)\b/.test(t);
+    if(transportDowngrade||randomKeysAsTransport)issues.push("chase_wealth_car_canon_broken");
+
+    const anonymityDrift=/\b(?:nobody knew (?:him|who chase was)|no one knew (?:him|who chase was)|went unnoticed|passed unnoticed|just another student|ordinary student|anonymous on campus|no one recognized him|nobody recognized him)\b/.test(t);
+    if(anonymityDrift)issues.push("chase_campus_fame_erased");
+
+    const desirabilityErased=/\b(?:girls? never noticed him|women never noticed him|girls? werent interested in him|women werent interested in him|no one ever flirted with him|he rarely got attention from (?:girls|women)|he wasnt used to female attention)\b/.test(t);
+    if(desirabilityErased)issues.push("chase_romantic_attention_erased");
+
+    const womanizerDrift=/\b(?:slept with half the campus|hooked up with everyone|flirted back with every girl|always took girls home|couldnt keep track of his hookups|womanizer|player who never said no)\b/.test(t);
+    if(womanizerDrift)issues.push("chase_attention_became_womanizer");
   }
 
   if(name==="nathan foster"){
@@ -84,12 +101,26 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
 
 export function buildCharacterIdentityGateV35321({character={}}={}){
   const d=character?.emotional_dna&&typeof character.emotional_dna==="object"?character.emotional_dna:{};
+  const name=norm(character?.name);
+  const hardCanon=name==="chase beaumont"
+    ? [
+        "CHASE WORLD CANON — HARD, NON-NEGOTIABLE:",
+        "- Chase is a millionaire. His wealth is established reality, not a temporary story beat.",
+        "- Chase personally owns a high-end car and has independent transportation. Never make him borrow random car keys, need someone else's car, wait for a ride, or behave as if he has no vehicle merely to move the plot.",
+        "- Chase is campus-famous. Students know who he is; he is not anonymous or socially invisible at university.",
+        "- Female attention is normal around him: many girls on campus want him, flirt with him, watch him, approach him, or look for reasons to be near him. Do not erase this social reality because he is interested in the protagonist.",
+        "- This attention does NOT make Chase a womanizer. He is accustomed to being wanted and can flirt confidently, but do not make him automatically reciprocate every girl's attention or turn him into a serial hookup caricature.",
+        "- Show status through consequences when relevant: recognition, access, confidence, his own car, people reacting to him, or outside romantic attention. Do not dump these facts as exposition and do not force all markers into every private scene.",
+        "- His distinction with the protagonist is not that nobody else wants him; it is that her attention begins to matter to him in a way the abundant outside attention does not."
+      ].join("\n")
+    : "";
   return [
     "CHARACTER IDENTITY GATE 3.53.21:",
     "Before finalizing, silently test: if the character name were removed, would this reply still be recognizable from choices, priorities, restraint, humor, conflict behavior and affection style?",
     "Do not mention the archetype label in prose. Express it behaviorally.",
     "CORE="+clean(d.core_fantasy,120),
     "PROMISE="+clean(d.emotional_promise,700),
+    hardCanon,
     "If the answer could be transplanted unchanged onto another lead character, rewrite the tactic or emotional decision."
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
