@@ -65,7 +65,8 @@ import { buildNarrativeDirectorV35334, narrativeDirectorIssuesV35334 } from "./e
 import { buildInteractionSalienceV35342, interactionSalienceIssuesV35342 } from "./engine/interaction-salience-v35342.js";
 import { buildRelationshipInterpretationV35343, relationshipInterpretationIssuesV35343 } from "./engine/relationship-interpretation-v35343.js";
 import { buildBehaviorBecomesCharacterV35344, behaviorBecomesCharacterIssuesV35344 } from "./engine/behavior-becomes-character-v35344.js";
-import { buildStoryBrainV35348, storyBrainV35348Issues } from "./engine/story-brain-v35348.js";\nimport { buildYearningEngineV35349, yearningEngineV35349Issues } from "./engine/yearning-engine-v35349.js";
+import { buildStoryBrainV35348, storyBrainV35348Issues } from "./engine/story-brain-v35348.js";
+import { buildYearningEngineV35349, yearningEngineV35349Issues } from "./engine/yearning-engine-v35349.js";
 import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
@@ -8157,7 +8158,10 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "semantic_repeated_grin_mannerism",
   "story_brain_stagnation_not_broken",
   "story_brain_regeneration_too_similar",
-  "story_brain_unearned_intensity_jump",\n  "yearning_opportunity_flattened",\n  "yearning_declared_as_dependency",\n  "yearning_crossed_into_control",
+  "story_brain_unearned_intensity_jump",
+  "yearning_opportunity_flattened",
+  "yearning_declared_as_dependency",
+  "yearning_crossed_into_control",
   "location_change_without_story_change",
   "scene_lifecycle_overstayed",
   "conversation_not_converted_to_event",
