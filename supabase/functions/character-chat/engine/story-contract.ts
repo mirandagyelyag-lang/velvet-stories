@@ -1392,18 +1392,35 @@ export function socialEcosystemsFor(character: Record<string, unknown> = {}) {
 }
 
 const observableAsteriskAction = /\b(?:walk|walked|walking|follow|followed|following|nod|nodded|roll(?:ed)? (?:my|her|his|their) eyes|look|looked|glance|glanced|stare|stared|sit|sat|stand|stood|move|moved|step|stepped|turn|turned|shrug|shrugged|smile|smiled|laugh|laughed|open|opened|close|closed|take|took|pick|picked|grab|grabbed|hold|held|raise|raised|lower|lowered|touch|touched|hug|hugged|kiss|kissed|lean|leaned|wave|waved|point|pointed|pull|pulled|push|pushed|run|ran|leave|left|enter|entered|exit|exited|go|went|come|came|approach|approached|stop|stopped|pause|paused|drink|drank|eat|ate|type|typed|write|wrote|text|texted)\b/i;
-const privateAsteriskMarker = /\b(?:because|since|when|where|while|thinking|think|thought|wondering|wonder|wondered|hoping|hope|hoped|wishing|wish|wished|remembering|remember|remembered|knowing|know|knew|feeling|feel|felt|wanting|want|wanted|hating|hate|hated|loving|love|loved|assuming|assume|assumed|guessing|guess|guessed|realizing|realize|realized|deciding|decide|decided|regretting|regret|regretted|pretending|pretend|pretended|in my head|to myself|internally)\b/i;
+const privateAsteriskMarker = /\b(?:because|since|when|where|while|thinking|think|thought|wondering|wonder|wondered|hoping|hope|hoped|wishing|wish|wished|remembering|remember|remembered|knowing|know|knew|feeling|feel|felt|wanting|want|wanted|hating|hate|hated|loving|love|loved|caring|care|cared|assuming|assume|assumed|guessing|guess|guessed|realizing|realize|realized|deciding|decide|decided|regretting|regret|regretted|pretending|pretend|pretended|nervous|anxious|scared|afraid|embarrassed|jealous|angry|upset|sad|happy|relieved|uncomfortable|comfortable|suffocated|overwhelmed|confused|hurt|inside|secretly|in my head|to myself|internally)\b/i;
 
 function visibleAsteriskSegment(raw: string) {
   const value=text(raw);
   if (!value) return "";
-  const privateMatch=value.match(privateAsteriskMarker);
-  if (!privateMatch || !Number.isFinite(privateMatch.index)) return observableAsteriskAction.test(value) ? value : "";
-  const before=value.slice(0, privateMatch.index).replace(/[\s,;:—-]+$/g,"").trim();
-  if (observableAsteriskAction.test(before)) return before;
-  const after=value.slice(privateMatch.index).match(/\b(?:and then|then|and)\s+(.+)$/i)?.[1]?.trim() || "";
-  if (observableAsteriskAction.test(after)) return after;
-  return "";
+
+  // Asterisk narration is authorial by default. Only externally observable
+  // actions may cross into character perception. Mixed clauses such as
+  // "*I left, I was feeling suffocated*" must never leak the feeling, motive,
+  // evaluation ("bad lie"), or other narrator-only commentary.
+  const hasPrivateContent=privateAsteriskMarker.test(value);
+  if (!hasPrivateContent) return observableAsteriskAction.test(value) ? value : "";
+
+  const clauses=value
+    .split(/(?:[,;.!?]+|\bbut\b|\bbecause\b|\bsince\b|\bwhile\b|\band\b(?=\s+(?:i|we)\b)|\bthen\b(?=\s+(?:i|we)\b))/i)
+    .map((part)=>text(part))
+    .filter(Boolean);
+
+  const safeClauses=clauses.filter((part)=>
+    observableAsteriskAction.test(part) &&
+    !privateAsteriskMarker.test(part) &&
+    !/\b(?:bad lie|good lie|obviously|clearly|i don'?t even care|i do not even care)\b/i.test(part)
+  );
+  if (safeClauses.length) return safeClauses.join("; ");
+
+  // If a private clause also contains a simple physical action, salvage only
+  // the action itself instead of the surrounding internal narration.
+  const compactAction=value.match(/\b(?:i|we)\s+(?:left|walked|ran|went|came|looked|glanced|stared|turned|stepped|moved|sat|stood|nodded|shrugged|smiled|laughed|paused|stopped|opened|closed|took|picked|grabbed|held|raised|lowered|touched|hugged|kissed|leaned|waved|pointed|pulled|pushed|entered|exited)(?:\s+(?:away|out|back|over|there|inside|outside|toward\s+[^,;.!?]+|to\s+[^,;.!?]+))?/i);
+  return compactAction ? text(compactAction[0]) : "";
 }
 
 export function sanitizeUserTurnForPerception(value: string) {
