@@ -151,15 +151,15 @@ function Settings({ onBack, onOpenDiagnostics }) {
   }
   const jumpTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: settings.reduceMotion ? "auto" : "smooth", block: "start" });
   return <section className="settings-page settings-page--editorial">
-    <header className="page-heading settings-page__heading"><div><button onClick={onBack}><ArrowLeft size={17}/>Profile</button><p>MAKE VELVET YOURS</p><h1>Settings</h1><span>A quieter control room for reading, storytelling and the app.</span></div></header>
+    <header className="page-heading settings-page__heading"><div><button onClick={onBack}><ArrowLeft size={17}/>Profile</button><p>YOUR VELVET</p><h1>Settings</h1><span>Everything you can shape, protect and update, in one calm place.</span></div></header>
     <nav className="settings-page__nav" aria-label="Settings sections">
-      <button onClick={()=>jumpTo("settings-appearance")}>Appearance</button>
-      <button onClick={()=>jumpTo("settings-storytelling")}>Storytelling</button>
-      <button onClick={()=>jumpTo("settings-updates")}>Updates</button>
-      <button onClick={()=>jumpTo("settings-app")}>AI & app</button>
-      <button onClick={()=>jumpTo("settings-privacy")}>Privacy</button>
-      <button onClick={()=>jumpTo("settings-about")}>About</button>
+      <button onClick={()=>jumpTo("settings-personalize")}><Sparkles size={14}/>Personalize</button>
+      <button onClick={()=>jumpTo("settings-storytelling")}><Heart size={14}/>Stories</button>
+      <button onClick={()=>jumpTo("settings-safety")}><ShieldCheck size={14}/>Safety</button>
+      <button onClick={()=>jumpTo("settings-updates")}><RefreshCw size={14}/>Updates</button>
+      <button onClick={()=>jumpTo("settings-system")}><Wrench size={14}/>System</button>
     </nav>
+    <div className="settings-section-label" id="settings-personalize"><span>01</span><div><strong>Personalize</strong><small>How Velvet looks and feels on your phone.</small></div></div>
     <div className="settings-group" id="settings-appearance"><header><Eye size={19}/><div><h2>Appearance</h2><p>Choose the light that feels best for reading.</p></div></header>
       <div className="setting-row"><strong>Theme</strong><div className="setting-segments">
         <button className={theme==='light'?'active':''} onClick={()=>setTheme('light')}><Sun size={14}/> Light</button>
@@ -177,7 +177,8 @@ function Settings({ onBack, onOpenDiagnostics }) {
       <SettingChoice label="Reading width" value={settings.readingWidth || "comfortable"} options={[["narrow","Narrow"],["comfortable","Comfortable"],["wide","Wide"]]} onChange={(value)=>updateSetting("readingWidth",value)}/>
       <SettingChoice label="Reading font" value={settings.readingFont || "clean"} options={[["clean","Clean"],["serif","Book serif"]]} onChange={(value)=>updateSetting("readingFont",value)}/>
     </div>
-    <div className="settings-group settings-story-dna" id="settings-storytelling"><header><Heart size={19}/><div><h2>How I like stories</h2><p>Your global storytelling style. Character identity still comes first.</p></div></header>
+    <div className="settings-section-label" id="settings-storytelling"><span>02</span><div><strong>Your stories</strong><small>Shape the reading and storytelling experience.</small></div></div>
+    <div className="settings-group settings-story-dna"><header><Heart size={19}/><div><h2>How I like stories</h2><p>Your global storytelling style. Character identity still comes first.</p></div></header>
       <SettingChoice label="Prose" value={settings.storyProse} options={[["contemporary","Natural"],["literary","Literary"],["minimal","Clean"]]} onChange={(value)=>updateSetting("storyProse",value)}/>
       <SettingChoice label="Conversation" value={settings.storyDialogue} options={[["dialogue_forward","Dialogue-forward"],["balanced","Balanced"],["narration_forward","Narration-forward"]]} onChange={(value)=>updateSetting("storyDialogue",value)}/>
       <SettingChoice label="Emotional interior" value={settings.storyEmotion} options={[["interior_visible","Visible"],["subtle","Subtle"],["restrained","Restrained"]]} onChange={(value)=>updateSetting("storyEmotion",value)}/>
@@ -193,6 +194,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
         onRemove={removeStoryFeedback}
       />
     </div>
+    <div className="settings-section-label" id="settings-safety"><span>03</span><div><strong>Safety & data</strong><small>Backups, recovery and protection for your Velvet world.</small></div></div>
     <div className="settings-group settings-group--exports"><header><FileDown size={19}/><div><h2>Stories & backup</h2><p>Export one story normally, or keep a full safety copy of your Velvet world.</p></div></header>
       <SettingChoice label="Default story export" value={settings.exportFormat} options={[["markdown","Markdown"],["text","Plain text"],["json","JSON story"]]} onChange={(value)=>updateSetting("exportFormat",value)}/>
       <div className="v312-backup-center v34915-safety-center">
@@ -213,7 +215,8 @@ function Settings({ onBack, onOpenDiagnostics }) {
     <div className="settings-group" id="settings-privacy"><header><ShieldCheck size={19}/><div><h2>Privacy & safety</h2><p>Protection against accidental destructive actions.</p></div></header>
       <Toggle label="Confirm before deleting" description="Ask before deleting characters, conversations and lore." checked={settings.confirmBeforeDelete} onChange={(value)=>updateSetting('confirmBeforeDelete',value)}/>
     </div>
-    <div className="settings-group settings-update-center" id="settings-updates"><header><RefreshCw size={19}/><div><h2>Velvet updates</h2><p>You decide when the app on this phone changes.</p></div></header>
+    <div className="settings-section-label" id="settings-updates"><span>04</span><div><strong>Updates</strong><small>You choose when this phone moves to a new Velvet build.</small></div></div>
+    <div className="settings-group settings-update-center"><header><RefreshCw size={19}/><div><h2>Velvet updates</h2><p>You decide when the app on this phone changes.</p></div></header>
       <div className="settings-update-center__status">
         <div><small>APP ON THIS PHONE</small><strong>v{pwa.localVersion}</strong><em>{pwa.serverUpdateAvailable ? `v${pwa.serverVersion} is ready` : "Latest app installed ✓"}</em></div>
         <div><small>STORY ENGINE</small><strong>{health.engineVersion ? `Engine ${health.engineVersion}` : health.engine === "checking" ? "Checking…" : "Connected"}</strong><em>{health.engine === "connected" ? "Live on Supabase ✓" : health.engine}</em></div>
@@ -225,6 +228,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
       </div>
       <p className="settings-update-center__note">Checking never installs anything. When a new app build is available, Velvet waits for you to press Update.</p>
     </div>
+    <div className="settings-section-label" id="settings-system"><span>05</span><div><strong>System</strong><small>Installation, diagnostics and technical details.</small></div></div>
     <div className="settings-group settings-diagnostics" id="settings-app"><header><Activity size={19}/><div><h2>AI & diagnostics</h2><p>Check the app version, mobile touch, Supabase, the Edge Function and Gemini separately.</p></div></header><div className="settings-install__body"><span className="settings-install__icon">✦</span><div><strong>Something acting weird?</strong><small>Open diagnostics before changing code or reinstalling the app.</small></div><button onClick={onOpenDiagnostics}><Activity size={17}/>Open diagnostics</button></div><div className={`settings-safe-mode${safeMode ? " is-active" : ""}`}><span><Wrench size={17}/><span><strong>Velvet Safe Mode</strong><small>Temporarily disables motion-heavy extras, then clears only app cache. Stories, characters and Memories stay untouched.</small></span></span><button type="button" onClick={toggleSafeMode} disabled={safeModeBusy}>{safeModeBusy ? "Working…" : safeMode ? "Leave Safe Mode" : "Start Safe Mode"}</button></div></div>
     <div className="settings-group settings-install"><header><MonitorSmartphone size={19}/><div><h2>Velvet on your phone</h2><p>Install it with its own icon and full-screen experience.</p></div></header>
       <div className="settings-install__body">
@@ -238,7 +242,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
         {pwa.installed && <span className="settings-install__installed"><Check size={16}/>Installed</span>}
       </div>
     </div>
-    <div className="settings-group settings-about" id="settings-about"><header><Sparkles size={19}/><div><h2>About Velvet</h2><p>Know exactly which build is on your phone before chasing ghosts.</p></div></header>
+    <details className="settings-group settings-about settings-about--collapsed" id="settings-about"><summary><span><Sparkles size={18}/><span><strong>Technical details</strong><small>Version, build, connection and engine status</small></span></span><span>View</span></summary><div className="settings-about__inside"><header><Sparkles size={19}/><div><h2>About Velvet</h2><p>Know exactly which build is on your phone before chasing ghosts.</p></div></header>
       <div className="settings-about__grid">
         <span><small>VERSION</small><strong>Velvet Stories {VELVET_VERSION}</strong><em>{VELVET_RELEASE}</em></span>
         <span><small>BUILD</small><strong>Production build</strong><em>{formatBuild(VELVET_BUILD_TIME)}</em></span>
@@ -248,7 +252,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
         <span><small>SAFE MODE</small><strong>{safeMode ? "Active" : "Off ✓"}</strong><em>{safeMode ? "Heavy effects paused" : "Normal Velvet experience"}</em></span>
       </div>
       <div className="settings-about__actions"><button onClick={()=>pwa.checkForUpdate({ silent:false })} disabled={pwa.checkingForUpdate}><RefreshCw size={16}/>{pwa.checkingForUpdate ? "Checking…" : "Check for update"}</button>{pwa.serverUpdateAvailable && <button className="primary" onClick={pwa.updateApp} disabled={pwa.updating}>{pwa.updating ? "Updating…" : "Update now"}</button>}{pwa.updateProblem && <button onClick={pwa.repairUpdate}>Repair updater</button>}</div>
-    </div>
+    </div></details>
     <button className="settings-page__reset" onClick={confirmReset}><RotateCcw size={16}/>Reset preferences</button>
     <div className="settings-page__saved"><Check size={15}/>{storySyncReady ? "Story preferences sync to your Velvet account." : "Saving preferences…"}</div>
   </section>;
