@@ -1834,16 +1834,36 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   async function regenerate() {
     if (!selectedMessage || selectedMessage.sender !== "character" || actionLoading || busy || variantGenerationLockRef.current) return;
     const latestMessage = [...(conversation?.messages || [])].filter((item) => !item.isStreaming).at(-1);
-    if (latestMessage?.id !== selectedMessage.id) {
-      rememberFeedback("negative", regenerationFeedback, selectedMessage.id);
-      closeActionsAfterAction();
-      return;
-    }
-
     const targetId = selectedMessage.id;
     const previousContent = selectedMessage.content;
     const instruction = actionDraft.trim();
     const feedbackCodes = [...regenerationFeedback];
+    const regeneratingEarlierReply = latestMessage?.id !== targetId;
+
+    // v3.53.55 HISTORICAL REGENERATION
+    // Earlier Velvet silently treated Regenerate on an older reply as feedback
+    // and closed the sheet. An older reply cannot safely change while later
+    // turns remain canon, so offer an explicit branch point instead: preserve
+    // a temporary safety snapshot, rewind through the later turns, then create
+    // a fresh version of the selected character reply.
+    if (regeneratingEarlierReply) {
+      const approved = await confirmAction({
+        title: "Regenerate from here?",
+        message: "This reply is earlier in the story. Velvet will remove the messages after it, then generate a new version from this exact point so the story stays consistent.",
+        confirmLabel: "Regenerate from here",
+      });
+      if (!approved) return;
+
+      showActionNotice("Preparing this story point…", "working", 5000);
+      try {
+        const safetySnapshot = await createStorySnapshot(character.id, "Before historical regeneration");
+        await rewindToMessage(character.id, targetId);
+        if (safetySnapshot?.id) armRewindUndo(safetySnapshot.id);
+      } catch (rewindError) {
+        setSendError(rewindError?.message || "Velvet couldn't prepare this story point for regeneration.");
+        return;
+      }
+    }
     // v3.49.48 REGENERATION RECOVERY: Stop is a one-generation signal, not a
     // permanent chat state. A previous Stop used to leave stoppedRef=true, so
     // regeneration could finish on the server and then be discarded by this UI.
