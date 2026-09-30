@@ -68,6 +68,7 @@ import { buildBehaviorBecomesCharacterV35344, behaviorBecomesCharacterIssuesV353
 import { buildStoryBrainV35348, storyBrainV35348Issues } from "./engine/story-brain-v35348.js";
 import { buildYearningEngineV35349, yearningEngineV35349Issues } from "./engine/yearning-engine-v35349.js";
 import { buildRomanticResidueV35351, romanticResidueV35351Issues } from "./engine/romantic-residue-v35351.js";
+import { buildDirectFlirtV35352, directFlirtV35352Issues } from "./engine/direct-flirt-v35352.js";
 import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
@@ -3296,6 +3297,14 @@ function buildNarrativePromptV3({
     relationshipState: conversation.relationship_state || {},
     intelligenceState: conversation.intelligence_state || {},
   });
+  const directFlirtV35352 = buildDirectFlirtV35352({
+    character,
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    relationshipState: conversation.relationship_state || {},
+    behavior: conversation.intelligence_state?.human_behavior_state || {},
+  });
   const openingDnaV35289 = buildOpeningDnaContractV35289(character, regenerationInstruction);
   const regenV3500 = openingRegeneration
     ? `OPENING REGENERATION 3.52.89
@@ -3407,6 +3416,8 @@ ${storyBrainV35348}
 ${yearningEngineV35349}
 
 ${romanticResidueV35351}
+
+${directFlirtV35352}
 
 LATEST USER BEAT
 ${latest || "none"}
@@ -8178,6 +8189,8 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "romantic_residue_relationship_reset",
   "romantic_residue_overexplained",
   "romantic_residue_near_miss_loop",
+  "direct_flirt_obvious_setup_evaded",
+  "direct_flirt_buried_in_prose",
   "location_change_without_story_change",
   "scene_lifecycle_overstayed",
   "conversation_not_converted_to_event",
@@ -9464,6 +9477,15 @@ function validateNarrativeReply(reply = "", options = {}) {
     behavior: options.continuity?.behavior || options.continuity?.humanBehaviorState || {},
     relationshipState: options.continuity?.relationshipState || {},
     intelligenceState: options.continuity?.intelligenceState || {},
+  })) issues.push(issue);
+  for (const issue of directFlirtV35352Issues({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentUserMessages: options.recentUserMessages || [],
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    character: options.character || {},
+    relationshipState: options.continuity?.relationshipState || {},
+    behavior: options.continuity?.behavior || options.continuity?.humanBehaviorState || {},
   })) issues.push(issue);
   for (const issue of emotionalSupportPriorityIssuesV35321({
     reply: text,
