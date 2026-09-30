@@ -75,7 +75,7 @@ import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from ".
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "435";
+const VELVET_ENGINE_RELEASE = "436";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1551,6 +1551,24 @@ export function instantStoryFallbackOpening(draft, idea = "", sceneSeed = "") {
   const subject=male?"he":female?"she":"they";
   const Subject=subject[0].toUpperCase()+subject.slice(1);
   const openInterest=/\b(?:likes you|likes the user|has feelings for you|attracted to you|into you|flirts openly|never hidden|le gustas|siente algo por ti)\b/.test(profile);
+  const chaseLike = /chase beaumont/.test(String(draft?.name || "").toLowerCase()) ||
+    /\b(?:campus heartthrob|heartthrob|party|social|flirt|charismatic|popular)\b/.test(profile);
+
+  if (chaseLike) {
+    return `The party had split into smaller circles by the time ${name} noticed one of his friends pulling you into a conversation near the kitchen. He stayed where he was for another minute, finishing whatever story had three people laughing around him.
+
+Then ${name} excused himself mid-conversation and crossed the room.
+
+“You stole my favorite audience.”
+
+The guy beside you glanced between the two of you, amused enough to recognize the interruption for what it was. ${name} ignored him.
+
+“I was being polite before,” he said, looking at you now. “Now I’m interrupting.”
+
+He took the empty spot beside the counter, not touching you, not asking permission from the room either.
+
+“Keep talking to him if you want,” ${name} added. “I’m staying.”`;
+  }
 
   if(/\b(?:race|racing|racer|garage|street race|driver|mechanic)\b/.test(profile) && /garage|workshop|roadside|gas station|car meet|race-adjacent/.test(sceneSeed.toLowerCase())) return `The garage door was still half open when ${name} compared the number stamped on the new belt with the one on the invoice. They did not match. The supplier closed in less than an hour, and the car was already dismantled far enough that leaving it until morning would mean abandoning it on the lift overnight.
 
