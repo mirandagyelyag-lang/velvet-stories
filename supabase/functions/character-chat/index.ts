@@ -3178,7 +3178,7 @@ function buildNarrativePromptV3({
   turnContract = {},
 }) {
   const clean = (value, limit = 700) => cleanPromptValue(value || "not specified", limit);
-  const latestPerceptibleUserMessage = sanitizeUserTurnForPerception(latestPerceptibleUserMessage);
+  const latestPerceptibleUserMessage = sanitizeUserTurnForPerception(latestUserRecord?.content || "");
   const supportingCast = (Array.isArray(groupCharacters) ? groupCharacters : [])
     .filter((item) => item?.id && item.id !== character.id);
   const orchestrator = turnContract?.generationOrchestratorV346 || {};
