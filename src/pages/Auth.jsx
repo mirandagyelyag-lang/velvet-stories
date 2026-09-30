@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import "../styles/auth.css";
 
@@ -18,15 +18,6 @@ function translateAuthError(message = "") {
     return "Too many attempts. Wait a moment and try again.";
   }
   return message || "Velvet could not open your private session.";
-}
-
-function maskEmail(email = "") {
-  const [local = "", domain = ""] = String(email).split("@");
-  const [host = "", ...suffixParts] = domain.split(".");
-  const suffix = suffixParts.length ? `.${suffixParts.join(".")}` : "";
-  const localMask = local ? `${local[0]}${"*".repeat(Math.max(8, Math.min(13, local.length - 1 || 8)))}` : "m************";
-  const hostMask = host ? `${host[0]}${"*".repeat(Math.max(4, Math.min(7, host.length - 1 || 4)))}` : "g****";
-  return `${localMask}@${hostMask}${suffix || ".com"}`;
 }
 
 export default function Auth() {
@@ -86,12 +77,6 @@ export default function Auth() {
         </div>
 
         <form className="auth__form" onSubmit={handleSubmit}>
-          <div className="auth__remembered-row" aria-label="Remembered account">
-            <Mail size={22} strokeWidth={1.6} aria-hidden="true" />
-            <span className="auth__remembered-email">{maskEmail(ownerEmail)}</span>
-            <span className="auth__change-label" aria-hidden="true">Change</span>
-          </div>
-
           <label className="auth__password-row">
             <LockKeyhole size={22} strokeWidth={1.6} aria-hidden="true" />
             <input
