@@ -5185,7 +5185,7 @@ ${openingDnaV35289}`;
     recentCharacterReplies: (Array.isArray(messages) ? messages : []).filter((m)=>m?.sender==="character").slice(-8).map((m)=>String(m?.content||"")),
     scene: scene || {},
     behavior: intelligenceState?.human_behavior_state || {},
-    worldConsequences: worldConsequences || {},
+    worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
   const emotionalSupportStateV35321 = deriveEmotionalSupportPriorityV35321(
     latestUserMessage,
