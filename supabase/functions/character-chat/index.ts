@@ -67,6 +67,7 @@ import { buildRelationshipInterpretationV35343, relationshipInterpretationIssues
 import { buildBehaviorBecomesCharacterV35344, behaviorBecomesCharacterIssuesV35344 } from "./engine/behavior-becomes-character-v35344.js";
 import { buildStoryBrainV35348, storyBrainV35348Issues } from "./engine/story-brain-v35348.js";
 import { buildYearningEngineV35349, yearningEngineV35349Issues } from "./engine/yearning-engine-v35349.js";
+import { buildRomanticResidueV35351, romanticResidueV35351Issues } from "./engine/romantic-residue-v35351.js";
 import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
@@ -3285,6 +3286,16 @@ function buildNarrativePromptV3({
     scene: conversation.scene_state || {},
     isRegeneration: Boolean(isRegeneration || openingRegeneration),
   });
+  const romanticResidueV35351 = buildRomanticResidueV35351({
+    character,
+    latestUserMessage: latestUserRecord?.content || "",
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    scene: conversation.scene_state || {},
+    behavior: conversation.intelligence_state?.human_behavior_state || {},
+    relationshipState: conversation.relationship_state || {},
+    intelligenceState: conversation.intelligence_state || {},
+  });
   const openingDnaV35289 = buildOpeningDnaContractV35289(character, regenerationInstruction);
   const regenV3500 = openingRegeneration
     ? `OPENING REGENERATION 3.52.89
@@ -3394,6 +3405,8 @@ ${compactStateV3500}
 ${storyBrainV35348}
 
 ${yearningEngineV35349}
+
+${romanticResidueV35351}
 
 LATEST USER BEAT
 ${latest || "none"}
@@ -8162,6 +8175,9 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "yearning_opportunity_flattened",
   "yearning_declared_as_dependency",
   "yearning_crossed_into_control",
+  "romantic_residue_relationship_reset",
+  "romantic_residue_overexplained",
+  "romantic_residue_near_miss_loop",
   "location_change_without_story_change",
   "scene_lifecycle_overstayed",
   "conversation_not_converted_to_event",
@@ -9439,6 +9455,13 @@ function validateNarrativeReply(reply = "", options = {}) {
     recentUserMessages: options.recentUserMessages || [],
     recentCharacterReplies: options.recentCharacterReplies || [],
     character: options.character || {},
+    relationshipState: options.continuity?.relationshipState || {},
+    intelligenceState: options.continuity?.intelligenceState || {},
+  })) issues.push(issue);
+  for (const issue of romanticResidueV35351Issues({
+    reply: text,
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    behavior: options.continuity?.behavior || options.continuity?.humanBehaviorState || {},
     relationshipState: options.continuity?.relationshipState || {},
     intelligenceState: options.continuity?.intelligenceState || {},
   })) issues.push(issue);
