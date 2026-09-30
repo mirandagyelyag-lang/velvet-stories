@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import "../styles/auth.css";
 
@@ -17,6 +18,15 @@ function translateAuthError(message = "") {
     return "Too many attempts. Wait a moment and try again.";
   }
   return message || "Velvet could not open your private session.";
+}
+
+function maskEmail(email = "") {
+  const [local = "", domain = ""] = String(email).split("@");
+  const [host = "", ...suffixParts] = domain.split(".");
+  const suffix = suffixParts.length ? `.${suffixParts.join(".")}` : "";
+  const localMask = local ? `${local[0]}${"*".repeat(Math.max(8, Math.min(13, local.length - 1 || 8)))}` : "m************";
+  const hostMask = host ? `${host[0]}${"*".repeat(Math.max(4, Math.min(7, host.length - 1 || 4)))}` : "g****";
+  return `${localMask}@${hostMask}${suffix || ".com"}`;
 }
 
 export default function Auth() {
@@ -47,58 +57,81 @@ export default function Auth() {
 
   return (
     <main className="auth auth--owner-scene">
-      <div className="auth__owner-stage">
-        <img
-          className="auth__owner-art"
-          src="/velvet-owner-login-scene.png"
-          alt=""
-          aria-hidden="true"
-          draggable="false"
-        />
+      <img
+        className="auth__ambient-art"
+        src="/velvet-owner-login-scene.png"
+        alt=""
+        aria-hidden="true"
+        draggable="false"
+      />
+      <div className="auth__ambient-shade" aria-hidden="true" />
 
-        <form className="auth__owner-overlay" onSubmit={handleSubmit} aria-label="Private Velvet login">
-          <div className="auth__owner-email-mask" aria-label="Remembered account">
-            m*************@g****.com
+      <section className="auth__card" aria-label="Private Velvet login">
+        <header className="auth__brand">
+          <div className="auth__brand-mark" aria-hidden="true">
+            <img src="/velvet-rose-no-frame-192.png" alt="" draggable="false" />
+            <span>VS</span>
+            <i>✦</i>
+          </div>
+          <p className="auth__brand-name">Velvet Stories</p>
+          <div className="auth__brand-divider" aria-hidden="true">
+            <span />
+            <i>✦</i>
+            <span />
+          </div>
+        </header>
+
+        <div className="auth__welcome">
+          <h1>Welcome back</h1>
+          <p>Your stories are waiting.</p>
+        </div>
+
+        <form className="auth__form" onSubmit={handleSubmit}>
+          <div className="auth__remembered-row" aria-label="Remembered account">
+            <Mail size={22} strokeWidth={1.6} aria-hidden="true" />
+            <span className="auth__remembered-email">{maskEmail(ownerEmail)}</span>
+            <span className="auth__change-label" aria-hidden="true">Change</span>
           </div>
 
-          <div className="auth__owner-password-shell">
+          <label className="auth__password-row">
+            <LockKeyhole size={22} strokeWidth={1.6} aria-hidden="true" />
             <input
-              className="auth__owner-password"
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
                 setError("");
               }}
+              placeholder="Password"
               aria-label="Password"
               autoComplete="current-password"
               autoFocus
             />
-            {password ? (
-              <span className="auth__owner-password-live" aria-hidden="true">
-                {showPassword ? password : "•".repeat(Math.min(password.length, 18))}
-              </span>
-            ) : null}
             <button
-              className="auth__owner-eye"
+              className="auth__eye"
               type="button"
               onClick={() => setShowPassword((current) => !current)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-            />
-          </div>
+            >
+              {showPassword
+                ? <EyeOff size={24} strokeWidth={1.55} aria-hidden="true" />
+                : <Eye size={24} strokeWidth={1.55} aria-hidden="true" />}
+            </button>
+          </label>
+
+          {error ? <p className="auth__error" role="alert">{error}</p> : null}
 
           <button
-            className="auth__owner-enter"
+            className="auth__enter"
             type="submit"
             disabled={submitting}
-            aria-label={submitting ? "Opening Velvet" : "Enter Velvet"}
           >
-            <span className="sr-only">{submitting ? "Opening Velvet..." : "Enter Velvet"}</span>
+            {submitting ? "Opening Velvet…" : "Enter Velvet"}
           </button>
-
-          {error ? <p className="auth__owner-error" role="alert">{error}</p> : null}
         </form>
-      </div>
+
+        <p className="auth__private-line">Private. Personal. Yours.</p>
+      </section>
     </main>
   );
 }
