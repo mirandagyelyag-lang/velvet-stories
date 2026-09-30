@@ -22,7 +22,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
   const { confirmAction } = useFeedback();
   const pwa = usePWA();
   const { theme, setTheme } = useTheme();
-  const [health, setHealth] = useState({ supabase: "checking", engine: "checking" });
+  const [health, setHealth] = useState({ supabase: "checking", engine: "checking", engineVersion: "" });
   const [safeMode, setSafeMode] = useState(() => isSafeModeEnabled());
   const [safeModeBusy, setSafeModeBusy] = useState(false);
   const [backupBusy, setBackupBusy] = useState(false);
@@ -42,6 +42,8 @@ function Settings({ onBack, onOpenDiagnostics }) {
       try {
         const { data, error } = await supabase.functions.invoke("character-chat", { body: { action: "diagnostics", probeAi: false } });
         engineState = !error && data?.edge?.ok ? "connected" : "unavailable";
+        const { data: releaseData } = await supabase.functions.invoke("character-chat", { body: { action: "release_status" } });
+        if (live && releaseData?.engineVersion) setHealth((current) => ({ ...current, engineVersion: String(releaseData.engineVersion) }));
       } catch {}
       if (live) setHealth({ supabase: supabaseState, engine: engineState });
     })();
@@ -153,6 +155,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
     <nav className="settings-page__nav" aria-label="Settings sections">
       <button onClick={()=>jumpTo("settings-appearance")}>Appearance</button>
       <button onClick={()=>jumpTo("settings-storytelling")}>Storytelling</button>
+      <button onClick={()=>jumpTo("settings-updates")}>Updates</button>
       <button onClick={()=>jumpTo("settings-app")}>AI & app</button>
       <button onClick={()=>jumpTo("settings-privacy")}>Privacy</button>
       <button onClick={()=>jumpTo("settings-about")}>About</button>
@@ -210,6 +213,18 @@ function Settings({ onBack, onOpenDiagnostics }) {
     <div className="settings-group" id="settings-privacy"><header><ShieldCheck size={19}/><div><h2>Privacy & safety</h2><p>Protection against accidental destructive actions.</p></div></header>
       <Toggle label="Confirm before deleting" description="Ask before deleting characters, conversations and lore." checked={settings.confirmBeforeDelete} onChange={(value)=>updateSetting('confirmBeforeDelete',value)}/>
     </div>
+    <div className="settings-group settings-update-center" id="settings-updates"><header><RefreshCw size={19}/><div><h2>Velvet updates</h2><p>You decide when the app on this phone changes.</p></div></header>
+      <div className="settings-update-center__status">
+        <div><small>APP ON THIS PHONE</small><strong>v{pwa.localVersion}</strong><em>{pwa.serverUpdateAvailable ? `v${pwa.serverVersion} is ready` : "Latest app installed ✓"}</em></div>
+        <div><small>STORY ENGINE</small><strong>{health.engineVersion ? `Engine ${health.engineVersion}` : health.engine === "checking" ? "Checking…" : "Connected"}</strong><em>{health.engine === "connected" ? "Live on Supabase ✓" : health.engine}</em></div>
+      </div>
+      <div className="settings-update-center__actions">
+        <button type="button" onClick={()=>pwa.checkForUpdate({ silent:false })} disabled={pwa.checkingForUpdate || pwa.updating}><RefreshCw size={16}/>{pwa.checkingForUpdate ? "Checking…" : "Check for updates"}</button>
+        <button type="button" className="primary" onClick={pwa.updateApp} disabled={pwa.updating || (!pwa.serverUpdateAvailable && !pwa.needRefresh)}>{pwa.updating ? "Updating Velvet…" : pwa.serverUpdateAvailable || pwa.needRefresh ? `Update to v${pwa.serverVersion || "latest"}` : "Velvet is up to date ✓"}</button>
+        {pwa.updateProblem && <button type="button" onClick={pwa.repairUpdate}>Repair updater</button>}
+      </div>
+      <p className="settings-update-center__note">Checking never installs anything. When a new app build is available, Velvet waits for you to press Update.</p>
+    </div>
     <div className="settings-group settings-diagnostics" id="settings-app"><header><Activity size={19}/><div><h2>AI & diagnostics</h2><p>Check the app version, mobile touch, Supabase, the Edge Function and Gemini separately.</p></div></header><div className="settings-install__body"><span className="settings-install__icon">✦</span><div><strong>Something acting weird?</strong><small>Open diagnostics before changing code or reinstalling the app.</small></div><button onClick={onOpenDiagnostics}><Activity size={17}/>Open diagnostics</button></div><div className={`settings-safe-mode${safeMode ? " is-active" : ""}`}><span><Wrench size={17}/><span><strong>Velvet Safe Mode</strong><small>Temporarily disables motion-heavy extras, then clears only app cache. Stories, characters and Memories stay untouched.</small></span></span><button type="button" onClick={toggleSafeMode} disabled={safeModeBusy}>{safeModeBusy ? "Working…" : safeMode ? "Leave Safe Mode" : "Start Safe Mode"}</button></div></div>
     <div className="settings-group settings-install"><header><MonitorSmartphone size={19}/><div><h2>Velvet on your phone</h2><p>Install it with its own icon and full-screen experience.</p></div></header>
       <div className="settings-install__body">
@@ -228,7 +243,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
         <span><small>VERSION</small><strong>Velvet Stories {VELVET_VERSION}</strong><em>{VELVET_RELEASE}</em></span>
         <span><small>BUILD</small><strong>Production build</strong><em>{formatBuild(VELVET_BUILD_TIME)}</em></span>
         <span><small>SUPABASE</small><strong>{health.supabase === "connected" ? "Connected ✓" : health.supabase}</strong><em>Private account sync</em></span>
-        <span><small>STORY ENGINE</small><strong>{health.engine === "connected" ? "Connected ✓" : health.engine}</strong><em>Edge Function health</em></span>
+        <span><small>STORY ENGINE</small><strong>{health.engineVersion ? `Engine ${health.engineVersion} ✓` : health.engine === "connected" ? "Connected ✓" : health.engine}</strong><em>Edge Function health</em></span>
         <span><small>PWA</small><strong>{pwa.serverUpdateAvailable ? `Update v${pwa.serverVersion} ready` : "Up to date ✓"}</strong><em>Installed v{pwa.localVersion}</em></span>
         <span><small>SAFE MODE</small><strong>{safeMode ? "Active" : "Off ✓"}</strong><em>{safeMode ? "Heavy effects paused" : "Normal Velvet experience"}</em></span>
       </div>
