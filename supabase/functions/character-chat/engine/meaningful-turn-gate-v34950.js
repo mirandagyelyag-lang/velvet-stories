@@ -13,6 +13,22 @@ export function buildMeaningfulTurnGateV34950({ latestUserMessage='', character=
 function hasDialogue(text='') {
   return /["“][^"”]{2,}["”]/.test(text) || /(?:^|\n)\s*[-–—]\s*\S/.test(text);
 }
+function hasMetaInstructionLeak(text='') {
+  const t=norm(text);
+  return /\b(?:backs? off (?:the )?(?:point|topic|argument)|without disappearing from (?:the )?scene|stays? in (?:the )?scene|keeps? (?:the )?(?:scene|interaction|conversation) alive|doesn'?t disappear from (?:the )?scene|maintains? (?:the )?(?:tension|momentum|scene)|moves? the scene forward|changes? the (?:social|emotional|practical) situation)\b/.test(t);
+}
+function isBareAcknowledgementTurn(text='') {
+  const t=norm(text);
+  const spoken=[...String(text||'').matchAll(/[“"]([^”"]+)[”"]/g)].map((m)=>norm(m[1])).join(' ').trim();
+  const words=t.split(/\s+/).filter(Boolean).length;
+  const acknowledgement=/^(?:fine|okay|ok|sure|alright|all right|yeah|yep|whatever|got it|fair enough|right|good|cool)[.!?]*$/i;
+  if (acknowledgement.test(spoken || t)) return true;
+  const metaStripped=t
+    .replace(/\b(?:he|she|they|[a-z]+)\s+(?:backs? off (?:the )?(?:point|topic|argument)|stays? in (?:the )?scene)\b/g,' ')
+    .replace(/\bwithout disappearing from (?:the )?scene\b/g,' ')
+    .replace(/[^a-z' ]/g,' ').replace(/\s+/g,' ').trim();
+  return words<=22 && acknowledgement.test(metaStripped);
+}
 function hasPurposefulAction(text='') {
   const t=norm(text);
   // Concrete verbs that alter location/object/social state. Pure micro-gestures are
@@ -45,6 +61,8 @@ export function meaningfulTurnGateV34950Issues(reply='', latestUserMessage='', r
   const text=clean(reply);
   if (!text) return [];
   const issues=[];
+  if (hasMetaInstructionLeak(text)) issues.push('meaningful_turn_meta_instruction_leak');
+  if (isBareAcknowledgementTurn(text)) issues.push('meaningful_turn_bare_acknowledgement');
   if (isTemporalAtmosphereOnly(text) || isDecorativeStillnessOnly(text)) issues.push('meaningful_turn_no_move');
   const recent=(recentCharacterReplies||[]).slice(-3).map(norm);
   if (issues.length && recent.some(r=>r===norm(text))) issues.push('meaningful_turn_stalled_regeneration');
