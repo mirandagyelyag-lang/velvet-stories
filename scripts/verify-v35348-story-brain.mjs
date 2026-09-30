@@ -24,7 +24,7 @@ const regenIssues=storyBrainV35348Issues({
 assert.ok(regenIssues.includes("story_brain_regeneration_too_similar"));
 
 const stallIssues=storyBrainV35348Issues({
-  reply:"He glances at her, gives a small smile, and waits.",
+  reply:"He glances at her, gives a small smile, shifts his weight, says nothing useful, and simply waits for her again without making any decision.",
   recentCharacterReplies:["He gives a small smile and waits.","He glances over, then waits.","He leans back and waits."]
 });
 assert.ok(stallIssues.includes("story_brain_stagnation_not_broken"));
