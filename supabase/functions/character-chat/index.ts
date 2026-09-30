@@ -75,7 +75,7 @@ import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from ".
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "433";
+const VELVET_ENGINE_RELEASE = "435";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2278,9 +2278,9 @@ IDEA
 ${cleanIdea || "No extra premise. Create a fresh story beat from the character's creator-defined life and relationship."}`;
 
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  const globalDeadlineMs = 16500;
-  const attemptTimeoutMs = 14500;
-  const hedgeDelaysMs = [0, 700, 1400];
+  const globalDeadlineMs = 9500;
+  const attemptTimeoutMs = 8200;
+  const hedgeDelaysMs = [0, 320, 680];
   const controllers = new Set<AbortController>();
   const rejectedInstantCandidates = [];
   const startedAt = Date.now();
@@ -2443,7 +2443,7 @@ RULES
 - Output only finished prose.`;
 
     const rescueController = new AbortController();
-    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 14500);
+    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 6200);
     let rescue;
     try {
       rescue = await fetch(modelEndpoint(GEMINI_MODEL), {
@@ -2557,6 +2557,35 @@ RULES
       sceneSeed,
       openingFamily,
       softWarnings: guaranteedSafeCandidate.rejectionReasons || [],
+    });
+  }
+
+  // v3.53.57 INSTANT STORY DEADLINE SHIELD
+  // Supabase can terminate a long-running request before the layered rescue mesh
+  // finishes. Before spending another network round-trip, return the deterministic
+  // local opening when it passes the same hard canon/user-agency gates.
+  const localFallbackOpening = instantStoryFallbackOpening(safeDraft, cleanIdea, sceneSeed);
+  const localFallbackHardBlocks = [
+    ...instantStoryHardBlockIssuesV35298(localFallbackOpening, safeDraft, cleanIdea),
+    ...instantStoryPremiseGateIssues(localFallbackOpening, safeDraft),
+    ...characterIdentityGateIssuesV35321({
+      reply: localFallbackOpening,
+      character: safeDraft,
+      recentCharacterReplies: recentOpenings,
+      opening: true,
+    }),
+  ];
+  if (
+    localFallbackOpening &&
+    !localFallbackHardBlocks.length &&
+    !instantStoryHasTemplateLeak(localFallbackOpening)
+  ) {
+    return json({
+      opening: localFallbackOpening,
+      source: "local_deadline_fallback",
+      sceneSeed,
+      openingFamily,
+      softWarnings: ["provider_timeout_fallback"],
     });
   }
 
