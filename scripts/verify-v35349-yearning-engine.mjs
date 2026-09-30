@@ -29,5 +29,7 @@ const dependency=yearningEngineV35349Issues({
 });
 assert.ok(dependency.includes("yearning_declared_as_dependency"));
 
+const romanCandidate="Roman had a perfectly good reason not to be there. He came anyway, said nothing about the gap, and changed the rest of his evening around five minutes with her.";
+assert.equal(__testV35349.yearningSignal(romanCandidate),true);
 assert.equal(__testV35349.characterYearningSignature({name:"Damon Blackwood"}).mode,"silent ache");
 console.log("v3.53.49 Yearning Engine regression checks passed");

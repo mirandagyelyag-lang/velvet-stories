@@ -84,9 +84,9 @@ function outsideAttentionCue(latestUserMessage="",recentCharacterReplies=[]){
 
 function yearningSignal(reply=""){
   const t=norm(reply);
-  const proximity=/\b(?:stayed|lingered|waited for|came back|found an excuse|made room|saved .* seat|walked with|sat beside|kept close|se quedo|se quedó|volvio|volvió|espero por|esperó por|hizo espacio|se sento al lado|se sentó al lado|acompan)\b/.test(t);
+  const proximity=/\b(?:stayed|lingered|waited for|came back|came anyway|returned anyway|showed up anyway|found an excuse|made room|saved .* seat|walked with|sat beside|kept close|se quedo|se quedó|volvio|volvió|vino igual|aparecio igual|apareció igual|espero por|esperó por|hizo espacio|se sento al lado|se sentó al lado|acompan)\b/.test(t);
   const attention=/\b(?:remembered|noticed .* absent|noticed .* missing|looked for|checked .* phone|typed .* name|kept noticing|recordo|recordó|noto que no|notó que no|busco|buscó|reviso .* telefono|revisó .* teléfono)\b/.test(t);
-  const priority=/\b(?:changed .* plan|moved .* schedule|turned .* down|left .* early|chose to stay|decided to wait|cambio .* plan|cambió .* plan|rechazo .* para|eligio quedarse|eligió quedarse|decidio esperar|decidió esperar)\b/.test(t);
+  const priority=/\b(?:changed .* plan|changed .* evening|changed .* night|changed .* day|moved .* schedule|turned .* down|left .* early|chose to stay|decided to wait|cambio .* plan|cambió .* plan|cambio .* noche|cambió .* noche|cambio .* dia|cambió .* día|rechazo .* para|eligio quedarse|eligió quedarse|decidio esperar|decidió esperar)\b/.test(t);
   const restraint=/\b(?:almost said|stopped himself|deleted .* message|locked .* phone|didnt send|didn't send|held back|nearly asked|casi dijo|se freno|se frenó|borro .* mensaje|borró .* mensaje|no lo envio|no lo envió|se contuvo)\b/.test(t);
   return proximity||attention||priority||restraint;
 }
