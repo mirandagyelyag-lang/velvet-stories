@@ -175,7 +175,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [replyAssistError, setReplyAssistError] = useState("");
   const [replyAssistUnderstanding, setReplyAssistUnderstanding] = useState(null);
   const [storyPathsOpen, setStoryPathsOpen] = useState(false);
-  const [storyPaths, setStoryPaths] = useState([]);\n  const [selectedStoryPath, setSelectedStoryPath] = useState("");
+  const [storyPaths, setStoryPaths] = useState([]);\n  const [selectedStoryPath, setSelectedStoryPath] = useState("");\n  const [customStoryPath, setCustomStoryPath] = useState("");
   const [storyPathsLoading, setStoryPathsLoading] = useState(false);
   const [storyPathsError, setStoryPathsError] = useState("");
   const [replyTo, setReplyTo] = useState(null);
