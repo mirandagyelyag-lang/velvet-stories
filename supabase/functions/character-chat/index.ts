@@ -4330,7 +4330,15 @@ TURN
 Mode: ${turnIntent.kind}; question: ${turnIntent.isQuestion ? "yes" : "no"}; medium: ${turnIntent.medium}; silent streak: ${turnIntent.silentCount}.
 Length: ${getLengthGuidance(character.response_length, turnIntent.kind, latestPerceptibleUserMessage)}
 ${regeneration}
-Director: ${clean(directorInstruction || "none", 520)}
+Director: ${clean(directorInstruction || "none", 900)}
+${String(directorInstruction || "").includes("[CREATOR_SELECTED_STORY_PATH — REQUIRED NEXT BEAT]")
+  ? `STORY PATH AUTHORITY — REQUIRED:
+- The creator explicitly selected the Story Path above. Treat its direction as a required outcome/beat for THIS reply, not inspiration and not an optional suggestion.
+- Character autonomy controls HOW the character reaches that beat: wording, tactic, emotion, hesitation, style, timing and personality expression. It does NOT grant permission to choose a contradictory path or ignore the selected beat.
+- Preserve established canon, user agency, physical possibility and explicit boundaries. If the path can be satisfied in multiple ways, choose the most character-authentic one.
+- Do not announce the path, quote the instruction, explain compliance, or force actions onto the user. Make the selected direction happen naturally through character/world action.
+- This creator-selected path outranks ordinary momentum, autonomous-agenda, initiative, anti-orbit, random-world-event and topic-switch preferences for this turn.`
+  : ""}
 Feedback: ${feedback}
 Creator style: ${creatorStyle}
 ${groupRules}
