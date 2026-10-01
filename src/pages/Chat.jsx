@@ -1141,6 +1141,19 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     if (settings.haptics) navigator.vibrate?.(5);
   }
 
+  function chooseCustomStoryPath() {
+    const direction = String(customStoryPath || "").trim();
+    if (!direction) return;
+    setSelectedStoryPath(direction);
+    setCustomStoryPath("");
+    setDirectorMode("next");
+    setStoryPathsOpen(false);
+    setStoryPaths([]);
+    setStoryPathsError("");
+    showActionNotice("Your story beat is locked ✓");
+    if (settings.haptics) navigator.vibrate?.(5);
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -2706,7 +2719,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
             {storyPathsError && <div className="reply-assist-error">{storyPathsError}<button type="button" onClick={requestStoryPaths}>Retry</button></div>}
             {!!storyPaths.length && <div className="reply-assist-options">{storyPaths.map((path,index)=><button type="button" className="reply-assist-option" key={`${path.title}-${index}`} onClick={()=>chooseStoryPath(path)}><span className="reply-assist-option-top"><b>{path.title}</b><em>{path.vibe}</em></span><small>{path.preview}</small></button>)}</div>}
             {!!storyPaths.length && <button type="button" className="reply-assist-more" disabled={storyPathsLoading} onClick={requestStoryPaths}>{storyPathsLoading ? <LoaderCircle className="is-spinning" size={15}/> : <RefreshCw size={15}/>} Different paths</button>}
-            <p className="reply-assist-hint">Nothing happens until you choose. Your choice controls the next story beat. The character decides how to carry it out, not whether to ignore it.</p>
+            <div className="reply-assist-custom story-path-custom">
+              <input value={customStoryPath} onChange={(event)=>setCustomStoryPath(event.target.value)} onKeyDown={(event)=>{ if(event.key==="Enter" && !event.shiftKey){ event.preventDefault(); chooseCustomStoryPath(); } }} placeholder="Or write exactly what should happen… e.g. kiss" aria-label="Custom story path" />
+              <button type="button" onClick={chooseCustomStoryPath} disabled={!customStoryPath.trim()}>Make it happen</button>
+            </div>
+            <p className="reply-assist-hint">Your selected or written beat is mandatory for the next reply. The character controls how it happens, not whether it happens.</p>
           </section>
         </div>
       ), document.body)}
