@@ -4333,10 +4333,12 @@ ${regeneration}
 Director: ${clean(directorInstruction || "none", 900)}
 ${String(directorInstruction || "").includes("[CREATOR_SELECTED_STORY_PATH — REQUIRED NEXT BEAT]")
   ? `STORY PATH AUTHORITY — REQUIRED:
-- The creator explicitly selected the Story Path above. Treat its direction as a required outcome/beat for THIS reply, not inspiration and not an optional suggestion.
-- Character autonomy controls HOW the character reaches that beat: wording, tactic, emotion, hesitation, style, timing and personality expression. It does NOT grant permission to choose a contradictory path or ignore the selected beat.
-- Preserve established canon, user agency, physical possibility and explicit boundaries. If the path can be satisfied in multiple ways, choose the most character-authentic one.
-- Do not announce the path, quote the instruction, explain compliance, or force actions onto the user. Make the selected direction happen naturally through character/world action.
+- CREATOR AUTHORITY: the creator explicitly selected or wrote the Story Path above. Its concrete event/outcome MUST OCCUR IN THIS REPLY. It is not inspiration, foreshadowing, a preference, or an optional suggestion.
+- NO DELAY / NO SUBSTITUTE: do not postpone the requested beat to a later turn and do not replace it with preparation, implication, an almost-action, discussion of the action, thinking about it, or a weaker adjacent beat. If the creator writes a concrete action such as "kiss", the character must actually initiate and complete that action in this reply when canon and explicit boundaries permit.
+- Character autonomy controls HOW the required beat happens: wording, tactic, emotion, hesitation before action, style, timing and personality expression. It does NOT grant permission to choose a contradictory path, refuse the selected direction merely from preference, or ignore it.
+- USER AGENCY REMAINS ABSOLUTE: fulfill the beat through character/world action. Never invent the user's consent, dialogue, feelings, reciprocation, movement, touch, or reaction. The requested beat may initiate an interaction without deciding the user's response to it.
+- Preserve established canon, physical possibility and explicit boundaries. Only a genuine canon impossibility or explicit boundary can block literal fulfillment; ordinary character reluctance, autonomous agenda, momentum, anti-orbit rules or topic preferences cannot.
+- Do not announce the path, quote the instruction, explain compliance, or narrate that a requirement is being fulfilled. Make it happen naturally.
 - This creator-selected path outranks ordinary momentum, autonomous-agenda, initiative, anti-orbit, random-world-event and topic-switch preferences for this turn.`
   : ""}
 Feedback: ${feedback}
