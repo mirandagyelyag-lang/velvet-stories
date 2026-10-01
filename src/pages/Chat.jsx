@@ -175,7 +175,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const [replyAssistError, setReplyAssistError] = useState("");
   const [replyAssistUnderstanding, setReplyAssistUnderstanding] = useState(null);
   const [storyPathsOpen, setStoryPathsOpen] = useState(false);
-  const [storyPaths, setStoryPaths] = useState([]);
+  const [storyPaths, setStoryPaths] = useState([]);\n  const [selectedStoryPath, setSelectedStoryPath] = useState("");
   const [storyPathsLoading, setStoryPathsLoading] = useState(false);
   const [storyPathsError, setStoryPathsError] = useState("");
   const [replyTo, setReplyTo] = useState(null);
@@ -1132,7 +1132,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   function chooseStoryPath(path) {
     const direction = String(path?.direction || "").trim();
     if (!direction) return;
-    setDirectorNote(direction);
+    setSelectedStoryPath(direction);
     setDirectorMode("next");
     setStoryPathsOpen(false);
     setStoryPaths([]);
@@ -1188,10 +1188,14 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const stopPovHint = returnMainPovAfterStopRef.current
       ? `Return narrative focus to ${character.name}'s established primary POV. Do not continue a secondary NPC POV unless the user explicitly asks.`
       : "";
-    const noteForThisGeneration = mergeDirectorHints(
+    const chosenStoryPath = selectedStoryPath.trim();
+    const ordinaryDirectorHints = mergeDirectorHints(
       mergeDirectorHints(mergeDirectorHints(mergeDirectorHints(directorNote.trim(), adaptiveReplyHint), livingWorldHint), experienceHint),
       stopPovHint
     );
+    const noteForThisGeneration = chosenStoryPath
+      ? `[CREATOR_SELECTED_STORY_PATH — REQUIRED NEXT BEAT]\n${chosenStoryPath}\n[END CREATOR_SELECTED_STORY_PATH]\n\n${ordinaryDirectorHints}`
+      : ordinaryDirectorHints;
     const submittedDraft = cleanMessage;
     let userMessageSaved = false;
     let savedUserMessageId = "";
@@ -1208,6 +1212,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       setMessage("");
       setReplyTo(null);
       setDirectorNote("");
+      setSelectedStoryPath("");
       setDirectorNoteOpen(false);
       try { saveDraft(localStorage, conversation?.conversationId, { message: "", replyTo: null, directorNote: "" }); } catch {}
       window.requestAnimationFrame(() => resizeComposer());
@@ -2696,12 +2701,12 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         <div className="reply-assist-backdrop" onPointerDown={(event)=>{ if(event.target===event.currentTarget) setStoryPathsOpen(false); }}>
           <section className="reply-assist-sheet" role="dialog" aria-modal="true" aria-label="What happens next?">
             <div className="reply-assist-grabber" />
-            <header className="reply-assist-header"><div><span><GitBranch size={15}/> STORY PATHS</span><h2>What happens next?</h2><p>Pick a direction. Velvet uses it quietly for the next reply, without writing your character for you.</p></div><button type="button" onClick={()=>setStoryPathsOpen(false)} aria-label="Close"><X size={19}/></button></header>
+            <header className="reply-assist-header"><div><span><GitBranch size={15}/> STORY PATHS</span><h2>What happens next?</h2><p>Pick a direction. Velvet must make the next character beat follow it, while keeping your character under your control.</p></div><button type="button" onClick={()=>setStoryPathsOpen(false)} aria-label="Close"><X size={19}/></button></header>
             {storyPathsLoading && <div className="reply-assist-status"><LoaderCircle className="is-spinning" size={17}/> Reading the scene…</div>}
             {storyPathsError && <div className="reply-assist-error">{storyPathsError}<button type="button" onClick={requestStoryPaths}>Retry</button></div>}
             {!!storyPaths.length && <div className="reply-assist-options">{storyPaths.map((path,index)=><button type="button" className="reply-assist-option" key={`${path.title}-${index}`} onClick={()=>chooseStoryPath(path)}><span className="reply-assist-option-top"><b>{path.title}</b><em>{path.vibe}</em></span><small>{path.preview}</small></button>)}</div>}
             {!!storyPaths.length && <button type="button" className="reply-assist-more" disabled={storyPathsLoading} onClick={requestStoryPaths}>{storyPathsLoading ? <LoaderCircle className="is-spinning" size={15}/> : <RefreshCw size={15}/>} Different paths</button>}
-            <p className="reply-assist-hint">Nothing happens until you choose. Your choice only guides the next character beat.</p>
+            <p className="reply-assist-hint">Nothing happens until you choose. Your choice controls the next story beat. The character decides how to carry it out, not whether to ignore it.</p>
           </section>
         </div>
       ), document.body)}
