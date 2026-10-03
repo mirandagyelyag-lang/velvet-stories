@@ -14,6 +14,16 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
   if(name==="theo calloway"){
     const activeWomanizer=/\b(?:flirted back|flirting back|winked at (?:her|the girl)|gave (?:her|the girl) his number|asked (?:her|the girl) for (?:her )?number|pulled (?:her|the girl) closer|kissed another|kissed the girl)\b/.test(t);
     if(activeWomanizer)issues.push("theo_womanizer_drift");
+
+    // Theo is the Campus Prince, not Chase in softer clothes. His social tension
+    // comes from sincere warmth being misread as flirting, especially by other girls.
+    // He should not default to Chase's interrupt/claim/extract choreography.
+    if(opening){
+      const chaseLikeExtraction=/\b(?:were leaving|we are leaving|come on|youre coming with me|you are coming with me|im stealing you|i am stealing you|lets get out of here|let us get out of here)\b/.test(spoken)
+        || /\b(?:cut straight across|cut (?:him|her|the guy|the girl) off|interrupted .{0,55}(?:conversation|guy|girl|stranger)|without waiting for (?:an )?(?:answer|argument|response)|already turning (?:toward|away)|pulled you away|dragged you away)\b/.test(t);
+      const theoSocialSignature=/\b(?:mistook|misread|assumed|thought .{0,40} flirting|flirted with him|flirting with him|asked for his number|gave him her number|girl .{0,45}(?:smiled|flirt|number)|girls? .{0,45}(?:watch|want|flirt|approach)|friendly|kind|warm|polite|helped|remembered|included|introduced|campus prince|everyone knows)\b/.test(t);
+      if(chaseLikeExtraction&&!theoSocialSignature)issues.push("theo_chase_identity_leak");
+    }
   }
 
   if(name==="mateo silva"){
@@ -102,6 +112,18 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
 export function buildCharacterIdentityGateV35321({character={}}={}){
   const d=character?.emotional_dna&&typeof character.emotional_dna==="object"?character.emotional_dna:{};
   const name=norm(character?.name);
+  const theoCanon=name==="theo calloway"
+    ? [
+        "THEO WORLD CANON — HARD, NON-NEGOTIABLE:",
+        "- Theo is the Campus Prince: famous, socially magnetic, broadly liked and heavily desired, but he is NOT a womanizer.",
+        "- His defining social problem is sincere warmth being mistaken for flirting. He is naturally attentive, kind and charming; other girls often read ordinary Theo behavior as special romantic interest and may flirt back.",
+        "- His tension with the protagonist grows from that ambiguity. She can reasonably wonder whether his warmth toward her is unique when she sees other people react to him the same way.",
+        "- Do NOT turn Theo into Chase. Avoid defaulting to possessive extraction beats such as interrupting a man, declaring 'we're leaving', ordering the protagonist to come with him, or walking away expecting her to follow.",
+        "- Theo can take initiative, become jealous, pursue, flirt and make bold choices, but his tactic must grow from Theo's warmth, social fluency, sincerity and accidental ambiguity rather than Chase-style command or territorial swagger.",
+        "- In Instant Stories, prefer premises that expose Theo's unique contradiction: someone mistakes his kindness for interest, his popularity creates a social complication, or he treats the protagonist in a way that becomes meaningfully different from his general charm.",
+        "- NAME-SWAP TEST: if replacing Theo with Chase leaves the opening equally plausible, rewrite it before sending."
+      ].join("\n")
+    : "";
   const hardCanon=name==="chase beaumont"
     ? [
         "CHASE WORLD CANON — HARD, NON-NEGOTIABLE:",
@@ -120,6 +142,7 @@ export function buildCharacterIdentityGateV35321({character={}}={}){
     "Do not mention the archetype label in prose. Express it behaviorally.",
     "CORE="+clean(d.core_fantasy,120),
     "PROMISE="+clean(d.emotional_promise,700),
+    theoCanon,
     hardCanon,
     "If the answer could be transplanted unchanged onto another lead character, rewrite the tactic or emotional decision."
   ].filter(Boolean).join("\n");
