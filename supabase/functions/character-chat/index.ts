@@ -75,7 +75,7 @@ import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from ".
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "438";
+const VELVET_ENGINE_RELEASE = "439";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2327,8 +2327,8 @@ IDEA
 ${cleanIdea || "No extra premise. Create a fresh story beat from the character's creator-defined life and relationship."}`;
 
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  const globalDeadlineMs = 9500;
-  const attemptTimeoutMs = 8200;
+  const globalDeadlineMs = 6200;
+  const attemptTimeoutMs = 5400;
   const hedgeDelaysMs = [0, 320, 680];
   const controllers = new Set<AbortController>();
   const rejectedInstantCandidates = [];
@@ -2492,7 +2492,7 @@ RULES
 - Output only finished prose.`;
 
     const rescueController = new AbortController();
-    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 6200);
+    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 3200);
     let rescue;
     try {
       rescue = await fetch(modelEndpoint(GEMINI_MODEL), {
@@ -2643,7 +2643,7 @@ RULES
   // It still obeys the hard user-agency and named-cast gates.
   try {
     const emergencyController = new AbortController();
-    const emergencyTimeoutId = setTimeout(() => emergencyController.abort(), 8500);
+    const emergencyTimeoutId = setTimeout(() => emergencyController.abort(), 3200);
     let emergencyResponse;
     try {
       emergencyResponse = await fetch(modelEndpoint(GEMINI_EMERGENCY_MODEL), {
