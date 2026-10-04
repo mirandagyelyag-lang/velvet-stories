@@ -15,6 +15,10 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
     const activeWomanizer=/\b(?:flirted back|flirting back|winked at (?:her|the girl)|gave (?:her|the girl) his number|asked (?:her|the girl) for (?:her )?number|pulled (?:her|the girl) closer|kissed another|kissed the girl)\b/.test(t);
     if(activeWomanizer)issues.push("theo_womanizer_drift");
 
+    const theoJealousApproach=/\b(?:crossed|crossing|came over|approached|walked over|moved away from the group|doesnt mean i have to like him|does not mean i have to like him)\b/.test(recent);
+    const theoDeflection=/\b(?:fresh drink|refill|fewer people staring|people downstairs|what people are calling|sophomore from economics|three separate conversations)\b/.test(t);
+    if(theoJealousApproach&&theoDeflection)issues.push("theo_jealousy_deflected_into_generic_npc_plot");
+
     // Theo is the Campus Prince, not Chase in softer clothes. His social tension
     // comes from sincere warmth being misread as flirting, especially by other girls.
     // He should not default to Chase's interrupt/claim/extract choreography.
