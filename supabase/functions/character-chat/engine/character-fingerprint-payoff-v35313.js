@@ -138,6 +138,15 @@ export function characterFingerprintPayoffIssuesV35313({
   const charged=isCharged(latestUserMessage)||isCharged(list(recentCharacterReplies).slice(-2).join(" "));
   const conflict=isConflict(latestUserMessage)||isConflict(list(recentCharacterReplies).slice(-2).join(" "));
   if(charged&&logisticsDeflation(reply))issues.push("charged_scene_logistics_deflation");
+  // Regression: Theo crossed a party because another guy bothered him, then Velvet
+  // deflated the payoff into "fresh drink", crowd gossip and invented NPC lore.
+  // Once a charged approach has begun, preserve its causal target until the lead
+  // actually addresses/complicates it. Do not manufacture a replacement problem.
+  if(chargedApproachPending(recentCharacterReplies)){
+    const rt=norm(reply);
+    const topicSwap=/\b(?:fresh drink|refill|people (?:are )?staring|people downstairs|what people (?:are )?calling|rumou?r|gossip|sophomore|economics|three separate conversations)\b/.test(rt);
+    if(topicSwap&&!arrivalPayoffSignal(reply))issues.push("charged_approach_topic_swap");
+  }
   if(directClarityDemand(latestUserMessage)&&evasiveAfterClarity(reply))issues.push("direct_clarity_demand_evaded");
   if(directClarityDemand(latestUserMessage)&&initiatedChargedBeat(recentCharacterReplies)&&!resolutionVector(reply)&&words(reply).length<34)issues.push("initiated_confrontation_without_intent_payoff");
   if(repeatedDeliveryChoreography(reply,recentCharacterReplies))issues.push("repeated_delivery_choreography");
