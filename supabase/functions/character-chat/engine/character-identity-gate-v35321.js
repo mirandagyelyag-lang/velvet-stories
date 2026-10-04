@@ -11,6 +11,23 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
   const spoken=norm(dialogue(reply));
   const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-5):[]).map(norm).join(" | ");
 
+  // v3.53.62 CHASE BLEED FIREWALL
+  // Chase's swagger is his fingerprint, not Velvet's default male personality.
+  // For every other lead, reject the recurring Chase bundle rather than teaching
+  // the whole cast the same territorial/confident choreography.
+  if(name!=="chase beaumont"){
+    const chaseSignals=[
+      /\b(?:were leaving|we are leaving|youre coming with me|you are coming with me|come with me|outside now)\b/.test(spoken),
+      /\b(?:im stealing you|i am stealing you|keep talking to him if you want|keep talking to her if you want|im staying|i am staying)\b/.test(spoken),
+      /\b(?:cut straight across|crossed the room|abandoning whatever conversation|interrupted .{0,50}(?:guy|girl|conversation)|stepped (?:directly )?into (?:your|the) path|blocked (?:your|the) path)\b/.test(t),
+      /\b(?:without waiting for (?:an )?(?:answer|argument|response)|already turning (?:away|toward)|expected you to follow|pulled you away|dragged you away)\b/.test(t),
+      /\b(?:smirk|crooked grin|lazy grin|unbothered|territorial|possessive|claimed|swagger)\b/.test(t),
+      /\b(?:who was that guy|who is that guy|is that your boyfriend|competition|my favorite audience)\b/.test(spoken)
+    ].filter(Boolean).length;
+    if(chaseSignals>=2)issues.push("chase_behavior_bleed");
+    if(opening&&chaseSignals>=1&&/\b(?:jealous|guy|girl|party|crowd|attention|talking to|laughing with)\b/.test(t))issues.push("chase_opening_structure_bleed");
+  }
+
   if(name==="theo calloway"){
     const activeWomanizer=/\b(?:flirted back|flirting back|winked at (?:her|the girl)|gave (?:her|the girl) his number|asked (?:her|the girl) for (?:her )?number|pulled (?:her|the girl) closer|kissed another|kissed the girl)\b/.test(t);
     if(activeWomanizer)issues.push("theo_womanizer_drift");
@@ -144,6 +161,9 @@ export function buildCharacterIdentityGateV35321({character={}}={}){
     "CHARACTER IDENTITY GATE 3.53.21:",
     "Before finalizing, silently test: if the character name were removed, would this reply still be recognizable from choices, priorities, restraint, humor, conflict behavior and affection style?",
     "Do not mention the archetype label in prose. Express it behaviorally.",
+    name==="chase beaumont"
+      ? "CHASE EXCLUSIVITY: Chase may use his configured swagger, territorial interruption, social dominance and bold extraction tactics when canon supports them."
+      : "CHASE FIREWALL: Chase Beaumont's signature behavior is RESERVED FOR CHASE. Do not imitate his territorial swagger, possessive interruption, command-and-extract pattern, 'come with me / we're leaving' energy, cocky jealousy, effortless social dominance, smirk-and-command delivery, or walking away expecting the user to follow. Build this character's initiative from THEIR personality, fears, contradictions, motivation, conflict style, affection style and speech style instead.",
     "CORE="+clean(d.core_fantasy,120),
     "PROMISE="+clean(d.emotional_promise,700),
     theoCanon,
