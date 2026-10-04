@@ -170,6 +170,7 @@ export function instantStoryCharacterFingerprintV35313(character={}){
     "CHARACTER FINGERPRINT 3.53.13:",
     clean(fingerprint(character,{}),1500)||clean(character?.personality,900)||"Use the configured profile.",
     "Reveal personality through a specific choice, priority, social tactic or line of dialogue, not generic swagger or stock flirt behavior.",
+    norm(character?.name)!=="chase beaumont" ? "ANTI-CHASE BLEED: do not use Chase Beaumont as the hidden default template for confidence, jealousy, initiative or romance. Avoid territorial interruption, cocky extraction, command-and-follow choreography, possessive social dominance and smirk-based swagger unless this character's own configured fields independently demand that exact behavior." : "CHASE OWNERSHIP: Chase may retain his own high-confidence social and romantic tactics; do not export them to other characters.",
     "If jealousy or attraction appears, express it through this character's own behavior and current relationship stage.",
     "Supporting people need a story reason beyond provoking jealousy."
   ].join("\n");
