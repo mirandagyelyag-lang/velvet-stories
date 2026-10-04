@@ -75,7 +75,7 @@ import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from ".
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "440";
+const VELVET_ENGINE_RELEASE = "441";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1544,89 +1544,12 @@ function compactInstantStoryDraft(draft) {
 }
 
 export function instantStoryFallbackOpening(draft, idea = "", sceneSeed = "") {
-  const name = cleanPromptValue(draft?.name, 70) || "Alex";
-  const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
-  const male=/\b(?:he|him|his|boyfriend|man|guy|king|prince)\b/.test(profile);
-  const female=/\b(?:she|her|hers|girlfriend|woman|girl|queen|princess)\b/.test(profile);
-  const subject=male?"he":female?"she":"they";
-  const Subject=subject[0].toUpperCase()+subject.slice(1);
-  const openInterest=/\b(?:likes you|likes the user|has feelings for you|attracted to you|into you|flirts openly|never hidden|le gustas|siente algo por ti)\b/.test(profile);
-  const chaseLike = /chase beaumont/.test(String(draft?.name || "").toLowerCase()) ||
-    /\b(?:campus heartthrob|heartthrob|party|social|flirt|charismatic|popular)\b/.test(profile);
-
-  if (chaseLike) {
-    return `The party had split into smaller circles by the time ${name} noticed one of his friends pulling you into a conversation near the kitchen. He stayed where he was for another minute, finishing whatever story had three people laughing around him.
-
-Then ${name} excused himself mid-conversation and crossed the room.
-
-“You stole my favorite audience.”
-
-The guy beside you glanced between the two of you, amused enough to recognize the interruption for what it was. ${name} ignored him.
-
-“I was being polite before,” he said, looking at you now. “Now I’m interrupting.”
-
-He took the empty spot beside the counter, not touching you, not asking permission from the room either.
-
-“Keep talking to him if you want,” ${name} added. “I’m staying.”`;
-  }
-
-  if(/\b(?:race|racing|racer|garage|street race|driver|mechanic)\b/.test(profile) && /garage|workshop|roadside|gas station|car meet|race-adjacent/.test(sceneSeed.toLowerCase())) return `The garage door was still half open when ${name} compared the number stamped on the new belt with the one on the invoice. They did not match. The supplier closed in less than an hour, and the car was already dismantled far enough that leaving it until morning would mean abandoning it on the lift overnight.
-
-“They sent the wrong one.”
-
-${Subject} placed the useless belt beside the invoice and wiped one hand on a shop rag. The keys to the other car were already on the workbench. ${openInterest ? `${Subject} had waited to make the decision until you were included, even though going alone would have been easier.` : `${Subject} had narrowed the problem down to two workable options.`}
-
-“I can lock up and deal with it tomorrow,” ${subject} said. “Or we leave now and make them exchange it before they close.”
-
-${Subject} picked up the keys, but stayed beside the workbench instead of heading for the door. “I vote for fixing it tonight. I’m not deciding the rest of your evening for you, though.”
-
-The wrong belt landed back in its box. “If we go, we have about five minutes before traffic makes the decision for us.”`;
-
-  const seed = sceneSeed.toLowerCase();
-  const family = instantStorySceneFamily(seed);
-  const plan = family === "transit"
-    ? { place: "the station concourse", task: "checking the departure board against a booking on the phone", problem: "The earlier service had been cancelled, and the last useful connection left from another platform in twelve minutes", object: "the two replacement tickets", first: "We can take the direct one tomorrow", second: "or catch the connection tonight and deal with the transfer" }
-    : family === "outdoor"
-      ? { place: "the trail entrance", task: "studying the closure map beside the locked gate", problem: "The usual path had closed without warning, and the ranger's notice showed one shorter public route and one long detour back through town", object: "the folded route map", first: "We can take the short route before sunset", second: "or call it and get dinner in town" }
-      : family === "culture_leisure"
-        ? { place: "the venue box office", task: "comparing the printed booking with the seats still showing on the clerk's screen", problem: "The reservation had been split across two rows, and the clerk could hold a better pair for only five minutes", object: "the corrected seat slips", first: "We keep what they gave us", second: "or switch now and stop pretending separate rows are fine" }
-        : family === "work_event"
-          ? { place: "the building lobby after closing", task: "sorting a marked-up folder before the security desk locked the lifts", problem: "One signature was missing, and leaving the file overnight would push the entire appointment into next week", object: "the unsigned page", first: "I can leave it for Monday", second: "or we take the copy upstairs now and finish it properly" }
-          : family === "market"
-            ? { place: "the market service counter", task: "checking a receipt against the bagged order", problem: "One essential item had been substituted with the wrong thing, and the stall that carried the right one was already packing up", object: "the receipt and the unopened substitute", first: "We can accept this and improvise", second: "or cross the market before they close" }
-            : family === "friend_gathering"
-              ? { place: "a friend's living room before the rest of the guests arrived", task: "testing the borrowed speakers after one channel abruptly died", problem: "The host was still out collecting people, and the only working setup meant moving the music to the balcony or borrowing a smaller speaker from downstairs", object: "the loose audio cable", first: "We move everything outside and pretend that was the plan", second: "or I go downstairs and ask for the spare" }
-              : family === "family_event"
-                ? { place: "the entrance to a family dinner", task: "fixing the place cards after two extra relatives appeared without warning", problem: "The table could fit everyone only if the formal seating plan was abandoned, and nobody else wanted to be the person who changed it", object: "the stack of place cards", first: "We keep this diplomatic disaster", second: "or we move four names and accept the complaints" }
-                : family === "training"
-                  ? { place: "the locked equipment room after training", task: "checking the returned gear against the coach's list", problem: "One numbered bag was missing and the facility manager was about to close the building for the night", object: "the equipment checklist", first: "I sign for the missing bag and sort it tomorrow", second: "or we check the west stands before they lock those too" }
-                  : family === "parking_pickup"
-                    ? { place: "the curbside pickup lane", task: "watching a staff member wheel out the wrong order for the second time", problem: "The correct item was ready inside, but leaving the car meant losing the loading space while a line formed behind it", object: "the pickup confirmation", first: "I circle the block and come back", second: "or you hold the spot while I fix this inside" }
-                    : family === "restaurant"
-                      ? { place: "the restaurant host stand", task: "reading the reservation change on the manager's tablet", problem: "The booked table had been given away, but a quiet counter pair and a larger table with the group were both available immediately", object: "the reservation card", first: "We take the loud table and stay with everyone", second: "or take the counter before somebody else does" }
-                      : family === "home_building"
-                        ? { place: "the apartment hallway", task: "holding the instructions for a shelf that had arrived with two incompatible brackets", problem: "The delivery crew had already left, and the half-built frame could not stay across the doorway overnight", object: "the two mismatched brackets", first: "We take it apart and start over tomorrow", second: "or improvise the last support and get it out of the hall" }
-                        : family === "neighborhood"
-                          ? { place: "the end of a neighborhood street", task: "reading the temporary closure signs around a community night market", problem: "The usual route home was blocked, while the open side street led straight through the stalls and a small live set already starting", object: "the folded neighborhood map", first: "We take the long way around", second: "or cut through and see whether this is worth the noise" }
-                          : { place: "the building entrance", task: "checking a delivery notice against the package left with the concierge", problem: "The label was right but the contents listed on the receipt were not, and the courier would only return once tonight", object: "the delivery slip", first: "I can send it back untouched", second: "or open it now and make sure they fix the right mistake" };
-
-  return `${name} stood at ${plan.place}, ${plan.task}. ${plan.problem}. ${Subject} read the details twice, then set ${plan.object} on the nearest clear surface.
-
-“Of course they wait until now to mention it.”
-
-${Subject} had already spoken to the person in charge and confirmed that both alternatives were real. ${openInterest ? `Going ahead alone would have been easier, but ${subject} had waited because the decision affected both of you.` : `Neither alternative was perfect, but at least the immediate problem was clear.`}
-
-“${plan.first},” ${subject} said. “Or ${plan.second.replace(/^or\s+/i, "")}.”
-
-${Subject} checked the time, then explained the consequence without dressing it up. Waiting meant losing tonight's option; leaving now meant committing to the extra effort immediately.
-
-“I’d rather handle it now,” ${subject} admitted. “But I’m not going to pretend that only costs me time.”
-
-${Subject} gathered what the faster option required, but stopped before committing either of you to it. ${plan.object.charAt(0).toUpperCase() + plan.object.slice(1)} remained between the two possibilities.
-
-“Tell me which inconvenience you hate less,” ${subject} said. “I can work with either one.”`;
+  // v3.53.60: Never fabricate a generic deterministic story when the AI provider
+  // times out. Those templates made unrelated characters share the same package,
+  // station, booking and logistics scenes. A timeout must stay a timeout so the
+  // caller can retry a real character-specific generation.
+  return "";
 }
-
 
 
 // FRESH INSTANT STORY 3.52.90
