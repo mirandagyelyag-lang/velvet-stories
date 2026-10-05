@@ -78,6 +78,7 @@ import { buildUserReferencePovV35369, userReferencePovIssuesV35369 } from "./eng
 import { buildUserGravityV35370, userGravityIssuesV35370 } from "./engine/user-gravity-v35370.js";
 import { buildDecisiveAnswerV35371, decisiveAnswerIssuesV35371 } from "./engine/decisive-answer-v35371.js";
 import { buildInteriorContinuityV35375 } from "./engine/interior-continuity-v35375.js";
+import { buildEmotionalRealityV35377, emotionalRealityIssuesV35377 } from "./engine/emotional-reality-v35377.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
@@ -3362,6 +3363,17 @@ function buildNarrativePromptV3({
     intelligenceState: conversation.intelligence_state || {},
     scene: conversation.scene_state || {},
   });
+  const emotionalRealityV35377 = buildEmotionalRealityV35377({
+    character,
+    latestUserMessage: latestPerceptibleUserMessage,
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    relationshipState: conversation.relationship_state || {},
+    intelligenceState: conversation.intelligence_state || {},
+    scene: conversation.scene_state || {},
+    persistentCast,
+    worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
+  });
   const directFlirtV35352 = buildDirectFlirtV35352({
     character,
     latestUserMessage: latestPerceptibleUserMessage,
@@ -3483,6 +3495,8 @@ ${yearningEngineV35349}
 ${romanticResidueV35351}
 
 ${interiorContinuityV35375}
+
+${emotionalRealityV35377}
 
 ${directFlirtV35352}
 
@@ -5181,6 +5195,13 @@ function buildCompactLiveRecoveryPrompt({
   const userReferencePovV35369 = buildUserReferencePovV35369({ userName });
   const userGravityV35370 = buildUserGravityV35370({ character, latestUserMessage });
   const decisiveAnswerV35371 = buildDecisiveAnswerV35371({ character, latestUserMessage });
+  const emotionalRealityV35377 = buildEmotionalRealityV35377({
+    character, latestUserMessage,
+    recentUserMessages: messages.filter((m)=>m?.sender === "user").slice(-8).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: messages.filter((m)=>m?.sender !== "user").slice(-8).map((m)=>String(m?.content||"")),
+    relationshipState, intelligenceState, scene, persistentCast,
+    worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
+  });
   const transcript = (Array.isArray(messages) ? messages : []).slice(-16).map((message) => {
     const speaker = message?.sender === "user" ? userName : (character?.name || "Character");
     return `${speaker}: ${cleanPromptValue(message?.content, 1000)}`;
@@ -5494,6 +5515,9 @@ ${userGravityV35370}
 
 DECISIVE ANSWERS
 ${decisiveAnswerV35371}
+
+EMOTIONAL REALITY
+${emotionalRealityV35377}
 
 NARRATIVE DIRECTOR
 ${narrativeDirectorV35334}
@@ -9553,6 +9577,12 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of leanDialogueCoreV34942Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of targetAwareDialogueV34943Issues(text, options.latestUserMessage || "")) issues.push(issue);
   for (const issue of spokenNaturalnessV34944Issues(text, options.latestUserMessage || "")) issues.push(issue);
+  for (const issue of emotionalRealityIssuesV35377({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    scene: options.scene || options.continuity?.scene || {},
+  })) issues.push(issue);
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
   for (const issue of immutableEventTruthV35254Issues({
