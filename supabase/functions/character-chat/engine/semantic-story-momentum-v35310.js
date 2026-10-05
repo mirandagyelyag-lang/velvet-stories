@@ -151,6 +151,12 @@ function missedCommunicationCarryOn(reply="",latestUserMessage="",recentCharacte
   return priorProposal&&carries&&!recalculates;
 }
 
+function inventedUserAttentionStory(reply="",latestUserMessage=""){
+  const u=norm(latestUserMessage), t=norm(reply);
+  if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention)\b/.test(u)) return false;
+  return /\b(?:counting (?:the )?ceiling tiles?|staring at (?:the )?(?:ceiling|wall|floor|phone|screen)|daydreaming about|thinking about|lost in thoughts? about|watching (?:the )?(?:room|people|crowd))\b/.test(t);
+}
+
 function inventedUserVisibleReaction(reply="",latestUserMessage=""){
   const t=norm(reply), u=norm(latestUserMessage);
   const claims=/\\byour (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|red|pale|wide-eyed|wide eyed|vacant|distant) (?:expression|face|look|stare|eyes?)\\b/.test(t)
@@ -243,7 +249,8 @@ export function buildSemanticStoryMomentumV35310({
     "BANTER IS NOT MOMENTUM. A joke attached to door-opening, key-handling, walking or ordering is still a stalled turn if the relationship/problem/plan is unchanged.",
     "NO ECHO + QUIP + STOP: never merely restate the user's information in witty wording and end the turn. Treat what the user said as NEW INFORMATION. Let it change the character's interpretation, tactic, attention, decision, behavior, or the live social situation. The response may still be funny, but the joke cannot be the whole payload.",
     "MISSED-COMMUNICATION RESET: if the user says they were zoning out, were not listening, did not hear/catch/notice/understand, or were not paying attention, then any proposal, bet, invitation, instruction or conversational premise delivered during that missed beat is NOT mutually established. The character must recalculate from that fact. They may repeat it, abandon it, change tactic, check what happened, or react according to personality, but must NOT carry on as though the user heard or accepted it.",
-    "MISSED-COMMUNICATION POSITIVE REQUIREMENT: sarcasm, teasing, acknowledgement, or one clever line is NEVER a complete response to this revelation. Repeating or rephrasing what the character already said is continuity maintenance, NOT new content and NOT progression. After any personality-colored reaction, create a grounded new beat: investigate the attention shift without inventing its cause, deliberately change/drop the missed premise, alter the character's approach, notice a canon-supported concern, or make another consequential character-owned choice.",
+    "MISSED-COMMUNICATION POSITIVE REQUIREMENT: sarcasm, teasing, acknowledgement, one clever line, OR merely repeating/rephrasing what the user missed is NEVER a complete response. Repetition preserves context; it does not advance the scene. After any personality-colored reaction, create a grounded NEW beat: investigate why attention was gone without inventing the answer, deliberately drop/change the missed premise, alter the approach, notice a canon-supported concern, or make another consequential character-owned choice.",
+    "ATTENTION GAP OWNERSHIP: zoning out only establishes that attention was absent. Never invent what occupied the user's mind or eyes (ceiling tiles, walls, screens, daydreams, another person, etc.) unless the user established it.",
     "USER ATTENTION CONTENT IS USER-OWNED: if the user only says they zoned out or missed what was said, do NOT invent what occupied their attention (ceiling tiles, phone, another person, thoughts, daydreams, etc.). Unknown stays unknown until the user supplies it or the character asks.",
     "VISIBLE USER STATE IS USER-OWNED: do not invent a blank/confused/dazed/amused/embarrassed expression, stare, blush, smile, or other visible reaction for the user unless their message or canon explicitly supplied it.",
     "REACTION MUST HAVE A SECOND LAYER: after acknowledging a user revelation, add grounded content that belongs to THIS character: what they infer, what they now notice, what they choose to do differently, a consequential question, a changed plan, or a concrete interpersonal move. Do not narrate the user's feelings for them.",
@@ -273,6 +280,7 @@ export function semanticStoryMomentumIssues({
   if(inventedUserAttentionExplanation(text,latestUserMessage)) issues.push("semantic_invented_user_attention_explanation");
   if(missedCommunicationCarryOn(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_missed_communication_carry_on");
   if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
+  if(inventedUserAttentionStory(text,latestUserMessage)) issues.push("semantic_invented_user_attention_story");
   if(inventedUserAttentionContent(text,latestUserMessage)) issues.push("semantic_invented_user_attention_content");
   if(prematureSceneEscape(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_premature_scene_escape");
   if(acceptanceFollowThroughStall(text,latestUserMessage)) issues.push("semantic_acceptance_without_progression");
