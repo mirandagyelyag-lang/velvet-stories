@@ -1,0 +1,5 @@
+import assert from "node:assert/strict";import {reduceFullStoryIntegrationV35391} from "../supabase/functions/character-chat/engine/full-story-integration-v35391.js";
+let s={};for(let turn=1;turn<=30;turn++){const kiss=turn===3;const reply=kiss?"Chase kissed her, then stayed close.":turn===4?"He was quieter after the kiss.":"He continued the conversation.";s=reduceFullStoryIntegrationV35391({previous:s,messageId:String(turn),reply,scene:{location:"campus",present:["Chase","Antonia",...(turn===3?["Jules"]:[])],contact:turn>=3?"close":""},storyAuthority:kiss?{status:"active",action:"kiss"}:{}});assert.equal(s.physical_state.location,"campus");}
+assert.ok(s.events.some(x=>/kiss/i.test(x.detail)));assert.ok(s.witness_ledger.some(x=>x.name==="Jules"));assert.ok(s.emotional_aftermath.active);assert.equal(s.last_handoff_message_id,"30");
+s=reduceFullStoryIntegrationV35391({previous:s,messageId:"30",reply:"",scene:{location:"campus",present:["Chase","Antonia"]},canonCorrection:"This didn't happen"});
+assert.ok(s.correction_applied);console.log("v3.53.91 sequential 30-turn state torture passed");
