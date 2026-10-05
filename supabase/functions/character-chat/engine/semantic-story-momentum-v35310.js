@@ -133,7 +133,10 @@ function missedCommunicationNoDevelopment(reply="",latestUserMessage=""){
   // recalculates, investigates, repeats/abandons the missed premise, or changes
   // what they do next.
   const development=/\b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|are you okay|were you okay|what had your attention|what were you thinking|what happened|everything okay|you good|abandons?|drops? (?:the )?(?:bet|joke|challenge|offer|idea)|changes? (?:his|her|their|the) (?:tone|approach|plan)|stops? teasing|lets? (?:the )?(?:bet|joke|challenge) go|gives? (?:you|her|him|them) (?:a )?moment)\b/.test(t);
-  if(development) return false;
+  // Repeating/restating the missed material restores context but is NOT development.
+  // Require an additional new beat beyond repetition.
+  const repeatOnly=/\b(?:repeat|start from the top|i said|you missed the part|what i was saying)\b/.test(t);
+  if(development && !repeatOnly) return false;
   const words=t.split(/\s+/).filter(Boolean).length;
   const sarcasm=/\b(?:brilliant|captivating|impressive|tragic|cute|adorable|empty room|good to know|noted|figures|of course|wow|rude|psychological warfare|masterpiece)\b/.test(t);
   const onlySpeech=words<=55 && !/\b(?:asks?|checks?|repeats?|changes?|stops?|drops?|abandons?|waits?|offers?|decides?|moves? closer|sits? beside|turns? down|lowers?)\b/.test(t);
@@ -155,6 +158,15 @@ function inventedUserAttentionStory(reply="",latestUserMessage=""){
   const u=norm(latestUserMessage), t=norm(reply);
   if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention)\b/.test(u)) return false;
   return /\b(?:counting (?:the )?ceiling tiles?|staring at (?:the )?(?:ceiling|wall|floor|phone|screen)|daydreaming about|thinking about|lost in thoughts? about|watching (?:the )?(?:room|people|crowd))\b/.test(t);
+}
+
+function inventedUserAttentionContent(reply="",latestUserMessage=""){
+  const user=norm(latestUserMessage), t=norm(reply);
+  const attention=/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention)\b/.test(user);
+  if(!attention) return false;
+  // The user supplied only that attention was absent. Velvet may not fill the blank
+  // with a cute activity/thought and present it as fact.
+  return /\b(?:counting (?:the )?ceiling tiles|staring at (?:the )?(?:ceiling|wall|floor)|daydreaming about|thinking about|lost in thoughts? about|watching (?:the )?(?:ceiling|wall|floor)|planning your|imagining)\b/.test(t);
 }
 
 function inventedUserVisibleReaction(reply="",latestUserMessage=""){
@@ -280,6 +292,7 @@ export function semanticStoryMomentumIssues({
   if(inventedUserAttentionExplanation(text,latestUserMessage)) issues.push("semantic_invented_user_attention_explanation");
   if(missedCommunicationCarryOn(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_missed_communication_carry_on");
   if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
+  if(inventedUserAttentionContent(text,latestUserMessage)) issues.push("semantic_invented_user_attention_content");
   if(inventedUserAttentionStory(text,latestUserMessage)) issues.push("semantic_invented_user_attention_story");
   if(inventedUserAttentionContent(text,latestUserMessage)) issues.push("semantic_invented_user_attention_content");
   if(prematureSceneEscape(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_premature_scene_escape");
