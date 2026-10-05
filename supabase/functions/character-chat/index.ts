@@ -82,10 +82,11 @@ import { buildEmotionalRealityV35377, emotionalRealityIssuesV35377 } from "./eng
 import { buildCharacterIntentV35378, characterIntentIssuesV35378 } from "./engine/character-intent-v35378.js";
 import { buildVelvetNarrativeUpgradeV35379, velvetNarrativeUpgradeIssuesV35379 } from "./engine/velvet-narrative-upgrade-v35379.js";
 import { buildRelationshipLivingMemoryV35380, deriveRelationshipLivingMemoryV35380, relationshipLivingMemoryIssuesV35380 } from "./engine/relationship-living-memory-v35380.js";
+import { buildBanterAnswerGateV35383, banterAnswerGateIssuesV35383 } from "./engine/banter-answer-gate-v35383.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "455";
+const VELVET_ENGINE_RELEASE = "456";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -3411,6 +3412,12 @@ function buildNarrativePromptV3({
     intelligenceState: conversation.intelligence_state || {},
     scene: conversation.scene_state || {},
   });
+  const banterAnswerGateV35383 = buildBanterAnswerGateV35383({
+    character,
+    latestUserMessage: latestPerceptibleUserMessage,
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+  });
   const directFlirtV35352 = buildDirectFlirtV35352({
     character,
     latestUserMessage: latestPerceptibleUserMessage,
@@ -3541,6 +3548,9 @@ ${velvetNarrativeUpgradeV35379}
 
 RELATIONSHIP LIVING MEMORY
 ${relationshipLivingMemoryV35380}
+
+BANTER + ANSWER GATE
+${banterAnswerGateV35383}
 
 ${directFlirtV35352}
 
@@ -5267,6 +5277,11 @@ function buildCompactLiveRecoveryPrompt({
     recentCharacterReplies: messages.filter((m)=>m?.sender !== "user").slice(-8).map((m)=>String(m?.content||"")),
     relationshipState, intelligenceState, scene,
   });
+  const banterAnswerGateV35383 = buildBanterAnswerGateV35383({
+    character, latestUserMessage,
+    recentUserMessages: messages.filter((m)=>m?.sender === "user").slice(-8).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: messages.filter((m)=>m?.sender !== "user").slice(-8).map((m)=>String(m?.content||"")),
+  });
   const transcript = (Array.isArray(messages) ? messages : []).slice(-16).map((message) => {
     const speaker = message?.sender === "user" ? userName : (character?.name || "Character");
     return `${speaker}: ${cleanPromptValue(message?.content, 1000)}`;
@@ -5592,6 +5607,9 @@ ${velvetNarrativeUpgradeV35379}
 
 RELATIONSHIP LIVING MEMORY
 ${relationshipLivingMemoryV35380}
+
+BANTER + ANSWER GATE
+${banterAnswerGateV35383}
 
 NARRATIVE DIRECTOR
 ${narrativeDirectorV35334}
@@ -8487,6 +8505,10 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "natural_dialogue_choreographed_coolness",
   "natural_dialogue_unearned_proximity",
   "natural_dialogue_callback_loop",
+  "banter_saturation_loop",
+  "conversational_answer_gate_miss",
+  "repeated_technically_banter",
+  "repeated_voice_drop_mannerism",
   "context_dump_exposition_v346",
   // SPEED + QUALITY: second model calls are reserved for mistakes the user
   // would experience as broken canon, broken agency, or a direct non-answer.
@@ -8717,6 +8739,10 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "natural_dialogue_choreographed_coolness",
   "natural_dialogue_unearned_proximity",
   "natural_dialogue_callback_loop",
+  "banter_saturation_loop",
+  "conversational_answer_gate_miss",
+  "repeated_technically_banter",
+  "repeated_voice_drop_mannerism",
   "context_dump_exposition_v346",
   "user_reference_pronoun_drift",
   "serious_turn_passive_response",
@@ -9676,6 +9702,11 @@ function validateNarrativeReply(reply = "", options = {}) {
     reply: text,
     latestUserMessage: options.latestUserMessage || "",
     intelligenceState: options.intelligenceState || options.continuity?.intelligenceState || {},
+  })) issues.push(issue);
+  for (const issue of banterAnswerGateIssuesV35383({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
