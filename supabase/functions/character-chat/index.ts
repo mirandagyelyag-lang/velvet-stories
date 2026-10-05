@@ -3760,6 +3760,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-6).map((m)=>String(m.content||"")),
   });
   const characterIdentityGateV35321 = buildCharacterIdentityGateV35321({ character });
+  const speakerOwnershipV35367 = buildSpeakerOwnershipV35367({ character, persistentCast });
   const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
     character,
     latestUserMessage: latestPerceptibleUserMessage,
@@ -5450,6 +5451,9 @@ ${chatScopedNpcCanonV35279}
 
 UNIFIED NARRATIVE STATE
 ${unifiedNarrativeStateV35312}
+
+SPEAKER OWNERSHIP
+${speakerOwnershipV35367}
 
 NARRATIVE DIRECTOR
 ${narrativeDirectorV35334}
