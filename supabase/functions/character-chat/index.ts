@@ -73,6 +73,7 @@ import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssues
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
 import { buildInstantStoryDirectorV35366, instantStoryDirectorIssuesV35366 } from "./engine/instant-story-director-v35366.js";
+import { buildInstantStoryDirectorV35389, instantStoryDirectorIssuesV35389 } from "./engine/instant-story-director-v35389.js";
 import { buildSpeakerOwnershipV35367, speakerOwnershipIssuesV35367 } from "./engine/speaker-ownership-v35367.js";
 import { buildUserReferencePovV35369, userReferencePovIssuesV35369 } from "./engine/user-reference-pov-v35369.js";
 import { buildUserGravityV35370, userGravityIssuesV35370 } from "./engine/user-gravity-v35370.js";
@@ -87,7 +88,7 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "461";
+const VELVET_ENGINE_RELEASE = "462";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2237,6 +2238,8 @@ ${instantStoryLivingWorldV35314({ character: safeDraft })}
 
 ${buildInstantStoryDirectorV35366({ character: safeDraft, recentOpenings, idea: cleanIdea })}
 
+${buildInstantStoryDirectorV35389({ character: safeDraft, recentOpenings, idea: cleanIdea })}
+
 ${buildSpeakerOwnershipV35367({ character: safeDraft, persistentCast: [] })}
 
 ${buildUserReferencePovV35369({ userName: "Antonia" })}
@@ -2351,13 +2354,27 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
       const unifiedOpeningIssues = instantStoryStateFamilyIssuesV35312(opening, recentOpenings);
       const directorIssuesV35366 = instantStoryDirectorIssuesV35366(opening, recentOpenings);
+      const directorIssuesV35389 = instantStoryDirectorIssuesV35389(opening, { character: safeDraft, recentOpenings });
+      const liveOpeningEvaluationV35388 = evaluateLiveStoryV35388({
+        reply: opening,
+        character: safeDraft,
+        latestUserMessage: cleanIdea,
+        recentCharacterReplies: recentOpenings,
+        previousScene: {},
+        storyMemory: {},
+      });
       const directorHardIssuesV35368 = directorIssuesV35366.filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue));
+      const directorHardIssuesV35389 = directorIssuesV35389.filter((issue)=>[
+        "instant_story_rescue_template","instant_story_user_as_object","instant_story_fake_choice",
+        "instant_story_floating_dialogue","instant_story_user_choreography","instant_story_recycled_setup"
+      ].includes(issue));
+      const liveOpeningHardIssuesV35388 = liveOpeningEvaluationV35388.blocking || [];
       // 3.53.19: Opening DNA is a generation compass, not a destructive classifier.
       // Lexical family detection can misread a valid semantic continuation (for example,
       // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
       // diagnostics/repair context, but never reject an otherwise valid opening for it.
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length || directorHardIssuesV35368.length) {
-        const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366];
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length || directorHardIssuesV35368.length || directorHardIssuesV35389.length || liveOpeningHardIssuesV35388.length) {
+        const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
         rejectedInstantCandidates.push({
           opening,
           model,
