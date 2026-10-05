@@ -130,7 +130,7 @@ function missedCommunicationNoDevelopment(reply="",latestUserMessage=""){
   // not merely sarcasm/acknowledgement. Require evidence that the character
   // recalculates, investigates, abandons the missed premise, or changes
   // what they do next.
-  const development=/b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|are you okay|were you okay|what had your attention|what were you thinking|what happened|everything okay|you good|repeat|repeats?|abandons?|drops? (?:the )?(?:bet|joke|challenge|offer|idea)|changes? (?:his|her|their|the) (?:tone|approach|plan)|stops? teasing|lets? (?:the )?(?:bet|joke|challenge) go|gives? (?:you|her|him|them) (?:a )?moment)b/.test(t);
+  const development=/b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|are you okay|were you okay|what had your attention|what were you thinking|what happened|everything okay|you good|abandons?|drops? (?:the )?(?:bet|joke|challenge|offer|idea)|changes? (?:his|her|their|the) (?:tone|approach|plan)|stops? teasing|lets? (?:the )?(?:bet|joke|challenge) go|gives? (?:you|her|him|them) (?:a )?moment)b/.test(t);
   if(development) return false;
   const words=t.split(/s+/).filter(Boolean).length;
   const sarcasm=/b(?:brilliant|captivating|impressive|tragic|cute|adorable|empty room|good to know|noted|figures|of course|wow|rude|psychological warfare|masterpiece)b/.test(t);
