@@ -2339,7 +2339,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
       // diagnostics/repair context, but never reject an otherwise valid opening for it.
       if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length || directorIssuesV35366.length) {
-        const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
+        const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366];
         rejectedInstantCandidates.push({
           opening,
           model,
@@ -2479,7 +2479,8 @@ RULES
         opening: true,
       });
       const rescueTooSimilar = instantStoryTooSimilarV3539(rescueOpening, recentOpenings);
-      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescuePremiseIssues.length && !rescueIdentityIssuesV35321.length && !rescueSemanticIssues.length && !rescueTooSimilar) {
+      const rescueDirectorIssuesV35366 = instantStoryDirectorIssuesV35366(rescueOpening, recentOpenings);
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescuePremiseIssues.length && !rescueIdentityIssuesV35321.length && !rescueSemanticIssues.length && !rescueTooSimilar && !rescueDirectorIssuesV35366.length) {
         return json({
           opening: rescueOpening,
           source: "ai_rescue",
@@ -2628,6 +2629,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
       const emergencyFinish = String(emergencyData?.candidates?.[0]?.finishReason || "");
       const emergencyHardBlocks = instantStoryHardBlockIssuesV35298(emergencyOpening, safeDraft, cleanIdea);
       const emergencyPremiseIssues = instantStoryPremiseGateIssues(emergencyOpening, safeDraft);
+      const emergencyDirectorIssuesV35366 = instantStoryDirectorIssuesV35366(emergencyOpening, recentOpenings);
       const emergencyQuality = instantStoryQualityIssues(emergencyOpening, safeDraft)
         .filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
       const emergencySemanticIssues = semanticStoryMomentumIssues({
@@ -2642,7 +2644,8 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
         !emergencyQuality.length &&
         !emergencyPremiseIssues.length &&
         !emergencySemanticIssues.length &&
-        !instantStoryTooSimilarV3539(emergencyOpening, recentOpenings)
+        !instantStoryTooSimilarV3539(emergencyOpening, recentOpenings) &&
+        !emergencyDirectorIssuesV35366.length
       ) {
         return json({
           opening: emergencyOpening,
