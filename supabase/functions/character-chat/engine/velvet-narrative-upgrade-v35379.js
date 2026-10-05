@@ -1,4 +1,4 @@
-// VELVET 3.53.85 — SCENE INTELLIGENCE · TEN SYSTEMS, ONE DIRECTION
+// VELVET 3.53.86 — STORY MEMORY ARCHITECTURE · DURABLE CONTINUITY
 // Scene state, open threads, attraction continuity, inner-to-outer behavior,
 // consequences, NPC social memory, escalation, character-specific reactions,
 // world initiative and narrative butterfly effects. v3.53.85 adds desire-driven decisions, scene goals, adaptive beat plans, opportunity detection, specificity, subtext, micro-events, payoff timing, anti-safe QA and playable hooks.
@@ -131,7 +131,20 @@ export function buildVelvetNarrativeUpgradeV35379({
     ? `DIRECT INTENT COMPILED: "${directAction}". This requested event MUST happen in this visible turn unless it violates an explicit boundary/canon impossibility. Do not stall, ask permission again, substitute a near-miss, or discuss doing it instead of doing it. Add character-specific physical and emotional detail after the event.`
     : "DIRECT INTENT: no short mandatory action command detected; follow the literal user turn normally.";
 
-  return `VELVET LIVING STORY BRAIN 3.53.84 — TEN SYSTEMS, ONE STATE
+  return `VELVET LIVING STORY BRAIN 3.53.86 — DURABLE STORY STATE
+
+STORY MEMORY ARCHITECTURE 3.53.86
+The persistent intelligence state may contain story_memory_v35386. Treat it as a compact ledger, not prose inspiration.
+- EVENT LEDGER: established high-value events are immutable history unless explicitly corrected by the creator.
+- OPEN THREADS: each thread has a stable identity and status open/progressing/resolved/abandoned. Do not resurrect resolved threads as unresolved.
+- RELATIONSHIP TIMELINE: preserve order. Later intimacy cannot erase earlier milestones or pretend they never occurred.
+- NPC KNOWLEDGE: knowledge belongs to named people. Never transfer a fact to another NPC without witnessing, being told, or an on-page information path.
+- PHYSICAL STATE: location, presence, activity, positions/contact are the starting frame, not optional flavor.
+- EMOTIONAL RESIDUE: strong beats may leave temporary residue that affects behavior without forcing repetitive exposition.
+- CHARACTER GOAL: continue an unfinished grounded scene goal until achieved, blocked, changed, or abandoned on-page.
+- CALLBACK BANK: reuse details selectively. A callback on cooldown should rest instead of becoming a gimmick.
+- CONTRADICTION GUARD: established concrete facts outrank generic assumptions. Cars, fame, jobs, relationships, promises, objects, identities and prior events do not vanish because a generic trope suggests otherwise.
+- POST-TURN REDUCER: hidden metadata should report only what actually changed this turn. Do not fabricate state merely to fill fields.
 
 CORE RULE
 These ten systems are not ten competing writers. They describe ONE current story state. Visible recent turns outrank hidden state. Never invent a user feeling, action, consent, relationship fact, NPC knowledge or past event to satisfy a system.
