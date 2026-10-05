@@ -101,6 +101,23 @@ function blockingBanterStall(reply=""){
   return blocking>=2 && !hasMeaningfulStateChange(reply) && Boolean(banter||questionOnly||words<=55);
 }
 
+function missedCommunicationNoDevelopment(reply="",latestUserMessage=""){
+  const user=norm(latestUserMessage);
+  if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|didn'?t understand|did not understand)\b/.test(user)) return false;
+  const t=norm(reply);
+  if(!t) return false;
+  // Positive contract: a missed-communication revelation must cause a new beat,
+  // not merely sarcasm/acknowledgement. Require evidence that the character
+  // recalculates, investigates, repeats/abandons the missed premise, or changes
+  // what they do next.
+  const development=/\b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|are you okay|were you okay|what had your attention|what were you thinking|what happened|everything okay|you good|repeat|repeats?|abandons?|drops? (?:the )?(?:bet|joke|challenge|offer|idea)|changes? (?:his|her|their|the) (?:tone|approach|plan)|stops? teasing|lets? (?:the )?(?:bet|joke|challenge) go|gives? (?:you|her|him|them) (?:a )?moment)\b/.test(t);
+  if(development) return false;
+  const words=t.split(/\s+/).filter(Boolean).length;
+  const sarcasm=/\b(?:brilliant|captivating|impressive|tragic|cute|adorable|empty room|good to know|noted|figures|of course|wow|rude|psychological warfare|masterpiece)\b/.test(t);
+  const onlySpeech=words<=55 && !/\b(?:asks?|checks?|repeats?|changes?|stops?|drops?|abandons?|waits?|offers?|decides?|moves? closer|sits? beside|turns? down|lowers?)\b/.test(t);
+  return sarcasm||onlySpeech;
+}
+
 function missedCommunicationCarryOn(reply="",latestUserMessage="",recentCharacterReplies=[]){
   const user=norm(latestUserMessage);
   if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|didn'?t understand|did not understand)\b/.test(user)) return false;
@@ -197,6 +214,7 @@ export function buildSemanticStoryMomentumV35310({
     "BANTER IS NOT MOMENTUM. A joke attached to door-opening, key-handling, walking or ordering is still a stalled turn if the relationship/problem/plan is unchanged.",
     "NO ECHO + QUIP + STOP: never merely restate the user's information in witty wording and end the turn. Treat what the user said as NEW INFORMATION. Let it change the character's interpretation, tactic, attention, decision, behavior, or the live social situation. The response may still be funny, but the joke cannot be the whole payload.",
     "MISSED-COMMUNICATION RESET: if the user says they were zoning out, were not listening, did not hear/catch/notice/understand, or were not paying attention, then any proposal, bet, invitation, instruction or conversational premise delivered during that missed beat is NOT mutually established. The character must recalculate from that fact. They may repeat it, abandon it, change tactic, check what happened, or react according to personality, but must NOT carry on as though the user heard or accepted it.",
+    "MISSED-COMMUNICATION POSITIVE REQUIREMENT: sarcasm, teasing, acknowledgement, or one clever line is NEVER a complete response to this revelation. After any personality-colored reaction, the character must create one grounded new beat: investigate why attention was gone, repeat or deliberately drop what was missed, alter their approach, notice a canon-supported concern, or make another consequential character-owned choice. Do not end immediately after the joke.",
     "VISIBLE USER STATE IS USER-OWNED: do not invent a blank/confused/dazed/amused/embarrassed expression, stare, blush, smile, or other visible reaction for the user unless their message or canon explicitly supplied it.",
     "REACTION MUST HAVE A SECOND LAYER: after acknowledging a user revelation, add grounded content that belongs to THIS character: what they infer, what they now notice, what they choose to do differently, a consequential question, a changed plan, or a concrete interpersonal move. Do not narrate the user's feelings for them.",
     "ACCEPTANCE HANDOFF: when the user says yes/okay/let's go, follows, joins, gets in, or otherwise accepts the character's proposal, DO NOT spend the next turn confirming the same proposal. The acceptance closes that beat. Immediately create the NEXT earned story beat.",
@@ -218,6 +236,7 @@ export function semanticStoryMomentumIssues({
   if(campusCoffeeStudyFallback(text,opening)) issues.push("semantic_campus_coffee_study_fallback");
   if(blockingBanterStall(text)) issues.push("semantic_blocking_banter_stall");
   if(echoQuipStall(text,latestUserMessage)) issues.push("semantic_echo_quip_stall");
+  if(missedCommunicationNoDevelopment(text,latestUserMessage)) issues.push("semantic_missed_communication_no_development");
   if(missedCommunicationCarryOn(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_missed_communication_carry_on");
   if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
   if(prematureSceneEscape(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_premature_scene_escape");
