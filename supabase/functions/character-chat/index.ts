@@ -75,7 +75,7 @@ import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from ".
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "445";
+const VELVET_ENGINE_RELEASE = "446";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1625,6 +1625,23 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
   if (/\b(?:against|into|in)\s+your\s+(?:palm|hand|hands|pocket|bag|lap)\b/i.test(narration)) {
     issues.push("invented_user_prop_state");
   }
+
+  // v3.53.65 SPEAKER / ADDRESSEE CLARITY
+  // At the first line of an Instant Story there is no prior conversational floor.
+  // Dialogue therefore cannot float in space and make the user guess whether it
+  // was addressed to them, an NPC, a group, a phone call, etc.
+  const firstDialogueMatch = raw.match(/[“"]([^”"]+)[”"]/);
+  if (firstDialogueMatch) {
+    const beforeFirstDialogue = raw.slice(0, firstDialogueMatch.index || 0);
+    const firstSpoken = String(firstDialogueMatch[1] || "");
+    const userAddressInNarration = /\b(?:to you|toward you|at you|your way|called to you|asked you|told you|said to you|turned to you|looked at you)\b/i.test(beforeFirstDialogue);
+    const npcAddressInNarration = /\b(?:to (?:his|her|their|one of|the|another|a) (?:friend|friends|girl|guy|boy|woman|man|contestant|teammate|roommate|producer|host|group)|asked (?:him|her|them)|told (?:him|her|them)|said to (?:him|her|them)|on (?:the )?phone|into (?:the|his|her|their) phone|to the group|to everyone)\b/i.test(beforeFirstDialogue);
+    const explicitVocative = /^(?:hey\s+)?[A-Z][A-Za-z'-]{1,20}[,!]/.test(firstSpoken.trim());
+    const explicitGroupAddress = /\b(?:you guys|everyone|all of you|guys|people)\b/i.test(firstSpoken);
+    if (!userAddressInNarration && !npcAddressInNarration && !explicitVocative && !explicitGroupAddress) {
+      issues.push("ambiguous_first_dialogue_addressee");
+    }
+  }
   if (/\byou(?:'re| are)\s+(?:desperate|eager|nervous|afraid|jealous|angry|excited|dying)\b/i.test(raw)) {
     issues.push("invented_user_motive");
   }
@@ -1740,6 +1757,7 @@ const INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298 = new Set([
   "invented_user_motive",
   "invented_named_npc",
   "unsupported_institutional_stakes",
+  "ambiguous_first_dialogue_addressee",
 ]);
 
 const INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298 = new Set([
@@ -2233,6 +2251,9 @@ LIVING OPENING ENGINE 3.53.13
 - INDEPENDENT LIFE FIRST: Instant Story is not a "character comes to get you" generator. Regularly open on the character already doing something that matters to THEM: interacting with friends/NPCs, dealing with their own plans, making a mistake, winning/losing something, being approached by someone else, handling a social consequence, pursuing a goal, or simply existing in their world. The user does not need to be the immediate target of the character's attention.
 - NO MAGNETIC USER DEFAULT: do not repeatedly make the lead notice the user across a room, cross the room toward them, abandon a group for them, interrupt their conversation, offer them an escape, or manufacture a reason to speak to them. Those beats are allowed only when they are genuinely character- and scene-specific, not the default opening structure.
 - PLAYABLE WITHOUT SUMMONING: an opening can be playable because something interesting is already happening nearby. It is valid for the character to be talking to someone else, occupied, unaware of the user, or focused on a separate problem at first. Let proximity, shared context, consequences or the user's eventual choice create contact naturally.
+- SPEAKER + ADDRESSEE CLARITY — HARD RULE: the reader must NEVER have to guess who a spoken line is addressed to. Before the FIRST spoken line, establish its target in plain narration or make the target unmistakable inside the line. If the lead is speaking to the user, write a clear cue such as 'He turned to you.' If speaking to an NPC, identify that person generically or by an approved configured name before/with the line. If speaking to a group, phone, producer, host, etc., say so. Never open with floating dialogue and assume the user will infer it is meant for them.
+- NO DEFAULT YOU ASSUMPTION: quotation marks alone do NOT mean the lead is speaking to the user. Dialogue to NPCs is encouraged when natural, but its recipient must be explicit. Likewise, do not make narration say 'he said' after a floating quote and expect context to repair it retroactively. Clarify BEFORE or AT the line.
+- DIALOGUE TURN CHANGES: whenever the addressee changes within the opening, anchor the new recipient once. Do not make the user reverse-engineer a multi-person conversation from pronouns.
 - RELATIONSHIP STAGE: preserve the configured dynamic. Attraction can color attention and choices, but do not turn it into instant confession, ownership, a random love triangle, or automatic physical familiarity.
 - WORLD STAYS ALIVE: if there is a group, party, team, family, workplace or campus around them, let it continue naturally. Do not make every opening collapse into a private two-person confrontation.
 - DIALOGUE SHOULD SOUND SPOKEN. No therapy language, quote-card monologues, cinematic jaw/eye choreography, ominous “the air changed” writing, or narration explaining what every look means.
