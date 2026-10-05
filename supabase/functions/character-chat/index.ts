@@ -81,10 +81,11 @@ import { buildInteriorContinuityV35375 } from "./engine/interior-continuity-v353
 import { buildEmotionalRealityV35377, emotionalRealityIssuesV35377 } from "./engine/emotional-reality-v35377.js";
 import { buildCharacterIntentV35378, characterIntentIssuesV35378 } from "./engine/character-intent-v35378.js";
 import { buildVelvetNarrativeUpgradeV35379, velvetNarrativeUpgradeIssuesV35379 } from "./engine/velvet-narrative-upgrade-v35379.js";
+import { buildRelationshipLivingMemoryV35380, deriveRelationshipLivingMemoryV35380, relationshipLivingMemoryIssuesV35380 } from "./engine/relationship-living-memory-v35380.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "454";
+const VELVET_ENGINE_RELEASE = "455";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -3399,6 +3400,15 @@ function buildNarrativePromptV3({
     storyPreferences: storyPreferences || {},
     directorInstruction,
   });
+  const relationshipLivingMemoryV35380 = buildRelationshipLivingMemoryV35380({
+    character,
+    latestUserMessage: latestPerceptibleUserMessage,
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    relationshipState: conversation.relationship_state || {},
+    intelligenceState: conversation.intelligence_state || {},
+    scene: conversation.scene_state || {},
+  });
   const directFlirtV35352 = buildDirectFlirtV35352({
     character,
     latestUserMessage: latestPerceptibleUserMessage,
@@ -3526,6 +3536,9 @@ ${emotionalRealityV35377}
 ${characterIntentV35378}
 
 ${velvetNarrativeUpgradeV35379}
+
+RELATIONSHIP LIVING MEMORY
+${relationshipLivingMemoryV35380}
 
 ${directFlirtV35352}
 
@@ -5246,6 +5259,12 @@ function buildCompactLiveRecoveryPrompt({
     relationshipState, intelligenceState, scene, persistentCast,
     storyPreferences, directorInstruction,
   });
+  const relationshipLivingMemoryV35380 = buildRelationshipLivingMemoryV35380({
+    character, latestUserMessage,
+    recentUserMessages: messages.filter((m)=>m?.sender === "user").slice(-8).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: messages.filter((m)=>m?.sender !== "user").slice(-8).map((m)=>String(m?.content||"")),
+    relationshipState, intelligenceState, scene,
+  });
   const transcript = (Array.isArray(messages) ? messages : []).slice(-16).map((message) => {
     const speaker = message?.sender === "user" ? userName : (character?.name || "Character");
     return `${speaker}: ${cleanPromptValue(message?.content, 1000)}`;
@@ -5568,6 +5587,9 @@ ${characterIntentV35378}
 
 TEN-PART NARRATIVE UPGRADE
 ${velvetNarrativeUpgradeV35379}
+
+RELATIONSHIP LIVING MEMORY
+${relationshipLivingMemoryV35380}
 
 NARRATIVE DIRECTOR
 ${narrativeDirectorV35334}
@@ -9648,6 +9670,11 @@ function validateNarrativeReply(reply = "", options = {}) {
     recentCharacterReplies: options.recentCharacterReplies || [],
     scene: options.scene || options.continuity?.scene || options.previousScene || {},
   })) issues.push(issue);
+  for (const issue of relationshipLivingMemoryIssuesV35380({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    intelligenceState: options.intelligenceState || options.continuity?.intelligenceState || {},
+  })) issues.push(issue);
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
   for (const issue of immutableEventTruthV35254Issues({
@@ -11016,6 +11043,20 @@ async function streamRoleplayV19({
           recentUserMessages,
           reply: result.reply,
           messageId: savedMessage.id,
+        });
+        update.intelligence_state.relationship_living_memory_v35380 = deriveRelationshipLivingMemoryV35380({
+          previous: existingIntelligenceState?.relationship_living_memory_v35380 || {},
+          character,
+          latestUserMessage,
+          reply: result.reply,
+          mindUpdate: result.mind_update || {},
+          behaviorUpdate: result.human_behavior_update || {},
+          relationship: update.relationship_state || existingRelationshipState || {},
+          scene: nextPhysicalState.scene || existingSceneState || {},
+          recentUserMessages,
+          recentCharacterReplies,
+          messageId: savedMessage.id,
+          isRegeneration,
         });
         const relationshipArcStateV35278 = deriveRelationshipArcStateV35278({
           character,
