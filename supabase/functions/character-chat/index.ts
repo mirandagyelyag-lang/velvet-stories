@@ -72,10 +72,11 @@ import { buildDirectFlirtV35352, directFlirtV35352Issues } from "./engine/direct
 import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssuesV35313, instantStoryCharacterFingerprintV35313 } from "./engine/character-fingerprint-payoff-v35313.js";
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
+import { buildInstantStoryDirectorV35366, instantStoryDirectorIssuesV35366 } from "./engine/instant-story-director-v35366.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "446";
+const VELVET_ENGINE_RELEASE = "447";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2220,6 +2221,8 @@ ${buildCharacterIdentityGateV35321({ character: safeDraft })}
 ${instantStoryEmotionalDnaV35321(safeDraft)}
 
 ${instantStoryLivingWorldV35314({ character: safeDraft })}
+
+${buildInstantStoryDirectorV35366({ character: safeDraft, recentOpenings, idea: cleanIdea })}
 - Never declare the user's next movement or participation. Invite, insist, choose your own action, but leave the user's action open.
 - Never invent the user's order, favorite, usual, routine or other personal preference.
 - Campus + coffee + study logistics cannot be the opening engine. If that setting appears, something more meaningful must actually happen.
@@ -2330,11 +2333,12 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       });
       const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
       const unifiedOpeningIssues = instantStoryStateFamilyIssuesV35312(opening, recentOpenings);
+      const directorIssuesV35366 = instantStoryDirectorIssuesV35366(opening, recentOpenings);
       // 3.53.19: Opening DNA is a generation compass, not a destructive classifier.
       // Lexical family detection can misread a valid semantic continuation (for example,
       // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
       // diagnostics/repair context, but never reject an otherwise valid opening for it.
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length) {
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length || directorIssuesV35366.length) {
         const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues];
         rejectedInstantCandidates.push({
           opening,
