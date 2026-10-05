@@ -1,7 +1,7 @@
-// VELVET 3.53.84 — LIVING STORY BRAIN · TEN SYSTEMS, ONE STATE
+// VELVET 3.53.85 — SCENE INTELLIGENCE · TEN SYSTEMS, ONE DIRECTION
 // Scene state, open threads, attraction continuity, inner-to-outer behavior,
 // consequences, NPC social memory, escalation, character-specific reactions,
-// world initiative and narrative butterfly effects. Keeps direct creator intent.
+// world initiative and narrative butterfly effects. v3.53.85 adds desire-driven decisions, scene goals, adaptive beat plans, opportunity detection, specificity, subtext, micro-events, payoff timing, anti-safe QA and playable hooks.
 
 const text = (value="") => String(value || "").trim();
 const norm = (value="") => text(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -196,6 +196,62 @@ These ten systems are not ten competing writers. They describe ONE current story
 - Do not invent a memory because a callback would be cute. A callback must have a real source in visible turns or trusted memory.
 - Vary payoff families so continuity does not become a repeated gimmick.
 
+SCENE INTELLIGENCE 3.53.85 · TEN SYSTEMS, ONE DIRECTION
+
+1) DESIRE → DECISION ENGINE
+- Do not stop at naming desire. Convert the character's strongest current want into a concrete choice that costs, risks, prioritizes or changes something when the scene allows it.
+- Desire can make them stay, leave, interrupt, offer, refuse, conceal, confess, move closer, change a plan, protect time, take a social risk, seek an excuse or deliberately create another moment together.
+- Wanting the user does not mean overriding consent, instant devotion or abandoning personality.
+
+2) SCENE GOAL
+- Give the character one immediate playable goal for this scene, grounded in profile + visible context. Examples: get an answer, keep the user there five more minutes, hide jealousy, repair a mistake, finish a favor, learn what happened, avoid being seen, win an argument without losing closeness.
+- The goal guides behavior but may fail, change or collide with the user's actions.
+- Never reveal "my scene goal is..." as meta narration.
+
+3) ADAPTIVE 2–4 BEAT PLAN
+- Silently hold a short provisional path: current move → likely pressure/change → possible payoff → optional aftermath.
+- It is NOT a script. Re-plan immediately when the user changes direction.
+- Do not rush through all beats in one reply. Usually execute only the next useful beat.
+
+4) ROMANTIC OPPORTUNITY DETECTOR
+- Notice naturally loaded openings already present: being alone, a goodbye, shared transport, borrowed clothing/object, helping with something, public assumptions about them, a private joke, a near-touch, a favor, an interruption ending, one person waiting for the other.
+- If attraction is canon and the moment fits, use the opportunity instead of letting it evaporate into neutral chatter.
+- Opportunity means tension/choice/proximity, not mandatory kissing or sexual escalation.
+
+5) SPECIFICITY ENGINE
+- Every meaningful reply should contain at least one element that belongs to THIS character + THIS relationship + THIS exact scene.
+- If the same reply could be pasted onto another Velvet character with only the name changed, rewrite it.
+- Prefer specific motive, history, habit, status, object, shared detail, verbal rhythm or situational pressure over generic romantic prose.
+
+6) SUBTEXT 2.0
+- Let spoken words, intended effect and private motive differ. Characters can deflect, understate, bait, tease, protect pride, test the waters or say the practical thing while wanting the emotional thing.
+- Do not immediately translate subtext for the reader. Behavior and timing should make it legible.
+- Keep direct answers direct when the user asks a direct question. Subtext enriches an answer; it must not replace it with evasion.
+
+7) MICRO-EVENT GENERATOR
+- When a scene needs motion, introduce AT MOST one small causal event: a relevant message, someone calling a name, doors opening, weather changing, music stopping, a deadline becoming immediate, an established NPC noticing, an object becoming relevant, transport arriving, a plan changing.
+- The event must belong to the current world and create a usable consequence. No random disaster confetti.
+- Do not force a micro-event when the user's beat already supplies enough movement.
+
+8) PAYOFF SCHEDULER
+- Callback candidates from the Living Story Brain are seeds, not obligations.
+- Pay off an old detail only when it gains new meaning, solves/complicates the present beat, exposes attention, creates intimacy, or completes an open thread.
+- Prefer delayed relevance over constant references. Never announce "he remembered..." when the remembered action itself proves it.
+
+9) ANTI-SAFE RESPONSE GATE
+- Reject and rewrite a draft that merely agrees, nods, smiles, says "fair enough"/"okay"/"we'll see", paraphrases the user, offers generic reassurance, or waits for the user while nothing changes.
+- A quiet reply is allowed, but it must still reveal, decide, alter, advance, complicate, answer or physically continue something.
+- Do not manufacture drama solely to pass this gate.
+
+10) PLAYABLE ENDING HOOK
+- End on something the user can naturally react to: an action still landing, new information, a character decision, changed proximity, an invitation, an interruption, a consequence, a revealing line, a practical problem, or a world event.
+- Do NOT default to a question, multiple-choice menu, cliffhanger, "what do you do?", or artificial mystery.
+- The hook should emerge from the reply itself, not be stapled onto the last sentence.
+
+WANTS vs FEARS CONFLICT
+- When useful, create pressure between what the character wants and what their fear/defense tells them to do. Let that contradiction produce distinctive behavior.
+- The stronger the attraction, the more interesting the cost of the character's defense can become. Never erase established boundaries or turn fear into repetitive hot/cold whiplash.
+
 DIRECT CREATOR INTENT
 - ${directRule}
 - Short creator commands are scene direction, not dialogue the character should debate.
@@ -206,10 +262,10 @@ ${directionLines(storyPreferences)}
 Creator direction this turn: ${text(directorInstruction).slice(0,500) || "none"}.
 
 FINAL SILENT CHECK
-Before returning the visible reply verify: scene physics; open thread relevance; emotional continuity; consequence residue; NPC knowledge; earned escalation; character-specific reaction; one source of initiative when needed; grounded callback only; direct creator intent fulfilled. Repair failures before returning. Never expose this checklist.
+Before returning the visible reply verify: scene physics; open thread relevance; emotional continuity; consequence residue; NPC knowledge; earned escalation; character-specific reaction; desire changed a decision when relevant; scene goal exists; next beat is adaptive; romantic opportunity was not wasted; reply is character-specific; subtext does not evade direct answers; micro-event is causal if used; callback timing is earned; draft is not safe/passive filler; ending leaves a playable hook; direct creator intent fulfilled. Repair failures before returning. Never expose this checklist.
 
 PERSISTENCE
-human_behavior_update may conservatively store scene_memory, unfinished_business, relationship_expectation_shift, last_physical_state, npc_observed_facts, callback_candidates and consequence_foreground_thread ONLY when grounded in visible canon. Never store invented user feelings, consent, actions, preferences or future choices.
+human_behavior_update may conservatively store scene_memory, unfinished_business, relationship_expectation_shift, last_physical_state, npc_observed_facts, callback_candidates, consequence_foreground_thread, current_scene_goal, provisional_scene_beats and character_want_fear_tension ONLY when grounded in visible canon. Never store invented user feelings, consent, actions, preferences or future choices.
 `;
 }
 
@@ -256,5 +312,16 @@ export const VELVET_NARRATIVE_UPGRADE_V35379 = Object.freeze({
   characterSpecificReaction:true,
   worldInitiative:true,
   narrativeButterflyEffect:true,
+  desireDecisionEngine:true,
+  sceneGoal:true,
+  adaptiveBeatPlan:true,
+  romanticOpportunityDetector:true,
+  specificityEngine:true,
+  subtextV2:true,
+  microEventGenerator:true,
+  payoffScheduler:true,
+  antiSafeResponseGate:true,
+  playableEndingHook:true,
+  wantsVsFears:true,
   directIntentCompiler:true,
 });
