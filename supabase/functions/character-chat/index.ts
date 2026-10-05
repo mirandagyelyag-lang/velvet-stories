@@ -3414,7 +3414,11 @@ function buildNarrativePromptV3({
     persistentCast,
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
-  const existingSocialWorldV35393 = conversation.intelligence_state?.social_world_v35393 || {};\n  const socialWorldPromptV35393 = buildSocialWorldPromptV35393(existingSocialWorldV35393);\n  const existingRelationshipEvolutionV35392 = conversation.intelligence_state?.relationship_evolution_v35392 || {};\n  const relationshipEvolutionPromptV35392 = buildRelationshipEvolutionPromptV35392(existingRelationshipEvolutionV35392);\n  const existingFullStoryIntegrationV35391 = conversation.intelligence_state?.full_story_integration_v35391 || {};
+  const existingSocialWorldV35393 = conversation.intelligence_state?.social_world_v35393 || {};
+  const socialWorldPromptV35393 = buildSocialWorldPromptV35393(existingSocialWorldV35393);
+  const existingRelationshipEvolutionV35392 = conversation.intelligence_state?.relationship_evolution_v35392 || {};
+  const relationshipEvolutionPromptV35392 = buildRelationshipEvolutionPromptV35392(existingRelationshipEvolutionV35392);
+  const existingFullStoryIntegrationV35391 = conversation.intelligence_state?.full_story_integration_v35391 || {};
   const fullStoryIntegrationPromptV35391 = buildFullStoryIntegrationPromptV35391(existingFullStoryIntegrationV35391);
   const storyAuthorityV35390 = compileStoryAuthorityV35390({
     latestUserMessage: latestPerceptibleUserMessage,
