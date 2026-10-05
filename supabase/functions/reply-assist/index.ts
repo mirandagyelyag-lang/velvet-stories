@@ -32,7 +32,33 @@ Deno.serve(async (req) => {
     const storyPathTask = task === "story_paths";
     const prompt = storyPathTask
       ? `You are Velvet Story Paths. Read the fictional roleplay scene and suggest exactly 4 genuinely different, plausible NEXT directions. Do not write the user's actions, dialogue, feelings, decisions, or POV. Do not rewrite the last reply. Preserve continuity, locations, relationships, and established character agency. Prefer paths that emerge from what is already happening; at most one option may introduce a plausible interruption or side character. Avoid generic therapy, instant romance, forced jealousy, random accidents, and repetitive campus/library defaults. Each direction must be an INTERNAL instruction for the next CHARACTER beat, not prose addressed to the user. Return ONLY valid JSON: {"paths":[{"title":"2-5 word English title","vibe":"1-3 word label","preview":"one short English sentence describing the possibility without deciding for the user","direction":"precise internal direction for Velvet; preserve user agency"}]}. Exactly 4 paths.\nCHARACTER CONTEXT ${JSON.stringify(character).slice(0,6000)}\nRECENT CHAT ${JSON.stringify(history).slice(0,14000)}`
-      : `You are Velvet Reply Companion. Help a Spanish-speaking user reply AS THEMSELVES in English in a fictional roleplay chat.\nUnderstand the latest character line first, then produce exactly 4 distinct natural replies. Infer the USER voice from user turns only. Preserve scene facts. Never invent user actions, feelings, pet names, backstory, or escalation. Keep short chats short. MODE=${intent}. CUSTOM=${custom||"(none)"}.\nReturn ONLY valid JSON with this shape: {"understanding":{"literal_es":"...","explanation_es":"...","subtext_es":"...","english_notes":[{"phrase":"...","meaning_es":"..."}]},"options":[{"text":"...","tone":"short Spanish label","meaning_es":"..."}]}. Exactly 4 options.\nCHARACTER CONTEXT ${JSON.stringify(character).slice(0,6000)}\nRECENT CHAT ${JSON.stringify(history).slice(0,14000)}\nUSER DRAFT ${draft||"(none)"}`;
+      : `You are Velvet Reply Companion. Help a Spanish-speaking user reply AS THEMSELVES in English in a fictional roleplay chat.
+
+FIRST understand the latest character line and the exact scene state. Then produce exactly 4 genuinely different, READY-TO-USE reply options.
+
+These are not one-liners or caption ideas. Each option should be a small playable response with actual substance:
+- normally 2-5 sentences and about 35-95 words when MODE=ideas;
+- other tone modes may be 25-80 words, but still need a complete conversational beat;
+- it may combine dialogue with ONE short user-controlled visible action in *asterisks* when that makes the reply feel natural;
+- it must directly answer/react to what the character just said AND add one meaningful next beat;
+- make the four options use different strategies, not paraphrases: e.g. playful challenge, honest admission, guarded deflection, bold move, practical response, curiosity, warmth, boundary, depending on the scene;
+- infer the USER voice from user turns only;
+- preserve established facts, location, relationship stage, and who did what;
+- never write the OTHER character's dialogue/actions;
+- never invent backstory, prior promises, possessions, pet names, major feelings, or a relationship milestone the user did not choose;
+- do not force romance, jealousy, confession, touch, or escalation unless MODE/CUSTOM/context clearly supports it;
+- avoid generic filler such as "I don't know yet", "we'll see", "what do you want me to say?", or empty quips;
+- if the latest beat is simple, keep the answer natural rather than artificially dramatic.
+
+MODE=${intent}. CUSTOM=${custom||"(none)"}.
+
+Return ONLY valid JSON with this shape:
+{"understanding":{"literal_es":"...","explanation_es":"...","subtext_es":"...","english_notes":[{"phrase":"...","meaning_es":"..."}]},"options":[{"text":"complete English reply ready to paste","tone":"short Spanish label","approach_es":"what this option actually does in the scene","meaning_es":"what it communicates / why it fits"}]}.
+Exactly 4 options.
+
+CHARACTER CONTEXT ${JSON.stringify(character).slice(0,6000)}
+RECENT CHAT ${JSON.stringify(history).slice(0,14000)}
+USER DRAFT ${draft||"(none)"}`;
 
     const models = [...new Set([
       Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite",
@@ -61,7 +87,7 @@ Deno.serve(async (req) => {
           if(unique.length!==4) throw new Error("Gemini returned fewer than four usable story paths.");
           return {paths:unique, model};
         }
-        const opts=(Array.isArray(parsed?.options)?parsed.options:[]).map((x:any)=>({text:clean(x?.text,500),tone:clean(x?.tone,80),meaning_es:clean(x?.meaning_es,350)})).filter((x:any)=>x.text);
+        const opts=(Array.isArray(parsed?.options)?parsed.options:[]).map((x:any)=>({text:clean(x?.text,1400),tone:clean(x?.tone,80),approach_es:clean(x?.approach_es,320),meaning_es:clean(x?.meaning_es,500)})).filter((x:any)=>x.text);
         const unique=[...new Map(opts.map((x:any)=>[x.text.toLowerCase().replace(/\s+/g," "),x])).values()].slice(0,4);
         if(unique.length!==4) throw new Error("Gemini returned fewer than four usable reply options.");
         return {understanding:parsed?.understanding||{},options:unique, model};

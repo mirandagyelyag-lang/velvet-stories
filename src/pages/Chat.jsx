@@ -2622,7 +2622,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         <div className="reply-assist-backdrop" onPointerDown={(event)=>{ if(event.target===event.currentTarget) setReplyAssistOpen(false); }}>
           <section className="reply-assist-sheet" role="dialog" aria-modal="true" aria-label="Help me reply">
             <div className="reply-assist-grabber" />
-            <header><div><strong>Help me reply</strong><small>Velvet reads the scene and helps you say it naturally in English.</small></div><button type="button" onClick={()=>setReplyAssistOpen(false)} aria-label="Close"><X size={18}/></button></header>
+            <header><div><strong>Help me reply</strong><small>Velvet reads the scene and gives you complete, ready-to-use responses in natural English.</small></div><button type="button" onClick={()=>setReplyAssistOpen(false)} aria-label="Close"><X size={18}/></button></header>
             <div className="reply-assist-modes">
               {[['understand','Explain it'],['ideas','Ideas'],['playful','Playful'],['dry','Dry'],['flirty','Flirty'],['direct','Direct']].map(([key,label])=><button type="button" key={key} className={replyAssistMode===key?'is-active':''} onClick={()=>requestReplyAssist(key)}>{label}</button>)}
             </div>
@@ -2635,7 +2635,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
             {replyAssistLoading && <div className="reply-assist-status"><LoaderCircle className="is-spinning" size={17}/> Thinking about this scene…</div>}
             {replyAssistError && <div className="reply-assist-error">{replyAssistError}<button type="button" onClick={()=>requestReplyAssist(replyAssistMode)}>Retry</button></div>}
             {!!replyAssistOptions.length && <>
-              <div className="reply-assist-options">{replyAssistOptions.map((option,index)=><button type="button" className="reply-assist-option" key={`${option.text}-${index}`} onClick={()=>applyReplyAssistOption(option.text)}><span className="reply-assist-option-top"><b>{option.text}</b><em>{option.tone}</em></span><small>{option.meaning_es}</small></button>)}</div>
+              <div className="reply-assist-options">{replyAssistOptions.map((option,index)=><button type="button" className="reply-assist-option" key={`${option.text}-${index}`} onClick={()=>applyReplyAssistOption(option.text)}><span className="reply-assist-option-top"><b>{option.text}</b><em>{option.tone}</em></span>{option.approach_es && <small className="reply-assist-option-approach">{option.approach_es}</small>}{option.meaning_es && <small>{option.meaning_es}</small>}</button>)}</div>
               <button type="button" className="reply-assist-more" disabled={replyAssistLoading} onClick={()=>requestReplyAssist('more')}>{replyAssistLoading ? <LoaderCircle className="is-spinning" size={15}/> : <RefreshCw size={15}/>} Generate more</button>
             </>}
             <p className="reply-assist-hint">Choose one and the suggestions disappear. Nothing is sent automatically.</p>
