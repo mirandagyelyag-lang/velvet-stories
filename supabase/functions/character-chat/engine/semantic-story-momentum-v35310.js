@@ -101,6 +101,21 @@ function blockingBanterStall(reply=""){
   return blocking>=2 && !hasMeaningfulStateChange(reply) && Boolean(banter||questionOnly||words<=55);
 }
 
+function echoQuipStall(reply="",latestUserMessage=""){
+  const user=norm(latestUserMessage);
+  const text=norm(reply);
+  if(!user||!text) return false;
+  const words=text.split(/\s+/).filter(Boolean).length;
+  if(words>95||hasMeaningfulStateChange(reply)) return false;
+  const userContent=user.split(/[^a-z0-9']+/).filter(w=>w.length>=4&&!["that","this","with","have","were","was","just","really","didnt","don't","your","youre"].includes(w));
+  const replyContent=text.split(/[^a-z0-9']+/).filter(w=>w.length>=4);
+  const overlap=[...new Set(userContent)].filter(w=>replyContent.includes(w)).length;
+  const echoRatio=userContent.length?overlap/Math.min(userContent.length,6):0;
+  const quip=/\b(?:impressive|tragic|cute|adorable|seriously|apparently|good to know|noted|of course|figures|wow|brutal|rude|psychological warfare|masterpiece|counting ceiling tiles)\b/.test(text);
+  const reactionOnly=/\b(?:said|replied|asked|tone|smirk|grin|laugh|mock|teas|jok)\b/.test(text)&&!hasMeaningfulStateChange(text);
+  return echoRatio>=0.34 && words<=70 && (quip||reactionOnly);
+}
+
 function isAcceptanceHandoff(latestUserMessage=""){
   const raw=String(latestUserMessage||"").trim();
   const t=norm(raw);
@@ -161,6 +176,8 @@ export function buildSemanticStoryMomentumV35310({
     "Never manufacture intimacy through invented preferences: no 'your usual', 'your favorite', specific drink/order/habit, nickname or routine unless visible canon established it.",
     "CAMPUS/COFFEE/STUDY is not banned, but it cannot be the story engine. Coffee, food, class gaps, student-union lines and study logistics are background unless something meaningful happens through them.",
     "BANTER IS NOT MOMENTUM. A joke attached to door-opening, key-handling, walking or ordering is still a stalled turn if the relationship/problem/plan is unchanged.",
+    "NO ECHO + QUIP + STOP: never merely restate the user's information in witty wording and end the turn. Treat what the user said as NEW INFORMATION. Let it change the character's interpretation, tactic, attention, decision, behavior, or the live social situation. The response may still be funny, but the joke cannot be the whole payload.",
+    "REACTION MUST HAVE A SECOND LAYER: after acknowledging a user revelation, add grounded content that belongs to THIS character: what they infer, what they now notice, what they choose to do differently, a consequential question, a changed plan, or a concrete interpersonal move. Do not narrate the user's feelings for them.",
     "ACCEPTANCE HANDOFF: when the user says yes/okay/let's go, follows, joins, gets in, or otherwise accepts the character's proposal, DO NOT spend the next turn confirming the same proposal. The acceptance closes that beat. Immediately create the NEXT earned story beat.",
     "After an acceptance handoff, physical transit may continue, but movement alone is never enough. Add one grounded development owned by the character/world: a destination choice already compatible with canon, a meaningful question, a reveal, a refusal, a changed plan, a social consequence, a new obligation, or action driven by jealousy/care/pride. Do not fabricate user choices or miraculous interruptions.",
     "Before finalizing, ask silently: if I remove the walking, grin, keys, door, phone and food/drink props, did anything meaningful remain? If not, rewrite the beat.",
@@ -179,6 +196,7 @@ export function semanticStoryMomentumIssues({
   if(unsupportedUserPreference(text,latestUserMessage,recentUserMessages,character)) issues.push("semantic_invented_user_preference");
   if(campusCoffeeStudyFallback(text,opening)) issues.push("semantic_campus_coffee_study_fallback");
   if(blockingBanterStall(text)) issues.push("semantic_blocking_banter_stall");
+  if(echoQuipStall(text,latestUserMessage)) issues.push("semantic_echo_quip_stall");
   if(prematureSceneEscape(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_premature_scene_escape");
   if(acceptanceFollowThroughStall(text,latestUserMessage)) issues.push("semantic_acceptance_without_progression");
   if(repeatedMannerism(text,recentCharacterReplies)) issues.push("semantic_repeated_grin_mannerism");
