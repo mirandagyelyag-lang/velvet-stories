@@ -5540,6 +5540,9 @@ ${decisiveAnswerV35371}
 EMOTIONAL REALITY
 ${emotionalRealityV35377}
 
+CHARACTER INTENT
+${characterIntentV35378}
+
 NARRATIVE DIRECTOR
 ${narrativeDirectorV35334}
 
