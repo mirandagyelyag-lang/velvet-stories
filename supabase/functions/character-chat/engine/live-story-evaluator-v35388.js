@@ -11,6 +11,11 @@ export function evaluateLiveStoryV35388({reply="",character={},latestUserMessage
  const direct=hasAny(text,[/["“][^"”]{3,}["”]/,/\b(?:yes|no|because|i want|i need|i'm|i am|i will|i won't|like you|don't want)\b/i]);
  const dead=hasAny(n,[/^\s*(?:okay|ok|sure|fine|fair enough|we'll see|i don't know yet)[.! ]*$/i,/\bi don't know yet\b/i,/\bwhat do you do\??$/i,/\bwhat happens next\??$/i]);
  const paraphraseOnly=latestUserMessage&&norm(latestUserMessage).length>8&&n===norm(latestUserMessage);
+ const userN=norm(latestUserMessage);
+ const missedCommunication=/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention)\b/i.test(userN);
+ const inventedAttentionCause=missedCommunication&&/\b(?:you were|you'?re|you are) (?:somewhere else|lost in thought|thinking about|staring at|watching|counting|reviewing|daydreaming)\b/i.test(n);
+ const sceneSwapAfterMiss=missedCommunication&&/\b(?:skip the|kitchen|coffee run|go somewhere|head outside|leave|food|grab something to eat)\b/i.test(n)&&!/\b(?:did you hear|want me to repeat|i said|never mind|forget it|what had your attention|what were you thinking|are you okay|you good|wait|hold on)\b/i.test(n);
+ const missedNoConsequence=missedCommunication&&!/\b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|what had your attention|what were you thinking|are you okay|you good|wait|hold on|drops? the|abandons?|changes? (?:his|her|their) (?:approach|tone|plan)|stops? teasing|asks?)\b/i.test(n);
  const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-4).map(norm).filter(Boolean);
  const repeated=recent.some(r=>r.length>20&&(n===r||n.includes(r.slice(0,Math.min(90,r.length)))));
  const continuityAnchors=[previousScene?.location,...(previousScene?.present||[]),storyMemory?.physical_state?.location].filter(Boolean).map(norm);
@@ -36,9 +41,12 @@ export function evaluateLiveStoryV35388({reply="",character={},latestUserMessage
  if(repeated)issues.push("near_duplicate_reply");
  if(!continuity)issues.push("continuity_break");
  if(collisionRisk)issues.push("character_collision_risk");
+ if(inventedAttentionCause)issues.push("invented_attention_cause");
+ if(sceneSwapAfterMiss)issues.push("scene_swap_after_missed_communication");
+ if(missedNoConsequence)issues.push("missed_communication_without_character_consequence");
  if(scores.storyMovement<=2&&scores.replyValue<=3)issues.push("no_story_movement");
  if(scores.initiative<=2&&text.length<180)issues.push("no_character_initiative");
- const blocking=issues.filter(x=>["dead_safe_reply","user_paraphrase_only","near_duplicate_reply","continuity_break"].includes(x));
+ const blocking=issues.filter(x=>["dead_safe_reply","user_paraphrase_only","near_duplicate_reply","continuity_break","invented_attention_cause","scene_swap_after_missed_communication","missed_communication_without_character_consequence"].includes(x));
  return {scores,issues,blocking,collisionRisk,pass:blocking.length===0&&scores.replyValue>=3};
 }
 
