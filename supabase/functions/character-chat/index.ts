@@ -8367,7 +8367,6 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "semantic_invented_user_visible_reaction",
   "semantic_invented_user_attention_content",
   "semantic_invented_user_attention_explanation",
-  "semantic_invented_user_attention_content",
   "location_change_without_story_change",
   "scene_lifecycle_overstayed",
   "conversation_not_converted_to_event",
