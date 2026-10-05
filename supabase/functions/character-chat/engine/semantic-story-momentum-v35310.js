@@ -97,7 +97,7 @@ function blockingBanterStall(reply=""){
   const blocking=blockingActionCount(reply);
   const spoken=norm(dialogueOnly(reply));
   const banter=spoken && /b(?:come on|keep that energy|deal|seriously|before the line|freshmen|freshman|stupid|obviously|apparently|good luck|dont start|don't start|youre impossible|you're impossible)b/.test(spoken);
-  const questionOnly=spoken && /?$/.test(spoken.trim()) && !hasMeaningfulStateChange(spoken);
+  const questionOnly=spoken && /\?$/.test(spoken.trim()) && !hasMeaningfulStateChange(spoken);
   return blocking>=2 && !hasMeaningfulStateChange(reply) && Boolean(banter||questionOnly||words<=55);
 }
 
