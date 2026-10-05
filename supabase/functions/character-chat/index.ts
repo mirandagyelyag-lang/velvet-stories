@@ -5177,6 +5177,10 @@ function buildCompactLiveRecoveryPrompt({
   openingRegeneration = false, turnContract = {}, turnIntent = {},
 } = {}) {
   const userName = cleanPromptValue(userIdentity?.name, 100) || "User";
+  const speakerOwnershipV35367 = buildSpeakerOwnershipV35367({ character, persistentCast });
+  const userReferencePovV35369 = buildUserReferencePovV35369({ userName });
+  const userGravityV35370 = buildUserGravityV35370({ character, latestUserMessage });
+  const decisiveAnswerV35371 = buildDecisiveAnswerV35371({ character, latestUserMessage });
   const transcript = (Array.isArray(messages) ? messages : []).slice(-16).map((message) => {
     const speaker = message?.sender === "user" ? userName : (character?.name || "Character");
     return `${speaker}: ${cleanPromptValue(message?.content, 1000)}`;
