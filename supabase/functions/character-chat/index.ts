@@ -86,7 +86,7 @@ import { buildBanterAnswerGateV35383, banterAnswerGateIssuesV35383 } from "./eng
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "458";
+const VELVET_ENGINE_RELEASE = "459";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -11112,9 +11112,26 @@ async function streamRoleplayV19({
         const newCommitments = compactTextList(result.continuity_update?.commitments, 8, 260);
         const presenceOpen = compactTextList(result.presence_update?.unfinished_business_add, 6, 320);
         const presenceResolved = compactTextList(result.presence_update?.unfinished_business_resolve, 6, 320);
-        update.unresolved_threads = compactTextList([...(Array.isArray(existingUnresolvedThreads) ? existingUnresolvedThreads.map((item) => typeof item === "string" ? item : item?.title || item?.detail) : []), ...newCommitments, ...presenceOpen], 20, 320)
-          .filter((item) => ![...resolvedCommitments, ...presenceResolved].some((done) => memorySimilarity(item, done) >= 0.68))
-          .map((title, index) => ({ id: `thread-${index}`, title, status: "open" }));
+        update.unresolved_threads = reduceStoryThreadsV35386({
+          previous: existingUnresolvedThreads,
+          additions: [...newCommitments, ...presenceOpen],
+          resolutions: [...resolvedCommitments, ...presenceResolved],
+          messageId: savedMessage.id,
+        });
+        update.intelligence_state.story_memory_v35386 = reduceStoryMemoryV35386({
+          previous: existingIntelligenceState?.story_memory_v35386 || {},
+          latestUserMessage,
+          reply: result.reply,
+          characterName: character.name,
+          messageId: savedMessage.id,
+          scene: nextPhysicalState.scene,
+          relationship: update.relationship_state,
+          threads: update.unresolved_threads,
+          continuityUpdate: result.continuity_update,
+          presenceUpdate: result.presence_update,
+          humanBehaviorUpdate: result.human_behavior_update,
+          timelineEvent: result.continuity_update?.timeline_event || {},
+        });
 
         const note = cleanPromptValue(result.continuity_note, 600);
         const sceneChanged = Boolean(result.scene_update?.scene_changed);
@@ -11235,6 +11252,124 @@ async function streamRoleplayV19({
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+function stableStoryKeyV35386(value = "") {
+  const normalized = normalizeText(String(value || "")).replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  let hash = 2166136261;
+  for (let i = 0; i < normalized.length; i += 1) {
+    hash ^= normalized.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0).toString(36);
+}
+
+function reduceStoryThreadsV35386({ previous = [], additions = [], resolutions = [], messageId = "" } = {}) {
+  const prior = (Array.isArray(previous) ? previous : []).map((item) => {
+    const title = cleanPromptValue(typeof item === "string" ? item : item?.title || item?.detail, 320);
+    if (!title) return null;
+    return {
+      ...(item && typeof item === "object" && !Array.isArray(item) ? item : {}),
+      id: cleanPromptValue(item?.id, 100) || `thread-${stableStoryKeyV35386(title)}`,
+      title,
+      status: ["open","progressing","resolved","abandoned"].includes(String(item?.status)) ? String(item.status) : "open",
+      opened_at_message_id: cleanPromptValue(item?.opened_at_message_id, 120) || "",
+      last_touched_message_id: cleanPromptValue(item?.last_touched_message_id, 120) || "",
+    };
+  }).filter(Boolean);
+  const next = [...prior];
+  for (const raw of compactTextList(additions, 10, 320)) {
+    const match = next.find((item) => memorySimilarity(item.title, raw) >= 0.68);
+    if (match) {
+      match.status = match.status === "open" ? "progressing" : match.status;
+      match.last_touched_message_id = messageId;
+      continue;
+    }
+    next.push({ id:`thread-${stableStoryKeyV35386(raw)}`, title:raw, status:"open", opened_at_message_id:messageId, last_touched_message_id:messageId });
+  }
+  for (const raw of compactTextList(resolutions, 10, 320)) {
+    const match = next.find((item) => ["open","progressing"].includes(item.status) && memorySimilarity(item.title, raw) >= 0.62);
+    if (match) {
+      match.status = "resolved";
+      match.resolved_at_message_id = messageId;
+      match.last_touched_message_id = messageId;
+    }
+  }
+  return next.slice(-30);
+}
+
+function reduceStoryMemoryV35386({
+  previous = {}, latestUserMessage = "", reply = "", characterName = "", messageId = "",
+  scene = {}, relationship = {}, threads = [], continuityUpdate = {}, presenceUpdate = {},
+  humanBehaviorUpdate = {}, timelineEvent = {},
+} = {}) {
+  const prior = previous && typeof previous === "object" && !Array.isArray(previous) ? previous : {};
+  const nowEvent = Boolean(timelineEvent?.record) ? {
+    id: `event-${cleanPromptValue(messageId,80) || stableStoryKeyV35386(reply)}`,
+    kind: cleanPromptValue(timelineEvent?.kind, 40) || "story",
+    label: cleanPromptValue(timelineEvent?.label, 140) || "Story beat",
+    detail: cleanPromptValue(timelineEvent?.detail, 420),
+    importance: Math.max(1, Math.min(5, Number(timelineEvent?.importance) || 2)),
+    message_id: cleanPromptValue(messageId, 120),
+  } : null;
+  const events = [...(Array.isArray(prior.event_ledger) ? prior.event_ledger : [])];
+  if (nowEvent && !events.some((item) => item?.id === nowEvent.id)) events.push(nowEvent);
+
+  const callbackAdds = compactTextList([
+    ...(Array.isArray(humanBehaviorUpdate?.callback_candidates) ? humanBehaviorUpdate.callback_candidates : []),
+    ...(Array.isArray(continuityUpdate?.callback_candidates) ? continuityUpdate.callback_candidates : []),
+  ], 8, 220);
+  const callbackBank = (Array.isArray(prior.callback_bank) ? prior.callback_bank : []).map((item) =>
+    typeof item === "string" ? { key:stableStoryKeyV35386(item), detail:item, cooldown:0 } : { ...item, cooldown:Math.max(0, Number(item?.cooldown || 0) - 1) }
+  );
+  for (const detail of callbackAdds) {
+    const found = callbackBank.find((item) => memorySimilarity(item.detail || "", detail) >= 0.72);
+    if (!found) callbackBank.push({ key:stableStoryKeyV35386(detail), detail, cooldown:0, source_message_id:messageId });
+  }
+
+  const residue = cleanPromptValue(
+    humanBehaviorUpdate?.emotional_residue || presenceUpdate?.emotional_residue || continuityUpdate?.emotional_residue,
+    360,
+  );
+  const goal = cleanPromptValue(
+    humanBehaviorUpdate?.current_scene_goal || continuityUpdate?.current_scene_goal || prior.character_goal?.goal,
+    260,
+  );
+  const beats = compactTextList(
+    humanBehaviorUpdate?.provisional_scene_beats || continuityUpdate?.provisional_scene_beats || prior.character_goal?.provisional_beats || [],
+    4, 220,
+  );
+  const npcFacts = Array.isArray(continuityUpdate?.knowledge_updates)
+    ? continuityUpdate.knowledge_updates.slice(0, 10).map((item) => ({
+        who:cleanPromptValue(item?.who,100), subject:cleanPromptValue(item?.subject,140),
+        knows:cleanPromptValue(item?.knows,360), status:cleanPromptValue(item?.status,40) || "known",
+        source:cleanPromptValue(item?.source,180), message_id:messageId,
+      })).filter((item)=>item.who && (item.subject || item.knows))
+    : [];
+
+  return {
+    schema:"v3.53.86",
+    event_ledger:events.slice(-60),
+    relationship_timeline:events.filter((item)=>["relationship","conflict","promise","reveal","decision"].includes(String(item?.kind))).slice(-40),
+    open_threads:(Array.isArray(threads)?threads:[]).slice(-30),
+    physical_state:{
+      location:cleanPromptValue(scene?.location,180), time_label:cleanPromptValue(scene?.time_label,120),
+      present:compactSceneNames(scene?.present || [],12), activity:cleanPromptValue(scene?.activity,260),
+      positions:scene?.positions || scene?.character_positions || {}, contact:scene?.contact || scene?.physical_contact || {},
+      message_id:messageId,
+    },
+    emotional_residue:residue ? { value:residue, source_message_id:messageId } : (prior.emotional_residue || {}),
+    character_goal:{ goal, provisional_beats:beats, source_message_id:goal ? messageId : cleanPromptValue(prior.character_goal?.source_message_id,120) },
+    callback_bank:callbackBank.slice(-30),
+    npc_knowledge_snapshot:[...(Array.isArray(prior.npc_knowledge_snapshot)?prior.npc_knowledge_snapshot:[]),...npcFacts].slice(-50),
+    relationship_snapshot:relationship && typeof relationship === "object" ? relationship : {},
+    last_reduced_message_id:messageId,
+    contradiction_guard:{
+      rule:"Visible canon + event ledger + physical state outrank generic assumptions. Never negate an established fact without an on-page change.",
+      latest_user_excerpt:cleanPromptValue(latestUserMessage,220),
+      latest_reply_excerpt:cleanPromptValue(reply,220),
+    },
+  };
 }
 
 async function persistStoryDynamics({ supabase, userId, conversationId, characterName, continuityUpdate = {}, presenceUpdate = {}, timelineEvent = {}, activeArcs = [], activePlans = [], activeConflicts = [], chemistryProfiles = [], latestUserMessage = "", reply = "", sourceMessageId = null, scene = {} }) {
