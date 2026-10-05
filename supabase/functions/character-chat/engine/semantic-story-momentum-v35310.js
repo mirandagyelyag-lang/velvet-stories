@@ -287,7 +287,6 @@ export function semanticStoryMomentumIssues({
   if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
   if(inventedUserAttentionContent(text,latestUserMessage)) issues.push("semantic_invented_user_attention_content");
   if(inventedUserAttentionStory(text,latestUserMessage)) issues.push("semantic_invented_user_attention_story");
-  if(inventedUserAttentionContent(text,latestUserMessage)) issues.push("semantic_invented_user_attention_content");
   if(prematureSceneEscape(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_premature_scene_escape");
   if(acceptanceFollowThroughStall(text,latestUserMessage)) issues.push("semantic_acceptance_without_progression");
   if(repeatedMannerism(text,recentCharacterReplies)) issues.push("semantic_repeated_grin_mannerism");
