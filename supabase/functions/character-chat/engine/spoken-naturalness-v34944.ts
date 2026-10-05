@@ -13,6 +13,9 @@ export function buildSpokenNaturalnessV34944({ latestUserMessage = "", character
 - A short polished line such as “I didn't think I needed an invitation.” can be perfectly natural when it fits the moment. Do NOT flatten every character into generic casual speech.
 - BAD OVERWRITTEN SHAPE: “I enjoy the spectacle. Besides, I was thirsty, and the company here is significantly more tolerable than what I was dealing with ten minutes ago.” It is over-composed for a casual turn: abstract opener, formal connector, formal comparison, and unnecessary completion.
 - Preserve specificity when it matters. Simplify wording, not meaning.
+- BAN THERAPY-META ACKNOWLEDGEMENT: never replace an actual emotional reaction with language that merely announces reception/validation. Avoid stock constructions such as “that landed”, “it landed”, “I heard you”, “I hear you”, “I'm not pretending it didn't land”, “I'm not ignoring that”, “that hit”, “I felt that”, “I get what you're saying”, or close paraphrases when they function as polished emotional acknowledgement.
+- SHOW THE CONSEQUENCE INSTEAD: if something affects the character, let it alter what they do, say, risk, admit, avoid, repair, pursue, or fail to hide. The character should HAVE the reaction, not explain to the user that a reaction was successfully received.
+- This ban does not forbid literal hearing or impact when physically relevant. It targets abstract therapy/corporate meta-speech about feelings and communication.
 LATEST USER TURN: ${latest.slice(0,900) || "none"}\nCHARACTER: ${String(character?.name || "character").slice(0,120)}`;
 }
 
