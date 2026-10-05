@@ -183,6 +183,13 @@ function Settings({ onBack, onOpenDiagnostics }) {
       <SettingChoice label="Conversation" value={settings.storyDialogue} options={[["dialogue_forward","Dialogue-forward"],["balanced","Balanced"],["narration_forward","Narration-forward"]]} onChange={(value)=>updateSetting("storyDialogue",value)}/>
       <SettingChoice label="Emotional interior" value={settings.storyEmotion} options={[["interior_visible","Visible"],["subtle","Subtle"],["restrained","Restrained"]]} onChange={(value)=>updateSetting("storyEmotion",value)}/>
       <SettingChoice label="Romance pacing" value={settings.storyPacing} options={[["medium_fast","Medium / fast"],["medium","Medium"],["slow","Slow burn"]]} onChange={(value)=>updateSetting("storyPacing",value)}/>
+      <div className="settings-story-director">
+        <div className="settings-story-director__heading"><Sparkles size={16}/><span><strong>Current direction</strong><small>Steer the scene without writing instructions into the chat.</small></span></div>
+        <SettingChoice label="Romantic tension" value={settings.storyRomanticTension || "high"} options={[["low","Low"],["medium","Medium"],["high","High"]]} onChange={(value)=>updateSetting("storyRomanticTension",value)}/>
+        <SettingChoice label="Jealousy" value={settings.storyJealousy || "subtle"} options={[["off","Off"],["subtle","Subtle"],["medium","Medium"],["high","High"]]} onChange={(value)=>updateSetting("storyJealousy",value)}/>
+        <SettingChoice label="Character initiative" value={settings.storyCharacterInitiative || "high"} options={[["balanced","Balanced"],["high","High"],["very_high","Very high"]]} onChange={(value)=>updateSetting("storyCharacterInitiative",value)}/>
+        <SettingChoice label="Scene pace" value={settings.storyScenePace || "fast"} options={[["slow","Slow"],["steady","Steady"],["fast","Fast"]]} onChange={(value)=>updateSetting("storyScenePace",value)}/>
+      </div>
       <label className="settings-story-dna__notes">
         <span><MessageCircle size={15}/><strong>Anything else Velvet should remember?</strong></span>
         <textarea value={settings.storyInstructions || ""} maxLength={900} rows="4" onChange={(event)=>updateSetting("storyInstructions",event.target.value)} placeholder="For example: Keep the dialogue natural and let important admissions affect the character before they answer." />
