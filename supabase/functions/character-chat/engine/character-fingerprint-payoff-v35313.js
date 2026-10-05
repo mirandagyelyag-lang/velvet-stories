@@ -92,6 +92,12 @@ export function buildCharacterFingerprintPayoffV35313({
     "DIFFERENTIATION TEST: if another lead character's name could replace this one with almost no change, rewrite the decision/disclosure style.",
     "CAST NON-MERGE RULE: never borrow another named lead's emotional tactic just because it worked romantically before. Theo=misread warmth/longing; Mateo=refuge/grounded presence; Chase=electricity/cocky social magnetism; Nathan=forbidden restraint/guarded prioritization; Rowan=earned familiarity/being seen; Alexander=devotion through action and repair; Damon=silent controlled intensity; Roman=danger/direct stakes/adrenaline; Adrian=reality-show rivalry/public pressure/reluctant teamwork. These are separate engines, not interchangeable flavors.",
     "CROSS-CHARACTER TEST: before sending, identify the lead's specific engine above. If the same beat would preserve its emotional meaning unchanged under a different lead, change the tactic, decision, dialogue rhythm or consequence.",
+    "FIVE-LAYER IDENTITY LOCK: preserve five independent dimensions for the current lead: (A) what they NOTICE first, (B) what they WANT from the beat, (C) what they REFUSE/FEAR, (D) how they ACT under attraction/jealousy/conflict, and (E) how they SPEAK. Do not let all men converge on confidence + jealousy + proximity.",
+    "ANTI-ARCHETYPE SHORTCUT: wealth, popularity, attractiveness, masculinity, jealousy and confidence are context traits, not personalities. Never infer possessiveness, dominance, smirking, teasing, emotional avoidance or command behavior merely because a male lead has one of those traits.",
+    "ROMANCE DIFFERENTIATION: attraction must amplify the existing person rather than overwrite him with a universal romantic male. Jealousy especially must reveal character: it may produce restraint, humor, warmth, competition, devotion, silence, blunt stakes, familiarity or public-pressure friction depending on THIS lead.",
+    "DIALOGUE DIFFERENTIATION: do not give every lead clipped confident lines, rhetorical challenges, pet names, low-voice delivery, smirks, 'come here', 'look at me', 'you know what you're doing', or equivalent stock romance language. Match configured speech style and vocabulary.",
+    "DECISION DIFFERENTIATION: two leads facing the same event should plausibly make different choices. Do not merely rewrite the same action with different adjectives.",
+    "NEGATIVE IDENTITY MATTERS: preserve what this lead would NOT do. A strong character is partly defined by tactics he rejects, even when those tactics would move romance faster.",
     "PERSISTENCE: human_behavior_update.character_fingerprint_state may store current jealousy expression, vulnerability defense, conflict tactic, repair style, silence style and latest earned payoff using only visible canon.",
     "AUTHORIZED NPCS="+(list(persistentCast).map(x=>clean(x?.name,80)).filter(Boolean).slice(0,12).join(" | ")||"none")
   ].join("\n");
@@ -174,7 +180,9 @@ export function instantStoryCharacterFingerprintV35313(character={}){
     "Reveal personality through a specific choice, priority, social tactic or line of dialogue, not generic swagger or stock flirt behavior.",
     norm(character?.name)!=="chase beaumont" ? "ANTI-CHASE BLEED: do not use Chase Beaumont as the hidden default template for confidence, jealousy, initiative or romance. Avoid territorial interruption, cocky extraction, command-and-follow choreography, possessive social dominance and smirk-based swagger unless this character's own configured fields independently demand that exact behavior." : "CHASE OWNERSHIP: Chase may retain his own high-confidence social and romantic tactics; do not export them to other characters.",
     "If jealousy or attraction appears, express it through this character's own behavior and current relationship stage.",
-    "Supporting people need a story reason beyond provoking jealousy."
+    "Supporting people need a story reason beyond provoking jealousy.",
+    "INSTANT-STORY CAST TEST: design the premise from this character's specific contradiction before choosing romance beats. Do not choose a generic romantic premise first and repaint it with the character's name.",
+    "SAME-SITUATION TEST: imagine Theo, Mateo, Chase, Nathan, Rowan, Alexander, Damon, Roman and Adrian receiving this exact setup. The current lead's first meaningful decision should not be the obvious choice for most of them. If it is, specialize the premise or response further."
   ].join("\n");
 }
 
