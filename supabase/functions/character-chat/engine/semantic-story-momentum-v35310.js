@@ -178,7 +178,7 @@ function isAcceptanceHandoff(latestUserMessage=""){
   if(!t) return false;
   const compact=t.replace(/[.!?]+$/g,"").trim();
   const explicitAgreement=/^(?:ok|okay|yes|yeah|yep|sure|fine|alright|all right|deal|lets go|let's go|im coming|i'm coming|ill come|i'll come|im in|i'm in|i will|ill do it|i'll do it)$/i.test(compact);
-  const followAction=/^*[^*]{0,120}b(?:follow|followed|come with|go with|walk with|leave with|head with|join|joined|get in|got in|climb in|climbed in)b[^*]{0,120}*s*[.!?]*$/i.test(raw);
+  const followAction = raw.length <= 245 && /(?:follow|followed|come with|go with|walk with|leave with|head with|join|joined|get in|got in|climb in|climbed in)/i.test(raw);
   const spokenFollow=/b(?:i(?:'m| am)? coming with you|i(?:'ll| will) come with you|i(?:'ll| will) go with you|i follow you|i followed you|lets go|let's go)b/i.test(raw);
   return explicitAgreement||followAction||spokenFollow;
 }
