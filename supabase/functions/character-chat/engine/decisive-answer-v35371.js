@@ -18,7 +18,7 @@ function answerSeekingQuestion(v=""){
   const t=norm(v).replace(/\\*[^*]*\\*/g," ");
   if(!/\\?/.test(String(v||"")))return false;
   return ordinaryConcreteQuestion(v)
-    || /\\b(?:can i|could i|may i|should i|would it|is it|are we|are you saying|are you admitting|does that mean|so we|so you|you mean|you think|you want|you like|you hate|you consider|do i get to|am i allowed|friends?|girlfriend|boyfriend|together|dating)\\b/.test(t);
+    || /\\b(?:can i|could i|may i|should i|would it|is it|are we|are you saying|are you admitting|does that mean|so we|so you|you mean|you think|you want|you like|you hate|you consider|do i get to|am i allowed|friends?|girlfriend|boyfriend|together|dating|you(?:ll| will|re| are|d| would|can|could|might|gonna|going to)|so i|so you(?:ll| will)|then i|then you)\\b/.test(t);
 }
 function vagueNonAnswer(reply=""){
   const t=norm(reply);
