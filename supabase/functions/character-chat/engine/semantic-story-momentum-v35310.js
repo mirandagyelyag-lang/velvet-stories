@@ -110,7 +110,7 @@ function reactionWithoutContentLayer(reply="",latestUserMessage=""){
   if(!reaction) return false;
   // Content must alter knowledge, intention, relationship, practical state, or the
   // next live beat. Styling the reaction more richly does not count.
-  const content=/\b(?:asks? you (?:why|what|whether|about)|what happened|are you okay|you good|did you hear|want me to repeat|i said|never mind|forget it|scratch that|instead|actually|decid(?:e|es|ed)|refus(?:e|es|ed)|admit(?:s|ted)?|reveal(?:s|ed)?|tell(?:s)? you|offer(?:s|ed)?|invite(?:s|d)?|change(?:s|d)? (?:the|his|her|their) (?:plan|approach|mind)|drop(?:s|ped)? (?:it|the bet|the joke|the challenge)|stop(?:s|ped)? (?:teasing|joking)|move(?:s|d)? (?:the|his|her|their) attention|turn(?:s|ed)? back to|return(?:s|ed)? to|pick(?:s|ed)? up the controller|resume(?:s|d)? the game|give(?:s)? you (?:space|a moment))\b/.test(t);
+  const content=/\b(?:asks? you (?:why|what|whether|about)|what happened|are you okay|you good|never mind|forget it|scratch that|instead|actually|decid(?:e|es|ed)|refus(?:e|es|ed)|admit(?:s|ted)?|reveal(?:s|ed)?|tell(?:s)? you|offer(?:s|ed)?|invite(?:s|d)?|change(?:s|d)? (?:the|his|her|their) (?:plan|approach|mind)|drop(?:s|ped)? (?:it|the bet|the joke|the challenge)|stop(?:s|ped)? (?:teasing|joking)|move(?:s|d)? (?:the|his|her|their) attention|turn(?:s|ed)? back to|return(?:s|ed)? to|pick(?:s|ed)? up the controller|resume(?:s|d)? the game|give(?:s)? you (?:space|a moment))\b/.test(t);
   return !content;
 }
 
