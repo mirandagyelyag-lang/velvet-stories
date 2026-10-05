@@ -74,6 +74,7 @@ import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instan
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
 import { buildInstantStoryDirectorV35366, instantStoryDirectorIssuesV35366 } from "./engine/instant-story-director-v35366.js";
 import { buildInstantStoryDirectorV35389, instantStoryDirectorIssuesV35389 } from "./engine/instant-story-director-v35389.js";
+import { compileStoryAuthorityV35390, evaluateStoryAuthorityV35390, storyAuthorityPromptV35390 } from "./engine/story-authority-v35390.js";
 import { buildSpeakerOwnershipV35367, speakerOwnershipIssuesV35367 } from "./engine/speaker-ownership-v35367.js";
 import { buildUserReferencePovV35369, userReferencePovIssuesV35369 } from "./engine/user-reference-pov-v35369.js";
 import { buildUserGravityV35370, userGravityIssuesV35370 } from "./engine/user-gravity-v35370.js";
@@ -88,7 +89,7 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "462";
+const VELVET_ENGINE_RELEASE = "463";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -345,6 +346,7 @@ Deno.serve(async (request) => {
     const directorInstruction = cleanInstruction(body?.directorInstruction);
     const regenerationFeedback = normalizeRegenerationFeedback(body?.regenerationFeedback);
     const storyPreferences = normalizeStoryPreferences(body?.storyPreferences);
+    const previousStoryAuthorityV35390 = body?.storyAuthority && typeof body.storyAuthority === "object" ? body.storyAuthority : {};
     if (!conversationId) return json({ error: "conversationId is required" }, 400);
 
     // VELVET_TURBO_V3102: registration and context loading are independent.
@@ -3409,6 +3411,12 @@ function buildNarrativePromptV3({
     persistentCast,
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
+  const storyAuthorityV35390 = compileStoryAuthorityV35390({
+    latestUserMessage: latestPerceptibleUserMessage,
+    directorInstruction,
+    previous: previousStoryAuthorityV35390,
+  });
+  const storyAuthorityPromptV35390Text = storyAuthorityPromptV35390(storyAuthorityV35390);
   const velvetNarrativeUpgradeV35379 = buildVelvetNarrativeUpgradeV35379({
     character,
     latestUserMessage: latestPerceptibleUserMessage,
@@ -4397,9 +4405,7 @@ STORY MOVEMENT
 - Do not invent exact time spans, prior messages, promises, relatives, group chats, gifts, schedules, betrayal, illness, danger, exes or jealousy without visible support.
 - Match the user's current language: ${responseLanguage}. Keep established names and character voice intact.
 
-${currentBeatPolicy}
-
-TURN
+${currentBeatPolicy}\n\n${storyAuthorityPromptV35390Text}\n\nTURN
 Mode: ${turnIntent.kind}; question: ${turnIntent.isQuestion ? "yes" : "no"}; medium: ${turnIntent.medium}; silent streak: ${turnIntent.silentCount}.
 Length: ${getLengthGuidance(character.response_length, turnIntent.kind, latestPerceptibleUserMessage)}
 ${regeneration}
@@ -11046,6 +11052,33 @@ async function streamRoleplayV19({
               persistableReply = String(forcedBarrier.reply || forcedCommitment || persistableReply).trim();
             }
             console.warn("[character-chat] final grounded fallback retained non-delegated quality flags", { issues: unresolvedFinal });
+          }
+        }
+
+        const storyAuthorityEvaluationV35390 = evaluateStoryAuthorityV35390({
+          contract: storyAuthorityV35390,
+          reply: persistableReply,
+        });
+        if (storyAuthorityEvaluationV35390.required && !storyAuthorityEvaluationV35390.fulfilled) {
+          const authorityRepairV35390 = buildGroundedLastResortReply({
+            character,
+            latestUserMessage: storyAuthorityV35390.instruction || latestUserMessage,
+            recentUserMessages,
+            recentCharacterReplies: [...recentCharacterReplies, persistableReply],
+            issues: storyAuthorityEvaluationV35390.issues,
+          });
+          const repairedAuthorityV35390 = evaluateStoryAuthorityV35390({
+            contract: storyAuthorityV35390,
+            reply: authorityRepairV35390,
+          });
+          if (authorityRepairV35390 && repairedAuthorityV35390.fulfilled) {
+            persistableReply = String(authorityRepairV35390).trim();
+          } else {
+            console.warn("[character-chat] v3.53.90 authority fulfillment missed", {
+              character: character.name,
+              action: storyAuthorityV35390.action,
+              issues: storyAuthorityEvaluationV35390.issues,
+            });
           }
         }
 
