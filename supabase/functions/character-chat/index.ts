@@ -76,6 +76,7 @@ import { buildInstantStoryDirectorV35366, instantStoryDirectorIssuesV35366 } fro
 import { buildInstantStoryDirectorV35389, instantStoryDirectorIssuesV35389 } from "./engine/instant-story-director-v35389.js";
 import { compileStoryAuthorityV35390, evaluateStoryAuthorityV35390, storyAuthorityPromptV35390 } from "./engine/story-authority-v35390.js";
 import { reduceFullStoryIntegrationV35391, buildFullStoryIntegrationPromptV35391 } from "./engine/full-story-integration-v35391.js";
+import { reduceRelationshipEvolutionV35392, buildRelationshipEvolutionPromptV35392 } from "./engine/relationship-evolution-v35392.js";
 import { buildSpeakerOwnershipV35367, speakerOwnershipIssuesV35367 } from "./engine/speaker-ownership-v35367.js";
 import { buildUserReferencePovV35369, userReferencePovIssuesV35369 } from "./engine/user-reference-pov-v35369.js";
 import { buildUserGravityV35370, userGravityIssuesV35370 } from "./engine/user-gravity-v35370.js";
@@ -90,7 +91,7 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "464";
+const VELVET_ENGINE_RELEASE = "465";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -3412,7 +3413,7 @@ function buildNarrativePromptV3({
     persistentCast,
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
-  const existingFullStoryIntegrationV35391 = conversation.intelligence_state?.full_story_integration_v35391 || {};
+  const existingRelationshipEvolutionV35392 = conversation.intelligence_state?.relationship_evolution_v35392 || {};\n  const relationshipEvolutionPromptV35392 = buildRelationshipEvolutionPromptV35392(existingRelationshipEvolutionV35392);\n  const existingFullStoryIntegrationV35391 = conversation.intelligence_state?.full_story_integration_v35391 || {};
   const fullStoryIntegrationPromptV35391 = buildFullStoryIntegrationPromptV35391(existingFullStoryIntegrationV35391);
   const storyAuthorityV35390 = compileStoryAuthorityV35390({
     latestUserMessage: latestPerceptibleUserMessage,
@@ -4408,7 +4409,7 @@ STORY MOVEMENT
 - Do not invent exact time spans, prior messages, promises, relatives, group chats, gifts, schedules, betrayal, illness, danger, exes or jealousy without visible support.
 - Match the user's current language: ${responseLanguage}. Keep established names and character voice intact.
 
-${currentBeatPolicy}\n\n${storyAuthorityPromptV35390Text}\n\n${fullStoryIntegrationPromptV35391}\n\nTURN
+${currentBeatPolicy}\n\n${storyAuthorityPromptV35390Text}\n\n${fullStoryIntegrationPromptV35391}\n\n${relationshipEvolutionPromptV35392}\n\nTURN
 Mode: ${turnIntent.kind}; question: ${turnIntent.isQuestion ? "yes" : "no"}; medium: ${turnIntent.medium}; silent streak: ${turnIntent.silentCount}.
 Length: ${getLengthGuidance(character.response_length, turnIntent.kind, latestPerceptibleUserMessage)}
 ${regeneration}
@@ -11233,6 +11234,15 @@ async function streamRoleplayV19({
           present: nextPhysicalState.scene?.present || [],
           canonCorrection: regenerationInstruction || "",
         });
+        update.intelligence_state.relationship_evolution_v35392 = reduceRelationshipEvolutionV35392({
+          previous: existingIntelligenceState?.relationship_evolution_v35392 || {},
+          reply: result.reply,
+          messageId: savedMessage.id,
+          character,
+          relationship: update.relationship_state,
+          integration: update.intelligence_state.full_story_integration_v35391,
+        });
+
 
 
         const note = cleanPromptValue(result.continuity_note, 600);
