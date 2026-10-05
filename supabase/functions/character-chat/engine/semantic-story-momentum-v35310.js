@@ -171,17 +171,10 @@ function inventedUserAttentionContent(reply="",latestUserMessage=""){
 
 function inventedUserVisibleReaction(reply="",latestUserMessage=""){
   const t=norm(reply), u=norm(latestUserMessage);
-  const claims=/\\byour (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|red|pale|wide-eyed|wide eyed|vacant|distant) (?:expression|face|look|stare|eyes?)\\b/.test(t)
-    || /\\byou (?:looked|seemed|appeared) (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|pale|distant)\\b/.test(t);
+  const claims=/\byour (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|red|pale|wide-eyed|wide eyed|vacant|distant) (?:expression|face|look|stare|eyes?)\b/.test(t)
+    || /\byou (?:looked|seemed|appeared) (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|pale|distant)\b/.test(t);
   if(!claims) return false;
-  return !/\\b(?:i (?:look|looked|stare|stared|smile|smiled|grin|grinned)|my (?:face|expression|look|eyes))\\b/.test(u);
-}
-
-function inventedUserAttentionContent(reply="",latestUserMessage=""){
-  const t=norm(reply), u=norm(latestUserMessage);
-  const userSpecified=/\\b(?:count(?:ing|ed)?|ceiling|tiles?|phone|thinking about|watching|looking at|staring at|daydream(?:ing|ed)? about)\\b/.test(u);
-  if(userSpecified) return false;
-  return /\\b(?:you(?:'re| are| were)? (?:off )?(?:counting|watching|reading|thinking about|staring at|looking at)|counting ceiling tiles|staring at (?:the )?ceiling|lost in (?:your )?thoughts about|daydreaming about)\\b/.test(t);
+  return !/\b(?:i (?:look|looked|stare|stared|smile|smiled|grin|grinned)|my (?:face|expression|look|eyes))\b/.test(u);
 }
 
 function echoQuipStall(reply="",latestUserMessage=""){
