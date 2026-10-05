@@ -144,10 +144,17 @@ function missedCommunicationCarryOn(reply="",latestUserMessage="",recentCharacte
 
 function inventedUserVisibleReaction(reply="",latestUserMessage=""){
   const t=norm(reply), u=norm(latestUserMessage);
-  const claims=/\byour (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|red|pale|wide-eyed|wide eyed|vacant|distant) (?:expression|face|look|stare|eyes?)\b/.test(t)
-    || /\byou (?:looked|seemed|appeared) (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|pale|distant)\b/.test(t);
+  const claims=/\\byour (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|red|pale|wide-eyed|wide eyed|vacant|distant) (?:expression|face|look|stare|eyes?)\\b/.test(t)
+    || /\\byou (?:looked|seemed|appeared) (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|pale|distant)\\b/.test(t);
   if(!claims) return false;
-  return !/\b(?:i (?:look|looked|stare|stared|smile|smiled|grin|grinned)|my (?:face|expression|look|eyes))\b/.test(u);
+  return !/\\b(?:i (?:look|looked|stare|stared|smile|smiled|grin|grinned)|my (?:face|expression|look|eyes))\\b/.test(u);
+}
+
+function inventedUserAttentionContent(reply="",latestUserMessage=""){
+  const t=norm(reply), u=norm(latestUserMessage);
+  const userSpecified=/\\b(?:count(?:ing|ed)?|ceiling|tiles?|phone|thinking about|watching|looking at|staring at|daydream(?:ing|ed)? about)\\b/.test(u);
+  if(userSpecified) return false;
+  return /\\b(?:you(?:'re| are| were)? (?:off )?(?:counting|watching|reading|thinking about|staring at|looking at)|counting ceiling tiles|staring at (?:the )?ceiling|lost in (?:your )?thoughts about|daydreaming about)\\b/.test(t);
 }
 
 function echoQuipStall(reply="",latestUserMessage=""){
@@ -227,7 +234,8 @@ export function buildSemanticStoryMomentumV35310({
     "BANTER IS NOT MOMENTUM. A joke attached to door-opening, key-handling, walking or ordering is still a stalled turn if the relationship/problem/plan is unchanged.",
     "NO ECHO + QUIP + STOP: never merely restate the user's information in witty wording and end the turn. Treat what the user said as NEW INFORMATION. Let it change the character's interpretation, tactic, attention, decision, behavior, or the live social situation. The response may still be funny, but the joke cannot be the whole payload.",
     "MISSED-COMMUNICATION RESET: if the user says they were zoning out, were not listening, did not hear/catch/notice/understand, or were not paying attention, then any proposal, bet, invitation, instruction or conversational premise delivered during that missed beat is NOT mutually established. The character must recalculate from that fact. They may repeat it, abandon it, change tactic, check what happened, or react according to personality, but must NOT carry on as though the user heard or accepted it.",
-    "MISSED-COMMUNICATION POSITIVE REQUIREMENT: sarcasm, teasing, acknowledgement, or one clever line is NEVER a complete response to this revelation. After any personality-colored reaction, the character must create one grounded new beat: investigate why attention was gone, repeat or deliberately drop what was missed, alter their approach, notice a canon-supported concern, or make another consequential character-owned choice. Do not end immediately after the joke.",
+    "MISSED-COMMUNICATION POSITIVE REQUIREMENT: sarcasm, teasing, acknowledgement, or one clever line is NEVER a complete response to this revelation. Repeating or rephrasing what the character already said is continuity maintenance, NOT new content and NOT progression. After any personality-colored reaction, create a grounded new beat: investigate the attention shift without inventing its cause, deliberately change/drop the missed premise, alter the character's approach, notice a canon-supported concern, or make another consequential character-owned choice.",
+    "USER ATTENTION CONTENT IS USER-OWNED: if the user only says they zoned out or missed what was said, do NOT invent what occupied their attention (ceiling tiles, phone, another person, thoughts, daydreams, etc.). Unknown stays unknown until the user supplies it or the character asks.",
     "VISIBLE USER STATE IS USER-OWNED: do not invent a blank/confused/dazed/amused/embarrassed expression, stare, blush, smile, or other visible reaction for the user unless their message or canon explicitly supplied it.",
     "REACTION MUST HAVE A SECOND LAYER: after acknowledging a user revelation, add grounded content that belongs to THIS character: what they infer, what they now notice, what they choose to do differently, a consequential question, a changed plan, or a concrete interpersonal move. Do not narrate the user's feelings for them.",
     "REACTION LAYER != CONTENT LAYER. Teasing, sarcasm, a clever comeback, paraphrasing the user's beat, watching them, leaning closer, smiling, laughing, eyebrow movements, tone descriptions and playful reinterpretations are characterization only. They NEVER satisfy progression by themselves. For substantive user messages, pair reaction with at least one content-bearing move that changes knowledge, intention, relationship, practical state, or the next live beat.",
@@ -255,6 +263,7 @@ export function semanticStoryMomentumIssues({
   if(missedCommunicationNoDevelopment(text,latestUserMessage)) issues.push("semantic_missed_communication_no_development");
   if(missedCommunicationCarryOn(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_missed_communication_carry_on");
   if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
+  if(inventedUserAttentionContent(text,latestUserMessage)) issues.push("semantic_invented_user_attention_content");
   if(prematureSceneEscape(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_premature_scene_escape");
   if(acceptanceFollowThroughStall(text,latestUserMessage)) issues.push("semantic_acceptance_without_progression");
   if(repeatedMannerism(text,recentCharacterReplies)) issues.push("semantic_repeated_grin_mannerism");
