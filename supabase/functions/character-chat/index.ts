@@ -80,10 +80,11 @@ import { buildDecisiveAnswerV35371, decisiveAnswerIssuesV35371 } from "./engine/
 import { buildInteriorContinuityV35375 } from "./engine/interior-continuity-v35375.js";
 import { buildEmotionalRealityV35377, emotionalRealityIssuesV35377 } from "./engine/emotional-reality-v35377.js";
 import { buildCharacterIntentV35378, characterIntentIssuesV35378 } from "./engine/character-intent-v35378.js";
+import { buildVelvetNarrativeUpgradeV35379, velvetNarrativeUpgradeIssuesV35379 } from "./engine/velvet-narrative-upgrade-v35379.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "453";
+const VELVET_ENGINE_RELEASE = "454";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -3386,6 +3387,18 @@ function buildNarrativePromptV3({
     persistentCast,
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
+  const velvetNarrativeUpgradeV35379 = buildVelvetNarrativeUpgradeV35379({
+    character,
+    latestUserMessage: latestPerceptibleUserMessage,
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    relationshipState: conversation.relationship_state || {},
+    intelligenceState: conversation.intelligence_state || {},
+    scene: conversation.scene_state || {},
+    persistentCast,
+    storyPreferences: storyPreferences || {},
+    directorInstruction,
+  });
   const directFlirtV35352 = buildDirectFlirtV35352({
     character,
     latestUserMessage: latestPerceptibleUserMessage,
@@ -3511,6 +3524,8 @@ ${interiorContinuityV35375}
 ${emotionalRealityV35377}
 
 ${characterIntentV35378}
+
+${velvetNarrativeUpgradeV35379}
 
 ${directFlirtV35352}
 
@@ -5203,6 +5218,7 @@ function buildCompactLiveRecoveryPrompt({
   relationshipState = {}, castState = {}, intelligenceState = {}, rejectedResponses = [],
   regenerationInstruction = "", regenerationFeedback = [], isRegeneration = false,
   openingRegeneration = false, turnContract = {}, turnIntent = {},
+  storyPreferences = {}, directorInstruction = "",
 } = {}) {
   const userName = cleanPromptValue(userIdentity?.name, 100) || "User";
   const speakerOwnershipV35367 = buildSpeakerOwnershipV35367({ character, persistentCast });
@@ -5222,6 +5238,13 @@ function buildCompactLiveRecoveryPrompt({
     recentCharacterReplies: messages.filter((m)=>m?.sender !== "user").slice(-8).map((m)=>String(m?.content||"")),
     relationshipState, intelligenceState, scene, persistentCast,
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
+  });
+  const velvetNarrativeUpgradeV35379 = buildVelvetNarrativeUpgradeV35379({
+    character, latestUserMessage,
+    recentUserMessages: messages.filter((m)=>m?.sender === "user").slice(-8).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: messages.filter((m)=>m?.sender !== "user").slice(-8).map((m)=>String(m?.content||"")),
+    relationshipState, intelligenceState, scene, persistentCast,
+    storyPreferences, directorInstruction,
   });
   const transcript = (Array.isArray(messages) ? messages : []).slice(-16).map((message) => {
     const speaker = message?.sender === "user" ? userName : (character?.name || "Character");
@@ -5542,6 +5565,9 @@ ${emotionalRealityV35377}
 
 CHARACTER INTENT
 ${characterIntentV35378}
+
+TEN-PART NARRATIVE UPGRADE
+${velvetNarrativeUpgradeV35379}
 
 NARRATIVE DIRECTOR
 ${narrativeDirectorV35334}
@@ -6750,6 +6776,10 @@ function normalizeStoryPreferences(value = {}) {
     dialogue: choose(source.dialogue, ["dialogue_forward", "balanced", "narration_forward"], "dialogue_forward"),
     emotional_interior: choose(source.emotionalInterior, ["interior_visible", "subtle", "restrained"], "interior_visible"),
     romance_pacing: choose(source.romancePacing, ["medium_fast", "medium", "slow"], "medium_fast"),
+    romantic_tension: choose(source.romanticTension, ["low", "medium", "high"], "high"),
+    jealousy_level: choose(source.jealousyLevel, ["off", "subtle", "medium", "high"], "subtle"),
+    character_initiative: choose(source.characterInitiative, ["balanced", "high", "very_high"], "high"),
+    scene_pace: choose(source.scenePace, ["slow", "steady", "fast"], "fast"),
     custom_instructions: developmentText(source.customInstructions, 900),
     learned_positive_feedback: [...positiveFeedbackRules.keys()].filter((code) =>
       (Array.isArray(source.learnedPositiveFeedback) ? source.learnedPositiveFeedback : []).includes(code)
@@ -9612,6 +9642,12 @@ function validateNarrativeReply(reply = "", options = {}) {
     latestUserMessage: options.latestUserMessage || "",
     recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
+  for (const issue of velvetNarrativeUpgradeIssuesV35379({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentCharacterReplies: options.recentCharacterReplies || [],
+    scene: options.scene || options.continuity?.scene || options.previousScene || {},
+  })) issues.push(issue);
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
   for (const issue of immutableEventTruthV35254Issues({
@@ -10549,6 +10585,8 @@ async function streamRoleplayV19({
           openingRegeneration,
           turnContract,
           turnIntent,
+          storyPreferences,
+          directorInstruction,
         });
         let result: ModelResult;
         try {
