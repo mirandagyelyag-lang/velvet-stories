@@ -77,7 +77,7 @@ import { buildSpeakerOwnershipV35367, speakerOwnershipIssuesV35367 } from "./eng
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "448";
+const VELVET_ENGINE_RELEASE = "449";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2280,8 +2280,8 @@ IDEA
 ${cleanIdea || "No extra premise. Create a fresh story beat from the character's creator-defined life and relationship."}`;
 
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  const globalDeadlineMs = 6200;
-  const attemptTimeoutMs = 5400;
+  const globalDeadlineMs = 10500;
+  const attemptTimeoutMs = 8800;
   const hedgeDelaysMs = [0, 320, 680];
   const controllers = new Set<AbortController>();
   const rejectedInstantCandidates = [];
@@ -2337,11 +2337,12 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
       const unifiedOpeningIssues = instantStoryStateFamilyIssuesV35312(opening, recentOpenings);
       const directorIssuesV35366 = instantStoryDirectorIssuesV35366(opening, recentOpenings);
+      const directorHardIssuesV35368 = directorIssuesV35366.filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue));
       // 3.53.19: Opening DNA is a generation compass, not a destructive classifier.
       // Lexical family detection can misread a valid semantic continuation (for example,
       // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
       // diagnostics/repair context, but never reject an otherwise valid opening for it.
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length || directorIssuesV35366.length) {
+      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length || directorHardIssuesV35368.length) {
         const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366];
         rejectedInstantCandidates.push({
           opening,
@@ -2446,7 +2447,7 @@ RULES
 - Output only finished prose.`;
 
     const rescueController = new AbortController();
-    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 3200);
+    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 6500);
     let rescue;
     try {
       rescue = await fetch(modelEndpoint(GEMINI_MODEL), {
@@ -2483,7 +2484,9 @@ RULES
       });
       const rescueTooSimilar = instantStoryTooSimilarV3539(rescueOpening, recentOpenings);
       const rescueDirectorIssuesV35366 = instantStoryDirectorIssuesV35366(rescueOpening, recentOpenings);
-      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescuePremiseIssues.length && !rescueIdentityIssuesV35321.length && !rescueSemanticIssues.length && !rescueTooSimilar && !rescueDirectorIssuesV35366.length) {
+      const rescueDirectorHardV35368 = rescueDirectorIssuesV35366.filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue));
+      const rescueSpeakerIssuesV35367 = speakerOwnershipIssuesV35367(rescueOpening, safeDraft);
+      if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescuePremiseIssues.length && !rescueIdentityIssuesV35321.length && !rescueSemanticIssues.length && !rescueTooSimilar && !rescueDirectorHardV35368.length && !rescueSpeakerIssuesV35367.length) {
         return json({
           opening: rescueOpening,
           source: "ai_rescue",
@@ -2503,7 +2506,7 @@ RULES
     .filter((item)=>instantStoryCandidateUsableV35290(item.opening, item.finishReason, safeDraft))
     .map((item)=>({
       ...item,
-      hardBlocks: [...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea), ...instantStoryPremiseGateIssues(item.opening, safeDraft)],
+      hardBlocks: [...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea), ...instantStoryPremiseGateIssues(item.opening, safeDraft), ...speakerOwnershipIssuesV35367(item.opening, safeDraft), ...instantStoryDirectorIssuesV35366(item.opening, recentOpenings).filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue))],
       similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
     }))
     .filter((item)=>item.hardBlocks.length === 0)
@@ -2538,6 +2541,7 @@ RULES
           recentCharacterReplies: recentOpenings,
           opening: true,
         }),
+        ...speakerOwnershipIssuesV35367(item.opening, safeDraft),
       ],
       similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
     }))
@@ -2598,7 +2602,7 @@ RULES
   // It still obeys the hard user-agency and named-cast gates.
   try {
     const emergencyController = new AbortController();
-    const emergencyTimeoutId = setTimeout(() => emergencyController.abort(), 3200);
+    const emergencyTimeoutId = setTimeout(() => emergencyController.abort(), 5200);
     let emergencyResponse;
     try {
       emergencyResponse = await fetch(modelEndpoint(GEMINI_EMERGENCY_MODEL), {
@@ -2633,6 +2637,8 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
       const emergencyHardBlocks = instantStoryHardBlockIssuesV35298(emergencyOpening, safeDraft, cleanIdea);
       const emergencyPremiseIssues = instantStoryPremiseGateIssues(emergencyOpening, safeDraft);
       const emergencyDirectorIssuesV35366 = instantStoryDirectorIssuesV35366(emergencyOpening, recentOpenings);
+      const emergencyDirectorHardV35368 = emergencyDirectorIssuesV35366.filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue));
+      const emergencySpeakerIssuesV35367 = speakerOwnershipIssuesV35367(emergencyOpening, safeDraft);
       const emergencyQuality = instantStoryQualityIssues(emergencyOpening, safeDraft)
         .filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
       const emergencySemanticIssues = semanticStoryMomentumIssues({
@@ -2648,7 +2654,8 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
         !emergencyPremiseIssues.length &&
         !emergencySemanticIssues.length &&
         !instantStoryTooSimilarV3539(emergencyOpening, recentOpenings) &&
-        !emergencyDirectorIssuesV35366.length
+        !emergencyDirectorHardV35368.length &&
+        !emergencySpeakerIssuesV35367.length
       ) {
         return json({
           opening: emergencyOpening,
@@ -2738,7 +2745,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}` }] }],
       if (salvageResponse.ok) {
         const salvageOpening = extractCandidateText(salvageData).trim();
         const salvageFinish = String(salvageData?.candidates?.[0]?.finishReason || "");
-        const salvageHard = instantStoryHardBlockIssuesV35298(salvageOpening, safeDraft, cleanIdea);
+        const salvageHard = [...instantStoryHardBlockIssuesV35298(salvageOpening, safeDraft, cleanIdea), ...speakerOwnershipIssuesV35367(salvageOpening, safeDraft)];
         const salvagePremise = instantStoryPremiseGateIssues(salvageOpening, safeDraft);
         const salvageNaturalism = instantStoryNaturalismIssuesV35295(salvageOpening, safeDraft, cleanIdea);
         const salvageIdentity = characterIdentityGateIssuesV35321({
