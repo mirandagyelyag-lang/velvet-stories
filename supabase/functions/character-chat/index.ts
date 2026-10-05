@@ -8364,6 +8364,8 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "semantic_reaction_without_content_layer",
   "semantic_missed_communication_carry_on",
   "semantic_missed_communication_no_development",
+  "semantic_invented_attention_narrative",
+  "semantic_repetition_is_not_development",
   "semantic_invented_user_visible_reaction",
   "semantic_invented_user_attention_content",
   "semantic_invented_user_attention_explanation",
