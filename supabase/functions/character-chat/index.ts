@@ -73,10 +73,11 @@ import { buildCharacterFingerprintPayoffV35313, characterFingerprintPayoffIssues
 import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instantStoryLivingWorldV35314 } from "./engine/living-world-calendar-v35314.js";
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
 import { buildInstantStoryDirectorV35366, instantStoryDirectorIssuesV35366 } from "./engine/instant-story-director-v35366.js";
+import { buildSpeakerOwnershipV35367, speakerOwnershipIssuesV35367 } from "./engine/speaker-ownership-v35367.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "447";
+const VELVET_ENGINE_RELEASE = "448";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2223,6 +2224,8 @@ ${instantStoryEmotionalDnaV35321(safeDraft)}
 ${instantStoryLivingWorldV35314({ character: safeDraft })}
 
 ${buildInstantStoryDirectorV35366({ character: safeDraft, recentOpenings, idea: cleanIdea })}
+
+${buildSpeakerOwnershipV35367({ character: safeDraft, persistentCast: [] })}
 - Never declare the user's next movement or participation. Invite, insist, choose your own action, but leave the user's action open.
 - Never invent the user's order, favorite, usual, routine or other personal preference.
 - Campus + coffee + study logistics cannot be the opening engine. If that setting appears, something more meaningful must actually happen.
@@ -9226,6 +9229,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (hasVocabularyOwnershipViolationV2(reply, options.character || {})) score -= 18;
   if (hasVoicePerformanceStackV2(reply, latest, options.character || {})) score -= 14;
   if (hasForcedTopicShift(reply, latest)) score -= 14;
+  const speakerIssuesV35367 = speakerOwnershipIssuesV35367(reply, options.character || {});
+  if (speakerIssuesV35367.length) score -= Math.min(100, 70 + speakerIssuesV35367.length * 10);
   const groundedIssues = groundedRealityIssues({ reply, latestUserMessage: latest, recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: recent, character: options.character || {} });
   if (groundedIssues.includes("declared_state_disbelief")) score -= 34;
   if (groundedIssues.includes("semantic_scope_overreach")) score -= 30;
@@ -9380,6 +9385,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasMicroTurnPadding(text, options.latestUserMessage || "")) issues.push("micro_turn_padding");
   if (hasCompulsoryFollowupQuestion(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("compulsory_followup_question");
   if (hasUserReferencePronounDrift(text, options.latestUserMessage || "")) issues.push("user_reference_pronoun_drift");
+  for (const issue of speakerOwnershipIssuesV35367(text, options.character || {})) issues.push(issue);
   if (hasForcedTopicShift(text, options.latestUserMessage || "")) issues.push("forced_topic_shift");
   if (hasAnswerBeforeFlourishViolation(text, options.latestUserMessage || "", turnIntent)) issues.push("answer_before_flourish_violation");
   for (const issue of groundedRealityIssues({
