@@ -101,6 +101,19 @@ function blockingBanterStall(reply=""){
   return blocking>=2 && !hasMeaningfulStateChange(reply) && Boolean(banter||questionOnly||words<=55);
 }
 
+function reactionWithoutContentLayer(reply="",latestUserMessage=""){
+  const user=norm(latestUserMessage), t=norm(reply);
+  if(!user||!t) return false;
+  const words=t.split(/\s+/).filter(Boolean).length;
+  if(words>115) return false;
+  const reaction=/\b(?:teas(?:e|es|ed|ing)?|jok(?:e|es|ed|ing)?|sarcas(?:m|tic)|mock(?:s|ed|ing)?|smirk(?:s|ed|ing)?|grin(?:s|ned|ning)?|laugh(?:s|ed|ing)?|watch(?:es|ed|ing)? you|look(?:s|ed|ing)? (?:at|right at) you|lean(?:s|ed|ing)?|raise(?:s|d|ing)? (?:an? )?eyebrow|bold|impressive|brilliant|tragic|captivating|head start|apparently|of course)\b/.test(t);
+  if(!reaction) return false;
+  // Content must alter knowledge, intention, relationship, practical state, or the
+  // next live beat. Styling the reaction more richly does not count.
+  const content=/\b(?:asks? you (?:why|what|whether|about)|what happened|are you okay|you good|did you hear|want me to repeat|i said|never mind|forget it|scratch that|instead|actually|decid(?:e|es|ed)|refus(?:e|es|ed)|admit(?:s|ted)?|reveal(?:s|ed)?|tell(?:s)? you|offer(?:s|ed)?|invite(?:s|d)?|change(?:s|d)? (?:the|his|her|their) (?:plan|approach|mind)|drop(?:s|ped)? (?:it|the bet|the joke|the challenge)|stop(?:s|ped)? (?:teasing|joking)|repeat(?:s|ed)?|move(?:s|d)? (?:the|his|her|their) attention|turn(?:s|ed)? back to|return(?:s|ed)? to|pick(?:s|ed)? up the controller|resume(?:s|d)? the game|give(?:s)? you (?:space|a moment))\b/.test(t);
+  return !content;
+}
+
 function missedCommunicationNoDevelopment(reply="",latestUserMessage=""){
   const user=norm(latestUserMessage);
   if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|didn'?t understand|did not understand)\b/.test(user)) return false;
@@ -217,6 +230,8 @@ export function buildSemanticStoryMomentumV35310({
     "MISSED-COMMUNICATION POSITIVE REQUIREMENT: sarcasm, teasing, acknowledgement, or one clever line is NEVER a complete response to this revelation. After any personality-colored reaction, the character must create one grounded new beat: investigate why attention was gone, repeat or deliberately drop what was missed, alter their approach, notice a canon-supported concern, or make another consequential character-owned choice. Do not end immediately after the joke.",
     "VISIBLE USER STATE IS USER-OWNED: do not invent a blank/confused/dazed/amused/embarrassed expression, stare, blush, smile, or other visible reaction for the user unless their message or canon explicitly supplied it.",
     "REACTION MUST HAVE A SECOND LAYER: after acknowledging a user revelation, add grounded content that belongs to THIS character: what they infer, what they now notice, what they choose to do differently, a consequential question, a changed plan, or a concrete interpersonal move. Do not narrate the user's feelings for them.",
+    "REACTION LAYER != CONTENT LAYER. Teasing, sarcasm, a clever comeback, paraphrasing the user's beat, watching them, leaning closer, smiling, laughing, eyebrow movements, tone descriptions and playful reinterpretations are characterization only. They NEVER satisfy progression by themselves. For substantive user messages, pair reaction with at least one content-bearing move that changes knowledge, intention, relationship, practical state, or the next live beat.",
+    "DO NOT BANterize literal information: when the user states a real condition/event (they did not hear, forgot, are distracted, do not know, are leaving, changed their mind, etc.), do not replace its literal meaning with a cute competitive/flirty interpretation merely to preserve banter. Personality colors the response; it does not overwrite the fact.",
     "ACCEPTANCE HANDOFF: when the user says yes/okay/let's go, follows, joins, gets in, or otherwise accepts the character's proposal, DO NOT spend the next turn confirming the same proposal. The acceptance closes that beat. Immediately create the NEXT earned story beat.",
     "After an acceptance handoff, physical transit may continue, but movement alone is never enough. Add one grounded development owned by the character/world: a destination choice already compatible with canon, a meaningful question, a reveal, a refusal, a changed plan, a social consequence, a new obligation, or action driven by jealousy/care/pride. Do not fabricate user choices or miraculous interruptions.",
     "Before finalizing, ask silently: if I remove the walking, grin, keys, door, phone and food/drink props, did anything meaningful remain? If not, rewrite the beat.",
@@ -236,6 +251,7 @@ export function semanticStoryMomentumIssues({
   if(campusCoffeeStudyFallback(text,opening)) issues.push("semantic_campus_coffee_study_fallback");
   if(blockingBanterStall(text)) issues.push("semantic_blocking_banter_stall");
   if(echoQuipStall(text,latestUserMessage)) issues.push("semantic_echo_quip_stall");
+  if(reactionWithoutContentLayer(text,latestUserMessage)) issues.push("semantic_reaction_without_content_layer");
   if(missedCommunicationNoDevelopment(text,latestUserMessage)) issues.push("semantic_missed_communication_no_development");
   if(missedCommunicationCarryOn(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_missed_communication_carry_on");
   if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
