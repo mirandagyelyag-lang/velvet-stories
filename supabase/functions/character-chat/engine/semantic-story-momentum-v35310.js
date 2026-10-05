@@ -101,6 +101,25 @@ function blockingBanterStall(reply=""){
   return blocking>=2 && !hasMeaningfulStateChange(reply) && Boolean(banter||questionOnly||words<=55);
 }
 
+function missedCommunicationCarryOn(reply="",latestUserMessage="",recentCharacterReplies=[]){
+  const user=norm(latestUserMessage);
+  if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|didn'?t understand|did not understand)\b/.test(user)) return false;
+  const t=norm(reply);
+  const prior=norm((recentCharacterReplies||[]).slice(-1)[0]||"");
+  const priorProposal=/\b(?:coffee|deal|double or nothing|bet|come with me|lets go|let's go|want to|how about|we should|ill buy|i'll buy|you buy|youre buying|you're buying)\b/.test(prior);
+  const carries=/\b(?:coffee(?:'s| is)? on me|you(?:'re| are) (?:buying|carrying|paying)|deal|double or nothing|next round|lets go|let's go|come on|then we|so we)\b/.test(t);
+  const recalculates=/\b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|were you okay|are you okay|what had your attention|what were you thinking about)\b/.test(t);
+  return priorProposal&&carries&&!recalculates;
+}
+
+function inventedUserVisibleReaction(reply="",latestUserMessage=""){
+  const t=norm(reply), u=norm(latestUserMessage);
+  const claims=/\byour (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|red|pale|wide-eyed|wide eyed|vacant|distant) (?:expression|face|look|stare|eyes?)\b/.test(t)
+    || /\byou (?:looked|seemed|appeared) (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|pale|distant)\b/.test(t);
+  if(!claims) return false;
+  return !/\b(?:i (?:look|looked|stare|stared|smile|smiled|grin|grinned)|my (?:face|expression|look|eyes))\b/.test(u);
+}
+
 function echoQuipStall(reply="",latestUserMessage=""){
   const user=norm(latestUserMessage);
   const text=norm(reply);
@@ -177,6 +196,8 @@ export function buildSemanticStoryMomentumV35310({
     "CAMPUS/COFFEE/STUDY is not banned, but it cannot be the story engine. Coffee, food, class gaps, student-union lines and study logistics are background unless something meaningful happens through them.",
     "BANTER IS NOT MOMENTUM. A joke attached to door-opening, key-handling, walking or ordering is still a stalled turn if the relationship/problem/plan is unchanged.",
     "NO ECHO + QUIP + STOP: never merely restate the user's information in witty wording and end the turn. Treat what the user said as NEW INFORMATION. Let it change the character's interpretation, tactic, attention, decision, behavior, or the live social situation. The response may still be funny, but the joke cannot be the whole payload.",
+    "MISSED-COMMUNICATION RESET: if the user says they were zoning out, were not listening, did not hear/catch/notice/understand, or were not paying attention, then any proposal, bet, invitation, instruction or conversational premise delivered during that missed beat is NOT mutually established. The character must recalculate from that fact. They may repeat it, abandon it, change tactic, check what happened, or react according to personality, but must NOT carry on as though the user heard or accepted it.",
+    "VISIBLE USER STATE IS USER-OWNED: do not invent a blank/confused/dazed/amused/embarrassed expression, stare, blush, smile, or other visible reaction for the user unless their message or canon explicitly supplied it.",
     "REACTION MUST HAVE A SECOND LAYER: after acknowledging a user revelation, add grounded content that belongs to THIS character: what they infer, what they now notice, what they choose to do differently, a consequential question, a changed plan, or a concrete interpersonal move. Do not narrate the user's feelings for them.",
     "ACCEPTANCE HANDOFF: when the user says yes/okay/let's go, follows, joins, gets in, or otherwise accepts the character's proposal, DO NOT spend the next turn confirming the same proposal. The acceptance closes that beat. Immediately create the NEXT earned story beat.",
     "After an acceptance handoff, physical transit may continue, but movement alone is never enough. Add one grounded development owned by the character/world: a destination choice already compatible with canon, a meaningful question, a reveal, a refusal, a changed plan, a social consequence, a new obligation, or action driven by jealousy/care/pride. Do not fabricate user choices or miraculous interruptions.",
@@ -197,6 +218,8 @@ export function semanticStoryMomentumIssues({
   if(campusCoffeeStudyFallback(text,opening)) issues.push("semantic_campus_coffee_study_fallback");
   if(blockingBanterStall(text)) issues.push("semantic_blocking_banter_stall");
   if(echoQuipStall(text,latestUserMessage)) issues.push("semantic_echo_quip_stall");
+  if(missedCommunicationCarryOn(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_missed_communication_carry_on");
+  if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
   if(prematureSceneEscape(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_premature_scene_escape");
   if(acceptanceFollowThroughStall(text,latestUserMessage)) issues.push("semantic_acceptance_without_progression");
   if(repeatedMannerism(text,recentCharacterReplies)) issues.push("semantic_repeated_grin_mannerism");
