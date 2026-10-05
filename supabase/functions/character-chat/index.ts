@@ -83,10 +83,11 @@ import { buildCharacterIntentV35378, characterIntentIssuesV35378 } from "./engin
 import { buildVelvetNarrativeUpgradeV35379, velvetNarrativeUpgradeIssuesV35379 } from "./engine/velvet-narrative-upgrade-v35379.js";
 import { buildRelationshipLivingMemoryV35380, deriveRelationshipLivingMemoryV35380, relationshipLivingMemoryIssuesV35380 } from "./engine/relationship-living-memory-v35380.js";
 import { buildBanterAnswerGateV35383, banterAnswerGateIssuesV35383 } from "./engine/banter-answer-gate-v35383.js";
+import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/live-story-evaluator-v35388.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "460";
+const VELVET_ENGINE_RELEASE = "461";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -11029,6 +11030,43 @@ async function streamRoleplayV19({
             }
             console.warn("[character-chat] final grounded fallback retained non-delegated quality flags", { issues: unresolvedFinal });
           }
+        }
+
+        const liveEvaluationV35388 = evaluateLiveStoryV35388({
+          reply: persistableReply,
+          character,
+          latestUserMessage,
+          recentCharacterReplies,
+          previousScene: existingSceneState,
+          storyMemory: existingIntelligenceState?.story_memory_v35386 || {},
+        });
+        const liveRepairIssuesV35388 = liveStoryRepairIssuesV35388(liveEvaluationV35388);
+        if (liveRepairIssuesV35388.length) {
+          const repairedLiveReplyV35388 = buildGroundedLastResortReply({
+            character,
+            latestUserMessage,
+            recentUserMessages,
+            recentCharacterReplies: [...recentCharacterReplies, persistableReply],
+            issues: liveRepairIssuesV35388,
+          });
+          if (repairedLiveReplyV35388) {
+            const repairedEvaluationV35388 = evaluateLiveStoryV35388({
+              reply: repairedLiveReplyV35388,
+              character,
+              latestUserMessage,
+              recentCharacterReplies,
+              previousScene: existingSceneState,
+              storyMemory: existingIntelligenceState?.story_memory_v35386 || {},
+            });
+            if (repairedEvaluationV35388.pass || repairedEvaluationV35388.scores.replyValue > liveEvaluationV35388.scores.replyValue) {
+              persistableReply = String(repairedLiveReplyV35388).trim();
+            }
+          }
+          console.warn("[character-chat] v3.53.88 live evaluator intervened", {
+            character: character.name,
+            issues: liveEvaluationV35388.issues,
+            scores: liveEvaluationV35388.scores,
+          });
         }
 
         if (!persistableReply) throw new Error("Velvet final turn barrier produced no safe reply; nothing was saved.");
