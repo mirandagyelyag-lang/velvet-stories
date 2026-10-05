@@ -10607,6 +10607,20 @@ async function streamRoleplayV19({
   openingRegeneration = false,
   isCancelled,
 }) {
+  // v3.53.90 HOTFIX: streamRoleplayV19 is a top-level function, so it cannot
+  // see the Story Authority contract created while building the prompt.
+  // Rebuild the same contract from the stream's explicit inputs instead of
+  // relying on an out-of-scope lexical variable.
+  const persistedStoryAuthorityV35390 =
+    existingIntelligenceState?.full_story_integration_v35391?.active_authority ||
+    existingIntelligenceState?.story_authority_v35390 ||
+    {};
+  const storyAuthorityV35390 = compileStoryAuthorityV35390({
+    latestUserMessage,
+    directorInstruction,
+    previous: persistedStoryAuthorityV35390,
+  });
+
   const stream = new ReadableStream({
     async start(controller) {
       let repairUsed = false;
