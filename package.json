@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.53.88",
+  "version": "3.53.89",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -28,7 +28,7 @@
     "android:build": "npm run android:sync && npx cap build android",
     "android:install": "npm run android:sync && node scripts/install-android-debug.mjs",
     "deploy:pwa": "bash DEPLOY-PWA-STABLE.sh",
-    "verify:regression": "node --experimental-strip-types scripts/verify-v35237-regression-shield.mjs && node scripts/verify-v35387-nine-character-torture.mjs && node scripts/verify-v35388-live-story-evaluator.mjs",
+    "verify:regression": "node --experimental-strip-types scripts/verify-v35237-regression-shield.mjs && node scripts/verify-v35387-nine-character-torture.mjs && node scripts/verify-v35388-live-story-evaluator.mjs && node scripts/verify-v35389-instant-story-director.mjs",
     "verify:bedtime": "node scripts/verify-v3539-bedtime-peace.mjs",
     "verify:release": "npm run lint && npm run verify:edge-boot && node --experimental-strip-types scripts/verify-v3526-instant-story-rebuilt.mjs && node --experimental-strip-types scripts/verify-v35211-instant-story-template-firewall.mjs && node --experimental-strip-types scripts/verify-v35212-instant-story-naturalism.mjs && node scripts/verify-v35238-unified-app-instant-diversity.mjs && node scripts/verify-v35240-human-voices-instant-recovery.mjs && node scripts/verify-v35241-turbo-generation.mjs && node scripts/verify-v35243-regeneration-context.mjs && node --experimental-strip-types scripts/verify-v35244-instant-opening-regeneration.mjs && node --experimental-strip-types scripts/verify-v35245-instant-family-rotation.mjs && node --experimental-strip-types scripts/verify-v35246-clear-fallback-prose.mjs && npm run verify:regression"
   },
