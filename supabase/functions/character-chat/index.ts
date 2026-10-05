@@ -8360,6 +8360,7 @@ const BLOCKING_NARRATIVE_ISSUES = new Set([
   "semantic_invented_user_preference",
   "semantic_campus_coffee_study_fallback",
   "semantic_blocking_banter_stall",
+  "semantic_echo_quip_stall",
   "location_change_without_story_change",
   "scene_lifecycle_overstayed",
   "conversation_not_converted_to_event",
