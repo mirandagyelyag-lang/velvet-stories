@@ -123,6 +123,24 @@ function inventedUserAttentionExplanation(reply="",latestUserMessage=""){
   return /\b(?:counting (?:the )?(?:ceiling )?tiles|daydreaming about|thinking about|staring at|watching|checking your phone|ignoring me on purpose|trying to give me|giving me a head start|pretending not to listen|lost in thought about)\b/.test(t);
 }
 
+function inventedAttentionNarrative(reply="",latestUserMessage=""){
+  const u=norm(latestUserMessage), t=norm(reply);
+  if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|distracted)\b/.test(u)) return false;
+  // User owns the unseen contents/cause of their attention. A character may notice
+  // disengagement, but cannot manufacture what the user was thinking, studying,
+  // counting, imagining, watching, or intentionally doing instead.
+  return /\b(?:you(?:'re| were| are) (?:off )?(?:reviewing|counting|studying|thinking about|daydreaming about|imagining|watching|staring at)|your mind (?:was|is) (?:on|somewhere)|you (?:must have|must've) been|trying to give me a head start)\b/.test(t);
+}
+
+function repetitionIsNotDevelopment(reply="",latestUserMessage=""){
+  const u=norm(latestUserMessage), t=norm(reply);
+  if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention)\b/.test(u)) return false;
+  const repeats=/\b(?:start from the top|from the top|i said|what i said|repeat|again|you missed the part|missed the part|as i was saying)\b/.test(t);
+  if(!repeats) return false;
+  const genuineNextBeat=/\b(?:what happened|what had your attention|what were you thinking|are you okay|you good|never mind|forget it|scratch that|drops? (?:the )?(?:bet|challenge|subject)|changes? (?:the|his|her|their) (?:plan|approach)|stops? (?:teasing|joking)|decides?|offers?|asks? you (?:why|what|whether|about))\b/.test(t);
+  return !genuineNextBeat;
+}
+
 function missedCommunicationNoDevelopment(reply="",latestUserMessage=""){
   const user=norm(latestUserMessage);
   if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|didn'?t understand|did not understand)\b/.test(user)) return false;
@@ -281,7 +299,7 @@ export function semanticStoryMomentumIssues({
   if(blockingBanterStall(text)) issues.push("semantic_blocking_banter_stall");
   if(echoQuipStall(text,latestUserMessage)) issues.push("semantic_echo_quip_stall");
   if(reactionWithoutContentLayer(text,latestUserMessage)) issues.push("semantic_reaction_without_content_layer");
-  if(missedCommunicationNoDevelopment(text,latestUserMessage)) issues.push("semantic_missed_communication_no_development");
+  if(missedCommunicationNoDevelopment(text,latestUserMessage)) issues.push("semantic_missed_communication_no_development");\n  if(inventedAttentionNarrative(text,latestUserMessage)) issues.push("semantic_invented_attention_narrative");\n  if(repetitionIsNotDevelopment(text,latestUserMessage)) issues.push("semantic_repetition_is_not_development");
   if(inventedUserAttentionExplanation(text,latestUserMessage)) issues.push("semantic_invented_user_attention_explanation");
   if(missedCommunicationCarryOn(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_missed_communication_carry_on");
   if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
