@@ -76,7 +76,7 @@ import { buildInstantStoryDirectorV35366, instantStoryDirectorIssuesV35366 } fro
 import { buildSpeakerOwnershipV35367, speakerOwnershipIssuesV35367 } from "./engine/speaker-ownership-v35367.js";
 import { buildUserReferencePovV35369, userReferencePovIssuesV35369 } from "./engine/user-reference-pov-v35369.js";
 import { buildUserGravityV35370, userGravityIssuesV35370 } from "./engine/user-gravity-v35370.js";
-import { buildDecisiveAnswerV35371, decisiveAnswerIssuesV35371 } from "./engine/decisive-answer-v35371.js";
+import { buildDecisiveAnswerV35371, decisiveAnswerIssuesV35371 } from "./engine/decisive-answer-v35371.js";\nimport { buildInteriorContinuityV35375 } from "./engine/interior-continuity-v35375.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
@@ -3351,6 +3351,15 @@ function buildNarrativePromptV3({
     behavior: conversation.intelligence_state?.human_behavior_state || {},
     relationshipState: conversation.relationship_state || {},
     intelligenceState: conversation.intelligence_state || {},
+  });
+  const interiorContinuityV35375 = buildInteriorContinuityV35375({
+    character,
+    latestUserMessage: latestPerceptibleUserMessage,
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    relationshipState: conversation.relationship_state || {},
+    intelligenceState: conversation.intelligence_state || {},
+    scene: conversation.scene_state || {},
   });
   const directFlirtV35352 = buildDirectFlirtV35352({
     character,
