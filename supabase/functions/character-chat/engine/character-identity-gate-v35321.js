@@ -47,6 +47,57 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
     }
   }
 
+  // v3.53.64 STRICT CAST PERSONALITY COLLISION GATE
+  // Catch behavioral identity leakage even when the model paraphrases the wording.
+  // One generic trait alone is never enough: we reject bundles that recreate a
+  // different lead's signature romantic engine.
+  const sig={
+    chase:[
+      /\b(?:smirk|crooked grin|lazy grin|cocky|swagger|unbothered|competition)\b/.test(t),
+      /\b(?:come with me|were leaving|we are leaving|outside now|im stealing you|i am stealing you)\b/.test(spoken),
+      /\b(?:interrupted|cut .* off|blocked .* path|stepped .* into .* path|walked away expecting|expected you to follow)\b/.test(t)
+    ].filter(Boolean).length,
+    nathan:[
+      /\b(?:shouldnt|should not|cant|cannot|line we shouldnt|line we should not|your brother|brothers best friend)\b/.test(t),
+      /\b(?:held back|stopped himself|restraint|kept his distance|should know better)\b/.test(t)
+    ].filter(Boolean).length,
+    rowan:[
+      /\b(?:since we were|grew up|your family|your mom|your dad|known you long enough|i know that look|you always)\b/.test(t),
+      /\b(?:already knew|didnt need to ask|doesnt need to ask|before you said)\b/.test(t)
+    ].filter(Boolean).length,
+    damon:[
+      /\b(?:said nothing|without a word|silence|wordless|unreadable|expression didnt change|expression did not change)\b/.test(t),
+      /\b(?:one look|single look|quiet intensity|controlled|measured)\b/.test(t)
+    ].filter(Boolean).length,
+    roman:[
+      /\b(?:race|racing|track|engine|helmet|garage|adrenaline|danger|dangerous|reckless|risk)\b/.test(t),
+      /\b(?:threat|feared|fear him|dont test me|do not test me)\b/.test(t)
+    ].filter(Boolean).length,
+    adrian:[
+      /\b(?:camera|cameras|production|producer|audience|ratings|pairing|paired|challenge|reality show|confessional)\b/.test(t),
+      /\b(?:for the cameras|production wants|audience wants|stuck together|paired us|team(?:ed)? us)\b/.test(t)
+    ].filter(Boolean).length,
+    alexander:[
+      /\b(?:showed up|kept his promise|kept the promise|made it right|repair|chose you|choose you|stayed because)\b/.test(t),
+      /\b(?:reliable|dependable|whatever it takes|i said id|i said i would)\b/.test(t)
+    ].filter(Boolean).length,
+    mateo:[
+      /\b(?:im here|i am here|you dont have to explain|you do not have to explain|take your time|no pressure)\b/.test(spoken),
+      /\b(?:grounded|safe|steady presence|sat beside|stayed nearby|listened)\b/.test(t)
+    ].filter(Boolean).length,
+    theo:[
+      /\b(?:friendly|warm|kind|polite|helped|included|introduced|everyone knows|campus prince)\b/.test(t),
+      /\b(?:mistook|misread|assumed .* flirt|flirting with him|asked for his number|girl .* flirt)\b/.test(t)
+    ].filter(Boolean).length
+  };
+  const ownSignature={
+    "theo calloway":"theo","mateo silva":"mateo","chase beaumont":"chase",
+    "nathan foster":"nathan","rowan hayes":"rowan","alexander bennett":"alexander",
+    "damon blackwood":"damon","roman knox":"roman","adrian cross":"adrian"
+  }[name]||"";
+  const collision=Object.entries(sig).filter(([k,v])=>k!==ownSignature&&v>=2).map(([k])=>k);
+  if(collision.length)issues.push("foreign_character_signature_"+collision.join("_"));
+
   if(name==="mateo silva"){
     const distress=/\b(?:llor|ansiedad|depres|triste|crisis|familia|panic|cry|depress|sad)\b/.test(recent);
     const cold=/\b(?:whatever|deal with it|not my problem|figure it out|da igual|arreglatelas|arréglatelas)\b/.test(t);
