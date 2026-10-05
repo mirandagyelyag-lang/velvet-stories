@@ -79,6 +79,7 @@ import { buildUserGravityV35370, userGravityIssuesV35370 } from "./engine/user-g
 import { buildDecisiveAnswerV35371, decisiveAnswerIssuesV35371 } from "./engine/decisive-answer-v35371.js";
 import { buildInteriorContinuityV35375 } from "./engine/interior-continuity-v35375.js";
 import { buildEmotionalRealityV35377, emotionalRealityIssuesV35377 } from "./engine/emotional-reality-v35377.js";
+import { buildCharacterIntentV35378, characterIntentIssuesV35378 } from "./engine/character-intent-v35378.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
@@ -3374,6 +3375,17 @@ function buildNarrativePromptV3({
     persistentCast,
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
+  const characterIntentV35378 = buildCharacterIntentV35378({
+    character,
+    latestUserMessage: latestPerceptibleUserMessage,
+    recentUserMessages: messages.filter((m)=>m.sender === "user").slice(-8).map((m)=>String(m.content||"")),
+    recentCharacterReplies: recentCharacterRepliesForVoice,
+    relationshipState: conversation.relationship_state || {},
+    intelligenceState: conversation.intelligence_state || {},
+    scene: conversation.scene_state || {},
+    persistentCast,
+    worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
+  });
   const directFlirtV35352 = buildDirectFlirtV35352({
     character,
     latestUserMessage: latestPerceptibleUserMessage,
@@ -3497,6 +3509,8 @@ ${romanticResidueV35351}
 ${interiorContinuityV35375}
 
 ${emotionalRealityV35377}
+
+${characterIntentV35378}
 
 ${directFlirtV35352}
 
@@ -5196,6 +5210,13 @@ function buildCompactLiveRecoveryPrompt({
   const userGravityV35370 = buildUserGravityV35370({ character, latestUserMessage });
   const decisiveAnswerV35371 = buildDecisiveAnswerV35371({ character, latestUserMessage });
   const emotionalRealityV35377 = buildEmotionalRealityV35377({
+    character, latestUserMessage,
+    recentUserMessages: messages.filter((m)=>m?.sender === "user").slice(-8).map((m)=>String(m?.content||"")),
+    recentCharacterReplies: messages.filter((m)=>m?.sender !== "user").slice(-8).map((m)=>String(m?.content||"")),
+    relationshipState, intelligenceState, scene, persistentCast,
+    worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
+  });
+  const characterIntentV35378 = buildCharacterIntentV35378({
     character, latestUserMessage,
     recentUserMessages: messages.filter((m)=>m?.sender === "user").slice(-8).map((m)=>String(m?.content||"")),
     recentCharacterReplies: messages.filter((m)=>m?.sender !== "user").slice(-8).map((m)=>String(m?.content||"")),
@@ -9582,6 +9603,11 @@ function validateNarrativeReply(reply = "", options = {}) {
     latestUserMessage: options.latestUserMessage || "",
     recentCharacterReplies: options.recentCharacterReplies || [],
     scene: options.scene || options.continuity?.scene || {},
+  })) issues.push(issue);
+  for (const issue of characterIntentIssuesV35378({
+    reply: text,
+    latestUserMessage: options.latestUserMessage || "",
+    recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
   for (const issue of microContinuityV34945Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [])) issues.push(issue);
   for (const issue of turnStateLedgerV34946Issues(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.recentUserMessages || [])) issues.push(issue);
