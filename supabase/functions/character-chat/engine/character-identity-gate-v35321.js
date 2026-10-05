@@ -272,6 +272,10 @@ export function buildCharacterIdentityGateV35321({character={}}={}){
     theoCanon,
     namedCastCanon,
     hardCanon,
-    "If the answer could be transplanted unchanged onto another lead character, rewrite the tactic or emotional decision."
+    "If the answer could be transplanted unchanged onto another lead character, rewrite the tactic or emotional decision.",
+    "IDENTITY PRIORITY ORDER: explicit character profile/canon > this lead's named identity engine > live relationship/history > scene pressure > generic romance conventions. Generic romance conventions lose every tie.",
+    "NO PERSONALITY IMPORTS: never borrow another Velvet lead's signature behavior to make this lead seem more masculine, romantic, jealous, dramatic, confident or interesting. Distinction is more important than maximizing intensity.",
+    "TRAIT ≠ TACTIC: shared surface traits do not authorize shared behavior. Two characters may both be wealthy, popular, jealous, protective or confident while noticing different things, wanting different outcomes, avoiding different vulnerabilities and taking different actions.",
+    "SILENT SELF-CHECK: before finalizing, answer internally: Why would THIS character choose THIS exact action instead of each other lead? If the answer is only 'because he likes her/is jealous/is confident', rewrite."
   ].filter(Boolean).join("\n");
 }
