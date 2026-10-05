@@ -299,7 +299,9 @@ export function semanticStoryMomentumIssues({
   if(blockingBanterStall(text)) issues.push("semantic_blocking_banter_stall");
   if(echoQuipStall(text,latestUserMessage)) issues.push("semantic_echo_quip_stall");
   if(reactionWithoutContentLayer(text,latestUserMessage)) issues.push("semantic_reaction_without_content_layer");
-  if(missedCommunicationNoDevelopment(text,latestUserMessage)) issues.push("semantic_missed_communication_no_development");\n  if(inventedAttentionNarrative(text,latestUserMessage)) issues.push("semantic_invented_attention_narrative");\n  if(repetitionIsNotDevelopment(text,latestUserMessage)) issues.push("semantic_repetition_is_not_development");
+  if(missedCommunicationNoDevelopment(text,latestUserMessage)) issues.push("semantic_missed_communication_no_development");
+  if(inventedAttentionNarrative(text,latestUserMessage)) issues.push("semantic_invented_attention_narrative");
+  if(repetitionIsNotDevelopment(text,latestUserMessage)) issues.push("semantic_repetition_is_not_development");
   if(inventedUserAttentionExplanation(text,latestUserMessage)) issues.push("semantic_invented_user_attention_explanation");
   if(missedCommunicationCarryOn(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_missed_communication_carry_on");
   if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
