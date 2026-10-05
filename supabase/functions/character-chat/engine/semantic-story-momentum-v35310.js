@@ -110,8 +110,17 @@ function reactionWithoutContentLayer(reply="",latestUserMessage=""){
   if(!reaction) return false;
   // Content must alter knowledge, intention, relationship, practical state, or the
   // next live beat. Styling the reaction more richly does not count.
-  const content=/\b(?:asks? you (?:why|what|whether|about)|what happened|are you okay|you good|did you hear|want me to repeat|i said|never mind|forget it|scratch that|instead|actually|decid(?:e|es|ed)|refus(?:e|es|ed)|admit(?:s|ted)?|reveal(?:s|ed)?|tell(?:s)? you|offer(?:s|ed)?|invite(?:s|d)?|change(?:s|d)? (?:the|his|her|their) (?:plan|approach|mind)|drop(?:s|ped)? (?:it|the bet|the joke|the challenge)|stop(?:s|ped)? (?:teasing|joking)|repeat(?:s|ed)?|move(?:s|d)? (?:the|his|her|their) attention|turn(?:s|ed)? back to|return(?:s|ed)? to|pick(?:s|ed)? up the controller|resume(?:s|d)? the game|give(?:s)? you (?:space|a moment))\b/.test(t);
+  const content=/\b(?:asks? you (?:why|what|whether|about)|what happened|are you okay|you good|did you hear|want me to repeat|i said|never mind|forget it|scratch that|instead|actually|decid(?:e|es|ed)|refus(?:e|es|ed)|admit(?:s|ted)?|reveal(?:s|ed)?|tell(?:s)? you|offer(?:s|ed)?|invite(?:s|d)?|change(?:s|d)? (?:the|his|her|their) (?:plan|approach|mind)|drop(?:s|ped)? (?:it|the bet|the joke|the challenge)|stop(?:s|ped)? (?:teasing|joking)|move(?:s|d)? (?:the|his|her|their) attention|turn(?:s|ed)? back to|return(?:s|ed)? to|pick(?:s|ed)? up the controller|resume(?:s|d)? the game|give(?:s)? you (?:space|a moment))\b/.test(t);
   return !content;
+}
+
+function inventedUserAttentionExplanation(reply="",latestUserMessage=""){
+  const user=norm(latestUserMessage), t=norm(reply);
+  const missed=/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention)\b/.test(user);
+  if(!missed) return false;
+  // The user owns the contents/cause of their inattention. Do not fill the blank
+  // with a cute activity or motive they never supplied.
+  return /\b(?:counting (?:the )?(?:ceiling )?tiles|daydreaming about|thinking about|staring at|watching|checking your phone|ignoring me on purpose|trying to give me|giving me a head start|pretending not to listen|lost in thought about)\b/.test(t);
 }
 
 function missedCommunicationNoDevelopment(reply="",latestUserMessage=""){
@@ -123,7 +132,7 @@ function missedCommunicationNoDevelopment(reply="",latestUserMessage=""){
   // not merely sarcasm/acknowledgement. Require evidence that the character
   // recalculates, investigates, repeats/abandons the missed premise, or changes
   // what they do next.
-  const development=/\b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|are you okay|were you okay|what had your attention|what were you thinking|what happened|everything okay|you good|repeat|repeats?|abandons?|drops? (?:the )?(?:bet|joke|challenge|offer|idea)|changes? (?:his|her|their|the) (?:tone|approach|plan)|stops? teasing|lets? (?:the )?(?:bet|joke|challenge) go|gives? (?:you|her|him|them) (?:a )?moment)\b/.test(t);
+  const development=/\b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|are you okay|were you okay|what had your attention|what were you thinking|what happened|everything okay|you good|abandons?|drops? (?:the )?(?:bet|joke|challenge|offer|idea)|changes? (?:his|her|their|the) (?:tone|approach|plan)|stops? teasing|lets? (?:the )?(?:bet|joke|challenge) go|gives? (?:you|her|him|them) (?:a )?moment)\b/.test(t);
   if(development) return false;
   const words=t.split(/\s+/).filter(Boolean).length;
   const sarcasm=/\b(?:brilliant|captivating|impressive|tragic|cute|adorable|empty room|good to know|noted|figures|of course|wow|rude|psychological warfare|masterpiece)\b/.test(t);
@@ -261,6 +270,7 @@ export function semanticStoryMomentumIssues({
   if(echoQuipStall(text,latestUserMessage)) issues.push("semantic_echo_quip_stall");
   if(reactionWithoutContentLayer(text,latestUserMessage)) issues.push("semantic_reaction_without_content_layer");
   if(missedCommunicationNoDevelopment(text,latestUserMessage)) issues.push("semantic_missed_communication_no_development");
+  if(inventedUserAttentionExplanation(text,latestUserMessage)) issues.push("semantic_invented_user_attention_explanation");
   if(missedCommunicationCarryOn(text,latestUserMessage,recentCharacterReplies)) issues.push("semantic_missed_communication_carry_on");
   if(inventedUserVisibleReaction(text,latestUserMessage)) issues.push("semantic_invented_user_visible_reaction");
   if(inventedUserAttentionContent(text,latestUserMessage)) issues.push("semantic_invented_user_attention_content");
