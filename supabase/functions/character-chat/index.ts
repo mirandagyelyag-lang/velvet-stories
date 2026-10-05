@@ -75,10 +75,11 @@ import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from ".
 import { buildInstantStoryDirectorV35366, instantStoryDirectorIssuesV35366 } from "./engine/instant-story-director-v35366.js";
 import { buildSpeakerOwnershipV35367, speakerOwnershipIssuesV35367 } from "./engine/speaker-ownership-v35367.js";
 import { buildUserReferencePovV35369, userReferencePovIssuesV35369 } from "./engine/user-reference-pov-v35369.js";
+import { buildUserGravityV35370, userGravityIssuesV35370 } from "./engine/user-gravity-v35370.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "450";
+const VELVET_ENGINE_RELEASE = "451";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -3772,6 +3773,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
   const characterIdentityGateV35321 = buildCharacterIdentityGateV35321({ character });
   const speakerOwnershipV35367 = buildSpeakerOwnershipV35367({ character, persistentCast });
   const userReferencePovV35369 = buildUserReferencePovV35369({ userName: userName || "Antonia" });
+  const userGravityV35370 = buildUserGravityV35370({ character, latestUserMessage });
   const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
     character,
     latestUserMessage: latestPerceptibleUserMessage,
@@ -5468,6 +5470,9 @@ ${speakerOwnershipV35367}
 
 USER REFERENCE POV
 ${userReferencePovV35369}
+
+USER GRAVITY
+${userGravityV35370}
 
 NARRATIVE DIRECTOR
 ${narrativeDirectorV35334}
@@ -8314,6 +8319,9 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "direct_clarity_demand_evaded",
   "initiated_confrontation_without_intent_payoff",
   "repeated_delivery_choreography",
+  "user_exit_triggered_unearned_follow",
+  "user_exit_physically_blocked_for_romance",
+  "invented_offscreen_destination_knowledge",
   "direct_user_referred_to_as_her",
   "you_to_her_pov_drift",
   "lead_self_address_by_own_name",
@@ -9254,6 +9262,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (hasVocabularyOwnershipViolationV2(reply, options.character || {})) score -= 18;
   if (hasVoicePerformanceStackV2(reply, latest, options.character || {})) score -= 14;
   if (hasForcedTopicShift(reply, latest)) score -= 14;
+  const userGravityIssuesForScoreV35370 = userGravityIssuesV35370({ reply, latestUserMessage: latest, recentUserMessages: options.recentUserMessages || [] });
+  if (userGravityIssuesForScoreV35370.length) score -= Math.min(100, 82 + userGravityIssuesForScoreV35370.length * 10);
   const userReferenceIssuesV35369 = userReferencePovIssuesV35369(reply, options.userName || "Antonia");
   if (userReferenceIssuesV35369.length) score -= Math.min(100, 76 + userReferenceIssuesV35369.length * 12);
   const speakerIssuesV35367 = speakerOwnershipIssuesV35367(reply, options.character || {});
@@ -9414,6 +9424,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasUserReferencePronounDrift(text, options.latestUserMessage || "")) issues.push("user_reference_pronoun_drift");
   for (const issue of speakerOwnershipIssuesV35367(text, options.character || {})) issues.push(issue);
   for (const issue of userReferencePovIssuesV35369(text, options.userName || "Antonia")) issues.push(issue);
+  for (const issue of userGravityIssuesV35370({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [] })) issues.push(issue);
   if (hasForcedTopicShift(text, options.latestUserMessage || "")) issues.push("forced_topic_shift");
   if (hasAnswerBeforeFlourishViolation(text, options.latestUserMessage || "", turnIntent)) issues.push("answer_before_flourish_violation");
   for (const issue of groundedRealityIssues({
