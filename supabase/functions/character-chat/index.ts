@@ -74,10 +74,11 @@ import { buildLivingWorldCalendarV35314, livingWorldCalendarIssuesV35314, instan
 import { buildEmotionalDnaRouterV35321, instantStoryEmotionalDnaV35321 } from "./engine/emotional-dna-router-v35321.js";
 import { buildInstantStoryDirectorV35366, instantStoryDirectorIssuesV35366 } from "./engine/instant-story-director-v35366.js";
 import { buildSpeakerOwnershipV35367, speakerOwnershipIssuesV35367 } from "./engine/speaker-ownership-v35367.js";
+import { buildUserReferencePovV35369, userReferencePovIssuesV35369 } from "./engine/user-reference-pov-v35369.js";
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "449";
+const VELVET_ENGINE_RELEASE = "450";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2226,6 +2227,8 @@ ${instantStoryLivingWorldV35314({ character: safeDraft })}
 ${buildInstantStoryDirectorV35366({ character: safeDraft, recentOpenings, idea: cleanIdea })}
 
 ${buildSpeakerOwnershipV35367({ character: safeDraft, persistentCast: [] })}
+
+${buildUserReferencePovV35369({ userName: "Antonia" })}
 - Never declare the user's next movement or participation. Invite, insist, choose your own action, but leave the user's action open.
 - Never invent the user's order, favorite, usual, routine or other personal preference.
 - Campus + coffee + study logistics cannot be the opening engine. If that setting appears, something more meaningful must actually happen.
@@ -3768,6 +3771,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
   });
   const characterIdentityGateV35321 = buildCharacterIdentityGateV35321({ character });
   const speakerOwnershipV35367 = buildSpeakerOwnershipV35367({ character, persistentCast });
+  const userReferencePovV35369 = buildUserReferencePovV35369({ userName: userName || "Antonia" });
   const characterFingerprintPayoffV35313 = buildCharacterFingerprintPayoffV35313({
     character,
     latestUserMessage: latestPerceptibleUserMessage,
@@ -5461,6 +5465,9 @@ ${unifiedNarrativeStateV35312}
 
 SPEAKER OWNERSHIP
 ${speakerOwnershipV35367}
+
+USER REFERENCE POV
+${userReferencePovV35369}
 
 NARRATIVE DIRECTOR
 ${narrativeDirectorV35334}
@@ -8307,6 +8314,8 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "direct_clarity_demand_evaded",
   "initiated_confrontation_without_intent_payoff",
   "repeated_delivery_choreography",
+  "direct_user_referred_to_as_her",
+  "you_to_her_pov_drift",
   "lead_self_address_by_own_name",
   "npc_speaker_label_hijack",
   "unattributed_npc_dialogue_in_lead_channel",
@@ -9245,6 +9254,8 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
   if (hasVocabularyOwnershipViolationV2(reply, options.character || {})) score -= 18;
   if (hasVoicePerformanceStackV2(reply, latest, options.character || {})) score -= 14;
   if (hasForcedTopicShift(reply, latest)) score -= 14;
+  const userReferenceIssuesV35369 = userReferencePovIssuesV35369(reply, options.userName || "Antonia");
+  if (userReferenceIssuesV35369.length) score -= Math.min(100, 76 + userReferenceIssuesV35369.length * 12);
   const speakerIssuesV35367 = speakerOwnershipIssuesV35367(reply, options.character || {});
   if (speakerIssuesV35367.length) score -= Math.min(100, 70 + speakerIssuesV35367.length * 10);
   const groundedIssues = groundedRealityIssues({ reply, latestUserMessage: latest, recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: recent, character: options.character || {} });
@@ -9402,6 +9413,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   if (hasCompulsoryFollowupQuestion(text, options.latestUserMessage || "", options.recentCharacterReplies || [], options.character || {})) issues.push("compulsory_followup_question");
   if (hasUserReferencePronounDrift(text, options.latestUserMessage || "")) issues.push("user_reference_pronoun_drift");
   for (const issue of speakerOwnershipIssuesV35367(text, options.character || {})) issues.push(issue);
+  for (const issue of userReferencePovIssuesV35369(text, options.userName || "Antonia")) issues.push(issue);
   if (hasForcedTopicShift(text, options.latestUserMessage || "")) issues.push("forced_topic_shift");
   if (hasAnswerBeforeFlourishViolation(text, options.latestUserMessage || "", turnIntent)) issues.push("answer_before_flourish_violation");
   for (const issue of groundedRealityIssues({
