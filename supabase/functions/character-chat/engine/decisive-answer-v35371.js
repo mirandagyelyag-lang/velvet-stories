@@ -14,6 +14,12 @@ function unknowableQuestion(v=""){
   const t=norm(v);
   return /\b(?:future|forever|ever going to|what will happen|how will .* end|when will .* die|exactly what .* thinking|what am i thinking|lottery|winning numbers)\b/.test(t);
 }
+function answerSeekingQuestion(v=""){
+  const t=norm(v).replace(/\\*[^*]*\\*/g," ");
+  if(!/\\?/.test(String(v||"")))return false;
+  return ordinaryConcreteQuestion(v)
+    || /\\b(?:can i|could i|may i|should i|would it|is it|are we|are you saying|are you admitting|does that mean|so we|so you|you mean|you think|you want|you like|you hate|you consider|do i get to|am i allowed|friends?|girlfriend|boyfriend|together|dating)\\b/.test(t);
+}
 function vagueNonAnswer(reply=""){
   const t=norm(reply);
   return /(?:^|[.!?]\s*|["“]\s*)(?:i (?:do not|don't|dont) know(?: yet)?|not sure(?: yet)?|i'm not sure(?: yet)?|im not sure(?: yet)?|we'll see|we will see|depends|maybe|who knows|haven't decided|have not decided)(?:[.!?”"]|$)/.test(t)
@@ -28,9 +34,9 @@ export function buildDecisiveAnswerV35371({character={},latestUserMessage=""}={}
   return [
     "DECISIVE ANSWER LAW 3.53.71 · HARD:",
     "Do NOT use 'I don't know yet', 'I don't know', 'not sure yet', 'we'll see', 'depends', 'maybe', 'who knows', or equivalent as a generic answer to an ordinary concrete user question.",
-    "If the user asks how long, when, where, what time, which option, whether the character is staying/leaving, or another answerable practical question, COMMIT to a plausible answer from current context.",
+    "If the user asks how long, when, where, what time, which option, whether the character is staying/leaving, or another answerable practical question, COMMIT to a plausible answer from current context.",\n    "This ALSO applies to social/relationship questions and playful yes/no questions: can I call you my friend, are we friends, are you admitting X, does that mean X, can I do X, do you like/hate/want X. Answer the proposition instead of evading it.",
     "Exact certainty is not required. Give a bounded estimate or current intention: 'Probably another hour.' 'Until Ethan's game is over.' 'I'm leaving after this round.' 'Ten minutes, tops.'",
-    "Uncertainty must contain information. If the character genuinely cannot know, say what they DO know, what they currently intend, or what the uncertainty depends on. Never make uncertainty the entire beat.",
+    "Uncertainty must contain information. If the character genuinely cannot know, say what they DO know, what they currently intend, or what the uncertainty depends on. Never make uncertainty the entire beat.",\n    "For playful relational questions, character-specific deflection is allowed only AFTER the semantic answer is clear. Teasing may decorate an answer; it may not replace one with vague uncertainty.",
     "Do not hide behind vagueness to seem mysterious, masculine, emotionally guarded, cool, or slow-burn. Mystery is not refusing ordinary information.",
     "When the user asks a direct question, ANSWER BEFORE flourish, teasing, body language, subtext or a counter-question.",
     "Character="+clean(character?.name||"character",80)+". User asked="+(clean(latestUserMessage,300)||"none")+"."
@@ -39,7 +45,7 @@ export function buildDecisiveAnswerV35371({character={},latestUserMessage=""}={}
 
 export function decisiveAnswerIssuesV35371({reply="",latestUserMessage=""}={}){
   const issues=[];
-  if(ordinaryConcreteQuestion(latestUserMessage)&&!unknowableQuestion(latestUserMessage)&&vagueNonAnswer(reply)&&!hasConcreteEstimate(reply)){
+  if(answerSeekingQuestion(latestUserMessage)&&!unknowableQuestion(latestUserMessage)&&vagueNonAnswer(reply)){
     issues.push("generic_i_dont_know_yet_nonanswer");
   }
   return issues;
