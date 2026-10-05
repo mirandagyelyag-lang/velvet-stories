@@ -3420,10 +3420,14 @@ function buildNarrativePromptV3({
   const relationshipEvolutionPromptV35392 = buildRelationshipEvolutionPromptV35392(existingRelationshipEvolutionV35392);
   const existingFullStoryIntegrationV35391 = conversation.intelligence_state?.full_story_integration_v35391 || {};
   const fullStoryIntegrationPromptV35391 = buildFullStoryIntegrationPromptV35391(existingFullStoryIntegrationV35391);
+  const persistedStoryAuthorityV35390 =
+    conversation.intelligence_state?.full_story_integration_v35391?.active_authority ||
+    conversation.intelligence_state?.story_authority_v35390 ||
+    {};
   const storyAuthorityV35390 = compileStoryAuthorityV35390({
     latestUserMessage: latestPerceptibleUserMessage,
     directorInstruction,
-    previous: previousStoryAuthorityV35390,
+    previous: persistedStoryAuthorityV35390,
   });
   const storyAuthorityPromptV35390Text = storyAuthorityPromptV35390(storyAuthorityV35390);
   const velvetNarrativeUpgradeV35379 = buildVelvetNarrativeUpgradeV35379({
