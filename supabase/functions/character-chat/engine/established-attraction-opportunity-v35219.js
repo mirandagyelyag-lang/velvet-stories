@@ -222,13 +222,11 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     const recentRaw = String((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
     const recent = normalize(recentRaw);
     const arcadeBeat = /\b(?:arcade|score|controller|game)\b/.test(recent);
-    const coffeeBeat = /\bcoffee\b/.test(recent);
     const approach = fallbackTemperament(character) === "guarded"
-      ? name + " pushes off from where he was and steps closer, stopping beside you."
-      : name + " drops the performance and moves closer, settling beside you.";
-    if (arcadeBeat && coffeeBeat) return approach + ' “You seriously missed all of that?” A beat, then the challenge returns instead of disappearing. “I said: beat my score, and I buy the coffee.”';
-    if (arcadeBeat) return approach + ' “You seriously missed all of that?” He glances back at the game, then at you. “I said you get a shot at beating my score.”';
-    return approach + ' “You didn’t hear me?” He stays there, close enough to reclaim your attention, and repeats the point instead of abandoning it.';
+      ? name + " watches you for a second, then pushes away from where he was and crosses the distance between you, settling beside you."
+      : name + " lets the moment hang, then moves into the space beside you instead of trying to fill it with another line.";
+    if (arcadeBeat) return approach + " His knee brushes lightly against yours as he reaches for the controller again, keeping the challenge alive without repeating himself.";
+    return approach + " He stays there, close enough to reclaim the moment through presence rather than explanation.";
   }
 
   if (failures.has("active_plan_followthrough_dropped")) {
