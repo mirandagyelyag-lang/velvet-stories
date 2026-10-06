@@ -11146,7 +11146,7 @@ async function streamRoleplayV19({
               previousScene: existingSceneState,
               storyMemory: existingIntelligenceState?.story_memory_v35386 || {},
             });
-            if (repairedEvaluationV35388.pass || repairedEvaluationV35388.scores.replyValue > liveEvaluationV35388.scores.replyValue) {
+            if (repairedEvaluationV35388.pass) {
               persistableReply = String(repairedLiveReplyV35388).trim();
             }
           }
