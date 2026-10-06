@@ -217,7 +217,7 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     return name + " makes the decision instead of handing it back to you. “I’ve got it. Come on.”";
   }
 
-  const missedAttentionFailures = ["missed_communication_without_character_consequence","invented_attention_cause","scene_swap_after_missed_communication","abandons_existing_beat_after_missed_communication","attention_interrogation_after_missed_communication"];
+  const missedAttentionFailures = ["missed_communication_without_character_consequence","invented_attention_cause","scene_swap_after_missed_communication","abandons_existing_beat_after_missed_communication","attention_interrogation_after_missed_communication","object_motion_is_not_reengagement"];
   if (missedAttentionFailures.some((issue) => failures.has(issue))) {
     const recentRaw = String((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
     const recent = normalize(recentRaw);
