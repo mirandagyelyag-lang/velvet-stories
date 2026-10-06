@@ -92,7 +92,7 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "468";
+const VELVET_ENGINE_RELEASE = "469";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -4197,6 +4197,7 @@ PERCEPTION + KNOWLEDGE REALISM 3.32
 - SOCIAL CONTEXT MATTERS. Private warmth, public restraint and who is physically watching may change behavior, but never reveal inaccessible knowledge.
 - INTERRUPTED TOPICS PERSIST: if an interruption happens, the prior topic may remain unfinished and return later; do not reset everyone's knowledge/emotional state.
 - RESPONSE WEIGHT MATCHING: tiny ordinary turns usually deserve tiny ordinary responses. Do not create a large interpretive monologue just because hidden context is available.
+- ATTENTION CUE IS ONLY ATTENTION: if the user says they zoned out, were distracted, were not listening, or did not hear, treat that only as missed attention unless the user explicitly gives a deeper cause. Do not turn it into a wellness check, sleep question, diagnosis, or interrogation. A nonverbal reaction or silence is valid.
 - REALITY JUDGE: before returning, ask: could this speaker actually SEE it, HEAR it, KNOW it, REMEMBER it, or only INFER it? If only inferred, phrase it as uncertainty. If none, remove it.
 
 HUMAN TURN-TAKING + CONVERSATION RHYTHM 3.33
