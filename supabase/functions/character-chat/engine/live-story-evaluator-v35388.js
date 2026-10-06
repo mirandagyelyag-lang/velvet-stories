@@ -20,6 +20,7 @@ export function evaluateLiveStoryV35388({reply="",character={},latestUserMessage
  const abandonsExistingBeat=missedCommunication&&/\b(?:forget the|forget about the|skip the|never mind the|screw the|ditch the|drop the)\b/i.test(n);
  const attentionInterrogation=missedCommunication&&/\b(?:where(?:'d| did) you (?:go|just go)|where were you|what were you thinking|what had your attention|what were you staring at|what were you looking at|who(?:'d| did) you (?:manage to )?tune out|who were you tuning out|what did you tune out|who else did you miss)\b/i.test(n);
  const missedNoConsequence=missedCommunication&&!physicalReengagement;
+ const redundantMissedAttentionSpeech=missedCommunication&&/["“][^"”]*(?:not listening|weren'?t listening|wasn'?t listening|didn'?t hear|did not hear|zoning out|zoned out|miles away|tune(?:d|ing)? out|missed (?:all|that|a word)|hear (?:me|a word))[^"”]*["”]/i.test(text);
  const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-4).map(norm).filter(Boolean);
  const repeated=recent.some(r=>r.length>20&&(n===r||n.includes(r.slice(0,Math.min(90,r.length)))));
  const continuityAnchors=[previousScene?.location,...(previousScene?.present||[]),storyMemory?.physical_state?.location].filter(Boolean).map(norm);
@@ -50,10 +51,11 @@ export function evaluateLiveStoryV35388({reply="",character={},latestUserMessage
  if(abandonsExistingBeat)issues.push("abandons_existing_beat_after_missed_communication");
  if(attentionInterrogation)issues.push("attention_interrogation_after_missed_communication");
  if(missedNoConsequence)issues.push("missed_communication_without_character_consequence");
+ if(redundantMissedAttentionSpeech)issues.push("verbalizes_obvious_missed_attention");
  if(objectOnlyMotion&&!physicalReengagement)issues.push("object_motion_is_not_reengagement");
  if(scores.storyMovement<=2&&scores.replyValue<=3)issues.push("no_story_movement");
  if(scores.initiative<=2&&text.length<180)issues.push("no_character_initiative");
- const blocking=issues.filter(x=>["dead_safe_reply","user_paraphrase_only","near_duplicate_reply","continuity_break","invented_attention_cause","scene_swap_after_missed_communication","missed_communication_without_character_consequence","abandons_existing_beat_after_missed_communication","attention_interrogation_after_missed_communication","object_motion_is_not_reengagement"].includes(x));
+ const blocking=issues.filter(x=>["dead_safe_reply","user_paraphrase_only","near_duplicate_reply","continuity_break","invented_attention_cause","scene_swap_after_missed_communication","missed_communication_without_character_consequence","abandons_existing_beat_after_missed_communication","attention_interrogation_after_missed_communication","object_motion_is_not_reengagement","verbalizes_obvious_missed_attention"].includes(x));
  return {scores,issues,blocking,collisionRisk,pass:blocking.length===0&&scores.replyValue>=3};
 }
 
