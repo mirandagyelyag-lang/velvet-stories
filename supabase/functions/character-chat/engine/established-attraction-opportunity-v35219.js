@@ -217,6 +217,20 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     return name + " makes the decision instead of handing it back to you. “I’ve got it. Come on.”";
   }
 
+  const missedAttentionFailures = ["missed_communication_without_character_consequence","invented_attention_cause","scene_swap_after_missed_communication","abandons_existing_beat_after_missed_communication","attention_interrogation_after_missed_communication"];
+  if (missedAttentionFailures.some((issue) => failures.has(issue))) {
+    const recentRaw = String((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
+    const recent = normalize(recentRaw);
+    const arcadeBeat = /\b(?:arcade|score|controller|game)\b/.test(recent);
+    const coffeeBeat = /\bcoffee\b/.test(recent);
+    const approach = fallbackTemperament(character) === "guarded"
+      ? name + " pushes off from where he was and steps closer, stopping beside you."
+      : name + " drops the performance and moves closer, settling beside you.";
+    if (arcadeBeat && coffeeBeat) return approach + ' “You seriously missed all of that?” A beat, then the challenge returns instead of disappearing. “I said: beat my score, and I buy the coffee.”';
+    if (arcadeBeat) return approach + ' “You seriously missed all of that?” He glances back at the game, then at you. “I said you get a shot at beating my score.”';
+    return approach + ' “You didn’t hear me?” He stays there, close enough to reclaim your attention, and repeats the point instead of abandoning it.';
+  }
+
   if (failures.has("active_plan_followthrough_dropped")) {
     return followThroughFallback({ name, recentCharacterReplies });
   }
