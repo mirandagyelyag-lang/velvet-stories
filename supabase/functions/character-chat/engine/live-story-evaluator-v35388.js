@@ -15,7 +15,8 @@ export function evaluateLiveStoryV35388({reply="",character={},latestUserMessage
  const missedCommunication=/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention)\b/i.test(userN);
  const inventedAttentionCause=missedCommunication&&/\b(?:you were|you'?re|you are) (?:somewhere else|lost in thought|thinking about|staring at|watching|counting|reviewing|daydreaming)\b/i.test(n);
  const sceneSwapAfterMiss=missedCommunication&&/\b(?:skip the|kitchen|coffee run|go somewhere|head outside|leave|food|grab something to eat)\b/i.test(n)&&!/\b(?:did you hear|want me to repeat|i said|never mind|forget it|what had your attention|what were you thinking|are you okay|you good|wait|hold on)\b/i.test(n);
- const physicalReengagement=missedCommunication&&/\b(?:step(?:s|ped)? closer|move(?:s|d)? closer|come(?:s)? closer|closer|beside|next to|sit(?:s|ting)? (?:beside|next to)|lean(?:s|ed)? (?:closer|in)|reach(?:es|ed)?|touch(?:es|ed)?|brush(?:es|ed)?|nudge(?:s|d)?|tap(?:s|ped)?|hand (?:finds|found|rests|rested)|knee (?:touches|brushed|bumps))\b/i.test(n);
+ const physicalReengagement=missedCommunication&&/\b(?:step(?:s|ped)? (?:toward(?:s)? you|closer to you)|move(?:s|d)? (?:toward(?:s)? you|closer to you)|come(?:s)? closer to you|close(?:s|d)? the (?:distance|gap) between (?:you|the two of you)|sit(?:s|ting)? (?:beside you|next to you)|settle(?:s|d)? (?:beside you|next to you)|lean(?:s|ed)? (?:toward(?:s)? you|closer to you)|reach(?:es|ed)? (?:for|toward(?:s)?) you|touch(?:es|ed)? you|brush(?:es|ed)? (?:against|past) you|nudge(?:s|d)? you|tap(?:s|ped)? you|his (?:hand|knee|shoulder) (?:touches|brushes|bumps|rests against) (?:you|yours))\b/i.test(n);
+ const objectOnlyMotion=missedCommunication&&/\b(?:lean(?:s|ed)? back|against the (?:cabinet|wall|table|counter)|tap(?:s|ped)? (?:a finger|the|his|her) .*?(?:controller|phone|table|counter)|fold(?:s|ed)? (?:his|her|their) arms|drop(?:s|ped)? (?:his|her|their) arms|shrug(?:s|ged)?|look(?:s|ed)? (?:at|back at) (?:the )?(?:controller|screen|game|cabinet))\b/i.test(n);
  const abandonsExistingBeat=missedCommunication&&/\b(?:forget the|forget about the|skip the|never mind the|screw the|ditch the|drop the)\b/i.test(n);
  const attentionInterrogation=missedCommunication&&/\b(?:where(?:'d| did) you (?:go|just go)|where were you|what were you thinking|what had your attention|what were you staring at|what were you looking at)\b/i.test(n);
  const missedNoConsequence=missedCommunication&&!physicalReengagement;
@@ -49,9 +50,10 @@ export function evaluateLiveStoryV35388({reply="",character={},latestUserMessage
  if(abandonsExistingBeat)issues.push("abandons_existing_beat_after_missed_communication");
  if(attentionInterrogation)issues.push("attention_interrogation_after_missed_communication");
  if(missedNoConsequence)issues.push("missed_communication_without_character_consequence");
+ if(objectOnlyMotion&&!physicalReengagement)issues.push("object_motion_is_not_reengagement");
  if(scores.storyMovement<=2&&scores.replyValue<=3)issues.push("no_story_movement");
  if(scores.initiative<=2&&text.length<180)issues.push("no_character_initiative");
- const blocking=issues.filter(x=>["dead_safe_reply","user_paraphrase_only","near_duplicate_reply","continuity_break","invented_attention_cause","scene_swap_after_missed_communication","missed_communication_without_character_consequence","abandons_existing_beat_after_missed_communication","attention_interrogation_after_missed_communication"].includes(x));
+ const blocking=issues.filter(x=>["dead_safe_reply","user_paraphrase_only","near_duplicate_reply","continuity_break","invented_attention_cause","scene_swap_after_missed_communication","missed_communication_without_character_consequence","abandons_existing_beat_after_missed_communication","attention_interrogation_after_missed_communication","object_motion_is_not_reengagement"].includes(x));
  return {scores,issues,blocking,collisionRisk,pass:blocking.length===0&&scores.replyValue>=3};
 }
 
