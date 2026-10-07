@@ -94,7 +94,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "500";
+const VELVET_ENGINE_RELEASE = "501";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -6874,6 +6874,8 @@ function hasUserMotiveOverride(reply = "", latestUserMessage = "", recentUserMes
     { claim: /\byou wanted to (?:see|know|find out) if i(?:'|’)d\b|\byou wanted to (?:see|know|find out) whether i\b/, user: /\bi wanted to (?:see|know|find out) if you(?:'|’)d\b|\bi wanted to (?:see|know|find out) whether you\b/ },
     { claim: /\byou (?:did|said|asked) that (?:because|so) (?:you )?(?:could|would|wanted|needed)\b/, user: /\bi (?:did|said|asked) (?:that|it) because\b|\bi wanted to\b|\bi needed to\b/ },
     { claim: /\byou were trying to make me jealous\b|\byou wanted to make me jealous\b/, user: /\bi (?:was )?trying to make you jealous\b|\bi wanted to make you jealous\b/ },
+    { claim: /\byou(?:'|’)re going to accuse me\b|\byou are going to accuse me\b|\byou accuse me\b|\byou(?:'|’)re accusing me\b|\byou are accusing me\b/, user: /\bi accuse you\b|\bi(?:'|’)m accusing you\b|\bi am accusing you\b|\byou (?:planned|engineered|set up|arranged) (?:that|this|the )?(?:interruption|scene|encounter)\b/ },
+    { claim: /\byou think i (?:planned|engineered|set up|arranged)\b|\byou think that i (?:planned|engineered|set up|arranged)\b/, user: /\bi think you (?:planned|engineered|set up|arranged)\b|\bdid you (?:plan|engineer|set up|arrange)\b/ },
   ];
 
   return supported.some(({ claim, user }) => claim.test(text) && !user.test(recent));
@@ -8722,6 +8724,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "spatial_relationship_broken",
   "spatial_proximity_teleport",
   "user_motive_overwritten",
+  "false_user_accusation",
   "rejected_pursuit_framing_persisted",
   "unstaged_user_departure_inference",
   "unstaged_user_movement_inference",
@@ -10222,6 +10225,10 @@ function validateNarrativeReply(reply = "", options = {}) {
   for (const issue of establishedAttractionOpportunityIssues({ reply: text, latestUserMessage: options.latestUserMessage || "", recentUserMessages: options.recentUserMessages || [], recentCharacterReplies: options.recentCharacterReplies || [], character: options.character || {} })) issues.push(issue);
   if (hasInventedDebateEvidence(text, options.latestUserMessage || "")) issues.push("invented_debate_evidence");
   if (hasUserMotiveOverride(text, options.latestUserMessage || "", options.recentUserMessages || [])) issues.push("user_motive_overwritten");
+  if (/\byou(?:'|’)re going to accuse me\b|\byou are going to accuse me\b|\byou accuse me\b|\byou(?:'|’)re accusing me\b|\byou are accusing me\b|\byou think i (?:planned|engineered|set up|arranged)\b/i.test(String(text||"")) &&
+      !/\bi accuse you\b|\bi(?:'|’)m accusing you\b|\bi am accusing you\b|\bi think you (?:planned|engineered|set up|arranged)\b|\bdid you (?:plan|engineer|set up|arrange)\b/i.test(String([options.latestUserMessage||"", ...(options.recentUserMessages||[])].join(" ")))) {
+    issues.push("false_user_accusation");
+  }
   if (hasRejectedPursuitFramingPersistence(text, options.latestUserMessage || "")) issues.push("rejected_pursuit_framing_persisted");
   if (hasUnstagedUserDepartureInference(text, options.latestUserMessage || "", options.userName || "", options.recentUserMessages || [])) issues.push("unstaged_user_departure_inference");
   if (hasUnstagedUserMovementInference(text, options.latestUserMessage || "", options.userName || "", options.recentUserMessages || [])) issues.push("unstaged_user_movement_inference");
