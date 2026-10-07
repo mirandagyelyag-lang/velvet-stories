@@ -92,7 +92,7 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "470";
+const VELVET_ENGINE_RELEASE = "471";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2432,6 +2432,48 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
     openingFamily,
     sceneSeed,
   });
+
+  // v471 DEADLINE-FIRST DELIVERY
+  // Production Edge requests are being terminated around the 27-30s mark.
+  // Do not spend additional provider round-trips repairing a complete draft that
+  // already respects the true hard boundaries. Editorial/style/freshness gates
+  // remain useful for ranking, but they must not turn Instant Story into a timeout.
+  const deadlineSafeCandidate = rejectedInstantCandidates
+    .filter((item)=>String(item?.opening || "").trim())
+    .map((item)=>({
+      ...item,
+      hardBlocks: [
+        ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
+        ...speakerOwnershipIssuesV35367(item.opening, safeDraft),
+      ],
+    }))
+    .filter((item)=>item.hardBlocks.length === 0)
+    .filter((item)=>{
+      const text = String(item.opening || "").trim();
+      const words = text.split(/\s+/).filter(Boolean).length;
+      const finish = String(item.finishReason || "").toUpperCase();
+      return words >= 35 &&
+        words <= 260 &&
+        !["SAFETY","RECITATION","BLOCKLIST","PROHIBITED_CONTENT","MALFORMED_FUNCTION_CALL"].includes(finish) &&
+        !instantStoryHasTemplateLeak(text) &&
+        /[.!?…]["'”’)]?$/.test(text);
+    })
+    .sort((a,b)=>(a.issueCount || 99)-(b.issueCount || 99))[0] || null;
+
+  if (deadlineSafeCandidate?.opening) {
+    console.warn("[character-chat] v471 deadline-first candidate delivered", {
+      model: deadlineSafeCandidate.model,
+      durationMs: Date.now() - startedAt,
+      softWarnings: deadlineSafeCandidate.rejectionReasons || [],
+    });
+    return json({
+      opening: deadlineSafeCandidate.opening,
+      source: "ai_deadline_first_v471",
+      sceneSeed,
+      openingFamily,
+      softWarnings: deadlineSafeCandidate.rejectionReasons || [],
+    });
+  }
 
   try {
     const bestRejected = rejectedInstantCandidates
