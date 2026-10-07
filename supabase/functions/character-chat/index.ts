@@ -92,7 +92,7 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "469";
+const VELVET_ENGINE_RELEASE = "470";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2568,15 +2568,13 @@ RULES
     .filter((item)=>String(item?.opening || "").trim())
     .map((item)=>({
       ...item,
+      // v470: This is the no-dead-button lane. Only genuinely unsafe/canon-breaking
+      // opening failures remain fatal here. Character-identity/style/editorial
+      // classifiers are soft at this point because false positives must not turn
+      // a perfectly usable generated opening into a 503.
       hardBlocks: [
         ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
         ...instantStoryPremiseGateIssues(item.opening, safeDraft),
-        ...characterIdentityGateIssuesV35321({
-          reply: item.opening,
-          character: safeDraft,
-          recentCharacterReplies: recentOpenings,
-          opening: true,
-        }),
         ...speakerOwnershipIssuesV35367(item.opening, safeDraft),
       ],
       similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
@@ -2835,6 +2833,49 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}` }] }],
     } catch (salvageError) {
       console.warn("[character-chat] no-dead-button salvage failed", { error: getErrorMessage(salvageError) });
     }
+  }
+
+  // v470 FINAL NO-DEAD-BUTTON DELIVERY
+  // Provider timeouts and editorial classifiers must never surface as a dead
+  // Instant Story button. If every richer rescue lane failed, deliver the least
+  // problematic complete model draft as long as the core user-agency firewall
+  // and speaker-ownership firewall pass. Premise/style/identity/freshness issues
+  // become diagnostics here, not a 503.
+  const finalDeliverable = rejectedInstantCandidates
+    .filter((item)=>String(item?.opening || "").trim())
+    .map((item)=>({
+      ...item,
+      finalHardBlocks: [
+        ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
+        ...speakerOwnershipIssuesV35367(item.opening, safeDraft),
+      ],
+      similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
+    }))
+    .filter((item)=>item.finalHardBlocks.length === 0)
+    .filter((item)=>{
+      const text = String(item.opening || "").trim();
+      const words = text.split(/\s+/).filter(Boolean).length;
+      const finish = String(item.finishReason || "").toUpperCase();
+      return words >= 35 &&
+        words <= 260 &&
+        !["SAFETY","RECITATION","BLOCKLIST","PROHIBITED_CONTENT","MALFORMED_FUNCTION_CALL"].includes(finish) &&
+        !instantStoryHasTemplateLeak(text) &&
+        /[.!?…]["'”’)]?$/.test(text);
+    })
+    .sort((a,b)=>((a.issueCount || 99)-(b.issueCount || 99)) || (a.similarity-b.similarity))[0] || null;
+
+  if (finalDeliverable?.opening) {
+    console.warn("[character-chat] v470 final no-dead-button lane used", {
+      softWarnings: finalDeliverable.rejectionReasons || [],
+      model: finalDeliverable.model,
+    });
+    return json({
+      opening: finalDeliverable.opening,
+      source: "ai_final_delivery_v470",
+      sceneSeed,
+      openingFamily,
+      softWarnings: finalDeliverable.rejectionReasons || [],
+    });
   }
 
   return json({
