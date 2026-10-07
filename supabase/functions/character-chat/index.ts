@@ -94,7 +94,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "499";
+const VELVET_ENGINE_RELEASE = "500";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -4513,6 +4513,7 @@ EMOTIONAL INTELLIGENCE ENGINE
 - LONG-STORY MEMORY COMPRESSION: preserve promises, boundaries, wounds, secrets, relationship shifts, recurring rituals, important possessions, social ties and unresolved hooks when compressing old material. Drop ornamental detail before causal detail.
 - INITIATIVE PROFILE: respect how proactive this specific character is. High initiative can act first; low/reactive initiative may wait, prepare, hint or respond. Do not force identical decisiveness across characters.
 - NATURALNESS SCORER: before returning, silently judge whether the visible reply sounds like a person in this exact situation rather than an AI performing a trope. If naturalness is weak, simplify, vary rhythm, remove explanation and keep the most character-specific choice.
+- ORDINARY DIALOGUE NARRATION: do not narrate a character's voice "dropping into a quiet/conversational rhythm", shoulders "losing defensive weight", posture "softening", or similar prose that explains the emotional adjustment. Prefer a concrete glance/action only if it matters, then let the spoken line carry the shift.
 - CHARACTER DNA: preserve 5-6 identity anchors that should still be recognizable hundreds of turns later: core motive, defense, contradiction, social style, humor/voice, and one relationship-specific habit. Growth bends these anchors; it does not erase them.
 - CINEMATIC TRANSITIONS: scene changes should use concrete continuity from the prior beat rather than canned “later that evening” prose. A transition can be a cut to the next meaningful action, arrival, call, next morning or changed setting, with only the detail needed to orient.
 - ADAPTIVE DETAIL: narration density should respond to the scene. Fast dialogue can stay lean; spatially complex or emotionally quiet moments may need more grounding. Never pad a short beat to satisfy a default length.
