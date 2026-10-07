@@ -62,7 +62,7 @@ body {
 }
 
 :is(
-  .settings-group, .diagnostics-card, .profile-reference__identity, .profile-reference__private-banner, .profile-reference__menu button, .profile-reference__logout, .pulse-header, .pulse-character-card, .discover-burgundy__trash-row, .v312-backup-center, .story-hub__panel, .story-timeline__panel
+  .settings-group, .diagnostics-card, .profile-reference__identity, .profile-reference__private-banner, .profile-reference__menu button, .profile-reference__logout, .pulse-character-card, .discover-burgundy__trash-row, .v312-backup-center, .story-hub__panel, .story-timeline__panel
 ) {
   border-radius: var(--velvet-card-radius);
   box-shadow: var(--soft-shadow);
