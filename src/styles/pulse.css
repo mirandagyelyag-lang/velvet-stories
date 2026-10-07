@@ -1086,3 +1086,50 @@
  .pulse-header__editorial-title .reference-stories-title__spark{top:72px!important}
  .pulse-header--editorial .pulse-header__copy>p{margin-top:6px!important;font-size:.68rem!important;line-height:1.35!important}
 }
+
+/* v3.54.10 · Pulse masthead: three non-overlapping vertical zones */
+@media(max-width:760px){
+ .pulse-header--editorial{
+   min-height:178px!important;
+   padding:8px 0 20px!important;
+   align-items:start!important;
+ }
+ .pulse-header--editorial .pulse-header__copy{
+   display:grid!important;
+   grid-template-rows:128px auto!important;
+   align-content:start!important;
+ }
+ .pulse-header__editorial-title{
+   height:128px!important;
+   overflow:visible!important;
+ }
+ .pulse-header__editorial-title h1{
+   margin:40px 12px 0!important;
+   font-size:clamp(2.55rem,10vw,3.15rem)!important;
+   line-height:.88!important;
+ }
+ .pulse-header__editorial-title .reference-stories-title__script{
+   top:4px!important;
+   font-size:2rem!important;
+   line-height:1!important;
+ }
+ .pulse-header__editorial-title .reference-stories-title__line{
+   margin-top:42px!important;
+ }
+ .pulse-header__editorial-title .reference-stories-title__spark{
+   top:102px!important;
+ }
+ .pulse-header--editorial .pulse-header__copy>p{
+   position:relative!important;
+   z-index:1!important;
+   grid-row:2!important;
+   margin:8px 8px 0!important;
+   padding:0!important;
+   text-align:center!important;
+   font-size:.68rem!important;
+   line-height:1.4!important;
+ }
+ .pulse-header--editorial .pulse-header__library{
+   align-self:center!important;
+ }
+}
