@@ -829,7 +829,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
     grid-template-columns: repeat(5, minmax(0,1fr)) !important;
     gap: 2px !important;
     padding: 5px 6px !important;
-    background: linear-gradient(100deg, rgba(28,18,23,.96), rgba(23,16,20,.94)) !important;
+    background: var(--stories-nav, var(--surface)) !important;
     border: 1px solid rgba(232, 140, 163, .12) !important;
     border-radius: 25px !important;
     box-shadow: 0 18px 55px rgba(0,0,0,.43), inset 0 1px 0 rgba(255,255,255,.018) !important;
@@ -847,7 +847,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
     justify-content: center !important;
     gap: 5px !important;
     padding: 5px 0 !important;
-    color: #81777b !important;
+    color: var(--stories-muted, var(--text-secondary)) !important;
     background: transparent !important;
     border: 0 !important;
     border-radius: 15px !important;
@@ -864,7 +864,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   }
 
   .mobile-nav.velvet-reference-nav .sidebar__link--active {
-    color: #e99caf !important;
+    color: var(--stories-accent, var(--accent)) !important;
     background: transparent !important;
     box-shadow: none !important;
   }
@@ -876,7 +876,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
     bottom: -4px;
     width: 30px;
     height: 3px;
-    background: #dd7991;
+    background: var(--stories-accent, var(--accent));
     border-radius: 999px;
     box-shadow: 0 0 9px rgba(221,121,145,.55);
     transform: translateX(-50%);
@@ -982,7 +982,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
    dark artwork pasted on top of Velvet's global canvas.
    ========================================================= */
 
-html.velvet-burgundy-route[data-theme="dark"] {
+html[data-theme="dark"] {
   --stories-canvas: #0f090e;
   --stories-canvas-2: #170b12;
   --stories-ink: #f8edf0;
@@ -1011,7 +1011,7 @@ html.velvet-burgundy-route[data-theme="dark"] {
     linear-gradient(155deg, #0d080c 0%, #160a11 47%, #0b080b 100%);
 }
 
-html.velvet-burgundy-route[data-theme="light"] {
+html[data-theme="light"] {
   --stories-canvas: #f7eff2;
   --stories-canvas-2: #f1e4e9;
   --stories-ink: #402832;
@@ -1039,7 +1039,7 @@ html.velvet-burgundy-route[data-theme="light"] {
     linear-gradient(155deg, #fff9fb 0%, #f7eef2 48%, #f1e5e9 100%);
 }
 
-html.velvet-burgundy-route[data-theme="comfort"] {
+html[data-theme="comfort"] {
   --stories-canvas: #eee4dc;
   --stories-canvas-2: #e8dbd2;
   --stories-ink: #4c3a37;
@@ -1343,7 +1343,8 @@ body.velvet-burgundy-route .reference-stories-new {
   }
 }
 
-/* Mobile navigation follows Light / Comfort / Dark instantly. */
+/* Theme tokens remain on html while route effects unmount and lazy pages load.
+   The persistent mobile dock never falls back to a different route palette. */
 
 @media (max-width: 760px) {
   html.velvet-burgundy-route, body.velvet-burgundy-route, body.velvet-burgundy-route .app, body.velvet-burgundy-route .app__content {
