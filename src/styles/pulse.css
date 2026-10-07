@@ -1075,3 +1075,14 @@
  .pulse-header__editorial-title .reference-stories-title__spark{top:82px!important}
  .pulse-header--editorial .pulse-header__copy>p{font-size:.68rem!important}
 }
+
+/* v3.54.9 · balanced mobile editorial scale */
+@media(max-width:760px){
+ .pulse-header--editorial{min-height:142px!important;grid-template-columns:minmax(0,1fr) 48px!important;padding-bottom:18px!important}
+ .pulse-header__editorial-title{height:96px!important}
+ .pulse-header__editorial-title h1{margin:25px 12px 0!important;font-size:clamp(2.7rem,10.5vw,3.35rem)!important;line-height:.84!important;letter-spacing:-.035em!important}
+ .pulse-header__editorial-title .reference-stories-title__script{top:2px!important;font-size:2.05rem!important}
+ .pulse-header__editorial-title .reference-stories-title__line{margin-top:24px!important}
+ .pulse-header__editorial-title .reference-stories-title__spark{top:72px!important}
+ .pulse-header--editorial .pulse-header__copy>p{margin-top:6px!important;font-size:.68rem!important;line-height:1.35!important}
+}
