@@ -27,7 +27,8 @@ function Settings({ onBack, onOpenDiagnostics }) {
   const [safeModeBusy, setSafeModeBusy] = useState(false);
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupNotice, setBackupNotice] = useState("");
-  const [safetySnapshots, setSafetySnapshots] = useState([]);\n  const [plan, setPlan] = useState({ name: "free", status: "active", usedToday: 0, dailyLimit: 30, loading: true });
+  const [safetySnapshots, setSafetySnapshots] = useState([]);
+  const [plan, setPlan] = useState({ name: "free", status: "active", usedToday: 0, dailyLimit: 30, loading: true });
   const restoreInputRef = useRef(null);
   const { user } = useAuth();
   useEffect(() => {
@@ -83,7 +84,8 @@ function Settings({ onBack, onOpenDiagnostics }) {
     })().catch(()=>live&&setPlan((current)=>({ ...current, loading:false })));
     return () => { live=false; };
   }, [user?.id]);
-\n  async function refreshLocalSafetySnapshots() {
+
+  async function refreshLocalSafetySnapshots() {
     if (!user?.id) return;
     try { setSafetySnapshots(await listAccountSafetySnapshotsV34915(user.id)); } catch {}
   }
