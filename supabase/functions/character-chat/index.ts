@@ -94,7 +94,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "501";
+const VELVET_ENGINE_RELEASE = "503";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1159,6 +1159,63 @@ async function handleCharacterAssist({ apiKey, draft, mode, focusFields = [] }) 
 }
 
 
+// v3.54.23: local no-dead-button fallback for Reply Companion.
+function localReplyAssistFallback({ history = [], draft = "", requestedIntent = "ideas", custom = "" } = {}) {
+  const cleanText = (v, max = 500) => String(v || "").replace(/\s+/g, " ").trim().slice(0, max);
+  const source = cleanText(draft || custom, 500);
+  const lower = cleanText(custom || draft, 500).toLowerCase();
+  const latestCharacter = [...(Array.isArray(history) ? history : [])].reverse().find((row) => /character|assistant/i.test(String(row?.speaker || "")))?.text || "";
+  const make = (text, tone, meaning_es) => ({ text: cleanText(text, 500), tone, meaning_es });
+
+  let options = [];
+  if (/\b(lo\s+prometes|prometelo|promételo|promise\s+me|do\s+you\s+promise)\b/i.test(lower)) {
+    options = [
+      make("Do you promise?", "directa", "Le pides una promesa clara."),
+      make("Promise me?", "suave", "Suena más cercano y natural."),
+      make("You promise?", "casual", "Suena breve y espontáneo."),
+      make("Okay, but you better mean it.", "juguetona", "Aceptas, pero dejas claro que hablas en serio."),
+    ];
+  } else if (/\b(perdon|perdón|sorry|disculp)\b/i.test(lower)) {
+    options = [
+      make("I'm sorry.", "directa", "Te disculpas sin adornarlo."),
+      make("Okay, that was on me. Sorry.", "honesta", "Asumes tu parte de forma natural."),
+      make("I didn't mean it like that. Sorry.", "aclaratoria", "Aclara intención sin dramatizar."),
+      make("Yeah, I messed that up. I'm sorry.", "casual", "Suena humano y poco ensayado."),
+    ];
+  } else if (source && /^[\x00-\x7F]+$/.test(source)) {
+    const base = source.replace(/^["“]|["”]$/g, "").trim();
+    options = [
+      make(base, "tu idea", "Conserva exactamente lo que querías decir."),
+      make(base.replace(/\bI am\b/gi, "I'm").replace(/\bdo not\b/gi, "don't").replace(/\bcannot\b/gi, "can't"), "natural", "La misma intención con inglés más conversacional."),
+      make(base.endsWith("?") ? base : base + ".", "simple", "La misma idea, directa y limpia."),
+      make(base.length < 120 ? `Honestly, ${base.charAt(0).toLowerCase() + base.slice(1)}` : base, "honesta", "Mantiene el sentido con un tono un poco más personal."),
+    ];
+  } else {
+    const mode = String(requestedIntent || "ideas").toLowerCase();
+    const byMode = mode === "dry"
+      ? ["Right.", "Noted.", "Okay, then.", "Good to know."]
+      : mode === "playful"
+        ? ["You sure about that?", "That's what you're going with?", "Okay, I'll remember that.", "Bold choice."]
+        : mode === "flirty"
+          ? ["You say that now.", "Careful, I might remember that.", "I'll hold you to that.", "That almost sounded convincing."]
+          : ["What do you mean?", "Okay, tell me more.", "I'm listening.", "And what am I supposed to do with that?"];
+    options = byMode.map((text, index) => make(text, ["natural","directa","casual","curiosa"][index], "Respuesta de respaldo sin inventar hechos de la escena."));
+  }
+
+  const unique=[...new Map(options.filter((x)=>x.text).map((x)=>[x.text.toLowerCase(),x])).values()].slice(0,4);
+  while(unique.length<4) unique.push(make(["Okay, tell me more.","What do you mean?","I'm listening.","Go on."][unique.length],"natural","Respuesta breve de respaldo."));
+  return {
+    understanding: {
+      literal_es: latestCharacter ? "Velvet no pudo analizar esta línea con IA en este momento." : "",
+      explanation_es: "Modo de respaldo activo: las opciones conservan tu intención y evitan inventar contexto.",
+      subtext_es: "",
+      english_notes: [],
+    },
+    options: unique,
+    fallback: true,
+  };
+}
+
 // Reply Companion lineage contract: exactly 4 distinct, natural English options; FIRST understand the character's latest message.
 // If English is ambiguous, explain the most likely reading cautiously and mention the alternate.
 async function handleReplyAssist({ apiKey, character, recentMessages, userDraft, intent, customIntent }) {
@@ -1202,7 +1259,9 @@ USER DRAFT ${draft||"(none)"}
 MODE ${requestedIntent}
 CUSTOM ${custom||"(none)"}`;
   const models=[...new Set([GEMINI_FALLBACK_MODEL,GEMINI_EMERGENCY_MODEL,GEMINI_MODEL].filter(Boolean))]; let lastError="Velvet couldn't help with this message.";
-  for(const model of models){try{const response=await fetch(modelEndpoint(model),{method:"POST",headers:geminiHeaders(apiKey),body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1500,responseMimeType:"application/json",thinkingConfig:{thinkingLevel:"LOW"}}})}); const data=await response.json().catch(()=>({})); if(!response.ok){lastError=data?.error?.message||lastError;continue;} const parsed=JSON.parse(stripJsonFence(extractCandidateText(data))); const options=Array.isArray(parsed?.options)?parsed.options.slice(0,4).map(item=>({text:cleanPromptValue(item?.text,500),tone:cleanPromptValue(item?.tone,80),meaning_es:cleanPromptValue(item?.meaning_es,350)})).filter(x=>x.text):[]; const unique=[...new Map(options.map(x=>[x.text.toLowerCase().replace(/\s+/g," ").trim(),x])).values()]; if(unique.length===4)return json({understanding:parsed?.understanding||{},options:unique});}catch(error){lastError=getErrorMessage(error)}} throw new Error(lastError);
+  for(const model of models){try{const response=await fetch(modelEndpoint(model),{method:"POST",headers:geminiHeaders(apiKey),body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1500,responseMimeType:"application/json",thinkingConfig:{thinkingLevel:"LOW"}}})}); const data=await response.json().catch(()=>({})); if(!response.ok){lastError=data?.error?.message||lastError;console.warn("[character-chat] reply_assist provider failed",{model,status:response.status});continue;} const parsed=JSON.parse(stripJsonFence(extractCandidateText(data))); const options=Array.isArray(parsed?.options)?parsed.options.slice(0,4).map(item=>({text:cleanPromptValue(item?.text,500),tone:cleanPromptValue(item?.tone,80),meaning_es:cleanPromptValue(item?.meaning_es,350)})).filter(x=>x.text):[]; const unique=[...new Map(options.map(x=>[x.text.toLowerCase().replace(/\s+/g," ").trim(),x])).values()]; if(unique.length===4)return json({understanding:parsed?.understanding||{},options:unique});}catch(error){lastError=getErrorMessage(error);console.warn("[character-chat] reply_assist attempt failed",{model,error:lastError})}}
+  console.warn("[character-chat] reply_assist using local fallback",{reason:lastError});
+  return json(localReplyAssistFallback({history,draft,requestedIntent,custom}));
 }
 
 async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
