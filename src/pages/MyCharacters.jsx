@@ -1,4 +1,5 @@
 import {
+  Crown,
   Heart,
   PenLine,
   Search,
@@ -266,6 +267,7 @@ function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, o
   const inTrash = view === "trash";
   return (
     <header className={`characters-library__compact-hero${inTrash ? "" : " reference-stories-hero"}`}>
+      {!inTrash && <div className="reference-stories-hero__private"><Crown size={19}/><span>PRIVATE CAST</span></div>}
       <div className="characters-library__compact-copy">
         {inTrash ? (
           <h1>Trash</h1>

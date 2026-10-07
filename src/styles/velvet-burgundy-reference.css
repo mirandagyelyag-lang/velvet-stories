@@ -2259,3 +2259,10 @@ header.reference-stories-hero:is(.characters-library__compact-hero, .pulse-heade
 @media (max-width: 760px) {
   .pulse-header__editorial-title .reference-stories-title__spark { left: calc(50% - .45rem); }
 }
+
+/* Crown labels use the same icon, type and color as the other libraries. */
+header:is(.characters-library__compact-hero, .pulse-header--editorial) > .reference-stories-hero__private {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
