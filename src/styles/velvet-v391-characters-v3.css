@@ -365,16 +365,3 @@
     letter-spacing: .18em !important;
   }
 }
-
-
-/* v3.54.7 · Characters uses the canonical Velvet editorial masthead */
-.characters-library__compact-hero:not(:has(.characters-library__compact-copy > h1)){
-  display:grid !important;grid-template-columns:minmax(0,1fr) auto !important;align-items:center !important;
-}
-.characters-library__editorial-title{width:100% !important;max-width:760px;margin:0 !important}
-.characters-library__compact-copy{min-width:0;width:100%}
-.characters-library__compact-copy>p{margin-top:10px !important}
-@media(max-width:760px){
- .characters-library__editorial-title{transform:none !important}
- .characters-library__editorial-title h1{font-size:clamp(3rem,13vw,4.4rem) !important}
-}

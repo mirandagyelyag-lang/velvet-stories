@@ -2211,3 +2211,89 @@ body.velvet-burgundy-route .reference-stories-new {
     min-height: 0 !important;
   }
 }
+
+/* Characters and Pulse share the Stories typography. Keep the masthead in
+   document flow so the subtitle always starts below the complete wordmark. */
+header:is(.characters-library__compact-hero, .pulse-header--editorial) {
+  position: relative;
+  display: block;
+  min-height: 170px;
+  padding: 12px 0 24px;
+}
+:is(.characters-library__compact-copy, .pulse-header--editorial .pulse-header__copy) {
+  width: 100%;
+  min-width: 0;
+}
+.reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: min(560px, 100%);
+  margin: 0 auto;
+  container-type: inline-size;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: 32px auto auto;
+}
+.reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) h1 {
+  grid-column: 2;
+  grid-row: 2;
+  margin: 0 22px;
+  color: var(--stories-ink-soft, var(--pulse-ink-soft));
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(3.5rem, 8vw, 5rem);
+  font-weight: 500;
+  line-height: .9;
+  letter-spacing: -.025em;
+}
+.reference-stories-title.characters-library__editorial-title h1 {
+  font-size: clamp(2rem, 14.5cqi, 5rem);
+}
+.reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) .reference-stories-title__script {
+  position: relative;
+  top: auto;
+  left: auto;
+  grid-column: 2;
+  grid-row: 1;
+  transform: rotate(-3deg);
+  font-family: "Allura", cursive;
+  font-size: 3rem;
+}
+.reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) .reference-stories-title__line {
+  grid-row: 2;
+  margin-top: 0;
+}
+.reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) .reference-stories-title__line--left { grid-column: 1; }
+.reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) .reference-stories-title__line--right { grid-column: 3; }
+.reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) .reference-stories-title__spark {
+  position: relative;
+  top: auto;
+  left: auto;
+  grid-column: 2;
+  grid-row: 3;
+  transform: none;
+  margin-top: 12px;
+  line-height: 1;
+}
+:is(.characters-library__compact-copy, .pulse-header--editorial .pulse-header__copy) > p {
+  max-width: none;
+  margin: 12px 0 0;
+  text-align: center;
+  line-height: 1.5;
+}
+:is(.characters-library__hero-create, .pulse-header--editorial .pulse-header__library) {
+  position: absolute;
+  top: 12px;
+  right: 0;
+}
+@media (max-width: 760px) {
+  header:is(.characters-library__compact-hero, .pulse-header--editorial) { padding-top: 8px; }
+  .reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) { grid-template-rows: 28px auto auto; }
+  .reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) h1 {
+    margin: 0 13px;
+    font-size: clamp(3.25rem, 15vw, 4.45rem);
+  }
+  .reference-stories-title.characters-library__editorial-title h1 { font-size: clamp(2rem, 12cqi, 3.85rem); }
+  .reference-stories-title:is(.characters-library__editorial-title, .pulse-header__editorial-title) .reference-stories-title__script { font-size: 2.8rem; }
+  :is(.characters-library__hero-create, .pulse-header--editorial .pulse-header__library) { top: 0; }
+}
