@@ -986,3 +986,51 @@
 .pulse-portrait--group-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+
+
+/* v3.54.6 · Pulse joins the Stories / Characters editorial family */
+.pulse-page{padding-top:28px !important}
+.pulse-header--editorial{
+  align-items:center;
+  min-height:150px;
+  margin-bottom:34px;
+  padding:18px 0 24px;
+  background:transparent;
+  border-bottom:1px solid var(--pulse-line);
+}
+.pulse-header--editorial .pulse-header__eyebrow{margin-bottom:8px}
+.pulse-header__wordmark{display:grid;width:max-content;line-height:1}
+.pulse-header__wordmark span{
+  z-index:1;
+  margin:0 0 -7px 9px;
+  color:var(--pulse-accent-strong);
+  font-family:"Pinyon Script",cursive;
+  font-size:clamp(1.75rem,3.4vw,2.3rem);
+  font-weight:400;
+  line-height:1;
+  transform:rotate(-3deg);
+  transform-origin:left bottom;
+}
+.pulse-header__wordmark strong{
+  color:var(--pulse-ink-soft);
+  font-family:"Manrope",sans-serif;
+  font-size:clamp(1.18rem,2.25vw,1.48rem);
+  font-weight:650;
+  line-height:1;
+  letter-spacing:.2em;
+}
+.pulse-header--editorial .pulse-header__copy>p{margin-top:14px}
+.pulse-header--editorial .pulse-header__library{
+  width:50px !important;height:50px !important;min-height:50px !important;padding:0 !important;
+  display:grid !important;place-items:center;border-radius:50% !important;
+}
+.pulse-state{min-height:330px !important;padding:64px 18px 40px !important}
+.pulse-state>svg{color:var(--pulse-accent-strong)}
+.pulse-state h2{color:var(--pulse-ink-soft)}
+@media(max-width:760px){
+  .pulse-page{padding-top:22px !important}
+  .pulse-header--editorial{min-height:132px;margin-bottom:24px;padding:12px 0 20px}
+  .pulse-header__wordmark span{font-size:1.65rem}
+  .pulse-header__wordmark strong{font-size:1.08rem;letter-spacing:.18em}
+  .pulse-header--editorial .pulse-header__copy>p{max-width:250px;margin-top:11px}
+}
