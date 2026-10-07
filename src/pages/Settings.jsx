@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Activity, ArrowLeft, Check, Download, Eye, FileDown, FileUp, Heart, LoaderCircle, MessageCircle, MonitorSmartphone, Moon, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Sun, Trash2, Type, WifiOff, X, Wrench } from "lucide-react";
+import { Activity, ArrowLeft, Check, Crown, Download, Eye, FileDown, FileUp, Heart, LoaderCircle, MessageCircle, MonitorSmartphone, Moon, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Sun, Trash2, Type, WifiOff, X, Wrench } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import { useFeedback } from "../context/FeedbackContext";
 import { usePWA } from "../context/PWAContext";
@@ -27,7 +27,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
   const [safeModeBusy, setSafeModeBusy] = useState(false);
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupNotice, setBackupNotice] = useState("");
-  const [safetySnapshots, setSafetySnapshots] = useState([]);
+  const [safetySnapshots, setSafetySnapshots] = useState([]);\n  const [plan, setPlan] = useState({ name: "free", status: "active", usedToday: 0, dailyLimit: 30, loading: true });
   const restoreInputRef = useRef(null);
   const { user } = useAuth();
   useEffect(() => {
@@ -68,7 +68,22 @@ function Settings({ onBack, onOpenDiagnostics }) {
     listAccountSafetySnapshotsV34915(user.id).then(setSafetySnapshots).catch(()=>setSafetySnapshots([]));
   }, [user?.id]);
 
-  async function refreshLocalSafetySnapshots() {
+  useEffect(() => {
+    if (!user?.id) { setPlan({ name:"free", status:"active", usedToday:0, dailyLimit:30, loading:false }); return; }
+    let live = true;
+    (async () => {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const [{ data: subscription }, { count }] = await Promise.all([
+        supabase.from("subscriptions").select("plan,status,founder_price").eq("user_id", user.id).maybeSingle(),
+        supabase.from("ai_usage_events").select("id", { count:"exact", head:true }).eq("user_id", user.id).gte("created_at", today.toISOString()),
+      ]);
+      if (!live) return;
+      const name = String(subscription?.plan || "free");
+      setPlan({ name, status:String(subscription?.status || "active"), founder:Boolean(subscription?.founder_price), usedToday:Number(count || 0), dailyLimit:name==="owner"?null:name==="plus"?300:30, loading:false });
+    })().catch(()=>live&&setPlan((current)=>({ ...current, loading:false })));
+    return () => { live=false; };
+  }, [user?.id]);
+\n  async function refreshLocalSafetySnapshots() {
     if (!user?.id) return;
     try { setSafetySnapshots(await listAccountSafetySnapshotsV34915(user.id)); } catch {}
   }
@@ -159,6 +174,11 @@ function Settings({ onBack, onOpenDiagnostics }) {
       <button onClick={()=>jumpTo("settings-updates")}><RefreshCw size={14}/>Updates</button>
       <button onClick={()=>jumpTo("settings-system")}><Wrench size={14}/>System</button>
     </nav>
+    <div className="settings-plan-card">
+      <span className="settings-plan-card__icon"><Crown size={20}/></span>
+      <div className="settings-plan-card__copy"><small>VELVET PLAN</small><strong>{plan.loading ? "Checking…" : plan.name === "owner" ? "Owner" : plan.name === "plus" ? "Velvet+" : "Velvet Free"}</strong><span>{plan.name === "owner" ? "Full access · no daily generation limit" : plan.name === "plus" ? "Up to 300 AI generations per day" : "30 AI generations per day"}</span></div>
+      <div className="settings-plan-card__usage"><small>TODAY</small><strong>{plan.loading ? "…" : plan.dailyLimit ? `${plan.usedToday} / ${plan.dailyLimit}` : "∞"}</strong><span>{plan.name === "free" ? "Velvet+ founder price · $2.990 CLP/month · coming soon" : plan.name === "plus" ? (plan.founder ? "Founder plan" : "Plus plan") : "Creator account"}</span></div>
+    </div>
     <div className="settings-section-label" id="settings-personalize"><span>01</span><div><strong>Personalize</strong><small>How Velvet looks and feels on your phone.</small></div></div>
     <div className="settings-group" id="settings-appearance"><header><Eye size={19}/><div><h2>Appearance</h2><p>Choose the light that feels best for reading.</p></div></header>
       <div className="setting-row"><strong>Theme</strong><div className="setting-segments">
