@@ -94,7 +94,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "498";
+const VELVET_ENGINE_RELEASE = "499";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -5894,7 +5894,6 @@ function normalizeText(value = "") {
 function isSilentContinueText(value = "") {
   const text = String(value || "").trim();
   return text.startsWith("[SILENT_CONTINUE") ||
-    text.startsWith("[RETURN_MAIN_POV") ||
     text.startsWith("[ADVANCE_SCENE") ||
     text.includes("Treat this as silence from the user") ||
     /^[.…。]+$/u.test(text);
@@ -6038,8 +6037,7 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
   const spanishMovement = /\b(?:me\s+(?:voy|fui|alejo)|salgo|me fui|me baje|me bajé)\b/i.test(raw);
   const exitsScene = Boolean(stagedMovement || directMovement || spanishMovement);
 
-  if (raw.startsWith("[RETURN_MAIN_POV")) kind = "return_main_pov";
-  else if (raw.startsWith("[ADVANCE_SCENE")) kind = "advance_scene";
+  if (raw.startsWith("[ADVANCE_SCENE")) kind = "advance_scene";
   else if (isSilentContinueText(raw) && recentInteractiveThreadIsOpen(messages)) kind = "interactive_thread";
   else if (isSilentContinueText(raw)) kind = "silent_continue";
   else if (isExplicitTimeSkipDirective(raw)) kind = "time_skip";
@@ -6329,7 +6327,7 @@ function hasUnsolicitedOffscreenLeadContact(reply = "", latestUserMessage = "", 
 }
 
 function hasSilentContinuationPropLoop(reply = "", turnIntent = {}, recentReplies = []) {
-  if (!["silent_continue", "return_main_pov", "advance_scene"].includes(String(turnIntent?.kind || ""))) return false;
+  if (!["silent_continue", "advance_scene"].includes(String(turnIntent?.kind || ""))) return false;
   const text = normalizeText(reply);
   const words = text.split(/\s+/).filter(Boolean).length;
   if (words > 90) return true;
@@ -6440,11 +6438,13 @@ function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMes
   if (openingRegeneration || kind === "opening") {
     base.push("- Opening: establish one concrete active situation with almost no setup tax. Prefer dialogue first. Use at most one useful environmental detail, no prop inventory, and no choreographed entrance. The first spoken line should sound like something this person would actually say aloud, not a polished premise summary. End with an immediate opening the user can answer.");
   } else if (kind === "advance_scene") {
-    base.push("- ADVANCE SCENE: the user explicitly asked for meaningful forward motion, not another holding beat. Make ONE concrete change now through the lead character or already-established world: a decision, reveal, invitation, consequence, changed plan, social shift, commitment, boundary, or action with a real effect.");
-    base.push("- Do NOT invent a new NPC, unseen agreement, forgotten appointment, prior promise, destination, object, message, or shared history to manufacture momentum. Use only visible canon, approved cast, current scene state, active plans/threads, or a new prospective choice made on-page now.");
-    base.push("- The lead character must own the movement when possible. Do not outsource the beat to a mystery he/she/they, anonymous caller, random friend, or offscreen group.");
-    base.push("- Advance exactly one step, then stop before choosing the user's reaction.");
-  } else if (kind === "silent_continue" || kind === "return_main_pov") {
+    base.push("- DOUBLE-DOT ADVANCE: the user explicitly asked for SOMETHING NEW TO HAPPEN. Do not paraphrase, echo, reframe, or merely intensify the previous beat.");
+    base.push("- Introduce ONE meaningful change that is causally plausible from the established scene. Good forms include: an already-grounded person approaches, an interruption occurs, a small accident or mishap happens, a consequence arrives, the environment changes in a way that matters, the lead makes a consequential decision, a conflict or opportunity appears, or an existing unresolved thread materially moves.");
+    base.push("- Novelty is mandatory: the resulting beat must change what can happen next. Repeating the same joke, apology, posture, flirt, question, prop interaction, or emotional point in new wording is a failure.");
+    base.push("- Do NOT manufacture momentum with a phantom NPC, invented prior plan, fake forgotten appointment, unseen promise, fabricated message, or retroactive shared history. New anonymous background people may enter only when the setting naturally supports them and they are introduced clearly in the same reply.");
+    base.push("- Prefer the smallest event that genuinely changes the scene over random spectacle. Match scale to context. A dropped tray, sudden rain, class announcement, minor collision, phone ringing, friend arriving, alarm, power cut, missed bus, spilled drink, door opening, argument nearby, or meaningful interruption can work when plausible.");
+    base.push("- Advance exactly one event or decision, then stop before deciding the user's reaction.");
+  } else if (kind === "silent_continue") {
     base.push("- SILENT CONTINUE: the user intentionally yielded the narrative turn. Continue from the exact last state and add one concrete new beat: dialogue, decision, movement with purpose, a real social exchange, an external event with consequence, or a specific action that changes what can happen next.");
     base.push("- If the user is currently off-scene, follow the character's OWN life. Do not spend the turn watching the doorway, remembering where the user vanished, leaning against a wall/pillar, breathing, or stating that the character is not looking for them. Independent activity must actually happen on-page.");
   } else if (kind === "time_skip") {
@@ -10240,14 +10240,14 @@ function validateNarrativeReply(reply = "", options = {}) {
   const deterministicNaturalness = deterministicNaturalnessScore(text, options);
   if (deterministicNaturalness < 72) issues.push("naturalness_score_low");
 
-  const needsSocialBeat = ["reassurance", "affection", "direct_question", "challenge", "charged_nonverbal", "silent_continue", "return_main_pov", "advance_scene", "digital_message", "interactive_thread", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
+  const needsSocialBeat = ["reassurance", "affection", "direct_question", "challenge", "charged_nonverbal", "silent_continue", "advance_scene", "digital_message", "interactive_thread", "confrontation", "confrontation_exit"].includes(turnIntent.kind);
   if (needsSocialBeat && words.length < 16) issues.push("underdeveloped_social_beat");
   if (turnIntent.kind === "interactive_thread") {
     const dialogueUnits = [...text.matchAll(/["“]([^"”]{2,})["”]/g)].length;
     const digitalMarkers = (normalizeText(text).match(/\b(?:message|text|dm|reply|replied|screen|phone|notification|typing|chat|mensaje|respondio|respondió|escribio|escribió)\b/g) || []).length;
     if (words.length < 85 || (dialogueUnits < 3 && digitalMarkers < 4)) issues.push("interactive_thread_collapsed");
   }
-  if (["reassurance", "affection", "silent_continue", "return_main_pov", "advance_scene"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
+  if (["reassurance", "affection", "silent_continue", "advance_scene"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
   if (turnIntent.kind === "affection" && words.length < 24) issues.push("missing_emotional_impact");
   if (["confrontation", "confrontation_exit"].includes(turnIntent.kind) && words.length < 28) issues.push("underdeveloped_emotional_confrontation");
   if (["challenge", "charged_nonverbal"].includes(turnIntent.kind) && words.length < 20) issues.push("underdeveloped_charged_beat");
@@ -12785,8 +12785,7 @@ function getLengthGuidance(length, kind, latestUserMessage = "") {
     return "Aim for 40–80 words. You may go up to about 120 only when the emotional beat truly needs development, such as a serious confrontation, confession, rupture, grief, fear or meaningful repair. Do not become verbose just because the scene is emotional.";
   }
   if (kind === "silent_continue") return "15–45 words. Add ONE meaningful beat and stop. No atmosphere padding, repeated body-language geometry, or second mini-scene.";
-  if (kind === "return_main_pov") return "20–60 words. Re-center quickly with one useful action or line.";
-  if (kind === "advance_scene") return "25–70 words. Make ONE concrete story change, then stop before deciding the user's response.";
+  if (kind === "advance_scene") return "25–80 words. Make ONE concrete external or character-driven change that materially alters the scene, then stop before deciding the user's response.";
   if (["challenge", "charged_nonverbal"].includes(kind)) return "20–60 words. Let one sharp choice or line carry the tension; do not over-explain.";
   if (kind === "reassurance") return "20–60 words. One honest reaction plus one natural line is enough.";
   if (kind === "affection") return "20–60 words unless the user made a major confession or vulnerable disclosure.";
@@ -12825,7 +12824,6 @@ function stripJsonFence(value) {
 }
 function compactMessageForPrompt(value, maximum = 3200) {
   const text = String(value || "").trim();
-  if (text.startsWith("[RETURN_MAIN_POV")) return "[RETURN_MAIN_POV]";
   if (text.startsWith("[ADVANCE_SCENE")) return "[ADVANCE_SCENE]";
   if (isSilentContinueText(text)) return "[SILENT_CONTINUE]";
   return cleanPromptValue(text, maximum);
