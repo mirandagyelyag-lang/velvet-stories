@@ -105,6 +105,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   align-items: center;
   justify-items: center;
   transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .reference-stories-title h1 {
@@ -153,10 +154,16 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 }
 
 .reference-stories-new {
+  position: relative;
+  z-index: 6;
   width: 56px;
   height: 56px;
+  min-width: 56px;
+  min-height: 56px;
   display: grid;
   place-items: center;
+  touch-action: manipulation;
+  pointer-events: auto;
   color: #f6c4d0;
   background: radial-gradient(circle at 50% 42%, rgba(197, 73, 105, .24), rgba(59, 17, 31, .66) 68%),
     rgba(24, 11, 17, .82);
