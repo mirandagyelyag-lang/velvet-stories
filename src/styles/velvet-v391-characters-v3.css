@@ -327,3 +327,22 @@
     animation: none;
   }
 }
+
+
+/* v3.54.2 · Match Characters create action to Story Library */
+.characters-library__hero-create {
+  width: 50px !important;
+  height: 50px !important;
+  min-height: 50px !important;
+  border-radius: 50% !important;
+  background: color-mix(in srgb, var(--stories-surface, #fff) 88%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--char-wine) 20%, transparent) !important;
+  color: var(--char-wine) !important;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--char-wine) 12%, transparent) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.characters-library__hero-create:hover {
+  background: color-mix(in srgb, var(--stories-surface, #fff) 96%, transparent) !important;
+  border-color: color-mix(in srgb, var(--char-wine) 28%, transparent) !important;
+}
