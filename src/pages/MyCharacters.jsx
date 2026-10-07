@@ -281,7 +281,7 @@ function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, o
       {inTrash ? (
         <button className="characters-library__hero-back" type="button" onClick={onBack}>Back</button>
       ) : (
-        <button className="characters-library__hero-create reference-stories-new" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={20} /></button>
+        <button className="characters-library__hero-create reference-stories-new" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={26}/></button>
       )}
     </header>
   );
