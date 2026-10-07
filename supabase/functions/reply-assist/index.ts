@@ -10,6 +10,36 @@ const clean = (v: unknown, n = 1000) => String(v ?? "").replace(/\u0000/g, "").t
 const stripFence = (s: string) => s.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 const textOf = (data: any) => (data?.candidates?.[0]?.content?.parts || []).map((p:any)=>p?.text||"").join("").trim();
 
+function parseLooseJson(value: string) {
+  const raw = stripFence(String(value || "")).trim();
+  if (!raw) return null;
+  const candidates = [raw];
+  const firstObject = raw.indexOf("{");
+  const lastObject = raw.lastIndexOf("}");
+  if (firstObject >= 0 && lastObject > firstObject) candidates.push(raw.slice(firstObject, lastObject + 1));
+  const firstArray = raw.indexOf("[");
+  const lastArray = raw.lastIndexOf("]");
+  if (firstArray >= 0 && lastArray > firstArray) candidates.push(raw.slice(firstArray, lastArray + 1));
+  for (const candidate of candidates) {
+    try { return JSON.parse(candidate); } catch {}
+    try { return JSON.parse(candidate.replace(/,\s*([}\]])/g, "$1")); } catch {}
+  }
+  return null;
+}
+
+function fallbackStoryPaths(character: any, history: any[]) {
+  const name = clean(character?.name || "the character", 80) || "the character";
+  return {
+    model: "local-safe-fallback",
+    paths: [
+      { title: "Make a decision", vibe: "decisive", preview: `${name} makes one concrete choice that changes what happens next.`, direction: `Have ${name} make one concrete, character-specific decision based only on the visible current scene and established canon. It must change the immediate situation without deciding the user's response.` },
+      { title: "Change the dynamic", vibe: "social", preview: `The tone shifts because ${name} says or does something that materially changes the interaction.`, direction: `Change the social dynamic through ${name}'s own grounded action, admission, boundary, invitation, refusal, or reveal. Use only established facts. Do not invent prior plans, promises, or offscreen history.` },
+      { title: "Use what’s here", vibe: "grounded", preview: "An existing detail in the scene becomes relevant instead of introducing random new lore.", direction: "Advance the story by paying off an object, person, task, tension, or unresolved detail already visible in the recent scene. Do not introduce a mystery NPC, random accident, or new canon merely to create motion." },
+      { title: "Complicate the moment", vibe: "tense", preview: "A plausible consequence or interruption grows from what is already happening.", direction: "Create one plausible complication that follows causally from the current scene or recent exchange. Keep it prospective and on-page. Do not pretend an unseen agreement, appointment, message, or shared plan already existed." }
+    ]
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -70,6 +100,7 @@ USER DRAFT ${draft||"(none)"}`;
     // Do not spend 18 seconds on each model serially. First valid four-option result wins.
     const assistControllers = new Map<string, AbortController>();
     const assistErrors: string[] = [];
+    const partialResults: any[] = [];
     const assistHedges = [0, 120, 280, 520];
     const attemptAssist = async (model: string, index: number) => {
       const wait = assistHedges[index] ?? 800;
@@ -80,17 +111,26 @@ USER DRAFT ${draft||"(none)"}`;
         const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method:"POST", signal:ctrl.signal, headers:{"Content-Type":"application/json","x-goog-api-key":apiKey}, body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:storyPathTask?1000:1300,responseMimeType:"application/json",thinkingConfig:{thinkingLevel:"LOW"}}}) });
         const data=await r.json().catch(()=>({}));
         if(!r.ok) throw new Error(clean(data?.error?.message,500)||`Gemini returned ${r.status}`);
-        const parsed=JSON.parse(stripFence(textOf(data)));
+        const parsed=parseLooseJson(textOf(data));
+        if (!parsed) throw new Error("Gemini returned malformed JSON.");
         if (storyPathTask) {
           const paths=(Array.isArray(parsed?.paths)?parsed.paths:[]).map((x:any)=>({title:clean(x?.title,90),vibe:clean(x?.vibe,60),preview:clean(x?.preview,320),direction:clean(x?.direction,700)})).filter((x:any)=>x.title&&x.direction);
           const unique=[...new Map(paths.map((x:any)=>[x.direction.toLowerCase().replace(/\s+/g," "),x])).values()].slice(0,4);
-          if(unique.length!==4) throw new Error("Gemini returned fewer than four usable story paths.");
-          return {paths:unique, model};
+          if(unique.length>=2) {
+            const result={paths:unique, model};
+            if(unique.length<4) partialResults.push(result);
+            if(unique.length===4) return result;
+          }
+          throw new Error("Gemini returned fewer than two usable story paths.");
         }
         const opts=(Array.isArray(parsed?.options)?parsed.options:[]).map((x:any)=>({text:clean(x?.text,1400),tone:clean(x?.tone,80),approach_es:clean(x?.approach_es,320),meaning_es:clean(x?.meaning_es,500)})).filter((x:any)=>x.text);
         const unique=[...new Map(opts.map((x:any)=>[x.text.toLowerCase().replace(/\s+/g," "),x])).values()].slice(0,4);
-        if(unique.length!==4) throw new Error("Gemini returned fewer than four usable reply options.");
-        return {understanding:parsed?.understanding||{},options:unique, model};
+        if(unique.length>=2) {
+          const result={understanding:parsed?.understanding||{},options:unique, model};
+          if(unique.length<4) partialResults.push(result);
+          if(unique.length===4) return result;
+        }
+        throw new Error("Gemini returned fewer than two usable reply options.");
       } catch(e) { const message=e instanceof Error?e.message:String(e); assistErrors.push(message); throw e; }
       finally { clearTimeout(timer); }
     };
@@ -100,6 +140,16 @@ USER DRAFT ${draft||"(none)"}`;
       return json(winner);
     } catch {
       for(const ctrl of assistControllers.values()) if(!ctrl.signal.aborted) ctrl.abort();
+      if (partialResults.length) {
+        const best = partialResults.sort((a:any,b:any)=>((b.options?.length||b.paths?.length||0)-(a.options?.length||a.paths?.length||0)))[0];
+        console.warn("[reply-assist] returning partial valid result", { model: best?.model, count: best?.options?.length || best?.paths?.length || 0, errors: assistErrors.slice(-4) });
+        return json(best,200);
+      }
+      console.error("[reply-assist] all models failed", { errors: assistErrors.slice(-8) });
+      if (storyPathTask) {
+        console.warn("[reply-assist] using local safe Story Paths fallback");
+        return json(fallbackStoryPaths(character, history), 200);
+      }
       return json({error:assistErrors.find(Boolean)||"Velvet couldn't think of replies right now."},502);
     }
   } catch(e) { return json({ error:e instanceof Error ? e.message : String(e) }, 500); }
