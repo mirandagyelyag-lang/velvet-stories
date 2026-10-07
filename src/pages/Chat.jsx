@@ -1171,8 +1171,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const compactDots = cleanMessage.replace(/[…。]/gu, ".");
     const advanceScene = dotsOnly && compactDots === "..";
     const silentContinue = dotsOnly && compactDots === ".";
+    // Empty composer + sparkle button is the visual form of "..":
+    // explicitly ask Velvet to make something new happen.
     const messageToSend = cleanMessage === "" || advanceScene || silentContinue
-      ? (advanceScene ? ADVANCE_SCENE_MESSAGE : SILENT_CONTINUE_MESSAGE)
+      ? ((cleanMessage === "" || advanceScene) ? ADVANCE_SCENE_MESSAGE : SILENT_CONTINUE_MESSAGE)
       : cleanMessage;
 
     if (messageToSend === ADVANCE_SCENE_MESSAGE) {
@@ -2703,8 +2705,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
             type="submit"
             className="chat__send-button"
             disabled={!conversationReady}
-            aria-label={message.trim() ? "Send message" : "Continue scene"}
-            title={message.trim() ? "Send message" : "Continue scene silently"}
+            aria-label={message.trim() ? "Send message" : "Make something happen"}
+            title={message.trim() ? "Send message" : "Make something happen (..)"}
           >
             {message.trim() ? <Send size={18} /> : <Sparkles size={18} />}
           </button>
