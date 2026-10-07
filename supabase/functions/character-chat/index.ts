@@ -92,7 +92,7 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "471";
+const VELVET_ENGINE_RELEASE = "472";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1666,6 +1666,20 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
     issues.push("invented_user_motive");
   }
 
+  // v472 USER CANON FIREWALL
+  // Instant Story may create the WORLD around the user, but not retroactively
+  // create a personal biography for them. These patterns catch claims that the
+  // user already did/failed/forgot/skipped something, has a repeated track
+  // record, owns/holds a prop, or has an invented academic/work relationship.
+  const unsupportedUserHistory = /\byou\s+(?:skipped|missed|forgot|lost|failed|passed|promised|agreed|refused|lied|cancelled|called|texted|emailed|submitted|signed|borrowed|broke|left)\b|\byou(?:'ve| have)\s+(?:skipped|missed|forgotten|lost|failed|passed|promised|agreed|refused|lied|cancelled|called|texted|emailed|submitted|signed|borrowed|broken|left)\b/i;
+  const unsupportedUserPossession = /\byour\s+(?:notebook|notes|assignment|homework|project|bag|backpack|umbrella|coat|jacket|phone|laptop|keys?|wallet|book|snack|lunch|coffee|drink)\b|\byour\s+empty\s+(?:hands?|bag|backpack|pockets?)\b/i;
+  const unsupportedUserRoutine = /\b(?:your|you(?:'re| are))\s+(?:usual|favorite|regular|typical)\b|\byour\s+track\s+record\b|\byou\s+(?:always|usually|normally|never)\b/i;
+  const unsupportedUserAcademicCanon = /\byour\s+(?:seminar|lecture|class|course|professor|teacher|exam|quiz|assignment|deadline|schedule)\b|\b(?:your|you(?:'re| are))\s+(?:major|minor|degree|classmate|student)\b/i;
+  if (unsupportedUserHistory.test(raw) && !unsupportedUserHistory.test(profile) && !unsupportedUserHistory.test(String(idea || ""))) issues.push("invented_user_history");
+  if (unsupportedUserPossession.test(raw) && !unsupportedUserPossession.test(profile) && !unsupportedUserPossession.test(String(idea || ""))) issues.push("invented_user_possession");
+  if (unsupportedUserRoutine.test(raw) && !unsupportedUserRoutine.test(profile) && !unsupportedUserRoutine.test(String(idea || ""))) issues.push("invented_user_routine");
+  if (unsupportedUserAcademicCanon.test(raw) && !unsupportedUserAcademicCanon.test(profile) && !unsupportedUserAcademicCanon.test(String(idea || ""))) issues.push("invented_user_academic_canon");
+
   const allowedNameTokens = new Set(
     (profile.match(/\b[A-Z][a-z]{2,}\b/g) || []).map((name)=>name.toLowerCase())
   );
@@ -1775,6 +1789,10 @@ const INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298 = new Set([
   "user_first_person_action",
   "invented_user_prop_state",
   "invented_user_motive",
+  "invented_user_history",
+  "invented_user_possession",
+  "invented_user_routine",
+  "invented_user_academic_canon",
   "invented_named_npc",
   "unsupported_institutional_stakes",
   "ambiguous_first_dialogue_addressee",
@@ -2270,6 +2288,8 @@ LIVING OPENING ENGINE 3.53.13
 - USER AGENCY IS SACRED: do not place an object in the user's hand, decide where they are standing/sitting, make them arrive, make them carry something, assign them a secret task, say what they want/feel/know, or make them responsible for a hidden problem. The user has not acted yet.
 - CLOSED NAMED CAST: never invent a new proper name for a supporting person. Use configured names only. Everyone else stays anonymous: “one of his friends”, “a girl by the counter”, “someone from the group”, “a teammate”.
 - NO INVENTED PERSONAL CANON: do not invent the user's family members, parent calls, siblings, roommates, nicknames, breakfast habits, medical details, schedule habits, favorite foods, routines, or private history unless that exact fact already exists in the character/chat canon.
+- USER BIOGRAPHY FIREWALL 4.72: a shared setting is NOT permission to invent the user's past. Never claim the user skipped/missed a class, forgot/lost something, has a track record with a professor/boss, failed/passed a quiz, has an assignment due, owns a notebook/bag/umbrella/vehicle, has not eaten, is tired/hungry/panicking, or has any repeated habit unless that exact fact is explicitly in CHARACTER or IDEA. Create events for the lead character and world instead of backfilling the user's life.
+- FUTURE AGENCY FIREWALL 4.72: the lead may announce what THEY are doing or invite the user, but cannot state a shared future as settled. Avoid "we're going/cutting through/leaving/doing X" unless the user already agreed in canon.
 - NO FAKE FAMILIARITY SHORTCUTS: do not manufacture intimacy by claiming the user's mom/dad/sibling called, by using an unestablished nickname, by saying “you always skip breakfast”, “your usual”, “your favorite”, or similar invented familiarity.
 - PROP DISCIPLINE: keep physical objects sparse. Usually 1-2 meaningful props are enough. Do not stack binder + keys + bag + food + phone + drink unless each item actually changes the scene.
 - FOOD IS NOT A RELATIONSHIP ENGINE: do not use muffins, coffee, takeout, snacks, favorite orders, or “eat this” caretaking as the default way to show closeness unless food is genuinely central to the creator-defined premise.
