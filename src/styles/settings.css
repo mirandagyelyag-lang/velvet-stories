@@ -503,3 +503,10 @@ html[data-reduce-motion="true"] *, html[data-reduce-motion="true"] *:before, htm
 .settings-story-director .setting-row{
   padding-inline:0;
 }
+
+
+/* v3.54.0 · Velvet plans */
+.settings-plan-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;margin:20px 0 8px;padding:18px 20px;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--border));border-radius:22px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--surface)),var(--surface) 62%);box-shadow:0 12px 34px rgba(0,0,0,.04)}
+.settings-plan-card__icon{display:grid;place-items:center;width:46px;height:46px;border-radius:15px;color:var(--gold);background:color-mix(in srgb,var(--accent) 13%,transparent);border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border))}
+.settings-plan-card__copy,.settings-plan-card__usage{display:grid;gap:3px}.settings-plan-card small{font-size:.53rem;letter-spacing:.12em;color:var(--text-secondary)}.settings-plan-card strong{font-family:"Cormorant Garamond",serif;font-size:1.25rem;color:var(--text-primary)}.settings-plan-card span{font-size:.59rem;line-height:1.4;color:var(--text-secondary)}.settings-plan-card__usage{text-align:right;padding-left:16px;border-left:1px solid var(--border)}.settings-plan-card__usage strong{font-family:inherit;font-size:.88rem}
+@media(max-width:650px){.settings-plan-card{grid-template-columns:auto 1fr;padding:16px}.settings-plan-card__usage{grid-column:1/-1;text-align:left;padding:12px 0 0;border-left:0;border-top:1px solid var(--border)}}
