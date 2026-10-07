@@ -2247,3 +2247,12 @@ header.reference-stories-hero:is(.characters-library__compact-hero, .pulse-heade
   :is(header.reference-stories-hero .characters-library__compact-copy, header.pulse-header--editorial .pulse-header__copy) > p { margin-top: 142px; }
   :is(.characters-library__hero-create, .pulse-header--editorial .pulse-header__library) { top: 0; }
 }
+
+/* PULSE has an L stem at the geometric center. Put the same reference
+   sparkle in the adjacent letter gap so it remains visible. */
+.pulse-header__editorial-title .reference-stories-title__spark {
+  left: calc(50% - .6rem);
+}
+@media (max-width: 760px) {
+  .pulse-header__editorial-title .reference-stories-title__spark { left: calc(50% - .45rem); }
+}
