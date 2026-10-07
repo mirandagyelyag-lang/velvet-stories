@@ -2275,7 +2275,7 @@ header:is(.characters-library__compact-hero, .pulse-header--editorial) {
   margin-top: 12px;
   line-height: 1;
 }
-:is(.characters-library__compact-copy, .pulse-header--editorial .pulse-header__copy) > p {
+:is(.characters-library__compact-copy, header.pulse-header--editorial .pulse-header__copy) > p {
   max-width: none;
   margin: 12px 0 0;
   text-align: center;
