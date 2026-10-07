@@ -270,9 +270,12 @@ function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, o
         {inTrash ? (
           <h1>Trash</h1>
         ) : (
-          <div className="characters-library__wordmark" aria-label="Your characters">
-            <span>your</span>
-            <strong>CHARACTERS</strong>
+          <div className="reference-stories-title characters-library__editorial-title" aria-label="Your Characters">
+            <span className="reference-stories-title__script">your</span>
+            <span className="reference-stories-title__line reference-stories-title__line--left" />
+            <h1>CHARACTERS</h1>
+            <span className="reference-stories-title__spark">✦</span>
+            <span className="reference-stories-title__line reference-stories-title__line--right" />
           </div>
         )}
         <p>{inTrash ? `${count} deleted ${count === 1 ? "character" : "characters"}` : `Your private cast · ${count} saved`}</p>
