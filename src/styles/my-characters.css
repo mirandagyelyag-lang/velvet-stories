@@ -1004,3 +1004,14 @@ html.velvet-discover-route, body.velvet-discover-route {
  .characters-library__editorial-title .reference-stories-title__script{top:4px!important;font-size:2.35rem!important}
  .characters-library__editorial-title .reference-stories-title__spark{top:82px!important}
 }
+
+/* v3.54.9 · balanced mobile editorial scale */
+@media(max-width:760px){
+ .characters-library__compact-hero{min-height:132px!important;padding:0 58px 12px 0!important}
+ .characters-library__editorial-title{height:96px!important}
+ .characters-library__editorial-title h1{margin:25px 12px 0!important;font-size:clamp(2.35rem,9.4vw,3rem)!important;line-height:.84!important;letter-spacing:-.035em!important}
+ .characters-library__editorial-title .reference-stories-title__script{top:2px!important;font-size:2.05rem!important}
+ .characters-library__editorial-title .reference-stories-title__line{margin-top:24px!important}
+ .characters-library__editorial-title .reference-stories-title__spark{top:72px!important}
+ .characters-library__compact-copy>p{margin-top:5px!important;font-size:.7rem!important}
+}
