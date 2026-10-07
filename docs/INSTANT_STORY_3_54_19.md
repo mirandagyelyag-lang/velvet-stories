@@ -1,5 +1,7 @@
 # Instant Story repair — frontend 3.54.19 / engine 491
 
+Historical first repair. The authorized live follow-up found additional failures and is documented in [Velvet 3.54.20 / engine 494](INSTANT_STORY_3_54_20.md).
+
 ## Confirmed production failure
 
 Supabase `character-chat` 490 returned HTTP 503 twice on 7 October 2026, at 15:14:13 and 15:14:39 UTC. The executions lasted about 25.7 and 21.8 seconds. Function logs for the first request show a complete 90-word `gemini-3.5-flash-lite` draft after 6.96 seconds, rejected for `unstaged_user_placement` and `invented_user_action_or_state`. Both requests then logged `The signal has been aborted` for the constrained and emergency rescues.

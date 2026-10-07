@@ -1,0 +1,80 @@
+{
+  "startedAt": "2026-10-07T17:49:18.397Z",
+  "frontendVersion": "3.54.20",
+  "engineVersion": "494",
+  "execution": "Actual frontend generation and persistence functions; authenticated production HTTP; live Gemini; no browser button click",
+  "cases": [
+    {
+      "name": "Fresh conversation + Instant Story + zero Living Threads must generate successfully.",
+      "passed": true,
+      "requestId": "00193afd-22cc-4a0f-9c5c-4709e143592b",
+      "status": 200,
+      "engineVersion": "494",
+      "model": "gemini-3.6-flash",
+      "source": "ai",
+      "durationMs": 16755,
+      "words": 107,
+      "openingSha256": "459a47af979146fd9242d21084fee6fd67dac9b19c6fc553ca1672878acb694d",
+      "conversationId": "248c6068-fd17-4a70-956e-3220e15c211b",
+      "initialConversationState": {
+        "messages": 0,
+        "memories": 0,
+        "threads": 0,
+        "v1State": false
+      },
+      "persistedMessages": 1,
+      "recentOpeningCount": 0,
+      "priorStoriesPreserved": 0
+    },
+    {
+      "name": "Existing Instant Story stays readable and another opening can be generated with prior opening history.",
+      "passed": true,
+      "requestId": "d8bb28af-72dc-42af-b7ef-c088e3dba11c",
+      "status": 200,
+      "engineVersion": "494",
+      "model": "gemini-3.5-flash-lite",
+      "source": "ai",
+      "durationMs": 1876,
+      "words": 77,
+      "openingSha256": "501e72f5560561ce33257202bb4a046423d44896a5e529504aec4701b133b550",
+      "conversationId": "aa3fa86c-e59f-4011-8a6e-b58ca69ea559",
+      "initialConversationState": {
+        "messages": 0,
+        "memories": 0,
+        "threads": 0,
+        "v1State": false
+      },
+      "persistedMessages": 1,
+      "recentOpeningCount": 1,
+      "priorStoriesPreserved": 1
+    }
+  ],
+  "cleanup": {
+    "verified": true,
+    "accountDeleted": true,
+    "sessionsRevoked": true,
+    "ownedRowsRemaining": 0,
+    "authUsers": 0,
+    "authSessions": 0,
+    "characters": 0,
+    "conversations": 0,
+    "messages": 0,
+    "memories": 0,
+    "generationRequests": 0,
+    "scope": "Only the explicitly marked temporary fixture; all auth/public user_id tables checked after cascade deletion."
+  },
+  "initialState": {
+    "messages": 0,
+    "memories": 0,
+    "conversations": 0,
+    "generationRequests": 0
+  },
+  "completedAt": "2026-10-07T17:50:16.912Z",
+  "passed": true,
+  "signedOut": true,
+  "limitations": [
+    "No authenticated browser button click; actual frontend functions ran against production Auth, Edge Function, live Gemini and RLS persistence.",
+    "The existing-story control reloads and preserves its saved opening while generating a new opening with surviving history; it does not generate an ordinary chat reply.",
+    "This is functional generation/persistence verification, not a certification of narrative quality or a long-turn Living Threads evaluation."
+  ]
+}

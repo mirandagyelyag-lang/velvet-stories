@@ -93,7 +93,8 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "491";
+import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
+const VELVET_ENGINE_RELEASE = "494";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -105,6 +106,7 @@ const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
 const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
 const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini-3.1-flash-lite";
 const GEMINI_RECOVERY_MODEL = Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-3.5-flash";
+const GEMINI_INSTANT_RECOVERY_MODEL = Deno.env.get("GEMINI_INSTANT_RECOVERY_MODEL") || "gemini-3.6-flash";
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
 const VELVET_OWNER_EMAIL = "mirandagyelyag@gmail.com";
 const FIRST_DRAFT_WINS_V35268 = false;
@@ -1636,6 +1638,7 @@ const INSTANT_STORY_FATAL_ISSUES_V35290 = new Set([
 ]);
 
 function instantStoryCandidateUsableV35290(opening = "", finishReason = "", draft = {}) {
+  if (!instantStoryProseValidation(opening).valid) return false;
   if (instantStoryLooksComplete(opening, finishReason, draft)) return true;
 
   const text = String(opening || "").trim();
@@ -1706,9 +1709,12 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
     const firstSpoken = String(firstDialogueMatch[1] || "");
     const userAddressInNarration = /\b(?:to you|toward you|at you|your way|called to you|asked you|told you|said to you|turned to you|looked at you)\b/i.test(beforeFirstDialogue);
     const npcAddressInNarration = /\b(?:to (?:his|her|their|one of|the|another|a) (?:friend|friends|girl|guy|boy|woman|man|contestant|teammate|roommate|producer|host|group)|asked (?:him|her|them)|told (?:him|her|them)|said to (?:him|her|them)|on (?:the )?phone|into (?:the|his|her|their) phone|to the group|to everyone)\b/i.test(beforeFirstDialogue);
+    // A visible recipient does not need to belong to the old fixed role list.
+    // "turned to the two drivers" is clear staging in Roman's racing world.
+    const stagedRoleRecipient = /\b(?:told|asked|addressed|said to|spoke to|called to|turned to)\s+(?:the|a|an|his|her|their)\s+(?:[a-z-]+\s+){0,3}(?:drivers?|racers?|mechanics?|friends?|girls?|guys?|boys?|women|woman|men|man|contestants?|teammates?|roommates?|producers?|hosts?|group|staff|organizers?|organisers?)\b/i.test(beforeFirstDialogue);
     const explicitVocative = /^(?:hey\s+)?[A-Z][A-Za-z'-]{1,20}[,!]/.test(firstSpoken.trim());
     const explicitGroupAddress = /\b(?:you guys|everyone|all of you|guys|people)\b/i.test(firstSpoken);
-    if (!userAddressInNarration && !npcAddressInNarration && !explicitVocative && !explicitGroupAddress) {
+    if (!userAddressInNarration && !npcAddressInNarration && !stagedRoleRecipient && !explicitVocative && !explicitGroupAddress) {
       issues.push("ambiguous_first_dialogue_addressee");
     }
   }
@@ -2298,7 +2304,7 @@ CANON AND USER AGENCY
 - Narrate the lead character and world in third person. Address the user as you.
 - The user has not acted yet. Do not invent their action, arrival, position, possessions, thoughts, feelings, consent, dialogue, habits, family or history. The character may invite the user; their response remains open.
 - The creator opening describes the character's ecosystem and relationship, not events that already happened in this new story. Keep its world; vary its scene and do not copy its distinctive actions or props.
-- Stage who is speaking and who they are addressing before the first spoken line. Use only configured names for supporting people; everyone else remains anonymous.
+- Stage who is speaking and who they are addressing before the first spoken line, with an explicit speech tag naming the lead and recipient (for example, the lead told the drivers, or said to you). Addressing you never establishes your position or actions. Use only configured names for supporting people; everyone else remains anonymous.
 - With an empty IDEA, use ordinary social movement, dry humor, changed plans, a playful challenge or a quiet opportunity. Do not invent a fight, accusation, betrayal, institutional punishment, mystery delivery or emergency.
 - Make one concrete choice by the lead change the immediate situation. Preserve this character's voice and gradual relationship; avoid instant confessions, generic charm, ornamental flirting and food/study logistics as the plot.
 - Use 1-4 short spoken lines with sparse narration. End after the character has changed something, with a complete sentence and room for the user to respond.
@@ -2323,7 +2329,9 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
 IDEA
 ${cleanIdea || "No extra premise. Use the character's existing life and relationship."}`;
 
-  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
+  // An overloaded Lite model can return no draft at all. Recovery must not
+  // depend on having a rejected draft to salvage before it can run.
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))].slice(0, 4);
   const globalDeadlineMs = 15000;
   const attemptTimeoutMs = 14000;
   const hedgeDelaysMs = [0, 320, 680];
@@ -2341,26 +2349,42 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     if (providerDiagnostics.length < 12) providerDiagnostics.push(safeEntry);
     console.warn("[character-chat] instant_story_attempt_failed", { requestId, engineVersion: VELVET_ENGINE_RELEASE, ...safeEntry });
   };
-  const instantStoryResponse = (body, status = 200) => json({
-    ...body, requestId, engineVersion: VELVET_ENGINE_RELEASE,
-    ...(status >= 400 ? { diagnostics: { attempts: providerDiagnostics, durationMs: Date.now() - startedAt } } : {}),
-  }, status);
+  const instantStoryResponse = (body, status = 200) => {
+    if (status < 400) {
+      const prose = instantStoryProseValidation(body.opening);
+      if (!prose.valid) {
+        diagnose({ phase: "delivery", model: body.model, code: "incomplete_provider_opening", source: body.source, words: prose.wordCount, complete: prose.complete });
+        body = { error: "Velvet couldn't create an Instant Story this time. Try again.", retryable: true, openingFamily, rejectionReasons: ["incomplete_provider_opening"] };
+        status = 503;
+      } else body = { ...body, opening: prose.opening };
+    }
+    if (status < 400) console.info("[character-chat] instant_story_completed", {
+      requestId, engineVersion: VELVET_ENGINE_RELEASE, source: body.source,
+      model: body.model, words: String(body.opening || "").split(/\s+/).filter(Boolean).length,
+      durationMs: Date.now() - startedAt,
+    });
+    return json({
+      ...body, requestId, engineVersion: VELVET_ENGINE_RELEASE,
+      ...(status >= 400 ? { diagnostics: { attempts: providerDiagnostics, durationMs: Date.now() - startedAt } } : {}),
+    }, status);
+  };
   const readOpening = (data) => {
     const raw = extractCandidateText(data).trim();
     try {
       const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""));
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        return String(parsed.opening || parsed.reply || "").trim();
+        return normalizeInstantStoryProse(parsed.opening || parsed.reply || "");
       }
     } catch { /* Plain prose is the normal Instant Story transport. */ }
-    return raw;
+    return normalizeInstantStoryProse(raw);
   };
   const requestOpening = async ({ model, prompt: requestPrompt, phase, timeoutMs, maxOutputTokens, temperature }) => {
     const remainingMs = deadlineAt - Date.now();
     if (remainingMs < 900) throw new DOMException("Instant Story request deadline reached", "AbortError");
     const controller = new AbortController();
     controllers.add(controller);
-    const timeoutId = setTimeout(() => controller.abort(), Math.min(timeoutMs, remainingMs));
+    const requestBudgetMs = Math.min(timeoutMs, remainingMs);
+    const timeoutId = setTimeout(() => controller.abort(), requestBudgetMs);
     const requestStartedAt = Date.now();
     try {
       const contents = [{ role: "user", parts: [{ text: requestPrompt }] }];
@@ -2368,17 +2392,32 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         const response = await fetch(modelEndpoint(model), {
           method: "POST", headers: geminiHeaders(apiKey), signal: controller.signal,
           body: JSON.stringify({ contents, ...(!bare ? { generationConfig: {
-            maxOutputTokens, temperature, thinkingConfig: { thinkingLevel: "LOW" },
+            maxOutputTokens, temperature, thinkingConfig: { thinkingLevel: "MINIMAL" },
           } } : {}) }),
         });
         // Keep the timeout active until the provider body has finished arriving.
         const data = await response.json().catch((error) => { if (controller.signal.aborted) throw error; return {}; });
         return { response, data };
       };
-      let result = await run();
+      let bare = false;
+      let result = await run(bare);
       if (!result.response.ok && result.response.status === 400) {
         diagnose({ phase, model, status: 400, code: "config_compatibility_retry", error: result.data?.error?.message });
-        result = await run(true);
+        bare = true;
+        result = await run(bare);
+      }
+      // Direct REST calls have no SDK retry layer. Retry transient overload once,
+      // with jitter, inside this same controller and the shared handler deadline.
+      if (!result.response.ok && [408, 429, 500, 502, 503, 504].includes(result.response.status) && requestBudgetMs - (Date.now() - requestStartedAt) > 2000) {
+        diagnose({ phase, model, status: result.response.status, code: "transient_retry", error: result.data?.error?.message });
+        const retryDelayMs = 650 + Math.floor(Math.random() * 200);
+        await new Promise<void>((resolve, reject) => {
+          if (controller.signal.aborted) { reject(new DOMException("Instant Story retry aborted", "AbortError")); return; }
+          const onAbort = () => { clearTimeout(timer); reject(new DOMException("Instant Story retry aborted", "AbortError")); };
+          const timer = setTimeout(() => { controller.signal.removeEventListener("abort", onAbort); resolve(); }, retryDelayMs);
+          controller.signal.addEventListener("abort", onAbort, { once: true });
+        });
+        result = await run(bare);
       }
       if (!result.response.ok) {
         const error = new Error(result.data?.error?.message || `Gemini returned ${result.response.status}`);
@@ -2486,7 +2525,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         finishReason: winner.finishReason,
         durationMs: Date.now() - startedAt,
       });
-      return instantStoryResponse({ opening: winner.opening, source: "ai", sceneSeed, openingFamily });
+      return instantStoryResponse({ opening: winner.opening, source: "ai", model: winner.model, sceneSeed, openingFamily });
     }
   } finally {
     clearTimeout(primaryDeadlineTimer);
@@ -2536,6 +2575,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     return instantStoryResponse({
       opening: deadlineSafeCandidate.opening,
       source: "ai_deadline_first_v471",
+      model: deadlineSafeCandidate.model,
       sceneSeed,
       openingFamily,
       softWarnings: deadlineSafeCandidate.rejectionReasons || [],
@@ -2615,6 +2655,7 @@ RULES
         return instantStoryResponse({
           opening: rescueOpening,
           source: "ai_rescue",
+          model: GEMINI_MODEL,
           sceneSeed,
           openingFamily,
           softWarnings: [...new Set([...rescueAnchorIssues, ...rescueGroundingIssues, ...rescueNaturalismIssues, ...rescueIdentityIssuesV35321])]
@@ -2643,6 +2684,7 @@ RULES
     return instantStoryResponse({
       opening: bestEffort.opening,
       source: "ai_best_effort",
+      model: bestEffort.model,
       sceneSeed,
       openingFamily,
       softWarnings: bestEffort.rejectionReasons || [],
@@ -2685,6 +2727,7 @@ RULES
     return instantStoryResponse({
       opening: guaranteedSafeCandidate.opening,
       source: "ai_guaranteed_safe",
+      model: guaranteedSafeCandidate.model,
       sceneSeed,
       openingFamily,
       softWarnings: guaranteedSafeCandidate.rejectionReasons || [],
@@ -2763,6 +2806,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
         return instantStoryResponse({
           opening: emergencyOpening,
           source: "ai_emergency_rescue",
+          model: GEMINI_EMERGENCY_MODEL,
           sceneSeed,
           openingFamily,
         });
@@ -2778,6 +2822,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
 
   const lastUsableDraft = rejectedInstantCandidates
     .filter((item)=>String(item?.opening || "").trim())
+    .filter((item)=>instantStoryProseValidation(item.opening).valid)
     .map((item)=>({
       ...item,
       hardBlocks: [
@@ -2792,6 +2837,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
     return instantStoryResponse({
       opening: String(lastUsableDraft.opening).trim(),
       source: "ai_last_resort",
+      model: lastUsableDraft.model,
       sceneSeed,
       openingFamily,
       softWarnings: lastUsableDraft.rejectionReasons || rejectionSummary,
@@ -2862,6 +2908,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
           return instantStoryResponse({
             opening: salvageOpening,
             source: "ai_no_dead_button_salvage",
+            model: GEMINI_RECOVERY_MODEL,
             sceneSeed,
             openingFamily,
             softWarnings: [],
@@ -2920,6 +2967,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
     return instantStoryResponse({
       opening: finalDeliverable.opening,
       source: "ai_final_delivery_v470",
+      model: finalDeliverable.model,
       sceneSeed,
       openingFamily,
       softWarnings: finalDeliverable.rejectionReasons || [],
