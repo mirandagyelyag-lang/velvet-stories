@@ -246,7 +246,19 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
     }
     return name + ' backs off the point without disappearing from the scene. “Fine.”';
   }
-  if (/\?$|\b(?:what|why|who|where|when|how|which)\b/.test(normalizedTurn)) return name + " answers without dressing it up. “I don’t know yet.”";
+  if (/\b(?:talking weird|talk weird|talking strange|talk strange|speaking weird|speak weird|speaking strange|sound weird|sounding weird|sound strange|why are you talking like that|why do you sound like that)\b/.test(normalizedTurn)) {
+    const temperament = fallbackTemperament(character);
+    if (temperament === "proud") return name + ' grimaces at his own wording. “Because I was laying it on way too thick. That sounded ridiculous.”';
+    if (temperament === "guarded") return name + ' pauses, then drops the act. “Because I was trying too hard. It sounded stupid.”';
+    if (temperament === "warm") return name + ' winces a little. “Because I was overdoing it. Sorry. That didn’t sound like me.”';
+    return name + ' drops the affected tone. “Because I was trying too hard. That sounded weird.”';
+  }
+
+  // v3.54.21: Never answer a genuine direct question with a generic canned
+  // "I don't know yet." If the deterministic layer cannot answer from literal
+  // visible context, return an empty sentinel so the caller must obtain a real
+  // character-specific answer instead of persisting evasive filler.
+  if (/\?$|\b(?:what|why|who|where|when|how|which)\b/.test(normalizedTurn)) return "";
 
   const temperament = fallbackTemperament(character);
 
