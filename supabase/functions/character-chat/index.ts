@@ -94,7 +94,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "503";
+const VELVET_ENGINE_RELEASE = "504";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2642,6 +2642,34 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       sceneSeed,
       openingFamily,
       softWarnings: deadlineSafeCandidate.rejectionReasons || [],
+    });
+  }
+
+  // v504 PROVIDER-OUTAGE SHIELD
+  // Do not spend another external request when the primary provider lane already
+  // timed out / hit quota. Prefer a locally-built opening that passes the same
+  // core agency/canon checks, then use network rescue only if local fallback is invalid.
+  const outageFallbackOpening = instantStoryFallbackOpening(safeDraft, cleanIdea, sceneSeed);
+  const outageFallbackHardBlocks = [
+    ...instantStoryHardBlockIssuesV35298(outageFallbackOpening, safeDraft, cleanIdea),
+    ...instantStoryPremiseGateIssues(outageFallbackOpening, safeDraft),
+    ...speakerOwnershipIssuesV35367(outageFallbackOpening, safeDraft),
+  ];
+  if (
+    outageFallbackOpening &&
+    !outageFallbackHardBlocks.length &&
+    !instantStoryHasTemplateLeak(outageFallbackOpening) &&
+    /[.!?…]["'”’)]?$/.test(String(outageFallbackOpening || "").trim())
+  ) {
+    console.warn("[character-chat] v504 provider-outage local fallback used", {
+      durationMs: Date.now() - startedAt,
+    });
+    return instantStoryResponse({
+      opening: outageFallbackOpening,
+      source: "local_provider_outage_fallback_v504",
+      sceneSeed,
+      openingFamily,
+      softWarnings: ["provider_outage_fallback"],
     });
   }
 
