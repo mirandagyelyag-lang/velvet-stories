@@ -112,7 +112,7 @@ export function filterAuthorizedConnectionUpdatesV35279(connectionUpdates=[],{
 }
 
 export function chatScopedNpcCanonV35279Issues({
-  reply="",allowedNames=[],castUpdates=[],connectionUpdates=[],recentCharacterReplies=[]
+  reply="",allowedNames=[],castUpdates=[],connectionUpdates=[],recentCharacterReplies=[],leadName=""
 }={}){
   const issues=[];
   const allowed=new Set(list(allowedNames).map(norm).filter(Boolean));
@@ -147,6 +147,26 @@ export function chatScopedNpcCanonV35279Issues({
   const approvedNamedVisible=[...allowed].some((name)=>name&&norm(raw).includes(name));
   if(startsWithBareNpcSpeaker&&!anchoredAnonymous&&!approvedNamedVisible){
     issues.push("npc_disembodied_speaker");
+  }
+
+  // v3.54.22: Catch phantom speakers anywhere in the reply, not only when the
+  // reply starts with dialogue. A later paragraph such as “...” she asks is
+  // still a new person unless the local text actually anchors who "she" is.
+  const bareSpeakerRe=/["”][,\s]*(he|she|they)\s+(?:said|called|asked|added|cut in|replied|muttered|told|continued|answered)\b/gi;
+  const leadKey=norm(leadName);
+  for(const match of raw.matchAll(bareSpeakerRe)){
+    const pronoun=norm(match[1]);
+    const before=raw.slice(Math.max(0,(match.index||0)-220),match.index||0);
+    const beforeNorm=norm(before);
+    const localAnonymous=/\b(?:a|an|one of|the)\s+(?:girl|guy|boy|woman|man|friend|classmate|teammate|coworker|bartender|server|student|guest|host|roommate|professor|neighbor|neighbour|someone|person)\b/i.test(before);
+    const localApproved=[...allowed].some((name)=>name&&beforeNorm.includes(name));
+    const localLead=Boolean(leadKey&&beforeNorm.includes(leadKey));
+    // If the lead was just explicitly named, a following pronoun attribution
+    // can safely refer back to them. Otherwise the speaker must be anchored.
+    if(!localAnonymous&&!localApproved&&!localLead){
+      issues.push("npc_disembodied_speaker");
+      break;
+    }
   }
 
   // If the previous generated beat left a person anonymous, do not silently
