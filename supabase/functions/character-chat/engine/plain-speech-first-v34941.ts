@@ -33,6 +33,11 @@ export function plainSpeechFirstV34941Issues(reply:any, latest:any='', recent:an
  if(/\bfile (?:it|that) under\b|\badd (?:it|that) to the list\b/.test(s)) issues.push('plain_speech_writerly_dismissal');
  if(/\b(?:everyone|people|most people)\b.{0,70}\b(?:just fine|without instructions|figure it out|manage)\b/.test(s) && !norm(latest).match(/everyone|people|most people/)) issues.push('plain_speech_smug_generalization');
  if(/\b(?:slow|lazy|unbothered|indifferent|casual|dry)\b.{0,35}\b(?:nod|gaze|glance|look|shrug|breath|posture)\b/.test(n)) issues.push('plain_speech_performed_narration');
+ // v3.54.23: Reject narrated emotional choreography that explains a simple
+ // conversational shift instead of letting the line carry it.
+ if(/\b(?:voice|tone)\b.{0,45}\b(?:dropp(?:ing|ed)|soften(?:ing|ed)|settl(?:ing|ed)|slid(?:ing)?|shifting?)\b.{0,55}\b(?:quiet|conversational|low|measured|easy|rhythm|cadence)\b/.test(n)) issues.push('plain_speech_performed_narration');
+ if(/\b(?:shoulders?|posture|stance|expression|features?)\b.{0,55}\b(?:los(?:ing|t)|dropp(?:ing|ed)|soften(?:ing|ed)|slipp(?:ing|ed)|relax(?:ing|ed)|eas(?:ing|ed))\b.{0,55}\b(?:defensive|rigid|guarded|tension|weight|set|composure)\b/.test(n)) issues.push('plain_speech_performed_narration');
+ if(/\b(?:defensive|guarded|confident|careful|quiet|conversational)\b.{0,35}\b(?:rhythm|cadence|posture|weight|set|composure)\b/.test(n)) issues.push('plain_speech_performed_narration');
  // A compact aphoristic two-fragment construction is suspicious when capped by a flourish.
  const clauses=s.split(/[.!?]+/).map(x=>x.trim()).filter(Boolean);
  if(clauses.length>=2 && clauses.length<=3 && s.split(/\s+/).length<=18 && /\b(?:take your pick|your choice|obviously|apparently|simple as that)\b/.test(s)) issues.push('plain_speech_quotable_construction');
