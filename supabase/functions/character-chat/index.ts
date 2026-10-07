@@ -94,7 +94,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "496";
+const VELVET_ENGINE_RELEASE = "497";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -5225,6 +5225,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     inference_distance_exceeded: "Reduce inference distance. React only to the observable cue itself. Do not jump from eye-roll/shrug/silence to hidden emotional truth, deception, or a desire for distance.",
     specificity_escalation: "Delete unsupported concrete lore. New NPCs may enter lightly, but named people, named obligations, schedules, authority roles, and retroactive history require existing canon. Use a generic grounded detail instead.",
     invisible_history_claim: "Remove words that presuppose unseen repetition/history such as ‘again,’ ‘like last time,’ ‘as usual,’ or ‘I heard you the first time’ unless the visible transcript actually contains that antecedent.",
+    invented_prior_shared_plan: "Remove the retroactive shared plan, appointment, destination, or accusation of forgetting. A plan may be proposed now, but it cannot be written as something already agreed/scheduled unless visible messages or structured calendar/story-plan state established it.",
     recent_line_echo: "Do not repeat a distinctive sentence or question from the last few character turns. Answer the current beat with fresh wording or silence.",
     clarification_echo_before_answer: "The user asked for clarification. Do not replay the previous line first. Answer WHAT/WHO/WHEN/WHICH immediately and plainly.",
     phantom_event_claim: "Remove the invented event label. Banter, a question, or a mild disagreement does not become ‘the argument’ or ‘the fight’ unless that specific event actually happened in the visible/canonical record.",
@@ -8669,6 +8670,7 @@ const REPAIR_TRIGGER_ISSUES = new Set([
   "npc_disembodied_speaker",
   "npc_retroactive_identity_assignment",
   "unapproved_named_npc_visible",
+  "invented_prior_shared_plan",
   "meaningful_turn_stalled_regeneration",
   "turn_state_commitment_reversal",
   "turn_state_fake_user_readiness",
@@ -10040,11 +10042,14 @@ function validateNarrativeReply(reply = "", options = {}) {
       ...(Array.isArray(options.groupCharacters) ? options.groupCharacters.map((item)=>String(item?.name||"")) : []),
       ...(Array.isArray(options.persistentCast) ? options.persistentCast.map((item)=>String(item?.name||"")) : []),
     ].filter(Boolean),
+    leadName: options.characterName || options.character?.name || "",
     recentCharacterReplies: options.recentCharacterReplies || [],
   })) issues.push(issue);
   for (const issue of livingWorldCalendarIssuesV35314({
     reply: text,
     recentCharacterReplies: options.recentCharacterReplies || [],
+    recentUserMessages: options.recentUserMessages || [],
+    latestUserMessage: options.latestUserMessage || "",
     persistentCast: options.persistentCast || [],
     calendarEvents: options.calendarEvents || [],
     storyPlans: options.activePlans || options.turnContract?.storyDynamics?.activePlans || [],
