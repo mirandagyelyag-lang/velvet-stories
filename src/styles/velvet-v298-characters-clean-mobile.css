@@ -15,7 +15,7 @@
   min-width: 0;
 }
 
-.characters-library__compact-copy h1 {
+.characters-library__compact-copy > h1 {
   margin: 0;
   color: var(--stories-ink-soft, var(--text-primary));
   font-family: "Cormorant Garamond", serif;
@@ -78,7 +78,7 @@ body.velvet-discover-route .mobile-global-search {
     padding: 1px 0 0;
   }
 
-  .characters-library__compact-copy h1 {
+  .characters-library__compact-copy > h1 {
     font-size: 2.05rem;
     line-height: .95;
   }

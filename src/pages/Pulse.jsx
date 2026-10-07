@@ -174,7 +174,7 @@ function Pulse({ onOpenCharacter, onBrowseStories, onNewStory, onOpenMemories, o
           />
         ) : (
           <>
-            <header className="pulse-header pulse-header--editorial">
+            <header className="pulse-header pulse-header--editorial reference-stories-hero">
               <div className="pulse-header__copy">
                 <div className="reference-stories-title pulse-header__editorial-title" aria-label="Your Pulse">
                   <span className="reference-stories-title__script">your</span>

@@ -265,7 +265,7 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onOpenStory, onEditC
 function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, onBack }) {
   const inTrash = view === "trash";
   return (
-    <header className="characters-library__compact-hero">
+    <header className={`characters-library__compact-hero${inTrash ? "" : " reference-stories-hero"}`}>
       <div className="characters-library__compact-copy">
         {inTrash ? (
           <h1>Trash</h1>
