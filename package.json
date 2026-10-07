@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.53.99",
+  "version": "3.54.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
