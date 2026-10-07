@@ -107,7 +107,7 @@ export function buildLivingWorldCalendarV35314({
 }
 
 export function livingWorldCalendarIssuesV35314({
-  reply="",recentCharacterReplies=[],persistentCast=[],calendarEvents=[],storyPlans=[],
+  reply="",recentCharacterReplies=[],recentUserMessages=[],latestUserMessage="",persistentCast=[],calendarEvents=[],storyPlans=[],
   storyConsequences=[],storyConflicts=[],storyArcs=[],knowledgeLedger=[]
 }={}){
   const issues=[];
@@ -118,6 +118,22 @@ export function livingWorldCalendarIssuesV35314({
   }
   if(groupTunnel(reply,names)) issues.push("group_scene_couple_tunnel_vision");
   if(returnWithoutHook(reply)) issues.push("return_without_causal_hook");
+  // v3.54.22: A reply may create a new plan prospectively, but it cannot
+  // pretend a shared plan/appointment already existed unless visible canon
+  // or the structured calendar/plan state contains evidence for it.
+  const presupposedPlan=/\b(?:are we still|weren['’]?t we|we were supposed to|we['’]?re supposed to|did you forget|you forgot|still meeting|still going to|still headed to)\b/i.test(reply);
+  if(presupposedPlan){
+    const groundedBlob=norm([
+      ...compactRows(calendarEvents,20).map(itemText),
+      ...compactRows(storyPlans,20).map(itemText),
+      ...list(recentCharacterReplies).slice(-8),
+      ...list(recentUserMessages).slice(-8),
+      latestUserMessage,
+    ].filter(Boolean).join(" | "));
+    const replyWords=norm(reply).split(/\s+/).filter((w)=>w.length>=5 && !["still","meeting","going","supposed","forgot","forget"].includes(w));
+    const overlap=replyWords.filter((w)=>groundedBlob.includes(w)).length;
+    if(!groundedBlob || overlap<2) issues.push("invented_prior_shared_plan");
+  }
   if(romanceDensity(recentCharacterReplies)){
     const grounded=[...calendarEvents,...storyPlans,...storyConsequences,...storyConflicts,...storyArcs].some(x=>itemText(x)&&norm(reply).includes(norm(itemText(x)).split(" ").slice(0,3).join(" ")));
     if(!grounded && /\b(?:randomly|suddenly|out of nowhere|de repente|sin razon|sin razón)\b/.test(norm(reply))) issues.push("world_pressure_random_invention");
