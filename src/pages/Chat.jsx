@@ -90,7 +90,6 @@ import "../styles/velvet-v3241-stability.css";
 import "../styles/velvet-v3250-experience.css";
 
 const SILENT_CONTINUE_MESSAGE = "[SILENT_CONTINUE]";
-const RETURN_MAIN_POV_MESSAGE = "[RETURN_MAIN_POV]";
 const ADVANCE_SCENE_MESSAGE = "[ADVANCE_SCENE]";
 const REGENERATION_FEEDBACK = [
   ["ignored_idea", "Ignored my idea"],
@@ -1170,17 +1169,14 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
     const dotsOnly = /^[.…。]+$/u.test(cleanMessage);
     const compactDots = cleanMessage.replace(/[…。]/gu, ".");
-    const returnToMainPov = dotsOnly && compactDots === "..";
-    const advanceScene = dotsOnly && compactDots.length >= 3;
+    const advanceScene = dotsOnly && compactDots === "..";
     const silentContinue = dotsOnly && compactDots === ".";
-    const messageToSend = cleanMessage === "" || returnToMainPov || advanceScene || silentContinue
-      ? (returnToMainPov ? RETURN_MAIN_POV_MESSAGE : advanceScene ? ADVANCE_SCENE_MESSAGE : SILENT_CONTINUE_MESSAGE)
+    const messageToSend = cleanMessage === "" || advanceScene || silentContinue
+      ? (advanceScene ? ADVANCE_SCENE_MESSAGE : SILENT_CONTINUE_MESSAGE)
       : cleanMessage;
 
-    if (messageToSend === RETURN_MAIN_POV_MESSAGE) {
-      setSilentCue(`Returning to ${character.name}…`);
-    } else if (messageToSend === ADVANCE_SCENE_MESSAGE) {
-      setSilentCue("Moving the story forward…");
+    if (messageToSend === ADVANCE_SCENE_MESSAGE) {
+      setSilentCue("Something changes…");
     } else if (messageToSend === SILENT_CONTINUE_MESSAGE) {
       setSilentCue("Continuing the scene…");
     } else {
@@ -3511,10 +3507,8 @@ function isSilentContinuation(message) {
   const content = String(message?.content || "").trim();
   return message?.sender === "user" && (
     content === SILENT_CONTINUE_MESSAGE ||
-    content === RETURN_MAIN_POV_MESSAGE ||
     content === ADVANCE_SCENE_MESSAGE ||
     content.startsWith("[SILENT_CONTINUE") ||
-    content.startsWith("[RETURN_MAIN_POV") ||
     content.startsWith("[ADVANCE_SCENE") ||
     content.includes("Treat this as silence from the user")
   );
