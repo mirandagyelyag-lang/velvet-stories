@@ -27,6 +27,83 @@ function parseLooseJson(value: string) {
   return null;
 }
 
+function fallbackReplyAssist({ history = [], draft = "", intent = "ideas", custom = "" } = {}) {
+  const tidy = (v: unknown, n = 900) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+  const latestCharacter = [...(Array.isArray(history) ? history : [])].reverse().find((row:any)=>String(row?.speaker||"").toLowerCase() !== "user")?.text || "";
+  const source = tidy(custom || draft, 700);
+  const lower = source.toLowerCase();
+  const make = (text:string, tone:string, approach_es:string, meaning_es:string) => ({ text: tidy(text,1400), tone, approach_es, meaning_es });
+
+  let options:any[] = [];
+  if (/\b(lo\s+prometes|prometelo|promételo|me\s+lo\s+prometes|promise\s+me|do\s+you\s+promise)\b/i.test(lower)) {
+    options = [
+      make("Do you promise?", "directa", "Pides una promesa clara y dejas la pelota en su lado.", "Le estás preguntando si habla en serio."),
+      make("Promise me?", "suave", "Lo haces más cercano y menos formal.", "Pides confirmación sin volverlo dramático."),
+      make("You promise?", "casual", "Suena espontáneo y natural en chat.", "Quieres que lo confirme de forma simple."),
+      make("Okay. But you have to promise me.", "firme", "Aceptas, pero conviertes la promesa en condición.", "Dejas claro que necesitas una confirmación real."),
+    ];
+  } else if (/\b(perdon|perdón|lo\s+siento|sorry|disculp)\b/i.test(lower)) {
+    options = [
+      make("I'm sorry.", "directa", "Te disculpas sin adornarlo.", "Reconoces el error de forma limpia."),
+      make("Okay, that was on me. I'm sorry.", "honesta", "Asumes tu parte sin hacer un discurso.", "Suena responsable y natural."),
+      make("I didn't mean it like that. Sorry.", "aclaratoria", "Corriges la intención y te disculpas.", "Aclara sin discutir."),
+      make("Yeah, I messed that up. Sorry.", "casual", "Reconoces el error con un tono más cotidiano.", "Suena humano y poco ensayado."),
+    ];
+  } else if (/^[\x00-\x7F\s.,!?'"*()-]+$/.test(source) && source) {
+    const base = source.replace(/^["“]|["”]$/g,"").trim();
+    options = [
+      make(base, "tu idea", "Conserva lo que querías decir.", "Mantiene tu intención."),
+      make(base.replace(/\bI am\b/gi,"I'm").replace(/\bdo not\b/gi,"don't").replace(/\bcannot\b/gi,"can't"), "natural", "Hace el inglés más conversacional.", "Dice lo mismo con menos rigidez."),
+      make(base.endsWith("?") || base.endsWith("!") || base.endsWith(".") ? base : base + ".", "simple", "La deja corta y limpia.", "No agrega contexto inventado."),
+      make(base.length < 150 ? `Honestly, ${base.charAt(0).toLowerCase() + base.slice(1)}` : base, "honesta", "Añade una entrada más personal sin cambiar el contenido.", "Mantiene el sentido original."),
+    ];
+  } else {
+    const mode = String(intent || "ideas").toLowerCase();
+    const bank = mode === "dry"
+      ? [
+          make("Right. Got it.", "seca", "Cierras el punto sin alimentar el drama.", "Respuesta contenida."),
+          make("Okay, noted.", "seca", "Reconoces lo dicho y mantienes distancia.", "No añade nada que no sepas."),
+          make("Fair enough.", "neutral", "Aceptas el punto sin sobreexplicar.", "Mantiene la escena ligera."),
+          make("Good to know.", "seca", "Tomas nota y dejas que él haga el siguiente movimiento.", "Respuesta breve.")
+        ]
+      : mode === "playful"
+        ? [
+          make("You sure about that?", "juguetona", "Lo desafías suavemente.", "Le devuelves la energía sin inventar hechos."),
+          make("That's what you're going with?", "juguetona", "Te burlas un poco de su respuesta.", "Mantiene el banter ligero."),
+          make("Okay, I'll remember that.", "pícara", "Dejas una pequeña consecuencia futura sin inventarla.", "Le haces saber que tomaste nota."),
+          make("Bold choice.", "seca-juguetona", "Reaccionas con humor mínimo.", "No fuerza romance ni contexto.")
+        ]
+      : mode === "flirty"
+        ? [
+          make("You say that now.", "coqueta", "Lo desafías con sutileza.", "Flirteo leve, sin escalar de golpe."),
+          make("Careful, I might remember that.", "coqueta", "Añades tensión sin inventar nada.", "Sugiere que sus palabras importan."),
+          make("I'll hold you to that.", "coqueta", "Lo haces responsable de lo que dijo.", "Sube un poco la química sin exagerar."),
+          make("That almost sounded convincing.", "coqueta", "Bromeas con su seguridad.", "Mantiene un tono ligero.")
+        ]
+      : [
+          make("What do you mean?", "curiosa", "Pides claridad real.", "No inventa una lectura de la escena."),
+          make("Okay, tell me more.", "abierta", "Le das espacio para explicar.", "Mantiene la conversación andando."),
+          make("I'm listening.", "natural", "Le das el turno sin sobreescribir.", "Respuesta simple y útil."),
+          make("And what am I supposed to do with that?", "directa", "Le pides una consecuencia concreta.", "Hace avanzar la conversación.")
+        ];
+    options = bank;
+  }
+
+  const unique=[...new Map(options.filter((x:any)=>x?.text).map((x:any)=>[String(x.text).toLowerCase().replace(/\s+/g," ").trim(),x])).values()].slice(0,4);
+  while(unique.length<4) unique.push(make(["Okay, tell me more.","What do you mean?","I'm listening.","Go on."][unique.length],"natural","Fallback breve sin inventar canon.","Mantiene la conversación abierta."));
+  return {
+    model: "local-safe-fallback",
+    fallback: true,
+    understanding: {
+      literal_es: latestCharacter ? "Velvet no pudo analizar esta línea con IA en este momento." : "",
+      explanation_es: "Modo de respaldo activo: estas opciones evitan inventar contexto y mantienen tu intención.",
+      subtext_es: "",
+      english_notes: []
+    },
+    options: unique
+  };
+}
+
 function fallbackStoryPaths(character: any, history: any[]) {
   const name = clean(character?.name || "the character", 80) || "the character";
   return {
@@ -150,7 +227,8 @@ USER DRAFT ${draft||"(none)"}`;
         console.warn("[reply-assist] using local safe Story Paths fallback");
         return json(fallbackStoryPaths(character, history), 200);
       }
-      return json({error:assistErrors.find(Boolean)||"Velvet couldn't think of replies right now."},502);
+      console.warn("[reply-assist] using local safe Reply Companion fallback");
+      return json(fallbackReplyAssist({ history, draft, intent, custom }), 200);
     }
   } catch(e) { return json({ error:e instanceof Error ? e.message : String(e) }, 500); }
 });
