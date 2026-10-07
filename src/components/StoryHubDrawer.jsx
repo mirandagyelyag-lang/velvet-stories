@@ -245,7 +245,7 @@ export default function StoryHubDrawer({
 
 function StoryDashboard({ hub, character, groupCharacters, persona, lorebook, castEntries, onContinue, onJumpToMessage }) {
   const relationship = hub?.relationship || {};
-  const openThreads = (hub?.unfinishedThreads || []).filter((thread)=>thread?.status !== "resolved");
+  const openThreads = (hub?.unfinishedThreads || []).filter((thread)=>!["resolved", "abandoned"].includes(thread?.status));
   const latestBeat = (hub?.storyTimeline || []).at(-1);
   const recentMemories = hub?.recentMemories || [];
   const activeChapter = hub?.activeChapter || {};

@@ -542,7 +542,7 @@ function storyCountLabel(count) {
 
 function normalizeThreads(value) {
   if (!Array.isArray(value)) return [];
-  return value.map((thread) => {
+  return value.filter((thread) => !["resolved", "abandoned"].includes(thread?.status)).map((thread) => {
     if (typeof thread === "string") return clean(thread);
     if (!thread || typeof thread !== "object") return "";
     return clean(thread.title || thread.label || thread.summary || thread.detail || thread.text || "");

@@ -106,7 +106,7 @@ function unresolvedPressure({behavior={},worldConsequences={},storyConsequences=
   const sticky=[
     ...(arr(worldConsequences?.activeChains)),
     ...arr(storyConsequences).filter(x=>!["resolved","closed","complete","completed"].includes(norm(x?.status))),
-    ...arr(unresolvedThreads),
+    ...arr(unresolvedThreads).filter(x=>!["resolved","abandoned"].includes(x?.status)),
     ...arr(behavior?.unfinished_business),
     ...arr(behavior?.commitments),
   ];

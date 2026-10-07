@@ -1887,9 +1887,9 @@ export function ChatsProvider({
       return { ...current, [characterId]: {
         ...current[characterId],
         messages: (current[characterId]?.messages || []).filter((item) => item.id !== messageId),
-        summary: "", sceneState: {}, storyTimeline: [], intelligenceState: {}, storyRecap: "",
+        summary: "", sceneState: {}, storyTimeline: [], intelligenceState: data.intelligence_state || {}, storyRecap: "",
         relationshipState: {}, characterDevelopment: {}, castState: {}, storyChapters: [],
-        activeChapter: {}, unfinishedThreads: [], storyRevision: data.story_revision,
+        activeChapter: {}, unfinishedThreads: Array.isArray(data.unresolved_threads) ? data.unresolved_threads : [], storyRevision: data.story_revision,
       } };
     });
     return data;

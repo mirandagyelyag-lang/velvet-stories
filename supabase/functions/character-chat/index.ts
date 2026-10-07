@@ -1,3 +1,4 @@
+import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
 import { groundedRealityIssues, sanitizeGroundedRealityReply } from "./engine/grounded-reality-lock.ts";
@@ -92,7 +93,7 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "472";
+const VELVET_ENGINE_RELEASE = "490";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -110,6 +111,7 @@ const FIRST_DRAFT_WINS_V35268 = false;
 
 type ModelEnvelope = {
   reply: string;
+  thread_updates?: Record<string, any>[];
   story_drive: Record<string, any>;
   continuity_note: string;
   development_update: Record<string, any>;
@@ -129,6 +131,8 @@ type ModelEnvelope = {
 type ModelResult = ModelEnvelope & {
   finishReason: string;
   model: string;
+  promptTokens?: number;
+  outputTokens?: number;
 };
 
 type LoadedContext = {
@@ -178,13 +182,43 @@ Deno.serve(async (request) => {
 
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData.user) return json({ error: "Invalid session" }, 401);
-    if (String(userData.user.email || "").trim().toLowerCase() !== VELVET_OWNER_EMAIL) {
-      return json({ error: "Private owner account required" }, 403);
-    }
+    const userId = userData.user.id;
+    const ownerByEmail = String(userData.user.email || "").trim().toLowerCase() === VELVET_OWNER_EMAIL;
+    const { data: subscriptionRow } = await cancellationAdmin
+      .from("subscriptions")
+      .select("plan,status,current_period_end")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const activePlan = ownerByEmail
+      ? "owner"
+      : (subscriptionRow?.status === "active" || subscriptionRow?.status === "trialing")
+        ? String(subscriptionRow?.plan || "free")
+        : "free";
 
     const body = await request.json();
     const action = String(body?.action || "generate");
     const generationId = cleanId(body?.generationId);
+
+    if (activePlan !== "owner" && (action === "enqueue_generate" || action === "generate")) {
+      const dailyLimit = activePlan === "plus" ? 300 : 30;
+      const dayStart = new Date();
+      dayStart.setUTCHours(0, 0, 0, 0);
+      const { count: generationsToday } = await cancellationAdmin
+        .from("generation_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("created_at", dayStart.toISOString());
+      if (Number(generationsToday || 0) >= dailyLimit) {
+        return json({
+          error: "daily_generation_limit",
+          plan: activePlan,
+          limit: dailyLimit,
+          message: activePlan === "plus"
+            ? "You reached today's Velvet+ generation limit. It resets tomorrow."
+            : "You reached today's free generation limit. Upgrade to Velvet+ for a much higher limit."
+        }, 429);
+      }
+    }
 
     // v2.10.21 BACKGROUND DELIVERY
     // The phone only needs to enqueue the turn. The actual roleplay request is
@@ -250,7 +284,7 @@ Deno.serve(async (request) => {
     }
 
     if (action === "release_status") {
-      return json({ ok: true, engineVersion: VELVET_ENGINE_RELEASE, release: "Owner Update Center" });
+      return json({ ok: true, engineVersion: VELVET_ENGINE_RELEASE, release: "Living Threads V1" });
     }
 
     if (action === "diagnostics") {
@@ -398,6 +432,21 @@ Deno.serve(async (request) => {
       return json({ error: "The conversation changed before Velvet could answer. Try again from the latest message." }, 409);
     }
 
+    const expectedLivingThreadMessageId = loaded.conversation.intelligence_state?.living_threads_v1?.last_message_id || null;
+    const livingThreadBranch = prepareLivingThreadBranch({
+      threads: loaded.conversation.unresolved_threads || [],
+      state: loaded.conversation.intelligence_state?.living_threads_v1 || {},
+      replacementMessageId: branch.replacementMessage?.id || "",
+    });
+    loaded.conversation.unresolved_threads = livingThreadBranch.threads;
+    loaded.conversation.intelligence_state = {
+      ...(loaded.conversation.intelligence_state || {}),
+      living_threads_v1: livingThreadBranch.state,
+      ...(loaded.conversation.intelligence_state?.story_memory_v35386 ? {
+        story_memory_v35386: { ...loaded.conversation.intelligence_state.story_memory_v35386, open_threads: activeLivingThreads(livingThreadBranch.threads) },
+      } : {}),
+    };
+
     const latestUserMessage = openingRegeneration ? "" : sanitizeUserTurnForPerception(String(latestUserRecord?.content || ""));
     const previousCharacterMessage = openingRegeneration
       ? String(branch.replacementMessage?.content || configuredCharacter.first_message || "")
@@ -448,7 +497,7 @@ Deno.serve(async (request) => {
       activeChapter: openingRegeneration ? {} : (loaded.conversation.active_chapter || {}),
       writingPreferences: storyPreferences,
       storyRecap: openingRegeneration ? "" : (loaded.conversation.story_recap || loaded.conversation.summary || ""),
-      unresolvedThreads: openingRegeneration ? [] : (loaded.conversation.unresolved_threads || []),
+      unresolvedThreads: openingRegeneration ? [] : activeLivingThreads(loaded.conversation.unresolved_threads),
       opening: openingRegeneration,
     });
 
@@ -534,6 +583,7 @@ Deno.serve(async (request) => {
       conversationId,
       userId: userData.user.id,
       storyRevision: loaded.conversation.story_revision || null,
+      expectedLivingThreadMessageId,
       replacementMessage: branch.replacementMessage,
       responseLanguage,
       memories: selectedMemories,
@@ -3937,7 +3987,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     chemistry: turnContract?.relationshipChemistryV2 || {},
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
     storyConsequences: turnContract?.worldConsequencesCausalTimeline?.activeChains || [],
-    unresolvedThreads: conversation.unresolved_threads || [],
+    unresolvedThreads: activeLivingThreads(conversation.unresolved_threads),
     persistentCast,
     castConnections: turnContract?.npcEcosystemSocialNetworkV3?.connections || [],
     scene: conversation.scene_state || {},
@@ -3948,7 +3998,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     scene: conversation.scene_state || {},
     latestUserMessage: latestPerceptibleUserMessage,
     recentCharacterReplies: recentCharacterRepliesForVoice,
-    unresolvedThreads: conversation.unresolved_threads || [],
+    unresolvedThreads: activeLivingThreads(conversation.unresolved_threads),
   });
   const interactionSalienceV35342 = buildInteractionSalienceV35342({
     latestUserMessage: latestPerceptibleUserMessage,
@@ -4020,7 +4070,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     storyConflicts,
     storyArcs,
     knowledgeLedger,
-    unresolvedThreads: conversation.unresolved_threads || [],
+    unresolvedThreads: activeLivingThreads(conversation.unresolved_threads),
     turnContract,
   });
   const voiceAuditDirectiveV34911 = buildVoiceAuditDirectiveV34911({
@@ -4100,7 +4150,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
     scene: conversation.scene_state || {},
     relationship: conversation.relationship_state || {},
     cast: conversation.cast_state || {},
-    open_threads: Array.isArray(conversation.unresolved_threads) ? conversation.unresolved_threads.slice(-5) : [],
+    open_threads: activeLivingThreads(conversation.unresolved_threads).slice(0, 5),
     recent_timeline: Array.isArray(conversation.story_timeline) ? conversation.story_timeline.slice(-3) : [],
     character_mind: conversation.intelligence_state?.character_mind || {},
     story_now: conversation.intelligence_state?.story_now || conversation.scene_state?.time_label || "",
@@ -5243,6 +5293,7 @@ async function callGeminiWithFailover({
   temperature,
   isCancelled,
   interactionDeadlineMs = 14000,
+  livingThreads = false,
 }): Promise<ModelResult> {
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_RECOVERY_MODEL].filter(Boolean))];
   if (!models.length) throw new Error("No Gemini model is configured.");
@@ -5290,6 +5341,7 @@ async function callGeminiWithFailover({
                 ...(Number.isFinite(Number(temperature)) ? { temperature: Number(temperature) } : {}),
                 thinkingConfig: { thinkingLevel: "LOW" },
                 responseMimeType: "application/json",
+                ...(livingThreads ? { responseSchema: livingThreadResponseSchema() } : {}),
               },
             };
         return fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), signal: controller.signal, body: JSON.stringify(requestBody) });
@@ -5300,8 +5352,8 @@ async function callGeminiWithFailover({
         if (!response.ok) logGeminiAttemptFailure({ traceId, model, mode, status: response.status, error: data?.error });
         return { response, data };
       };
-      let { response, data } = await run("bare");
-      if (!response.ok && response.status === 400) ({ response, data } = await run("json"));
+      let { response, data } = await run(livingThreads ? "json" : "bare");
+      if (!response.ok && response.status === 400) ({ response, data } = await run(livingThreads ? "bare" : "json"));
       if (!response.ok) {
         if (response.status === 429) quotaCount += 1;
         throw new Error(data?.error?.message || `Gemini returned ${response.status}`);
@@ -5310,7 +5362,7 @@ async function callGeminiWithFailover({
       if (!String(raw || "").trim()) throw new Error("Gemini returned an empty response");
       const envelope = parseModelEnvelope(raw);
       if (!String(envelope?.reply || "").trim()) throw new Error("Gemini returned an empty reply");
-      return { ...envelope, finishReason: String(data?.candidates?.[0]?.finishReason || ""), model };
+      return { ...envelope, finishReason: String(data?.candidates?.[0]?.finishReason || ""), model, promptTokens: Number(data?.usageMetadata?.promptTokenCount || 0), outputTokens: Number(data?.usageMetadata?.candidatesTokenCount || 0) + Number(data?.usageMetadata?.thoughtsTokenCount || 0) };
     } catch (error) {
       if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
       const message = getErrorName(error) === "AbortError" ? "AI model timed out" : getErrorMessage(error);
@@ -5335,7 +5387,7 @@ async function callGeminiWithFailover({
   }
 }
 function emptyModelEnvelope(reply = ""): ModelEnvelope {
-  return { reply: String(reply || "").trim(), story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, presence_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
+  return { reply: String(reply || "").trim(), thread_updates: [], story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, presence_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
 }
 
 function parseModelEnvelope(raw): ModelEnvelope {
@@ -5346,6 +5398,7 @@ function parseModelEnvelope(raw): ModelEnvelope {
     const read = (key) => parsed?.[key] ?? hidden?.[key];
     return {
       reply: String(parsed?.reply || "").trim(),
+      thread_updates: Array.isArray(read("thread_updates")) ? read("thread_updates").slice(0, 3) : [],
       story_drive: read("story_drive") && typeof read("story_drive") === "object" ? read("story_drive") : {},
       continuity_note: String(read("continuity_note") || "").trim().slice(0, 600),
       development_update: read("development_update") && typeof read("development_update") === "object" ? read("development_update") : {},
@@ -5386,6 +5439,8 @@ function buildCompactLiveRecoveryPrompt({
   openingRegeneration = false, turnContract = {}, turnIntent = {},
   storyPreferences = {}, directorInstruction = "",
 } = {}) {
+  const livingThreadRegistry = unresolvedThreads;
+  unresolvedThreads = activeLivingThreads(unresolvedThreads);
   const userName = cleanPromptValue(userIdentity?.name, 100) || "User";
   const speakerOwnershipV35367 = buildSpeakerOwnershipV35367({ character, persistentCast });
   const userReferencePovV35369 = buildUserReferencePovV35369({ userName });
@@ -5425,7 +5480,7 @@ function buildCompactLiveRecoveryPrompt({
   });
   const transcript = (Array.isArray(messages) ? messages : []).slice(-16).map((message) => {
     const speaker = message?.sender === "user" ? userName : (character?.name || "Character");
-    return `${speaker}: ${cleanPromptValue(message?.content, 1000)}`;
+    return `[${cleanPromptValue(message?.id, 80)}] ${speaker}: ${cleanPromptValue(message?.sender === "user" ? sanitizeUserTurnForPerception(message?.content || "") : message?.content, 1000)}`;
   }).filter((line) => line.split(": ").at(-1)).join("\n");
   const rejected = (Array.isArray(rejectedResponses) ? rejectedResponses : [])
     .slice(-4)
@@ -5651,7 +5706,7 @@ ${openingDnaV35289}`;
     unresolvedThreads,
     turnContract,
   });
-  return `Write only the next visible in-character roleplay reply as plain prose. No JSON or metadata.
+  return `${openingRegeneration ? "Write only the next visible in-character opening as plain prose." : "Return a compact JSON object with reply first and thread_updates second. The reply is the next natural in-character beat; metadata never appears in prose."}
 
 GENERATION MODE
 ${modeContract}
@@ -5687,7 +5742,7 @@ ${cleanPromptValue(JSON.stringify(scene || {}), 1000)}
 
 DURABLE CONTINUITY
 Recap: ${cleanPromptValue(storyRecap, 800)}
-Open threads: ${cleanPromptValue(JSON.stringify(unresolvedThreads || []), 700)}
+${openingRegeneration ? "" : buildLivingThreadPrompt({ threads: livingThreadRegistry, state: intelligenceState?.living_threads_v1 || {}, latestUserMessage, scene, characterName: character?.name || "" })}
 Relevant memories: ${cleanPromptValue(JSON.stringify((Array.isArray(memories) ? memories : []).slice(0, 6).map((item) => item?.content || item)), 900)}
 Relevant lore: ${cleanPromptValue(JSON.stringify((Array.isArray(loreEntries) ? loreEntries : []).slice(0, 5).map((item) => ({ name:item?.name, content:item?.content }))), 800)}
 Relationship state: ${cleanPromptValue(JSON.stringify(relationshipState || {}), 700)}
@@ -10692,6 +10747,7 @@ async function streamRoleplayV19({
   conversationId,
   userId,
   storyRevision,
+  expectedLivingThreadMessageId = null,
   replacementMessage,
   responseLanguage,
   memories,
@@ -10820,9 +10876,10 @@ async function streamRoleplayV19({
         try {
           result = await streamGeminiEnvelopeWithFailover({
           apiKey,
+          livingThreads: !openingRegeneration,
           systemInstruction: liveSystemInstruction,
           prompt: compactTurnPrompt,
-          maxOutputTokens: openingRegeneration ? 1500 : Math.min(950, getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling)),
+          maxOutputTokens: openingRegeneration ? 1500 : 450 + Math.min(950, getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling)),
           performancePlan: { ...(turnContract?.performanceMobileV348 || {}), completeWinnerOnly: false },
           isCancelled,
           onModel(model) {
@@ -10859,15 +10916,37 @@ async function streamRoleplayV19({
             apiKey,
             systemInstruction: liveSystemInstruction,
             prompt: compactTurnPrompt,
-            maxOutputTokens: openingRegeneration ? 1500 : Math.min(1100, getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling)),
+            maxOutputTokens: openingRegeneration ? 1500 : 450 + Math.min(1100, getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling)),
             isCancelled,
             interactionDeadlineMs: 24000,
+            livingThreads: !openingRegeneration,
           });
           if (result?.model) sendEvent(controller, { type: "model", model: result.model });
         }
 
         const firstDraftDurationMs = Date.now() - firstDraftStartedAt;
         console.log("[character-chat] first draft completed", { durationMs: firstDraftDurationMs, model: result.model });
+        try {
+          const promptTokens = Math.max(0, Number(result?.promptTokens || 0));
+          const outputTokens = Math.max(0, Number(result?.outputTokens || 0));
+          const isCurrentFlash = /^gemini-3\.(6|7|8)-flash$/i.test(String(result?.model || ""));
+          const estimatedCostUsd = isCurrentFlash
+            ? ((promptTokens * 0.75) + (outputTokens * 3.75)) / 1000000
+            : 0;
+          await cancellationAdmin.from("ai_usage_events").insert({
+            user_id: userData.user.id,
+            conversation_id: conversationId,
+            generation_id: generationId || null,
+            action: openingRegeneration ? "regenerate" : "generate",
+            model: String(result?.model || "unknown"),
+            prompt_tokens: promptTokens,
+            output_tokens: outputTokens,
+            estimated_cost_usd: estimatedCostUsd,
+            metadata: { pricing_basis: isCurrentFlash ? "2026_standard_flash_intro" : "unpriced_model", engine_release: VELVET_ENGINE_RELEASE }
+          });
+        } catch (usageError) {
+          console.warn("[character-chat] usage telemetry failed", { message: getErrorMessage(usageError) });
+        }
 
         const groundedAgencyAnchors = [
           JSON.stringify(existingSceneState || {}),
@@ -11265,6 +11344,9 @@ async function streamRoleplayV19({
         result = { ...result, reply: persistableReply };
         await streamFinalReply(persistableReply, FIRST_DRAFT_WINS_V35268 ? "v35268-first-draft-wins" : "v35237-regression-shield");
 
+        if (await isCancelled() || !await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) {
+          throw new DOMException("Story changed before commit", "AbortError");
+        }
         const savedMessage = replacementMessage
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: persistableReply })
           : await saveCharacterReply({ supabase, conversationId, userId, reply: persistableReply, latestUserMessageId });
@@ -11338,16 +11420,20 @@ async function streamRoleplayV19({
           relationship_arc_mode: relationshipArcStateV35278.mode,
           relationship_arc_next_gate: relationshipArcStateV35278.next_allowed_shift,
         };
-        const resolvedCommitments = compactTextList(result.continuity_update?.resolved_commitments, 8, 260);
-        const newCommitments = compactTextList(result.continuity_update?.commitments, 8, 260);
-        const presenceOpen = compactTextList(result.presence_update?.unfinished_business_add, 6, 320);
-        const presenceResolved = compactTextList(result.presence_update?.unfinished_business_resolve, 6, 320);
-        update.unresolved_threads = reduceStoryThreadsV35386({
+        const livingThreads = reduceLivingThreads({
           previous: existingUnresolvedThreads,
-          additions: [...newCommitments, ...presenceOpen],
-          resolutions: [...resolvedCommitments, ...presenceResolved],
+          state: existingIntelligenceState?.living_threads_v1 || {},
+          changes: result.thread_updates || [],
           messageId: savedMessage.id,
+          userMessageId: latestUserMessageId || "",
+          latestUserMessage,
+          reply: savedMessage.content || "",
+          messages: messages.map((m) => ({ ...m, content: m.sender === "user" ? sanitizeUserTurnForPerception(m.content || "") : m.content })),
+          focusIds: selectLivingThreads({ threads: existingUnresolvedThreads, state: existingIntelligenceState?.living_threads_v1 || {}, latestUserMessage, scene: existingSceneState, characterName: character.name }).map((t) => t.id),
         });
+        update.unresolved_threads = livingThreads.threads;
+        update.intelligence_state.living_threads_v1 = livingThreads.state;
+        console.log("[character-chat] living_threads_v1", { ...livingThreads.stats, active: activeLivingThreads(livingThreads.threads).length });
         update.intelligence_state.story_memory_v35386 = reduceStoryMemoryV35386({
           previous: existingIntelligenceState?.story_memory_v35386 || {},
           latestUserMessage,
@@ -11356,7 +11442,7 @@ async function streamRoleplayV19({
           messageId: savedMessage.id,
           scene: nextPhysicalState.scene,
           relationship: update.relationship_state,
-          threads: update.unresolved_threads,
+          threads: activeLivingThreads(update.unresolved_threads),
           continuityUpdate: result.continuity_update,
           presenceUpdate: result.presence_update,
           humanBehaviorUpdate: result.human_behavior_update,
@@ -11438,7 +11524,20 @@ async function streamRoleplayV19({
           if (update.story_timeline?.length) update.story_timeline[update.story_timeline.length - 1].chapter_number = chapterState.chapterNumber;
         }
         update.story_recap = buildStoryRecap(update.story_timeline || timeline, existingStoryRecap || "");
-        await supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
+        // An undo/reset/branch edit changes story_revision. Never let an older
+        // background generation resurrect its threads or derived state.
+        if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
+        let stateCommit = supabase.from("conversations").update(update).eq("id", conversationId).eq("user_id", userId);
+        if (storyRevision) stateCommit = stateCommit.eq("story_revision", storyRevision);
+        // Two generations can read the same revision. Only the first may commit
+        // that state; a slower duplicate must not replace its canonical threads.
+        const livingThreadMessagePath = "intelligence_state->living_threads_v1->>last_message_id";
+        stateCommit = expectedLivingThreadMessageId
+          ? stateCommit.eq(livingThreadMessagePath, expectedLivingThreadMessageId)
+          : stateCommit.is(livingThreadMessagePath, null);
+        const { data: stateCommitted, error: stateCommitError } = await stateCommit.select("id").maybeSingle();
+        if (stateCommitError) throw new Error(stateCommitError.message);
+        if (!stateCommitted) throw new DOMException("Story changed before state commit", "AbortError");
         await persistStoryCastMembers({
           supabase, userId, conversationId, castUpdates: result.cast_updates,
           previousMembers: persistentCast, scene: nextPhysicalState.scene,
@@ -11523,40 +11622,6 @@ function stableStoryKeyV35386(value = "") {
   return Math.abs(hash >>> 0).toString(36);
 }
 
-function reduceStoryThreadsV35386({ previous = [], additions = [], resolutions = [], messageId = "" } = {}) {
-  const prior = (Array.isArray(previous) ? previous : []).map((item) => {
-    const title = cleanPromptValue(typeof item === "string" ? item : item?.title || item?.detail, 320);
-    if (!title) return null;
-    return {
-      ...(item && typeof item === "object" && !Array.isArray(item) ? item : {}),
-      id: cleanPromptValue(item?.id, 100) || `thread-${stableStoryKeyV35386(title)}`,
-      title,
-      status: ["open","progressing","resolved","abandoned"].includes(String(item?.status)) ? String(item.status) : "open",
-      opened_at_message_id: cleanPromptValue(item?.opened_at_message_id, 120) || "",
-      last_touched_message_id: cleanPromptValue(item?.last_touched_message_id, 120) || "",
-    };
-  }).filter(Boolean);
-  const next = [...prior];
-  for (const raw of compactTextList(additions, 10, 320)) {
-    const match = next.find((item) => memorySimilarity(item.title, raw) >= 0.68);
-    if (match) {
-      match.status = match.status === "open" ? "progressing" : match.status;
-      match.last_touched_message_id = messageId;
-      continue;
-    }
-    next.push({ id:`thread-${stableStoryKeyV35386(raw)}`, title:raw, status:"open", opened_at_message_id:messageId, last_touched_message_id:messageId });
-  }
-  for (const raw of compactTextList(resolutions, 10, 320)) {
-    const match = next.find((item) => ["open","progressing"].includes(item.status) && memorySimilarity(item.title, raw) >= 0.62);
-    if (match) {
-      match.status = "resolved";
-      match.resolved_at_message_id = messageId;
-      match.last_touched_message_id = messageId;
-    }
-  }
-  return next.slice(-30);
-}
-
 function reduceStoryMemoryV35386({
   previous = {}, latestUserMessage = "", reply = "", characterName = "", messageId = "",
   scene = {}, relationship = {}, threads = [], continuityUpdate = {}, presenceUpdate = {},
@@ -11610,7 +11675,7 @@ function reduceStoryMemoryV35386({
     schema:"v3.53.86",
     event_ledger:events.slice(-60),
     relationship_timeline:events.filter((item)=>["relationship","conflict","promise","reveal","decision"].includes(String(item?.kind))).slice(-40),
-    open_threads:(Array.isArray(threads)?threads:[]).slice(-30),
+    open_threads:activeLivingThreads(threads).slice(0, 16),
     physical_state:{
       location:cleanPromptValue(scene?.location,180), time_label:cleanPromptValue(scene?.time_label,120),
       present:compactSceneNames(scene?.present || [],12), activity:cleanPromptValue(scene?.activity,260),
@@ -11831,7 +11896,9 @@ async function streamGeminiEnvelopeWithFailover({
   onReset,
   onAttempt,
   performancePlan = {},
+  livingThreads = false,
 }): Promise<ModelResult> {
+  if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_RECOVERY_MODEL].filter(Boolean))];
   if (!models.length) throw new Error("No Gemini model is configured.");
 
@@ -11951,6 +12018,8 @@ async function streamGeminiEnvelopeWithFailover({
     let latestReply = "";
     let structured = "";
     let finishReason = "";
+    let promptTokens = 0;
+    let outputTokens = 0;
 
     const cancellationWatcher = (async () => {
       while (watching && !controller.signal.aborted && !settled) {
@@ -11975,6 +12044,7 @@ async function streamGeminiEnvelopeWithFailover({
                 maxOutputTokens,
                 thinkingConfig: { thinkingLevel: "LOW" },
                 responseMimeType: "application/json",
+                ...(livingThreads ? { responseSchema: livingThreadResponseSchema() } : {}),
               },
             };
         return fetch(modelStreamEndpoint(model), {
@@ -12018,10 +12088,10 @@ async function streamGeminiEnvelopeWithFailover({
         return { response, message, mode };
       };
 
-      let { response, message, mode: activeMode } = await runStreamAttempt("bare");
+      let { response, message, mode: activeMode } = await runStreamAttempt(livingThreads ? "json" : "bare");
       if (!response.ok && response.status === 400) {
-        emitAttempt({ phase: "compatibility-fallback", model, mode: "json", status: 400, reason: "bare_transport_rejected" });
-        ({ response, message, mode: activeMode } = await runStreamAttempt("json"));
+        emitAttempt({ phase: "compatibility-fallback", model, mode: livingThreads ? "bare" : "json", status: 400, reason: "transport_rejected" });
+        ({ response, message, mode: activeMode } = await runStreamAttempt(livingThreads ? "bare" : "json"));
       }
       if (!response.ok) {
         quotaReached ||= response.status === 429;
@@ -12049,6 +12119,8 @@ async function streamGeminiEnvelopeWithFailover({
           const piece = extractCandidateTextRaw(data);
           if (piece) structured += piece;
           finishReason = String(data?.candidates?.[0]?.finishReason || finishReason || "");
+          promptTokens = Math.max(promptTokens, Number(data?.usageMetadata?.promptTokenCount || 0));
+          outputTokens = Math.max(outputTokens, Number(data?.usageMetadata?.candidatesTokenCount || 0) + Number(data?.usageMetadata?.thoughtsTokenCount || 0));
           // The Turbo lane requests plain prose. Stream that prose directly;
           // structured compatibility mode still extracts only the reply field.
           const partialReply = activeMode === "bare"
@@ -12082,7 +12154,7 @@ async function streamGeminiEnvelopeWithFailover({
       if (winnerModel === model && !settled) {
         if (completeWinnerOnly) onReply?.(envelope.reply);
         settled = true;
-        resolveResult({ ...envelope, finishReason, model });
+        resolveResult({ ...envelope, finishReason, model, promptTokens, outputTokens });
       }
     } catch (error) {
       if (await isCancelled()) {

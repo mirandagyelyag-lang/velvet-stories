@@ -1,7 +1,7 @@
 {
   "name": "velvet-stories",
   "private": true,
-  "version": "3.54.17",
+  "version": "3.54.18",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -30,7 +30,8 @@
     "deploy:pwa": "bash DEPLOY-PWA-STABLE.sh",
     "verify:regression": "node --experimental-strip-types scripts/verify-v35237-regression-shield.mjs && node scripts/verify-v35387-nine-character-torture.mjs && node scripts/verify-v35388-live-story-evaluator.mjs && node scripts/verify-v35389-instant-story-director.mjs && node scripts/verify-v35390-story-authority.mjs && node scripts/verify-v35391-full-story-integration.mjs && node scripts/torture-v35391-30-turn-state.mjs && node scripts/verify-v35392-relationship-evolution.mjs && node scripts/verify-v35393-social-world.mjs",
     "verify:bedtime": "node scripts/verify-v3539-bedtime-peace.mjs",
-    "verify:release": "npm run lint && npm run verify:edge-boot && node --experimental-strip-types scripts/verify-v3526-instant-story-rebuilt.mjs && node --experimental-strip-types scripts/verify-v35211-instant-story-template-firewall.mjs && node --experimental-strip-types scripts/verify-v35212-instant-story-naturalism.mjs && node scripts/verify-v35238-unified-app-instant-diversity.mjs && node scripts/verify-v35240-human-voices-instant-recovery.mjs && node scripts/verify-v35241-turbo-generation.mjs && node scripts/verify-v35243-regeneration-context.mjs && node --experimental-strip-types scripts/verify-v35244-instant-opening-regeneration.mjs && node --experimental-strip-types scripts/verify-v35245-instant-family-rotation.mjs && node --experimental-strip-types scripts/verify-v35246-clear-fallback-prose.mjs && npm run verify:regression"
+    "verify:release": "npm run lint && npm run verify:edge-boot && node --experimental-strip-types scripts/verify-v3526-instant-story-rebuilt.mjs && node --experimental-strip-types scripts/verify-v35211-instant-story-template-firewall.mjs && node --experimental-strip-types scripts/verify-v35212-instant-story-naturalism.mjs && node scripts/verify-v35238-unified-app-instant-diversity.mjs && node scripts/verify-v35240-human-voices-instant-recovery.mjs && node scripts/verify-v35241-turbo-generation.mjs && node scripts/verify-v35243-regeneration-context.mjs && node --experimental-strip-types scripts/verify-v35244-instant-opening-regeneration.mjs && node --experimental-strip-types scripts/verify-v35245-instant-family-rotation.mjs && node --experimental-strip-types scripts/verify-v35246-clear-fallback-prose.mjs && npm run verify:regression",
+    "verify:living-threads": "node --test tests/living-threads-v1.test.mjs && node --experimental-strip-types tests/living-threads-transport.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.0",
