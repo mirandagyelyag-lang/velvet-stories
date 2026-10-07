@@ -93,7 +93,7 @@ import { evaluateLiveStoryV35388, liveStoryRepairIssuesV35388 } from "./engine/l
 import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV35321, emotionalSupportPriorityIssuesV35321 } from "./engine/emotional-support-priority-v35321.js";
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
-const VELVET_ENGINE_RELEASE = "490";
+const VELVET_ENGINE_RELEASE = "491";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -284,7 +284,7 @@ Deno.serve(async (request) => {
     }
 
     if (action === "release_status") {
-      return json({ ok: true, engineVersion: VELVET_ENGINE_RELEASE, release: "Living Threads V1" });
+      return json({ ok: true, engineVersion: VELVET_ENGINE_RELEASE, release: "Living Threads V1 + Instant Story fix" });
     }
 
     if (action === "diagnostics") {
@@ -2290,95 +2290,110 @@ async function handleInstantStory({ apiKey, draft, idea, variationKey = "", rece
   const sceneSeed = instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds);
   const openingDna = buildOpeningDnaContractV35289(safeDraft, cleanIdea);
   const openingFamily = openingDnaFamilyV35289(safeDraft)?.id || "profile-derived";
-  const prompt = `Write one grounded, playable opening scene for a private roleplay with this character. TARGET 70-130 WORDS; hard ceiling 165. It should feel immediate, conversational and easy to continue, not like a polished short story, prestige-TV cold open, or cinematic monologue.
+  // Keep the request small enough to finish inside the actual Edge budget.
+  // The full chat/Living Threads prompt is deliberately not used for an opening.
+  const prompt = `Write ONE complete, natural opening for the configured character. 65-115 words; hard ceiling 165. Return only finished prose, never JSON or thread metadata.
 
-OPENING DNA 3.52.92
+CANON AND USER AGENCY
+- Narrate the lead character and world in third person. Address the user as you.
+- The user has not acted yet. Do not invent their action, arrival, position, possessions, thoughts, feelings, consent, dialogue, habits, family or history. The character may invite the user; their response remains open.
+- The creator opening describes the character's ecosystem and relationship, not events that already happened in this new story. Keep its world; vary its scene and do not copy its distinctive actions or props.
+- Stage who is speaking and who they are addressing before the first spoken line. Use only configured names for supporting people; everyone else remains anonymous.
+- With an empty IDEA, use ordinary social movement, dry humor, changed plans, a playful challenge or a quiet opportunity. Do not invent a fight, accusation, betrayal, institutional punishment, mystery delivery or emergency.
+- Make one concrete choice by the lead change the immediate situation. Preserve this character's voice and gradual relationship; avoid instant confessions, generic charm, ornamental flirting and food/study logistics as the plot.
+- Use 1-4 short spoken lines with sparse narration. End after the character has changed something, with a complete sentence and room for the user to respond.
+- Do not repeat recent openings. Never force an A/B menu or settle a shared future before the user agrees.
+
+CREATOR OPENING DNA
 ${openingDna}
-
-STORY MODE
-${sceneSeed}
-
-SEMANTIC MOMENTUM 3.53.10
-- A meaningful opening changes the social, emotional or practical situation. Walking, keys, doors, phones, drinks, coffee orders and banter are blocking, not the plot.
-
-${instantStoryCharacterFingerprintV35313(safeDraft)}
-
-${buildCharacterIdentityGateV35321({ character: safeDraft })}
-
-${instantStoryEmotionalDnaV35321(safeDraft)}
-
-${instantStoryLivingWorldV35314({ character: safeDraft })}
-
-${buildInstantStoryDirectorV35366({ character: safeDraft, recentOpenings, idea: cleanIdea })}
-
-${buildInstantStoryDirectorV35389({ character: safeDraft, recentOpenings, idea: cleanIdea })}
-
-${buildSpeakerOwnershipV35367({ character: safeDraft, persistentCast: [] })}
-
-${buildUserReferencePovV35369({ userName: "Antonia" })}
-- Never declare the user's next movement or participation. Invite, insist, choose your own action, but leave the user's action open.
-- Never invent the user's order, favorite, usual, routine or other personal preference.
-- Campus + coffee + study logistics cannot be the opening engine. If that setting appears, something more meaningful must actually happen.
-
-LIVING OPENING ENGINE 3.53.13
-- POV FIREWALL: narrate ONLY the lead character/world in third person. The user is always "you". Never narrate as "I/me/my/we/us" on the user's behalf, and never write the user's unstated actions, perceptions, thoughts, feelings, posture, arrival, movement or choices.
-- DEFAULT NO-FIGHT POLICY 3.52.94: when IDEA is empty, do NOT build the opening around a fight, argument, accusation, betrayal, confrontation, somebody lying, or people being genuinely angry at each other. Conflict is opt-in through IDEA, not the default source of momentum.
-- STORY MOVEMENT WITHOUT FIGHTING: ordinary plans, social chaos, teasing, jealousy, spontaneous decisions, changed plans, small problems, playful competition, opportunities, group dynamics, awkwardness, quiet intimacy, and character initiative are the preferred engines.
-- PROPORTIONAL STAKES: do not invent police, coaches, athletic departments, disciplinary consequences, crimes, dangerous secrets, blackmail, betrayals, or reputation disasters unless the configured character/world or explicit IDEA actually supports them.
-- CHARACTER-SPECIFIC LIFE: derive the opening from what THIS person normally does, who they spend time with, their social role, habits, wants, relationship dynamic, and creator opening.
-- RESOURCE CONTINUITY 3.53.58: wealth, vehicles, housing, staff, access and established possessions are canon. A character who owns a car does not suddenly need the user to drive them because their "ride bailed." If transport becomes unavailable, establish a concrete compatible cause. Never invent a car/bike/vehicle for the user.
-- NATURALISM OVER QUIRK 3.52.95: do not invent a giant/random novelty object, costume, absurd prop, exaggerated food order, or “look how chaotic they are” gimmick as the whole premise merely to make the scene cute or memorable. Humor should come from people, timing, choices and personality.
-- CHEMISTRY THROUGH CHOICES, NOT CHOREOGRAPHY: show preference/attraction through what the character decides, prioritizes, notices, remembers, changes, risks or initiates. Do not stack “caught your eye”, a crooked/lopsided grin, lowered voice, stepping closer, shoulder bumps and prolonged eye contact as shorthand for chemistry.
-- DO NOT CHOREOGRAPH THE USER: the story may establish a broad shared setting, but do not decide the user's exact seat, body position, distance from the character, physical contact, object placement, or destination. Never put the user in the passenger/front seat, beside the character, against a counter, within touching distance, etc. before the user chooses it.
-- NO INVENTED ROUTINE INTIMACY: avoid “as he always did”, “like usual”, “they always ended up beside you”, or any claim that a repeated intimate habit exists unless the creator explicitly established that exact habit.
-- ROTATE ORDINARY LIFE: do not repeatedly fall back to coffee + food + studying just because those appear in the character scenario. The scenario is a palette, not a three-item menu. When IDEA is empty, treat ordering food, choosing snacks, sitting around a student-union/cafeteria table, coffee runs, and study sessions as LOW-PRIORITY fallback material. Prefer a different slice of the character's life unless one of those activities is genuinely central to the creator opening.
-- MOVE THE STORY STATE: a pleasant conversation is not enough by itself. By the end of the opening, something about the immediate situation should be different because the lead character acted: the plan changed, a destination was chosen, an opportunity was taken, a group activity started, a challenge began, a decision was made, or a concrete next move is already underway. Keep the stakes ordinary if appropriate, but make the scene playable.
-- AVOID STOCK FLIRT NARRATION: do not use “a smirk tugging at the corner of his/her mouth”, “his/her eyes slid toward you”, “eyes flicked to you”, “his/her gaze found you”, or similar glance-and-smirk shorthand to signal chemistry. If attraction matters, show it through decisions, priorities, memory, selective attention, teasing with actual content, or what the character chooses to do.
-- OPENING DNA ≠ COPY THE OPENING. Preserve the ecosystem and relationship geometry, but do NOT replay its distinctive props/actions. If the original opening used car keys, front-seat privilege and choosing the music, a new Instant Story should not begin by throwing keys at the user again.
-- USER AGENCY IS SACRED: do not place an object in the user's hand, decide where they are standing/sitting, make them arrive, make them carry something, assign them a secret task, say what they want/feel/know, or make them responsible for a hidden problem. The user has not acted yet.
-- CLOSED NAMED CAST: never invent a new proper name for a supporting person. Use configured names only. Everyone else stays anonymous: “one of his friends”, “a girl by the counter”, “someone from the group”, “a teammate”.
-- NO INVENTED PERSONAL CANON: do not invent the user's family members, parent calls, siblings, roommates, nicknames, breakfast habits, medical details, schedule habits, favorite foods, routines, or private history unless that exact fact already exists in the character/chat canon.
-- USER BIOGRAPHY FIREWALL 4.72: a shared setting is NOT permission to invent the user's past. Never claim the user skipped/missed a class, forgot/lost something, has a track record with a professor/boss, failed/passed a quiz, has an assignment due, owns a notebook/bag/umbrella/vehicle, has not eaten, is tired/hungry/panicking, or has any repeated habit unless that exact fact is explicitly in CHARACTER or IDEA. Create events for the lead character and world instead of backfilling the user's life.
-- FUTURE AGENCY FIREWALL 4.72: the lead may announce what THEY are doing or invite the user, but cannot state a shared future as settled. Avoid "we're going/cutting through/leaving/doing X" unless the user already agreed in canon.
-- NO FAKE FAMILIARITY SHORTCUTS: do not manufacture intimacy by claiming the user's mom/dad/sibling called, by using an unestablished nickname, by saying “you always skip breakfast”, “your usual”, “your favorite”, or similar invented familiarity.
-- PROP DISCIPLINE: keep physical objects sparse. Usually 1-2 meaningful props are enough. Do not stack binder + keys + bag + food + phone + drink unless each item actually changes the scene.
-- FOOD IS NOT A RELATIONSHIP ENGINE: do not use muffins, coffee, takeout, snacks, favorite orders, or “eat this” caretaking as the default way to show closeness unless food is genuinely central to the creator-defined premise.
-- NO GENERIC CONFLICT MACHINE: do not default to screenshots, anonymous messages, somebody lying, “start again”, accusations, hidden destinations, mysterious trunks, or secret deliveries just to manufacture stakes.
-- NO FAKE AUTHORITY: do not invent a coach, boss, professor, police officer, dean, department, parent, team rule, or institutional punishment unless the profile/opening/world actually establishes that authority as relevant.
-- PREMISE GATE: before writing, know what the lead character concretely wants in THIS scene and what their choice costs, risks, gives up, exposes, or changes. A pleasant interruption is not a premise.\n- NO DISPOSABLE-NPC RESCUE: do not create a boring/annoying stranger solely so the lead can interrupt, rescue the user, or offer an escape. A third person may matter only if their presence creates a real social/relationship consequence.\n- CHARACTER-SPECIFIC PRESSURE: the opening must contain at least one choice or pressure that would change materially if a different Velvet character replaced the lead. Generic charm, teasing, rescue, eye contact, or an invitation are not enough.\n- CHARACTER INITIATIVE: the lead character should make at least one concrete choice or move that gives the scene direction. This does NOT mean approaching, finding, interrupting, rescuing, summoning, texting, calling, or starting a conversation with the user. The opening may begin with the lead character living their own life while the user simply has a playable opportunity to observe, enter, react, ignore, or become involved naturally. Do not finish by making the user choose A/B, explain a mystery they never created, or carry the whole plot.
-- INDEPENDENT LIFE FIRST: Instant Story is not a "character comes to get you" generator. Regularly open on the character already doing something that matters to THEM: interacting with friends/NPCs, dealing with their own plans, making a mistake, winning/losing something, being approached by someone else, handling a social consequence, pursuing a goal, or simply existing in their world. The user does not need to be the immediate target of the character's attention.
-- NO MAGNETIC USER DEFAULT: do not repeatedly make the lead notice the user across a room, cross the room toward them, abandon a group for them, interrupt their conversation, offer them an escape, or manufacture a reason to speak to them. Those beats are allowed only when they are genuinely character- and scene-specific, not the default opening structure.
-- PLAYABLE WITHOUT SUMMONING: an opening can be playable because something interesting is already happening nearby. It is valid for the character to be talking to someone else, occupied, unaware of the user, or focused on a separate problem at first. Let proximity, shared context, consequences or the user's eventual choice create contact naturally.
-- SPEAKER + ADDRESSEE CLARITY — HARD RULE: the reader must NEVER have to guess who a spoken line is addressed to. Before the FIRST spoken line, establish its target in plain narration or make the target unmistakable inside the line. If the lead is speaking to the user, write a clear cue such as 'He turned to you.' If speaking to an NPC, identify that person generically or by an approved configured name before/with the line. If speaking to a group, phone, producer, host, etc., say so. Never open with floating dialogue and assume the user will infer it is meant for them.
-- NO DEFAULT YOU ASSUMPTION: quotation marks alone do NOT mean the lead is speaking to the user. Dialogue to NPCs is encouraged when natural, but its recipient must be explicit. Likewise, do not make narration say 'he said' after a floating quote and expect context to repair it retroactively. Clarify BEFORE or AT the line.
-- DIALOGUE TURN CHANGES: whenever the addressee changes within the opening, anchor the new recipient once. Do not make the user reverse-engineer a multi-person conversation from pronouns.
-- RELATIONSHIP STAGE: preserve the configured dynamic. Attraction can color attention and choices, but do not turn it into instant confession, ownership, a random love triangle, or automatic physical familiarity.
-- WORLD STAYS ALIVE: if there is a group, party, team, family, workplace or campus around them, let it continue naturally. Do not make every opening collapse into a private two-person confrontation.
-- DIALOGUE SHOULD SOUND SPOKEN. No therapy language, quote-card monologues, cinematic jaw/eye choreography, ominous “the air changed” writing, or narration explaining what every look means.
-- SHORT OPENING RHYTHM: prefer 2-5 short narration sentences total and 2-5 spoken lines. Dialogue should carry most of the personality and momentum. Avoid paragraph-long setup, atmospheric scene-setting, and explanatory backstory.
-- START LATE: begin at the moment the character acts, interrupts, decides, redirects, invites, or changes the plan. Skip weather reports, room descriptions, crowd noise, architectural details and “everyone was exhausted” setup unless one detail directly changes what happens.
-- LEAVE AIR IN THE SCENE: do not explain every motive, relationship dynamic, or emotional subtext. Let the character's choice and dialogue imply it.
-- PLAIN HUMAN PROSE: prefer ordinary concrete verbs and nouns over decorative literary phrasing. Avoid prose such as “with a brief sigh”, “the steaming bowl”, “the room hummed around them”, “his jaw tightened”, “her expression softened”, or other ornamental narration unless the detail materially changes the scene.
-- NATURAL SPEECH OVER FORMAL SPEECH: characters should not sound like polished essays. Avoid phrases such as “if the situation warrants”, “formal study”, “under the circumstances”, “it would be preferable”, or similarly stiff phrasing unless that character is explicitly written to speak that way.
-- MEANINGFUL ACTION BEFORE EXPLANATION: initiative means making a choice that changes the social, emotional, or practical situation. Prefer confronting, revealing, choosing, inviting, redirecting, interrupting, following, staying, leaving for a reason, asking the one question that matters, or acting on a feeling. Closing a book, grabbing keys, opening a fridge, pouring a drink, walking to another room, checking a phone, or moving props DOES NOT count as initiative unless it changes what happens next.
-- THE CHARACTER CARRIES MOMENTUM: whenever possible, end after the lead character has already chosen or begun the next concrete move in THEIR life. Momentum does not require directing that move at the user. The user may respond, observe, intervene, ignore it, or enter naturally, but should not have to invent the surrounding world. The character may invite the user when it fits, but cannot narrate the user's compliance or physically funnel them into a seat/position.
-- END WITH MOMENTUM, NOT A CLIFFHANGER GIMMICK. The character can act, say something, redirect the plan, interrupt, leave with a purpose, commit to a next step, or create a natural opening for response. Do not end on “So what are you hiding?”, “tell me the truth”, “your choice”, or an invented accusation against the user.
-- Output ONLY finished story prose.
 
 CHARACTER
 ${JSON.stringify(safeDraft)}
 
+CHARACTER VOICE
+${instantStoryCharacterFingerprintV35313(safeDraft)}
+${buildCharacterIdentityGateV35321({ character: safeDraft })}
+
+SCENE DIRECTION
+${sceneSeed}
+
+RECENT OPENINGS TO AVOID
+${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3).map(item => String(item || "").slice(0, 420)))}
+
 IDEA
-${cleanIdea || "No extra premise. Create a fresh story beat from the character's creator-defined life and relationship."}`;
+${cleanIdea || "No extra premise. Use the character's existing life and relationship."}`;
 
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-  const globalDeadlineMs = 10500;
-  const attemptTimeoutMs = 8800;
+  const globalDeadlineMs = 15000;
+  const attemptTimeoutMs = 14000;
   const hedgeDelaysMs = [0, 320, 680];
   const controllers = new Set<AbortController>();
   const rejectedInstantCandidates = [];
   const startedAt = Date.now();
   let closed = false;
+
+  const requestId = /^[a-f0-9-]{36}$/i.test(String(variationKey)) ? variationKey : crypto.randomUUID();
+  let primaryWinnerFound = false;
+  const providerDiagnostics = [];
+  const deadlineAt = startedAt + 28000;
+  const diagnose = (entry) => {
+    const safeEntry = { ...entry, error: String(entry.error || "").replaceAll(apiKey, "[redacted]").slice(0, 240) };
+    if (providerDiagnostics.length < 12) providerDiagnostics.push(safeEntry);
+    console.warn("[character-chat] instant_story_attempt_failed", { requestId, engineVersion: VELVET_ENGINE_RELEASE, ...safeEntry });
+  };
+  const instantStoryResponse = (body, status = 200) => json({
+    ...body, requestId, engineVersion: VELVET_ENGINE_RELEASE,
+    ...(status >= 400 ? { diagnostics: { attempts: providerDiagnostics, durationMs: Date.now() - startedAt } } : {}),
+  }, status);
+  const readOpening = (data) => {
+    const raw = extractCandidateText(data).trim();
+    try {
+      const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""));
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return String(parsed.opening || parsed.reply || "").trim();
+      }
+    } catch { /* Plain prose is the normal Instant Story transport. */ }
+    return raw;
+  };
+  const requestOpening = async ({ model, prompt: requestPrompt, phase, timeoutMs, maxOutputTokens, temperature }) => {
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs < 900) throw new DOMException("Instant Story request deadline reached", "AbortError");
+    const controller = new AbortController();
+    controllers.add(controller);
+    const timeoutId = setTimeout(() => controller.abort(), Math.min(timeoutMs, remainingMs));
+    const requestStartedAt = Date.now();
+    try {
+      const contents = [{ role: "user", parts: [{ text: requestPrompt }] }];
+      const run = async (bare = false) => {
+        const response = await fetch(modelEndpoint(model), {
+          method: "POST", headers: geminiHeaders(apiKey), signal: controller.signal,
+          body: JSON.stringify({ contents, ...(!bare ? { generationConfig: {
+            maxOutputTokens, temperature, thinkingConfig: { thinkingLevel: "LOW" },
+          } } : {}) }),
+        });
+        // Keep the timeout active until the provider body has finished arriving.
+        const data = await response.json().catch((error) => { if (controller.signal.aborted) throw error; return {}; });
+        return { response, data };
+      };
+      let result = await run();
+      if (!result.response.ok && result.response.status === 400) {
+        diagnose({ phase, model, status: 400, code: "config_compatibility_retry", error: result.data?.error?.message });
+        result = await run(true);
+      }
+      if (!result.response.ok) {
+        const error = new Error(result.data?.error?.message || `Gemini returned ${result.response.status}`);
+        Object.assign(error, { providerStatus: result.response.status, providerCode: result.data?.error?.status || "provider_error" });
+        throw error;
+      }
+      return result;
+    } catch (error) {
+      diagnose({ phase, model, status: error.providerStatus || 0, code: controller.signal.aborted ? (phase === "primary" && primaryWinnerFound ? "cancelled_loser" : "provider_timeout") : (error.providerCode || "provider_error"), error: getErrorMessage(error), durationMs: Date.now() - requestStartedAt });
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+      controllers.delete(controller);
+    }
+  };
 
   const attempt = async (model, delayMs) => {
     if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -2386,113 +2401,95 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
     const remainingMs = globalDeadlineMs - (Date.now() - startedAt);
     if (remainingMs < 900) throw new Error("Instant Story global deadline reached.");
 
-    const controller = new AbortController();
-    controllers.add(controller);
-    const timeoutId = setTimeout(() => controller.abort(), Math.min(attemptTimeoutMs, remainingMs));
     const attemptStartedAt = Date.now();
+    const { data } = await requestOpening({ model, prompt, phase: "primary", timeoutMs: Math.min(attemptTimeoutMs, remainingMs), maxOutputTokens: 1600, temperature: 0.9 });
 
-    try {
-      const response = await fetch(modelEndpoint(model), {
-        method: "POST",
-        headers: geminiHeaders(apiKey),
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 1900,
-            temperature: 0.9,
-            thinkingConfig: { thinkingLevel: "LOW" },
-          },
-        }),
+    const candidate = data?.candidates?.[0] || {};
+    const opening = readOpening(data);
+    const finishReason = String(candidate?.finishReason || "");
+    const anchorIssues = instantStoryOpeningAnchorIssuesV35289(opening, safeDraft, cleanIdea);
+    const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
+    const fatalQualityIssues = qualityIssues.filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
+    const premiseIssues = instantStoryPremiseGateIssues(opening, safeDraft);
+    const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
+    const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
+    const identityIssuesV35321 = characterIdentityGateIssuesV35321({ reply: opening, character: safeDraft, recentCharacterReplies: recentOpenings, opening: true });
+    const semanticIssues = semanticStoryMomentumIssues({
+      reply: opening,
+      latestUserMessage: "",
+      recentUserMessages: [],
+      recentCharacterReplies: recentOpenings,
+      character: safeDraft,
+      opening: true,
+    });
+    const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
+    const unifiedOpeningIssues = instantStoryStateFamilyIssuesV35312(opening, recentOpenings);
+    const directorIssuesV35366 = instantStoryDirectorIssuesV35366(opening, recentOpenings);
+    const directorIssuesV35389 = instantStoryDirectorIssuesV35389(opening, { character: safeDraft, recentOpenings });
+    const liveOpeningEvaluationV35388 = evaluateLiveStoryV35388({
+      reply: opening,
+      character: safeDraft,
+      latestUserMessage: cleanIdea,
+      recentCharacterReplies: recentOpenings,
+      previousScene: {},
+      storyMemory: {},
+    });
+    const directorHardIssuesV35368 = directorIssuesV35366.filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue));
+    const directorHardIssuesV35389 = directorIssuesV35389.filter((issue)=>[
+      "instant_story_rescue_template","instant_story_user_as_object","instant_story_fake_choice",
+      "instant_story_floating_dialogue","instant_story_user_choreography","instant_story_recycled_setup"
+    ].includes(issue));
+    const liveOpeningHardIssuesV35388 = liveOpeningEvaluationV35388.blocking || [];
+    // 3.53.19: Opening DNA is a generation compass, not a destructive classifier.
+    // Lexical family detection can misread a valid semantic continuation (for example,
+    // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
+    // diagnostics/repair context, but never reject an otherwise valid opening for it.
+    if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length || directorHardIssuesV35368.length || directorHardIssuesV35389.length || liveOpeningHardIssuesV35388.length) {
+      const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
+      rejectedInstantCandidates.push({
+        opening,
+        model,
+        finishReason,
+        rejectionReasons,
+        issueCount: rejectionReasons.length + (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) ? 0 : 3),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error?.message || `Gemini returned ${response.status}`);
-
-      const candidate = data?.candidates?.[0] || {};
-      const opening = extractCandidateText(data).trim();
-      const finishReason = String(candidate?.finishReason || "");
-      const anchorIssues = instantStoryOpeningAnchorIssuesV35289(opening, safeDraft, cleanIdea);
-      const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
-      const fatalQualityIssues = qualityIssues.filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
-      const premiseIssues = instantStoryPremiseGateIssues(opening, safeDraft);
-      const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
-      const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
-      const identityIssuesV35321 = characterIdentityGateIssuesV35321({ reply: opening, character: safeDraft, recentCharacterReplies: recentOpenings, opening: true });
-      const semanticIssues = semanticStoryMomentumIssues({
-        reply: opening,
-        latestUserMessage: "",
-        recentUserMessages: [],
-        recentCharacterReplies: recentOpenings,
-        character: safeDraft,
-        opening: true,
+      console.warn("[character-chat] instant story rejected by conflict-first/opening-DNA quality gate", {
+        anchorIssues,
+        qualityIssues,
+        fatalQualityIssues,
+        premiseIssues,
+        groundingIssues,
+        naturalismIssues,
+        model,
+        finishReason,
+        words: opening.split(/\s+/).filter(Boolean).length,
+        durationMs: Date.now() - attemptStartedAt,
       });
-      const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
-      const unifiedOpeningIssues = instantStoryStateFamilyIssuesV35312(opening, recentOpenings);
-      const directorIssuesV35366 = instantStoryDirectorIssuesV35366(opening, recentOpenings);
-      const directorIssuesV35389 = instantStoryDirectorIssuesV35389(opening, { character: safeDraft, recentOpenings });
-      const liveOpeningEvaluationV35388 = evaluateLiveStoryV35388({
-        reply: opening,
-        character: safeDraft,
-        latestUserMessage: cleanIdea,
-        recentCharacterReplies: recentOpenings,
-        previousScene: {},
-        storyMemory: {},
-      });
-      const directorHardIssuesV35368 = directorIssuesV35366.filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue));
-      const directorHardIssuesV35389 = directorIssuesV35389.filter((issue)=>[
-        "instant_story_rescue_template","instant_story_user_as_object","instant_story_fake_choice",
-        "instant_story_floating_dialogue","instant_story_user_choreography","instant_story_recycled_setup"
-      ].includes(issue));
-      const liveOpeningHardIssuesV35388 = liveOpeningEvaluationV35388.blocking || [];
-      // 3.53.19: Opening DNA is a generation compass, not a destructive classifier.
-      // Lexical family detection can misread a valid semantic continuation (for example,
-      // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
-      // diagnostics/repair context, but never reject an otherwise valid opening for it.
-      if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length || directorHardIssuesV35368.length || directorHardIssuesV35389.length || liveOpeningHardIssuesV35388.length) {
-        const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
-        rejectedInstantCandidates.push({
-          opening,
-          model,
-          finishReason,
-          rejectionReasons,
-          issueCount: rejectionReasons.length + (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) ? 0 : 3),
-        });
-        console.warn("[character-chat] instant story rejected by conflict-first/opening-DNA quality gate", {
-          anchorIssues,
-          qualityIssues,
-          fatalQualityIssues,
-          premiseIssues,
-          groundingIssues,
-          naturalismIssues,
-          model,
-          finishReason,
-          words: opening.split(/\s+/).filter(Boolean).length,
-          durationMs: Date.now() - attemptStartedAt,
-        });
-        throw new Error(`Incomplete Instant Story (${finishReason || "unknown finish"}).`);
-      }
-
-      return { opening, model, finishReason, durationMs: Date.now() - attemptStartedAt };
-    } finally {
-      clearTimeout(timeoutId);
-      controllers.delete(controller);
+      diagnose({ phase: "primary", model, code: opening ? "quality_rejected" : "empty_provider_response", finishReason, words: opening.split(/\s+/).filter(Boolean).length, reasons: rejectionReasons.slice(0, 16), durationMs: Date.now() - attemptStartedAt });
+      throw new Error(`Incomplete Instant Story (${finishReason || "unknown finish"}).`);
     }
+
+    return { opening, model, finishReason, durationMs: Date.now() - attemptStartedAt };
+
   };
 
   const attempts = models.map((model, index) => attempt(model, hedgeDelaysMs[index] ?? 1350));
-  const deadline = new Promise((resolve) => setTimeout(() => resolve(null), globalDeadlineMs));
+  let primaryDeadlineTimer;
+  const deadline = new Promise((resolve) => { primaryDeadlineTimer = setTimeout(() => resolve(null), globalDeadlineMs); });
 
   try {
     const winner = await Promise.race([Promise.any(attempts).catch(() => null), deadline]);
     if (winner?.opening) {
+      primaryWinnerFound = true;
       console.log("[character-chat] instant story completed", {
         model: winner.model,
         finishReason: winner.finishReason,
         durationMs: Date.now() - startedAt,
       });
-      return json({ opening: winner.opening, source: "ai", sceneSeed, openingFamily });
+      return instantStoryResponse({ opening: winner.opening, source: "ai", sceneSeed, openingFamily });
     }
   } finally {
+    clearTimeout(primaryDeadlineTimer);
     closed = true;
     controllers.forEach((controller) => controller.abort());
   }
@@ -2522,7 +2519,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       const text = String(item.opening || "").trim();
       const words = text.split(/\s+/).filter(Boolean).length;
       const finish = String(item.finishReason || "").toUpperCase();
-      return words >= 35 &&
+      return words >= 55 &&
         words <= 260 &&
         !["SAFETY","RECITATION","BLOCKLIST","PROHIBITED_CONTENT","MALFORMED_FUNCTION_CALL"].includes(finish) &&
         !instantStoryHasTemplateLeak(text) &&
@@ -2536,7 +2533,7 @@ ${cleanIdea || "No extra premise. Create a fresh story beat from the character's
       durationMs: Date.now() - startedAt,
       softWarnings: deadlineSafeCandidate.rejectionReasons || [],
     });
-    return json({
+    return instantStoryResponse({
       opening: deadlineSafeCandidate.opening,
       source: "ai_deadline_first_v471",
       sceneSeed,
@@ -2594,29 +2591,9 @@ RULES
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user. The character does not need to approach or speak to the user; independent/offscreen-adjacent action is a valid opening.
 - Output only finished prose.`;
 
-    const rescueController = new AbortController();
-    const rescueTimeoutId = setTimeout(() => rescueController.abort(), 6500);
-    let rescue;
-    try {
-      rescue = await fetch(modelEndpoint(GEMINI_MODEL), {
-        method: "POST",
-        headers: geminiHeaders(apiKey),
-        signal: rescueController.signal,
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: rescuePrompt }] }],
-          generationConfig: {
-            maxOutputTokens: 1600,
-            temperature: 0.82,
-            thinkingConfig: { thinkingLevel: "LOW" },
-          },
-        }),
-      });
-    } finally {
-      clearTimeout(rescueTimeoutId);
-    }
-    const rescueData = await rescue.json().catch(() => ({}));
+    const { response: rescue, data: rescueData } = await requestOpening({ model: GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 11000, maxOutputTokens: 1600, temperature: 0.82 });
     if (rescue.ok) {
-      const rescueOpening = extractCandidateText(rescueData).trim();
+      const rescueOpening = readOpening(rescueData);
       const rescueFinish = String(rescueData?.candidates?.[0]?.finishReason || "");
       const rescueAnchorIssues = instantStoryOpeningAnchorIssuesV35289(rescueOpening, safeDraft, cleanIdea);
       const rescueGroundingIssues = instantStoryGroundingIssuesV35292(rescueOpening, safeDraft, cleanIdea);
@@ -2635,7 +2612,7 @@ RULES
       const rescueDirectorHardV35368 = rescueDirectorIssuesV35366.filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue));
       const rescueSpeakerIssuesV35367 = speakerOwnershipIssuesV35367(rescueOpening, safeDraft);
       if (instantStoryCandidateUsableV35290(rescueOpening, rescueFinish, safeDraft) && !rescueHardBlocks.length && !rescuePremiseIssues.length && !rescueIdentityIssuesV35321.length && !rescueSemanticIssues.length && !rescueTooSimilar && !rescueDirectorHardV35368.length && !rescueSpeakerIssuesV35367.length) {
-        return json({
+        return instantStoryResponse({
           opening: rescueOpening,
           source: "ai_rescue",
           sceneSeed,
@@ -2663,7 +2640,7 @@ RULES
     .sort((a,b)=>(a.similarity-b.similarity) || ((a.issueCount || 99) - (b.issueCount || 99)))[0] || null;
 
   if (bestEffort?.opening) {
-    return json({
+    return instantStoryResponse({
       opening: bestEffort.opening,
       source: "ai_best_effort",
       sceneSeed,
@@ -2696,7 +2673,7 @@ RULES
       const text = String(item.opening || "").trim();
       const words = text.split(/\s+/).filter(Boolean).length;
       const finish = String(item.finishReason || "").toUpperCase();
-      return words >= 45 &&
+      return words >= 55 &&
         words <= 240 &&
         !["SAFETY","RECITATION","BLOCKLIST","PROHIBITED_CONTENT","MALFORMED_FUNCTION_CALL"].includes(finish) &&
         !instantStoryHasTemplateLeak(text) &&
@@ -2705,7 +2682,7 @@ RULES
     .sort((a,b)=>(a.similarity-b.similarity) || ((a.issueCount || 99)-(b.issueCount || 99)))[0] || null;
 
   if (guaranteedSafeCandidate?.opening) {
-    return json({
+    return instantStoryResponse({
       opening: guaranteedSafeCandidate.opening,
       source: "ai_guaranteed_safe",
       sceneSeed,
@@ -2734,7 +2711,7 @@ RULES
     !localFallbackHardBlocks.length &&
     !instantStoryHasTemplateLeak(localFallbackOpening)
   ) {
-    return json({
+    return instantStoryResponse({
       opening: localFallbackOpening,
       source: "local_deadline_fallback",
       sceneSeed,
@@ -2747,16 +2724,7 @@ RULES
   // One tiny final pass is cheaper than handing the creator a dead button.
   // It still obeys the hard user-agency and named-cast gates.
   try {
-    const emergencyController = new AbortController();
-    const emergencyTimeoutId = setTimeout(() => emergencyController.abort(), 5200);
-    let emergencyResponse;
-    try {
-      emergencyResponse = await fetch(modelEndpoint(GEMINI_EMERGENCY_MODEL), {
-        method: "POST",
-        headers: geminiHeaders(apiKey),
-        signal: emergencyController.signal,
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: `Write one fresh, natural roleplay opening for the exact character below. 65-115 words. Use 1-4 short spoken lines. The lead character must make a meaningful choice that changes what happens next. Use third-person lead-character narration only; address the user as "you" and never narrate as I/me/my/we/us on the user's behalf. Do not invent the user's actions, feelings, position, possessions, history, family, nickname, or dialogue. Do not invent named NPCs. Avoid food-order/study filler, stock flirting, decorative prose, forced A/B choices, accusations, screenshots, mystery packages, and routine intimacy. Do not repeat the recent openings. Output only finished prose.
+    const { response: emergencyResponse, data: emergencyData } = await requestOpening({ model: GEMINI_EMERGENCY_MODEL, prompt: `Write one fresh, natural roleplay opening for the exact character below. 65-115 words. Use 1-4 short spoken lines. The lead character must make a meaningful choice that changes what happens next. Use third-person lead-character narration only; address the user as "you" and never narrate as I/me/my/we/us on the user's behalf. Do not invent the user's actions, feelings, position, possessions, history, family, nickname, or dialogue. Do not invent named NPCs. Avoid food-order/study filler, stock flirting, decorative prose, forced A/B choices, accusations, screenshots, mystery packages, and routine intimacy. Do not repeat the recent openings. Output only finished prose.
 
 CHARACTER
 ${JSON.stringify(safeDraft)}
@@ -2765,20 +2733,9 @@ STORY DIRECTION
 ${sceneSeed}
 
 RECENT OPENINGS TO AVOID
-${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3).map((item)=>String(item || "").slice(0,420)))}` }] }],
-          generationConfig: {
-            maxOutputTokens: 1100,
-            temperature: 1.0,
-            thinkingConfig: { thinkingLevel: "LOW" },
-          },
-        }),
-      });
-    } finally {
-      clearTimeout(emergencyTimeoutId);
-    }
-    const emergencyData = await emergencyResponse.json().catch(() => ({}));
+${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3).map((item)=>String(item || "").slice(0,420)))}`, phase: "emergency", timeoutMs: 7000, maxOutputTokens: 1100, temperature: 1.0 });
     if (emergencyResponse.ok) {
-      const emergencyOpening = extractCandidateText(emergencyData).trim();
+      const emergencyOpening = readOpening(emergencyData);
       const emergencyFinish = String(emergencyData?.candidates?.[0]?.finishReason || "");
       const emergencyHardBlocks = instantStoryHardBlockIssuesV35298(emergencyOpening, safeDraft, cleanIdea);
       const emergencyPremiseIssues = instantStoryPremiseGateIssues(emergencyOpening, safeDraft);
@@ -2803,7 +2760,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
         !emergencyDirectorHardV35368.length &&
         !emergencySpeakerIssuesV35367.length
       ) {
-        return json({
+        return instantStoryResponse({
           opening: emergencyOpening,
           source: "ai_emergency_rescue",
           sceneSeed,
@@ -2832,7 +2789,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
     .sort((a,b)=>(a.issueCount || 99) - (b.issueCount || 99))[0] || null;
 
   if (lastUsableDraft?.opening) {
-    return json({
+    return instantStoryResponse({
       opening: String(lastUsableDraft.opening).trim(),
       source: "ai_last_resort",
       sceneSeed,
@@ -2851,16 +2808,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
 
   if (salvageSeed?.opening) {
     try {
-      const salvageController = new AbortController();
-      const salvageTimeoutId = setTimeout(() => salvageController.abort(), 14500);
-      let salvageResponse;
-      try {
-        salvageResponse = await fetch(modelEndpoint(GEMINI_RECOVERY_MODEL), {
-          method: "POST",
-          headers: geminiHeaders(apiKey),
-          signal: salvageController.signal,
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 65-105 words. The lead character must create ONE visible change before the final line: change a plan, social balance, access, expectation, information, responsibility, challenge, boundary, or who is involved. Keep that change inside the current setting unless CHARACTER/IDEA already establishes a destination. Walking, keys, doors, driving, moving rooms, smiling, teasing, props, or banter DO NOT count as the change. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. Avoid ending on 'come on', 'deal', a joke, a generic question, or an invitation that requires the user to invent the next beat. End after the character has already changed something concrete. Output only the revised prose.
+      const { response: salvageResponse, data: salvageData } = await requestOpening({ model: GEMINI_RECOVERY_MODEL, prompt: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 65-105 words. The lead character must create ONE visible change before the final line: change a plan, social balance, access, expectation, information, responsibility, challenge, boundary, or who is involved. Keep that change inside the current setting unless CHARACTER/IDEA already establishes a destination. Walking, keys, doors, driving, moving rooms, smiling, teasing, props, or banter DO NOT count as the change. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. Avoid ending on 'come on', 'deal', a joke, a generic question, or an invitation that requires the user to invent the next beat. End after the character has already changed something concrete. Output only the revised prose.
 
 CHARACTER
 ${JSON.stringify(safeDraft)}
@@ -2875,21 +2823,9 @@ REJECTED OPENING
 ${String(salvageSeed.opening || "").slice(0,1800)}
 
 FAILURES TO REMOVE
-${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}` }] }],
-            generationConfig: {
-              maxOutputTokens: 1800,
-              temperature: 0.78,
-              thinkingConfig: { thinkingLevel: "LOW" },
-            },
-          }),
-        });
-      } finally {
-        clearTimeout(salvageTimeoutId);
-      }
-
-      const salvageData = await salvageResponse.json().catch(() => ({}));
+${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "salvage", timeoutMs: 11000, maxOutputTokens: 1600, temperature: 0.78 });
       if (salvageResponse.ok) {
-        const salvageOpening = extractCandidateText(salvageData).trim();
+        const salvageOpening = readOpening(salvageData);
         const salvageFinish = String(salvageData?.candidates?.[0]?.finishReason || "");
         const salvageHard = [...instantStoryHardBlockIssuesV35298(salvageOpening, safeDraft, cleanIdea), ...speakerOwnershipIssuesV35367(salvageOpening, safeDraft)];
         const salvagePremise = instantStoryPremiseGateIssues(salvageOpening, safeDraft);
@@ -2923,7 +2859,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}` }] }],
           !salvageSemantic.length &&
           !salvageFatalQuality.length
         ) {
-          return json({
+          return instantStoryResponse({
             opening: salvageOpening,
             source: "ai_no_dead_button_salvage",
             sceneSeed,
@@ -2968,7 +2904,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}` }] }],
       const text = String(item.opening || "").trim();
       const words = text.split(/\s+/).filter(Boolean).length;
       const finish = String(item.finishReason || "").toUpperCase();
-      return words >= 35 &&
+      return words >= 55 &&
         words <= 260 &&
         !["SAFETY","RECITATION","BLOCKLIST","PROHIBITED_CONTENT","MALFORMED_FUNCTION_CALL"].includes(finish) &&
         !instantStoryHasTemplateLeak(text) &&
@@ -2981,7 +2917,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}` }] }],
       softWarnings: finalDeliverable.rejectionReasons || [],
       model: finalDeliverable.model,
     });
-    return json({
+    return instantStoryResponse({
       opening: finalDeliverable.opening,
       source: "ai_final_delivery_v470",
       sceneSeed,
@@ -2990,7 +2926,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}` }] }],
     });
   }
 
-  return json({
+  return instantStoryResponse({
     error: "Velvet couldn't create an Instant Story this time. Try again.",
     retryable: true,
     openingFamily,

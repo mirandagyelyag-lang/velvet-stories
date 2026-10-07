@@ -10,7 +10,7 @@ const pkg = JSON.parse(
 );
 
 const velvetVersion = pkg.version;
-const velvetRelease = "Living Threads V1";
+const velvetRelease = "Living Threads V1 + Instant Story fix";
 
 function upsertMetaTag(html, name, content) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

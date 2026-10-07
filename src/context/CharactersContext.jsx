@@ -7,6 +7,7 @@ import {
 
 import { useAuth } from "./AuthContext";
 import { supabase } from "../services/supabase";
+import { instantStoryError } from "../utils/instantStoryDiagnostics";
 
 const CharactersContext = createContext();
 
@@ -342,7 +343,7 @@ export function CharactersProvider({ children }) {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.error || data?.message || `Instant Story failed with status ${response.status}.`);
+        throw instantStoryError(data, { status: response.status, requestId: variationKey });
       }
       const opening = String(data?.opening || "").trim();
       const instantWords = opening.split(/\s+/).filter(Boolean);
@@ -371,6 +372,11 @@ export function CharactersProvider({ children }) {
       }
       return opening;
     } catch (error) {
+      console.error("[Instant Story] generation failed", error?.diagnostics || {
+        action: "instant_story", requestId: variationKey,
+        code: error?.name === "AbortError" ? "client_timeout" : "client_error",
+        error: String(error?.message || "Unknown generation error").slice(0, 240),
+      });
       if (error?.name === "AbortError") {
         throw new Error("Instant Story took too long and was stopped. Try once more.");
       }
