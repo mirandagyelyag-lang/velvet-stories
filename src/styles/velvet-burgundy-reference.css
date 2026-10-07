@@ -2226,7 +2226,10 @@ header.reference-stories-hero:is(.characters-library__compact-hero, .pulse-heade
   min-width: 0;
 }
 .reference-stories-title.characters-library__editorial-title {
-  width: min(760px, 90%);
+  width: min(640px, 90%);
+}
+.reference-stories-title.characters-library__editorial-title h1 {
+  font-size: clamp(2.8rem, 6.4vw, 4rem);
 }
 :is(header.reference-stories-hero .characters-library__compact-copy, header.pulse-header--editorial .pulse-header__copy) > p {
   max-width: none;
@@ -2242,7 +2245,7 @@ header.reference-stories-hero:is(.characters-library__compact-hero, .pulse-heade
 @media (max-width: 760px) {
   .reference-stories-title.characters-library__editorial-title { width: 100%; }
   .reference-stories-title.characters-library__editorial-title h1 {
-    font-size: clamp(2.25rem, 10.8vw, 3.85rem);
+    font-size: clamp(2rem, 9.2vw, 3.25rem);
   }
   :is(header.reference-stories-hero .characters-library__compact-copy, header.pulse-header--editorial .pulse-header__copy) > p { margin-top: 142px; }
   :is(.characters-library__hero-create, .pulse-header--editorial .pulse-header__library) { top: 0; }
