@@ -805,7 +805,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         </div>, document.body
       )}
 
-{pickerOpen && (
+{pickerOpen && createPortal(
         <div className="conversation-picker-backdrop" onMouseDown={() => !creatingId && setPickerOpen(false)}>
           <section className={`conversation-picker conversation-picker--editorial${pickerExpanded ? " is-expanded" : ""}`} onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="conversation-picker-title">
             <button type="button" className="velvet-sheet-grabber velvet-sheet-grabber--interactive" aria-label={pickerExpanded ? "Lower character picker" : "Expand character picker"} onClick={() => setPickerExpanded((value) => !value)} onPointerDown={(event) => { event.currentTarget.setPointerCapture?.(event.pointerId); setPickerDragStartY(event.clientY); }} onPointerUp={(event) => { if (pickerDragStartY == null) return; const delta = event.clientY - pickerDragStartY; if (delta < -24) setPickerExpanded(true); if (delta > 24) setPickerExpanded(false); setPickerDragStartY(null); }} />
@@ -829,7 +829,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
             )}
             </div>
           </section>
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   );
