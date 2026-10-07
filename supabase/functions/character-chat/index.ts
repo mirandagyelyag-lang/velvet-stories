@@ -94,7 +94,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "494";
+const VELVET_ENGINE_RELEASE = "495";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2292,6 +2292,9 @@ function instantStoryTooSimilarV3539(opening = "", recentOpenings = []) {
 
 async function handleInstantStory({ apiKey, draft, idea, variationKey = "", recentSceneSeeds = [], recentOpenings = [] }) {
   const safeDraft = compactInstantStoryDraft(draft);
+  // v495: the configured first message is inspiration, not canon for a fresh Instant Story.
+  // Keep its distilled Opening DNA, but do not feed its raw user choreography back to the model.
+  const promptDraft = { ...safeDraft, firstMessage: "" };
   const cleanIdea = cleanPromptValue(idea || "", 420);
   const sceneSeed = instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds);
   const openingDna = buildOpeningDnaContractV35289(safeDraft, cleanIdea);
@@ -2304,6 +2307,7 @@ CANON AND USER AGENCY
 - Narrate the lead character and world in third person. Address the user as you.
 - The user has not acted yet. Do not invent their action, arrival, position, possessions, thoughts, feelings, consent, dialogue, habits, family or history. The character may invite the user; their response remains open.
 - The creator opening describes the character's ecosystem and relationship, not events that already happened in this new story. Keep its world; vary its scene and do not copy its distinctive actions or props.
+- NEVER reuse physical placement or actions assigned to the user by the configured first message. A fresh Instant Story begins before the user has acted. Do not place the user in a room, party, hallway, campus area, vehicle, table, seat, or beside the lead unless IDEA explicitly establishes that location.
 - Stage who is speaking and who they are addressing before the first spoken line, with an explicit speech tag naming the lead and recipient (for example, the lead told the drivers, or said to you). Addressing you never establishes your position or actions. Use only configured names for supporting people; everyone else remains anonymous.
 - With an empty IDEA, use ordinary social movement, dry humor, changed plans, a playful challenge or a quiet opportunity. Do not invent a fight, accusation, betrayal, institutional punishment, mystery delivery or emergency.
 - Make one concrete choice by the lead change the immediate situation. Preserve this character's voice and gradual relationship; avoid instant confessions, generic charm, ornamental flirting and food/study logistics as the plot.
@@ -2314,7 +2318,7 @@ CREATOR OPENING DNA
 ${openingDna}
 
 CHARACTER
-${JSON.stringify(safeDraft)}
+${JSON.stringify(promptDraft)}
 
 CHARACTER VOICE
 ${instantStoryCharacterFingerprintV35313(safeDraft)}
@@ -2332,8 +2336,8 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))].slice(0, 4);
-  const globalDeadlineMs = 15000;
-  const attemptTimeoutMs = 14000;
+  const globalDeadlineMs = 11000;
+  const attemptTimeoutMs = 10000;
   const hedgeDelaysMs = [0, 320, 680];
   const controllers = new Set<AbortController>();
   const rejectedInstantCandidates = [];
@@ -2408,7 +2412,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       }
       // Direct REST calls have no SDK retry layer. Retry transient overload once,
       // with jitter, inside this same controller and the shared handler deadline.
-      if (!result.response.ok && [408, 429, 500, 502, 503, 504].includes(result.response.status) && requestBudgetMs - (Date.now() - requestStartedAt) > 2000) {
+      if (phase !== "primary" && !result.response.ok && [408, 429, 500, 502, 503, 504].includes(result.response.status) && requestBudgetMs - (Date.now() - requestStartedAt) > 2000) {
         diagnose({ phase, model, status: result.response.status, code: "transient_retry", error: result.data?.error?.message });
         const retryDelayMs = 650 + Math.floor(Math.random() * 200);
         await new Promise<void>((resolve, reject) => {
@@ -2596,7 +2600,7 @@ OPENING DNA
 ${openingDna}
 
 CHARACTER
-${JSON.stringify(safeDraft)}
+${JSON.stringify(promptDraft)}
 
 CONFLICT DIRECTION
 ${sceneSeed}
@@ -2631,7 +2635,7 @@ RULES
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user. The character does not need to approach or speak to the user; independent/offscreen-adjacent action is a valid opening.
 - Output only finished prose.`;
 
-    const { response: rescue, data: rescueData } = await requestOpening({ model: GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 11000, maxOutputTokens: 1600, temperature: 0.82 });
+    const { response: rescue, data: rescueData } = await requestOpening({ model: GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 7000, maxOutputTokens: 1600, temperature: 0.82 });
     if (rescue.ok) {
       const rescueOpening = readOpening(rescueData);
       const rescueFinish = String(rescueData?.candidates?.[0]?.finishReason || "");
@@ -2770,13 +2774,13 @@ RULES
     const { response: emergencyResponse, data: emergencyData } = await requestOpening({ model: GEMINI_EMERGENCY_MODEL, prompt: `Write one fresh, natural roleplay opening for the exact character below. 65-115 words. Use 1-4 short spoken lines. The lead character must make a meaningful choice that changes what happens next. Use third-person lead-character narration only; address the user as "you" and never narrate as I/me/my/we/us on the user's behalf. Do not invent the user's actions, feelings, position, possessions, history, family, nickname, or dialogue. Do not invent named NPCs. Avoid food-order/study filler, stock flirting, decorative prose, forced A/B choices, accusations, screenshots, mystery packages, and routine intimacy. Do not repeat the recent openings. Output only finished prose.
 
 CHARACTER
-${JSON.stringify(safeDraft)}
+${JSON.stringify(promptDraft)}
 
 STORY DIRECTION
 ${sceneSeed}
 
 RECENT OPENINGS TO AVOID
-${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3).map((item)=>String(item || "").slice(0,420)))}`, phase: "emergency", timeoutMs: 7000, maxOutputTokens: 1100, temperature: 1.0 });
+${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3).map((item)=>String(item || "").slice(0,420)))}`, phase: "emergency", timeoutMs: 4500, maxOutputTokens: 1100, temperature: 1.0 });
     if (emergencyResponse.ok) {
       const emergencyOpening = readOpening(emergencyData);
       const emergencyFinish = String(emergencyData?.candidates?.[0]?.finishReason || "");
@@ -2857,7 +2861,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
       const { response: salvageResponse, data: salvageData } = await requestOpening({ model: GEMINI_RECOVERY_MODEL, prompt: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 65-105 words. The lead character must create ONE visible change before the final line: change a plan, social balance, access, expectation, information, responsibility, challenge, boundary, or who is involved. Keep that change inside the current setting unless CHARACTER/IDEA already establishes a destination. Walking, keys, doors, driving, moving rooms, smiling, teasing, props, or banter DO NOT count as the change. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. Avoid ending on 'come on', 'deal', a joke, a generic question, or an invitation that requires the user to invent the next beat. End after the character has already changed something concrete. Output only the revised prose.
 
 CHARACTER
-${JSON.stringify(safeDraft)}
+${JSON.stringify(promptDraft)}
 
 IDEA
 ${cleanIdea || "none"}
@@ -2869,7 +2873,7 @@ REJECTED OPENING
 ${String(salvageSeed.opening || "").slice(0,1800)}
 
 FAILURES TO REMOVE
-${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "salvage", timeoutMs: 11000, maxOutputTokens: 1600, temperature: 0.78 });
+${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "salvage", timeoutMs: 4500, maxOutputTokens: 1600, temperature: 0.78 });
       if (salvageResponse.ok) {
         const salvageOpening = readOpening(salvageData);
         const salvageFinish = String(salvageData?.candidates?.[0]?.finishReason || "");
