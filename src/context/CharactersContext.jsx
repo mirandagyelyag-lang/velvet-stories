@@ -33,6 +33,20 @@ export function CharactersProvider({ children }) {
     loadCharacters();
   }, [user?.id]);
 
+  // Refresh externally edited character profiles when the installed PWA regains focus.
+  useEffect(() => {
+    if (!user?.id) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") loadCharacters();
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [user?.id]);
+
   async function loadCharacters() {
     if (!user) {
       return;
