@@ -377,7 +377,7 @@ export function CharactersProvider({ children }) {
       });
 
       let response = await requestOpening();
-      if ([429, 502, 503, 504].includes(response.status) && !controller.signal.aborted) {
+      if ([502, 503, 504].includes(response.status) && !controller.signal.aborted) {
         response = await requestOpening();
       }
       const data = await response.json().catch(() => ({}));
