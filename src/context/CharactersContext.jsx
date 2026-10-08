@@ -304,7 +304,7 @@ export function CharactersProvider({ children }) {
 
   async function generateInstantStory(characterData, idea = "") {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 36000);
+    const timeoutId = setTimeout(() => controller.abort(), 65000);
     const historyKey = `velvet:instant-story-scenes:${characterData?.id || characterData?.name || "character"}`;
     const openingHistoryKey = `velvet:instant-story-openings:${characterData?.id || characterData?.name || "character"}`;
     let recentSceneSeeds = [];
@@ -358,7 +358,7 @@ export function CharactersProvider({ children }) {
         "";
       if (!supabaseUrl) throw new Error("Velvet couldn't reach Instant Story.");
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/character-chat`, {
+      const requestOpening = () => fetch(`${supabaseUrl}/functions/v1/character-chat`, {
         method: "POST",
         signal: controller.signal,
         headers: {
@@ -376,6 +376,10 @@ export function CharactersProvider({ children }) {
         }),
       });
 
+      let response = await requestOpening();
+      if ([429, 502, 503, 504].includes(response.status) && !controller.signal.aborted) {
+        response = await requestOpening();
+      }
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw instantStoryError(data, { status: response.status, requestId: variationKey });
