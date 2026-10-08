@@ -167,6 +167,7 @@ export function embodiedAwarenessIssues({ reply = "", engine = {} as Partial<Emb
   const flirt = /\b(?:prefer (?:your )?company|only one i'?m paying attention to|worth remembering|could get used to this|like having you here|wanted to see you|you look cute|adorable|beautiful|pretty when)\b/i.test(text);
   const careHijack = /\b(?:i (?:pick|picked) you up|i (?:carry|carried) you|i (?:drag|dragged) you|i(?:'m| am) taking you home|i ordered for you|i (?:make|made) you eat|i (?:force|forced) you|without waiting for (?:an answer|permission))\b/i.test(text);
   if (engine.recognitionDue && !ack) issues.push("embodied_state_ignored");
+  if (engine.state === "distracted" && engine.recognitionDue && !ack) issues.push("distracted_turn_ignored");
   if ((engine.intensity || 0) >= 2 && banter && !ack) issues.push("banter_overrides_embodied_state");
   if ((engine.intensity || 0) >= 2 && flirt && !ack) issues.push("chemistry_overrides_embodied_state");
   if (careHijack) issues.push("care_hijacks_user_agency");
@@ -201,12 +202,12 @@ export function sanitizeEmbodiedAwarenessReply(reply = "", issues: string[] = []
       .replace(/\byou(?: are|'re) (?:sick|dizzy|nauseous)\b/gi, "you don't look great");
   }
   const ack = engine?.state ? (acknowledgmentPattern(engine.state).test(out) || (engine.state === "distracted" && /\b(?:paused|stopped|waited|fell silent|went quiet|looked back|glanced back|turned toward you|watched you)\b/i.test(out))) : true;
-  if (engine?.recognitionDue && !ack) {
+  if ((engine?.recognitionDue && !ack) || issues.includes("distracted_turn_ignored")) {
     const fallback = engine.state === "low_energy" ? '"You fading on me?"'
       : engine.state === "cold" ? '"You cold?"'
       : engine.state === "distracted" ? '"You somewhere else?"'
       : '"You okay?"';
-    out = engine.state === "distracted" ? "He paused when he noticed your attention had drifted, letting the conversation fall quiet for a moment." : `${fallback}${out.trim() ? ` ${out.trim()}` : ""}`;
+    out = engine.state === "distracted" ? "He stopped mid-thought when your attention drifted, his expression shifting as he waited beside you without pressing for an answer." : `${fallback}${out.trim() ? ` ${out.trim()}` : ""}`;
   }
   return out.replace(/\s{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
