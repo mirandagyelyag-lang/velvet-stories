@@ -162,7 +162,7 @@ export function embodiedAwarenessIssues({ reply = "", engine = {} as Partial<Emb
   const issues: string[] = [];
   const text = String(reply || "").trim();
   if (!text || !engine?.state || engine.state === "none") return issues;
-  const ack = acknowledgmentPattern(engine.state).test(text);
+  const ack = acknowledgmentPattern(engine.state).test(text) || (engine.state === "distracted" && /\b(?:paused|stopped|waited|fell silent|went quiet|looked back|glanced back|turned toward you|watched you)\b/i.test(text));
   const banter = /\b(?:smart\.|good to know|keeping track|full-time job|someone'?s gotta|committing to the bit|you'?re trouble|you'?re impossible|old and gray|at least you|still paying|ketchup|worth remembering)\b/i.test(text);
   const flirt = /\b(?:prefer (?:your )?company|only one i'?m paying attention to|worth remembering|could get used to this|like having you here|wanted to see you|you look cute|adorable|beautiful|pretty when)\b/i.test(text);
   const careHijack = /\b(?:i (?:pick|picked) you up|i (?:carry|carried) you|i (?:drag|dragged) you|i(?:'m| am) taking you home|i ordered for you|i (?:make|made) you eat|i (?:force|forced) you|without waiting for (?:an answer|permission))\b/i.test(text);
