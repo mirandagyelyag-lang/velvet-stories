@@ -387,7 +387,7 @@ export function CharactersProvider({ children }) {
       if (freshCharacterData?.name?.trim().toLowerCase() === "nathan foster") {
         opening = opening
           .replace(/(Nathan (?:said|says) to you,?\s*)/gi, "Nathan said, ")
-          .replace(/([“"][^”"]{0,180}?)\bmy brother\b/gi, "$1your brother");
+          .replace(/\bmy brother (forgot|lost|left) (his|the) (car )?keys\b/gi, "your brother $1 $2 $3keys");
       }
       const { wordCount, complete } = instantStoryProseValidation(opening);
       const rejectedOpening = (error, code) => instantStoryError({ ...data, error, code, wordCount, complete }, { status: response.status, requestId: variationKey });
