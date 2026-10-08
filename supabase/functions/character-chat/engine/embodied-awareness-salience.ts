@@ -138,7 +138,7 @@ export function deriveEmbodiedAwarenessSalience({ latestUserMessage = "", recent
   const escalating = /\b(?:getting|more|worse|barely|starting to|kept|again|still)\b/i.test(latest) && state !== "none";
   const trend: EmbodiedAwarenessSalience["trend"] = state === "none" ? "none" : escalating || intensity >= 3 ? "escalating" : repeatedLatest >= 2 ? "persistent" : "new";
   const salienceDebt = state === "none" ? 0 : Math.max(0, Math.min(3, stateTurns.length - (latestObservable.length ? 0 : 1)));
-  const recognitionDue = state !== "none" && (intensity >= 2 || trend === "persistent" || trend === "escalating");
+  const recognitionDue = state !== "none" && (intensity >= 2 || trend === "persistent" || trend === "escalating" || (state === "distracted" && Boolean(latestStateInsideAsterisks || latestPlainState || latestObservable.length)));
 
   return {
     state, intensity, trend, source, authoredSignals, observableSignals, recognitionDue, exactLabelPrivate, salienceDebt,
