@@ -380,7 +380,16 @@ export function CharactersProvider({ children }) {
       if (!response.ok) {
         throw instantStoryError(data, { status: response.status, requestId: variationKey });
       }
-      const { opening, wordCount, complete } = instantStoryProseValidation(data?.opening);
+      const validatedOpening = instantStoryProseValidation(data?.opening);
+      // The brother's-best-friend trope must not reverse whose brother it is.
+      // Apply this narrowly to Nathan's opening dialogue, never globally.
+      let opening = validatedOpening.opening;
+      if (freshCharacterData?.name?.trim().toLowerCase() === "nathan foster") {
+        opening = opening
+          .replace(/(Nathan (?:said|says) to you,?\s*)/gi, "Nathan said, ")
+          .replace(/([“"][^”"]{0,180}?)\bmy brother\b/gi, "$1your brother");
+      }
+      const { wordCount, complete } = instantStoryProseValidation(opening);
       const rejectedOpening = (error, code) => instantStoryError({ ...data, error, code, wordCount, complete }, { status: response.status, requestId: variationKey });
       const leakedTemplate = /\b(?:between you sits|their response carries|without turning it into a performance|neither a stranger nor a convenient accident|what happens next depends on what you choose to say)\b/i.test(opening);
       const genericInstantStory = /\b(?:flickering neon|the kind of .{0,55} (?:he|she|they) usually reserved for|expression shifted from .{0,80} to something (?:much )?softer|gaze lingering .{0,30} too long|spotting you (?:near|by|at|beside)|poor life choices|saved (?:you|your|the) (?:a )?seat|defended this seat|drove across (?:campus|town)|ordered (?:an )?extra.{0,40}(?:your usual|your favorite)|quiet evening or the drive)\b/i.test(opening);
