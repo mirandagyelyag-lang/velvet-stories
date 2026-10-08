@@ -200,13 +200,13 @@ export function sanitizeEmbodiedAwarenessReply(reply = "", issues: string[] = []
       .replace(/\byou(?: are|'re) (?:cold|freezing)\b/gi, "you look cold")
       .replace(/\byou(?: are|'re) (?:sick|dizzy|nauseous)\b/gi, "you don't look great");
   }
-  const ack = engine?.state ? acknowledgmentPattern(engine.state).test(out) : true;
+  const ack = engine?.state ? (acknowledgmentPattern(engine.state).test(out) || (engine.state === "distracted" && /\b(?:paused|stopped|waited|fell silent|went quiet|looked back|glanced back|turned toward you|watched you)\b/i.test(out))) : true;
   if (engine?.recognitionDue && !ack) {
     const fallback = engine.state === "low_energy" ? '"You fading on me?"'
       : engine.state === "cold" ? '"You cold?"'
       : engine.state === "distracted" ? '"You somewhere else?"'
       : '"You okay?"';
-    out = `${fallback}${out.trim() ? ` ${out.trim()}` : ""}`;
+    out = engine.state === "distracted" ? "He paused when he noticed your attention had drifted, letting the conversation fall quiet for a moment." : `${fallback}${out.trim() ? ` ${out.trim()}` : ""}`;
   }
   return out.replace(/\s{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
