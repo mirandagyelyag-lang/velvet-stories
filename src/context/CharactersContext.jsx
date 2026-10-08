@@ -323,6 +323,26 @@ export function CharactersProvider({ children }) {
     }
     const variationKey = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 
+    // Instant Story must use the latest persisted character canon, not a stale
+    // React/PWA snapshot that was loaded before an external profile edit.
+    let freshCharacterData = characterData;
+    if (characterData?.id) {
+      const { data: canonicalRow, error: canonicalError } = await supabase
+        .from("characters")
+        .select("*")
+        .eq("id", characterData.id)
+        .is("trashed_at", null)
+        .single();
+      if (canonicalError) {
+        throw new Error("Velvet couldn't refresh this character before creating the story. Please retry.");
+      }
+      freshCharacterData = convertDatabaseCharacter(canonicalRow);
+      setCharacters((current) => current.map((item) =>
+        item.id === freshCharacterData.id ? freshCharacterData : item
+      ));
+    }
+
+
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
@@ -348,7 +368,7 @@ export function CharactersProvider({ children }) {
         },
         body: JSON.stringify({
           action: "instant_story",
-          draft: characterDraftPayload(characterData),
+          draft: characterDraftPayload(freshCharacterData),
           idea: String(idea || "").slice(0, 700),
           variationKey,
           recentSceneSeeds,
