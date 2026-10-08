@@ -8438,7 +8438,7 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const physicsRepair = [...physicsHard, "repeated_action_fingerprint"];
   const intentHard = ["narration_pov_flip", "narration_tense_flip", "repeated_low_signal_mannerism", "random_activity_filler", "fake_shared_day_history", "gesture_budget_overflow", "obligatory_banter_exit", "intent_thread_abandoned", "dead_ack_after_nonverbal_cue"];
   const chemistryHard = ["jealousy_without_grounded_evidence", "generic_jealousy_clone", "premature_relationship_escalation", "romance_used_to_skip_repair", "conflict_residue_erased", "vulnerability_hangover_erased", "third_party_relationship_mindread"];
-  const embodiedHard = ["embodied_state_ignored", "banter_overrides_embodied_state", "chemistry_overrides_embodied_state", "care_hijacks_user_agency", "private_embodied_label_claim"];
+  const embodiedHard = ["distracted_turn_ignored", "embodied_state_ignored", "banter_overrides_embodied_state", "chemistry_overrides_embodied_state", "care_hijacks_user_agency", "private_embodied_label_claim"];
   const sceneIntelligenceHard = ["decorative_environment_filler", "forced_scene_extension", "reentry_transient_state_leak", "unearned_world_collision", "scene_stagnation_loop", "silence_overwritten", "environment_wallpaper_overload"];
   const discourseHard = ["recent_line_echo", "clarification_echo_before_answer", "phantom_event_claim", "unresolved_reference_claim", "clarification_reference_unresolved", "social_gravity_priority_intrusion"];
   const evolutionHard = ["instant_personality_rewrite", "relationship_personality_replacement", "growth_exposition_without_behavior", "growth_regression_reset", "unearned_offscreen_transformation", "relationship_growth_globalized"];
