@@ -9845,8 +9845,8 @@ function hasInventedMedicationQuantity(reply = "", latestUserMessage = "", recen
 
 function immediateSeatedStateIssue(reply = "", latest = "") {
   const u = String(latest).toLowerCase(), r = String(reply).toLowerCase();
-  if (!/\\bi (?:sit|sat|settled|am sitting)\\b/.test(u)) return false;
-  return /\\byou (?:were|are) (?:still )?standing\\b|\\bwhere you (?:were|are) (?:still )?standing\\b|\\byou (?:followed|stood up|got up|walked away)\\b/.test(r);
+  if (!/\bi (?:sit|sat|settled|am sitting)\b/.test(u)) return false;
+  return /\byou (?:were|are) (?:still )?standing\b|\bwhere you (?:were|are) (?:still )?standing\b|\byou (?:followed|stood up|got up|walked away)\b/.test(r);
 }
 function validateNarrativeReply(reply = "", options = {}) {
   const issues = [];
