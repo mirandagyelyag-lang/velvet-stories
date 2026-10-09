@@ -8436,7 +8436,7 @@ function sanitizeSocialRoleAssignment(reply = "", binding = null) {
 
 function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const groundedHard = ["declared_state_disbelief", "semantic_scope_overreach", "inference_distance_exceeded", "specificity_escalation", "invisible_history_claim", "unsupported_concrete_canon_invention", "narrative_naturalism_overwrite", "unsupported_sarcastic_activity_claim"];
-  const agencyHard = ["unsolicited_dialogue_hijack", "agency_commitment_inertia_break", "gratuitous_external_hook", "initiative_budget_overflow", "forced_scene_continuation_hook"];
+  const agencyHard = ["invented_user_departure", "unsolicited_dialogue_hijack", "agency_commitment_inertia_break", "gratuitous_external_hook", "initiative_budget_overflow", "forced_scene_continuation_hook"];
   const physicsHard = ["immediate_seated_state_overridden", "body_state_redundant_transition", "spatial_anchor_teleport", "object_possession_break", "object_state_rewind", "line_of_sight_violation", "interaction_geometry_violation", "precise_time_invention", "unsupported_elapsed_time_claim", "door_state_continuity_break"];
   const physicsRepair = [...physicsHard, "repeated_action_fingerprint"];
   const intentHard = ["narration_pov_flip", "narration_tense_flip", "repeated_low_signal_mannerism", "random_activity_filler", "fake_shared_day_history", "gesture_budget_overflow", "obligatory_banter_exit", "intent_thread_abandoned", "dead_ack_after_nonverbal_cue"];
@@ -9854,6 +9854,13 @@ function unsolicitedDialogueHijack(reply = "", latest = "") {
   const offTopic = ["gallery benefit", "alumni board", "sapphire blazer", "picking up the tickets"];
   return offTopic.some((phrase) => r.includes(phrase)) && !["gallery", "benefit", "blake", "ticket", "blazer"].some((word) => u.includes(word));
 }
+function inventedUserDepartureIssue(reply = "", latest = "") {
+  const user = String(latest || "").toLowerCase().trim();
+  const text = String(reply || "").toLowerCase();
+  const onlyNonverbal = /^\\*?\\s*i (?:sigh|shrug|nod|blink|look away|look down|roll my eyes)(?:s|ed)?\\s*\\*?\\.?$/.test(user);
+  const allegedDeparture = /\\b(?:you(?:'ve| have)? (?:managed to )?(?:run|ran|walk|walked|leave|left|flee|fled|escape|escaped)|your (?:running away|escape)|running away into|running away is)\\b/.test(text);
+  return onlyNonverbal && allegedDeparture;
+}
 function validateNarrativeReply(reply = "", options = {}) {
   const issues = [];
   const text = String(reply || "").trim();
@@ -9861,6 +9868,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   const turnIntent = options.turnIntent || { kind: "ordinary", silentCount: 0 };
 
   if (!text) issues.push("empty_reply");
+  if (inventedUserDepartureIssue(text, options.latestUserMessage || "")) issues.push("invented_user_departure");
   if (unsolicitedDialogueHijack(text, options.latestUserMessage || "")) issues.push("unsolicited_dialogue_hijack");
   if (immediateSeatedStateIssue(text, options.latestUserMessage || "")) issues.push("immediate_seated_state_overridden");
   if (String(options.finishReason || "").toUpperCase().includes("MAX_TOKENS")) issues.push("truncated_by_model");
