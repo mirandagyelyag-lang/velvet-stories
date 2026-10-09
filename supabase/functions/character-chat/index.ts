@@ -5463,8 +5463,11 @@ async function callGeminiWithFailover({
     throw new Error(errors.find((x) => x && !/timed out|deadline/i.test(x)) || "The AI took too long to answer. Please try again.");
   }
 }
+function stripVisibleModelMetadata(value = ""): string {
+  return String(value || "").replace(/\\s*thread_updates\\s*:\\s*\\[[^\\]]*\\]\\s*$/i, "").trim();
+}
 function emptyModelEnvelope(reply = ""): ModelEnvelope {
-  return { reply: String(reply || "").trim(), thread_updates: [], story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, presence_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
+  return { reply: stripVisibleModelMetadata(reply), thread_updates: [], story_drive: {}, continuity_note: "", development_update: {}, voice_plan: {}, scene_update: {}, continuity_update: {}, cast_updates: [], memory_updates: [], mind_update: {}, human_behavior_update: {}, presence_update: {}, connection_updates: [], post_turn_reflection: {}, quality_check: {} };
 }
 
 function parseModelEnvelope(raw): ModelEnvelope {
@@ -5474,7 +5477,7 @@ function parseModelEnvelope(raw): ModelEnvelope {
     const hidden = parsed?.hidden_metadata && typeof parsed.hidden_metadata === "object" ? parsed.hidden_metadata : {};
     const read = (key) => parsed?.[key] ?? hidden?.[key];
     return {
-      reply: String(parsed?.reply || "").trim(),
+      reply: stripVisibleModelMetadata(parsed?.reply || ""),
       thread_updates: Array.isArray(read("thread_updates")) ? read("thread_updates").slice(0, 3) : [],
       story_drive: read("story_drive") && typeof read("story_drive") === "object" ? read("story_drive") : {},
       continuity_note: String(read("continuity_note") || "").trim().slice(0, 600),
