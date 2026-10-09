@@ -166,7 +166,7 @@ export function embodiedAwarenessIssues({ reply = "", engine = {} as Partial<Emb
   const banter = /\b(?:smart\.|good to know|keeping track|full-time job|someone'?s gotta|committing to the bit|you'?re trouble|you'?re impossible|old and gray|at least you|still paying|ketchup|worth remembering)\b/i.test(text);
   const flirt = /\b(?:prefer (?:your )?company|only one i'?m paying attention to|worth remembering|could get used to this|like having you here|wanted to see you|you look cute|adorable|beautiful|pretty when)\b/i.test(text);
   const careHijack = /\b(?:i (?:pick|picked) you up|i (?:carry|carried) you|i (?:drag|dragged) you|i(?:'m| am) taking you home|i ordered for you|i (?:make|made) you eat|i (?:force|forced) you|without waiting for (?:an answer|permission))\b/i.test(text);
-  if (engine.state === "distracted" && engine.recognitionDue && /\\b(?:dominic|pastr(?:y|ies)|latte|seasonal special|menu board|officially ignored|ignore them)\\b/i.test(text) && !/\\b(?:you (?:seem|look)|your attention|you weren't listening|you were distracted|you had drifted)\\b/i.test(text)) issues.push("distracted_turn_ignored");
+  if (engine.state === "distracted" && engine.recognitionDue && /\b(?:dominic|pastr(?:y|ies)|latte|seasonal special|menu board|officially ignored|ignore them)\b/i.test(text) && !/\b(?:you (?:seem|look)|your attention|you weren't listening|you were distracted|you had drifted)\b/i.test(text)) issues.push("distracted_turn_ignored");
   if (engine.recognitionDue && !ack) issues.push("embodied_state_ignored");
   if (engine.state === "distracted" && engine.recognitionDue && !ack) issues.push("distracted_turn_ignored");
   if ((engine.intensity || 0) >= 2 && banter && !ack) issues.push("banter_overrides_embodied_state");
