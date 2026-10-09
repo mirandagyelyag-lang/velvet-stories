@@ -8436,7 +8436,7 @@ function sanitizeSocialRoleAssignment(reply = "", binding = null) {
 
 function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
   const groundedHard = ["declared_state_disbelief", "semantic_scope_overreach", "inference_distance_exceeded", "specificity_escalation", "invisible_history_claim", "unsupported_concrete_canon_invention", "narrative_naturalism_overwrite", "unsupported_sarcastic_activity_claim"];
-  const agencyHard = ["agency_commitment_inertia_break", "gratuitous_external_hook", "initiative_budget_overflow", "forced_scene_continuation_hook"];
+  const agencyHard = ["unsolicited_dialogue_hijack", "agency_commitment_inertia_break", "gratuitous_external_hook", "initiative_budget_overflow", "forced_scene_continuation_hook"];
   const physicsHard = ["immediate_seated_state_overridden", "body_state_redundant_transition", "spatial_anchor_teleport", "object_possession_break", "object_state_rewind", "line_of_sight_violation", "interaction_geometry_violation", "precise_time_invention", "unsupported_elapsed_time_claim", "door_state_continuity_break"];
   const physicsRepair = [...physicsHard, "repeated_action_fingerprint"];
   const intentHard = ["narration_pov_flip", "narration_tense_flip", "repeated_low_signal_mannerism", "random_activity_filler", "fake_shared_day_history", "gesture_budget_overflow", "obligatory_banter_exit", "intent_thread_abandoned", "dead_ack_after_nonverbal_cue"];
@@ -9848,6 +9848,12 @@ function immediateSeatedStateIssue(reply = "", latest = "") {
   if (!/\bi (?:sit|sat|settled|am sitting)\b/.test(u)) return false;
   return /\byou (?:were|are) (?:still )?standing\b|\bwhere you (?:were|are) (?:still )?standing\b|\byou (?:followed|stood up|got up|walked away)\b/.test(r);
 }
+function unsolicitedDialogueHijack(reply = "", latest = "") {
+  const r = String(reply || "").toLowerCase();
+  const u = String(latest || "").toLowerCase();
+  const offTopic = ["gallery benefit", "alumni board", "sapphire blazer", "picking up the tickets"];
+  return offTopic.some((phrase) => r.includes(phrase)) && !["gallery", "benefit", "blake", "ticket", "blazer"].some((word) => u.includes(word));
+}
 function validateNarrativeReply(reply = "", options = {}) {
   const issues = [];
   const text = String(reply || "").trim();
@@ -9855,6 +9861,7 @@ function validateNarrativeReply(reply = "", options = {}) {
   const turnIntent = options.turnIntent || { kind: "ordinary", silentCount: 0 };
 
   if (!text) issues.push("empty_reply");
+  if (unsolicitedDialogueHijack(text, options.latestUserMessage || "")) issues.push("unsolicited_dialogue_hijack");
   if (immediateSeatedStateIssue(text, options.latestUserMessage || "")) issues.push("immediate_seated_state_overridden");
   if (String(options.finishReason || "").toUpperCase().includes("MAX_TOKENS")) issues.push("truncated_by_model");
   if (hasUnclosedDialogue(text)) issues.push("unfinished_reply");
