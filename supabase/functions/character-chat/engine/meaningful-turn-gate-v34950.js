@@ -22,7 +22,7 @@ function isBareAcknowledgementTurn(text='') {
   const spoken=[...String(text||'').matchAll(/[“"]([^”"]+)[”"]/g)].map((m)=>norm(m[1])).join(' ').trim();
   const words=t.split(/\s+/).filter(Boolean).length;
   const acknowledgement=/^(?:fine|okay|ok|sure|alright|all right|yeah|yep|whatever|got it|fair enough|right|good|cool)[.!?]*$/i;
-  if (acknowledgement.test(spoken || t)) return true;
+  if (acknowledgement.test(spoken || t) && words <= 22) return true;
   const metaStripped=t
     .replace(/\b(?:he|she|they|[a-z]+)\s+(?:backs? off (?:the )?(?:point|topic|argument)|stays? in (?:the )?scene)\b/g,' ')
     .replace(/\bwithout disappearing from (?:the )?scene\b/g,' ')
