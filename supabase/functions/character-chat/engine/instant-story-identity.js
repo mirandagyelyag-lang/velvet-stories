@@ -30,3 +30,14 @@ Creator-authored focal trait: ${source}
 - SILENT SWAP TEST: if replacing the lead with a differently motivated character leaves the premise and choice unchanged, redesign them from this profile.
 - Use the creator's language and tone. These instructions apply regardless of the language of the profile.`;
 }
+
+export function chaseOpeningIssues(opening = '', draft = {}) {
+  const dna = draft.emotional_dna || draft.emotionalDna || {};
+  if (dna.official_engine !== 'chase_electricity_v1') return [];
+  const text = String(opening);
+  const issues = [];
+  if (/\b(?:dreadfully monotonous|care for a reprieve|i was hoping you(?:'|’)d show up|you(?:'|’)re enjoying this)\b/i.test(text)) issues.push('chase_stock_flirt_or_explanatory_close');
+  if (/\b(?:bored|boring|monotonous|better distraction)\b/i.test(text) && /\b(?:balcony|escape|reprieve|exit|get out of here)\b/i.test(text)) issues.push('chase_bored_crowd_escape_template');
+  if (/\b(?:spotted|noticed|saw) you\b.{0,100}\b(?:leaning|standing|sitting|across the room)\b/i.test(text)) issues.push('chase_invented_user_placement');
+  return issues;
+}

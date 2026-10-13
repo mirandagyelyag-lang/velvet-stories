@@ -1,4 +1,4 @@
-import { buildInstantStoryIdentity } from "./engine/instant-story-identity.js";
+import { buildInstantStoryIdentity, chaseOpeningIssues } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
@@ -352,9 +352,23 @@ Deno.serve(async (request) => {
     }
 
     if (action === "instant_story") {
+      let instantDraft = body?.draft || {};
+      // Resolve the persisted profile within the authenticated user's characters.
+      // Cached clients must not decide which creator-approved engine is active.
+      if (String(instantDraft.name || "").trim().toLowerCase() === "chase beaumont") {
+        const { data: profiles, error: profileError } = await supabase.from("characters")
+          .select("*").eq("user_id", userData.user.id).eq("name", "Chase Beaumont").is("trashed_at", null).limit(2);
+        if (profileError) throw new Error("Could not load Chase's current profile.");
+        if (profiles?.length === 1) {
+          const profile = profiles[0];
+          instantDraft = { ...instantDraft, ...profile };
+          const aliases = {"character_values":"values","core_motivation":"coreMotivation","emotional_defense":"emotionalDefense","softening_triggers":"softeningTriggers","growth_direction":"growthDirection","speech_style":"speechStyle","voice_vocabulary":"voiceVocabulary","humor_style":"humorStyle","conflict_style":"conflictStyle","affection_style":"affectionStyle","verbal_tells":"verbalTells","voice_avoidances":"voiceAvoidances","example_dialogue":"exampleDialogue","first_message":"firstMessage"};
+          for (const [databaseKey, clientKey] of Object.entries(aliases)) instantDraft[clientKey] = profile[databaseKey] || "";
+        } else if (profiles?.length > 1) throw new Error("Multiple Chase profiles found. Choose a specific character.");
+      }
       return await handleInstantStory({
         apiKey,
-        draft: body?.draft,
+        draft: instantDraft,
         idea: body?.idea,
         variationKey: body?.variationKey,
         recentSceneSeeds: body?.recentSceneSeeds,
@@ -1833,7 +1847,7 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
 
 // NATURAL SOCIAL OPENINGS 3.52.95
 function instantStoryNaturalismIssuesV35295(opening = "", draft = {}, idea = "") {
-  const issues = [];
+  const issues = chaseOpeningIssues(opening, draft);
   const raw = String(opening || "");
   const narration = instantStoryNarrationOnlyV35292(raw);
   const profile = `${draft?.description || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""} ${draft?.firstMessage || draft?.first_message || ""}`.toLowerCase();
@@ -1957,10 +1971,11 @@ function resourceContinuityIssuesV35358(value = "", character = {}, userContext 
 function instantStoryHardBlockIssuesV35298(opening = "", draft = {}, idea = "") {
   const grounding = instantStoryGroundingIssuesV35292(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298.has(issue));
+  const chaseIssues = chaseOpeningIssues(opening, draft);
   const naturalism = instantStoryNaturalismIssuesV35295(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298.has(issue));
   const resourceIssues = resourceContinuityIssuesV35358(opening, draft, "");
-  return [...new Set([...grounding, ...naturalism, ...resourceIssues])];
+  return [...new Set([...grounding, ...naturalism, ...resourceIssues, ...chaseIssues])];
 }
 
 // OPENING DNA 3.52.89
@@ -2365,12 +2380,15 @@ async function handleInstantStory({ apiKey, draft, idea, variationKey = "", rece
   const promptDraft = { ...safeDraft, firstMessage: "" };
   const cleanIdea = cleanPromptValue(idea || "", 420);
   const identityDirection = buildInstantStoryIdentity(safeDraft, variationKey, recentSceneSeeds);
-  const sceneSeed = [instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds), identityDirection].filter(Boolean).join("\n\n");
+  const chaseEngineActive = safeDraft.emotional_dna?.official_engine === "chase_electricity_v1";
+  const sceneSeed = chaseEngineActive
+    ? [cleanIdea ? `USER-SPECIFIED DIRECTION: ${cleanIdea}` : "", identityDirection].filter(Boolean).join("\n\n")
+    : [instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds), identityDirection].filter(Boolean).join("\n\n");
   const openingDna = buildOpeningDnaContractV35289(safeDraft, cleanIdea);
   const openingFamily = openingDnaFamilyV35289(safeDraft)?.id || "profile-derived";
   // Keep the request small enough to finish inside the actual Edge budget.
   // The full chat/Living Threads prompt is deliberately not used for an opening.
-  const prompt = `Write ONE complete, natural opening for the configured character. 65-115 words; hard ceiling 165. Return only finished prose, never JSON or thread metadata.
+  const prompt = `Write ONE complete, natural opening for the configured character. ${chaseEngineActive ? "90-170 words; hard ceiling 190" : "65-115 words; hard ceiling 165"}. Return only finished prose, never JSON or thread metadata.
 
 CANON AND USER AGENCY
 - Narrate the lead character and world in third person. Address the user as you.
@@ -2380,7 +2398,7 @@ CANON AND USER AGENCY
 - Stage who is speaking and who they are addressing before the first spoken line, with an explicit speech tag naming the lead and recipient (for example, the lead told the drivers, or said to you). Addressing you never establishes your position or actions. Use only configured names for supporting people; everyone else remains anonymous.
 - With an empty IDEA, use ordinary social movement, dry humor, changed plans, a playful challenge or a quiet opportunity. Do not invent a fight, accusation, betrayal, institutional punishment, mystery delivery or emergency.
 - Make one concrete choice by the lead change the immediate situation. Preserve this character's voice and gradual relationship; avoid instant confessions, generic charm, ornamental flirting and food/study logistics as the plot.
-- Use 1-4 short spoken lines with sparse narration. End after the character has changed something, with a complete sentence and room for the user to respond.
+${chaseEngineActive ? "- Allow 4-8 short spoken lines and sparse narration. Charged, conflicted attention and an involuntary emotional turn are meaningful change. End on that live beat without explaining it." : "- Use 1-4 short spoken lines with sparse narration. End after the character has changed something, with a complete sentence and room for the user to respond."}
 - Do not repeat recent openings. Never force an A/B menu or settle a shared future before the user agrees.
 
 CREATOR OPENING DNA
@@ -2425,6 +2443,8 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   const instantStoryResponse = (body, status = 200) => {
     if (status < 400) {
       const prose = instantStoryProseValidation(body.opening);
+      const finalChaseIssues = chaseOpeningIssues(body.opening, safeDraft);
+      if (finalChaseIssues.length) return json({ error: "Chase opening did not match the approved character. Try again.", retryable: true, rejectionReasons: finalChaseIssues }, 503);
       if (!prose.valid) {
         diagnose({ phase: "delivery", model: body.model, code: "incomplete_provider_opening", source: body.source, words: prose.wordCount, complete: prose.complete });
         body = { error: "Velvet couldn't create an Instant Story this time. Try again.", retryable: true, openingFamily, rejectionReasons: ["incomplete_provider_opening"] };
@@ -2432,7 +2452,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       } else body = { ...body, opening: prose.opening };
     }
     if (status < 400) console.info("[character-chat] instant_story_completed", {
-      requestId, engineVersion: VELVET_ENGINE_RELEASE, source: body.source,
+      requestId, engineVersion: VELVET_ENGINE_RELEASE, characterEngine: safeDraft.emotional_dna?.official_engine || "profile", source: body.source,
       model: body.model, words: String(body.opening || "").split(/\s+/).filter(Boolean).length,
       durationMs: Date.now() - startedAt,
     });
