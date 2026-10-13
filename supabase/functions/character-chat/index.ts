@@ -1970,7 +1970,8 @@ function resourceContinuityIssuesV35358(value = "", character = {}, userContext 
 
 function instantStoryHardBlockIssuesV35298(opening = "", draft = {}, idea = "") {
   const grounding = instantStoryGroundingIssuesV35292(opening, draft, idea)
-    .filter((issue)=>INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298.has(issue));
+    .filter((issue)=>INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298.has(issue))
+    .filter((issue)=>!(draft?.emotional_dna?.official_engine === "chase_electricity_v1" && issue === "ambiguous_first_dialogue_addressee"));
   const chaseIssues = chaseOpeningIssues(opening, draft);
   const naturalism = instantStoryNaturalismIssuesV35295(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298.has(issue));
@@ -2442,14 +2443,14 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   };
   const reviewChaseOpening = async (opening, preferredModel = GEMINI_FALLBACK_MODEL) => {
     const auditPrompt = `Independently review this Chase Instant Story. Return JSON only:
-{"user_agency":true,"attention_and_pull":true,"impulsive_emotional_turn":true,"unresolved_tension":true,"natural_voice":true,"failures":[]}
+{"user_agency":true,"attention_and_pull":true,"impulsive_emotional_turn":true,"unresolved_tension":true,"natural_voice":true,"speaker_ownership":true,"failures":[]}
 Set a criterion false if the prose does not SHOW it; do not accept an author's intention.
 user_agency: no invented user actions, location, gaze, jealousy, posture, silence or feelings. Dialogue cannot claim an unestablished user glare.
-attention_and_pull: Chase enjoys or allows social attention yet also seeks the user; he does not instantly discard another person as worthless to demonstrate exclusive devotion.
-impulsive_emotional_turn: a concrete trigger changes his response or timing unexpectedly; smooth calculating approach + smirk + witty line is not a turn.
+attention_and_pull: Chase enjoys or allows social attention yet also seeks the user. Turning toward the user, pausing another conversation, or delaying leaving is allowed and is NOT itself discarding someone. Reject demeaning an admirer as worthless or instantly erasing the entire social world to perform exclusive devotion.
+impulsive_emotional_turn: a concrete trigger affects his response, priority or timing in an unplanned way. A subtle shift counts; no explicit narrator explanation of surprise is required. Smooth calculating approach + smirk + witty line alone is not a turn.
 unresolved_tension: direct, personal provocation leaves something open without explaining the user's emotions or Chase's settled love.
 natural_voice: ordinary dry spoken English, no aristocratic phrasing, grand charisma narration or rehearsed pickup lines.
-The user has not acted. Only IDEA can establish user facts. Be strict about the rejected example.
+speaker_ownership: the speaker and recipient of each line are clear from context. Narrative staging and the flow of the exchange are valid; do not demand a repeated literal speech tag such as Chase said to you.\nThe user has not acted. Only IDEA can establish user facts. Be strict about the rejected example.
 IDEA: ${cleanIdea || "none"}
 REJECTED PATTERN: Chase ignores a girl, calculates how to provoke you, sits opposite you without invitation and claims you are glaring at his fan club.
 APPROVED DYNAMICS: ${identityDirection}
@@ -2458,7 +2459,7 @@ ${opening}`;
     const { data } = await requestOpening({ model: preferredModel, prompt: auditPrompt, phase: "chase_independent_review", timeoutMs: 3500, maxOutputTokens: 650, temperature: 0.1 });
     const raw = extractCandidateText(data).trim().replace(/^\x60\x60\x60(?:json)?\\s*/i, "").replace(/\\s*\x60\x60\x60$/, "");
     const audit = JSON.parse(raw);
-    const criteria = ["user_agency","attention_and_pull","impulsive_emotional_turn","unresolved_tension","natural_voice"];
+    const criteria = ["user_agency","attention_and_pull","impulsive_emotional_turn","unresolved_tension","natural_voice","speaker_ownership"];
     return { accepted: criteria.every((key) => audit[key] === true), failures: criteria.filter((key) => audit[key] !== true).concat(Array.isArray(audit.failures) ? audit.failures.map(String).slice(0,5) : []) };
   };
   const instantStoryResponse = async (body, status = 200) => {
@@ -2478,7 +2479,10 @@ ${JSON.stringify(review.failures)}
 Return only completed prose.`, phase: "chase_semantic_repair", timeoutMs: 5500, maxOutputTokens: 1800, temperature: 0.9 });
           const repaired = readOpening(data);
           const blockers = instantStoryHardBlockIssuesV35298(repaired, safeDraft, cleanIdea);
-          if (!instantStoryProseValidation(repaired).valid || blockers.length) throw new Error("Chase repair failed prose/canon checks");
+          if (!instantStoryProseValidation(repaired).valid || blockers.length) {
+            diagnose({phase:"chase_semantic_repair",code:"repair_hard_block",error:blockers.join("; ")});
+            throw new Error("Chase repair failed prose/canon checks");
+          }
           review = await reviewChaseOpening(repaired, body.model);
           if (review.accepted) body = { ...body, opening: repaired, source: "chase_reviewed_repair" };
         }
@@ -2610,7 +2614,8 @@ Return only completed prose.`, phase: "chase_semantic_repair", timeoutMs: 5500, 
     const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
     const fatalQualityIssues = qualityIssues.filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
     const premiseIssues = instantStoryPremiseGateIssues(opening, safeDraft);
-    const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea);
+    const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea)
+      .filter((issue)=>!(chaseEngineActive && issue === "ambiguous_first_dialogue_addressee"));
     const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
     const identityIssuesV35321 = characterIdentityGateIssuesV35321({ reply: opening, character: safeDraft, recentCharacterReplies: recentOpenings, opening: true });
     const semanticIssues = semanticStoryMomentumIssues({
