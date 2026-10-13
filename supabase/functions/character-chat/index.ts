@@ -2521,6 +2521,7 @@ Return only completed prose.`, phase: "chase_semantic_repair", timeoutMs: 5500, 
     } catch { /* Plain prose is the normal Instant Story transport. */ }
     return normalizeInstantStoryProse(raw);
   };
+  const quotaUnavailableModels = new Set();
   const requestOpening = async ({ model, prompt: requestPrompt, phase, timeoutMs, maxOutputTokens, temperature }) => {
     const remainingMs = deadlineAt - Date.now();
     if (remainingMs < 900) throw new DOMException("Instant Story request deadline reached", "AbortError");
@@ -2529,6 +2530,8 @@ Return only completed prose.`, phase: "chase_semantic_repair", timeoutMs: 5500, 
     const requestBudgetMs = Math.min(timeoutMs, remainingMs);
     const timeoutId = setTimeout(() => controller.abort(), requestBudgetMs);
     const requestStartedAt = Date.now();
+    const alternatives = [...new Set([model, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
+    model = alternatives.find((candidate) => !quotaUnavailableModels.has(candidate)) || model;
     try {
       const contents = [{ role: "user", parts: [{ text: requestPrompt }] }];
       const run = async (bare = false) => {
@@ -2549,9 +2552,23 @@ Return only completed prose.`, phase: "chase_semantic_repair", timeoutMs: 5500, 
         bare = true;
         result = await run(bare);
       }
+      // A quota rejection is not transient. Switch models within this same budget.
+      while (!result.response.ok && result.response.status === 429) {
+        quotaUnavailableModels.add(model);
+        diagnose({ phase, model, status: 429, code: "quota_model_fallback", error: result.data?.error?.message });
+        const nextModel = alternatives.find((candidate) => !quotaUnavailableModels.has(candidate));
+        if (!nextModel || requestBudgetMs - (Date.now() - requestStartedAt) < 900 || controller.signal.aborted) break;
+        model = nextModel;
+        bare = false;
+        result = await run(bare);
+        if (!result.response.ok && result.response.status === 400) {
+          bare = true;
+          result = await run(bare);
+        }
+      }
       // Direct REST calls have no SDK retry layer. Retry transient overload once,
       // with jitter, inside this same controller and the shared handler deadline.
-      if (phase !== "primary" && !result.response.ok && [408, 429, 500, 502, 503, 504].includes(result.response.status) && requestBudgetMs - (Date.now() - requestStartedAt) > 2000) {
+      if (phase !== "primary" && !result.response.ok && [408, 500, 502, 503, 504].includes(result.response.status) && requestBudgetMs - (Date.now() - requestStartedAt) > 2000) {
         diagnose({ phase, model, status: result.response.status, code: "transient_retry", error: result.data?.error?.message });
         const retryDelayMs = 650 + Math.floor(Math.random() * 200);
         await new Promise<void>((resolve, reject) => {
