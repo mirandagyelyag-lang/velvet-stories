@@ -1,3 +1,4 @@
+import { buildInstantStoryIdentity } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
@@ -1657,6 +1658,14 @@ function compactInstantStoryDraft(draft) {
     role: field("role", 180),
     description: field("description", 480),
     personality: field("personality", 1200),
+    values: field("values", 600),
+    fears: field("fears", 520),
+    habits: field("habits", 600),
+    contradictions: field("contradictions", 600),
+    coreMotivation: field("coreMotivation", 700),
+    emotionalDefense: field("emotionalDefense", 600),
+    softeningTriggers: field("softeningTriggers", 520),
+    growthDirection: field("growthDirection", 520),
     relationship: field("relationship", 900),
     world: field("world", 700),
     scenario: field("scenario", 700),
@@ -1669,7 +1678,7 @@ function compactInstantStoryDraft(draft) {
     voiceAvoidances: field("voiceAvoidances", 320),
     boundaries: field("boundaries", 420),
     exampleDialogue: field("exampleDialogue", 650),
-    firstMessage: field("firstMessage", 520),
+    firstMessage: field("firstMessage", 1100),
     emotional_dna: source?.emotional_dna && typeof source.emotional_dna === "object" ? source.emotional_dna : (source?.emotionalDna && typeof source.emotionalDna === "object" ? source.emotionalDna : {}),
   };
 }
@@ -2355,7 +2364,8 @@ async function handleInstantStory({ apiKey, draft, idea, variationKey = "", rece
   // Keep its distilled Opening DNA, but do not feed its raw user choreography back to the model.
   const promptDraft = { ...safeDraft, firstMessage: "" };
   const cleanIdea = cleanPromptValue(idea || "", 420);
-  const sceneSeed = instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds);
+  const identityDirection = buildInstantStoryIdentity(safeDraft, variationKey, recentSceneSeeds);
+  const sceneSeed = [instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds), identityDirection].filter(Boolean).join("\n\n");
   const openingDna = buildOpeningDnaContractV35289(safeDraft, cleanIdea);
   const openingFamily = openingDnaFamilyV35289(safeDraft)?.id || "profile-derived";
   // Keep the request small enough to finish inside the actual Edge budget.
@@ -2691,6 +2701,9 @@ ${JSON.stringify(promptDraft)}
 
 CONFLICT DIRECTION
 ${sceneSeed}
+
+RECENT OPENINGS TO AVOID
+${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3).map((item) => String(item || "").slice(0, 420)))}
 ${repairContext}
 RULES
 - POV FIREWALL: third-person lead-character narration only. Address the user as "you". Never use I/me/my/we/us in narration as the user's POV, and never author an unstated user action, perception, feeling, thought, arrival, movement or choice.
