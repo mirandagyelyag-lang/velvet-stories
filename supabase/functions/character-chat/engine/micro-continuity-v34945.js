@@ -1,6 +1,12 @@
 export function buildMicroContinuityV34945({ latestUserMessage = "", recentTurns = [], character = {} } = {}) {
-  const turns = Array.isArray(recentTurns) ? recentTurns.slice(-8).map((t) => String(t || "").slice(0, 700)).join("\n") : String(recentTurns || "").slice(-4200);
+  const turns = Array.isArray(recentTurns) ? recentTurns.slice(-20).map((t) => String(t || "").slice(0, 1600)).join("\n") : String(recentTurns || "").slice(-24000);
   return `MICRO-CONTINUITY 3.49.45 · WHO OWES WHAT TO WHOM
+- LIVE TRANSCRIPT AUTHORITY: the chronological turns below are the current saved versions. [EDITED CURRENT CANON] replaces that message's previous wording completely. Never blend its previous version into current physical state, even if an older recap, automatic memory, possession, activity or scene field still says otherwise.
+- USER-AUTHORED REALITY: a user's explicit order, action, location, recipient, and correction outrank conflicting character narration. If the user addresses a worker, that worker receives the order; do not silently restore an earlier self-service scene.
+- PHYSICAL SEQUENCE: preserve ordering, payment, preparation and collection as distinct events. Cups mentioned before an explicit new order do not prove that this new order has been prepared or received. Track who pays, who prepares, and who receives; a payment reader is not a drink dispenser.
+- EXACT OBJECTS: preserve the user's named item and modifiers (including ingredients omitted). Do not collapse a named drink into generic coffee or substitute a different order. The character remains a customer unless the live transcript explicitly establishes a staff role.
+- CONVERSATION CARRYOVER: thanks, payment offers, nods and other short acknowledgments do not erase the pending topic or license an unrelated school/work question. React to the actual user cue, then carry forward the established exchange. Never invent a suspicious look, user obligation, or destination to bridge a topic change.
+- CONFLICT RESOLUTION: prefer the latest explicit user fact and edited current canon over older conflicting details. Do not restart the scene or deliver the same paid/order action again.
 - TARGET-AWARE 3.49.43 and SPOKEN NATURALNESS 3.49.44 stay frozen. This is a local continuity check, not a new style layer.
 - Before replying, resolve pronouns and conversational objects in the last few turns: it/that/this/them must point to the most plausible live referent.
 - Track ROLE OWNERSHIP for tiny conversational commitments: who offered, promised, requested, owes, waits, brings, sends, checks, chooses, or performs each thing.
