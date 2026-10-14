@@ -9,7 +9,7 @@ export function buildGroqLivePrompt({
  const profile = profileFields.map(k => k + ": " + clean(character[k], k === "boundaries" ? 700 : 350)).join("\n");
  const history = transcript.slice(-20).map((m,i,a) => clean(m.speaker,120) + (m.edited ? " [EDITED CURRENT CANON]" : "") + ": " + clean(m.content, i >= a.length-6 ? 900 : 420)).join("\n\n");
  return [
-  "Write the next single in-character turn as visible prose only. No JSON, reasoning, scores or metadata.",
+  "Write the next single in-character turn as visible prose only. No JSON, reasoning, scores or metadata. Put spoken dialogue in quotation marks. Narration addresses the user as you/your, never she/her. Third-person pronouns in dialogue about the user to an NPC are permitted.",
   "Current edited transcript and explicit user facts outrank stale summaries. Preserve location, roles, exact orders, possessions, pending topics, knowledge and relationship stage. Do not invent user speech, thoughts, feelings, consent or movement. Private narration is not audible. A short reply can be complete; avoid filler, stock gestures, interrogation and automatic flirtation.",
   "CHARACTER\n" + profile,
   "USER PERSONA\n" + clean(JSON.stringify(userIdentity),1300),
