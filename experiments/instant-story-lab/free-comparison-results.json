@@ -1,0 +1,125 @@
+{
+  "date": "2026-10-14",
+  "production_changed": false,
+  "purchase_made": false,
+  "results": [
+    {
+      "model": "nvidia/nemotron-3.5-lightning-free",
+      "caseId": "party",
+      "status": 200,
+      "id": "gen_01M4X777NXB7RA19848NJY4S4Z",
+      "text": "Chase leaned against the doorframe, phone dead in his palm, one boot crossed over the other. A slow blink.\n\n\"You’re still here.\"\n\nHe pushed off.\n\n\"Good. I wasn't sure if you'd leave already.\"\n\nHis jaw worked.\n\n\"I wanted to tell you something, but then—\" He gestured vaguely at the party behind him. \"—people. Things. You know how it is.\"\n\nHe stopped a few feet away. Studied you.\n\n\"You look good tonight. I mean that. Not in a weird way. Just—\"\n\nHe exhaled.\n\n\"—you're here. That counts for something, right?\"\n\nHis eyes flickered away, then back.\n\n\"So. You coming outside? The air's actually decent out there. Fresh. Not like in here.\"\n\nHe waited. A beat.\n\n\"Please say yes. I'm tired of talking to people who don't know when to shut up.\"",
+      "finishReason": "stop",
+      "usage": {
+        "prompt_tokens": 356,
+        "completion_tokens": 187,
+        "total_tokens": 543,
+        "cost": 0,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": null,
+          "upstream_inference_prompt_cost": 0,
+          "upstream_inference_completions_cost": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "market_cost": 0
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-lightning-free",
+      "caseId": "campus_event",
+      "status": 200,
+      "id": "gen_01M4X778ZBRWWV93YKF588WQWR",
+      "text": "Chase was there again. Standing too close. A fresh smear of paint on his collar.\n\n\"You're still here.\"\n\nHe didn't look annoyed. Just waiting.\n\n\"The event's in ten minutes. You should be helping.\"\n\n\"I know.\"\n\nHe shifted his weight. The light from the hallway caught the edge of his jaw.\n\n\"Why aren't you?\"\n\nA beat.\n\n\"I'm not busy. I'm just... here.\"\n\nHe glanced back toward the room where students were hanging banners. Then back to you.\n\n\"I came looking. That's allowed, right?\"\n\nHis smile was deliberate. Calculated.\n\n\"Unless you want me to go. I can go.\"\n\nHe made no move to leave. Just waited, arms loose at his sides, watching.",
+      "finishReason": "stop",
+      "usage": {
+        "prompt_tokens": 358,
+        "completion_tokens": 151,
+        "total_tokens": 509,
+        "cost": 0,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": null,
+          "upstream_inference_prompt_cost": 0,
+          "upstream_inference_completions_cost": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "market_cost": 0
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3.5-lightning-free",
+      "caseId": "group_outing",
+      "status": 200,
+      "id": "gen_01M4X779SQYCZFJEV22SMF9WPX",
+      "text": "Chase shouldered through the crowd, grin already sharpening at the sight of you. He didn’t pause for introductions.\n\n“You’re here. Perfect.”\n\nHe claimed the nearest empty seat, spreading his elbows wide, shoes crossing at the ankle. Around them the room hummed with conversations he was half-listening to, half-directing.\n\nA woman hovered nearby, laugh too bright, reaching for his arm. Chase didn’t pull away—just tilted his head, watching her with mild curiosity before his gaze drifted back to you.\n\n“Ignore her. She’s just checking the inventory.”\n\nHe pulled a cigarette from his pack, lit it with a practiced flick of the lighter, and took a slow drag. Exhaled smoke toward the ceiling.\n\n“So. You look tired. Rough night? Or are you just bored of me already?”",
+      "finishReason": "stop",
+      "usage": {
+        "prompt_tokens": 357,
+        "completion_tokens": 171,
+        "total_tokens": 528,
+        "cost": 0,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": null,
+          "upstream_inference_prompt_cost": 0,
+          "upstream_inference_completions_cost": 0
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "market_cost": 0
+      }
+    },
+    {
+      "model": "stealth/glyph-cluster",
+      "caseId": "party",
+      "status": 403,
+      "errorType": "no_providers_available"
+    },
+    {
+      "model": "poolside/laguna-s-2.1-free",
+      "caseId": "party",
+      "status": 503,
+      "errorType": "service_unavailable_error"
+    },
+    {
+      "model": "moonshotai/kimi-k3",
+      "caseId": "party",
+      "status": 403,
+      "errorType": "no_providers_available"
+    },
+    {
+      "model": "deepseek/deepseek-v3.2",
+      "caseId": "party",
+      "status": 403,
+      "errorType": "no_providers_available"
+    }
+  ],
+  "manual_assessment": "Nemotron returned three finished scenes at zero cost. All were rejected: invented user state, awkward confession or fatigue, and generic choreography. Other model access attempts failed before generation. No candidate promoted."
+}
