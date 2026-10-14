@@ -1,3 +1,5 @@
+export const NATHAN_EXCEPTION_ENGINE = "EXCEPTION / FORBIDDEN ACCESS: Nathan is the user's brother's best friend, guarded and difficult for others to get close to, yet naturally makes room for the user. He initiates a specific private opportunity with her. His loyalty to her brother gives that otherwise familiar closeness a boundary; an impulse almost crosses it, then he restrains or revises his own choice. Attraction remains unresolved and gradual. He is polite, not universally rude, a womanizer, instantly possessive, or an omniscient protector. Show asymmetric access through decisions and plain spoken rhythm, not repeated claims that she is special. The user remains free to accept, refuse or redirect. Use the approved sample as dynamics/voice reference, never as a mandatory students/laptop/restaurant/text-message sequence.";
+export const NATHAN_APPROVED_OPENING = "Nathan closed his laptop as two students approached his table.\n\n“We’re going out after this. You should come.”\n\n“Have a good night,” he said. “I’ve got plans.”\n\nOnce they left, he turned to you.\n\n“I don’t.”\n\nHe put the laptop in his bag.\n\n“There’s a place about twenty minutes from here. Terrible reception. Good food.”\n\nHis phone lit up with your brother’s name.\n\nNathan read the message.\n\n“He wants to know if I can bring you to dinner.”\n\nHe started typing, stopped, and deleted the reply.\n\n“I could tell him we’ll be late.”\n\nFor a moment, he left the phone untouched.\n\nThen he picked it up again.\n\n“That depends on you.”";
 export const CHASE_ELECTRICITY_ENGINE = "ELECTRICITY: Chase is socially desired, receptive to others, and still drawn back to the user without settled feelings. Direct, personal sarcasm creates an invitation with something left unresolved. An external pull or small live trigger reveals an emotion he did not plan; let it affect his response or decision. The user can accept, refuse or redirect. Stop on the charged beat. No explanatory last line, no 'You're enjoying this', no declarations, no tidy sincerity scene, no automatic touch/kiss. Tension may be sexual or nonsexual. Reproduce the approved example's dynamics and spoken rhythm, never its exact event sequence, lipstick, drink, girl calling, or catchphrases.";
 export const CHASE_APPROVED_OPENING = "Chase came looking for you with lipstick on his cheek and someone else’s drink in his hand.\n\n“Before you start, she was very nice.”\n\nHe took a sip, grimaced, and set the glass aside.\n\n“Terrible taste, apparently.”\n\nThe girl called him back. Chase glanced over.\n\n“In a minute.”\n\nThen he turned to you.\n\n“Go on. Say something mean. I’ve been getting far too much encouragement tonight.”\n\nHe rubbed at the lipstick with his thumb.\n\n“Did I get it?”\n\nA pause.\n\n“You could help.”\n\nHis grin arrived a little late.\n\n“Or leave it. Give yourself something to complain about.”\n\n“Chase!”\n\n“What?”\n\nHe sounded annoyed now. That seemed to catch him off guard.";
 
@@ -8,6 +10,9 @@ const hash = (value) => [...value].reduce((n, c) => ((n * 33) ^ c.charCodeAt(0))
 
 export function buildInstantStoryIdentity(draft = {}, variationKey = '', recentSeeds = []) {
   const dna = draft.emotional_dna || draft.emotionalDna || {};
+  if (dna.official_engine === 'nathan_exception_v1') {
+    return `FOCUS=nathan_exception\nCREATOR-APPROVED NATHAN ENGINE\n${NATHAN_EXCEPTION_ENGINE}\nAPPROVED RHYTHM REFERENCE\n${NATHAN_APPROVED_OPENING}`;
+  }
   if (dna.official_engine === 'chase_electricity_v1') {
     return `FOCUS=chase_electricity\nCREATOR-APPROVED CHASE ENGINE — OVERRIDES GENERIC FACET/PACING SUGGESTIONS\n${CHASE_ELECTRICITY_ENGINE}\nUse the current setting and relationship history. Let ongoing relationships evolve. The sample is a voice/dynamics reference, not canon or a plot to copy. Vary setting, trigger, other people's attention, his provocation and the involuntary emotional turn. Never author the user's action or feelings.\nAPPROVED RHYTHM REFERENCE\n${CHASE_APPROVED_OPENING}`;
   }
@@ -74,4 +79,31 @@ Match the approved sample's loose spoken rhythm. Keep the useful setting and fac
 Return ONLY the complete revised opening, no assessment or explanation.
 DRAFT TO EDIT
 ${String(opening).slice(0, 2400)}`;
+}
+
+
+export function buildNathanInstantPrompt(draft = {}, idea = '', recentOpenings = []) {
+  const profile = { name: draft.name, role: draft.role, personality: draft.personality, description: draft.description, relationship: draft.relationship, world: draft.world, speechStyle: draft.speechStyle, boundaries: draft.boundaries };
+  return `Write one fresh playable opening for Nathan Foster, about 90-160 words, no more than 190. Output only finished scene prose.
+CREATOR-APPROVED ENGINE — PRIORITY OVER GENERIC FACETS
+${NATHAN_EXCEPTION_ENGINE}
+Others cannot easily access his private attention; the user has a natural route into it through her brother. Give Nathan a concrete personal initiative toward the user, not merely a protective chore or generic invitation. Let the forbidden boundary complicate his choice in the live moment. Keep his composed, understated voice, with sparse narration and short ordinary speech. His restraint must affect what he does or offers, not just a jaw clench or lingering gaze.
+The brother is HER brother and Nathan's best friend, not Nathan's brother. His presence or friendship matters, but a call or interruption is not mandatory. Vary settings, opportunities and how the boundary becomes felt. A supporting person need not be an admirer; never stage a queue of jealous people to demonstrate popularity. Do not make everyone else rude or unworthy, and do not replace personal desire with distributing papers, logistics or caretaking.
+Their familiarity starts platonic; do not assume a secret relationship, settled love, mutual attraction, kisses, consent or a shared destination. Let closeness become charged without naming or explaining the chemistry. Nathan can invite; he cannot author her acceptance, refusal, arrival, posture, possessions, thoughts or dialogue. Use third-person narration, address the user as you, and make the speaker/addressee clear. No invented named NPCs. Preserve current canon and explicit user idea.
+PROFILE
+${JSON.stringify(profile)}
+APPROVED SAMPLE — RHYTHM AND DYNAMIC, NOT A SCRIPT OR PAST CANON
+${NATHAN_APPROVED_OPENING}
+RECENT OPENINGS — DO NOT REPEAT THEIR EVENTS OR WORDING
+${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-4))}
+USER IDEA
+${idea || 'No additional premise.'}`;
+}
+
+export function buildNathanRevisionPrompt(draft = {}, opening = '', idea = '', recentOpenings = []) {
+  return `${buildNathanInstantPrompt(draft, idea, recentOpenings)}
+EDITOR PASS — Assess silently: does Nathan choose a concrete exception for the user, and does loyalty to her brother complicate that choice without resolving attraction? Does his private initiative offer something she can engage with freely? Repair the interaction if missing; merely mentioning her brother, lowering his voice or making a polite offer is insufficient. Keep useful facts and setting, never clone the sample or script the user. If it already works, return it unchanged.
+Return only the complete revised scene, without review commentary.
+DRAFT TO EDIT
+${String(opening).slice(0,2400)}`;
 }

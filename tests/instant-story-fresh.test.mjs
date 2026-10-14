@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { pathToFileURL } from "node:url";
 import { webcrypto } from "node:crypto";
 import test from "node:test";
-import { CHASE_APPROVED_OPENING, chaseOpeningIssues } from "../supabase/functions/character-chat/engine/instant-story-identity.js";
+import { CHASE_APPROVED_OPENING, chaseOpeningIssues, NATHAN_APPROVED_OPENING, buildInstantStoryIdentity } from "../supabase/functions/character-chat/engine/instant-story-identity.js";
 import { instantStoryError } from "../src/utils/instantStoryDiagnostics.js";
 import { instantStoryProseValidation } from "../supabase/functions/character-chat/engine/instant-story-prose.js";
 
@@ -277,4 +277,41 @@ test("Chase editor cannot replace a safe opening with authored user entrance", a
   assert.equal(data.opening, CHASE_APPROVED_OPENING);
   assert.ok(data.softWarnings.includes('chase_revision_unavailable'));
   assert.equal(r.requests.length, 2);
+});
+
+
+const nathanDraft = { name: 'Nathan', role: "24-year-old university student and brother's best friend", relationship: "Her brother's best friend, guarded with others, familiar with her; forbidden slow burn.", emotionalDna: { official_engine: 'nathan_exception_v1' } };
+
+test("Nathan uses his approved exception sample and edits a complete generic draft without borrowing Chase's engine", async () => {
+  const generic = packetOpening.replaceAll('Chase', 'Nathan').replace('“Sign your life', 'Nathan said to you, “Sign your life');
+  const r = runtime({ providerTexts: [generic, NATHAN_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: nathanDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.source, 'ai_nathan_edit');
+  assert.equal(data.opening, NATHAN_APPROVED_OPENING);
+  assert.equal(r.requests.length, 2);
+  const first = r.requests[0].contents[0].parts[0].text;
+  const editor = r.requests[1].contents[0].parts[0].text;
+  assert.ok(first.includes(NATHAN_APPROVED_OPENING));
+  assert.ok(first.includes('HER brother'));
+  assert.ok(!first.includes(CHASE_APPROVED_OPENING));
+  assert.ok(editor.includes('DRAFT TO EDIT\n'+generic));
+  assert.ok(data.sceneSeed.includes('FOCUS=nathan_exception'));
+});
+
+test("Nathan's approved opening survives generation and editorial transport unchanged", async () => {
+  const r = runtime({ providerTexts: [NATHAN_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: nathanDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.opening, NATHAN_APPROVED_OPENING);
+  assert.equal(data.source, 'ai_nathan_edit');
+  assert.ok(buildInstantStoryIdentity(nathanDraft).includes(NATHAN_APPROVED_OPENING));
+});
+
+test("Nathan editor cannot script the user's arrival and preserves the safe opening", async () => {
+  const r = runtime({ providerTexts: [NATHAN_APPROVED_OPENING, 'When you stopped at the table, '+NATHAN_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: nathanDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.opening, NATHAN_APPROVED_OPENING);
+  assert.ok(data.softWarnings.includes('nathan_revision_unavailable'));
 });

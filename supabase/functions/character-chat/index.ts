@@ -1,4 +1,4 @@
-import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt } from "./engine/instant-story-identity.js";
+import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
@@ -95,7 +95,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "506";
+const VELVET_ENGINE_RELEASE = "507";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -355,16 +355,16 @@ Deno.serve(async (request) => {
       let instantDraft = body?.draft || {};
       // Resolve the persisted profile within the authenticated user's characters.
       // Cached clients must not decide which creator-approved engine is active.
-      if (String(instantDraft.name || "").trim().toLowerCase() === "chase beaumont") {
+      if (["chase beaumont", "nathan foster"].includes(String(instantDraft.name || "").trim().toLowerCase())) {
         const { data: profiles, error: profileError } = await supabase.from("characters")
-          .select("*").eq("user_id", userData.user.id).eq("name", "Chase Beaumont").is("trashed_at", null).limit(2);
-        if (profileError) throw new Error("Could not load Chase's current profile.");
+          .select("*").eq("user_id", userData.user.id).eq("name", String(instantDraft.name).trim()).is("trashed_at", null).limit(2);
+        if (profileError) throw new Error("Could not load this character's current profile.");
         if (profiles?.length === 1) {
           const profile = profiles[0];
           instantDraft = { ...instantDraft, ...profile };
           const aliases = {"character_values":"values","core_motivation":"coreMotivation","emotional_defense":"emotionalDefense","softening_triggers":"softeningTriggers","growth_direction":"growthDirection","speech_style":"speechStyle","voice_vocabulary":"voiceVocabulary","humor_style":"humorStyle","conflict_style":"conflictStyle","affection_style":"affectionStyle","verbal_tells":"verbalTells","voice_avoidances":"voiceAvoidances","example_dialogue":"exampleDialogue","first_message":"firstMessage"};
           for (const [databaseKey, clientKey] of Object.entries(aliases)) instantDraft[clientKey] = profile[databaseKey] || "";
-        } else if (profiles?.length > 1) throw new Error("Multiple Chase profiles found. Choose a specific character.");
+        } else if (profiles?.length > 1) throw new Error("Multiple character profiles found. Choose a specific character.");
       }
       return await handleInstantStory({
         apiKey,
@@ -1987,7 +1987,7 @@ function instantStoryCanonClaims(opening = "", draft = {}, idea = "") {
 function instantStoryHardBlockIssuesV35298(opening = "", draft = {}, idea = "") {
   const grounding = instantStoryGroundingIssuesV35292(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298.has(issue))
-    .filter((issue)=>!(draft?.emotional_dna?.official_engine === "chase_electricity_v1" && issue === "ambiguous_first_dialogue_addressee"));
+    .filter((issue)=>!((draft?.emotional_dna?.official_engine === "chase_electricity_v1" || (draft?.emotional_dna?.official_engine === "nathan_exception_v1" && /\b(?:students?|friends?|someone) (?:approached|asked|invited|called)\b/i.test(opening))) && issue === "ambiguous_first_dialogue_addressee"));
   const naturalism = instantStoryNaturalismIssuesV35295(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298.has(issue));
   const resourceIssues = resourceContinuityIssuesV35358(opening, draft, "");
@@ -2397,7 +2397,9 @@ async function handleInstantStory({ apiKey, draft, idea, variationKey = "", rece
   const cleanIdea = cleanPromptValue(idea || "", 420);
   const identityDirection = buildInstantStoryIdentity(safeDraft, variationKey, recentSceneSeeds);
   const chaseEngineActive = safeDraft.emotional_dna?.official_engine === "chase_electricity_v1";
-  const sceneSeed = chaseEngineActive
+  const nathanEngineActive = safeDraft.emotional_dna?.official_engine === "nathan_exception_v1";
+  const approvedEngineActive = chaseEngineActive || nathanEngineActive;
+  const sceneSeed = approvedEngineActive
     ? [cleanIdea ? `USER-SPECIFIED DIRECTION: ${cleanIdea}` : "", identityDirection].filter(Boolean).join("\n\n")
     : [instantStoryConflictSeedV35247(safeDraft, cleanIdea, variationKey, recentSceneSeeds), identityDirection].filter(Boolean).join("\n\n");
   const openingDna = buildOpeningDnaContractV35289(safeDraft, cleanIdea);
@@ -2436,7 +2438,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
 IDEA
 ${cleanIdea || "No extra premise. Use the character's existing life and relationship."}`;
 
-  const prompt = chaseEngineActive ? buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings) : genericPrompt;
+  const prompt = nathanEngineActive ? buildNathanInstantPrompt(safeDraft, cleanIdea, recentOpenings) : chaseEngineActive ? buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings) : genericPrompt;
 
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
@@ -2506,7 +2508,9 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const alternatives = [...new Set([model, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
     model = alternatives.find((candidate) => !quotaUnavailableModels.has(candidate)) || model;
     try {
-      const effectivePrompt = phase === "chase_edit" ? requestPrompt : chaseEngineActive
+      const effectivePrompt = ["chase_edit", "nathan_edit"].includes(phase) ? requestPrompt : nathanEngineActive
+        ? `${buildNathanInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT PASS: ${phase}\n${phase === "primary" ? "" : rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}`
+        : chaseEngineActive
         ? `${buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT GENERATION PASS: ${phase}\n${phase === "primary" ? "" : "REPAIR THE OBSERVED DRAFT, preserving its useful situation while restoring the approved dynamic; do not simply change synonyms.\n" + rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}\nAvoid these observed failures: ${JSON.stringify([...new Set(rejectedInstantCandidates.flatMap(item => item.rejectionReasons || []))].slice(0,10))}`
         : requestPrompt;
       const contents = [{ role: "user", parts: [{ text: effectivePrompt }] }];
@@ -2588,7 +2592,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const fatalQualityIssues = qualityIssues.filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
     const premiseIssues = instantStoryPremiseGateIssues(opening, safeDraft);
     const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea)
-      .filter((issue)=>!(chaseEngineActive && issue === "ambiguous_first_dialogue_addressee"));
+      .filter((issue)=>!((chaseEngineActive || (nathanEngineActive && /\b(?:students?|friends?|someone) (?:approached|asked|invited|called)\b/i.test(opening))) && issue === "ambiguous_first_dialogue_addressee"));
     const naturalismIssues = instantStoryNaturalismIssuesV35295(opening, safeDraft, cleanIdea);
     const identityIssuesV35321 = characterIdentityGateIssuesV35321({ reply: opening, character: safeDraft, recentCharacterReplies: recentOpenings, opening: true });
     const semanticIssues = semanticStoryMomentumIssues({
@@ -2670,15 +2674,15 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       });
       // Cancel hedge losers before the bounded editor pass, so quality does not
       // race unused provider calls or require another public generation request.
-      if (chaseEngineActive) {
+      if (approvedEngineActive) {
         closed = true;
         clearTimeout(primaryDeadlineTimer);
         controllers.forEach((controller) => controller.abort());
         try {
           const { data, actualModel } = await requestOpening({
             model: winner.model,
-            prompt: buildChaseRevisionPrompt(safeDraft, winner.opening, cleanIdea, recentOpenings),
-            phase: "chase_edit", timeoutMs: 9000, maxOutputTokens: 1600, temperature: 0.8,
+            prompt: (nathanEngineActive ? buildNathanRevisionPrompt : buildChaseRevisionPrompt)(safeDraft, winner.opening, cleanIdea, recentOpenings),
+            phase: nathanEngineActive ? "nathan_edit" : "chase_edit", timeoutMs: 9000, maxOutputTokens: 1600, temperature: 0.8,
           });
           const opening = readOpening(data);
           const finishReason = String(data?.candidates?.[0]?.finishReason || "");
@@ -2687,14 +2691,14 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
             ...speakerOwnershipIssuesV35367(opening, safeDraft),
           ];
           if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !chaseOpeningIssues(opening, safeDraft).length) {
-            return instantStoryResponse({ opening, source: "ai_chase_edit", model: actualModel,
+            return instantStoryResponse({ opening, source: nathanEngineActive ? "ai_nathan_edit" : "ai_chase_edit", model: actualModel,
               sceneSeed, openingFamily });
           }
-          diagnose({ phase: "chase_edit", model: actualModel, code: "revision_rejected", reasons: hardBlocks });
+          diagnose({ phase: nathanEngineActive ? "nathan_edit" : "chase_edit", model: actualModel, code: "revision_rejected", reasons: hardBlocks });
         } catch (error) {
-          console.warn("[character-chat] Chase editor unavailable; preserving safe original", { error: getErrorMessage(error) });
+          console.warn("[character-chat] Approved-character editor unavailable; preserving safe original", { error: getErrorMessage(error) });
         }
-        winner.softWarnings = [...(winner.softWarnings || []), "chase_revision_unavailable"];
+        winner.softWarnings = [...(winner.softWarnings || []), nathanEngineActive ? "nathan_revision_unavailable" : "chase_revision_unavailable"];
       }
       return await instantStoryResponse({ opening: winner.opening, source: "ai", model: winner.model, sceneSeed, openingFamily, softWarnings: winner.softWarnings });
     }
@@ -2713,10 +2717,10 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   // Restore the creator-approved Chase dynamic before any generic local or
   // deadline fallback can return the rejected draft unchanged. One bounded pass;
   // no extra review request, no mandatory scene template, no user choreography.
-  if (chaseEngineActive && rejectedInstantCandidates.length && deadlineAt - Date.now() > 1200) {
+  if (approvedEngineActive && rejectedInstantCandidates.length && deadlineAt - Date.now() > 1200) {
     try {
       const { data, actualModel } = await requestOpening({
-        model: GEMINI_MODEL, prompt, phase: "chase_repair", timeoutMs: 9000,
+        model: GEMINI_MODEL, prompt, phase: nathanEngineActive ? "nathan_repair" : "chase_repair", timeoutMs: 9000,
         maxOutputTokens: 1600, temperature: 0.85,
       });
       const opening = readOpening(data);
@@ -2727,7 +2731,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       ];
       const issues = chaseOpeningIssues(opening, safeDraft);
       if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !issues.length) {
-        return instantStoryResponse({ opening, source: "ai_chase_repair", model: actualModel,
+        return instantStoryResponse({ opening, source: nathanEngineActive ? "ai_nathan_repair" : "ai_chase_repair", model: actualModel,
           sceneSeed, openingFamily });
       }
       rejectedInstantCandidates.push({ opening, model: actualModel, finishReason,
