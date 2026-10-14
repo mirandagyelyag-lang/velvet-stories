@@ -5,6 +5,8 @@ const uniq=(items,max=12)=>{const out=[];for(const item of items){const value=te
 const low=(v)=>text(v,5000).toLowerCase();
 
 function chemistrySignature(character={}){
+  const dna=character?.emotional_dna||{};
+  if(dna.emotional_promise)return text(dna.emotional_promise,420);
   const source=low([character?.name,character?.role,character?.personality,character?.relationship,character?.speech_style,character?.affection_style].join(" "));
   if(/chase|playful|popular|campus|teas|flirt|bold/.test(source))return "electric, playful, socially confident; teasing turns unexpectedly sincere in private";
   if(/roman|rival|danger|intense|controlled|cold/.test(source))return "controlled intensity; small acts carry weight, proximity feels deliberate, vulnerability is rare and costly";
@@ -25,18 +27,23 @@ function classifyStage(s={}){
   return "early";
 }
 
+// Record enacted events, not requests, hypotheticals, negations or topic words.
 function detectMilestone(user,reply){
-  const both=low(user+" "+reply);
-  if(/\b(kiss|kissed|kissing|beso|besó|besame|bésame|besar|besando)\b/.test(both))return "kiss";
-  if(/\b(i love you|te amo|love you|in love|enamorad|confess|confes)\b/.test(both))return "love-confession";
-  if(/\b(i like you|me gustas|like you)\b/.test(both))return "romantic-confession";
-  if(/\b(hold.*hand|took.*hand|tom[oó].*mano|entrelaz)\b/.test(both))return "hand-hold";
-  if(/\b(hug|hugged|abrazo|abrazó)\b/.test(both))return "embrace";
+  const clauses=low(user+"\n"+reply).normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/[.!?;\n]+/);
+  for(const clause of clauses){
+    if(/\b(?:not|never|didn't|did not|don't|would|could|should|might|want to|wanted to|almost|no|nunca|sin|podr[ií]a|quer[ií]a|quisiera|casi)\b/.test(clause))continue;
+    if(/\b(?:i|he|she|we|they|[a-z]+) kissed (?:you|me|him|her|each other)\b|\b(?:te|me|lo|la) bes[oó]\b|\bbes[eé] (?:sus|tus) labios\b/.test(clause))return "kiss";
+    if(/(?:^|["“])\s*(?:i love you|te amo)\s*(?:["”]|$)/.test(clause))return "love-confession";
+    if(/(?:^|["“])\s*(?:i like you|me gustas)\s*(?:["”]|$)/.test(clause))return "romantic-confession";
+    if(/\b(?:took|held) (?:your|my|his|her) hand\b|\b(?:tom[oó]|sostuvo) (?:tu|mi|su|la) mano\b/.test(clause))return "hand-hold";
+    if(/\b(?:hugged|embraced) (?:you|me|him|her)\b|\b(?:te|me) abraz[oó]\b/.test(clause))return "embrace";
+  }
   return "";
 }
 
 function proximityFromScene(scene={},user="",reply=""){
-  const joined=low(user+" "+reply+" "+JSON.stringify(arr(scene?.spatial_relations)));
+  if(text(scene?.distance||scene?.proximity,100))return text(scene.distance||scene.proximity,100);
+  const joined=low(JSON.stringify(arr(scene?.spatial_relations)));
   if(/kiss|beso|forehead against|frente contra|lips|labios/.test(joined))return "intimate";
   if(/can_touch.*true|within reach|arm.?s reach|centimeter|inch|close enough to touch|junto a|pegad/.test(joined))return "touching-distance";
   if(/beside|next to|a su lado|al lado|near|cerca/.test(joined))return "near";
@@ -57,17 +64,10 @@ function noticedCue(user=""){
 
 function deltaScores(previous={},user="",reply="",milestone="",behavior={},mind={}){
   const next={attraction:clamp(previous.attraction??20),trust:clamp(previous.trust??18),comfort:clamp(previous.comfort??18),vulnerability:clamp(previous.vulnerability??12),jealousy:clamp(previous.jealousy??8),commitment:clamp(previous.commitment??5)};
-  const joined=low(user+" "+reply);
+  // Only a visible enacted milestone changes these derived scores. Private
+  // wants, model metadata and ordinary words do not earn mutual intimacy.
   if(milestone==="kiss"){next.attraction+=4;next.comfort+=2;next.vulnerability+=3;}
-  if(milestone.includes("confession")){next.attraction+=3;next.vulnerability+=5;next.commitment+=3;}
-  if(/\b(trust you|confío en ti|confio en ti|tell you something|te cuento|honest|sincero|sincera)\b/.test(joined)){next.trust+=3;next.vulnerability+=2;}
-  if(/\b(sorry|lo siento|apolog|perdón|perdon)\b/.test(joined))next.trust+=1;
-  if(/\b(jealous|celos|another guy|otro chico|with him|con él)\b/.test(joined))next.jealousy+=3;
-  if(/\b(no|stop|para|don't|do not|leave me|déjame|dejame)\b/.test(low(user))){next.comfort-=2;next.trust-=1;}
-  if(/\b(stay|quédate|quedate|come with me|ven conmigo|choose you|te elijo)\b/.test(joined)){next.commitment+=2;next.comfort+=2;}
-  if(text(behavior?.relationship_attraction,100))next.attraction+=1;
-  if(text(behavior?.relationship_trust,100))next.trust+=1;
-  if(text(mind?.wont_admit,100)||text(mind?.private_intention,100))next.vulnerability+=1;
+  if(milestone.includes("confession")){next.attraction+=3;next.vulnerability+=5;}
   Object.keys(next).forEach(k=>next[k]=clamp(next[k]));
   next.stage=classifyStage(next);
   return next;
@@ -77,7 +77,8 @@ export function deriveRelationshipLivingMemoryV35380({previous={},character={},l
   const base=previous&&typeof previous==="object"?previous:{};
   const milestone=detectMilestone(latestUserMessage,reply);
   const previousScores=base?.scores||{};
-  const scores=isRegeneration?{...previousScores,stage:previousScores?.stage||classifyStage(previousScores)}:deltaScores(previousScores,latestUserMessage,reply,milestone,behaviorUpdate,mindUpdate);
+  const repeatedMessage=messageId && arr(base?.milestones).some(x=>x?.message_id===messageId);
+  const scores=(isRegeneration||repeatedMessage)?{...previousScores,stage:previousScores?.stage||classifyStage(previousScores)}:deltaScores(previousScores,latestUserMessage,reply,milestone,behaviorUpdate,mindUpdate);
   const thoughtCandidates=uniq([mindUpdate?.wont_admit,mindUpdate?.private_intention,mindUpdate?.feared_outcome,mindUpdate?.contradiction_in_play,...arr(base?.private_thoughts).map(x=>x?.thought||x)],8);
   const private_thoughts=thoughtCandidates.map((thought,i)=>({thought,status:"active",weight:Math.max(1,5-i),source:i<4?"current-mind":"carryover"})).slice(0,8);
   const desireCandidates=uniq([behaviorUpdate?.concealed_want,behaviorUpdate?.immediate_want,behaviorUpdate?.active_intent,mindUpdate?.want,mindUpdate?.anticipated_next,mindUpdate?.private_intention,...arr(base?.unfinished_desires).filter(x=>x?.status!=="resolved").map(x=>x?.desire||x)],10);
@@ -92,9 +93,9 @@ export function deriveRelationshipLivingMemoryV35380({previous={},character={},l
   const noticed_cues=uniq([cue,...arr(base?.noticed_cues).map(x=>x?.cue||x)],8).map((x,i)=>({cue:x,freshness:i===0&&cue?"current":"stored"}));
   const oldMilestones=arr(base?.milestones);
   let milestones=oldMilestones;
-  if(milestone){const detail=milestone==="kiss"?"Preserve who initiated, physical tone, emotional meaning, immediate aftermath and changed behavior after the kiss.":"Preserve who said or did it, how it landed emotionally, and what changes afterward.";milestones=[...oldMilestones,{type:milestone,message_id:text(messageId,80),detail,salience:milestone==="kiss"?10:9,unresolved_aftereffect:true}].slice(-14);}
+  if(milestone && !isRegeneration && !oldMilestones.some(x=>messageId && x?.message_id===messageId)){const detail=milestone==="kiss"?"Preserve who initiated, physical tone, emotional meaning, immediate aftermath and changed behavior after the kiss.":"Preserve who said or did it, how it landed emotionally, and what changes afterward.";milestones=[...oldMilestones,{type:milestone,message_id:text(messageId,80),detail,salience:milestone==="kiss"?10:9,unresolved_aftereffect:true}].slice(-14);}
   const salient_memories=[...arr(base?.salient_memories).map(x=>({...x,salience:clamp((x?.salience??5)-0.15,1,10)}))];
-  if(milestone)salient_memories.push({event:milestone,message_id:text(messageId,80),salience:milestone==="kiss"?10:9,meaning:milestone==="kiss"?"romantic or physical milestone with durable emotional residue":"relationship-defining emotional disclosure"});
+  if(milestone && !isRegeneration && !salient_memories.some(x=>messageId && x?.message_id===messageId && x?.event===milestone))salient_memories.push({event:milestone,message_id:text(messageId,80),salience:milestone==="kiss"?10:9,meaning:milestone==="kiss"?"romantic or physical milestone with durable emotional residue":"relationship-defining emotional disclosure"});
   if(cue)salient_memories.push({event:cue,message_id:text(messageId,80),salience:5,meaning:"noticed user cue worth carrying briefly"});
   salient_memories.sort((a,b)=>(b?.salience||0)-(a?.salience||0));
   const delayed_payoffs=arr(base?.delayed_payoffs).map(x=>({...x,age:Math.min(99,Number(x?.age||0)+1),readiness:Number(x?.age||0)>=6?"available":(x?.readiness||"growing")})).slice(-8);
@@ -110,7 +111,18 @@ export function buildRelationshipLivingMemoryV35380({character={},latestUserMess
   const memories=arr(state?.salient_memories).slice(0,6).map(x=>"- "+text(x?.event,160)+" [salience "+text(x?.salience,20)+"]: "+text(x?.meaning,220)).join("\n")||"- none yet";
   const hooks=arr(state?.delayed_payoffs).filter(x=>x?.readiness!=="resolved").slice(0,5).map(x=>"- "+text(x?.hook,220)+" (age "+text(x?.age,20)+", "+text(x?.readiness,40)+")").join("\n")||"- none";
   const noticed=arr(state?.noticed_cues).slice(0,4).map(x=>"- "+text(x?.cue||x,220)).join("\n")||"- none";
-  return ["RELATIONSHIP LIVING MEMORY 3.53.80 · PERSISTENT, NOT A RESET","1. PRIVATE THOUGHT CONTINUITY: hidden feelings not spoken still exist until evidence changes them. Never dump them as exposition.",thoughts,"2. UNFINISHED DESIRE ENGINE: open wants survive turns and return naturally; do not resolve every desire immediately.",desires,"3. INITIATIVE MEMORY: "+text(state?.initiative?.instruction||"Character shares responsibility for moving the scene.",280),"4. RELATIONSHIP MICROCHANGES: attraction "+text(scores?.attraction,20)+", trust "+text(scores?.trust,20)+", comfort "+text(scores?.comfort,20)+", vulnerability "+text(scores?.vulnerability,20)+", jealousy "+text(scores?.jealousy,20)+", commitment "+text(scores?.commitment,20)+". Stage: "+text(state?.timeline_stage||relationshipState?.stage||"early",100)+". Never show these numbers.","5. POST-MILESTONE INTELLIGENCE: after a kiss, confession or touch, preserve physical and emotional aftermath. Never reset into 'so what now?' or act as if nothing happened.","6. ROMANTIC MEMORY SALIENCE: firsts, confessions, rejection, jealousy, vulnerability and trust outweigh mundane facts.",memories,"7. CHARACTER CHEMISTRY SIGNATURE: "+text(state?.chemistry_signature||chemistrySignature(character),420)+". The same scene must feel different with this character.","8. PROXIMITY INTELLIGENCE: current proximity = "+text(state?.proximity?.level||proximityFromScene(scene,latestUserMessage,""),100)+". Respect actual distance and body position.","9. DELAYED PAYOFF ENGINE: do not cash every setup immediately. Old hooks can return many turns later when causally natural.",hooks,"10. HE NOTICES: notice meaningful visible changes without turning every detail into poetry or repeating 'you're quiet'.",noticed,"RELATIONSHIP TIMELINE: evidence-based and non-linear. Never erase earned progress after a charged scene.","CURRENT USER BEAT: "+text(latestUserMessage,420),"RECENT USER RHYTHM: "+arr(recentUserMessages).slice(-4).map(x=>text(x,120)).join(" | "),"RECENT CHARACTER RHYTHM: "+arr(recentCharacterReplies).slice(-4).map(x=>text(x,120)).join(" | ")].join("\n");
+  const continuity=[
+    "IMMEDIATE CONTINUITY · CURRENT EVIDENCE FIRST",
+    "Latest user message answers or changes the preceding beat. Respond to that beat before starting a new topic. Preserve pending questions, offers and decisions unless actually answered or withdrawn.",
+    "PREVIOUS CHARACTER BEAT: "+text(arr(recentCharacterReplies).at(-1)||state.last_character_beat,1100),
+    "PREVIOUS USER BEAT: "+text(state.last_visible_beat,600),
+    "CURRENT SCENE: "+text(JSON.stringify(scene),1200),
+    "CURRENT RELATIONSHIP: "+text(JSON.stringify(relationshipState),900),
+    "Current scene and explicit conversation evidence outrank old inferred proximity and numerical relationship scores. Desires, requests, hypotheticals, refusals and private thoughts are not completed events or mutual consent.",
+    "Continue the existing location, cast, object ownership and time until a supported transition occurs. A scene ending or time skip carries unresolved consequences and earned relationship history forward. Do not restage the opening each turn.",
+    "Historical milestones are retrieval hints: verify their actual source in conversation before treating them as canon. Never invent a remembered detail, repeat a completed action, or make the user reciprocate."
+  ].join("\n");
+  return [continuity,"RELATIONSHIP LIVING MEMORY 3.53.80 · PERSISTENT, NOT A RESET","1. PRIVATE THOUGHT CONTINUITY: hidden feelings not spoken still exist until evidence changes them. Never dump them as exposition.",thoughts,"2. UNFINISHED DESIRE ENGINE: open wants survive turns and return naturally; do not resolve every desire immediately.",desires,"3. INITIATIVE MEMORY: "+text(state?.initiative?.instruction||"Character shares responsibility for moving the scene.",280),"4. RELATIONSHIP MICROCHANGES: attraction "+text(scores?.attraction,20)+", trust "+text(scores?.trust,20)+", comfort "+text(scores?.comfort,20)+", vulnerability "+text(scores?.vulnerability,20)+", jealousy "+text(scores?.jealousy,20)+", commitment "+text(scores?.commitment,20)+". Stage: "+text(state?.timeline_stage||relationshipState?.stage||"early",100)+". Never show these numbers.","5. POST-MILESTONE INTELLIGENCE: after a kiss, confession or touch, preserve physical and emotional aftermath. Never reset into 'so what now?' or act as if nothing happened.","6. ROMANTIC MEMORY SALIENCE: firsts, confessions, rejection, jealousy, vulnerability and trust outweigh mundane facts.",memories,"7. CHARACTER CHEMISTRY SIGNATURE: "+text(chemistrySignature(character),420)+". The same scene must feel different with this character.","8. PROXIMITY INTELLIGENCE: current proximity = "+text(proximityFromScene(scene,latestUserMessage,""),100)+". Respect actual distance and body position.","9. DELAYED PAYOFF ENGINE: do not cash every setup immediately. Old hooks can return many turns later when causally natural.",hooks,"10. HE NOTICES: notice meaningful visible changes without turning every detail into poetry or repeating 'you're quiet'.",noticed,"RELATIONSHIP TIMELINE: evidence-based and non-linear. Never erase earned progress after a charged scene.","CURRENT USER BEAT: "+text(latestUserMessage,420),"RECENT USER RHYTHM: "+arr(recentUserMessages).slice(-4).map(x=>text(x,120)).join(" | "),"RECENT CHARACTER RHYTHM: "+arr(recentCharacterReplies).slice(-4).map(x=>text(x,120)).join(" | ")].join("\n");
 }
 
 export function relationshipLivingMemoryIssuesV35380({reply="",latestUserMessage="",intelligenceState={}}={}){
