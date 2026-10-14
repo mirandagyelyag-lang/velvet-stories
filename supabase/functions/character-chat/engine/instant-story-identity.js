@@ -63,3 +63,15 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-4)
 USER IDEA
 ${idea || 'No additional premise.'}`;
 }
+
+
+export function buildChaseRevisionPrompt(draft = {}, opening = '', idea = '', recentOpenings = []) {
+  return `${buildChaseInstantPrompt(draft, idea, recentOpenings)}
+EDITOR PASS — READ THE DRAFT AS AN INTERACTION, NOT AS A LIST OF WORDS
+Assess silently whether this draft actually expresses the approved dynamic. What does Chase personally want with the user right now? What live pull changes his feeling, spoken response or decision? What can the user engage with without having their response authored? If those answers are missing, revise the interaction, not its props or synonyms.
+Attention from other people is welcome to Chase, even when his attention unexpectedly returns to the user. Ignoring an admirer, delivering packets, borrowing a pencil, making a generic greeting or handling keys cannot by themselves stand in for this emotional dynamic. A useful task can be part of a scene, but the interaction needs his own personal impulse and a consequential shift.
+Match the approved sample's loose spoken rhythm. Keep the useful setting and facts; remove decorative choreography. Preserve unresolved attraction and emotional unpredictability with causal sense. Never invent an action or feeling for the user. Do not clone the sample's lipstick/drink/interruption sequence. If the draft already works, return it unchanged.
+Return ONLY the complete revised opening, no assessment or explanation.
+DRAFT TO EDIT
+${String(opening).slice(0, 2400)}`;
+}

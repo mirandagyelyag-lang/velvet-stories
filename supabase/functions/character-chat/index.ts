@@ -1,4 +1,4 @@
-import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues } from "./engine/instant-story-identity.js";
+import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
@@ -95,7 +95,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "505";
+const VELVET_ENGINE_RELEASE = "506";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2506,7 +2506,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const alternatives = [...new Set([model, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
     model = alternatives.find((candidate) => !quotaUnavailableModels.has(candidate)) || model;
     try {
-      const effectivePrompt = chaseEngineActive
+      const effectivePrompt = phase === "chase_edit" ? requestPrompt : chaseEngineActive
         ? `${buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT GENERATION PASS: ${phase}\n${phase === "primary" ? "" : "REPAIR THE OBSERVED DRAFT, preserving its useful situation while restoring the approved dynamic; do not simply change synonyms.\n" + rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}\nAvoid these observed failures: ${JSON.stringify([...new Set(rejectedInstantCandidates.flatMap(item => item.rejectionReasons || []))].slice(0,10))}`
         : requestPrompt;
       const contents = [{ role: "user", parts: [{ text: effectivePrompt }] }];
@@ -2668,6 +2668,34 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         finishReason: winner.finishReason,
         durationMs: Date.now() - startedAt,
       });
+      // Cancel hedge losers before the bounded editor pass, so quality does not
+      // race unused provider calls or require another public generation request.
+      if (chaseEngineActive) {
+        closed = true;
+        clearTimeout(primaryDeadlineTimer);
+        controllers.forEach((controller) => controller.abort());
+        try {
+          const { data, actualModel } = await requestOpening({
+            model: winner.model,
+            prompt: buildChaseRevisionPrompt(safeDraft, winner.opening, cleanIdea, recentOpenings),
+            phase: "chase_edit", timeoutMs: 9000, maxOutputTokens: 1600, temperature: 0.8,
+          });
+          const opening = readOpening(data);
+          const finishReason = String(data?.candidates?.[0]?.finishReason || "");
+          const hardBlocks = [
+            ...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea),
+            ...speakerOwnershipIssuesV35367(opening, safeDraft),
+          ];
+          if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !chaseOpeningIssues(opening, safeDraft).length) {
+            return instantStoryResponse({ opening, source: "ai_chase_edit", model: actualModel,
+              sceneSeed, openingFamily });
+          }
+          diagnose({ phase: "chase_edit", model: actualModel, code: "revision_rejected", reasons: hardBlocks });
+        } catch (error) {
+          console.warn("[character-chat] Chase editor unavailable; preserving safe original", { error: getErrorMessage(error) });
+        }
+        winner.softWarnings = [...(winner.softWarnings || []), "chase_revision_unavailable"];
+      }
       return await instantStoryResponse({ opening: winner.opening, source: "ai", model: winner.model, sceneSeed, openingFamily, softWarnings: winner.softWarnings });
     }
   } finally {

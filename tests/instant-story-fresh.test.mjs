@@ -244,7 +244,37 @@ test("The approved Chase rhythm remains usable and the targeted quality check do
   const r = runtime({ providerTexts: [CHASE_APPROVED_OPENING] });
   const { response, data } = await generate(r, { draft: chaseDraft });
   assert.equal(response.status, 200, JSON.stringify(data));
-  assert.equal(data.source, 'ai');
-  assert.equal(r.requests.length, 1);
+  assert.equal(data.source, 'ai_chase_edit');
+  assert.equal(r.requests.length, 2);
   assert.deepEqual(chaseOpeningIssues(rejectedLibraryOpening, draft), []);
+});
+
+
+const packetOpening = `Chase tossed a set of heavy brass keys onto the Westbridge admissions desk with a dull clatter that made the student worker behind the counter blink. Half a dozen registration forms fanned out across the polished wood.
+“Sign your life away on page four and nobody gets hurt,” Chase muttered.
+He didn't look at the freshman clutching a clipboard next to him, even when she giggled and nudged his elbow with hers. His thumb hooked into the belt loop of his jeans, staring straight past the stack of papers.
+“Or don't,” he added, his voice dropping flat as his gaze found you. “Honestly, the line is moving too fast anyway.”
+He pushed off the counter, leaving the registration forms where they lay, and took two steps into the narrow aisle between the pamphlet racks.
+“Take these,” Chase said, grabbing the top three stapled packets and shoving them unceremoniously toward you before his fingers could hesitate.`;
+
+test("Chase's reported packet scene is edited even without triggering a lexical quality heuristic", async () => {
+  assert.deepEqual(chaseOpeningIssues(packetOpening, chaseDraft), []);
+  const r = runtime({ providerTexts: [packetOpening, CHASE_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: chaseDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.source, 'ai_chase_edit');
+  assert.equal(data.opening, CHASE_APPROVED_OPENING);
+  assert.equal(r.requests.length, 2);
+  const prompt = r.requests[1].contents[0].parts[0].text;
+  assert.ok(prompt.includes('DRAFT TO EDIT\n'+packetOpening));
+  assert.ok(prompt.includes('What does Chase personally want with the user right now?'));
+});
+
+test("Chase editor cannot replace a safe opening with authored user entrance", async () => {
+  const r = runtime({ providerTexts: [CHASE_APPROVED_OPENING, rejectedLibraryOpening] });
+  const { response, data } = await generate(r, { draft: chaseDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.opening, CHASE_APPROVED_OPENING);
+  assert.ok(data.softWarnings.includes('chase_revision_unavailable'));
+  assert.equal(r.requests.length, 2);
 });
