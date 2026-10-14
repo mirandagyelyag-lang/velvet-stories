@@ -403,10 +403,7 @@ export function CharactersProvider({ children }) {
       }
       // The backend owns character/canon quality. This lexical client heuristic
       // is advisory; a phrase alone must not discard a completed server response.
-      if (genericInstantStory) console.warn("[Instant Story] editorial warning", { requestId: variationKey, code: "generic_style_warning" });
-      if (leakedTemplate) {
-        throw rejectedOpening("Velvet received an overly generic Instant Story. Try again.", "generic_provider_opening");
-      }
+      if (genericInstantStory || leakedTemplate) console.warn("[Instant Story] editorial warning", { requestId: variationKey, code: "generic_style_warning" });
       const usedSceneSeed = String(data?.sceneSeed || "").trim();
       try {
         if (usedSceneSeed) {
