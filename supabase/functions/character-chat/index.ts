@@ -5257,7 +5257,7 @@ Start from the final visible physical state. Answer this beat directly, preserve
 }
 
 // Kept temporarily as a reference while the compact v2.12 prompt is proven in production.
-async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled }): Promise<ModelResult> {
+async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, issues, character, isCancelled, providerCall = callGeminiWithFailover }): Promise<ModelResult> {
   const issueDirections = {
     immediate_user_choice_overridden: "Honor the user's literal selection or refusal. The character may respond in voice, but must not push, hand back, impose, or substitute the option the user just declined.",
     immediate_event_truth_rewritten: "Keep the immediately preceding event facts unchanged. Do not replace a missing or mistaken order plus a different spare item with a new claim that two identical orders were intentional.",
@@ -5529,7 +5529,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
   const uniqueIssues = [...new Set(issues || [])];
   const directions = uniqueIssues.map((issue) => `- ${issue}: ${issueDirections[issue] || "Fix this continuity or naturalness failure while preserving the literal transcript."}`).join("\n");
   const repairPrompt = `${originalPrompt}\n\nREPAIR THIS ONE TURN ONLY\nThe first draft failed validation. Rewrite it completely from the same final visible state. Do not explain the repair and do not echo the rejected opening.\n${directions}\n\nABSOLUTE REPAIR RULES\n- Fix the listed failures without introducing a different canon violation.\n- The user's literal actions and final position outrank romance, tension, pursuit, and style.\n- Keep the character's personality; natural does not mean bland, apologetic, therapeutic, or generic.\n- Use fresh sentence structure and a different conversational tactic. One sharp human beat is better than padded cinematic prose.\n- Metadata must describe only the rewritten reply.\n\nFAILED DRAFT\n${cleanPromptValue(rejectedReply, 6500)}`;
-  return await callGeminiWithFailover({
+  return await providerCall({
     apiKey,
     systemInstruction: "Repair one rejected roleplay turn from literal visible canon. Return a complete alternative as valid JSON only.",
     prompt: repairPrompt,
@@ -11169,6 +11169,29 @@ async function streamRoleplayV19({
           directorInstruction,
         });
         let result: ModelResult;
+        let groqTurnPrompt = "";
+        const callCurrentProvider = async (options): Promise<ModelResult> => {
+          if (!groqTurnPrompt) return await callGeminiWithFailover(options);
+          // Every repair/rescue retains the same provider and canonical turn context.
+          // Replace only the oversized shared base, preserving repair directions.
+          const requested = String(options.prompt || "");
+          const providerPrompt = requested.startsWith(compactTurnPrompt)
+            ? groqTurnPrompt + requested.slice(compactTurnPrompt.length)
+            : requested.startsWith(prompt)
+              ? groqTurnPrompt + requested.slice(String(prompt).length)
+              : requested;
+          const next = await callGroqProse({
+            apiKey: Deno.env.get("GROQ_API_KEY") || "",
+            model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
+            fallbackModel: Deno.env.get("GROQ_FALLBACK_MODEL") || "openai/gpt-oss-20b",
+            prompt: providerPrompt,
+            systemInstruction: String(options.systemInstruction || "") + "\nReturn only visible roleplay prose, not JSON. Narration addresses the reader as you/your. Put spoken dialogue in quotation marks.",
+            maxOutputTokens: options.maxOutputTokens || 1400,
+            isCancelled, timeoutMs: 16000,
+          });
+          console.log("[character-chat] Groq correction completed", { model: next.model });
+          return { ...emptyModelEnvelope(next.reply), ...next };
+        };
         try {
           result = await streamGeminiEnvelopeWithFailover({
           apiKey,
@@ -11234,6 +11257,7 @@ async function streamRoleplayV19({
               ].join("\n"),
               npcCanon: (persistentCast || []).map(m=>String(m.name||"")+" — "+String(m.role||"")).join("\n"),
             });
+            groqTurnPrompt = groqPrompt;
             sendEvent(controller, { type: "diagnostic", phase: "groq-fallback" });
             console.log("[character-chat] trying independent Groq fallback", { promptChars: groqPrompt.length });
             const groqResult = await callGroqProse({
@@ -11244,7 +11268,7 @@ async function streamRoleplayV19({
             });
             result = { ...emptyModelEnvelope(groqResult.reply), ...groqResult };
           } else {
-          result = await callGeminiWithFailover({
+          result = await callCurrentProvider({
             apiKey,
             systemInstruction: liveSystemInstruction,
             prompt: compactTurnPrompt,
@@ -11324,7 +11348,8 @@ async function streamRoleplayV19({
           try {
             repaired = await repairRoleplayOnceV3({
               apiKey,
-              originalPrompt: compactTurnPrompt,
+              originalPrompt: groqTurnPrompt || compactTurnPrompt,
+              providerCall: callCurrentProvider,
               rejectedReply: result.reply,
               issues: validationIssues,
               character,
@@ -11424,7 +11449,7 @@ async function streamRoleplayV19({
           console.warn("[character-chat] protected reply remained invalid; starting compact final rescue", { issues: finalIssues });
           let finalRescue: ModelResult | null = null;
           try {
-            finalRescue = await callGeminiWithFailover({
+            finalRescue = await callCurrentProvider({
               apiKey,
               systemInstruction: openingRegeneration
                 ? "Write one complete 150-230 word Instant Story opening as plain prose. Establish a concrete non-generic situation and natural interaction without inventing the user's actions, possessions, habits or prior behavior. Use at least two spoken lines. Never mention these instructions."
@@ -11453,7 +11478,7 @@ async function streamRoleplayV19({
               console.warn("[character-chat] no canned last-resort available; requesting fresh character-specific continuation");
               const rejectedHistory = (Array.isArray(rejectedResponses) ? rejectedResponses : []).slice(-12)
                 .map((item, index) => `REJECTED ${index + 1}: ${cleanPromptValue(item, 650)}`).join("\n");
-              const freshLastResort = await callGeminiWithFailover({
+              const freshLastResort = await callCurrentProvider({
                 apiKey,
                 systemInstruction: "Write one concise, natural, character-specific roleplay continuation. Plain prose only. Do not use generic acknowledgement beats such as nodding + 'All right', 'Okay', or 'Fine'. Do not explain narrative technique. Preserve literal canon and user agency.",
                 prompt: `${compactTurnPrompt}\n\nCANNED-FALLBACK BAN\nDo not use: gives a short nod; nods once; nods; All right; Okay; Fine as a standalone acknowledgement. Make a concrete character-specific choice grounded in the current scene.\n\nPREVIOUSLY REJECTED\n${rejectedHistory}`,
@@ -11495,7 +11520,7 @@ async function streamRoleplayV19({
           : (String(result?.reply || "").trim() || String(originalResult?.reply || "").trim() || String(modelDraftReply || "").trim());
         if (!persistableReply) {
           sendEvent(controller, { type: "diagnostic", phase: "blank-reply-recovery", reason: "all-local-candidates-empty" });
-          const blankRecovery = await callGeminiWithFailover({
+          const blankRecovery = await callCurrentProvider({
             apiKey,
             systemInstruction: liveSystemInstruction,
             prompt,
@@ -11517,7 +11542,7 @@ async function streamRoleplayV19({
           });
           const rejectedHistory = (Array.isArray(rejectedResponses) ? rejectedResponses : []).slice(-12)
             .map((item, index) => `REJECTED ${index + 1}: ${cleanPromptValue(item, 700)}`).join("\n");
-          const noveltyRecovery = await callGeminiWithFailover({
+          const noveltyRecovery = await callCurrentProvider({
             apiKey,
             systemInstruction: "Write a genuinely different in-character continuation from the same literal canon. Plain prose only. Do not paraphrase, recycle, or cosmetically rewrite any rejected response.",
             prompt: `${prompt}\n\nREGENERATION NOVELTY LOCK\nThe user explicitly rejected the responses below. None may be repeated or paraphrased. Change the character's tactic, wording, and immediate action while preserving canon and user agency.\n${rejectedHistory}`,
