@@ -95,7 +95,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "508";
+const VELVET_ENGINE_RELEASE = "509";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2498,6 +2498,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     return normalizeInstantStoryProse(raw);
   };
   const quotaUnavailableModels = new Set();
+  const overloadedModels = new Set();
   const requestOpening = async ({ model, prompt: requestPrompt, phase, timeoutMs, maxOutputTokens, temperature }) => {
     const remainingMs = deadlineAt - Date.now();
     if (remainingMs < 900) throw new DOMException("Instant Story request deadline reached", "AbortError");
@@ -2506,8 +2507,9 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const requestBudgetMs = Math.min(timeoutMs, remainingMs);
     const timeoutId = setTimeout(() => controller.abort(), requestBudgetMs);
     const requestStartedAt = Date.now();
-    const alternatives = [...new Set([model, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
-    model = alternatives.find((candidate) => !quotaUnavailableModels.has(candidate)) || model;
+    const alternatives = [...new Set([model, ...rejectedInstantCandidates.map(item => item.model), ...models].filter(Boolean))];
+    const available = (candidate) => !quotaUnavailableModels.has(candidate) && !overloadedModels.has(candidate);
+    model = alternatives.find(available) || model;
     try {
       const effectivePrompt = ["chase_edit", "nathan_edit"].includes(phase) ? requestPrompt : nathanEngineActive
         ? `${buildNathanInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT PASS: ${phase}\n${phase === "primary" ? "" : rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}`
@@ -2537,7 +2539,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       while (!result.response.ok && result.response.status === 429) {
         quotaUnavailableModels.add(model);
         diagnose({ phase, model, status: 429, code: "quota_model_fallback", error: result.data?.error?.message });
-        const nextModel = alternatives.find((candidate) => !quotaUnavailableModels.has(candidate));
+        const nextModel = alternatives.find(available);
         if (!nextModel || requestBudgetMs - (Date.now() - requestStartedAt) < 900 || controller.signal.aborted) break;
         model = nextModel;
         bare = false;
@@ -2561,6 +2563,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         result = await run(bare);
       }
       if (!result.response.ok) {
+        if ([500, 502, 503, 504].includes(result.response.status)) overloadedModels.add(model);
         const error = new Error(result.data?.error?.message || `Gemini returned ${result.response.status}`);
         Object.assign(error, { providerStatus: result.response.status, providerCode: result.data?.error?.status || "provider_error" });
         throw error;
@@ -2721,7 +2724,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   if (approvedEngineActive && rejectedInstantCandidates.length && deadlineAt - Date.now() > 1200) {
     try {
       const { data, actualModel } = await requestOpening({
-        model: GEMINI_MODEL, prompt, phase: nathanEngineActive ? "nathan_repair" : "chase_repair", timeoutMs: 9000,
+        model: rejectedInstantCandidates.find(item => item.model && !quotaUnavailableModels.has(item.model) && !overloadedModels.has(item.model))?.model || GEMINI_MODEL, prompt, phase: nathanEngineActive ? "nathan_repair" : "chase_repair", timeoutMs: 9000,
         maxOutputTokens: 1600, temperature: 0.85,
       });
       const opening = readOpening(data);
@@ -2865,7 +2868,7 @@ RULES
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user. The character does not need to approach or speak to the user; independent/offscreen-adjacent action is a valid opening.
 - Output only finished prose.`;
 
-    const { response: rescue, data: rescueData, actualModel: rescueModel } = await requestOpening({ model: GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 7000, maxOutputTokens: 1600, temperature: 0.82 });
+    const { response: rescue, data: rescueData, actualModel: rescueModel } = await requestOpening({ model: bestRejected?.model || GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 7000, maxOutputTokens: 1600, temperature: 0.82 });
     if (rescue.ok) {
       const rescueOpening = readOpening(rescueData);
       const rescueFinish = String(rescueData?.candidates?.[0]?.finishReason || "");
@@ -3088,7 +3091,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
 
   if (salvageSeed?.opening) {
     try {
-      const { response: salvageResponse, data: salvageData, actualModel: salvageModel } = await requestOpening({ model: GEMINI_RECOVERY_MODEL, prompt: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 65-105 words. The lead character must create ONE visible change before the final line: change a plan, social balance, access, expectation, information, responsibility, challenge, boundary, or who is involved. Keep that change inside the current setting unless CHARACTER/IDEA already establishes a destination. Walking, keys, doors, driving, moving rooms, smiling, teasing, props, or banter DO NOT count as the change. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. Avoid ending on 'come on', 'deal', a joke, a generic question, or an invitation that requires the user to invent the next beat. End after the character has already changed something concrete. Output only the revised prose.
+      const { response: salvageResponse, data: salvageData, actualModel: salvageModel } = await requestOpening({ model: salvageSeed.model || GEMINI_RECOVERY_MODEL, prompt: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 65-105 words. The lead character must create ONE visible change before the final line: change a plan, social balance, access, expectation, information, responsibility, challenge, boundary, or who is involved. Keep that change inside the current setting unless CHARACTER/IDEA already establishes a destination. Walking, keys, doors, driving, moving rooms, smiling, teasing, props, or banter DO NOT count as the change. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. Avoid ending on 'come on', 'deal', a joke, a generic question, or an invitation that requires the user to invent the next beat. End after the character has already changed something concrete. Output only the revised prose.
 
 CHARACTER
 ${JSON.stringify(promptDraft)}

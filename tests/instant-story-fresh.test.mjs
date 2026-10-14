@@ -38,6 +38,7 @@ function runtime({ latencyMs = 0, rejectConfig = false, unavailable = false, str
     console: { log: (...v) => logs.push(v), info: (...v) => logs.push(v), warn: (...v) => logs.push(v), error: (...v) => logs.push(v) },
     Deno: { env: { get: key => /^GEMINI_(?:MODEL|FALLBACK_MODEL|EMERGENCY_MODEL|RECOVERY_MODEL|INSTANT_RECOVERY_MODEL)$/.test(key) ? (distinctRecovery && key === "GEMINI_INSTANT_RECOVERY_MODEL" ? "fixture-recovery" : "fixture-model") : ({ SUPABASE_URL: "https://fixture.supabase.co", SUPABASE_ANON_KEY: "fixture-public", SUPABASE_SERVICE_ROLE_KEY: "fixture-server", GEMINI_API_KEY: "fixture-provider" })[key] }, serve: handler => { context.handler = handler; } },
   });
+  let completedProviderResponses = 0;
   context.fetch = async (_url, options) => {
     const body = JSON.parse(options.body); requests.push(body);
     const model = String(_url).match(/models\/([^/:?]+)/)?.[1]; modelRequests.push(model);
@@ -50,7 +51,7 @@ function runtime({ latencyMs = 0, rejectConfig = false, unavailable = false, str
       const timer = setTimeout(resolve, (repairAfterUnsafe ? (primaryUnsafe ? 6900 : 8000) : latencyMs) / scale);
       options.signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new DOMException("The signal has been aborted", "AbortError")); }, { once: true });
     });
-    let text = providerTexts ? providerTexts[Math.min(requests.length - 1, providerTexts.length - 1)] : primaryUnsafe ? `You sat in the passenger seat. ${opening}` : opening;
+    let text = providerTexts ? providerTexts[Math.min(completedProviderResponses++, providerTexts.length - 1)] : primaryUnsafe ? `You sat in the passenger seat. ${opening}` : opening;
     if (markdown) text = `*${text}*`;
     if (truncated) text = opening.slice(0, -18);
     return Response.json(providerData(structured ? JSON.stringify({ reply: text, thread_updates: [] }) : text));
@@ -353,4 +354,18 @@ test("Nathan's deadline fallback cannot silently redeliver the rejected archive 
   assert.ok(!data.opening);
   assert.ok(data.rejectionReasons.includes('nathan_literal_access_instead_of_personal_exception'));
   assert.equal(r.requests.length, 2);
+});
+
+
+test("Nathan repairs on the recovery model that produced a draft while other configured models are unavailable", async () => {
+  const r = runtime({ distinctRecovery: true, providerTexts: ['When you stopped beside the table, '+NATHAN_APPROVED_OPENING, NATHAN_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: nathanDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.source, 'ai_nathan_repair');
+  assert.equal(data.model, 'fixture-recovery');
+  assert.equal(data.opening, NATHAN_APPROVED_OPENING);
+  const repairIndex = r.requests.findIndex(body => body.contents[0].parts[0].text.includes('CURRENT PASS: nathan_repair'));
+  assert.ok(repairIndex >= 0);
+  assert.equal(r.modelRequests[repairIndex], 'fixture-recovery');
+  assert.equal(r.modelRequests.slice(repairIndex).filter(model => model === 'fixture-model').length, 0);
 });
