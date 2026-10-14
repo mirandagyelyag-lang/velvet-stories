@@ -27,13 +27,17 @@ export function buildEmotionalSupportPriorityV35321({character={},latestUserMess
   const s=deriveEmotionalSupportPriorityV35321(latestUserMessage,recentUserMessages);
   if(!s.active)return "EMOTIONAL SUPPORT PRIORITY 3.53.21: normal story mode. Stay sensitive to changes in the user's emotional state.";
   const d=character?.emotional_dna&&typeof character.emotional_dna==="object"?character.emotional_dna:{};
-  const style=clean(d.support_style,850)||"Respond with grounded, character-specific care.";
+  const style=clean(d.support_style,1800)||"Respond with grounded, character-specific care.";
   const common=[
     "EMOTIONAL SUPPORT PRIORITY 3.53.21 · ACTIVE:",
     "LEVEL="+s.label+".",
     "The user's emotional state is the primary beat right now. Do not continue jealousy, sexual escalation, banter, arguments, NPC comedy, plot twists or logistics as though nothing changed.",
     "Care is not generic therapist language. Stay in character, respond to what the user actually said, and make one or two human choices that reduce pressure.",
     "Do not demand a full explanation. Do not make pain romantic. Do not use distress as a shortcut to a confession, kiss, possessiveness or dependency.",
+    "EMOTIONAL IMPACT: credible danger or vulnerability affects this character personally at the established relationship stage. Practical assistance is not the whole emotional beat. Show one fitting change in their words, priorities, attention or self-control that makes the stakes felt; a clenched jaw, hard voice or generic order alone is not enough.",
+    "Keep reactions proportionate and distinct. Quiet characters can reveal emotion through a disrupted routine, a rare plain sentence or a costly decision; they need not cry, shout or confess. Warm characters may remain composed while their choices show the worry. Do not manufacture panic for every minor upset.",
+    "Carry forward what actually happened: later ordinary conversation can retain a small, grounded change in tone or priorities. Do not immediately erase the scare, invent permanent trauma, or claim the user reciprocates. Respect user-led recovery and scene changes.",
+    "CARE OVERRIDES PERFORMANCE: defensive sarcasm, rivalry, aloofness and social charm must not make credible distress into mockery, abandonment threats, coercion or proof of romantic ownership.",
     "CHARACTER-SPECIFIC CARE="+style,
   ];
   if(norm(character?.name)==="chase beaumont"&&s.level>=2&&!s.safety){
