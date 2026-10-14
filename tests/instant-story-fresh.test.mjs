@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { pathToFileURL } from "node:url";
 import { webcrypto } from "node:crypto";
 import test from "node:test";
-import { CHASE_APPROVED_OPENING, chaseOpeningIssues, NATHAN_APPROVED_OPENING, buildInstantStoryIdentity } from "../supabase/functions/character-chat/engine/instant-story-identity.js";
+import { CHASE_APPROVED_OPENING, chaseOpeningIssues, NATHAN_APPROVED_OPENING, buildInstantStoryIdentity, nathanOpeningIssues } from "../supabase/functions/character-chat/engine/instant-story-identity.js";
 import { instantStoryError } from "../src/utils/instantStoryDiagnostics.js";
 import { instantStoryProseValidation } from "../supabase/functions/character-chat/engine/instant-story-prose.js";
 
@@ -314,4 +314,43 @@ test("Nathan editor cannot script the user's arrival and preserves the safe open
   assert.equal(response.status, 200, JSON.stringify(data));
   assert.equal(data.opening, NATHAN_APPROVED_OPENING);
   assert.ok(data.softWarnings.includes('nathan_revision_unavailable'));
+});
+
+
+const rejectedArchiveOpening = `Nathan sets his heavy espresso cup down in the quiet corner of the faculty archive, deliberately spacing it half an inch from his leather notebook. Two graduate students lingering by the microfilm scanner glance his way, whispering before turning back toward the stacks. He ignores them, sliding a set of uncatalogued architectural folios across the oak table toward you.
+“Your brother asked me to drop these off before the seminar,” he says, his voice flat and unhurried. “He forgot them in the car.”
+He taps a finger against the edge of the stiff paper, then pauses, his hand hovering an inch too long near yours.
+“The restricted section upstairs is open for another hour. I have the keycard.” He looks down at the table, his thumb tracing the seam of his cuff before he withdraws his hand entirely. “If you want to see the original maps before the weekend crowds get in.”`;
+
+test("Nathan repairs the reported archive/errand scene instead of treating restricted access as intimacy", async () => {
+  const r = runtime({ providerTexts: [rejectedArchiveOpening, NATHAN_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: nathanDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.source, 'ai_nathan_repair');
+  assert.equal(data.opening, NATHAN_APPROVED_OPENING);
+  assert.ok(r.requests[1].contents[0].parts[0].text.includes(rejectedArchiveOpening));
+  assert.ok(r.requests[1].contents[0].parts[0].text.includes('nathan_literal_access_instead_of_personal_exception'));
+});
+
+test("Nathan's final editor cannot substitute the archive scene for an approved personal exception", async () => {
+  const r = runtime({ providerTexts: [NATHAN_APPROVED_OPENING, rejectedArchiveOpening] });
+  const { response, data } = await generate(r, { draft: nathanDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.opening, NATHAN_APPROVED_OPENING);
+  assert.ok(data.softWarnings.includes('nathan_revision_unavailable'));
+});
+
+test("Nathan's targeted substitution check honors an explicit user idea and does not apply to Chase", () => {
+  assert.deepEqual(nathanOpeningIssues(rejectedArchiveOpening, nathanDraft, 'Faculty archive, keycard. Your brother asked me to drop these off.'), []);
+  assert.deepEqual(nathanOpeningIssues(rejectedArchiveOpening, chaseDraft), []);
+});
+
+
+test("Nathan's deadline fallback cannot silently redeliver the rejected archive scene", async () => {
+  const r = runtime({ providerTexts: [rejectedArchiveOpening] });
+  const { response, data } = await generate(r, { draft: nathanDraft });
+  assert.equal(response.status, 503, JSON.stringify(data));
+  assert.ok(!data.opening);
+  assert.ok(data.rejectionReasons.includes('nathan_literal_access_instead_of_personal_exception'));
+  assert.equal(r.requests.length, 2);
 });

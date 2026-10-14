@@ -1,4 +1,4 @@
-import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt } from "./engine/instant-story-identity.js";
+import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt, nathanOpeningIssues } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
@@ -95,7 +95,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "507";
+const VELVET_ENGINE_RELEASE = "508";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2464,6 +2464,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     if (status < 400) {
       const prose = instantStoryProseValidation(body.opening);
       const deliveryHardBlocks = [
+        ...nathanOpeningIssues(prose.opening, safeDraft, cleanIdea),
         ...instantStoryHardBlockIssuesV35298(prose.opening, safeDraft, cleanIdea),
         ...speakerOwnershipIssuesV35367(prose.opening, safeDraft),
         ...instantStoryQualityIssues(prose.opening, safeDraft).filter(issue => INSTANT_STORY_FATAL_ISSUES_V35290.has(issue)),
@@ -2625,7 +2626,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     // Lexical family detection can misread a valid semantic continuation (for example,
     // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
     // diagnostics/repair context, but never reject an otherwise valid opening for it.
-    const chaseIssues = chaseOpeningIssues(opening, safeDraft);
+    const chaseIssues = [...chaseOpeningIssues(opening, safeDraft), ...nathanOpeningIssues(opening, safeDraft, cleanIdea)];
     const deliveryHardIssues = [...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea), ...speakerOwnershipIssuesV35367(opening, safeDraft)];
     // The same factual/agency/completeness contract applies on every delivery path.
     // Editorial heuristics are advisory; they must not reject a primary draft that
@@ -2690,7 +2691,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
             ...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea),
             ...speakerOwnershipIssuesV35367(opening, safeDraft),
           ];
-          if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !chaseOpeningIssues(opening, safeDraft).length) {
+          if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !chaseOpeningIssues(opening, safeDraft).length && !nathanOpeningIssues(opening, safeDraft, cleanIdea).length) {
             return instantStoryResponse({ opening, source: nathanEngineActive ? "ai_nathan_edit" : "ai_chase_edit", model: actualModel,
               sceneSeed, openingFamily });
           }
@@ -2729,7 +2730,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         ...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea),
         ...speakerOwnershipIssuesV35367(opening, safeDraft),
       ];
-      const issues = chaseOpeningIssues(opening, safeDraft);
+      const issues = [...chaseOpeningIssues(opening, safeDraft), ...nathanOpeningIssues(opening, safeDraft, cleanIdea)];
       if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !issues.length) {
         return instantStoryResponse({ opening, source: nathanEngineActive ? "ai_nathan_repair" : "ai_chase_repair", model: actualModel,
           sceneSeed, openingFamily });
