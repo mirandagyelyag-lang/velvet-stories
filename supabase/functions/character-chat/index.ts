@@ -1,4 +1,4 @@
-import { buildInstantStoryIdentity, buildChaseInstantPrompt } from "./engine/instant-story-identity.js";
+import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
@@ -95,7 +95,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "504";
+const VELVET_ENGINE_RELEASE = "505";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1973,10 +1973,12 @@ function instantStoryCanonClaims(opening = "", draft = {}, idea = "") {
   const text = String(opening || "").replace(/[’]/g, "'");
   const established = String(idea || "").replace(/[’]/g, "'");
   const userActivity = /\byou(?:'ve| have) been (?:standing|sitting|waiting|watching|staring|looking|following|avoiding|hovering)\b|\byou(?:'re| are) (?:standing|sitting|watching|staring|looking|following|hovering)\b|\bdon't look at me like that\b|\bstop (?:staring|hovering)\b/i;
+  const userEntrance = /\b(?:when|as|after) you (?:stopped|arrived|walked|stepped|approached|entered|came|sat|stood)\b/i;
   const identity = [draft.role, draft.description, draft.personality, draft.habits].filter(Boolean).join(" ");
   const athleteEstablished = /\b(?:athlete|sportsman|sportswoman|athletic scholarship|team captain|(?:basketball|football|soccer|hockey|rugby|tennis|volleyball|baseball) player|plays? (?:basketball|football|soccer|hockey|rugby|tennis|volleyball|baseball))\b/i.test(identity);
   const athleteClaim = /\bathletic tape\b|\b(?:his|her|their) (?:team jersey|uniform jersey|coach)\b|\b(?:he|she|they) (?:is|was) (?:the |a )?(?:team captain|starting quarterback|varsity player)\b/i.test(text);
   const issues = [];
+  if (userEntrance.test(text) && !userEntrance.test(established)) issues.push("invented_user_entrance");
   if (userActivity.test(text) && !userActivity.test(established)) issues.push("invented_user_action_in_dialogue");
   if (athleteClaim && !athleteEstablished && !/\b(?:athlete|player|training|practice|sports|deportista|entrenamiento)\b/i.test(established)) issues.push("invented_lead_athletic_identity");
   return issues;
@@ -2505,7 +2507,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     model = alternatives.find((candidate) => !quotaUnavailableModels.has(candidate)) || model;
     try {
       const effectivePrompt = chaseEngineActive
-        ? `${buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT GENERATION PASS: ${phase}\nAvoid these observed failures: ${JSON.stringify([...new Set(rejectedInstantCandidates.flatMap(item => item.rejectionReasons || []))].slice(0,10))}`
+        ? `${buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT GENERATION PASS: ${phase}\n${phase === "primary" ? "" : "REPAIR THE OBSERVED DRAFT, preserving its useful situation while restoring the approved dynamic; do not simply change synonyms.\n" + rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}\nAvoid these observed failures: ${JSON.stringify([...new Set(rejectedInstantCandidates.flatMap(item => item.rejectionReasons || []))].slice(0,10))}`
         : requestPrompt;
       const contents = [{ role: "user", parts: [{ text: effectivePrompt }] }];
       const run = async (bare = false) => {
@@ -2619,12 +2621,13 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     // Lexical family detection can misread a valid semantic continuation (for example,
     // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
     // diagnostics/repair context, but never reject an otherwise valid opening for it.
+    const chaseIssues = chaseOpeningIssues(opening, safeDraft);
     const deliveryHardIssues = [...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea), ...speakerOwnershipIssuesV35367(opening, safeDraft)];
     // The same factual/agency/completeness contract applies on every delivery path.
     // Editorial heuristics are advisory; they must not reject a primary draft that
     // the deadline path would immediately deliver unchanged.
-    if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || deliveryHardIssues.length) {
-      const rejectionReasons = [...deliveryHardIssues, ...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
+    if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || deliveryHardIssues.length || chaseIssues.length) {
+      const rejectionReasons = [...chaseIssues, ...deliveryHardIssues, ...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
       rejectedInstantCandidates.push({
         opening,
         model,
@@ -2678,6 +2681,33 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     openingFamily,
     sceneSeed,
   });
+
+  // Restore the creator-approved Chase dynamic before any generic local or
+  // deadline fallback can return the rejected draft unchanged. One bounded pass;
+  // no extra review request, no mandatory scene template, no user choreography.
+  if (chaseEngineActive && rejectedInstantCandidates.length && deadlineAt - Date.now() > 1200) {
+    try {
+      const { data, actualModel } = await requestOpening({
+        model: GEMINI_MODEL, prompt, phase: "chase_repair", timeoutMs: 9000,
+        maxOutputTokens: 1600, temperature: 0.85,
+      });
+      const opening = readOpening(data);
+      const finishReason = String(data?.candidates?.[0]?.finishReason || "");
+      const hardBlocks = [
+        ...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea),
+        ...speakerOwnershipIssuesV35367(opening, safeDraft),
+      ];
+      const issues = chaseOpeningIssues(opening, safeDraft);
+      if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !issues.length) {
+        return instantStoryResponse({ opening, source: "ai_chase_repair", model: actualModel,
+          sceneSeed, openingFamily });
+      }
+      rejectedInstantCandidates.push({ opening, model: actualModel, finishReason,
+        rejectionReasons: [...hardBlocks, ...issues], issueCount: hardBlocks.length + issues.length });
+    } catch (error) {
+      console.warn("[character-chat] Chase bounded repair unavailable", { error: getErrorMessage(error) });
+    }
+  }
 
   // v471 DEADLINE-FIRST DELIVERY
   // Production Edge requests are being terminated around the 27-30s mark.

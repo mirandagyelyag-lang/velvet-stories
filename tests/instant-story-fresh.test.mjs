@@ -5,6 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { pathToFileURL } from "node:url";
 import { webcrypto } from "node:crypto";
 import test from "node:test";
+import { CHASE_APPROVED_OPENING, chaseOpeningIssues } from "../supabase/functions/character-chat/engine/instant-story-identity.js";
 import { instantStoryError } from "../src/utils/instantStoryDiagnostics.js";
 import { instantStoryProseValidation } from "../supabase/functions/character-chat/engine/instant-story-prose.js";
 
@@ -20,7 +21,7 @@ const draft = { name: "Roman Knox", role: "The Outlaw", personality: "Roman is q
 const opening = 'Roman put his entry card on the hood of his black car, then turned to the two drivers comparing the race order and told them, "Give my slot to someone else. I am done running their route." He turned the course map over and drew a shorter circuit with a marker. Two drivers stopped talking to look. Roman added, "They can keep the prize money. This one is for the people who actually showed up." He wrote his own name onto the new lineup, making the smaller race official before anyone could talk him out of it.';
 const providerData = text => ({ candidates: [{ content: { parts: [{ text }] }, finishReason: "STOP" }] });
 
-function runtime({ latencyMs = 0, rejectConfig = false, unavailable = false, structured = false, repairAfterUnsafe = false, distinctRecovery = false, transientOnce = false, markdown = false, truncated = false } = {}) {
+function runtime({ latencyMs = 0, rejectConfig = false, unavailable = false, structured = false, repairAfterUnsafe = false, distinctRecovery = false, transientOnce = false, markdown = false, truncated = false, providerTexts = null } = {}) {
   const start = Date.now();
   const scale = 50;
   class Clock extends Date { static now() { return start + (Date.now() - start) * scale; } }
@@ -49,7 +50,7 @@ function runtime({ latencyMs = 0, rejectConfig = false, unavailable = false, str
       const timer = setTimeout(resolve, (repairAfterUnsafe ? (primaryUnsafe ? 6900 : 8000) : latencyMs) / scale);
       options.signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new DOMException("The signal has been aborted", "AbortError")); }, { once: true });
     });
-    let text = primaryUnsafe ? `You sat in the passenger seat. ${opening}` : opening;
+    let text = providerTexts ? providerTexts[Math.min(requests.length - 1, providerTexts.length - 1)] : primaryUnsafe ? `You sat in the passenger seat. ${opening}` : opening;
     if (markdown) text = `*${text}*`;
     if (truncated) text = opening.slice(0, -18);
     return Response.json(providerData(structured ? JSON.stringify({ reply: text, thread_updates: [] }) : text));
@@ -197,4 +198,53 @@ test("Fresh racing dialogue with explicitly staged drivers is not mistaken for f
   const floating = 'Roman checked the lineup. "Give my slot to someone else."';
   assert.ok(r.context.instantStoryGroundingIssuesV35292(floating, draft, '').includes('ambiguous_first_dialogue_addressee'));
   assert.ok(r.context.instantStoryGroundingIssuesV35292('You sat in the car. ' + staged, draft, '').includes('invented_user_action_or_state'));
+});
+
+
+const chaseDraft = { name: "Chase", role: "Campus Heartthrob", personality: "Socially desired, receptive and emotionally unpredictable.", relationship: "Drawn to you without settled feelings.", emotionalDna: { official_engine: "chase_electricity_v1" } };
+const rejectedLibraryOpening = `Chase sat on the low stone wall outside the Westbridge library, tossing his keys from palm to palm with a steady, repetitive click-clack of metal against metal. A pair of sophomores lingered a few feet away, debating the syllabus for midterm week, their voices loud and bright in the cool afternoon air.
+He didn’t look at them when you stopped near the edge of the walk. The keys stopped moving, his fingers closing tight over the ring.
+“Decided to join the living, then?”
+Chase shifted, his shoulder brushing the rough brick behind him. The easy, performative grin didn't quite reach his eyes, his thumb tracing the jagged teeth of his house key.
+“Good. I was running out of things to pretend to care about.”`;
+
+test("Chase repairs the reported library opening before any deadline or generic fallback", async () => {
+  const r = runtime({ providerTexts: [rejectedLibraryOpening, CHASE_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: chaseDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.source, "ai_chase_repair");
+  assert.equal(data.opening, CHASE_APPROVED_OPENING);
+  assert.equal(r.requests.length, 2);
+  const repairPrompt = r.requests[1].contents[0].parts[0].text;
+  assert.ok(repairPrompt.includes('DRAFT: '+rejectedLibraryOpening));
+  assert.ok(repairPrompt.includes('invented_user_entrance'));
+  assert.ok(repairPrompt.includes('chase_detached_bored_charmer'));
+  assert.ok(!data.opening.includes('when you stopped'));
+});
+
+test("Chase's detached boredom gets a revision even when the draft is complete and agency-safe", async () => {
+  const safeButFlat = rejectedLibraryOpening.replace('when you stopped near the edge of the walk', 'before he spoke');
+  const r = runtime({ providerTexts: [safeButFlat, CHASE_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: chaseDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.source, 'ai_chase_repair');
+  assert.equal(data.opening, CHASE_APPROVED_OPENING);
+});
+
+test("Chase editorial repair remains bounded when a provider cannot improve a safe draft", async () => {
+  const safeButFlat = rejectedLibraryOpening.replace('when you stopped near the edge of the walk', 'before he spoke');
+  const r = runtime({ providerTexts: [safeButFlat] });
+  const { response, data } = await generate(r, { draft: chaseDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(r.requests.length, 2);
+  assert.ok(data.softWarnings.includes('chase_detached_bored_charmer'));
+});
+
+test("The approved Chase rhythm remains usable and the targeted quality check does not apply to other characters", async () => {
+  const r = runtime({ providerTexts: [CHASE_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: chaseDraft });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.source, 'ai');
+  assert.equal(r.requests.length, 1);
+  assert.deepEqual(chaseOpeningIssues(rejectedLibraryOpening, draft), []);
 });
