@@ -18,7 +18,7 @@ function esc(s=""){return String(s).replace(/[.*+?^()|[\]\\]/g,"\\$&");}
 // already establishes one. Do not misclassify an NPC's call as lead dialogue.
 function establishedNpcCall(raw,index,text,character={}){
   const p=leadParts(character), before=raw.slice(0,index);
-  const vocative=[p.first,p.last,p.full].filter(Boolean).some(name=>new RegExp("^\\s*(?:hey\\s+)?"+esc(name)+"[!?,.]?\\s*$","i").test(text));
+  const vocative=[p.first,p.last,p.full].filter(Boolean).some(name=>new RegExp("^\\s*(?:hey\\s+)?"+esc(name)+"(?:[!?,.]|$)","i").test(text));
   if(!vocative)return false;
   const close=before.slice(-140);
   const attributedToLead=new RegExp("(?:"+esc(p.first)+"|he|she|they)\\s+(?:said|asked|shouted|called|muttered|replied)(?:\\s+to\\s+you)?[,.:]?\\s*$","i").test(close);
@@ -72,7 +72,7 @@ function ambiguousNpcDialogue(reply="",character={}){
     const between=raw.slice(start,quotes[i].index);
     const explicit=/\b(?:he|she|they|friend|teammate|roommate|contestant|producer|host|girl|guy|boy|woman|man|student|player|bartender|classmate|[A-Z][a-z]+)\s+(?:said|asked|replied|answered|called|shouted|muttered|added|cut in|called out)\b/.test(between);
     const p=leadParts(character);
-    const leadNames=[p.first,p.full,...(p.full === "Alexander Bennett" ? ["Alex"] : [])].filter(Boolean);
+    const leadNames=[p.first,p.last,p.full,...(p.full === "Alexander Bennett" ? ["Alex"] : [])].filter(Boolean);
     const callsLead=leadNames.some(name=>new RegExp("^"+esc(name)+"[,.!?]", "i").test(quotes[i].text.trim()));
     const npcAtDoor=/\b(?:a|the|his|her|their|another)\s+(?:friend|student|woman|man|teammate|roommate)\s+(?:leaned|appeared|came|stepped)\b[^“"]{0,90}\b(?:doorway|door|inside|through)\b/i.test(between);
     const leadTurn=leadNames.some(name=>new RegExp("\\b"+esc(name)+"\\s+(?:turned|looked|spoke)\\s+(?:back )?to you\\b", "i").test(between));

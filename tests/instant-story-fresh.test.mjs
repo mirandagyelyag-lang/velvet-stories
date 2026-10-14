@@ -425,3 +425,20 @@ test("Static presence permission does not permit inventing the user's movement i
   assert.equal(data.opening, ALEXANDER_APPROVED_OPENING);
   assert.ok(data.softWarnings.includes('alexander_revision_unavailable'));
 });
+
+
+test("An explicitly situated Alexander opening may put Alex beside the user without scripting their movement", async () => {
+  const opening = 'You are already on the balcony. '+ALEXANDER_APPROVED_OPENING.replace('He set the chairs down, leaving space between them.', 'He set one chair beside you and left space between the two chairs.');
+  const r = runtime({ canonicalProfile: alexanderProfile, providerTexts: [opening] });
+  const { response, data } = await generate(r, { draft: { name: 'Alexander Bennett' } });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.opening, opening);
+});
+
+test("An NPC calling Alexander Bennett by his configured surname is not an invented nickname for the user", async () => {
+  const opening = ALEXANDER_APPROVED_OPENING.replace('“Alex. You’re missing your own toast.”', '“Bennett. You’re missing your own toast.”');
+  const r = runtime({ canonicalProfile: alexanderProfile, providerTexts: [opening] });
+  const { response, data } = await generate(r, { draft: { name: 'Alexander Bennett' } });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.opening, opening);
+});

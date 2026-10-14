@@ -95,7 +95,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "510";
+const VELVET_ENGINE_RELEASE = "511";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1852,7 +1852,7 @@ function instantStoryNaturalismIssuesV35295(opening = "", draft = {}, idea = "")
   const issues = [];
   const raw = String(opening || "");
   const narration = instantStoryNarrationOnlyV35292(raw);
-  const profile = `${draft?.description || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""} ${draft?.firstMessage || draft?.first_message || ""}`.toLowerCase();
+  const profile = `${draft?.name || ""} ${draft?.description || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""} ${draft?.firstMessage || draft?.first_message || ""}`.toLowerCase();
   const ideaText = String(idea || "").toLowerCase();
 
   const quirkyProp = /\b(?:massive|giant|enormous|neon[- ](?:pink|green|yellow)|ridiculous|absurd|oversized|comically large)\b.{0,55}\b(?:inflatable|flamingo|pool float|costume|mascot|lawn chair|novelty|rubber duck|banana suit)\b/i;
@@ -1989,8 +1989,12 @@ function instantStoryHardBlockIssuesV35298(opening = "", draft = {}, idea = "") 
   const grounding = instantStoryGroundingIssuesV35292(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298.has(issue))
     .filter((issue)=>!((draft?.emotional_dna?.official_engine === "chase_electricity_v1" || (draft?.emotional_dna?.official_engine === "nathan_exception_v1" && /\b(?:students?|friends?|someone) (?:approached|asked|invited|called)\b/i.test(opening))) && issue === "ambiguous_first_dialogue_addressee"));
+  const beforeSpeech = String(opening).split(/[“"]/)[0];
+  const initialPresence = /\byou (?:are|were) (?:already )?(?:on|in|at|outside|inside|near)\b|\b(?:spotted|saw|noticed) you\b/i.test(beforeSpeech);
+  const bodyOrPropPlacement = /\byour (?:shoulder|arm|waist)|\b(?:passenger door|passenger seat|front seat)\b/i.test(instantStoryNarrationOnlyV35292(opening));
   const naturalism = instantStoryNaturalismIssuesV35295(opening, draft, idea)
-    .filter((issue)=>INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298.has(issue));
+    .filter((issue)=>INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298.has(issue))
+    .filter((issue)=>!(issue === "assumed_user_physical_placement" && initialPresence && !bodyOrPropPlacement));
   const resourceIssues = resourceContinuityIssuesV35358(opening, draft, "");
   return [...new Set([...grounding, ...naturalism, ...resourceIssues, ...instantStoryCanonClaims(opening, draft, idea)])];
 }
