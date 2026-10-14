@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+const source=readFileSync(new URL('../supabase/functions/character-chat/index.ts',import.meta.url),'utf8');
+const start=source.indexOf('  const instantStoryResponse =');
+const delivery=source.slice(start,source.indexOf('  const readOpening =',start));
+assert.ok(!source.includes('reviewChaseOpening'));
+assert.ok(!delivery.includes('requestOpening'));
+const context={safeDraft:{emotional_dna:{official_engine:'chase_electricity_v1'}},requestId:'test',VELVET_ENGINE_RELEASE:'test',startedAt:Date.now(),openingFamily:'party',providerDiagnostics:[],diagnose(){},console:{info(){}},instantStoryProseValidation:opening=>({valid:opening.endsWith('.'),opening,wordCount:100,complete:true}),json:(body,status=200)=>({body,status})};
+const fn=vm.runInNewContext(`${delivery};instantStoryResponse`,context);
+assert.equal(fn({opening:'Complete provider prose.',source:'ai'}).status,200);
+assert.equal(fn({opening:'Complete recovered prose.',source:'ai_best_effort'}).status,200);
+assert.equal(fn({opening:'incomplete',source:'ai'}).status,503);
+assert.ok(source.includes('quota_model_fallback'));
+assert.ok(source.includes('identityDirection'));
+console.log('PASS: complete primary/recovery prose delivered without review calls; incomplete prose rejected; approved guide and quota fallback retained.');
