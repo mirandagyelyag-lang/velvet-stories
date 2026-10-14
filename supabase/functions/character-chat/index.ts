@@ -1789,7 +1789,7 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
   if (firstDialogueMatch) {
     const beforeFirstDialogue = raw.slice(0, firstDialogueMatch.index || 0);
     const firstSpoken = String(firstDialogueMatch[1] || "");
-    const userAddressInNarration = /\b(?:to you|toward you|at you|your way|called to you|asked you|told you|said to you|turned to you|looked at you)\b/i.test(beforeFirstDialogue);
+    const userAddressInNarration = /\b(?:to you|toward you|at you|your way|called to you|asked you|told you|said to you|turned to you|looked at you|(?:came|come|coming|went|goes) looking for you)\b/i.test(beforeFirstDialogue);
     const npcAddressInNarration = /\b(?:to (?:his|her|their|one of|the|another|a) (?:friend|friends|girl|guy|boy|woman|man|contestant|teammate|roommate|producer|host|group)|asked (?:him|her|them)|told (?:him|her|them)|said to (?:him|her|them)|on (?:the )?phone|into (?:the|his|her|their) phone|to the group|to everyone)\b/i.test(beforeFirstDialogue);
     // A visible recipient does not need to belong to the old fixed role list.
     // "turned to the two drivers" is clear staging in Roman's racing world.
@@ -1823,7 +1823,8 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
   );
   const humanNameCandidates = [];
   for (const match of raw.matchAll(/\b([A-Z][a-z]{2,})(?:\s+and\s+([A-Z][a-z]{2,}))?\s+(?:shifted|looked|said|asked|laughed|stood|stepped|turned|walked|moved|answered|glanced|leaned|frowned|smiled|crossed|shoved|held|watched|refused|nodded|sighed|shrugged|muttered|called)\b/g)) {
-    humanNameCandidates.push(match[1], match[2]);
+    // Sentence-initial pronouns and indefinite people are not proper names.
+    humanNameCandidates.push(...[match[1], match[2]].filter(name => name && !/^(?:Someone|Somebody|Anyone|Anybody|Everyone|Everybody|Nobody|Something|Nothing|They|Their|There|Then|This|That|The|His|Her)$/i.test(name)));
   }
   if (humanNameCandidates.filter(Boolean).some((name)=>!allowedNameTokens.has(String(name).toLowerCase()))) {
     issues.push("invented_named_npc");
@@ -1910,9 +1911,9 @@ function instantStoryNaturalismIssuesV35295(opening = "", draft = {}, idea = "")
 
   const nicknameLike = /(?:“|")([A-Z][A-Za-z]{1,12})(?:,|!|\?|\.|”|")/g;
   const possibleNicknames = [...raw.matchAll(nicknameLike)].map((m) => m[1]).filter(Boolean);
-  if (possibleNicknames.length && !possibleNicknames.some((name) => profile.includes(name.toLowerCase()) || ideaText.includes(name.toLowerCase()))) {
-    const spokenNick = possibleNicknames.find((name) => !/^(?:Hey|Come|Look|Wait|Okay|Alright|Fine|Seriously|Actually|No|Yes)$/i.test(name));
-    if (spokenNick) issues.push("invented_user_nickname");
+  const ordinaryDialogueStarts = /^(?:Hey|Come|Look|Wait|Okay|Alright|Fine|Seriously|Actually|No|Yes|What|Why|How|When|Where|Who|Which|Well|Right|Sure|Thanks|Please|Sorry|Listen|Stop|Go|Good|Great|Perfect|Really|Exactly|Maybe|Anyway)$/i;
+  if (possibleNicknames.some(name => !ordinaryDialogueStarts.test(name) && !profile.includes(name.toLowerCase()) && !ideaText.includes(name.toLowerCase()))) {
+    issues.push("invented_user_nickname");
   }
 
   const propHits = raw.match(/\b(?:binder|keys?|paper bag|bag|muffin|phone|cup|mug|bottle|book|notebook|folder|backpack|coffee|snack|takeout|menu)\b/gi) || [];
@@ -2445,7 +2446,16 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   const instantStoryResponse = (body, status = 200) => {
     if (status < 400) {
       const prose = instantStoryProseValidation(body.opening);
-      if (!prose.valid) {
+      const deliveryHardBlocks = [
+        ...instantStoryHardBlockIssuesV35298(prose.opening, safeDraft, cleanIdea),
+        ...speakerOwnershipIssuesV35367(prose.opening, safeDraft),
+        ...instantStoryQualityIssues(prose.opening, safeDraft).filter(issue => INSTANT_STORY_FATAL_ISSUES_V35290.has(issue)),
+      ];
+      if (deliveryHardBlocks.length) {
+        diagnose({phase:"delivery",model:body.model,code:"hard_boundary_rejected",reasons:deliveryHardBlocks});
+        body = {error:"Velvet couldn't create an Instant Story this time. Try again.",retryable:true,openingFamily,rejectionReasons:deliveryHardBlocks};
+        status = 503;
+      } else if (!prose.valid) {
         diagnose({ phase: "delivery", model: body.model, code: "incomplete_provider_opening", source: body.source, words: prose.wordCount, complete: prose.complete });
         body = { error: "Velvet couldn't create an Instant Story this time. Try again.", retryable: true, openingFamily, rejectionReasons: ["incomplete_provider_opening"] };
         status = 503;
@@ -2453,7 +2463,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     }
     if (status < 400) console.info("[character-chat] instant_story_completed", {
       requestId, engineVersion: VELVET_ENGINE_RELEASE, characterEngine: safeDraft.emotional_dna?.official_engine || "profile", source: body.source,
-      model: body.model, words: String(body.opening || "").split(/\\s+/).filter(Boolean).length, durationMs: Date.now() - startedAt,
+      model: body.model, words: String(body.opening || "").split(/\s+/).filter(Boolean).length, durationMs: Date.now() - startedAt,
     });
     return json({ ...body, requestId, engineVersion: VELVET_ENGINE_RELEASE,
       ...(status >= 400 ? { diagnostics: { attempts: providerDiagnostics, durationMs: Date.now() - startedAt } } : {}),
@@ -2595,8 +2605,12 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     // Lexical family detection can misread a valid semantic continuation (for example,
     // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
     // diagnostics/repair context, but never reject an otherwise valid opening for it.
-    if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || premiseIssues.length || groundingIssues.length || naturalismIssues.length || identityIssuesV35321.length || semanticIssues.length || similarityIssue.length || unifiedOpeningIssues.length || directorHardIssuesV35368.length || directorHardIssuesV35389.length || liveOpeningHardIssuesV35388.length) {
-      const rejectionReasons = [...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
+    const deliveryHardIssues = [...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea), ...speakerOwnershipIssuesV35367(opening, safeDraft)];
+    // The same factual/agency/completeness contract applies on every delivery path.
+    // Editorial heuristics are advisory; they must not reject a primary draft that
+    // the deadline path would immediately deliver unchanged.
+    if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || deliveryHardIssues.length) {
+      const rejectionReasons = [...deliveryHardIssues, ...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
       rejectedInstantCandidates.push({
         opening,
         model,
@@ -2620,7 +2634,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       throw new Error(`Incomplete Instant Story (${finishReason || "unknown finish"}).`);
     }
 
-    return { opening, model, finishReason, durationMs: Date.now() - attemptStartedAt };
+    return { opening, model, finishReason, softWarnings: [...new Set([...qualityIssues, ...premiseIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388])], durationMs: Date.now() - attemptStartedAt };
 
   };
 
@@ -2637,7 +2651,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         finishReason: winner.finishReason,
         durationMs: Date.now() - startedAt,
       });
-      return await instantStoryResponse({ opening: winner.opening, source: "ai", model: winner.model, sceneSeed, openingFamily });
+      return await instantStoryResponse({ opening: winner.opening, source: "ai", model: winner.model, sceneSeed, openingFamily, softWarnings: winner.softWarnings });
     }
   } finally {
     clearTimeout(primaryDeadlineTimer);
@@ -2676,7 +2690,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         !instantStoryHasTemplateLeak(text) &&
         /[.!?…]["'”’)]?$/.test(text);
     })
-    .sort((a,b)=>(a.issueCount || 99)-(b.issueCount || 99))[0] || null;
+    .sort((a,b)=>(a.issueCount ?? 99)-(b.issueCount ?? 99))[0] || null;
 
   if (deadlineSafeCandidate?.opening) {
     console.warn("[character-chat] v471 deadline-first candidate delivered", {
@@ -2864,7 +2878,7 @@ RULES
         !instantStoryHasTemplateLeak(text) &&
         /[.!?…]["'”’)]?$/.test(text);
     })
-    .sort((a,b)=>(a.similarity-b.similarity) || ((a.issueCount || 99)-(b.issueCount || 99)))[0] || null;
+    .sort((a,b)=>(a.similarity-b.similarity) || ((a.issueCount ?? 99)-(b.issueCount ?? 99)))[0] || null;
 
   if (guaranteedSafeCandidate?.opening) {
     return instantStoryResponse({
@@ -3100,7 +3114,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
         !instantStoryHasTemplateLeak(text) &&
         /[.!?…]["'”’)]?$/.test(text);
     })
-    .sort((a,b)=>((a.issueCount || 99)-(b.issueCount || 99)) || (a.similarity-b.similarity))[0] || null;
+    .sort((a,b)=>((a.issueCount ?? 99)-(b.issueCount ?? 99)) || (a.similarity-b.similarity))[0] || null;
 
   if (finalDeliverable?.opening) {
     console.warn("[character-chat] v470 final no-dead-button lane used", {
@@ -13071,3 +13085,4 @@ function json(body, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+

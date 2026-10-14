@@ -14,9 +14,20 @@ function quoteSegments(v=""){
   return [...String(v||"").matchAll(/[“"]([^”"]+)[”"]/g)].map(m=>({text:m[1],index:m.index||0}));
 }
 function esc(s=""){return String(s).replace(/[.*+?^()|[\]\\]/g,"\\$&");}
+// A call to the lead's name belongs to a supporting person when the scene
+// already establishes one. Do not misclassify an NPC's call as lead dialogue.
+function establishedNpcCall(raw,index,text,character={}){
+  const p=leadParts(character), before=raw.slice(0,index);
+  const vocative=[p.first,p.last,p.full].filter(Boolean).some(name=>new RegExp("^\\s*(?:hey\\s+)?"+esc(name)+"[!?,.]?\\s*$","i").test(text));
+  if(!vocative)return false;
+  const close=before.slice(-140);
+  const attributedToLead=new RegExp("(?:"+esc(p.first)+"|he|she|they)\\s+(?:said|asked|shouted|called|muttered|replied)(?:\\s+to\\s+you)?[,.:]?\\s*$","i").test(close);
+  return !attributedToLead && /\b(?:a|the|his|her|their|another)\s+(?:girl|guy|woman|man|friend|student|teammate|roommate|bartender|classmate)\b/i.test(before);
+}
 function selfAddressByName(reply="",character={}){
   const p=leadParts(character); if(!p.full)return false;
-  return quoteSegments(reply).some(({text})=>{
+  return quoteSegments(reply).some(({text,index})=>{
+    if(establishedNpcCall(String(reply),index,text,character))return false;
     const voc=(name)=>name&&new RegExp("(?:^|[.!?]\\s+|[,;:]\\s*)"+esc(name)+"(?:[,.!?]|$)","i").test(text);
     return voc(p.full)||voc(p.last)||(/^\s*(?:hey\s+)?/i.test(text)&&voc(p.first));
   });
@@ -47,6 +58,7 @@ function unexplainedPerspectiveSwitch(reply="",character={}){
   const names=[norm(p.first),norm(p.last)].filter(Boolean);
   if(!names.length)return false;
   return quoteSegments(raw).some(({text,index})=>{
+    if(establishedNpcCall(raw,index,text,character))return false;
     const t=norm(text);
     const refers=names.some(n=>new RegExp("\\b"+esc(n)+"\\b").test(t));
     return refers&&!introducedNpcBefore(raw,index);
@@ -92,3 +104,4 @@ export function speakerOwnershipIssuesV35367(reply="",character={}){
   return [...new Set(issues)];
 }
 export const __testV35367={selfAddressByName,colonSpeakerHijack,npcLookingLineInsideLeadChannel,unexplainedPerspectiveSwitch,ambiguousNpcDialogue};
+
