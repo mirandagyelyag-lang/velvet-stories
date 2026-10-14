@@ -1810,7 +1810,7 @@ function instantStoryGroundingIssuesV35292(opening = "", draft = {}, idea = "") 
   // user already did/failed/forgot/skipped something, has a repeated track
   // record, owns/holds a prop, or has an invented academic/work relationship.
   const unsupportedUserHistory = /\byou\s+(?:skipped|missed|forgot|lost|failed|passed|promised|agreed|refused|lied|cancelled|called|texted|emailed|submitted|signed|borrowed|broke|left)\b|\byou(?:'ve| have)\s+(?:skipped|missed|forgotten|lost|failed|passed|promised|agreed|refused|lied|cancelled|called|texted|emailed|submitted|signed|borrowed|broken|left)\b/i;
-  const unsupportedUserPossession = /\byour\s+(?:notebook|notes|assignment|homework|project|bag|backpack|umbrella|coat|jacket|phone|laptop|keys?|wallet|book|snack|lunch|coffee|drink)\b|\byour\s+empty\s+(?:hands?|bag|backpack|pockets?)\b/i;
+  const unsupportedUserPossession = /\byour\s+(?:notebooks?|notes|assignments?|homework|projects?|bags?|backpacks?|umbrellas?|coats?|jackets?|phones?|laptops?|keys?|wallets?|books?|snacks?|lunch|coffee|drinks?|desk|table)\b|\byour\s+empty\s+(?:hands?|bag|backpack|pockets?)\b/i;
   const unsupportedUserRoutine = /\b(?:your|you(?:'re| are))\s+(?:usual|favorite|regular|typical)\b|\byour\s+track\s+record\b|\byou\s+(?:always|usually|normally|never)\b/i;
   const unsupportedUserAcademicCanon = /\byour\s+(?:seminar|lecture|class|course|professor|teacher|exam|quiz|assignment|deadline|schedule)\b|\b(?:your|you(?:'re| are))\s+(?:major|minor|degree|classmate|student)\b/i;
   if (unsupportedUserHistory.test(raw) && !unsupportedUserHistory.test(profile) && !unsupportedUserHistory.test(String(idea || ""))) issues.push("invented_user_history");
@@ -2558,7 +2558,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         Object.assign(error, { providerStatus: result.response.status, providerCode: result.data?.error?.status || "provider_error" });
         throw error;
       }
-      return result;
+      return {...result, actualModel:model};
     } catch (error) {
       diagnose({ phase, model, status: error.providerStatus || 0, code: controller.signal.aborted ? (phase === "primary" && primaryWinnerFound ? "cancelled_loser" : "provider_timeout") : (error.providerCode || "provider_error"), error: getErrorMessage(error), durationMs: Date.now() - requestStartedAt });
       throw error;
@@ -2575,8 +2575,9 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     if (remainingMs < 900) throw new Error("Instant Story global deadline reached.");
 
     const attemptStartedAt = Date.now();
-    const { data } = await requestOpening({ model, prompt, phase: "primary", timeoutMs: Math.min(attemptTimeoutMs, remainingMs), maxOutputTokens: 1600, temperature: 0.9 });
+    const { data, actualModel } = await requestOpening({ model, prompt, phase: "primary", timeoutMs: Math.min(attemptTimeoutMs, remainingMs), maxOutputTokens: 1600, temperature: 0.9 });
 
+    model = actualModel || model;
     const candidate = data?.candidates?.[0] || {};
     const opening = readOpening(data);
     const finishReason = String(candidate?.finishReason || "");
@@ -2801,7 +2802,7 @@ RULES
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user. The character does not need to approach or speak to the user; independent/offscreen-adjacent action is a valid opening.
 - Output only finished prose.`;
 
-    const { response: rescue, data: rescueData } = await requestOpening({ model: GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 7000, maxOutputTokens: 1600, temperature: 0.82 });
+    const { response: rescue, data: rescueData, actualModel: rescueModel } = await requestOpening({ model: GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 7000, maxOutputTokens: 1600, temperature: 0.82 });
     if (rescue.ok) {
       const rescueOpening = readOpening(rescueData);
       const rescueFinish = String(rescueData?.candidates?.[0]?.finishReason || "");
@@ -2825,7 +2826,7 @@ RULES
         return instantStoryResponse({
           opening: rescueOpening,
           source: "ai_rescue",
-          model: GEMINI_MODEL,
+          model: rescueModel || GEMINI_MODEL,
           sceneSeed,
           openingFamily,
           softWarnings: [...new Set([...rescueAnchorIssues, ...rescueGroundingIssues, ...rescueNaturalismIssues, ...rescueIdentityIssuesV35321])]
@@ -2937,7 +2938,7 @@ RULES
   // One tiny final pass is cheaper than handing the creator a dead button.
   // It still obeys the hard user-agency and named-cast gates.
   try {
-    const { response: emergencyResponse, data: emergencyData } = await requestOpening({ model: GEMINI_EMERGENCY_MODEL, prompt: `Write one fresh, natural roleplay opening for the exact character below. 65-115 words. Use 1-4 short spoken lines. The lead character must make a meaningful choice that changes what happens next. Use third-person lead-character narration only; address the user as "you" and never narrate as I/me/my/we/us on the user's behalf. Do not invent the user's actions, feelings, position, possessions, history, family, nickname, or dialogue. Do not invent named NPCs. Avoid food-order/study filler, stock flirting, decorative prose, forced A/B choices, accusations, screenshots, mystery packages, and routine intimacy. Do not repeat the recent openings. Output only finished prose.
+    const { response: emergencyResponse, data: emergencyData, actualModel: emergencyModel } = await requestOpening({ model: GEMINI_EMERGENCY_MODEL, prompt: `Write one fresh, natural roleplay opening for the exact character below. 65-115 words. Use 1-4 short spoken lines. The lead character must make a meaningful choice that changes what happens next. Use third-person lead-character narration only; address the user as "you" and never narrate as I/me/my/we/us on the user's behalf. Do not invent the user's actions, feelings, position, possessions, history, family, nickname, or dialogue. Do not invent named NPCs. Avoid food-order/study filler, stock flirting, decorative prose, forced A/B choices, accusations, screenshots, mystery packages, and routine intimacy. Do not repeat the recent openings. Output only finished prose.
 
 CHARACTER
 ${JSON.stringify(promptDraft)}
@@ -2976,7 +2977,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
         return instantStoryResponse({
           opening: emergencyOpening,
           source: "ai_emergency_rescue",
-          model: GEMINI_EMERGENCY_MODEL,
+          model: emergencyModel || GEMINI_EMERGENCY_MODEL,
           sceneSeed,
           openingFamily,
         });
@@ -3024,7 +3025,7 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
 
   if (salvageSeed?.opening) {
     try {
-      const { response: salvageResponse, data: salvageData } = await requestOpening({ model: GEMINI_RECOVERY_MODEL, prompt: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 65-105 words. The lead character must create ONE visible change before the final line: change a plan, social balance, access, expectation, information, responsibility, challenge, boundary, or who is involved. Keep that change inside the current setting unless CHARACTER/IDEA already establishes a destination. Walking, keys, doors, driving, moving rooms, smiling, teasing, props, or banter DO NOT count as the change. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. Avoid ending on 'come on', 'deal', a joke, a generic question, or an invitation that requires the user to invent the next beat. End after the character has already changed something concrete. Output only the revised prose.
+      const { response: salvageResponse, data: salvageData, actualModel: salvageModel } = await requestOpening({ model: GEMINI_RECOVERY_MODEL, prompt: `Rewrite the rejected roleplay opening below into ONE finished, natural, playable opening. Preserve the character and general scene family, but remove every listed failure. 65-105 words. The lead character must create ONE visible change before the final line: change a plan, social balance, access, expectation, information, responsibility, challenge, boundary, or who is involved. Keep that change inside the current setting unless CHARACTER/IDEA already establishes a destination. Walking, keys, doors, driving, moving rooms, smiling, teasing, props, or banter DO NOT count as the change. Never narrate the user's movement, physical placement, feelings, thoughts, dialogue, consent, possessions, habits, family, or preferences unless explicitly established in CHARACTER/IDEA. Do not use a disposable stranger as a rescue/jealousy device. Do not manufacture an escape just to move locations. Do not invent named NPCs. Do not add a fight or serious conflict unless IDEA explicitly asks for one. Keep the wider scene alive. Avoid ending on 'come on', 'deal', a joke, a generic question, or an invitation that requires the user to invent the next beat. End after the character has already changed something concrete. Output only the revised prose.
 
 CHARACTER
 ${JSON.stringify(promptDraft)}
@@ -3078,7 +3079,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
           return instantStoryResponse({
             opening: salvageOpening,
             source: "ai_no_dead_button_salvage",
-            model: GEMINI_RECOVERY_MODEL,
+            model: salvageModel || GEMINI_RECOVERY_MODEL,
             sceneSeed,
             openingFamily,
             softWarnings: [],

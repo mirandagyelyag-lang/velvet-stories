@@ -71,7 +71,9 @@ function ambiguousNpcDialogue(reply=""){
     const start=quotes[i-1].index+quotes[i-1].text.length+2;
     const between=raw.slice(start,quotes[i].index);
     const explicit=/\b(?:he|she|they|friend|teammate|roommate|contestant|producer|host|girl|guy|boy|woman|man|student|player|bartender|classmate|[A-Z][a-z]+)\s+(?:said|asked|replied|answered|called|shouted|muttered|added|cut in|called out)\b/.test(between);
-    if(!explicit&&between.trim().length>55)return true;
+    // Narration length alone cannot establish a speaker change.
+    // Only flag a newly introduced supporting speaker without attribution.
+    if(!explicit&&/\b(?:a|the|another|his|her|their)\s+(?:girl|guy|woman|man|friend|student|teammate|roommate|bartender|classmate)\b/i.test(between))return true;
   }
   return false;
 }
