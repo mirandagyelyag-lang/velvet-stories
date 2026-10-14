@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { pathToFileURL } from "node:url";
 import { webcrypto } from "node:crypto";
 import test from "node:test";
-import { CHASE_APPROVED_OPENING, chaseOpeningIssues, NATHAN_APPROVED_OPENING, buildInstantStoryIdentity, nathanOpeningIssues, ALEXANDER_APPROVED_OPENING, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT } from "../supabase/functions/character-chat/engine/instant-story-identity.js";
+import { CHASE_APPROVED_OPENING, chaseOpeningIssues, NATHAN_APPROVED_OPENING, buildInstantStoryIdentity, nathanOpeningIssues, ALEXANDER_APPROVED_OPENING, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT, repairOpeningAgency } from "../supabase/functions/character-chat/engine/instant-story-identity.js";
 import { instantStoryError } from "../src/utils/instantStoryDiagnostics.js";
 import { instantStoryProseValidation } from "../supabase/functions/character-chat/engine/instant-story-prose.js";
 
@@ -441,4 +441,41 @@ test("An NPC calling Alexander Bennett by his configured surname is not an inven
   const { response, data } = await generate(r, { draft: { name: 'Alexander Bennett' } });
   assert.equal(response.status, 200, JSON.stringify(data));
   assert.equal(data.opening, opening);
+});
+
+
+const reportedPavilionOpening = `You are already seated on the low brick wall beside the campus pavilion, watching the rest of the group argue over which food truck to hit next.
+
+Alexander dropped his gym bag onto the wooden bench with a heavy thud, bypassing the group's frantic consensus entirely. He looked down at you with an easy grin.
+
+“Don’t look at me,” Alex said to you, leaning his hip against the stone wall. “I told them I’d meet them over by the north quad. We have twenty minutes before they realize nobody actually knows where that is.”
+
+He pulled a small paper bag from his jacket pocket and set it down between you.
+
+“Found those cinnamon rolls from the bakery you like three blocks off campus,” Alex added, glancing back toward the fading crowd. “I told the others I had to grab my keys, which wasn't technically a lie.”`;
+
+test("Reported pavilion opening keeps the location without inventing posture, activity or a favorite bakery", async () => {
+  const repaired = repairOpeningAgency(reportedPavilionOpening);
+  assert.ok(repaired.startsWith('You are already near the campus pavilion.'));
+  assert.ok(!repaired.includes('seated'));
+  assert.ok(!repaired.includes('watching the rest'));
+  assert.ok(!repaired.includes('bakery you like'));
+  assert.ok(repaired.includes('a bakery three blocks off campus'));
+  assert.ok(repaired.includes('Alexander dropped his gym bag'));
+  const r = runtime({ canonicalProfile: alexanderProfile, providerTexts: [reportedPavilionOpening, ALEXANDER_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: { name: 'Alexander Bennett' } });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.opening, ALEXANDER_APPROVED_OPENING);
+  assert.equal(data.source, 'ai_alexander_edit');
+  assert.ok(r.requests[1].contents[0].parts[0].text.includes('DRAFT TO EDIT\n'+repaired));
+});
+
+test("Local presence repair respects explicitly supplied user posture and preferences", () => {
+  assert.equal(repairOpeningAgency(reportedPavilionOpening, 'I am already seated, watching the group; bring something from the bakery I like.'), reportedPavilionOpening);
+  assert.equal(repairOpeningAgency(ALEXANDER_APPROVED_OPENING), ALEXANDER_APPROVED_OPENING);
+});
+
+test("Local presence repair leaves invented arrivals for the agency gate to reject", () => {
+  const unsafe = 'When you arrived on the balcony, '+ALEXANDER_APPROVED_OPENING;
+  assert.equal(repairOpeningAgency(unsafe), unsafe);
 });

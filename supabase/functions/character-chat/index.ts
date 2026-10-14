@@ -1,4 +1,4 @@
-import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt, nathanOpeningIssues, buildAlexanderInstantPrompt, buildAlexanderRevisionPrompt, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT } from "./engine/instant-story-identity.js";
+import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt, nathanOpeningIssues, buildAlexanderInstantPrompt, buildAlexanderRevisionPrompt, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT, repairOpeningAgency } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
@@ -95,7 +95,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "511";
+const VELVET_ENGINE_RELEASE = "512";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -1974,11 +1974,16 @@ function instantStoryCanonClaims(opening = "", draft = {}, idea = "") {
   const text = String(opening || "").replace(/[’]/g, "'");
   const established = String(idea || "").replace(/[’]/g, "'");
   const userActivity = /\byou(?:'ve| have) been (?:standing|sitting|waiting|watching|staring|looking|following|avoiding|hovering)\b|\byou(?:'re| are) (?:standing|sitting|watching|staring|looking|following|hovering)\b|\bdon't look at me like that\b|\bstop (?:staring|hovering)\b/i;
+  const posedUser = /\byou (?:are|'re|were)(?: already)? (?:seated|sitting|standing|leaning|watching|reading|waiting|looking)\b/i;
+  const personalTaste = /\b(?:bakery|restaurant|caf[eé]|shop) (?:that )?you (?:like|love|prefer)\b/i;
+  const ideaCanon = established.replace(/\bI am\b/gi, "you are").replace(/\bI like\b/gi, "you like");
   const userEntrance = /\b(?:when|as|after) you (?:stopped|arrived|walked|stepped|approached|entered|came|sat|stood)\b/i;
   const identity = [draft.role, draft.description, draft.personality, draft.habits].filter(Boolean).join(" ");
   const athleteEstablished = /\b(?:athlete|sportsman|sportswoman|athletic scholarship|team captain|(?:basketball|football|soccer|hockey|rugby|tennis|volleyball|baseball) player|plays? (?:basketball|football|soccer|hockey|rugby|tennis|volleyball|baseball))\b/i.test(identity);
   const athleteClaim = /\bathletic tape\b|\b(?:his|her|their) (?:team jersey|uniform jersey|coach)\b|\b(?:he|she|they) (?:is|was) (?:the |a )?(?:team captain|starting quarterback|varsity player)\b/i.test(text);
   const issues = [];
+  if (posedUser.test(instantStoryNarrationOnlyV35292(text)) && !posedUser.test(ideaCanon)) issues.push("invented_user_pose_or_activity");
+  if (personalTaste.test(text) && !personalTaste.test(ideaCanon)) issues.push("invented_user_preference");
   if (userEntrance.test(text) && !userEntrance.test(established)) issues.push("invented_user_entrance");
   if (userActivity.test(text) && !userActivity.test(established)) issues.push("invented_user_action_in_dialogue");
   if (athleteClaim && !athleteEstablished && !/\b(?:athlete|player|training|practice|sports|deportista|entrenamiento)\b/i.test(established)) issues.push("invented_lead_athletic_identity");
@@ -2500,10 +2505,10 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     try {
       const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""));
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        return normalizeInstantStoryProse(parsed.opening || parsed.reply || "");
+        return repairOpeningAgency(normalizeInstantStoryProse(parsed.opening || parsed.reply || ""), cleanIdea);
       }
     } catch { /* Plain prose is the normal Instant Story transport. */ }
-    return normalizeInstantStoryProse(raw);
+    return repairOpeningAgency(normalizeInstantStoryProse(raw), cleanIdea);
   };
   const quotaUnavailableModels = new Set();
   const overloadedModels = new Set();
