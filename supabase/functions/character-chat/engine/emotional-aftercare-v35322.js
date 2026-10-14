@@ -81,6 +81,8 @@ export function buildEmotionalAftercareV35322({character={},latestUserMessage=""
     stageRules[s.stage]||stageRules.transition,
     "Do not repeatedly ask if the user is okay. Do not keep them trapped in sadness. Do not suddenly jump into jealousy, sexual escalation, a fight, or unrelated NPC comedy unless the user clearly initiates that new direction.",
     "The goal is emotional continuity, not permanent solemnity.",
+    "EMOTIONAL RESIDUE: help being completed does not mean the character was unaffected. Preserve one earned change in their attention, tone or choices, shaped by their personality and this relationship. Avoid repeated checks, generic clenched jaws, instant confessions and permanent manufactured panic. Never invent user feelings or override a user-led recovery.",
+    "PROFILE-GROUNDED CONTINUITY="+clean(character?.emotional_dna?.support_style||"",1800),
     "CHARACTER RECOVERY STYLE="+characterRecoveryStyle(character),
   ].join("\n");
 }
