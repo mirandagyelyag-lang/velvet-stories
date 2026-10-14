@@ -43,14 +43,13 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
 }
 
 export function buildChaseInstantPrompt(draft = {}, idea = '', recentOpenings = []) {
-  const profile = { name: draft.name, world: draft.world, relationship: draft.relationship, boundaries: draft.boundaries };
+  const profile = { name: draft.name, role: draft.role, description: draft.description, personality: draft.personality, habits: draft.habits, values: draft.values, coreMotivation: draft.coreMotivation, emotionalDefense: draft.emotionalDefense, contradictions: draft.contradictions, speechStyle: draft.speechStyle, voiceVocabulary: draft.voiceVocabulary, world: draft.world, relationship: draft.relationship, boundaries: draft.boundaries };
   return `Write one new playable opening for Chase. About 80-150 words, no more than 190. Only the scene.
 Read the approved sample for its easy spoken rhythm and the moment his reaction escapes him. Chase enjoys being wanted. He also gravitates toward you without knowing exactly what that means. He can be bold and sarcastic, but his lines should sound like something he says on impulse, not jokes an author prepared.
 Build one plausible moment, not a demonstration of those traits. Begin close to the interaction. Choose details because they matter now. A supporting person can remain involved, have their own purpose or be absent; do not insert a disposable girl who interrupts merely to prove Chase is popular. Do not follow a mandatory admirer/approach/quip/interruption sequence. Not every line is a provocation, and the emotional change can be small.
 Let the pressure come from what Chase wants to say or do and what catches him off guard. Don't explain it, announce chemistry, perform hand/eye choreography or end by waiting for an answer. Leave a live moment for the user's next turn.
 The user has not acted yet. Write only Chase/world, addressing the user as you. Do not invent their gaze, jealousy, posture, location, silence, possessions, actions, history or feelings, including inside dialogue. "Don't look at me like that" assumes a user action. Prefer a provocation about his own situation or an invitation. Clear speaker attribution; only configured names.
-PROFILE
-${JSON.stringify(profile)}
+IDENTITY: world activities describe the campus, not Chase\'s biography. Sports games do not make him a team player or athlete. Establish his role and activities from the personal profile; never invent a sport, team, coach, scholarship or athletic equipment for him.\nPROFILE\n${JSON.stringify(profile)}
 CREATOR-APPROVED SAMPLE — USE ITS RHYTHM, NOT ITS WORDS OR EVENTS
 ${CHASE_APPROVED_OPENING}
 REJECTED EXAMPLE — DO NOT IMITATE

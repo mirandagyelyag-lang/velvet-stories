@@ -1969,6 +1969,19 @@ function resourceContinuityIssuesV35358(value = "", character = {}, userContext 
   return issues;
 }
 
+function instantStoryCanonClaims(opening = "", draft = {}, idea = "") {
+  const text = String(opening || "").replace(/[’]/g, "'");
+  const established = String(idea || "").replace(/[’]/g, "'");
+  const userActivity = /\byou(?:'ve| have) been (?:standing|sitting|waiting|watching|staring|looking|following|avoiding|hovering)\b|\byou(?:'re| are) (?:standing|sitting|watching|staring|looking|following|hovering)\b|\bdon't look at me like that\b|\bstop (?:staring|hovering)\b/i;
+  const identity = [draft.role, draft.description, draft.personality, draft.habits].filter(Boolean).join(" ");
+  const athleteEstablished = /\b(?:athlete|sportsman|sportswoman|athletic scholarship|team captain|(?:basketball|football|soccer|hockey|rugby|tennis|volleyball|baseball) player|plays? (?:basketball|football|soccer|hockey|rugby|tennis|volleyball|baseball))\b/i.test(identity);
+  const athleteClaim = /\bathletic tape\b|\b(?:his|her|their) (?:team jersey|uniform jersey|coach)\b|\b(?:he|she|they) (?:is|was) (?:the |a )?(?:team captain|starting quarterback|varsity player)\b/i.test(text);
+  const issues = [];
+  if (userActivity.test(text) && !userActivity.test(established)) issues.push("invented_user_action_in_dialogue");
+  if (athleteClaim && !athleteEstablished && !/\b(?:athlete|player|training|practice|sports|deportista|entrenamiento)\b/i.test(established)) issues.push("invented_lead_athletic_identity");
+  return issues;
+}
+
 function instantStoryHardBlockIssuesV35298(opening = "", draft = {}, idea = "") {
   const grounding = instantStoryGroundingIssuesV35292(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_GROUNDING_ISSUES_V35298.has(issue))
@@ -1976,7 +1989,7 @@ function instantStoryHardBlockIssuesV35298(opening = "", draft = {}, idea = "") 
   const naturalism = instantStoryNaturalismIssuesV35295(opening, draft, idea)
     .filter((issue)=>INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298.has(issue));
   const resourceIssues = resourceContinuityIssuesV35358(opening, draft, "");
-  return [...new Set([...grounding, ...naturalism, ...resourceIssues])];
+  return [...new Set([...grounding, ...naturalism, ...resourceIssues, ...instantStoryCanonClaims(opening, draft, idea)])];
 }
 
 // OPENING DNA 3.52.89
