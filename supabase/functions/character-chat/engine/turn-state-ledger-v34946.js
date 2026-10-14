@@ -2,9 +2,11 @@ function flat(value) { return (Array.isArray(value) ? value : []).map((x) => Str
 
 export function buildTurnStateLedgerV34946({ latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], recentTurns = [], character = {} } = {}) {
   const turns = (Array.isArray(recentTurns) ? recentTurns : []).slice(-10).map((x) => String(x || "").slice(0, 650)).join("\n");
+  const userSources = (Array.isArray(recentUserMessages) ? recentUserMessages : []).slice(-8).map(value => String(value || "").slice(0, 900));
+  const characterSources = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-5).map(value => String(value || "").slice(0, 1200));
   return `TURN-STATE LEDGER 3.49.46 · KEEP THE LAST EXCHANGE LOGICALLY OWNED
 - This is a continuity gate, not a style layer. Preserve Target-Aware 3.49.43 and Spoken Naturalness 3.49.44.
-- Before speaking, silently reconstruct the last live exchange as a tiny ledger: OBJECT / ACTOR / ACTION / RECIPIENT / STATUS.
+- SPEECH OWNERSHIP IS IMMUTABLE: USER words remain USER words. CHARACTER words remain CHARACTER words. Quoting the user does not make the character their original speaker. Never say "I said", "I told you", "I asked you", or "he repeats" about words only the user said. Use an accurately attributed reference if needed, or respond without quoting.\n- SEQUENTIAL ACTIONS: begin from the last visible action and position. "He does not follow and turns back to the court" means he remained at the court. A later decision to follow requires a NEW visible cause, a reversal made now and a plausible route/time; do not silently rewrite the earlier turn or teleport beside the user.\n- CONTINUE DOES NOT RESET: another character-only turn advances from the end of the preceding turn; it does not replay the latest user line as a new event. Preserve who said what even when there is no new user speech.\n- REPORTED VS ACTUAL: a character may deliberately lie or accuse, but do not use this as an excuse for accidental attribution errors. Any deliberate false claim requires an established motive and must not be narrated as true memory.\n- Before speaking, silently reconstruct the last live exchange as a tiny ledger: OBJECT / ACTOR / ACTION / RECIPIENT / STATUS.
 - A joke still has facts. If CHARACTER offered to prepare/bring a formal request, CHARACTER owns PREPARE+DELIVER. USER saying “I'll wait for it” owns WAIT/RECEIVE only.
 - NEVER reverse that ownership later. “I'll hold you to it”, “until you're ready”, “I'll check your progress”, or anything implying USER must produce/complete the request is logically invalid unless USER explicitly took that task.
 - Resolve short reactions against the live ledger. A sigh, eye-roll, “fine”, “sure”, “I'll wait”, or silence does NOT transfer ownership and does NOT invent a new promise.
@@ -13,6 +15,10 @@ export function buildTurnStateLedgerV34946({ latestUserMessage = "", recentUserM
 - If a clever continuation conflicts with the ledger, discard the clever continuation.
 - Do not narrate a task, readiness, progress, deadline, draft, homework, application, request, or obligation for USER unless USER actually accepted/created it.
 - Example ledger: formal request | actor=CHARACTER | action=prepare/deliver | recipient=USER | user_status=waiting. After USER sighs, BAD: “I'll hold you to it.” BAD: “I'll keep it safe until you're ready.” GOOD LOGIC: USER owes nothing; CHARACTER still owns the imaginary request. The joke may also simply end.
+USER-SOURCED WORDS/ACTIONS (never claimed as CHARACTER speech):
+${JSON.stringify(userSources)}
+CHARACTER-SOURCED PRIOR REPLIES:
+${JSON.stringify(characterSources)}
 RECENT TURNS:\n${turns || "none"}
 LATEST USER: ${String(latestUserMessage || "").slice(0,700) || "none"}
 CHARACTER: ${String(character?.name || "character").slice(0,100)}`;

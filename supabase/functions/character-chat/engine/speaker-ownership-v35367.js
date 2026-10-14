@@ -70,6 +70,7 @@ export function buildSpeakerOwnershipV35367({character={},persistentCast=[]}={})
   return [
     "SPEAKER OWNERSHIP FIREWALL 3.53.67 · GLOBAL:",
     "REPLY CHANNEL OWNER="+(p.full||"lead character")+".",
+    "0) USER/LEAD ATTRIBUTION: never let the lead claim I said/I told you about a line authored by the user. Even a verbatim quote must retain its original speaker. A continuation keeps prior role ownership.",
     "1) The reply is authored from/about the lead, but NPCs may speak. Never silently replace the lead with an NPC speaker.",
     "2) Every quoted line needs an identifiable speaker. If an NPC speaks, anchor that NPC immediately before or with the quote.",
     "3) SELF-ADDRESS IMPOSSIBILITY: the lead cannot address themselves by their own first name or surname as a vocative. A line ending in the lead's surname is probably NPC dialogue and must be attributed or rewritten.",
