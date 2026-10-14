@@ -1,3 +1,4 @@
+import { buildGroqLivePrompt, callGroqProse } from "./engine/groq-fallback.js";
 import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt, nathanOpeningIssues, buildAlexanderInstantPrompt, buildAlexanderRevisionPrompt, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT, repairOpeningAgency } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -11207,6 +11208,42 @@ async function streamRoleplayV19({
           const streamReason = getErrorMessage(streamFailure);
           console.warn("[character-chat] SSE generation failed; trying non-stream recovery", { message: streamReason });
           sendEvent(controller, { type: "diagnostic", phase: "nonstream-recovery", reason: streamReason.slice(0, 180) });
+          const groqKey = Deno.env.get("GROQ_API_KEY") || "";
+          if (groqKey) {
+            const groqPrompt = buildGroqLivePrompt({
+              character, userIdentity,
+              transcript: messages.map(m => ({
+                speaker: m.sender === "user" ? userIdentity.name : character.name,
+                edited: Boolean(m.edited_at),
+                content: m.sender === "user" ? sanitizeUserTurnForPerception(m.content || "") : String(m.content || ""),
+              })),
+              latestUserMessage: sanitizeUserTurnForPerception(latestUserMessage),
+              scene: existingSceneState, relationship: existingRelationshipState,
+              memories, lore: loreEntries, recap: existingStoryRecap,
+              threads: activeLivingThreads(existingUnresolvedThreads),
+              direction: [storyPreferences?.custom_instructions || "", directorInstruction || "", regenerationInstruction || ""].join("\n"),
+              regeneration: openingRegeneration
+                ? "Create a different opening with the same creator premise. No imaginary user turn."
+                : isRegeneration
+                  ? "Regenerate at the same branch point; rejected replies are not canon. Preserve everything preceding the latest user turn."
+                  : "Continue the current scene from the latest user turn.",
+              rejected: rejectedResponses,
+              care: [
+                buildEmotionalSupportPriorityV35321({ character, latestUserMessage, recentUserMessages: messages.filter(m=>m.sender==="user").slice(-8).map(m=>sanitizeUserTurnForPerception(m.content||"")) }),
+                buildEmotionalAftercareV35322({ character, latestUserMessage, recentUserMessages: messages.filter(m=>m.sender==="user").slice(-8).map(m=>sanitizeUserTurnForPerception(m.content||"")) }),
+              ].join("\n"),
+              npcCanon: (persistentCast || []).map(m=>String(m.name||"")+" — "+String(m.role||"")).join("\n"),
+            });
+            sendEvent(controller, { type: "diagnostic", phase: "groq-fallback" });
+            console.log("[character-chat] trying independent Groq fallback", { promptChars: groqPrompt.length });
+            const groqResult = await callGroqProse({
+              apiKey: groqKey,
+              model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
+              fallbackModel: Deno.env.get("GROQ_FALLBACK_MODEL") || "openai/gpt-oss-20b",
+              prompt: groqPrompt, maxOutputTokens: 1400, isCancelled,
+            });
+            result = { ...emptyModelEnvelope(groqResult.reply), ...groqResult };
+          } else {
           result = await callGeminiWithFailover({
             apiKey,
             systemInstruction: liveSystemInstruction,
@@ -11216,6 +11253,7 @@ async function streamRoleplayV19({
             interactionDeadlineMs: 24000,
             livingThreads: !openingRegeneration,
           });
+          }
           if (result?.model) sendEvent(controller, { type: "model", model: result.model });
         }
 
