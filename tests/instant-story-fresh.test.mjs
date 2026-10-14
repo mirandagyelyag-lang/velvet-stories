@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { pathToFileURL } from "node:url";
 import { webcrypto } from "node:crypto";
 import test from "node:test";
-import { CHASE_APPROVED_OPENING, chaseOpeningIssues, NATHAN_APPROVED_OPENING, buildInstantStoryIdentity, nathanOpeningIssues } from "../supabase/functions/character-chat/engine/instant-story-identity.js";
+import { CHASE_APPROVED_OPENING, chaseOpeningIssues, NATHAN_APPROVED_OPENING, buildInstantStoryIdentity, nathanOpeningIssues, ALEXANDER_APPROVED_OPENING, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT } from "../supabase/functions/character-chat/engine/instant-story-identity.js";
 import { instantStoryError } from "../src/utils/instantStoryDiagnostics.js";
 import { instantStoryProseValidation } from "../supabase/functions/character-chat/engine/instant-story-prose.js";
 
@@ -21,7 +21,7 @@ const draft = { name: "Roman Knox", role: "The Outlaw", personality: "Roman is q
 const opening = 'Roman put his entry card on the hood of his black car, then turned to the two drivers comparing the race order and told them, "Give my slot to someone else. I am done running their route." He turned the course map over and drew a shorter circuit with a marker. Two drivers stopped talking to look. Roman added, "They can keep the prize money. This one is for the people who actually showed up." He wrote his own name onto the new lineup, making the smaller race official before anyone could talk him out of it.';
 const providerData = text => ({ candidates: [{ content: { parts: [{ text }] }, finishReason: "STOP" }] });
 
-function runtime({ latencyMs = 0, rejectConfig = false, unavailable = false, structured = false, repairAfterUnsafe = false, distinctRecovery = false, transientOnce = false, markdown = false, truncated = false, providerTexts = null } = {}) {
+function runtime({ latencyMs = 0, rejectConfig = false, unavailable = false, structured = false, repairAfterUnsafe = false, distinctRecovery = false, transientOnce = false, markdown = false, truncated = false, providerTexts = null, canonicalProfile = null } = {}) {
   const start = Date.now();
   const scale = 50;
   class Clock extends Date { static now() { return start + (Date.now() - start) * scale; } }
@@ -29,6 +29,14 @@ function runtime({ latencyMs = 0, rejectConfig = false, unavailable = false, str
   const user = { id: "fixture-owner", email: "fixture@example.invalid", user_metadata: {} };
   const client = { auth: { getUser: async () => ({ data: { user }, error: null }) }, from: table => {
     tables.push(table);
+    if (table === 'characters' && canonicalProfile) {
+      const query = { select: () => query, eq: (key, value) => {
+        if (key === 'user_id') assert.equal(value, user.id);
+        if (key === 'name') assert.equal(value, canonicalProfile.name);
+        return query;
+      }, is: () => query, limit: async () => ({ data: [canonicalProfile], error: null }) };
+      return query;
+    }
     assert.equal(table, "subscriptions", "Instant Story must not require conversation state or generation_requests");
     return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) };
   }};
@@ -368,4 +376,52 @@ test("Nathan repairs on the recovery model that produced a draft while other con
   assert.ok(repairIndex >= 0);
   assert.equal(r.modelRequests[repairIndex], 'fixture-recovery');
   assert.equal(r.modelRequests.slice(repairIndex).filter(model => model === 'fixture-model').length, 0);
+});
+
+
+const alexanderProfile = { name: 'Alexander Bennett', role: 'Campus King', personality: 'Confident, playful, loyal and thoughtful.', relationship: 'Close friends for years; open affection without assumed reciprocation.', emotional_dna: { official_engine: 'alexander_devotion_v1' } };
+
+test("Alexander's approved balcony opening survives his persisted-profile and editor routes", async () => {
+  const r = runtime({ canonicalProfile: alexanderProfile, providerTexts: [ALEXANDER_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: { name: 'Alexander Bennett', emotionalDna: { official_engine: 'chase_electricity_v1' } } });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.source, 'ai_alexander_edit');
+  assert.equal(data.opening, ALEXANDER_APPROVED_OPENING);
+  assert.ok(data.sceneSeed.includes('FOCUS=alexander_devotion'));
+  assert.ok(r.requests.every(body => body.contents[0].parts[0].text.includes(SCENE_PRESENCE_CONTRACT)));
+  assert.ok(r.requests.every(body => body.contents[0].parts[0].text.includes(SHARED_YEARNING_CONTRACT)));
+});
+
+test("All Instant Story characters receive static presence and speaker clarity without scripting user actions", async () => {
+  const r = runtime();
+  const { response } = await generate(r);
+  assert.equal(response.status, 200);
+  const prompt = r.requests[0].contents[0].parts[0].text;
+  assert.ok(prompt.includes(SCENE_PRESENCE_CONTRACT));
+  assert.ok(prompt.includes('static starting presence and location'));
+  assert.ok(prompt.includes('Never invent the user'));
+  assert.ok(prompt.includes('speaker or addressee changes'));
+});
+
+test("Alexander's static initial location is allowed without authoring an arrival", async () => {
+  const opening = 'You are already on the balcony. '+ALEXANDER_APPROVED_OPENING;
+  const r = runtime({ canonicalProfile: alexanderProfile, providerTexts: [opening] });
+  const { response, data } = await generate(r, { draft: { name: 'Alexander Bennett' } });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.opening, opening);
+});
+
+
+test("Speaker clarity accepts the approved doorway exchange but still rejects an unowned NPC switch", () => {
+  assert.ok(!imports.speakerOwnershipIssuesV35367(ALEXANDER_APPROVED_OPENING, alexanderProfile).includes('ambiguous_multi_speaker_dialogue'));
+  const unclear = 'Alex said to you, “I wanted to stay.” A friend leaned against the railing. “That was a mistake.”';
+  assert.ok(imports.speakerOwnershipIssuesV35367(unclear, alexanderProfile).includes('ambiguous_multi_speaker_dialogue'));
+});
+
+test("Static presence permission does not permit inventing the user's movement in Alexander's editor", async () => {
+  const r = runtime({ canonicalProfile: alexanderProfile, providerTexts: [ALEXANDER_APPROVED_OPENING, 'When you arrived on the balcony, '+ALEXANDER_APPROVED_OPENING] });
+  const { response, data } = await generate(r, { draft: { name: 'Alexander Bennett' } });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.opening, ALEXANDER_APPROVED_OPENING);
+  assert.ok(data.softWarnings.includes('alexander_revision_unavailable'));
 });

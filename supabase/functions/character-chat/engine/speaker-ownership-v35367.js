@@ -64,13 +64,20 @@ function unexplainedPerspectiveSwitch(reply="",character={}){
     return refers&&!introducedNpcBefore(raw,index);
   });
 }
-function ambiguousNpcDialogue(reply=""){
+function ambiguousNpcDialogue(reply="",character={}){
   const raw=String(reply||""), quotes=quoteSegments(raw);
   if(quotes.length<2)return false;
   for(let i=1;i<quotes.length;i++){
     const start=quotes[i-1].index+quotes[i-1].text.length+2;
     const between=raw.slice(start,quotes[i].index);
     const explicit=/\b(?:he|she|they|friend|teammate|roommate|contestant|producer|host|girl|guy|boy|woman|man|student|player|bartender|classmate|[A-Z][a-z]+)\s+(?:said|asked|replied|answered|called|shouted|muttered|added|cut in|called out)\b/.test(between);
+    const p=leadParts(character);
+    const leadNames=[p.first,p.full,...(p.full === "Alexander Bennett" ? ["Alex"] : [])].filter(Boolean);
+    const callsLead=leadNames.some(name=>new RegExp("^"+esc(name)+"[,.!?]", "i").test(quotes[i].text.trim()));
+    const npcAtDoor=/\b(?:a|the|his|her|their|another)\s+(?:friend|student|woman|man|teammate|roommate)\s+(?:leaned|appeared|came|stepped)\b[^“"]{0,90}\b(?:doorway|door|inside|through)\b/i.test(between);
+    const leadTurn=leadNames.some(name=>new RegExp("\\b"+esc(name)+"\\s+(?:turned|looked|spoke)\\s+(?:back )?to you\\b", "i").test(between));
+    const npcLeft=/\b(?:friend|student|woman|man|teammate|roommate)\s+(?:disappeared|left|went back)\b/i.test(between);
+    if((npcAtDoor&&callsLead)||(npcLeft&&leadTurn))continue;
     // Narration length alone cannot establish a speaker change.
     // Only flag a newly introduced supporting speaker without attribution.
     if(!explicit&&/\b(?:a|the|another|his|her|their)\s+(?:girl|guy|woman|man|friend|student|teammate|roommate|bartender|classmate)\b/i.test(between))return true;
@@ -102,7 +109,7 @@ export function speakerOwnershipIssuesV35367(reply="",character={}){
   if(colonSpeakerHijack(reply,character))issues.push("npc_speaker_label_hijack");
   if(npcLookingLineInsideLeadChannel(reply,character))issues.push("unattributed_npc_dialogue_in_lead_channel");
   if(unexplainedPerspectiveSwitch(reply,character))issues.push("dialogue_speaker_perspective_switch");
-  if(ambiguousNpcDialogue(reply))issues.push("ambiguous_multi_speaker_dialogue");
+  if(ambiguousNpcDialogue(reply,character))issues.push("ambiguous_multi_speaker_dialogue");
   return [...new Set(issues)];
 }
 export const __testV35367={selfAddressByName,colonSpeakerHijack,npcLookingLineInsideLeadChannel,unexplainedPerspectiveSwitch,ambiguousNpcDialogue};
