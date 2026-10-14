@@ -401,7 +401,10 @@ export function CharactersProvider({ children }) {
       if (wordCount < 55 || !complete) {
         throw rejectedOpening("Velvet received a cut-off Instant Story instead of a complete opening. Try again.", "incomplete_provider_opening");
       }
-      if (leakedTemplate || genericInstantStory) {
+      // The backend owns character/canon quality. This lexical client heuristic
+      // is advisory; a phrase alone must not discard a completed server response.
+      if (genericInstantStory) console.warn("[Instant Story] editorial warning", { requestId: variationKey, code: "generic_style_warning" });
+      if (leakedTemplate) {
         throw rejectedOpening("Velvet received an overly generic Instant Story. Try again.", "generic_provider_opening");
       }
       const usedSceneSeed = String(data?.sceneSeed || "").trim();
