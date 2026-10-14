@@ -2577,7 +2577,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const timeoutId = setTimeout(() => controller.abort(), requestBudgetMs);
     const requestStartedAt = Date.now();
     const alternatives = [...new Set([model, ...rejectedInstantCandidates.map(item => item.model), ...models].filter(Boolean))];
-    const available = (candidate) => !quotaUnavailableModels.has(candidate) && !overloadedModels.has(candidate);
+    const available = (candidate) => !String(candidate).startsWith("groq/") && !quotaUnavailableModels.has(candidate) && !overloadedModels.has(candidate);
     model = alternatives.find(available) || model;
     try {
       const effectivePrompt = ["chase_edit", "nathan_edit", "alexander_edit"].includes(phase) ? requestPrompt : alexanderEngineActive
@@ -2600,7 +2600,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         return { response, data };
       };
       let bare = false;
-      let result = !alternatives.some(available) && Deno.env.get("GROQ_API_KEY")
+      let result = (!alternatives.some(available) || rejectedInstantCandidates.some(item => String(item.model || "").startsWith("groq/"))) && Deno.env.get("GROQ_API_KEY")
         ? await requestGroqOpening(phase, effectivePrompt)
         : await run(bare);
       if ("model" in result) model = String(result.model);
