@@ -50,6 +50,7 @@ export default function CharacterDetail({
   const { theme } = useTheme();
   const [instantLoading, setInstantLoading] = useState(false);
   const [instantError, setInstantError] = useState("");
+  const [storyNotice, setStoryNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [storySetupOpen, setStorySetupOpen] = useState(false);
   const [storyOpening, setStoryOpening] = useState("");
@@ -196,6 +197,7 @@ export default function CharacterDetail({
   }
 
   function openStorySetup() {
+    setStoryNotice("");
     setStoryOpening("");
     setStoryPersonaId(personas.find((item) => item.isDefault)?.id || "");
     setStoryLorebookId("");
@@ -207,7 +209,14 @@ export default function CharacterDetail({
     try {
       setInstantLoading(true);
       setInstantError("");
-      const opening = await generateInstantStory(character);
+      const result = await generateInstantStory(character, "", { includeMetadata: true });
+      const opening = typeof result === "string" ? result : result.opening;
+      if (result?.source === "creator_approved_fallback") {
+        openStorySetup();
+        setStoryOpening(opening);
+        setStoryNotice(result.notice || "AI generation is unavailable. This is your approved opening.");
+        return;
+      }
       const defaultPersonaId = personas.find((item) => item.isDefault)?.id || "";
       await onInstantStory?.(
         { ...character, firstMessage: opening },
@@ -460,6 +469,7 @@ export default function CharacterDetail({
               <div><small>NEW STORY</small><h2>Where should this one begin?</h2><p>Keep the character. Change only the opening if you want a different universe, day or situation.</p></div>
               <button type="button" onClick={()=>setStorySetupOpen(false)} aria-label="Close new story setup"><X size={19}/></button>
             </header>
+            {storyNotice && <p className="story-setup-sheet__persona-note" role="status">{storyNotice}</p>}
             <div className="story-setup-sheet__identity-grid">
               <label><span>Your persona <small>this story only</small></span><select value={storyPersonaId} onChange={(event)=>setStoryPersonaId(event.target.value)}><option value="">Account identity</option>{personas.map((persona)=><option key={persona.id} value={persona.id}>{persona.isDefault ? "★ " : ""}{persona.name}{persona.role ? ` · ${persona.role}` : ""}</option>)}</select></label>
               <label><span>World / lorebook <small>optional</small></span><select value={storyLorebookId} onChange={(event)=>setStoryLorebookId(event.target.value)}><option value="">No linked world</option>{lorebooks.map((book)=><option key={book.id} value={book.id}>{book.name}{book.genre ? ` · ${book.genre}` : ""}</option>)}</select></label>

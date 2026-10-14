@@ -479,3 +479,41 @@ test("Local presence repair leaves invented arrivals for the agency gate to reje
   const unsafe = 'When you arrived on the balcony, '+ALEXANDER_APPROVED_OPENING;
   assert.equal(repairOpeningAgency(unsafe), unsafe);
 });
+
+
+test("Provider outage offers an unseen creator-approved opening with truthful provenance", async () => {
+  const profile = { ...alexanderProfile, emotional_dna: { ...alexanderProfile.emotional_dna, creator_approved_opening: ALEXANDER_APPROVED_OPENING } };
+  const r = runtime({ unavailable: true, canonicalProfile: profile });
+  const { response, data } = await generate(r, { draft: { name: profile.name } });
+  assert.equal(response.status, 200, JSON.stringify(data));
+  assert.equal(data.source, 'creator_approved_fallback');
+  assert.equal(data.opening, ALEXANDER_APPROVED_OPENING);
+  assert.match(data.notice, /opening you approved/);
+  assert.ok(!data.model);
+});
+
+test("Saved fallback never repeats an already shown opening or replaces a custom idea", async () => {
+  const profile = { ...alexanderProfile, emotional_dna: { ...alexanderProfile.emotional_dna, creator_approved_opening: ALEXANDER_APPROVED_OPENING } };
+  for (const extra of [{recentOpenings:[ALEXANDER_APPROVED_OPENING]}, {idea:'A first meeting in a bookstore'}]) {
+    const r = runtime({ unavailable: true, canonicalProfile: profile });
+    const { response, data } = await generate(r, {draft:{name:profile.name}, ...extra});
+    assert.equal(response.status, 503);
+    assert.ok(!data.opening);
+  }
+});
+
+
+test("Saved opening opens a labeled review instead of silently starting an AI story", async () => {
+  const page = fs.readFileSync('src/pages/CharacterDetail.jsx','utf8');
+  const fn = page.slice(page.indexOf('  async function handleInstantStory()'),page.indexOf('\n  const tags =',page.indexOf('  async function handleInstantStory()')));
+  const calls = [];
+  const context = vm.createContext({ instantLoading:false, character:alexanderProfile, personas:[],
+    setInstantLoading:()=>{}, setInstantError:()=>{},
+    generateInstantStory:async (_character,_idea,options)=>{assert.equal(options.includeMetadata,true);return {opening:ALEXANDER_APPROVED_OPENING,source:'creator_approved_fallback',notice:'Saved approved opening'};},
+    openStorySetup:()=>calls.push('preview'), setStoryOpening:value=>calls.push(value), setStoryNotice:value=>calls.push(value),
+    onInstantStory:()=>calls.push('auto-start'), console,
+  });
+  vm.runInContext(fn,context);
+  await context.handleInstantStory();
+  assert.deepEqual(calls,['preview',ALEXANDER_APPROVED_OPENING,'Saved approved opening']);
+});

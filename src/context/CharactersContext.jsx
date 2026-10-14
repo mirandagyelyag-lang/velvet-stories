@@ -302,7 +302,7 @@ export function CharactersProvider({ children }) {
     return data?.character || {};
   }
 
-  async function generateInstantStory(characterData, idea = "") {
+  async function generateInstantStory(characterData, idea = "", { includeMetadata = false } = {}) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 65000);
     const historyKey = `velvet:instant-story-scenes:${characterData?.id || characterData?.name || "character"}`;
@@ -417,7 +417,7 @@ export function CharactersProvider({ children }) {
         // Storage can be unavailable in private/restricted WebViews. Diversity
         // still works for this request through variationKey.
       }
-      return opening;
+      return includeMetadata ? { opening, source: String(data?.source || ""), notice: String(data?.notice || "") } : opening;
     } catch (error) {
       console.error("[Instant Story] generation failed", error?.diagnostics || {
         action: "instant_story", requestId: variationKey,

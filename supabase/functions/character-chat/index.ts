@@ -95,7 +95,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
-const VELVET_ENGINE_RELEASE = "512";
+const VELVET_ENGINE_RELEASE = "513";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -2491,6 +2491,21 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         body = { error: "Velvet couldn't create an Instant Story this time. Try again.", retryable: true, openingFamily, rejectionReasons: ["incomplete_provider_opening"] };
         status = 503;
       } else body = { ...body, opening: prose.opening };
+    }
+    // Only an explicitly creator-approved, unseen opening may bridge a failed
+    // AI request. Never pretend it is new AI prose or override a custom idea.
+    if (status >= 400 && approvedEngineActive && !cleanIdea) {
+      const saved = String(safeDraft.emotional_dna?.creator_approved_opening || "").trim();
+      const key = value => String(value).replace(/\s+/g, " ").trim();
+      const alreadyShown = recentOpenings.some(item => key(item) === key(saved));
+      if (saved && !alreadyShown && instantStoryProseValidation(saved).valid &&
+          !instantStoryHardBlockIssuesV35298(saved, safeDraft, "").length &&
+          !speakerOwnershipIssuesV35367(saved, safeDraft).length) {
+        body = { opening: saved, source: "creator_approved_fallback", sceneSeed, openingFamily,
+          notice: "AI generation is unavailable. This is the opening you approved, ready to review.",
+          softWarnings: ["saved_opening_fallback"] };
+        status = 200;
+      }
     }
     if (status < 400) console.info("[character-chat] instant_story_completed", {
       requestId, engineVersion: VELVET_ENGINE_RELEASE, characterEngine: safeDraft.emotional_dna?.official_engine || "profile", source: body.source,
