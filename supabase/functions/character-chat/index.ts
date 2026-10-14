@@ -2528,6 +2528,46 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   };
   const quotaUnavailableModels = new Set();
   const overloadedModels = new Set();
+  const groqOpeningRequests = new Map<string, Promise<any>>();
+  const requestGroqOpening = (phase, effectivePrompt) => {
+    const key = phase === "primary" ? "primary" : phase;
+    if (!groqOpeningRequests.has(key)) {
+      const task = (async () => {
+        const groqKey = Deno.env.get("GROQ_API_KEY") || "";
+        if (!groqKey) throw new Error("Groq fallback is not configured");
+        const compactOpening = buildGroqLivePrompt({
+          character: { ...safeDraft, speech_style: safeDraft.speech_style || safeDraft.speechStyle || "", emotional_dna: safeDraft.emotional_dna || safeDraft.emotionalDna || {} },
+          direction: cleanIdea,
+          regeneration: "NEW INSTANT STORY: no prior user turn. Establish the configured setting and a character-owned social choice. 70-130 words, hard ceiling 165. Address the reader as you, never invent their actions, feelings or dialogue. Sparse narration, natural spoken lines, no generic cafe/study fallback. End on an open playable beat.",
+          recap: (Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3).map(x=>String(x).slice(0,300)).join("\n"),
+          rejected: rejectedInstantCandidates.slice(-2).map(x=>String(x.opening||"")),
+        }) + "\nCREATOR OPENING DNA\n" + String(openingDna).slice(0,3000)
+          + "\nSCENE DIRECTION\n" + String(sceneSeed).slice(0,2600)
+          + "\nCURRENT PASS: " + phase
+          + "\nFAILURES TO REPAIR\n" + rejectedInstantCandidates.slice(-2).map(x=>(x.rejectionReasons||[]).join(", ")).join("\n");
+        const providerPrompt = effectivePrompt.length < 23000
+          ? effectivePrompt + "\nReturn only the visible opening as prose. Address the reader as you; no authored user actions or private thoughts."
+          : compactOpening;
+        console.log("[character-chat] Instant Story trying Groq", { phase, promptChars: providerPrompt.length });
+        const result = await callGroqProse({
+          apiKey: groqKey,
+          model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
+          fallbackModel: Deno.env.get("GROQ_FALLBACK_MODEL") || "openai/gpt-oss-20b",
+          prompt: providerPrompt,
+          systemInstruction: "Create or repair one character-specific Instant Story opening from the supplied creator premise. Return only prose with quoted spoken dialogue, no JSON or commentary. Respect user agency, character identity and the given social ecosystem.",
+          maxOutputTokens: 1500, timeoutMs: Math.min(14000,Math.max(1000,deadlineAt-Date.now())),
+          isCancelled: async()=>Date.now()>=deadlineAt,
+        });
+        return { response: { ok:true, status:200 }, data: {
+          candidates:[{content:{parts:[{text:result.reply}]},finishReason:"STOP"}],
+          usageMetadata:{promptTokenCount:result.promptTokens,candidatesTokenCount:result.outputTokens},
+        }, model:result.model };
+      })();
+      groqOpeningRequests.set(key, task);
+    }
+    return groqOpeningRequests.get(key)!;
+  };
+
   const requestOpening = async ({ model, prompt: requestPrompt, phase, timeoutMs, maxOutputTokens, temperature }) => {
     const remainingMs = deadlineAt - Date.now();
     if (remainingMs < 900) throw new DOMException("Instant Story request deadline reached", "AbortError");
@@ -2560,7 +2600,10 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         return { response, data };
       };
       let bare = false;
-      let result = await run(bare);
+      let result = !alternatives.some(available) && Deno.env.get("GROQ_API_KEY")
+        ? await requestGroqOpening(phase, effectivePrompt)
+        : await run(bare);
+      if ("model" in result) model = String(result.model);
       if (!result.response.ok && result.response.status === 400) {
         diagnose({ phase, model, status: 400, code: "config_compatibility_retry", error: result.data?.error?.message });
         bare = true;
@@ -2571,6 +2614,12 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         quotaUnavailableModels.add(model);
         diagnose({ phase, model, status: 429, code: "quota_model_fallback", error: result.data?.error?.message });
         const nextModel = alternatives.find(available);
+        if (!nextModel && Deno.env.get("GROQ_API_KEY") && !controller.signal.aborted) {
+          const groqResult = await requestGroqOpening(phase, effectivePrompt);
+          result = groqResult;
+          model = groqResult.model;
+          break;
+        }
         if (!nextModel || requestBudgetMs - (Date.now() - requestStartedAt) < 900 || controller.signal.aborted) break;
         model = nextModel;
         bare = false;
