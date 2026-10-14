@@ -1,4 +1,4 @@
-import { buildInstantStoryIdentity } from "./engine/instant-story-identity.js";
+import { buildInstantStoryIdentity, buildChaseInstantPrompt } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
@@ -2388,7 +2388,7 @@ async function handleInstantStory({ apiKey, draft, idea, variationKey = "", rece
   const openingFamily = openingDnaFamilyV35289(safeDraft)?.id || "profile-derived";
   // Keep the request small enough to finish inside the actual Edge budget.
   // The full chat/Living Threads prompt is deliberately not used for an opening.
-  const prompt = `Write ONE complete, natural opening for the configured character. ${chaseEngineActive ? "90-170 words; hard ceiling 190" : "65-115 words; hard ceiling 165"}. Return only finished prose, never JSON or thread metadata.
+  const genericPrompt = `Write ONE complete, natural opening for the configured character. ${chaseEngineActive ? "90-170 words; hard ceiling 190" : "65-115 words; hard ceiling 165"}. Return only finished prose, never JSON or thread metadata.
 
 CANON AND USER AGENCY
 - Narrate the lead character and world in third person. Address the user as you.
@@ -2419,6 +2419,8 @@ ${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-3)
 
 IDEA
 ${cleanIdea || "No extra premise. Use the character's existing life and relationship."}`;
+
+  const prompt = chaseEngineActive ? buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings) : genericPrompt;
 
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
@@ -2479,7 +2481,10 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const alternatives = [...new Set([model, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))];
     model = alternatives.find((candidate) => !quotaUnavailableModels.has(candidate)) || model;
     try {
-      const contents = [{ role: "user", parts: [{ text: requestPrompt }] }];
+      const effectivePrompt = chaseEngineActive
+        ? `${buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT GENERATION PASS: ${phase}\nAvoid these observed failures: ${JSON.stringify([...new Set(rejectedInstantCandidates.flatMap(item => item.rejectionReasons || []))].slice(0,10))}`
+        : requestPrompt;
+      const contents = [{ role: "user", parts: [{ text: effectivePrompt }] }];
       const run = async (bare = false) => {
         const response = await fetch(modelEndpoint(model), {
           method: "POST", headers: geminiHeaders(apiKey), signal: controller.signal,

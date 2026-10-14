@@ -41,3 +41,28 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
   if (/\b(?:spotted|noticed|saw) you\b.{0,100}\b(?:leaning|standing|sitting|across the room)\b/i.test(text)) issues.push('chase_invented_user_placement');
   return issues;
 }
+
+export function buildChaseInstantPrompt(draft = {}, idea = '', recentOpenings = []) {
+  const profile = { name: draft.name, world: draft.world, relationship: draft.relationship,
+    boundaries: draft.boundaries, speechStyle: draft.speechStyle, humorStyle: draft.humorStyle };
+  return `Write a fresh Chase opening in the spoken rhythm of the creator-approved reference. 90-170 words, maximum 190. Finished prose only.
+THE EXPERIENCE
+Chase LIKES being desired. He accepts and enjoys flirting, laughs, answers, plays along. Other people are real participants, not nuisances or discarded props. He nevertheless seeks the user, returns to them or stays engaged with them. He has not decided what his feelings mean.
+The teasing is DIRECTED AT THE USER: personal, dry, bold, charged; give them something tempting to answer. Base the provocation on Chase's own visible situation or an invitation, never invented user jealousy, glaring, lateness, silence, avoidance or desire.
+Something in the current interaction catches his impulse. His reply, timing or priority changes before he planned it. A clipped reply, failed deflection or extra moment can reveal it. Irritation at a crowd by itself is NOT electricity. He never complains that admirers are boring, exhausting or beneath him. No bored-playboy escape invitation.
+RHYTHM
+Start late. At most two short setup sentences before speech; sparse action between short spoken lines. Give the user several provocations to respond to, not one polished pickup line after a paragraph describing his charisma.
+No café rush/noise/perfume/weather introduction; no man-who-owns-the-building simile, calculating appraisal, tracking the user across a room, jaw choreography or key-tossing shorthand.
+Let tension be sexual or nonsexual without automatic touching or confession. Finish on a live unresolved emotional beat. No explanatory final question.
+Do not copy the sample's event order, lipstick, drink, calling girl or phrases. Change the activity, attention, provocation, trigger and emotional turn. This is an emotional grammar, not a fixed scene template.
+AGENCY AND CANON
+Narrate only Chase/world in third person, address the user as you. The user has not acted. Never assign their location, posture, movement, gaze, jealousy, thoughts, possessions, dialogue or consent. Chase may address or invite them without placing them. Make speakers and recipients clear naturally. Use only configured supporting names; otherwise anonymous. Keep the configured world, boundaries and relationship stage. IDEA may change the setting.
+PROFILE DATA
+${JSON.stringify(profile)}
+APPROVED REFERENCE — MECHANICS AND VOICE, NOT EVENTS TO REPLAY
+${CHASE_APPROVED_OPENING}
+RECENT OPENINGS — DO NOT REPEAT THEIR PREMISES
+${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-4).map(item => String(item).slice(0,1400)))}
+IDEA
+${idea || 'Fresh situation from his world; no user history is established.'}`;
+}
