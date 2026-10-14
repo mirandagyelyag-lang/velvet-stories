@@ -4116,7 +4116,7 @@ Before finalizing, silently verify only three things: (a) who did what, (b) what
   });
   const microContinuityV34945 = buildMicroContinuityV34945({
     latestUserMessage: latestPerceptibleUserMessage,
-    recentTurns: messages.slice(-8).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}: ${String(message.content || "")}`),
+    recentTurns: messages.slice(-20).map((message) => `${message.sender === "user" ? userIdentity.name : character.name}${message.edited_at ? " [EDITED CURRENT CANON]" : ""}: ${message.sender === "user" ? sanitizeUserTurnForPerception(message.content || "") : String(message.content || "")}`),
     character,
   });
   const turnStateLedgerV34946 = buildTurnStateLedgerV34946({
