@@ -57,3 +57,32 @@
    backdrop-filter:brightness(.78) saturate(.82);
  }
 }
+
+/* Velvet mobile editorial treatment: compact, legible, and tactile. */
+@media(max-width:900px){
+ .velvet-crystal-auth--wallpaper{min-height:100dvh;overflow-x:hidden}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__header{top:23px;left:25px;font-size:19px;letter-spacing:.29em}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__header small{font-size:7px;margin-top:5px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__layout{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;gap:0;padding:82px 18px 28px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__scene{display:none!important}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__access{width:min(100%,480px);max-width:480px;padding:30px 24px 26px;margin:0 auto;background:linear-gradient(145deg,rgba(26,9,20,.88),rgba(14,6,13,.93));border:1px solid rgba(217,183,196,.23);border-radius:24px;box-shadow:0 22px 70px rgba(5,0,5,.32);backdrop-filter:blur(18px)}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__eyebrow{font-size:9px;letter-spacing:.27em}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__eyebrow:after{margin:15px 0 19px;width:29px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__access h2{font-size:clamp(38px,9vw,52px);line-height:1.03;letter-spacing:-.055em;margin:0 0 9px;max-width:none}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__subtitle{font-size:14px;line-height:1.45;margin:0 0 29px;color:#d9b7c4}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__tabs{gap:28px;margin-bottom:24px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__tabs button{font-size:10px;letter-spacing:.13em;padding-bottom:13px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__form{gap:17px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__form label{font-size:9px;letter-spacing:.17em;gap:9px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__field{min-height:53px;padding:0 14px;border-radius:9px;border-color:#bc83985c;background:rgba(17,6,13,.72)!important}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__field input{height:49px;font-size:14px!important}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__submit{height:55px;margin-top:7px;border-radius:9px;font-size:16px;background:linear-gradient(115deg,#d7a6b6,#b87590);color:#2a1120;border:1px solid #f0c7d3;box-shadow:0 8px 28px #08010855}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__submit svg{right:17px;width:18px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__footer{font-size:10px;line-height:1.4;letter-spacing:.06em;margin-top:23px}
+}
+@media(max-width:390px){
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__layout{padding:76px 12px 18px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__access{padding:25px 20px 22px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__access h2{font-size:38px}
+ .velvet-crystal-auth--wallpaper .velvet-crystal-auth__tabs{gap:19px}
+}
