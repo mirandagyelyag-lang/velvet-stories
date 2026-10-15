@@ -374,7 +374,10 @@ export function narrativeDirectorIssuesV35334({
   if(/\b(?:we both knew|they both knew|they felt the same|the feeling was mutual|equally jealous|equally invested|equally hurt|everyone knew|they all knew|of course he knew|of course she knew|he already knew|she already knew)\b/.test(norm(t))) {
     issues.push("semantic_scope_overreach");
   }
-  return [...new Set(issues)];
+  // A direct user question can legitimately keep the current scene in place.
+  // Only the pacing finding is waived; agency, scope and continuity still apply.
+  const directQuestion = /[?¿]|\\b(?:what time|que hora|qué hora)\\b/i.test(String(latestUserMessage));
+  return [...new Set(issues)].filter(issue => !(directQuestion && issue === "scene_lifecycle_overstayed"));
 }
 
 export const __testV35334={
