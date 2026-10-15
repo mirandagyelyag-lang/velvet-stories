@@ -61,3 +61,12 @@
 .velvet-zip-entry__pink-gate{left:50%;width:180px;min-width:0;display:grid;place-items:center;transform:translateX(-50%)}
 .velvet-zip-entry__pink-gate button{width:100%!important;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px 0 8px .42em!important}
 @media(max-width:650px){.velvet-zip-entry__pink-gate{width:180px;left:50%}}
+
+/* Gentle consistent luminance: prevent the early focus/flash effect. */
+.velvet-zip-entry__emblem{filter:drop-shadow(0 0 5px #f9a3bd36) drop-shadow(0 0 15px #e54d8620)}
+.velvet-zip-entry__line{filter:drop-shadow(0 0 3px #ff9dbe50)}
+.velvet-zip-entry__shine,.velvet-zip-entry__shine--inner{filter:drop-shadow(0 0 3px #ffb4cc70);opacity:.68;animation:velvetZipDraw 2.1s ease-in-out .35s forwards}
+.velvet-zip-entry__shine--inner{animation-delay:.6s}
+.velvet-zip-entry__tip{filter:drop-shadow(0 0 4px #ffd3e077);animation:none}
+.velvet-zip-entry__glow{opacity:.55;animation:velvetLuminousBreathe 14s ease-in-out infinite alternate}
+@media(prefers-reduced-motion:reduce){.velvet-zip-entry__shine,.velvet-zip-entry__shine--inner{animation:none;stroke-dashoffset:0}}
