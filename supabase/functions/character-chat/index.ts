@@ -10635,9 +10635,12 @@ function validateContinuityEnvelope(result = {}, options = {}) {
   if (latestSceneAnchor) {
     const anchorToken = latestSceneAnchor.location.split(/\s+/).filter(Boolean).at(-1) || latestSceneAnchor.location;
     const locationMatches = !anchorToken || nextLocation.includes(anchorToken);
-    if (!locationMatches) issues.push("latest_user_scene_not_applied");
-    if (oldLocation && oldLocation !== nextLocation && !sceneChanged) issues.push("latest_user_scene_not_applied");
-    if (hasLatestUserSceneIgnored(result?.reply || "", options.latestUserMessage || "", previousScene)) issues.push("latest_user_scene_ignored");
+    // Prose-only providers omit scene metadata. Omission is not a conflicting claim.
+    // In digital turns the user's reported location is not the lead's location.
+    const sharedPhysicalAnchor = turnIntent.medium !== "digital" && turnIntent.kind !== "digital_message";
+    if (sharedPhysicalAnchor && nextLocation && !locationMatches) issues.push("latest_user_scene_not_applied");
+    if (sharedPhysicalAnchor && nextLocation && oldLocation && oldLocation !== nextLocation && !sceneChanged) issues.push("latest_user_scene_not_applied");
+    if (sharedPhysicalAnchor && hasLatestUserSceneIgnored(result?.reply || "", options.latestUserMessage || "", previousScene)) issues.push("latest_user_scene_ignored");
     if (hasUnsolicitedOffscreenLeadContact(result?.reply || "", options.latestUserMessage || "", previousScene, options.characterName || "", options.recentUserMessages || [], options.recentCharacterReplies || [])) issues.push("unsolicited_offscreen_lead_contact");
   }
   if (oldLocation && nextLocation && oldLocation !== nextLocation && !sceneChanged) issues.push("location_changed_without_scene_change");
