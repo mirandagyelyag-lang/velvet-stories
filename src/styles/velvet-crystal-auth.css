@@ -28,3 +28,16 @@
 @keyframes crystalSway{from{transform:rotateY(-12deg) rotateX(3deg) translateY(10px)}to{transform:rotateY(12deg) rotateX(-3deg) translateY(-14px)}}@keyframes crystalOrbit{to{transform:rotate(-13deg) rotateX(16deg) scale(1.04)}}@keyframes crystalSilk{to{translate:4% -8%;scale:1.07;opacity:.48}}@keyframes crystalTwinkle{to{opacity:.18;scale:.6}}@keyframes crystalAmbient{to{transform:scale(1.09) translate(2%,-2%)}}
 @media(max-width:900px){.velvet-crystal-auth__header{top:24px;left:25px}.velvet-crystal-auth__layout{display:flex;flex-direction:column;padding:90px 20px 50px;gap:20px}.velvet-crystal-auth__scene{min-height:clamp(300px,54vw,520px);width:100%}.velvet-crystal-auth__letter span{font-size:clamp(220px,53vw,440px)}.velvet-crystal-auth__statement{max-width:190px;padding-bottom:12px}.velvet-crystal-auth__statement h1{font-size:clamp(27px,5vw,44px)}.velvet-crystal-auth__access{max-width:500px;justify-self:center}.velvet-crystal-auth__subtitle{margin-bottom:28px}}
 @media(prefers-reduced-motion:reduce){.velvet-crystal-auth__ambient,.velvet-crystal-auth__letter,.velvet-crystal-auth__ring,.velvet-crystal-auth__ribbon,.velvet-crystal-auth__stars i{animation:none}}
+
+/* The uploaded wallpaper is the only artwork: remove the redundant CSS V. */
+.velvet-crystal-auth--wallpaper{background-color:#11070d!important;background-position:center center;background-size:cover;background-repeat:no-repeat}
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__ambient,
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__sculpture,
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__statement{display:none!important}
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__access{background:rgba(18,7,14,.56);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding:clamp(24px,3vw,45px);border:1px solid rgba(217,183,196,.15);border-radius:18px}
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__field{background:rgba(22,9,17,.92)!important}
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__field input,
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__field input:focus,
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__field input:hover{appearance:none!important;-webkit-appearance:none!important;background:transparent!important;background-color:transparent!important;box-shadow:none!important;color:#fff0f4!important;border:0!important;border-radius:0!important;padding:0!important}
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__field input:-webkit-autofill{-webkit-text-fill-color:#fff0f4!important;-webkit-box-shadow:0 0 0 100px #160911 inset!important}
+@media(max-width:900px){.velvet-crystal-auth--wallpaper{background-position:35% top!important}.velvet-crystal-auth--wallpaper .velvet-crystal-auth__scene{min-height:clamp(150px,25vh,260px)}.velvet-crystal-auth--wallpaper .velvet-crystal-auth__access{width:min(100%,500px);margin:0 auto;background:rgba(18,7,14,.84)}}
