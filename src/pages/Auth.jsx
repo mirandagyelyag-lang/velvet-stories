@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowUpRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import "../styles/velvet-crystal-auth.css";
+import velvetWallpaper from "../../velvet-wallpaper.png";
 
 function translateAuthError(message = "") {
   const n = message.toLowerCase();
@@ -36,7 +37,7 @@ export default function Auth() {
     finally { setSubmitting(false); }
   }
 
-  return <main className="velvet-crystal-auth">
+  return <main className="velvet-crystal-auth velvet-crystal-auth--wallpaper" style={{ backgroundImage: `linear-gradient(90deg, rgba(15,5,11,.12) 0%, rgba(15,5,11,.16) 46%, rgba(15,5,11,.82) 67%, rgba(15,5,11,.95) 100%), url("${velvetWallpaper}")` }}>
     <div className="velvet-crystal-auth__ambient" aria-hidden="true"/>
     <header className="velvet-crystal-auth__header"><span>VELVET<small>STORIES</small></span></header>
     <div className="velvet-crystal-auth__layout">
