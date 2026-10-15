@@ -41,3 +41,13 @@
 @keyframes velvetLuminousBreathe{to{opacity:.58;transform:scale(1.1)}}
 @keyframes velvetLuminousSilk{to{translate:8% -12%;scale:1.1;opacity:.56}}
 @media(prefers-reduced-motion:reduce){.velvet-zip-entry__silk,.velvet-zip-entry__glow,.velvet-zip-entry__shine,.velvet-zip-entry__tip{animation:none}.velvet-zip-entry__shine{stroke-dashoffset:0}}
+
+/* Single pink entry action, identical behavior on desktop and mobile. */
+.velvet-zip-entry__pink-gate{position:absolute;z-index:5;bottom:9%;left:50%;transform:translateX(-50%);width:min(82vw,300px);animation:velvetPinkGateAppear .65s ease both}
+.velvet-zip-entry__pink-gate button{width:100%;min-height:60px;display:flex;align-items:center;justify-content:center;gap:24px;padding:14px 25px;border:1px solid #ffd5e0;border-radius:12px;background:linear-gradient(110deg,#e6a3b8,#bc718e);color:#2c1120;box-shadow:0 0 24px #e589ad65,inset 0 1px #fff1f3;font:700 12px system-ui,sans-serif;letter-spacing:.28em;cursor:pointer;transition:filter .2s,transform .2s}
+.velvet-zip-entry__pink-gate button:hover,.velvet-zip-entry__pink-gate button:focus-visible{filter:brightness(1.13);transform:translateY(-2px)}
+.velvet-zip-entry__pink-gate button:focus-visible{outline:2px solid #fff0f4;outline-offset:4px}
+.velvet-zip-entry__pink-gate button span{font-size:21px;font-weight:400;letter-spacing:0}
+@keyframes velvetPinkGateAppear{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
+@media(max-width:650px){.velvet-zip-entry__pink-gate{bottom:8%;width:min(82vw,310px)}}
+@media(prefers-reduced-motion:reduce){.velvet-zip-entry__pink-gate{animation:none}}
