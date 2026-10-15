@@ -24,3 +24,29 @@ test('older accepted turn and rejected regeneration variants both prevent the re
  const regenerationSources=['"Got the books," Theo says.',draft];
  assert.equal(removeReplayedOpening(draft,regenerationSources,'What time?').startsWith('The room'),true);
 });
+
+test('breakfast context isolates recent lead interiority and keeps the authored proximity/prop cue',async()=>{
+ const {buildCharacterInitiativeContext,CHARACTER_INITIATIVE_RULE}=await import('../supabase/functions/character-chat/engine/adjacent-dialogue.js');
+ const transcript=[
+  {speaker:'Antonia',content:'*I want him to stay.*'},
+  {speaker:'Theo',content:'“Morning.” *He wishes he could stay longer, but the clock is ticking.*'},
+  {speaker:'Theo',content:'*He wants a few more minutes before work.*'},
+ ];
+ const latest='*I reach past him to grab the spatula, keeping our space crowded.* Just don’t expect a five-star hotel breakfast.';
+ const prompt=buildGroqLivePrompt({character:{name:'Theo'},userIdentity:{name:'Antonia'},transcript,latestUserMessage:latest});
+ const final=prompt.split('FINAL WRITING DIRECTION')[1];
+ assert.match(final,/clock is ticking/);
+ assert.match(final,/few more minutes/);
+ assert.ok(!final.includes('I want him to stay'));
+ assert.ok(prompt.includes(latest));
+ assert.equal(prompt.split('CHARACTER-OWNED INITIATIVE').length-1,1);
+ assert.ok(prompt.includes(CHARACTER_INITIATIVE_RULE));
+ assert.ok(buildCharacterInitiativeContext(Array(10).fill('*'+ 'x'.repeat(2000) +'*')).length<1700);
+});
+
+test('long recent history fits fallback budget without a duplicated style block',()=>{
+ const transcript=Array.from({length:20},(_,i)=>({speaker:i%2?'Theo':'Antonia',content:'A grounded conversational beat. '.repeat(35)}));
+ const prompt=buildGroqLivePrompt({character:{name:'Theo'},userIdentity:{name:'Antonia'},transcript,latestUserMessage:'What do you think?'});
+ assert.ok(prompt.length<27000,`Prompt length ${prompt.length}`);
+ assert.equal(prompt.split('CREATOR-APPROVED NARRATIVE STYLE').length-1,1);
+});

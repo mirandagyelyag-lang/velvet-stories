@@ -1,4 +1,4 @@
-import { ADJACENT_DIALOGUE_RULE, removeReplayedOpening } from "./engine/adjacent-dialogue.js";
+import { ADJACENT_DIALOGUE_RULE, buildCharacterInitiativeContext, removeReplayedOpening } from "./engine/adjacent-dialogue.js";
 import { withoutRepeatedLatest } from "./engine/economical-context.js";
 import { callEconomicalBackup } from "./engine/openai-fallback.js";
 import { overnightLanding, overnightLandingIssues } from "./engine/overnight-landing.js";
@@ -6733,7 +6733,7 @@ function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMes
   ];
   const nightLanding = overnightLanding(allRecentUserTurns, latestUserMessage);
   if (nightLanding && !openingRegeneration) base.push(nightLanding.instruction);
-  if (!openingRegeneration) base.push(ADJACENT_DIALOGUE_RULE);
+  if (!openingRegeneration) base.push(ADJACENT_DIALOGUE_RULE, buildCharacterInitiativeContext(messages.filter(m => m?.sender === "character").map(m => m.content)));
   if (postSkipBaseline?.stateDirective && kind !== "time_skip" && !openingRegeneration) {
     base.push(`- ACTIVE POST-SKIP BASELINE: ${String(postSkipBaseline.stateDirective || "").replace(/[<>]/g, "").trim().slice(0, 420)}. This remains the current relationship baseline until visible canon changes it. Do not treat it as a one-turn mood.`);
     if (postSkipStateSignalsWarmth(postSkipBaseline.stateDirective)) {
