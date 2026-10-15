@@ -41,3 +41,19 @@
 .velvet-crystal-auth--wallpaper .velvet-crystal-auth__field input:hover{appearance:none!important;-webkit-appearance:none!important;background:transparent!important;background-color:transparent!important;box-shadow:none!important;color:#fff0f4!important;border:0!important;border-radius:0!important;padding:0!important}
 .velvet-crystal-auth--wallpaper .velvet-crystal-auth__field input:-webkit-autofill{-webkit-text-fill-color:#fff0f4!important;-webkit-box-shadow:0 0 0 100px #160911 inset!important}
 @media(max-width:900px){.velvet-crystal-auth--wallpaper{background-position:35% top!important}.velvet-crystal-auth--wallpaper .velvet-crystal-auth__scene{min-height:clamp(150px,25vh,260px)}.velvet-crystal-auth--wallpaper .velvet-crystal-auth__access{width:min(100%,500px);margin:0 auto;background:rgba(18,7,14,.84)}}
+
+/* Tone down wallpaper glare without dimming the form or the wordmark. */
+.velvet-crystal-auth--wallpaper::before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(100deg,rgba(24,8,21,.26) 0%,rgba(32,12,28,.30) 45%,rgba(18,7,17,.16) 75%);
+  -webkit-backdrop-filter:brightness(.78) saturate(.79);
+  backdrop-filter:brightness(.78) saturate(.79);
+}
+.velvet-crystal-auth--wallpaper .velvet-crystal-auth__layout{position:relative;z-index:1}
+@media(max-width:900px){
+ .velvet-crystal-auth--wallpaper::before{
+   background:linear-gradient(180deg,rgba(23,8,20,.20),rgba(23,8,20,.34));
+   -webkit-backdrop-filter:brightness(.78) saturate(.82);
+   backdrop-filter:brightness(.78) saturate(.82);
+ }
+}
