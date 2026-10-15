@@ -17,3 +17,10 @@ test('explicit repetition and clarification remain possible; no empty prose or o
 test('fallback prompt answers current question without restarting pending offer',()=>{
  const prompt=buildGroqLivePrompt({latestUserMessage:'What hour is it?'});assert.match(prompt,/CURRENT QUESTION FIRST/);assert.match(prompt,/pending offer remains pending/);
 });
+test('older accepted turn and rejected regeneration variants both prevent the replay',()=>{
+ const draft='"You fading on me?" The room is lit only by the monitor glow. Theo leans back. "Did you finish the literature review section?" he asks.';
+ const accepted=[previous,'"Around two," Theo says.'];
+ assert.equal(removeReplayedOpening(draft,accepted,'What time?').startsWith('The room'),true);
+ const regenerationSources=['"Got the books," Theo says.',draft];
+ assert.equal(removeReplayedOpening(draft,regenerationSources,'What time?').startsWith('The room'),true);
+});

@@ -10052,7 +10052,7 @@ function deterministicNaturalnessScore(reply = "", options = {}) {
 }
 
 function repairTriggerIssues(issues = []) {
-  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => REPAIR_TRIGGER_ISSUES.has(issue));
+  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => !isEditorialAdvisory(issue) && REPAIR_TRIGGER_ISSUES.has(issue));
 }
 function missesExplicitUserSpeech(reply = "", latestUserMessage = "") {
   const raw = String(latestUserMessage || "").trim();
@@ -11384,7 +11384,8 @@ async function streamRoleplayV19({
           console.warn("[character-chat] usage telemetry failed", { message: getErrorMessage(usageError) });
         }
 
-        if (!openingRegeneration) result = { ...result, reply: removeReplayedOpening(result.reply, recentCharacterReplies, latestUserMessage) };
+        const replaySources = [...(recentCharacterReplies || []).slice(-4), ...(rejectedResponses || []).slice(-6)];
+        result = { ...result, reply: removeReplayedOpening(result.reply, replaySources, latestUserMessage) };
 
         const groundedAgencyAnchors = [
           JSON.stringify(existingSceneState || {}),
@@ -11780,7 +11781,7 @@ async function streamRoleplayV19({
         }
 
         if (!persistableReply) throw new Error("Velvet final turn barrier produced no safe reply; nothing was saved.");
-        if (!openingRegeneration) persistableReply = removeReplayedOpening(persistableReply, recentCharacterReplies, latestUserMessage);
+        persistableReply = removeReplayedOpening(persistableReply, replaySources, latestUserMessage);
         result = { ...result, reply: persistableReply };
         await streamFinalReply(persistableReply, FIRST_DRAFT_WINS_V35268 ? "v35268-first-draft-wins" : "v35237-regression-shield");
 

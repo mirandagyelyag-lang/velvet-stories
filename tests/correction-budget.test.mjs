@@ -47,3 +47,10 @@ test('production failure: valid drafts survive the weight/gesture/line-echo edit
  // Exact rejected regenerations still have their independent mandatory veto.
  assert.match(source,/isRegeneration && matchesRejectedRegeneration\(persistableReply, rejectedResponses\)/);
 });
+test('production repair trigger never spends a correction for editorial-only findings',()=>{
+ const findings=['compulsory_followup_question','repeated_low_signal_mannerism','story_brain_stagnation_not_broken','embodied_state_ignored','profile_social_ecosystem_missing','naturalness_score_low'];
+ const start=source.indexOf('function repairTriggerIssues('),end=source.indexOf('\n}',start)+2;
+ const fn=vm.runInNewContext(source.slice(start,end)+';repairTriggerIssues',{isEditorialAdvisory,REPAIR_TRIGGER_ISSUES:new Set([...findings,'object_possession_break'])});
+ assert.deepEqual([...fn(findings)],[]);
+ assert.deepEqual([...fn([...findings,'object_possession_break'])],['object_possession_break']);
+});
