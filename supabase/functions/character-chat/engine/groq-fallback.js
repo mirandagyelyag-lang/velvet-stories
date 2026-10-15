@@ -1,3 +1,4 @@
+import { retryAfterMs } from "./provider-quota.js";
 // Independent Groq fallback. Credentials remain on the Edge Function server.
 export function buildGroqLivePrompt({
  character = {}, userIdentity = {}, transcript = [], latestUserMessage = "", scene = {},
@@ -73,7 +74,7 @@ export async function callGroqProse({
    if (await isCancelled()) throw new DOMException("Generation cancelled","AbortError");
    if (!response.ok) {
     // Do not log provider payloads or credentials.
-    lastError = response.status===429 ? "Groq quota is exhausted right now" : response.status===401||response.status===403 ? "Groq API key is invalid or lacks access" : "Groq returned HTTP "+response.status;
+    lastError = response.status===429 ? "Groq is rate-limited. Retry in " + Math.ceil(retryAfterMs(response.headers,data)/1000) + " seconds." : response.status===401||response.status===403 ? "Groq API key is invalid or lacks access" : "Groq returned HTTP "+response.status;
     if ([429,404,500,502,503,504].includes(response.status)) continue;
     throw new Error(lastError);
    }

@@ -1,3 +1,4 @@
+import { createQuotaFetch } from "./engine/provider-quota.js";
 import { buildGroqLivePrompt, callGroqProse } from "./engine/groq-fallback.js";
 import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt, nathanOpeningIssues, buildAlexanderInstantPrompt, buildAlexanderRevisionPrompt, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT, repairOpeningAgency } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
@@ -160,6 +161,21 @@ type LoadedContext = {
   storyConflicts: Record<string, any>[];
   storyMilestones: Record<string, any>[];
 };
+
+// Server-only persistence keeps quota waits across cold starts. No browser access.
+const quotaAdmin = createClient(Deno.env.get("SUPABASE_URL") || "https://unconfigured.supabase.co", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "unconfigured", { auth: { persistSession: false, autoRefreshToken: false } });
+const providerFetch = createQuotaFetch({
+  readCooldown: async (provider, model) => {
+    const { data, error } = await quotaAdmin.from("ai_provider_cooldowns").select("retry_at").eq("provider", provider).eq("model", model).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+  writeCooldown: async (record) => {
+    const { error } = await quotaAdmin.from("ai_provider_cooldowns").upsert(record, { onConflict: "provider,model" });
+    if (error) throw error;
+  },
+  log: (event) => console.log("[character-chat] provider request", event),
+});
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -1041,7 +1057,7 @@ async function handleDiagnostics({ apiKey, probeAi = false }) {
   const model = GEMINI_EMERGENCY_MODEL || GEMINI_FALLBACK_MODEL || GEMINI_MODEL;
   const startedAt = Date.now();
   try {
-    const response = await fetch(modelEndpoint(model), {
+    const response = await providerFetch(modelEndpoint(model), {
       method: "POST",
       headers: geminiHeaders(apiKey),
       body: JSON.stringify({
@@ -1108,7 +1124,7 @@ async function requestCharacterJson({
     console.log("[character-chat] character tool started", { purpose, model, maxOutputTokens });
 
     try {
-      const response = await fetch(modelEndpoint(model), {
+      const response = await providerFetch(modelEndpoint(model), {
         method: "POST",
         headers: geminiHeaders(apiKey),
         signal: controller.signal,
@@ -1275,7 +1291,7 @@ USER DRAFT ${draft||"(none)"}
 MODE ${requestedIntent}
 CUSTOM ${custom||"(none)"}`;
   const models=[...new Set([GEMINI_FALLBACK_MODEL,GEMINI_EMERGENCY_MODEL,GEMINI_MODEL].filter(Boolean))]; let lastError="Velvet couldn't help with this message.";
-  for(const model of models){try{const response=await fetch(modelEndpoint(model),{method:"POST",headers:geminiHeaders(apiKey),body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1500,responseMimeType:"application/json",thinkingConfig:{thinkingLevel:"LOW"}}})}); const data=await response.json().catch(()=>({})); if(!response.ok){lastError=data?.error?.message||lastError;console.warn("[character-chat] reply_assist provider failed",{model,status:response.status});continue;} const parsed=JSON.parse(stripJsonFence(extractCandidateText(data))); const options=Array.isArray(parsed?.options)?parsed.options.slice(0,4).map(item=>({text:cleanPromptValue(item?.text,500),tone:cleanPromptValue(item?.tone,80),meaning_es:cleanPromptValue(item?.meaning_es,350)})).filter(x=>x.text):[]; const unique=[...new Map(options.map(x=>[x.text.toLowerCase().replace(/\s+/g," ").trim(),x])).values()]; if(unique.length===4)return json({understanding:parsed?.understanding||{},options:unique});}catch(error){lastError=getErrorMessage(error);console.warn("[character-chat] reply_assist attempt failed",{model,error:lastError})}}
+  for(const model of models){try{const response=await providerFetch(modelEndpoint(model),{method:"POST",headers:geminiHeaders(apiKey),body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:1500,responseMimeType:"application/json",thinkingConfig:{thinkingLevel:"LOW"}}})}); const data=await response.json().catch(()=>({})); if(!response.ok){lastError=data?.error?.message||lastError;console.warn("[character-chat] reply_assist provider failed",{model,status:response.status});continue;} const parsed=JSON.parse(stripJsonFence(extractCandidateText(data))); const options=Array.isArray(parsed?.options)?parsed.options.slice(0,4).map(item=>({text:cleanPromptValue(item?.text,500),tone:cleanPromptValue(item?.tone,80),meaning_es:cleanPromptValue(item?.meaning_es,350)})).filter(x=>x.text):[]; const unique=[...new Map(options.map(x=>[x.text.toLowerCase().replace(/\s+/g," ").trim(),x])).values()]; if(unique.length===4)return json({understanding:parsed?.understanding||{},options:unique});}catch(error){lastError=getErrorMessage(error);console.warn("[character-chat] reply_assist attempt failed",{model,error:lastError})}}
   console.warn("[character-chat] reply_assist using local fallback",{reason:lastError});
   return json(localReplyAssistFallback({history,draft,requestedIntent,custom}));
 }
@@ -1287,7 +1303,7 @@ async function handleCharacterVoiceTest({ apiKey, draft, situation }) {
   let lastError = "Velvet couldn't test this voice.";
   for (const model of models) {
     try {
-      const response = await fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 450, thinkingConfig: { thinkingLevel: "LOW" } } }) });
+      const response = await providerFetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 450, thinkingConfig: { thinkingLevel: "LOW" } } }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) { lastError = data?.error?.message || lastError; continue; }
       const sample = extractCandidateText(data).trim();
@@ -1324,7 +1340,7 @@ async function handleCharacterLearningRoom({ apiKey, draft, situation }) {
   let lastError = "Velvet couldn't open the Learning Room.";
   for (const model of models) {
     try {
-      const response = await fetch(modelEndpoint(model), { method:"POST", headers:geminiHeaders(apiKey), body:JSON.stringify({
+      const response = await providerFetch(modelEndpoint(model), { method:"POST", headers:geminiHeaders(apiKey), body:JSON.stringify({
         contents:[{role:"user",parts:[{text:prompt}]}],
         generationConfig:{maxOutputTokens:1800,thinkingConfig:{thinkingLevel:"LOW"},responseMimeType:"application/json"},
       })});
@@ -2459,7 +2475,6 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))].slice(0, 4);
   const globalDeadlineMs = 11000;
   const attemptTimeoutMs = 10000;
-  const hedgeDelaysMs = [0, 320, 680];
   const controllers = new Set<AbortController>();
   const rejectedInstantCandidates = [];
   const startedAt = Date.now();
@@ -2550,6 +2565,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
           : compactOpening;
         console.log("[character-chat] Instant Story trying Groq", { phase, promptChars: providerPrompt.length });
         const result = await callGroqProse({
+              fetchImpl: providerFetch,
           apiKey: groqKey,
           model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
           fallbackModel: Deno.env.get("GROQ_FALLBACK_MODEL") || "openai/gpt-oss-20b",
@@ -2589,7 +2605,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         : requestPrompt;
       const contents = [{ role: "user", parts: [{ text: `${SCENE_PRESENCE_CONTRACT}\n\n${SHARED_YEARNING_CONTRACT}\n\n${effectivePrompt}` }] }];
       const run = async (bare = false) => {
-        const response = await fetch(modelEndpoint(model), {
+        const response = await providerFetch(modelEndpoint(model), {
           method: "POST", headers: geminiHeaders(apiKey), signal: controller.signal,
           body: JSON.stringify({ contents, ...(!bare ? { generationConfig: {
             maxOutputTokens, temperature, thinkingConfig: { thinkingLevel: "MINIMAL" },
@@ -2743,7 +2759,13 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
 
   };
 
-  const attempts = models.map((model, index) => attempt(model, hedgeDelaysMs[index] ?? 1350));
+  const attempts = [(async () => {
+    for (const model of models) {
+      if (closed || Date.now() >= deadlineAt) break;
+      try { return await attempt(model, 0); } catch { /* next available provider */ }
+    }
+    throw new Error("No opening provider available");
+  })()];
   let primaryDeadlineTimer;
   const deadline = new Promise((resolve) => { primaryDeadlineTimer = setTimeout(() => resolve(null), globalDeadlineMs); });
 
@@ -5601,20 +5623,15 @@ async function callGeminiWithFailover({
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_EMERGENCY_MODEL, GEMINI_RECOVERY_MODEL].filter(Boolean))];
   if (!models.length) throw new Error("No Gemini model is configured.");
 
-  // v3.50.12 FAST RECOVERY MESH: utility/recovery generations no longer wait
-  // for one dead model after another. Start the preferred model immediately,
-  // then hedge healthy fallbacks a fraction of a second later. First complete
-  // usable answer wins and every loser is aborted. This path powers recovery,
-  // Instant Story and the character AI tools that share this helper.
+  // Sequential failover: a healthy request gets time to finish before another model spends quota.
   const deadlineMs = Math.max(7000, Math.min(16000, Number(interactionDeadlineMs) || 14000));
   const deadlineAt = Date.now() + deadlineMs;
-  const hedgeDelays = [0, 220, 520, 900];
   const controllers = new Map<string, AbortController>();
   const errors: string[] = [];
   let quotaCount = 0;
 
-  const attempt = async (model: string, index: number): Promise<ModelResult> => {
-    const delayMs = hedgeDelays[index] ?? 900;
+  const attempt = async (model: string, _index: number): Promise<ModelResult> => {
+    const delayMs = 0; // Sequential fallback: no speculative duplicate request.
     if (delayMs) await delay(delayMs);
     if (await isCancelled()) throw new DOMException("Generation cancelled", "AbortError");
     const remainingMs = deadlineAt - Date.now();
@@ -5647,7 +5664,7 @@ async function callGeminiWithFailover({
                 ...(livingThreads ? { responseSchema: livingThreadResponseSchema() } : {}),
               },
             };
-        return fetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), signal: controller.signal, body: JSON.stringify(requestBody) });
+        return providerFetch(modelEndpoint(model), { method: "POST", headers: geminiHeaders(apiKey), signal: controller.signal, body: JSON.stringify(requestBody) });
       };
       const run = async (mode: "json" | "bare") => {
         const response = await makeRequest(mode);
@@ -5679,7 +5696,12 @@ async function callGeminiWithFailover({
   };
 
   try {
-    const winner = await Promise.any(models.map((model, index) => attempt(model, index)));
+    let winner: ModelResult | null = null;
+    for (const [index, model] of models.entries()) {
+      try { winner = await attempt(model, index); break; }
+      catch (error) { if (await isCancelled()) throw error; }
+    }
+    if (!winner) throw new Error(errors[errors.length - 1] || "No provider available");
     for (const [model, controller] of controllers.entries()) if (model !== winner.model && !controller.signal.aborted) controller.abort();
     return winner;
   } catch (error) {
@@ -11220,7 +11242,9 @@ async function streamRoleplayV19({
         });
         let result: ModelResult;
         let groqTurnPrompt = "";
+        let correctionCalls = 0;
         const callCurrentProvider = async (options): Promise<ModelResult> => {
+          if (++correctionCalls > 1) throw new Error("This turn already used its one AI correction; preserve final continuity barriers.");
           if (!groqTurnPrompt) return await callGeminiWithFailover(options);
           // Every repair/rescue retains the same provider and canonical turn context.
           // Replace only the oversized shared base, preserving repair directions.
@@ -11231,6 +11255,7 @@ async function streamRoleplayV19({
               ? groqTurnPrompt + requested.slice(String(prompt).length)
               : requested;
           const next = await callGroqProse({
+              fetchImpl: providerFetch,
             apiKey: Deno.env.get("GROQ_API_KEY") || "",
             model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
             fallbackModel: Deno.env.get("GROQ_FALLBACK_MODEL") || "openai/gpt-oss-20b",
@@ -11311,6 +11336,7 @@ async function streamRoleplayV19({
             sendEvent(controller, { type: "diagnostic", phase: "groq-fallback" });
             console.log("[character-chat] trying independent Groq fallback", { promptChars: groqPrompt.length });
             const groqResult = await callGroqProse({
+              fetchImpl: providerFetch,
               apiKey: groqKey,
               model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
               fallbackModel: Deno.env.get("GROQ_FALLBACK_MODEL") || "openai/gpt-oss-20b",
@@ -12000,7 +12026,7 @@ async function streamRoleplayV19({
             console.error("[character-chat] live stream failed", { message: rawError });
             const quota = /(?:rate.?limit|resource_exhausted|Gemini returned 429|quota)/i.test(rawError);
             const transient = /(?:high demand|overload|unavailable|Gemini returned (?:500|502|503|504)|temporarily unavailable)/i.test(rawError);
-            sendEvent(controller, { type: "error", error: quota ? "Gemini's quota is exhausted right now. Retrying the same reply won't fix it until quota is available again." : transient ? "Velvet couldn't finish this reply right now. Retry in a moment." : rawError });
+            sendEvent(controller, { type: "error", error: quota ? (/^Groq is rate-limited\. Retry in \d+ seconds\.$/.test(rawError) ? rawError : "AI providers are rate-limited right now. Wait for quota to recover before retrying.") : transient ? "Velvet couldn't finish this reply right now. Retry in a moment." : rawError });
           }
         }
       } finally {
@@ -12315,17 +12341,7 @@ async function streamGeminiEnvelopeWithFailover({
     try { onAttempt?.({ ...payload, elapsedMs: Date.now() - failoverTraceStartedAt }); } catch { /* diagnostics never affect generation */ }
   };
 
-  // v2.11.19 NO-RETRY HEDGED START:
-  // Start the quality model first. If it stays silent, quietly launch a faster
-  // fallback in parallel. The first model that produces actual reply prose wins;
-  // slower requests are cancelled. A slow first token is never itself a user-facing
-  // failure and never clears an already visible bubble.
-  const rawHedges = Array.isArray(performancePlan?.hedgeDelaysMs) ? performancePlan.hedgeDelaysMs : [0, 150, 340, 650];
-  const hedgeDelays = rawHedges.map((value) => Math.max(0, Math.min(8000, Number(value) || 0))).slice(0, models.length);
-  while (hedgeDelays.length < models.length) {
-    const previous = hedgeDelays.length ? hedgeDelays[hedgeDelays.length - 1] : 0;
-    hedgeDelays.push(Math.min(5200, previous + 1150));
-  }
+  // Sequential streaming: launch another model only after this one fails.
   const overallDeadlineMs = Math.max(5500, Math.min(18000, Number(performancePlan?.overallDeadlineMs) || 7200));
   const deadlineAt = Date.now() + overallDeadlineMs;
   // v3.49.3: a model does not win merely because it emitted the first fragment.
@@ -12455,7 +12471,7 @@ async function streamGeminiEnvelopeWithFailover({
                 ...(livingThreads ? { responseSchema: livingThreadResponseSchema() } : {}),
               },
             };
-        return fetch(modelStreamEndpoint(model), {
+        return providerFetch(modelStreamEndpoint(model), {
           method: "POST",
           headers: geminiHeaders(apiKey),
           signal: controller.signal,
@@ -12609,14 +12625,9 @@ async function streamGeminiEnvelopeWithFailover({
     }
   };
 
-  // Primary starts immediately. Fallbacks are hedged only when no visible prose
-  // has arrived, avoiding duplicate model usage on normal fast turns.
+  // Primary starts immediately; the failure handler launches each fallback in order.
   launchNextUnstarted();
-  const hedgeTimers = hedgeDelays.slice(1, models.length).map((delayMs) =>
-    setTimeout(() => {
-      if (!settled && !winnerModel) launchNextUnstarted();
-    }, delayMs)
-  );
+  const hedgeTimers: ReturnType<typeof setTimeout>[] = []; // Launch the next model only after failure.
 
   const deadlineTimer = setTimeout(() => {
     if (settled) return;
