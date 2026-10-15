@@ -36,27 +36,35 @@ export default function Auth() {
     finally { setSubmitting(false); }
   }
 
-  return <main className="auth auth--owner-scene">
-
-    <section className="auth__card" aria-label="Velvet account access">
-      <aside className="auth__identity">
-      <header className="auth__brand"><div className="auth__brand-mark" aria-hidden="true"><span>VS</span><i>✦</i></div><p className="auth__brand-name">Velvet Stories</p><div className="auth__brand-divider" aria-hidden="true"><span/><i>✦</i><span/></div></header>
-      <div className="auth__universe" aria-hidden="true"><span className="auth__orbit auth__orbit--one"/><span className="auth__orbit auth__orbit--two"/><span className="auth__orbit auth__orbit--three"/><span className="auth__core">V</span><i className="auth__star auth__star--one"/><i className="auth__star auth__star--two"/></div>
-      <div className="auth__manifesto"><span className="auth__eyebrow">A WORLD OF YOUR MAKING</span><h2>Every connection.<br/><em>A new possibility.</em></h2><p>Your characters. Your choices.<br/>Stories that become yours.</p></div>
-      <div className="auth__identity-footer"><span>VELVET STORIES</span><span>✦</span><span>MADE TO FEEL</span></div>
-      </aside>
-      <div className="auth__access">
-      <span className="auth__eyebrow auth__access-label"><i aria-hidden="true"/> YOUR VELVET, CONTINUED</span>
-      <div className="auth__welcome"><h1>{mode === "signup" ? "Create your story" : "Welcome back"}</h1><p>{mode === "signup" ? "Your Velvet begins here." : "Your stories are waiting."}</p></div>
-      <div className="auth__mode-switch"><button type="button" aria-pressed={mode==="signin"} disabled={submitting} className={mode==="signin"?"is-active":""} onClick={()=>{setMode("signin");setError("");setNotice("");}}>Sign in</button><button type="button" aria-pressed={mode==="signup"} disabled={submitting} className={mode==="signup"?"is-active":""} onClick={()=>{setMode("signup");setError("");setNotice("");}}>Create account</button></div>
-      <form className="auth__form" onSubmit={handleSubmit}>
-        <label className="auth__password-row"><Mail size={21} strokeWidth={1.6}/><input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} placeholder="Email" aria-label="Email" autoComplete="email" required/></label>
-        <label className="auth__password-row"><LockKeyhole size={22} strokeWidth={1.6}/><input type={showPassword?"text":"password"} value={password} onChange={e=>{setPassword(e.target.value);setError("");}} placeholder="Password" aria-label="Password" autoComplete={mode==="signup"?"new-password":"current-password"} required minLength={6}/><button className="auth__eye" type="button" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?"Hide password":"Show password"}>{showPassword?<EyeOff size={24} strokeWidth={1.55}/>:<Eye size={24} strokeWidth={1.55}/>}</button></label>
-        {error?<p className="auth__error" role="alert">{error}</p>:null}{notice?<p className="auth__notice" role="status">{notice}</p>:null}
-        <button className="auth__enter" type="submit" disabled={submitting}>{submitting?"Opening Velvet…":mode==="signup"?"Create Velvet account":"Enter Velvet"}<ArrowUpRight size={20} aria-hidden="true"/></button>
-      </form>
-      <p className="auth__private-line">Your stories. Your characters. Your Velvet.</p>
+  return <main className="auth-world">
+    <div className="auth-world__atmosphere" aria-hidden="true"/>
+    <header className="auth-world__top"><span className="auth-world__brand">VELVET <small>STORIES</small></span><span className="auth-world__edition">AN IMMERSIVE STORY UNIVERSE · 001</span></header>
+    <section className="auth-world__scene" aria-label="Velvet access">
+      <div className="auth-world__artifact" aria-hidden="true">
+        <div className="auth-world__halo auth-world__halo--outer"/>
+        <div className="auth-world__halo auth-world__halo--inner"/>
+        <svg viewBox="0 0 400 400" className="auth-world__symbol">
+          <circle cx="200" cy="200" r="155" fill="none" stroke="currentColor" strokeWidth=".7" opacity=".5"/>
+          <path d="M85 104 L174 306 Q195 348 222 299 L318 104" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round"/>
+          <path d="M80 287 C139 205 221 183 298 209 C354 229 324 304 271 305 C202 310 158 236 117 168" fill="none" stroke="currentColor" strokeWidth="2.5"/>
+        </svg>
+        <span className="auth-world__artifact-name">VELVET</span>
+      </div>
+      <div className="auth-world__intro"><span className="auth-world__index">01 / THE BEGINNING</span><h1>Some stories<br/><em>stay with you.</em></h1><p>Step inside a world that remembers.</p></div>
+      <div className="auth-world__portal">
+        <div className="auth-world__portal-head"><span className="auth-world__index">YOUR ACCESS / VELVET</span><span className="auth-world__portal-cross">✳</span></div>
+        <h2>{mode === "signup" ? "Begin your story." : "The story continues."}</h2>
+        <p>{mode === "signup" ? "Make this world your own." : "Your world is right where you left it."}</p>
+        <div className="auth-world__tabs"><button type="button" aria-pressed={mode==="signin"} className={mode==="signin"?"is-active":""} disabled={submitting} onClick={()=>{setMode("signin");setError("");setNotice("");}}>SIGN IN</button><button type="button" aria-pressed={mode==="signup"} className={mode==="signup"?"is-active":""} disabled={submitting} onClick={()=>{setMode("signup");setError("");setNotice("");}}>CREATE ACCOUNT</button></div>
+        <form onSubmit={handleSubmit} className="auth-world__form">
+          <label><span>01 / EMAIL</span><div><Mail size={17}/><input type="email" autoComplete="email" aria-label="Email" placeholder="you@example.com" value={email} required onChange={e=>{setEmail(e.target.value);setError("");}}/></div></label>
+          <label><span>02 / PASSWORD</span><div><LockKeyhole size={17}/><input type={showPassword?"text":"password"} autoComplete={mode==="signup"?"new-password":"current-password"} aria-label="Password" placeholder="At least 6 characters" value={password} minLength={6} required onChange={e=>{setPassword(e.target.value);setError("");}}/><button type="button" className="auth-world__eye" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?"Hide password":"Show password"}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></label>
+          {error?<p role="alert" className="auth-world__error">{error}</p>:null}{notice?<p role="status" className="auth-world__notice">{notice}</p>:null}
+          <button className="auth-world__submit" disabled={submitting} type="submit"><span>{submitting?"OPENING…":mode==="signup"?"CREATE YOUR WORLD":"ENTER THE WORLD"}</span><ArrowUpRight size={22}/></button>
+        </form>
+        <span className="auth-world__footnote">PRIVATE WORLDS. ENDLESS POSSIBILITIES.</span>
       </div>
     </section>
+    <footer className="auth-world__bottom"><span>© VELVET STORIES</span><span>MADE TO FEEL ✦</span><span>SCROLL INTO YOUR STORY</span></footer>
   </main>;
 }
