@@ -1,3 +1,4 @@
+import { ADJACENT_DIALOGUE_RULE } from "./adjacent-dialogue.js";
 import { withoutRepeatedLatest, uniqueContext } from "./economical-context.js";
 import { overnightLanding } from "./overnight-landing.js";
 import { retryAfterMs } from "./provider-quota.js";
@@ -14,6 +15,7 @@ export function buildGroqLivePrompt({
  return [
   "Write the next single in-character turn as visible prose only. No JSON, reasoning, scores or metadata. Put spoken dialogue in quotation marks. Narration addresses the user as you/your, never she/her. Third-person pronouns in dialogue about the user to an NPC are permitted.",
   "Current edited transcript and explicit user facts outrank stale summaries. Preserve location, roles, exact orders, possessions, pending topics, knowledge and relationship stage. Do not invent user speech, thoughts, feelings, consent or movement. Private narration is not audible. A short reply can be complete; avoid filler, stock gestures, interrogation and automatic flirtation.",
+  ADJACENT_DIALOGUE_RULE,
   "SPACE AND TIME — HARD CONTINUITY",
   overnightLanding(transcript.filter(m=>m.speaker===userIdentity.name || /^(?:you|user)$/i.test(m.speaker || "")).map(m=>m.content), latestUserMessage)?.instruction || "Respect explicit user-authored time and elapsed duration.",
   "Track user and character separately: a user-authored relocation or time skip moves ONLY the user unless the transcript establishes joint travel OR an accepted plan to meet at the landing destination; an accepted visit may occur offscreen during an explicit time skip. A prior shared cafe scene is not proof the character is in the user's later home.",

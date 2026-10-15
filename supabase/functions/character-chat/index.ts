@@ -1,3 +1,4 @@
+import { ADJACENT_DIALOGUE_RULE, removeReplayedOpening } from "./engine/adjacent-dialogue.js";
 import { withoutRepeatedLatest } from "./engine/economical-context.js";
 import { callEconomicalBackup } from "./engine/openai-fallback.js";
 import { overnightLanding, overnightLandingIssues } from "./engine/overnight-landing.js";
@@ -6734,6 +6735,7 @@ function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMes
   ];
   const nightLanding = overnightLanding(allRecentUserTurns, latestUserMessage);
   if (nightLanding && !openingRegeneration) base.push(nightLanding.instruction);
+  if (!openingRegeneration) base.push(ADJACENT_DIALOGUE_RULE);
   if (postSkipBaseline?.stateDirective && kind !== "time_skip" && !openingRegeneration) {
     base.push(`- ACTIVE POST-SKIP BASELINE: ${String(postSkipBaseline.stateDirective || "").replace(/[<>]/g, "").trim().slice(0, 420)}. This remains the current relationship baseline until visible canon changes it. Do not treat it as a one-turn mood.`);
     if (postSkipStateSignalsWarmth(postSkipBaseline.stateDirective)) {
@@ -11382,6 +11384,8 @@ async function streamRoleplayV19({
           console.warn("[character-chat] usage telemetry failed", { message: getErrorMessage(usageError) });
         }
 
+        if (!openingRegeneration) result = { ...result, reply: removeReplayedOpening(result.reply, recentCharacterReplies, latestUserMessage) };
+
         const groundedAgencyAnchors = [
           JSON.stringify(existingSceneState || {}),
           JSON.stringify(turnContract?.storyAuthority?.calendar || []),
@@ -11776,6 +11780,7 @@ async function streamRoleplayV19({
         }
 
         if (!persistableReply) throw new Error("Velvet final turn barrier produced no safe reply; nothing was saved.");
+        if (!openingRegeneration) persistableReply = removeReplayedOpening(persistableReply, recentCharacterReplies, latestUserMessage);
         result = { ...result, reply: persistableReply };
         await streamFinalReply(persistableReply, FIRST_DRAFT_WINS_V35268 ? "v35268-first-draft-wins" : "v35237-regression-shield");
 
