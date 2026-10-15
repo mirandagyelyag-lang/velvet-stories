@@ -9,8 +9,7 @@ export default function WelcomeSplash() {
   useEffect(() => {
     if (!visible) return;
     const timer=window.setTimeout(()=>{
-      try { sessionStorage.setItem("velvet-entry-seen-v2","1"); } catch {}
-      setStage("leaving");
+      setStage("gate");
     },3200);
     return ()=>window.clearTimeout(timer);
   },[visible]);
@@ -19,6 +18,10 @@ export default function WelcomeSplash() {
     const timer=window.setTimeout(()=>setVisible(false),850);
     return ()=>window.clearTimeout(timer);
   },[stage]);
+  const enterVelvet=()=>{
+    try { sessionStorage.setItem("velvet-entry-seen-v2","1"); } catch {}
+    setStage("leaving");
+  };
   if(!visible)return null;
   return <div className={`velvet-zip-entry velvet-zip-entry--${stage}`} aria-label="Velvet Stories entrance">
     <div className="velvet-zip-entry__silk velvet-zip-entry__silk--left" aria-hidden="true"/>
@@ -38,5 +41,6 @@ export default function WelcomeSplash() {
       </svg>
       <div className="velvet-zip-entry__brand">VELVET<small>STORIES</small></div>
     </div>
+    {stage==="gate" && <div className="velvet-zip-entry__pink-gate"><button type="button" onClick={enterVelvet}>ENTRAR <span aria-hidden="true">↗</span></button></div>}
   </div>;
 }
