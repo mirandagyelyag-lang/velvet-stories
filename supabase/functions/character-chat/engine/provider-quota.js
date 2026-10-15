@@ -25,7 +25,7 @@ export function createQuotaFetch({ fetchImpl = globalThis.fetch, readCooldown = 
   const cache = new Map();
   return async function quotaFetch(url, options = {}, explicit = {}) {
     const endpoint=String(url);
-    const provider=explicit.provider || (endpoint.includes('generativelanguage.googleapis.com')?'gemini':endpoint.includes('api.groq.com')?'groq':'');
+    const provider=explicit.provider || (endpoint.includes('generativelanguage.googleapis.com')?'gemini':endpoint.includes('api.groq.com')?'groq':endpoint.includes('api.openai.com')?'openai':'');
     if (!provider) return fetchImpl(url,options);
     let model=explicit.model;
     if (!model) {
@@ -48,7 +48,7 @@ export function createQuotaFetch({ fetchImpl = globalThis.fetch, readCooldown = 
     log({provider,model,status:response.status,skipped:false,requestChars:typeof options.body==='string'?options.body.length:0});
     if(response.status===429) {
       const data=await response.clone().json().catch(()=>({}));
-      record={provider,model,retry_at:new Date(now()+retryAfterMs(response.headers,data,now())).toISOString()};
+      record={provider,model,retry_at:new Date(now()+(data?.error?.code==='insufficient_quota'?3600000:retryAfterMs(response.headers,data,now()))).toISOString()};
       cache.set(key,record);
       try {await writeCooldown(record);} catch { /* outage must not discard a provider response */ }
     }

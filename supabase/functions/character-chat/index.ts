@@ -1,3 +1,4 @@
+import { callEconomicalBackup } from "./engine/openai-fallback.js";
 import { overnightLanding, overnightLandingIssues } from "./engine/overnight-landing.js";
 import { createCorrectionBudget, isEditorialAdvisory } from "./engine/correction-budget.js";
 import { createQuotaFetch } from "./engine/provider-quota.js";
@@ -2551,7 +2552,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     if (!groqOpeningRequests.has(key)) {
       const task = (async () => {
         const groqKey = Deno.env.get("GROQ_API_KEY") || "";
-        if (!groqKey) throw new Error("Groq fallback is not configured");
+        if (!groqKey && !(Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OPEN_AI_KEY"))) throw new Error("No independent backup is configured");
         const compactOpening = buildGroqLivePrompt({
           character: { ...safeDraft, speech_style: safeDraft.speech_style || safeDraft.speechStyle || "", emotional_dna: safeDraft.emotional_dna || safeDraft.emotionalDna || {} },
           direction: cleanIdea,
@@ -2566,7 +2567,10 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
           ? effectivePrompt + "\nReturn only the visible opening as prose. Address the reader as you; no authored user actions or private thoughts."
           : compactOpening;
         console.log("[character-chat] Instant Story trying Groq", { phase, promptChars: providerPrompt.length });
-        const result = await callGroqProse({
+        const result = await callEconomicalBackup({
+              groqCall: callGroqProse,
+              groqApiKey: Deno.env.get("GROQ_API_KEY") || "",
+              openaiApiKey: (Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OPEN_AI_KEY")) || "",
               fetchImpl: providerFetch,
           apiKey: groqKey,
           model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
@@ -2595,7 +2599,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const timeoutId = setTimeout(() => controller.abort(), requestBudgetMs);
     const requestStartedAt = Date.now();
     const alternatives = [...new Set([model, ...rejectedInstantCandidates.map(item => item.model), ...models].filter(Boolean))];
-    const available = (candidate) => !String(candidate).startsWith("groq/") && !quotaUnavailableModels.has(candidate) && !overloadedModels.has(candidate);
+    const available = (candidate) => ! /^(?:groq|openai)\//.test(String(candidate)) && !quotaUnavailableModels.has(candidate) && !overloadedModels.has(candidate);
     model = alternatives.find(available) || model;
     try {
       const effectivePrompt = ["chase_edit", "nathan_edit", "alexander_edit"].includes(phase) ? requestPrompt : alexanderEngineActive
@@ -2618,7 +2622,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         return { response, data };
       };
       let bare = false;
-      let result = (!alternatives.some(available) || rejectedInstantCandidates.some(item => String(item.model || "").startsWith("groq/"))) && Deno.env.get("GROQ_API_KEY")
+      let result = (!alternatives.some(available) || rejectedInstantCandidates.some(item => /^(?:groq|openai)\//.test(String(item.model || "")))) && (Deno.env.get("GROQ_API_KEY") || (Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OPEN_AI_KEY")))
         ? await requestGroqOpening(phase, effectivePrompt)
         : await run(bare);
       if ("model" in result) model = String(result.model);
@@ -2632,7 +2636,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         quotaUnavailableModels.add(model);
         diagnose({ phase, model, status: 429, code: "quota_model_fallback", error: result.data?.error?.message });
         const nextModel = alternatives.find(available);
-        if (!nextModel && Deno.env.get("GROQ_API_KEY") && !controller.signal.aborted) {
+        if (!nextModel && (Deno.env.get("GROQ_API_KEY") || (Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OPEN_AI_KEY"))) && !controller.signal.aborted) {
           const groqResult = await requestGroqOpening(phase, effectivePrompt);
           result = groqResult;
           model = groqResult.model;
@@ -11262,7 +11266,11 @@ async function streamRoleplayV19({
             : requested.startsWith(prompt)
               ? groqTurnPrompt + requested.slice(String(prompt).length)
               : requested;
-          const next = await callGroqProse({
+          const next = await callEconomicalBackup({
+              preferOpenAI: String(result?.model || "").startsWith("openai/"),
+              groqCall: callGroqProse,
+              groqApiKey: Deno.env.get("GROQ_API_KEY") || "",
+              openaiApiKey: (Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OPEN_AI_KEY")) || "",
               fetchImpl: providerFetch,
             apiKey: Deno.env.get("GROQ_API_KEY") || "",
             model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
@@ -11319,7 +11327,7 @@ async function streamRoleplayV19({
           console.warn("[character-chat] SSE generation failed; trying non-stream recovery", { message: streamReason });
           sendEvent(controller, { type: "diagnostic", phase: "nonstream-recovery", reason: streamReason.slice(0, 180) });
           const groqKey = Deno.env.get("GROQ_API_KEY") || "";
-          if (groqKey) {
+          if (groqKey || (Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OPEN_AI_KEY"))) {
             const groqPrompt = buildGroqLivePrompt({
               character, userIdentity,
               transcript: messages.map(m => ({
@@ -11347,7 +11355,10 @@ async function streamRoleplayV19({
             groqTurnPrompt = groqPrompt;
             sendEvent(controller, { type: "diagnostic", phase: "groq-fallback" });
             console.log("[character-chat] trying independent Groq fallback", { promptChars: groqPrompt.length });
-            const groqResult = await callGroqProse({
+            const groqResult = await callEconomicalBackup({
+              groqCall: callGroqProse,
+              groqApiKey: Deno.env.get("GROQ_API_KEY") || "",
+              openaiApiKey: (Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OPEN_AI_KEY")) || "",
               fetchImpl: providerFetch,
               apiKey: groqKey,
               model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
@@ -11375,7 +11386,9 @@ async function streamRoleplayV19({
           const promptTokens = Math.max(0, Number(result?.promptTokens || 0));
           const outputTokens = Math.max(0, Number(result?.outputTokens || 0));
           const isCurrentFlash = /^gemini-3\.(6|7|8)-flash$/i.test(String(result?.model || ""));
-          const estimatedCostUsd = isCurrentFlash
+          const estimatedCostUsd = String(result?.model || "") === "openai/gpt-5-mini"
+            ? ((promptTokens * 0.25) + (outputTokens * 2)) / 1000000
+            : isCurrentFlash
             ? ((promptTokens * 0.75) + (outputTokens * 3.75)) / 1000000
             : 0;
           await cancellationAdmin.from("ai_usage_events").insert({
@@ -11387,7 +11400,7 @@ async function streamRoleplayV19({
             prompt_tokens: promptTokens,
             output_tokens: outputTokens,
             estimated_cost_usd: estimatedCostUsd,
-            metadata: { pricing_basis: isCurrentFlash ? "2026_standard_flash_intro" : "unpriced_model", engine_release: VELVET_ENGINE_RELEASE }
+            metadata: { pricing_basis: String(result?.model || "") === "openai/gpt-5-mini" ? "gpt5_mini_standard" : isCurrentFlash ? "2026_standard_flash_intro" : "unpriced_model", engine_release: VELVET_ENGINE_RELEASE }
           });
         } catch (usageError) {
           console.warn("[character-chat] usage telemetry failed", { message: getErrorMessage(usageError) });
@@ -12038,7 +12051,7 @@ async function streamRoleplayV19({
             console.error("[character-chat] live stream failed", { message: rawError });
             const quota = /(?:rate.?limit|resource_exhausted|Gemini returned 429|quota)/i.test(rawError);
             const transient = /(?:high demand|overload|unavailable|Gemini returned (?:500|502|503|504)|temporarily unavailable)/i.test(rawError);
-            sendEvent(controller, { type: "error", error: quota ? (/^Groq is rate-limited\. Retry in \d+ seconds\.$/.test(rawError) ? rawError : "AI providers are rate-limited right now. Wait for quota to recover before retrying.") : transient ? "Velvet couldn't finish this reply right now. Retry in a moment." : rawError });
+            sendEvent(controller, { type: "error", error: quota ? (/^(?:Groq|OpenAI) is rate-limited\. Retry in \d+ seconds\.$/.test(rawError) ? rawError : "AI providers are rate-limited right now. Wait for quota to recover before retrying.") : transient ? "Velvet couldn't finish this reply right now. Retry in a moment." : rawError });
           }
         }
       } finally {
