@@ -1,7 +1,27 @@
+
+// A planned morning is a future commitment, not authorization to skip sleep.
+export function pendingRestTransition(userTurns = [], latestUserMessage = '') {
+  const turns = userTurns.map(String);
+  if (turns.at(-1) !== latestUserMessage) turns.push(String(latestUserMessage));
+  const rest = /\b(?:let['’]?s|let us|we should|we can|i want to|i need to)\s+(?:go to\s+)?(?:sleep|bed|rest)\b|\b(?:vamos a dormir|durmamos|me voy a dormir|quiero dormir)\b/i;
+  const resume = /\b(?:good morning|next morning|following morning|i wake|i woke|we wake|we woke|time\s*skip|skip ahead|fast forward|let['’]?s (?:keep|continue|resume|start) (?:working|studying)|back to (?:work|the paper))\b|\b(?:buenos d[ií]as|a la ma[nñ]ana siguiente|me despierto|despertamos|sigamos trabajando)\b/i;
+  let state = null;
+  for (const turn of turns) {
+    if (rest.test(turn) && !/\b(?:let['’]?s not|do not|don['’]?t|no quiero)\s+(?:go to\s+)?(?:sleep|bed|rest|dormir)\b/i.test(turn)) {
+      state = { active: true };
+    } else if (state && resume.test(turn)) {
+      state = { active: false };
+    }
+  }
+  return state;
+}
 // Creator preference: an ambiguous night-work jump does not automatically mean sunrise.
 export function overnightLanding(userTurns = [], latestUserMessage = '') {
   const turns=[...userTurns.map(String)];
   if(turns.at(-1)!==latestUserMessage) turns.push(String(latestUserMessage));
+  const restState = pendingRestTransition(turns, latestUserMessage);
+  if (restState && !restState.active) return null;
+  if (restState?.active) return { timeLabel: 'current scene, preparing to rest', instruction: "PENDING REST TRANSITION — ALL CHARACTERS: The user explicitly chose sleep/rest. Continue that decision NOW in the established place. Work or study is paused, even if the notes, research outline or unfinished task remain visible. Plans to work in the morning are FUTURE commitments, not a time skip. A short acceptance, permission to use familiar belongings, or goodnight continues the rest transition; it does not reopen the assignment. Respond to the latest message with this character's own natural words and actions. Do not ask which section to tackle or resume academic discussion. Do not call the current work last night's work, announce a new day, narrate the user falling asleep, move the user, invent a guest room or decide sleeping arrangements. Only a later explicit user wake-up, morning, time skip or request to resume releases this pause. Keep direct narration addressed to you/your, including the final sentence: watches you, never watches her. The character may put their own materials away or respond to established sleeping arrangements without inventing user actions." };
   const skip=/\b(?:time\s*skip|skip ahead|fast forward)\b|salto (?:de tiempo|temporal)/i;
   const overnight=/\ball night\b|\bthrough the night\b|toda la noche/i;
   let index=-1;
