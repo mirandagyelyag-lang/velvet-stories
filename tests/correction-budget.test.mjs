@@ -54,3 +54,30 @@ test('production repair trigger never spends a correction for editorial-only fin
  assert.deepEqual([...fn(findings)],[]);
  assert.deepEqual([...fn([...findings,'object_possession_break'])],['object_possession_break']);
 });
+
+test('breakfast failure: private-thought tense and optional style do not spend repairs or block delivery',()=>{
+ const findings=['lean_core_performed_body_language','plain_speech_performed_narration','world_identity_manifestation_missing','outside_attention_missing','narration_tense_flip'];
+ const hard=['unfinished_reply','object_possession_break','user_exit_not_applied'];
+ const context={isEditorialAdvisory};
+ for(const key of ['HARD_REPAIR_REQUIRED_ISSUES','BLOCKING_NARRATIVE_ISSUES','REPAIR_TRIGGER_ISSUES']) context[key]=new Set([...findings,...hard]);
+ for(const name of ['blockingNarrativeIssues','hardRepairRequiredIssues','repairTriggerIssues']){
+  const start=source.indexOf('function '+name+'('),end=source.indexOf('\n}',start)+2;
+  const fn=vm.runInNewContext(source.slice(start,end)+';'+name,context);
+  assert.deepEqual([...fn(findings)],[]);
+  assert.deepEqual([...fn([...findings,...hard])],hard);
+ }
+});
+
+test('breakfast reach and nearby movement stay in scene; actual departures remain exits',()=>{
+ const start=source.indexOf('function classifyTurnIntent('),end=source.indexOf('\n}',start)+2;
+ const classify=vm.runInNewContext(source.slice(start,end)+';classifyTurnIntent',{
+  normalizeText:s=>s.toLowerCase(),isSilentContinueText:()=>false,
+  looksLikeQuestion:s=>s.trim().endsWith('?'),isExplicitTimeSkipDirective:()=>false,
+ });
+ for(const action of [
+  "It’s a specialty, honestly. I’ve perfected the recipe over far too many late-night study sessions. *I reach past him to grab the spatula, careful to keep our space just a little bit crowded.* Just don’t expect a five-star hotel breakfast, Theo.",
+  '*I step closer to him*','*I move my hand to the counter*','*I walk to the stove*',
+  '*I go to grab the spatula*','*I left the spatula on the counter*',
+ ]) assert.equal(classify(action).kind,'ordinary',action);
+ for(const action of ['*I walk away*','*I head out*','*I go upstairs*','*I leave the kitchen*','*I leave*','*Me voy*']) assert.equal(classify(action).kind,'user_exit',action);
+});

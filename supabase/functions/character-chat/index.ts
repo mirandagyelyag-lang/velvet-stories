@@ -6353,12 +6353,10 @@ function classifyTurnIntent(latestUserMessage = "", messages = []) {
 
   let kind = "ordinary";
   const confrontation = /\b(?:olvidate de mi|no me vuelvas a|no vuelvas a|no me invites otra vez|para la proxima|me trat(?:as|es) asi|forget about me|forget me|don'?t invite me again|do not invite me again|never invite me again|treat me like that again|we are done|leave me alone)\b/i.test(normalized);
-  const stagedActionText = [...raw.matchAll(/\*([^*]+)\*/gs)].map((match) => match[1]).join(" ");
-  const movementVerb = /\b(?:walk(?:s|ed|ing)?|leave|left|go|went|head(?:ed|ing)?|run|ran|move(?:d|ing)?|step(?:ped|ping)?|pass(?:es|ed|ing)?|past|brush(?:es|ed|ing)?\s+past)\b/i;
-  const stagedMovement = stagedActionText && /\bi\b[^.!?\n]{0,70}/i.test(stagedActionText) && movementVerb.test(stagedActionText);
-  const directMovement = /\bi\s+(?:walk(?:s|ed|ing)?|leave|left|go|went|head(?:ed|ing)?|run|ran|move(?:d|ing)?|step(?:ped|ping)?|pass(?:es|ed|ing)?|past|brush(?:es|ed|ing)?\s+past)\b/i.test(raw);
-  const spanishMovement = /\b(?:me\s+(?:voy|fui|alejo)|salgo|me fui|me baje|me bajé)\b/i.test(raw);
-  const exitsScene = Boolean(stagedMovement || directMovement || spanishMovement);
+  // Movement within a scene is not departure: reaching past someone for a
+  // spatula must not activate absence/pursuit rules.
+  const exitsScene = /\bi\s+(?:(?:walk(?:ed|ing)?|step(?:ped|ping)?|run|ran|move(?:d|ing)?|head(?:ed|ing)?)\s+(?:away|out|off|home|upstairs|downstairs)\b|(?:go|went)\s+(?:away|out|home|upstairs|downstairs)\b|(?:leave|left|exit|exited)(?=\s*(?:[.!?*]|$|(?:the|this|your|his|her)\s+(?:room|house|apartment|kitchen|building)\b)))|\b(?:me\s+(?:voy|fui|alejo)|salgo)\b/i.test(raw);
+
 
   if (raw.startsWith("[ADVANCE_SCENE")) kind = "advance_scene";
   else if (isSilentContinueText(raw) && recentInteractiveThreadIsOpen(messages)) kind = "interactive_thread";
@@ -11398,7 +11396,7 @@ async function streamRoleplayV19({
             ? ((promptTokens * 0.75) + (outputTokens * 3.75)) / 1000000
             : 0;
           await cancellationAdmin.from("ai_usage_events").insert({
-            user_id: userData.user.id,
+            user_id: userId,
             conversation_id: conversationId,
             generation_id: generationId || null,
             action: openingRegeneration ? "regenerate" : "generate",

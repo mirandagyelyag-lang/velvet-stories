@@ -16,6 +16,11 @@ export function createCorrectionBudget(limit = 1) {
 const editorialFindings = new Set([
   // Scene duration is pacing advice, never grounds to erase a complete reply.
   'scene_lifecycle_overstayed',
+  // Tense heuristics also match memories inside the requested private thoughts.
+  // Optional prose polish or missing outside attention cannot erase a quiet beat.
+  'narration_tense_flip', 'lean_core_performed_body_language',
+  'plain_speech_performed_narration', 'world_identity_manifestation_missing',
+  'outside_attention_missing',
   // A missing career/campus keyword is style advice, not a canon contradiction.
   'domain_life_continuity_missing',
   'conversation_not_converted_to_event', 'adjacent_dialogue_fragments',
