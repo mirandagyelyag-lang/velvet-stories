@@ -28,3 +28,35 @@
 @keyframes crystalSway{from{transform:rotateY(-12deg) rotateX(3deg) translateY(10px)}to{transform:rotateY(12deg) rotateX(-3deg) translateY(-14px)}}@keyframes crystalOrbit{to{transform:rotate(-13deg) rotateX(16deg) scale(1.04)}}@keyframes crystalSilk{to{translate:4% -8%;scale:1.07;opacity:.48}}@keyframes crystalTwinkle{to{opacity:.18;scale:.6}}@keyframes crystalAmbient{to{transform:scale(1.09) translate(2%,-2%)}}
 @media(max-width:900px){.velvet-crystal-auth__header{top:24px;left:25px}.velvet-crystal-auth__layout{display:flex;flex-direction:column;padding:90px 20px 50px;gap:20px}.velvet-crystal-auth__scene{min-height:clamp(300px,54vw,520px);width:100%}.velvet-crystal-auth__letter span{font-size:clamp(220px,53vw,440px)}.velvet-crystal-auth__statement{max-width:190px;padding-bottom:12px}.velvet-crystal-auth__statement h1{font-size:clamp(27px,5vw,44px)}.velvet-crystal-auth__access{max-width:500px;justify-self:center}.velvet-crystal-auth__subtitle{margin-bottom:28px}}
 @media(prefers-reduced-motion:reduce){.velvet-crystal-auth__ambient,.velvet-crystal-auth__letter,.velvet-crystal-auth__ring,.velvet-crystal-auth__ribbon,.velvet-crystal-auth__stars i{animation:none}}
+
+/* Refinement: correct global input theme leakage and rebalance the hero. */
+.velvet-crystal-auth .velvet-crystal-auth__field input,
+.velvet-crystal-auth .velvet-crystal-auth__field input:hover,
+.velvet-crystal-auth .velvet-crystal-auth__field input:focus,
+.velvet-crystal-auth .velvet-crystal-auth__field input:active{
+  appearance:none;-webkit-appearance:none;display:block;width:100%;height:52px;
+  padding:0!important;margin:0!important;border:0!important;border-radius:0!important;
+  background:transparent!important;background-color:transparent!important;
+  box-shadow:none!important;color:#fff3f5!important;
+}
+.velvet-crystal-auth .velvet-crystal-auth__field input:-webkit-autofill,
+.velvet-crystal-auth .velvet-crystal-auth__field input:-webkit-autofill:hover,
+.velvet-crystal-auth .velvet-crystal-auth__field input:-webkit-autofill:focus{
+  -webkit-text-fill-color:#fff3f5!important;-webkit-box-shadow:0 0 0 100px #1b0d16 inset!important;
+  caret-color:#fff3f5;transition:background-color 9999s ease-out;
+}
+.velvet-crystal-auth__ring{display:none}
+.velvet-crystal-auth__scene{align-items:center}
+.velvet-crystal-auth__sculpture{inset:0 0 11%;transform:translateX(5%)}
+.velvet-crystal-auth__letter span{font-size:clamp(290px,34vw,590px)}
+.velvet-crystal-auth__ribbon{opacity:.4;filter:blur(17px)}
+.velvet-crystal-auth__statement{position:absolute;bottom:1%;left:5%;max-width:100%;padding:0}
+.velvet-crystal-auth__statement h1{font-size:clamp(24px,2.4vw,42px);line-height:1.12;margin-bottom:12px}
+.velvet-crystal-auth__statement>span{font-size:9px}
+.velvet-crystal-auth__access{padding:20px 0}
+@media(max-width:900px){
+ .velvet-crystal-auth__sculpture{inset:0;transform:none}
+ .velvet-crystal-auth__letter span{font-size:clamp(205px,52vw,400px)}
+ .velvet-crystal-auth__statement{left:3%;bottom:0}
+ .velvet-crystal-auth__statement h1{font-size:clamp(24px,4vw,36px)}
+}
