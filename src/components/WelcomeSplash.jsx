@@ -62,8 +62,7 @@ export default function WelcomeSplash() {
       {phase === "entrance" ? <div className="velvet-film__choices"><button type="button" onClick={() => enter(true)}>ENTER WITH SOUND</button><button type="button" onClick={() => enter(false)}>ENTER WITHOUT SOUND</button></div> : <div className="velvet-film__footer">
         <span>ENTERING VELVET</span>
         <div className="velvet-film__track"><i/></div>
-      </div>
-      </div>
+      </div>}
       {phase === "loading" && <button type="button" className="velvet-film__skip" onClick={() => setPhase("entrance")}>SKIP INTRO ↗</button>}
     </div>
   );
