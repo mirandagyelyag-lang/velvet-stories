@@ -34,3 +34,16 @@ test('actual final classifiers keep hard continuity failures while style remains
   assert.deepEqual([...fn(issues)],['precise_time_invention','unfinished_reply','object_possession_break']);
  }
 });
+
+test('production failure: valid drafts survive the weight/gesture/line-echo editorial chain',()=>{
+ const findings=['response_weight_mismatch','micro_turn_padding','compulsory_followup_question','human_cognition_response_weight','embodied_state_ignored','profile_social_ecosystem_missing','naturalness_score_low','story_brain_stagnation_not_broken','recent_line_echo'];
+ const context={isEditorialAdvisory,HARD_REPAIR_REQUIRED_ISSUES:new Set(findings),BLOCKING_NARRATIVE_ISSUES:new Set(findings)};
+ for(const name of ['blockingNarrativeIssues','hardRepairRequiredIssues']){
+  const start=source.indexOf('function '+name+'('),end=source.indexOf('\n}',start)+2;
+  const fn=vm.runInNewContext(source.slice(start,end)+';'+name,context);
+  assert.deepEqual([...fn(findings)],[]);
+  assert.deepEqual([...fn(['overnight_landing_clock_conflict'])],['overnight_landing_clock_conflict']);
+ }
+ // Exact rejected regenerations still have their independent mandatory veto.
+ assert.match(source,/isRegeneration && matchesRejectedRegeneration\(persistableReply, rejectedResponses\)/);
+});
