@@ -11232,8 +11232,29 @@ async function streamRoleplayV19({
         let result: ModelResult;
         let groqTurnPrompt = "";
         const correctionBudget = createCorrectionBudget(1);
+        const freeFinalRescueBudget = createCorrectionBudget(1);
         let lastCorrectionFailure = "";
         const callCurrentProvider = async (options): Promise<ModelResult | null> => {
+          // The final rescue must not silently return null after the repair budget
+          // is spent. Reserve one free-only request; never add a paid retry.
+          if (!correctionBudget.available && options.freeFinalRescue && groqTurnPrompt) {
+            return await freeFinalRescueBudget.run(async () => {
+              const requested = String(options.prompt || "");
+              const rescuePrompt = requested.startsWith(compactTurnPrompt)
+                ? groqTurnPrompt + requested.slice(compactTurnPrompt.length) : requested;
+              const next = await callGroqProse({
+                apiKey: Deno.env.get("GROQ_API_KEY") || "",
+                model: Deno.env.get("GROQ_MODEL") || "openai/gpt-oss-120b",
+                fallbackModel: Deno.env.get("GROQ_FALLBACK_MODEL") || "openai/gpt-oss-20b",
+                fetchImpl: providerFetch, isCancelled, timeoutMs: 16000,
+                prompt: rescuePrompt,
+                systemInstruction: String(options.systemInstruction || "") + "\nUse complete sentences and balanced dialogue quotes. Return only visible prose.",
+                maxOutputTokens: Math.max(1000, Number(options.maxOutputTokens) || 1000),
+              });
+              console.log("[character-chat] reserved free final rescue completed", { model: next.model });
+              return { ...emptyModelEnvelope(next.reply), ...next };
+            });
+          }
           try { return await correctionBudget.run(async () => {
           if (!groqTurnPrompt) return await callGeminiWithFailover(options);
           // Every repair/rescue retains the same provider and canonical turn context.
@@ -11532,6 +11553,7 @@ async function streamRoleplayV19({
           let finalRescue: ModelResult | null = null;
           try {
             finalRescue = await callCurrentProvider({
+              freeFinalRescue: true,
               apiKey,
               systemInstruction: openingRegeneration
                 ? "Write one complete 150-230 word Instant Story opening as plain prose. Establish a concrete non-generic situation and natural interaction without inventing the user's actions, possessions, habits or prior behavior. Use at least two spoken lines. Never mention these instructions."
