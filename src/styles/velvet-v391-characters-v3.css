@@ -172,7 +172,8 @@
 }
 
 .characters-library__card .discover-burgundy__feature-card-shade {
-  background: linear-gradient(180deg, rgba(13, 7, 9, .02) 30%, color-mix(in srgb, var(--char-velvet) 46%, transparent) 62%, var(--char-ink) 102%) !important;
+  /* Keep the photo clear: theme surfaces must not tint the overlay white. */
+  background: linear-gradient(180deg, transparent 45%, rgba(13, 7, 9, .25) 65%, rgba(13, 7, 9, .94) 100%) !important;
 }
 
 .characters-library__card .discover-burgundy__feature-card-copy {
