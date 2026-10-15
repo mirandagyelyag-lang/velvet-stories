@@ -1,4 +1,4 @@
-import { ADJACENT_DIALOGUE_RULE } from "./adjacent-dialogue.js";
+import { ADJACENT_DIALOGUE_RULE, CHARACTER_INNER_THOUGHT_RULE } from "./adjacent-dialogue.js";
 import { withoutRepeatedLatest, uniqueContext } from "./economical-context.js";
 import { overnightLanding } from "./overnight-landing.js";
 import { retryAfterMs } from "./provider-quota.js";
@@ -43,6 +43,7 @@ export function buildGroqLivePrompt({
   "REJECTED NON-CANON REPLIES\n" + uniqueContext(rejected).slice(-2).map(r=>clean(r,450)).join("\n"),
   "CURRENT TRANSCRIPT\n" + history,
   "LATEST USER TURN (answer this conversational job first)\n" + clean(latestUserMessage,3000),
+  "FINAL WRITING DIRECTION (style only; transcript facts remain authoritative)\n" + CHARACTER_INNER_THOUGHT_RULE,
  ].join("\n\n");
 }
 
