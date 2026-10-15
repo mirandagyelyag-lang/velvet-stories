@@ -56,6 +56,7 @@ export function buildChatScopedNpcCanonV35279({
     "ANONYMOUS PEOPLE ARE ALLOWED. When the world needs someone who is not in the approved cast, keep them descriptive and unnamed: \'a girl from his class\', \'one of his teammates\', \'the bartender\', \'a professor\', \'someone from the party\'. Do not later give that anonymous person a name unless the user creates the NPC.",
     "NO DISEMBODIED SPEAKERS: an anonymous NPC may not suddenly speak as bare he/she/they with no visible introduction or role anchor. Establish who is speaking in the same beat (for example, one of his friends at the doorway) before their dialogue. Never make the reader reverse-engineer who just spoke.",
     "NO RETROACTIVE BAPTISM: an anonymous person from an earlier turn may not acquire an approved NPC name later merely because the model decides they were that NPC. If Victoria is going to speak, identify Victoria when she enters/speaks the first time. Identity must be established forward, never patched backward.",
+    "PENDING CONTACT: an unnamed friend/contact and their existing appointment remain the same across turns. Questions about that friend never authorize inventing their name, gender, identity, or relationship. Keep the contact unnamed unless their identity was explicitly established in creator canon or the visible story.",
     "NO NAME PROMOTION: do not turn a role label into initials, a nickname, first name, surname, pet name, handle or convenient recurring identity. A recurring anonymous role stays anonymous until user-created.",
     "OLD TEXT DOES NOT AUTHORIZE A NAME. If older generated text, compressed memory, stale cast state, consequence, rumor or hidden note contains a person-name that is not on the current allowed list, treat that name as quarantined legacy text. Do not repeat, revive, connect, remember or propagate it.",
     "USER MESSAGE DOES NOT AUTO-CREATE AN NPC. Casually mentioning an unapproved name does not add it to canon. Only the NPC editor creates named supporting characters.",
@@ -135,6 +136,8 @@ export function chatScopedNpcCanonV35279Issues({
   const raw=String(reply||"");
   const introduced=[...raw.matchAll(/\b(?:named|called)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})?)/g)].map((m)=>m[1]);
   const speakerLabels=[...raw.matchAll(/(?:^|\n)\s*([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})?)\s*:/g)].map((m)=>m[1]);
+  const socialNames=[...raw.matchAll(/\b(?:meet(?:ing)?(?:\s+up)?\s+with|supposed\s+to\s+(?:meet|see)|going\s+to\s+(?:meet|see)|my\s+(?:friend|roommate|classmate|date)\s+(?:is|named))\s+([A-Z][a-z]{2,})\b/g)].map(m=>m[1]);
+  if(socialNames.some(name=>!allowed.has(norm(name))))issues.push("unapproved_named_npc_visible");
   if([...introduced,...speakerLabels].some((name)=>!allowed.has(norm(name)))){
     issues.push("unapproved_named_npc_visible");
   }
