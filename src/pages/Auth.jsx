@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowUpRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import "../styles/velvet-access.css";
+import "../styles/velvet-glass-login.css";
 
 function translateAuthError(message = "") {
   const n = message.toLowerCase();
@@ -36,34 +37,37 @@ export default function Auth() {
     finally { setSubmitting(false); }
   }
 
-  return <main className="velvet-access">
-    <div className="velvet-access__aura" aria-hidden="true"/>
-    <header className="velvet-access__header"><span>VELVET <small>STORIES</small></span><span>AN UNWRITTEN WORLD / 001</span></header>
-    <section className="velvet-access__composition" aria-label="Velvet account access">
-      <div className="velvet-access__art" aria-hidden="true">
-        <svg viewBox="0 0 400 400" fill="none" stroke="currentColor">
-          <circle cx="200" cy="200" r="186" strokeWidth=".6" opacity=".5"/>
-          <circle cx="200" cy="200" r="132" strokeWidth=".5" strokeDasharray="1 10" opacity=".5"/>
-          <path d="M88 92 L200 336 L312 92" strokeWidth="1.1"/>
-          <path d="M116 92 L200 288 L284 92" strokeWidth=".8" opacity=".65"/>
-          <path d="M142 92 L200 246 L258 92" strokeWidth=".6" opacity=".4"/>
-        </svg>
+  return <main className="velvet-access velvet-glass-login">
+    <div className="velvet-glass-login__ambient" aria-hidden="true"/>
+    <section className="velvet-glass-login__stage" aria-label="Velvet Stories sign in">
+      <div className="velvet-glass-login__showpiece" aria-hidden="true">
+        <div className="velvet-glass-login__silk velvet-glass-login__silk--back"/>
+        <div className="velvet-glass-login__orbit velvet-glass-login__orbit--one"/>
+        <div className="velvet-glass-login__orbit velvet-glass-login__orbit--two"/>
+        <div className="velvet-glass-login__sculpture">
+          <span className="velvet-glass-login__v velvet-glass-login__v--shadow">V</span>
+          <span className="velvet-glass-login__v velvet-glass-login__v--body">V</span>
+          <span className="velvet-glass-login__v velvet-glass-login__v--light">V</span>
+        </div>
+        <div className="velvet-glass-login__silk velvet-glass-login__silk--front"/>
+        <div className="velvet-glass-login__floor"/>
+        <div className="velvet-glass-login__sparkles"><i/><i/><i/><i/><i/><i/><i/><i/></div>
       </div>
-      <div className="velvet-access__editorial"><span className="velvet-access__micro">I. THE NEXT CHAPTER</span><h1>Every story<br/>begins <em>somewhere.</em></h1><p>And this one belongs to you.</p></div>
-      <div className="velvet-access__panel">
-        <div className="velvet-access__panel-top"><span className="velvet-access__micro">YOUR SPACE / VELVET</span><span>✳</span></div>
-        <h2>{mode==="signup"?"Make it yours.":"Welcome home."}</h2>
-        <p>{mode==="signup"?"A new world is waiting.":"Pick up where your story left off."}</p>
-        <div className="velvet-access__tabs"><button type="button" className={mode==="signin"?"selected":""} disabled={submitting} onClick={()=>{setMode("signin");setError("");setNotice("");}}>SIGN IN</button><button type="button" className={mode==="signup"?"selected":""} disabled={submitting} onClick={()=>{setMode("signup");setError("");setNotice("");}}>CREATE ACCOUNT</button></div>
-        <form onSubmit={handleSubmit} className="velvet-access__form">
-          <label><span>01 — EMAIL ADDRESS</span><div><Mail size={17}/><input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} placeholder="you@example.com" autoComplete="email" required/></div></label>
-          <label><span>02 — PASSWORD</span><div><LockKeyhole size={17}/><input type={showPassword?"text":"password"} value={password} onChange={e=>{setPassword(e.target.value);setError("");}} placeholder="At least 6 characters" autoComplete={mode==="signup"?"new-password":"current-password"} minLength={6} required/><button type="button" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?"Hide password":"Show password"}>{showPassword?<EyeOff size={17}/>:<Eye size={17}/>}</button></div></label>
-          {error&&<p role="alert" className="velvet-access__error">{error}</p>}{notice&&<p role="status" className="velvet-access__notice">{notice}</p>}
-          <button type="submit" className="velvet-access__submit" disabled={submitting}><span>{submitting?"OPENING…":mode==="signup"?"CREATE MY WORLD":"ENTER VELVET"}</span><ArrowUpRight size={20}/></button>
+      <div className="velvet-glass-login__content">
+        <div className="velvet-glass-login__brand">VELVET STORIES</div>
+        <div className="velvet-glass-login__rule"/>
+        <h1>{mode === "signup" ? "Your story begins" : "Welcome back"}</h1>
+        <p className="velvet-glass-login__subtitle">{mode === "signup" ? "A world of your own is waiting." : "Your stories are waiting."}</p>
+        <form onSubmit={handleSubmit} className="velvet-glass-login__form">
+          <label className="velvet-glass-login__field"><Mail size={18}/><input type="email" aria-label="Email" placeholder="Email" autoComplete="email" required value={email} onChange={e=>{setEmail(e.target.value);setError("");}}/></label>
+          <label className="velvet-glass-login__field"><LockKeyhole size={18}/><input type={showPassword ? "text" : "password"} aria-label="Password" placeholder="Password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={6} required value={password} onChange={e=>{setPassword(e.target.value);setError("");}}/><button type="button" aria-label={showPassword?"Hide password":"Show password"} onClick={()=>setShowPassword(v=>!v)}>{showPassword?<EyeOff size={19}/>:<Eye size={19}/>}</button></label>
+          {error&&<p className="velvet-access__error" role="alert">{error}</p>}{notice&&<p className="velvet-access__notice" role="status">{notice}</p>}
+          <button className="velvet-glass-login__submit" type="submit" disabled={submitting}><span>{submitting ? "Opening..." : mode === "signup" ? "Create account" : "Sign in"}</span><ArrowUpRight size={21}/></button>
         </form>
-        <span className="velvet-access__legal">YOUR STORIES. YOUR WORLD. YOUR VELVET.</span>
+        <div className="velvet-glass-login__divider"><span>or</span></div>
+        <button className="velvet-glass-login__switch" type="button" disabled={submitting} onClick={()=>{setMode(mode==="signin"?"signup":"signin");setError("");setNotice("");}}>{mode==="signin"?"Create account":"Back to sign in"}</button>
+        <p className="velvet-glass-login__closing">Your stories. Your characters. Your Velvet.</p>
       </div>
     </section>
-    <footer className="velvet-access__footer"><span>© VELVET STORIES</span><span>MADE TO FEEL ✦</span></footer>
   </main>;
 }
