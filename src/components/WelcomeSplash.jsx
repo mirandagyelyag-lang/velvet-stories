@@ -1,37 +1,6 @@
 import { useEffect, useState } from "react";
 import "../styles/velvet-entry-from-zip.css";
 
-let activeAudio = null;
-function stopAudio() {
-  if (!activeAudio) return;
-  const { context, oscillators, gain } = activeAudio;
-  activeAudio = null;
-  const now = context.currentTime;
-  gain.gain.cancelScheduledValues(now);
-  gain.gain.setTargetAtTime(0.0001, now, 0.15);
-  window.setTimeout(() => { oscillators.forEach(o => { try { o.stop(); } catch {} }); context.close().catch(() => {}); }, 850);
-}
-function playAudio() {
-  try {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
-    stopAudio();
-    const context = new AudioContextClass();
-    const gain = context.createGain();
-    gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.linearRampToValueAtTime(0.045, context.currentTime + 1.5);
-    gain.connect(context.destination);
-    const oscillators = [55,82.41,110].map((frequency,index) => {
-      const oscillator=context.createOscillator();
-      oscillator.type=index===0?"sine":"triangle";
-      oscillator.frequency.value=frequency;
-      const level=context.createGain();level.gain.value=[0.48,0.2,0.1][index];
-      oscillator.connect(level).connect(gain);oscillator.start();return oscillator;
-    });
-    activeAudio={context,gain,oscillators};
-    window.setTimeout(stopAudio,3500);
-  } catch {}
-}
 export default function WelcomeSplash() {
   const [stage,setStage]=useState("loading");
   const [visible,setVisible]=useState(() => {
@@ -39,16 +8,17 @@ export default function WelcomeSplash() {
   });
   useEffect(() => {
     if (!visible) return;
-    const timer=window.setTimeout(()=>setStage("gate"),2400);
+    const timer=window.setTimeout(()=>{
+      try { sessionStorage.setItem("velvet-entry-seen-v2","1"); } catch {}
+      setStage("leaving");
+    },3200);
     return ()=>window.clearTimeout(timer);
   },[visible]);
-  useEffect(() => () => stopAudio(),[]);
-  const enter=(sound)=>{
-    if(sound) playAudio();
-    try { sessionStorage.setItem("velvet-entry-seen-v2","1"); } catch {}
-    setStage("leaving");
-    window.setTimeout(()=>setVisible(false),850);
-  };
+  useEffect(() => {
+    if (stage!=="leaving") return;
+    const timer=window.setTimeout(()=>setVisible(false),850);
+    return ()=>window.clearTimeout(timer);
+  },[stage]);
   if(!visible)return null;
   return <div className={`velvet-zip-entry velvet-zip-entry--${stage}`} aria-label="Velvet Stories entrance">
     <div className="velvet-zip-entry__silk velvet-zip-entry__silk--left" aria-hidden="true"/>
@@ -68,8 +38,5 @@ export default function WelcomeSplash() {
       </svg>
       <div className="velvet-zip-entry__brand">VELVET<small>STORIES</small></div>
     </div>
-    {stage==="loading" ? <div className="velvet-zip-entry__loading"><span>ENTERING VELVET</span><i/></div> :
-      stage==="gate" ? <div className="velvet-zip-entry__gate"><button type="button" onClick={()=>enter(true)}>ENTRAR CON SONIDO</button><button type="button" onClick={()=>enter(false)}>ENTRAR SIN SONIDO</button></div> : null}
-    {stage==="loading" && <button type="button" className="velvet-zip-entry__skip" onClick={()=>setStage("gate")}>SALTAR INTRO ↗</button>}
   </div>;
 }
