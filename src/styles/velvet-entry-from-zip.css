@@ -57,3 +57,7 @@
 .velvet-zip-entry__pink-gate button,.velvet-zip-entry__pink-gate button:hover,.velvet-zip-entry__pink-gate button:focus-visible{width:auto;min-height:44px;padding:8px 22px;border:0;border-radius:0;background:transparent;color:#e9a9be;box-shadow:none;font:500 12px/1.4 'Space Mono',system-ui,sans-serif;letter-spacing:.42em;text-shadow:0 0 12px #e8a0b355;transition:color .25s,text-shadow .25s,transform .25s}
 .velvet-zip-entry__pink-gate button:hover,.velvet-zip-entry__pink-gate button:focus-visible{color:#ffd4e0;text-shadow:0 0 18px #e8a0b3a0;transform:none}
 .velvet-zip-entry__pink-gate button:focus-visible{outline:1px solid #e9a9be;outline-offset:5px}
+
+.velvet-zip-entry__pink-gate{left:50%;width:180px;min-width:0;display:grid;place-items:center;transform:translateX(-50%)}
+.velvet-zip-entry__pink-gate button{width:100%!important;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px 0 8px .42em!important}
+@media(max-width:650px){.velvet-zip-entry__pink-gate{width:180px;left:50%}}
