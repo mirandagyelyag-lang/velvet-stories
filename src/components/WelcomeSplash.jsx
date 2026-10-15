@@ -51,11 +51,12 @@ export default function WelcomeSplash() {
       aria-label="Velvet Stories cinematic entrance">
       <div className="velvet-film__stage">
         <svg className="velvet-film__sigil" viewBox="0 0 420 420" aria-hidden="true">
-          <circle className="velvet-film__line velvet-film__ring" cx="210" cy="210" r="161"/>
-          <circle className="velvet-film__line velvet-film__ring2" cx="210" cy="210" r="135"/>
-          <path className="velvet-film__line velvet-film__v" d="M91 112 L184 314 Q201 350 224 301 L327 110"/>
-          <path className="velvet-film__line velvet-film__ribbon" d="M87 296 C145 217 229 194 303 217 C359 236 328 306 273 308 C206 311 161 241 120 171"/>
-          <path className="velvet-film__line velvet-film__axis" d="M210 30 V390 M30 210 H390"/>
+          <g className="velvet-film__emblem" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+            <circle className="velvet-film__line velvet-film__ring" cx="210" cy="210" r="143"/>
+            <path className="velvet-film__line velvet-film__arch" d="M107 277 A143 143 0 0 1 313 277"/>
+            <path className="velvet-film__line velvet-film__monogram" d="M126 146 L210 282 L294 146"/>
+            <path className="velvet-film__line velvet-film__crown" d="M151 123 Q210 87 269 123"/>
+          </g>
         </svg>
         <div className="velvet-film__word">VELVET<span>STORIES</span></div>
       </div>
