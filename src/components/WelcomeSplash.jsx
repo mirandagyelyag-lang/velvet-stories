@@ -41,6 +41,6 @@ export default function WelcomeSplash() {
       </svg>
       <div className="velvet-zip-entry__brand">VELVET<small>STORIES</small></div>
     </div>
-    {stage==="gate" && <div className="velvet-zip-entry__pink-gate"><button type="button" onClick={enterVelvet}>ENTRAR <span aria-hidden="true">↗</span></button></div>}
+    {stage==="gate" && <div className="velvet-zip-entry__pink-gate"><button type="button" onClick={enterVelvet}>ENTRAR</button></div>}
   </div>;
 }

@@ -51,3 +51,9 @@
 @keyframes velvetPinkGateAppear{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
 @media(max-width:650px){.velvet-zip-entry__pink-gate{bottom:8%;width:min(82vw,310px)}}
 @media(prefers-reduced-motion:reduce){.velvet-zip-entry__pink-gate{animation:none}}
+
+/* Quiet editorial entry: lettering only, no pink rectangle. */
+.velvet-zip-entry__pink-gate{bottom:8%;width:auto;min-width:150px;text-align:center}
+.velvet-zip-entry__pink-gate button,.velvet-zip-entry__pink-gate button:hover,.velvet-zip-entry__pink-gate button:focus-visible{width:auto;min-height:44px;padding:8px 22px;border:0;border-radius:0;background:transparent;color:#e9a9be;box-shadow:none;font:500 12px/1.4 'Space Mono',system-ui,sans-serif;letter-spacing:.42em;text-shadow:0 0 12px #e8a0b355;transition:color .25s,text-shadow .25s,transform .25s}
+.velvet-zip-entry__pink-gate button:hover,.velvet-zip-entry__pink-gate button:focus-visible{color:#ffd4e0;text-shadow:0 0 18px #e8a0b3a0;transform:none}
+.velvet-zip-entry__pink-gate button:focus-visible{outline:1px solid #e9a9be;outline-offset:5px}
