@@ -6831,6 +6831,10 @@ function hasSilentContinuationStall(reply = "", turnIntent = {}, recentReplies =
 function hasTimeSkipDrift(reply = "", turnIntent = {}) {
   if (String(turnIntent?.kind || "") !== "time_skip") return false;
   const text = normalizeText(reply);
+  // A time skip can land in a quiet morning without dialogue or a dramatic event.
+  const elapsedLanding = /\b(?:next morning|following morning|morning (?:light|sun)|by morning|hours later|later that (?:day|night))\b/.test(text);
+  const wakingAction = /\b(?:he|she|they|[a-z]+) (?:wakes|woke|awakens|awoke|sits up|sat up|gets up|got up|is awake|was awake)\b/.test(text);
+  if (elapsedLanding && wakingAction) return false;
   const active = hasConcreteBeatProgression(reply);
   const oldFocus = /\b(?:corridor|doorway|spot|place|space) (?:where )?(?:she|he|they|you) (?:vanished|left|had been|walked)|\b(?:gaze|eyes?|attention) (?:slid|drifted|flicked|returned|went) (?:back|toward|to)\b|\bdidnt look back|\bdid not look back|\bwithout searching for\b/.test(text);
   const staticScene = /\b(?:nursing a drink|leaning against|stayed by|remained by|absent nod|quiet nod|watched the crowd|scanning the crowd)\b/.test(text);
