@@ -61,3 +61,7 @@
 .velvet-zip-entry__gate button,.velvet-zip-entry__gate button:last-child{min-width:0;width:auto;min-height:44px;padding:8px 18px;border:0;border-radius:0;background:transparent;box-shadow:none;color:#ead0db;font:400 11px Georgia,'Times New Roman',serif;letter-spacing:.34em;text-indent:.34em;transition:color .3s,text-shadow .3s}
 .velvet-zip-entry__gate button:hover,.velvet-zip-entry__gate button:focus-visible{background:transparent;border:0;box-shadow:none;color:#fff0f5;text-shadow:0 0 12px #e7a2c0}
 @media(max-width:650px){.velvet-zip-entry__gate button,.velvet-zip-entry__gate button:last-child{min-width:0;width:auto;min-height:44px;padding:8px 18px;font-size:11px;letter-spacing:.34em}}
+
+/* Soft pink lettering: subtle, refined, and still word-only. */
+.velvet-zip-entry__gate button,.velvet-zip-entry__gate button:last-child{color:#f3a9c7;text-shadow:0 0 8px #ef8ab744}
+.velvet-zip-entry__gate button:hover,.velvet-zip-entry__gate button:focus-visible{color:#ffd0e3;text-shadow:0 0 14px #f38cbd99}
