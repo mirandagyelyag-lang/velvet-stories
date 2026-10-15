@@ -1,3 +1,4 @@
+import { overnightLanding, overnightLandingIssues } from "./engine/overnight-landing.js";
 import { createCorrectionBudget, isEditorialAdvisory } from "./engine/correction-budget.js";
 import { createQuotaFetch } from "./engine/provider-quota.js";
 import { buildGroqLivePrompt, callGroqProse } from "./engine/groq-fallback.js";
@@ -5520,6 +5521,7 @@ async function repairRoleplayOnceV3({ apiKey, originalPrompt, rejectedReply, iss
     kinetic_tension_deflated: "Add one earned active choice, not static staring or atmosphere.",
     npc_dialogue_tic_loop: "Let the NPC speak plainly or stay silent; remove sitcom commentary and repeated mannerisms.",
     unsolicited_offscreen_lead_contact: "Remove the convenient message/call and let the newly established scene breathe.",
+    overnight_landing_clock_conflict: "Keep the user-directed night-work jump in the early hours, around 2–3 a.m. when no explicit clock exists; remove unsupported dawn, six a.m., breakfast or morning campus plans. Answer the latest time question briefly and approximately.",
     time_skip_exposition_echo: "Apply the time skip silently. Begin inside the changed normal without naming or counting it.",
     post_skip_warmth_regression: "Preserve the warmer baseline through ordinary familiarity, not older hostility or polished teasing.",
     therapeutic_deescalation_pivot: "The user disclosed a bad day during conflict. Respect the boundary, but remove counselor/concierge language, invented quiet-place advice, polished caretaking, instant personality softening, and the ‘if you change your mind’ service offer. Use one brief honest character-specific response and a concrete boundary-respecting action.",
@@ -6750,6 +6752,8 @@ function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMes
     "CURRENT BEAT POLICY — APPLY THIS BEFORE GENERIC STYLE ADVICE",
     `- Effective dynamics: initiative=${Math.round(d.initiative)}, flirting=${Math.round(d.flirting)}, drama=${Math.round(d.drama)}, romance=${Math.round(d.romance)}. The written profile can raise these behavioral signals; sliders are not the only source of character identity.`,
   ];
+  const nightLanding = overnightLanding(allRecentUserTurns, latestUserMessage);
+  if (nightLanding && !openingRegeneration) base.push(nightLanding.instruction);
   if (postSkipBaseline?.stateDirective && kind !== "time_skip" && !openingRegeneration) {
     base.push(`- ACTIVE POST-SKIP BASELINE: ${String(postSkipBaseline.stateDirective || "").replace(/[<>]/g, "").trim().slice(0, 420)}. This remains the current relationship baseline until visible canon changes it. Do not treat it as a one-turn mood.`);
     if (postSkipStateSignalsWarmth(postSkipBaseline.stateDirective)) {
@@ -9446,7 +9450,7 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
-  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => !isEditorialAdvisory(issue) && HARD_REPAIR_REQUIRED_ISSUES.has(issue));
+  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => !isEditorialAdvisory(issue) && (issue === "overnight_landing_clock_conflict" || HARD_REPAIR_REQUIRED_ISSUES.has(issue)));
 }
 
 function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = {}, recentUserMessages = [], recentCharacterReplies = [], character = {} } = {}) {
@@ -9513,7 +9517,7 @@ function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = 
 }
 
 function blockingNarrativeIssues(issues = []) {
-  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => !isEditorialAdvisory(issue) && BLOCKING_NARRATIVE_ISSUES.has(issue));
+  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => !isEditorialAdvisory(issue) && (issue === "overnight_landing_clock_conflict" || BLOCKING_NARRATIVE_ISSUES.has(issue)));
 }
 function replyRhythmSignature(text = "") {
   const raw = String(text || "").trim();
@@ -10164,6 +10168,8 @@ function validateNarrativeReply(reply = "", options = {}) {
     character: options.character || {},
     groundedAnchors: options.groundedAnchors || [],
   })) issues.push(issue);
+  const nightLanding = overnightLanding(options.recentUserMessages || [], options.latestUserMessage || "");
+  issues.push(...overnightLandingIssues(text, nightLanding));
   for (const issue of scenePhysicsIssues({
     reply: text,
     latestUserMessage: options.latestUserMessage || "",
