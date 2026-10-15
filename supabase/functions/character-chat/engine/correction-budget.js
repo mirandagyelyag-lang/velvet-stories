@@ -14,6 +14,7 @@ export function createCorrectionBudget(limit = 1) {
 // These findings guide generation but cannot invalidate otherwise grounded prose.
 // Canon, user agency, answer ownership, completeness and novelty remain mandatory.
 const editorialFindings = new Set([
+  'conversation_not_converted_to_event', 'adjacent_dialogue_fragments',
   'micro_turn_padding', 'repeated_low_signal_mannerism',
   'human_cognition_response_weight', 'naturalness_score_low',
   'compulsory_followup_question', 'silent_continue_prop_loop',
