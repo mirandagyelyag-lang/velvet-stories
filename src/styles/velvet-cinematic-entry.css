@@ -1,4 +1,4 @@
-.velvet-film{position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;overflow:hidden;background:radial-gradient(ellipse at 50% 43%,#342033 0%,#240f20 50%,#140911 100%);color:#ebdacd;cursor:pointer;isolation:isolate;animation:filmOut .7s ease-in 4.2s both}
+.velvet-film{position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;overflow:hidden;background:radial-gradient(ellipse at 50% 43%,#342033 0%,#240f20 50%,#140911 100%);color:#ebdacd;cursor:pointer;isolation:isolate;animation:none}
 .velvet-film__stage{position:relative;width:min(80vw,540px);aspect-ratio:1;display:grid;place-items:center}
 .velvet-film__sigil{position:absolute;inset:0;width:100%;height:100%;opacity:0;transform:scale(.86);animation:sigilIn 2.5s ease .6s forwards}
 .velvet-film__line{fill:none;stroke:#bc8398;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1300;stroke-dashoffset:1300;animation:drawLine 2.4s cubic-bezier(.2,.7,.15,1) 1s forwards}
@@ -10,3 +10,10 @@
 .velvet-film__skip{position:absolute;right:25px;bottom:25px;font:10px system-ui,sans-serif;letter-spacing:.15em;color:#d9b7c4;opacity:.75}
 @keyframes wordIn{from{opacity:0;transform:translateY(12px);filter:blur(7px)}to{opacity:1;transform:none;filter:blur(0)}}@keyframes sigilIn{to{opacity:1;transform:scale(1)}}@keyframes drawLine{to{stroke-dashoffset:0}}@keyframes loadTrack{to{width:100%}}@keyframes filmOut{to{opacity:0;visibility:hidden;pointer-events:none}}
 @media(prefers-reduced-motion:reduce){.velvet-film,.velvet-film__sigil,.velvet-film__word,.velvet-film__line,.velvet-film__track i{animation-duration:.01ms!important;animation-delay:0ms!important}.velvet-film{animation:none}.velvet-film__sigil,.velvet-film__word{opacity:1}.velvet-film__line{stroke-dashoffset:0}}
+
+.velvet-film__choices{position:absolute;bottom:9%;left:50%;transform:translateX(-50%);width:min(88vw,650px);display:flex;align-items:center;justify-content:space-between;gap:28px;animation:wordIn .7s ease both}
+.velvet-film__choices button{font:600 10px system-ui,sans-serif;letter-spacing:.25em;color:#ebdacd;background:transparent;border:1px solid #d9b7c47a;padding:17px 27px;cursor:pointer;transition:background .25s,border-color .25s}
+.velvet-film__choices button:hover,.velvet-film__choices button:focus-visible{background:#ebdacd20;border-color:#ebdacd}
+.velvet-film__choices button:last-child{border:0;border-bottom:1px solid #d9b7c477;padding:13px 0;color:#d9b7c4}
+.velvet-film__skip{background:transparent;border:0;cursor:pointer}
+@media(max-width:540px){.velvet-film__choices{flex-direction:column;bottom:8%;gap:18px}.velvet-film__choices button{width:100%}.velvet-film__choices button:last-child{width:auto}}
