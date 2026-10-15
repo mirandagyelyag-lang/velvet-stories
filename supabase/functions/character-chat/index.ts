@@ -7,7 +7,7 @@ import { createQuotaFetch } from "./engine/provider-quota.js";
 import { buildGroqLivePrompt, callGroqProse } from "./engine/groq-fallback.js";
 import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt, nathanOpeningIssues, buildAlexanderInstantPrompt, buildAlexanderRevisionPrompt, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT, repairOpeningAgency } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.112.0";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
 import { groundedRealityIssues, sanitizeGroundedRealityReply } from "./engine/grounded-reality-lock.ts";
 import { agencyMomentumIssues, sanitizeAgencyMomentumReply } from "./engine/agency-momentum-lock.ts";
