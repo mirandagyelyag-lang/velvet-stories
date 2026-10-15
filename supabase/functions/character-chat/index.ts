@@ -1,3 +1,4 @@
+import { createCorrectionBudget, isEditorialAdvisory } from "./engine/correction-budget.js";
 import { createQuotaFetch } from "./engine/provider-quota.js";
 import { buildGroqLivePrompt, callGroqProse } from "./engine/groq-fallback.js";
 import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt, nathanOpeningIssues, buildAlexanderInstantPrompt, buildAlexanderRevisionPrompt, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT, repairOpeningAgency } from "./engine/instant-story-identity.js";
@@ -9445,7 +9446,7 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
 ]);
 
 function hardRepairRequiredIssues(issues = []) {
-  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => HARD_REPAIR_REQUIRED_ISSUES.has(issue));
+  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => !isEditorialAdvisory(issue) && HARD_REPAIR_REQUIRED_ISSUES.has(issue));
 }
 
 function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = {}, recentUserMessages = [], recentCharacterReplies = [], character = {} } = {}) {
@@ -9512,7 +9513,7 @@ function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = 
 }
 
 function blockingNarrativeIssues(issues = []) {
-  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => BLOCKING_NARRATIVE_ISSUES.has(issue));
+  return [...new Set(Array.isArray(issues) ? issues : [])].filter((issue) => !isEditorialAdvisory(issue) && BLOCKING_NARRATIVE_ISSUES.has(issue));
 }
 function replyRhythmSignature(text = "") {
   const raw = String(text || "").trim();
@@ -11242,9 +11243,10 @@ async function streamRoleplayV19({
         });
         let result: ModelResult;
         let groqTurnPrompt = "";
-        let correctionCalls = 0;
-        const callCurrentProvider = async (options): Promise<ModelResult> => {
-          if (++correctionCalls > 1) throw new Error("This turn already used its one AI correction; preserve final continuity barriers.");
+        const correctionBudget = createCorrectionBudget(1);
+        let lastCorrectionFailure = "";
+        const callCurrentProvider = async (options): Promise<ModelResult | null> => {
+          try { return await correctionBudget.run(async () => {
           if (!groqTurnPrompt) return await callGeminiWithFailover(options);
           // Every repair/rescue retains the same provider and canonical turn context.
           // Replace only the oversized shared base, preserving repair directions.
@@ -11266,6 +11268,10 @@ async function streamRoleplayV19({
           });
           console.log("[character-chat] Groq correction completed", { model: next.model });
           return { ...emptyModelEnvelope(next.reply), ...next };
+          }); } catch (error) {
+            lastCorrectionFailure = getErrorMessage(error);
+            throw error;
+          }
         };
         try {
           result = await streamGeminiEnvelopeWithFailover({
@@ -11414,7 +11420,7 @@ async function streamRoleplayV19({
         // One bounded repair only for structural or severe user-facing naturalism issues.
         // Continuity metadata never triggers another Gemini call. Deterministic
         // continuity merging protects stored scene state without adding latency.
-        if (!FIRST_DRAFT_WINS_V35268 && blocking.length) {
+        if (!FIRST_DRAFT_WINS_V35268 && blocking.length && correctionBudget.available) {
           console.log("[character-chat] bounded repair started", { issues: blocking, firstDraftDurationMs });
           repairUsed = true;
           // Raw draft prose stays quarantined while repair runs. Only a reply that
@@ -11565,7 +11571,7 @@ async function streamRoleplayV19({
               lastResortReply = String(freshLastResort?.reply || "").trim();
               if (freshLastResort?.model) sendEvent(controller, { type: "model", model: freshLastResort.model });
             }
-            if (!lastResortReply) throw new Error("Velvet could not produce a fresh in-character continuation; the previous response was kept.");
+            if (!lastResortReply) throw new Error(lastCorrectionFailure || "Velvet could not finish this reply cleanly. Please try again.");
             console.error("[character-chat] compact final rescue rejected; using grounded last-resort reply", { blocking: rescueBlocking, hard: rescueHard });
             result = { ...(finalRescue || result), reply: lastResortReply };
             validationIssues = validateNarrativeReply(result.reply, {
@@ -11607,7 +11613,7 @@ async function streamRoleplayV19({
           persistableReply = String(blankRecovery?.reply || "").trim();
           if (blankRecovery?.model) sendEvent(controller, { type: "model", model: blankRecovery.model });
         }
-        if (!persistableReply) throw new Error("Velvet received an empty model reply after recovery; nothing was saved.");
+        if (!persistableReply) throw new Error(lastCorrectionFailure || "Velvet could not finish this reply cleanly. Please try again.");
 
         // v3.53.23 REGENERATION NOVELTY VETO: Regenerate means genuinely different.
         // Every previously rejected alternative for this message is a hard negative,
