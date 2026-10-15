@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowUpRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import "../styles/auth.css";
+import "../styles/auth-world.css";
 
 function translateAuthError(message = "") {
   const n = message.toLowerCase();
