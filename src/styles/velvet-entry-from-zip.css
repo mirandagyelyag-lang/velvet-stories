@@ -49,3 +49,10 @@
   .velvet-zip-entry__gate button:last-child{width:100%;min-height:40px;padding:9px 12px}
   .velvet-zip-entry__core{width:min(78vw,410px);transform:translateY(-7vh)}
 }
+
+/* One understated entry action, centered beneath the emblem. */
+.velvet-zip-entry__gate{width:auto;min-width:0;bottom:8%;justify-content:center}
+.velvet-zip-entry__gate button,.velvet-zip-entry__gate button:last-child{display:inline-flex;align-items:center;justify-content:center;gap:20px;width:auto;min-width:158px;min-height:44px;padding:12px 25px;border:1px solid #d9b7c47a;border-radius:2px;background:#2a10201c;color:#f2d7e1;font:500 10px system-ui,sans-serif;letter-spacing:.28em;white-space:nowrap;box-shadow:none;transition:background .3s,border-color .3s,box-shadow .3s}
+.velvet-zip-entry__gate button:hover,.velvet-zip-entry__gate button:focus-visible{background:#5a244040;border-color:#f5c9d9;box-shadow:0 0 18px #e480a02b}
+.velvet-zip-entry__gate button span{font-size:15px;letter-spacing:0;color:#e6aabd}
+@media(max-width:650px){.velvet-zip-entry__gate{width:auto;bottom:max(7%,env(safe-area-inset-bottom))}.velvet-zip-entry__gate button,.velvet-zip-entry__gate button:last-child{width:auto;min-width:148px;min-height:44px;padding:11px 23px;font-size:10px;letter-spacing:.24em}}
