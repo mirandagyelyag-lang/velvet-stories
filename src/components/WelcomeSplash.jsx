@@ -43,7 +43,7 @@ export default function WelcomeSplash() {
     return ()=>window.clearTimeout(timer);
   },[visible]);
   useEffect(() => () => stopAudio(),[]);
-  const enter=(sound)=>{
+  const enter=(sound=false)=>{
     if(sound) playAudio();
     try { sessionStorage.setItem("velvet-entry-seen-v2","1"); } catch {}
     setStage("leaving");
@@ -69,6 +69,6 @@ export default function WelcomeSplash() {
       <div className="velvet-zip-entry__brand">VELVET<small>STORIES</small></div>
     </div>
     {stage==="loading" ? <div className="velvet-zip-entry__loading"><span>ENTERING VELVET</span><i/></div> :
-      stage==="gate" ? <div className="velvet-zip-entry__gate"><button type="button" onClick={()=>enter(true)}>ENTRAR CON SONIDO</button><button type="button" onClick={()=>enter(false)}>ENTRAR SIN SONIDO</button></div> : null}
+      stage==="gate" ? <div className="velvet-zip-entry__gate"><button type="button" onClick={()=>enter(false)}>ENTRAR <span aria-hidden="true">↗</span></button></div> : null}
   </div>;
 }
