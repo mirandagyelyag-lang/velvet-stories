@@ -69,6 +69,6 @@ export default function WelcomeSplash() {
       <div className="velvet-zip-entry__brand">VELVET<small>STORIES</small></div>
     </div>
     {stage==="loading" ? <div className="velvet-zip-entry__loading"><span>ENTERING VELVET</span><i/></div> :
-      stage==="gate" ? <div className="velvet-zip-entry__gate"><button type="button" onClick={()=>enter(false)}>ENTRAR <span aria-hidden="true">↗</span></button></div> : null}
+      stage==="gate" ? <div className="velvet-zip-entry__gate"><button type="button" onClick={()=>enter(false)}>ENTRAR</button></div> : null}
   </div>;
 }
