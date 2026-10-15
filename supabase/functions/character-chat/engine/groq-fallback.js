@@ -1,3 +1,4 @@
+import { withoutRepeatedLatest, uniqueContext } from "./economical-context.js";
 import { overnightLanding } from "./overnight-landing.js";
 import { retryAfterMs } from "./provider-quota.js";
 // Independent Groq fallback. Credentials remain on the Edge Function server.
@@ -9,7 +10,7 @@ export function buildGroqLivePrompt({
  const clean = (v, n) => String(v ?? "").slice(0, n);
  const profileFields = ["name","role","description","personality","relationship","world","speech_style","humor_style","affection_style","emotional_defense","boundaries"];
  const profile = profileFields.map(k => k + ": " + clean(character[k], k === "boundaries" ? 700 : 350)).join("\n");
- const history = transcript.slice(-20).map((m,i,a) => clean(m.speaker,120) + (m.edited ? " [EDITED CURRENT CANON]" : "") + ": " + clean(m.content, i >= a.length-6 ? 900 : 420)).join("\n\n");
+ const history = withoutRepeatedLatest(transcript.slice(-20), latestUserMessage, userIdentity.name).map((m,i,a) => clean(m.speaker,120) + (m.edited ? " [EDITED CURRENT CANON]" : "") + ": " + clean(m.content, i >= a.length-6 ? 900 : 420)).join("\n\n");
  return [
   "Write the next single in-character turn as visible prose only. No JSON, reasoning, scores or metadata. Put spoken dialogue in quotation marks. Narration addresses the user as you/your, never she/her. Third-person pronouns in dialogue about the user to an NPC are permitted.",
   "Current edited transcript and explicit user facts outrank stale summaries. Preserve location, roles, exact orders, possessions, pending topics, knowledge and relationship stage. Do not invent user speech, thoughts, feelings, consent or movement. Private narration is not audible. A short reply can be complete; avoid filler, stock gestures, interrogation and automatic flirtation.",
@@ -32,12 +33,12 @@ export function buildGroqLivePrompt({
   "SCENE\n" + clean(JSON.stringify(scene),1300),
   "RELATIONSHIP\n" + clean(JSON.stringify(relationship),700),
   "RECAP (subordinate to corrected live turns)\n" + clean(recap,900),
-  "MEMORIES\n" + memories.slice(0,5).map(m=>clean(m.content,220)).join("\n"),
-  "LORE\n" + lore.slice(0,3).map(m=>clean(m.content,220)).join("\n"),
+  "MEMORIES\n" + uniqueContext(memories).slice(0,5).map(m=>clean(m.content,220)).join("\n"),
+  "LORE\n" + uniqueContext(lore).slice(0,3).map(m=>clean(m.content,220)).join("\n"),
   "OPEN THREADS\n" + clean(JSON.stringify(threads),800),
   "CREATOR DIRECTION\n" + clean(direction,1600),
   "MODE\n" + clean(regeneration,1100),
-  "REJECTED NON-CANON REPLIES\n" + rejected.slice(-2).map(r=>clean(r,450)).join("\n"),
+  "REJECTED NON-CANON REPLIES\n" + uniqueContext(rejected).slice(-2).map(r=>clean(r,450)).join("\n"),
   "CURRENT TRANSCRIPT\n" + history,
   "LATEST USER TURN (answer this conversational job first)\n" + clean(latestUserMessage,3000),
  ].join("\n\n");

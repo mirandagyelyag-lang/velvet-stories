@@ -1,3 +1,4 @@
+import { withoutRepeatedLatest } from "./engine/economical-context.js";
 import { callEconomicalBackup } from "./engine/openai-fallback.js";
 import { overnightLanding, overnightLandingIssues } from "./engine/overnight-landing.js";
 import { createCorrectionBudget, isEditorialAdvisory } from "./engine/correction-budget.js";
@@ -2547,6 +2548,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   const quotaUnavailableModels = new Set();
   const overloadedModels = new Set();
   const groqOpeningRequests = new Map<string, Promise<any>>();
+  const paidOpeningBudget = createCorrectionBudget(2); // Initial paid draft plus one necessary repair at most.
   const requestGroqOpening = (phase, effectivePrompt) => {
     const key = phase === "primary" ? "primary" : phase;
     if (!groqOpeningRequests.has(key)) {
@@ -2568,6 +2570,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
           : compactOpening;
         console.log("[character-chat] Instant Story trying Groq", { phase, promptChars: providerPrompt.length });
         const result = await callEconomicalBackup({
+              paidBudget: paidOpeningBudget,
               groqCall: callGroqProse,
               groqApiKey: Deno.env.get("GROQ_API_KEY") || "",
               openaiApiKey: (Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OPEN_AI_KEY")) || "",
@@ -2784,34 +2787,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         finishReason: winner.finishReason,
         durationMs: Date.now() - startedAt,
       });
-      // Cancel hedge losers before the bounded editor pass, so quality does not
-      // race unused provider calls or require another public generation request.
-      if (approvedEngineActive) {
-        closed = true;
-        clearTimeout(primaryDeadlineTimer);
-        controllers.forEach((controller) => controller.abort());
-        try {
-          const { data, actualModel } = await requestOpening({
-            model: winner.model,
-            prompt: approvedRevisionBuilder(safeDraft, winner.opening, cleanIdea, recentOpenings),
-            phase: `${approvedEngineKey}_edit`, timeoutMs: 9000, maxOutputTokens: 1600, temperature: 0.8,
-          });
-          const opening = readOpening(data);
-          const finishReason = String(data?.candidates?.[0]?.finishReason || "");
-          const hardBlocks = [
-            ...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea),
-            ...speakerOwnershipIssuesV35367(opening, safeDraft),
-          ];
-          if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !chaseOpeningIssues(opening, safeDraft).length && !nathanOpeningIssues(opening, safeDraft, cleanIdea).length) {
-            return instantStoryResponse({ opening, source: `ai_${approvedEngineKey}_edit`, model: actualModel,
-              sceneSeed, openingFamily });
-          }
-          diagnose({ phase: `${approvedEngineKey}_edit`, model: actualModel, code: "revision_rejected", reasons: hardBlocks });
-        } catch (error) {
-          console.warn("[character-chat] Approved-character editor unavailable; preserving safe original", { error: getErrorMessage(error) });
-        }
-        winner.softWarnings = [...(winner.softWarnings || []), `${approvedEngineKey}_revision_unavailable`];
-      }
+      // A validated primary opening is delivered directly; no automatic editorial generation.
       return await instantStoryResponse({ opening: winner.opening, source: "ai", model: winner.model, sceneSeed, openingFamily, softWarnings: winner.softWarnings });
     }
   } finally {
@@ -5813,7 +5789,7 @@ function buildCompactLiveRecoveryPrompt({
     recentUserMessages: messages.filter((m)=>m?.sender === "user").slice(-8).map((m)=>String(m?.content||"")),
     recentCharacterReplies: messages.filter((m)=>m?.sender !== "user").slice(-8).map((m)=>String(m?.content||"")),
   });
-  const transcript = (Array.isArray(messages) ? messages : []).slice(-16).map((message) => {
+  const transcript = withoutRepeatedLatest((Array.isArray(messages) ? messages : []).slice(-16).map(message => ({ ...message, content: message?.sender === "user" ? sanitizeUserTurnForPerception(message?.content || "") : message?.content })), sanitizeUserTurnForPerception(latestUserMessage), userName).map((message) => {
     const speaker = message?.sender === "user" ? userName : (character?.name || "Character");
     return `[${cleanPromptValue(message?.id, 80)}] ${speaker}: ${cleanPromptValue(message?.sender === "user" ? sanitizeUserTurnForPerception(message?.content || "") : message?.content, 1000)}`;
   }).filter((line) => line.split(": ").at(-1)).join("\n");
@@ -11452,7 +11428,7 @@ async function streamRoleplayV19({
               originalPrompt: groqTurnPrompt || compactTurnPrompt,
               providerCall: callCurrentProvider,
               rejectedReply: result.reply,
-              issues: validationIssues,
+              issues: [...new Set([...blockingNarrativeIssues(validationIssues), ...hardRepairRequiredIssues(validationIssues)])],
               character,
               isCancelled,
             });

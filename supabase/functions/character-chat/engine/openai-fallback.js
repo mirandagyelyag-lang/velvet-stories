@@ -29,9 +29,15 @@ export async function callOpenAIProse({apiKey, prompt='', systemInstruction='', 
   return {reply,model:'openai/gpt-5-mini',finishReason:'STOP',promptTokens:Number(data.usage?.input_tokens||0),outputTokens:Number(data.usage?.output_tokens||0),estimatedCostUsd:(Number(data.usage?.input_tokens||0)*0.25+Number(data.usage?.output_tokens||0)*2)/1000000};
  } finally {clearTimeout(timer);}
 }
-export async function callEconomicalBackup({groqApiKey='',openaiApiKey='',preferOpenAI=false,groqCall,openaiCall=callOpenAIProse,...options}={}) {
+export async function callEconomicalBackup({groqApiKey='',openaiApiKey='',preferOpenAI=false,paidBudget=null,groqCall,openaiCall=callOpenAIProse,...options}={}) {
  if(await (options.isCancelled || (async()=>false))()) throw new DOMException('Generation cancelled','AbortError');
- if(preferOpenAI) return openaiCall({...options,apiKey:openaiApiKey});
+ const paidCall=async()=>{
+  const run=()=>openaiCall({...options,apiKey:openaiApiKey});
+  const result=paidBudget ? await paidBudget.run(run) : await run();
+  if(!result) throw Error('Velvet could not complete this story. The previous story was kept.');
+  return result;
+ };
+ if(preferOpenAI) return paidCall();
  let freeFailure;
  try {
   if(!groqApiKey) throw Error('Groq fallback is not configured.');
@@ -43,5 +49,5 @@ export async function callEconomicalBackup({groqApiKey='',openaiApiKey='',prefer
   freeFailure=error;
  }
  if(!openaiApiKey) throw freeFailure;
- return await openaiCall({...options,apiKey:openaiApiKey});
+ return await paidCall();
 }
