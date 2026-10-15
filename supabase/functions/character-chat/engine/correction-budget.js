@@ -16,6 +16,8 @@ export function createCorrectionBudget(limit = 1) {
 const editorialFindings = new Set([
   // Scene duration is pacing advice, never grounds to erase a complete reply.
   'scene_lifecycle_overstayed',
+  // A missing career/campus keyword is style advice, not a canon contradiction.
+  'domain_life_continuity_missing',
   'conversation_not_converted_to_event', 'adjacent_dialogue_fragments',
   'micro_turn_padding', 'repeated_low_signal_mannerism',
   'human_cognition_response_weight', 'naturalness_score_low',
