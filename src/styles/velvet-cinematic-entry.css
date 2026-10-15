@@ -17,3 +17,13 @@
 .velvet-film__choices button:last-child{border:0;border-bottom:1px solid #d9b7c477;padding:13px 0;color:#d9b7c4}
 .velvet-film__skip{background:transparent;border:0;cursor:pointer}
 @media(max-width:540px){.velvet-film__choices{flex-direction:column;bottom:8%;gap:18px}.velvet-film__choices button{width:100%}.velvet-film__choices button:last-child{width:auto}}
+
+/* Refined cinematic emblem: symmetrical, understated, and behind the wordmark. */
+.velvet-film__sigil{width:min(75%,390px);height:min(75%,390px);inset:auto;opacity:0;filter:drop-shadow(0 0 18px #d9b7c41c)}
+.velvet-film__emblem{color:#bc8398}
+.velvet-film__emblem .velvet-film__ring{stroke-width:1;opacity:.38}
+.velvet-film__emblem .velvet-film__arch{stroke-width:1.2;opacity:.55;animation-delay:1.35s}
+.velvet-film__emblem .velvet-film__monogram{stroke:#d9b7c4;stroke-width:3;opacity:.72;animation-delay:1.55s}
+.velvet-film__emblem .velvet-film__crown{stroke-width:1;opacity:.45;animation-delay:1.85s}
+.velvet-film__word{font-family:Georgia,'Times New Roman',serif;font-size:clamp(29px,5.2vw,53px);letter-spacing:.3em;text-indent:.3em;text-shadow:0 2px 22px #210b19,0 0 55px #210b19}
+.velvet-film__word span{font-size:9px;letter-spacing:.48em;text-indent:.48em}
