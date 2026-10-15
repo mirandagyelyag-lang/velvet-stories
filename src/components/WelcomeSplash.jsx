@@ -51,15 +51,20 @@ export default function WelcomeSplash() {
   };
   if(!visible)return null;
   return <div className={`velvet-zip-entry velvet-zip-entry--${stage}`} aria-label="Velvet Stories entrance">
-    <div className="velvet-zip-entry__grain" aria-hidden="true"/>
+    <div className="velvet-zip-entry__silk velvet-zip-entry__silk--left" aria-hidden="true"/>
+    <div className="velvet-zip-entry__silk velvet-zip-entry__silk--right" aria-hidden="true"/>
+    <div className="velvet-zip-entry__glow" aria-hidden="true"/>
     <div className="velvet-zip-entry__core">
       <svg viewBox="0 0 400 400" className="velvet-zip-entry__emblem" fill="none" stroke="currentColor" aria-hidden="true">
+        <defs><linearGradient id="velvetLuminousMetal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffebec"/><stop offset=".24" stopColor="#f5a6bc"/><stop offset=".52" stopColor="#8c3e62"/><stop offset=".78" stopColor="#ffd2de"/><stop offset="1" stopColor="#b75e84"/></linearGradient></defs>
         <g className="velvet-zip-entry__outer"><circle cx="200" cy="200" r="186" strokeWidth=".6"/><path d="M200 14 A186 186 0 0 1 386 200" strokeWidth=".9"/></g>
         <g className="velvet-zip-entry__inner"><circle cx="200" cy="200" r="132" strokeWidth=".5" strokeDasharray="1 10"/></g>
         <path className="velvet-zip-entry__line" d="M88 92 L200 336 L312 92" strokeWidth=".9"/>
         <path className="velvet-zip-entry__line velvet-zip-entry__line--2" d="M116 92 L200 288 L284 92" strokeWidth=".7"/>
         <path className="velvet-zip-entry__line velvet-zip-entry__line--3" d="M142 92 L200 246 L258 92" strokeWidth=".55"/>
-        <circle cx="200" cy="336" r="2.6" fill="currentColor" stroke="none"/>
+        <circle cx="200" cy="336" r="3.6" fill="#ffe0e8" stroke="none" className="velvet-zip-entry__tip"/>
+        <path className="velvet-zip-entry__shine" d="M88 92 L200 336 L312 92" fill="none" stroke="url(#velvetLuminousMetal)" strokeWidth="2.7" strokeLinecap="round"/>
+        <path className="velvet-zip-entry__shine velvet-zip-entry__shine--inner" d="M116 92 L200 288 L284 92" fill="none" stroke="url(#velvetLuminousMetal)" strokeWidth="1.6" strokeLinecap="round"/>
       </svg>
       <div className="velvet-zip-entry__brand">VELVET<small>STORIES</small></div>
     </div>
