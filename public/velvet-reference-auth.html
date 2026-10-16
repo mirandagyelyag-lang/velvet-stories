@@ -119,9 +119,27 @@ h1 span{display:inline-block;opacity:0;filter:blur(10px);transform:translateY(12
 .hello{flex-direction:column;gap:12px;text-align:center;padding:0 30px;font-size:inherit;letter-spacing:0}
 .hello b{font:400 34px "Italiana",Georgia,serif;letter-spacing:.14em;color:var(--gold)}
 .hello em{font:italic 500 22px "Cormorant Garamond",Georgia,serif;color:rgba(234,211,222,.82)}
+
+.velvet-lighting{position:fixed;z-index:30;top:max(14px,env(safe-area-inset-top,14px));left:50%;transform:translateX(-50%);display:flex;gap:3px;padding:5px;border:1px solid rgba(199,149,174,.34);border-radius:999px;background:rgba(25,13,22,.7);backdrop-filter:blur(18px)}
+.velvet-lighting button{border:0;background:transparent;color:var(--dim);border-radius:999px;padding:9px 13px;font:400 11px "Sora",sans-serif;white-space:nowrap;cursor:pointer}
+.velvet-lighting button[aria-pressed="true"]{background:rgba(199,149,174,.24);color:var(--ink)}
+html[data-theme="light"]{--bg0:#f9f6f3;--bg1:#f5e9ed;--wine:#f0dce5;--rose:#85506c;--dim:#865d73;--gold:#78435f;--ink:#3d2734;color-scheme:light}
+html[data-theme="comfort"]{--bg0:#f2e6d9;--bg1:#eddbc9;--wine:#e4c7bb;--rose:#925d69;--dim:#825e60;--gold:#714b53;--ink:#493239;color-scheme:light}
+html[data-theme="light"] body,html[data-theme="comfort"] body{background:var(--bg0)}
+html[data-theme="light"] .stage,html[data-theme="comfort"] .stage{background:radial-gradient(ellipse at 50% 42%,var(--wine),var(--bg1) 58%,var(--bg0))}
+html[data-theme="light"] .vig,html[data-theme="comfort"] .vig{opacity:.12}
+html[data-theme="light"] #login,html[data-theme="comfort"] #login{background:var(--bg0)}
+html[data-theme="light"] .velvet-lighting,html[data-theme="comfort"] .velvet-lighting{background:rgba(255,250,247,.82);border-color:rgba(123,77,98,.23)}
+html[data-theme="light"] #login .b,html[data-theme="comfort"] #login .b{background:rgba(133,80,108,.09);border-color:rgba(133,80,108,.2)}
+html[data-theme="light"] #login .me .b,html[data-theme="comfort"] #login .me .b{background:#87546f;color:#fff}
+html[data-theme="light"] #login .bar,html[data-theme="comfort"] #login .bar{background:rgba(133,80,108,.08);border-color:rgba(133,80,108,.33)}
+html[data-theme="light"] #login input::placeholder,html[data-theme="comfort"] #login input::placeholder{color:rgba(73,50,57,.55)}
+html[data-theme="light"] #login .send,html[data-theme="comfort"] #login .send{background:#87546f;color:#fff}
+
 </style>
 </head>
 <body>
+<nav class="velvet-lighting" aria-label="Iluminación"><button type="button" data-lighting="dark">Original</button><button type="button" data-lighting="comfort">Cómoda</button><button type="button" data-lighting="light">Blanca</button></nav>
 <main class="stage" id="stage">
   <div class="spot"></div>
   <svg class="wisps" viewBox="0 0 400 800" preserveAspectRatio="none" aria-hidden="true">
