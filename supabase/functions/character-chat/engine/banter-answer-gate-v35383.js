@@ -86,9 +86,17 @@ export function buildBanterAnswerGateV35383({latestUserMessage="",recentUserMess
       : "- If the user asks a direct question, answer its actual meaning before any flourish.",
     "- QUESTION PRESERVATION: yes/no/admission questions may be answered directly, indirectly-but-clearly, or with a character-specific admission/denial. They may not be replaced by a clever tangent.",
     "- PROGRESSION RULE: after 1-2 playful exchanges, change at least one thing that matters: information, plan, emotional exposure, relationship pressure, proximity with cause, responsibility, choice, or concrete scene state.",
+    "- OPENING DIVERSITY: never reuse the first spoken phrase from any recent character turn. When regenerating, begin with a new action or substantive answer rather than resetting the scene to the same greeting or check-in.",
     "- REPETITION WATCH: avoid recycling 'fair enough', 'challenge accepted', 'technically', 'point to you', 'promise or threat', repeated low/smooth voice descriptions, repeated smirks/grins, or structurally identical comeback endings.",
     "- CHASE-SPECIFIC NOTE: confidence and flirtation should show through what he risks, notices, chooses, admits, or does. He does not need a comeback every turn to remain Chase.",
   ].join("\n");
+}
+
+function repeatedOpening(reply="", recent=[]){
+  const opening=(text)=>norm(dialogue(text)).split(/[.!?]/)[0].trim().split(/\\s+/).slice(0,9).join(" ");
+  const candidate=opening(reply);
+  if(!candidate||candidate.split(/\\s+/).length<2)return false;
+  return recent.some(previous=>{const old=opening(previous);return old===candidate||(old.length>=9&&candidate.startsWith(old+" "));});
 }
 
 export function banterAnswerGateIssuesV35383({reply="",latestUserMessage="",recentCharacterReplies=[]}={}){
@@ -96,6 +104,7 @@ export function banterAnswerGateIssuesV35383({reply="",latestUserMessage="",rece
   const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-4);
   const saturated=recent.slice(-2).filter(isBanterHeavy).length>=2||recent.filter(isBanterHeavy).length>=3;
   if(saturated&&isBanterHeavy(reply))issues.push("banter_saturation_loop");
+  if(repeatedOpening(reply,recent))issues.push("repeated_opening_dialogue");
   const q=directQuestionInfo(latestUserMessage);
   if(q&&!answersDirectQuestion(reply,latestUserMessage))issues.push("conversational_answer_gate_miss");
   const recentTechnically=recent.slice(-4).filter(x=>/\btechnically\b/i.test(dialogue(x))).length;
