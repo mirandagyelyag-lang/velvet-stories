@@ -291,6 +291,40 @@ html[data-theme="light"] #login .bar input{color:#40243a}
 html[data-theme="light"] #login .bar input::placeholder{color:#a0798c}
 html[data-theme="light"] #login .send{background:#8d5271;color:#fff}
 
+
+/* Fine illuminated moving frame on ENTRAR, preserved in every lighting mode. */
+html[data-theme="comfort"] .enter,html[data-theme="light"] .enter{
+  isolation:isolate;
+  border:0!important;
+  background:linear-gradient(110deg,#a36a83 0%,#f9e1e5 19%,#a56a85 34%,#a56a85 58%,#fff6f5 72%,#a36a83 86%,#f9e1e5 100%)!important;
+  background-size:260% 100%!important;
+  animation:velvet-frame-travel 5s linear infinite!important;
+  box-shadow:0 9px 25px rgba(111,55,82,.13),0 0 16px rgba(231,173,199,.2)!important;
+}
+html[data-theme="comfort"] .enter::before{
+  inset:2px!important;
+  background:linear-gradient(130deg,#a46d83,#87526b)!important;
+  box-shadow:none!important;
+}
+html[data-theme="light"] .enter::before{
+  inset:2px!important;
+  background:linear-gradient(125deg,#fffdfb,#fff8f8)!important;
+  box-shadow:none!important;
+}
+html[data-theme="comfort"] .enter::after,html[data-theme="light"] .enter::after{
+  content:"";position:absolute;z-index:2;pointer-events:none;
+  width:26px;height:2px;left:-26px;bottom:0;
+  background:linear-gradient(90deg,transparent,#fff8f5 70%,transparent);
+  box-shadow:0 0 7px 2px rgba(255,222,233,.8);
+  animation:velvet-frame-spark 5s ease-in-out infinite;
+}
+@keyframes velvet-frame-travel{0%{background-position:0% 50%}100%{background-position:260% 50%}}
+@keyframes velvet-frame-spark{0%,10%{left:-26px;opacity:0}20%{opacity:.95}75%{opacity:.8}90%,100%{left:100%;opacity:0}}
+@media(prefers-reduced-motion:reduce){
+  html[data-theme="comfort"] .enter,html[data-theme="light"] .enter{animation:none!important;background-position:50% 50%!important}
+  html[data-theme="comfort"] .enter::after,html[data-theme="light"] .enter::after{animation:none;opacity:0}
+}
+
 </style>
 </head>
 <body>
