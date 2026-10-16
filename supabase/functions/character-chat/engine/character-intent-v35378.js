@@ -47,6 +47,21 @@ export function characterIntentIssuesV35378({
  const directQuestion=/\?\s*$/.test(String(reply||"").trim());
  const boundary=/\b(?:leave me alone|give me space|wait|stop|not now|dont|do not|no)\b/.test(latest);
  if(passive&&!consentNeeded&&!directQuestion&&!boundary)issues.push("no_waiting_room_passive_handoff");
+ // Reject an offer being pushed again after the user has explicitly declined it.
+ // A caring refusal is still a refusal; the character must adapt rather than
+ // threaten to escort the user or repeat the same offer.
+ const refusal=/\\b(?:i(?:'ll| will) be fine|no thanks|no thank you|i(?:'m| am) okay|i don't want|i do not want|i can buy (?:one|my own)|no necesito|estare bien|estaré bien|no gracias)\\b/.test(latest);
+ const offeredObject=/\\b(?:umbrella|paraguas|jacket|coat|ride|coffee|drink|help)\\b/.test(t);
+ const pushesOffer=/\\b(?:take it|just take|you have to take|i(?:'ll| will) walk you|i(?:'m| am) walking you|or i'm|or i am|insist|won't take no|will not take no)\\b/.test(t);
+ if(refusal&&offeredObject&&pushesOffer)issues.push("rejected_offer_pushed_again");
+ // A direct question must not be recycled unchanged from the previous reply.
+ const previous=norm(list(recentCharacterReplies).slice(-1)[0]||"");
+ const questions=[...String(reply||"").matchAll(/(?:[“"])?([^.!?\\n]{2,90}\\?)/g)].map(m=>norm(m[1]).replace(/^[^a-z]+/,"").trim());
+ if(questions.some(q=>q.length>=5&&previous.includes(q)))issues.push("repeated_question_without_development");
+ // Do not convert the user's concern about the character's health into a
+ // reason to override their decision; acknowledge the concern first.
+ const concern=/\\b(?:don't want (?:to hear )?you coughing|don't want you (?:getting|to get) sick|worried about you|no quiero que te enfermes)\\b/.test(latest);
+ if(concern&&pushesOffer)issues.push("user_concern_ignored_for_offer");
  const recent=list(recentCharacterReplies).slice(-2).map(norm);
  if(recent.length&&passive&&recent.some(x=>/\b(?:wait(?:ed|s)?|watched|your call|up to you)\b/.test(x)))issues.push("repeated_passive_handoff");
  return [...new Set(issues)];
