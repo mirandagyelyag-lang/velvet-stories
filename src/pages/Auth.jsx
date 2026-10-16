@@ -39,6 +39,14 @@ export default function Auth() {
   }
 
   return <main className="velvet-crystal-auth velvet-atelier-auth">
+    <svg className="velvet-ink-filter" aria-hidden="true" focusable="false" width="0" height="0">
+      <defs><filter id="velvet-advanced-texture" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.018 0.034" numOctaves="4" seed="12" result="noise"/>
+        <feColorMatrix in="noise" type="saturate" values="0" result="mono"/>
+        <feComponentTransfer in="mono"><feFuncR type="discrete" tableValues="0 .18 .65 1"/><feFuncG type="discrete" tableValues="0 .18 .65 1"/><feFuncB type="discrete" tableValues="0 .18 .65 1"/></feComponentTransfer>
+      </filter></defs>
+    </svg>
+    <div className="velvet-ink-texture" aria-hidden="true"/>
     <div className="velvet-atelier-auth__grid" aria-hidden="true"/>
     <VelvetLamp />
     <header className="velvet-crystal-auth__header"><span>VELVET<small>STORIES</small></span></header>
