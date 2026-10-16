@@ -168,6 +168,55 @@ html[data-theme="light"] #login .bar,html[data-theme="comfort"] #login .bar{back
 html[data-theme="light"] #login .bar input,html[data-theme="comfort"] #login .bar input{color:#38202f}
 html[data-theme="light"] #login .send,html[data-theme="comfort"] #login .send{background:#713b58;color:#fff}
 
+
+/* Lighting refinement v3: prevent controls covering Velvet and avoid stark white. */
+html[data-theme="comfort"]{--bg0:#36252c;--bg1:#493039;--wine:#62414b;--rose:#e0b4aa;--dim:#d6ada8;--gold:#e7c4b6;--ink:#f6e9dd;color-scheme:dark}
+html[data-theme="light"]{--bg0:#e6d9dc;--bg1:#dbc6d0;--wine:#cfaebe;--rose:#65334f;--dim:#77445e;--gold:#713b57;--ink:#352030;color-scheme:light}
+html[data-theme="comfort"] body{background:#36252c}
+html[data-theme="comfort"] .stage{background:radial-gradient(ellipse 75% 65% at 50% 40%,#6b4a51 0%,#493039 52%,#30232b 100%)}
+html[data-theme="comfort"] #login{background:radial-gradient(ellipse 85% 70% at 50% 30%,#58404a 0%,#36252c 78%,#2b2028 100%);color:#f6e9dd}
+html[data-theme="comfort"] .vig{opacity:.45}
+html[data-theme="comfort"] .spot{opacity:.7}
+html[data-theme="comfort"] .ring,html[data-theme="comfort"] .ticks,html[data-theme="comfort"] .dots{stroke:#e0b4aa;opacity:.55}
+html[data-theme="comfort"] .v{stroke:#e7b8bc!important;filter:drop-shadow(0 0 9px rgba(240,182,188,.3))}
+html[data-theme="comfort"] h1 span,html[data-theme="comfort"] #login h2{background:linear-gradient(180deg,#f9e3df,#dfadaf 72%,#c88f9f);-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-theme="comfort"] .sub,html[data-theme="comfort"] #login .lsub{color:#e2b9b3!important}
+html[data-theme="comfort"] .enter{background:linear-gradient(135deg,#e0b7b2,#ac798c)!important;color:#2e1926!important;border-color:#d8b0ad!important}
+html[data-theme="comfort"] .enter::before{background:linear-gradient(135deg,#e6c3ba,#b98698)!important}
+html[data-theme="comfort"] .enter .ln{background:#512b3d!important}
+html[data-theme="comfort"] .enter .ln::after{border-color:#512b3d!important}
+html[data-theme="comfort"] #login .b{background:rgba(240,201,197,.12);border-color:rgba(240,201,197,.26);color:#f6e9dd}
+html[data-theme="comfort"] #login .me .b{background:#b67e92;color:#fff}
+html[data-theme="comfort"] #login .bar{background:rgba(245,220,213,.1);border-color:rgba(245,220,213,.4)}
+html[data-theme="comfort"] #login .bar input{color:#fff5ef}
+html[data-theme="comfort"] #login .bar input::placeholder{color:#d4b6b5}
+html[data-theme="comfort"] #login .send{background:#e0b4aa;color:#38212c}
+html[data-theme="comfort"] .velvet-lighting{background:rgba(44,29,38,.88);border-color:rgba(239,198,197,.3)}
+html[data-theme="comfort"] .velvet-lighting button{color:#e4c2c0}
+html[data-theme="comfort"] .velvet-lighting button[aria-pressed="true"]{background:#d8a8ae;color:#33212b}
+html[data-theme="light"] body{background:#e6d9dc}
+html[data-theme="light"] .stage{background:radial-gradient(ellipse 70% 60% at 50% 42%,#c9a6b8 0%,#dbc6d0 58%,#e6d9dc 100%)}
+html[data-theme="light"] #login{background:radial-gradient(ellipse 85% 60% at 50% 30%,#d2b7c4 0%,#e6d9dc 78%,#eadfe1 100%)}
+html[data-theme="light"] .vig{opacity:.22}
+html[data-theme="light"] .ring,html[data-theme="light"] .ticks,html[data-theme="light"] .dots{stroke:#6e3452;opacity:.62}
+html[data-theme="light"] .v{stroke:#602945!important;filter:drop-shadow(0 0 5px rgba(81,31,57,.18))}
+html[data-theme="light"] h1 span,html[data-theme="light"] #login h2{background:linear-gradient(180deg,#4e2038,#783953 75%,#9b5872);-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-theme="light"] .sub,html[data-theme="light"] #login .lsub{color:#63334d!important}
+html[data-theme="light"] #login .b{background:rgba(104,49,78,.12);border-color:rgba(104,49,78,.28);color:#352030}
+html[data-theme="light"] #login .bar{background:rgba(251,242,244,.7);border-color:rgba(104,49,78,.36)}
+html[data-theme="light"] #login .bar input::placeholder{color:#8a6579}
+.velvet-lighting{left:auto!important;right:clamp(16px,3vw,44px)!important;transform:none!important;top:max(16px,env(safe-area-inset-top,16px))!important}
+#login .hd{padding-top:clamp(92px,12vh,130px)!important}
+#login .chatting .hd{padding-top:clamp(92px,12vh,130px)!important}
+@media(max-width:600px){
+  .velvet-lighting{left:50%!important;right:auto!important;transform:translateX(-50%)!important;top:max(12px,env(safe-area-inset-top,12px))!important}
+  #login .hd,#login .chatting .hd{padding-top:76px!important}
+  #login .chatting .vw{width:54px}
+  #login .chatting h2{font-size:24px}
+  #login .chat{padding-top:12px}
+}
+@media(max-height:570px){#login .hd,#login .chatting .hd{padding-top:60px!important}}
+
 </style>
 </head>
 <body>
