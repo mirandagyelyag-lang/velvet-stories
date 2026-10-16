@@ -1,13 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
+  const { theme, setTheme } = useTheme();
   const frame = useRef(null);
   const [error, setError] = useState("");
   useEffect(() => {
+    frame.current?.contentWindow?.postMessage({ type: "velvet-theme-sync", theme }, window.location.origin);
+  }, [theme]);
+  useEffect(() => {
     const handle = async (event) => {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
+      if (event.data?.type === "velvet-theme-ready") {
+        frame.current?.contentWindow?.postMessage({ type: "velvet-theme-sync", theme }, window.location.origin);
+        return;
+      }
+      if (event.data?.type === "velvet-theme-select") {
+        if (["dark", "light", "comfort"].includes(event.data.theme)) setTheme(event.data.theme);
+        return;
+      }
       if (event.data?.type !== "velvet-auth-submit") return;
       const { mode, email, password } = event.data;
       try {
@@ -30,7 +43,7 @@ export default function Auth() {
     };
     window.addEventListener("message",handle);
     return () => window.removeEventListener("message",handle);
-  }, [signIn,signUp]);
+  }, [signIn,signUp,theme,setTheme]);
   return <main style={{position:"fixed",inset:0,background:"#100810",zIndex:100,overflow:"hidden"}}>
     <iframe ref={frame} src="/velvet-reference-auth.html" title="Velvet Stories: entrada y registro" style={{width:"100%",height:"100%",border:0,display:"block"}} />
     {error && <span role="status" style={{position:"absolute",width:1,height:1,overflow:"hidden"}}>{error}</span>}
