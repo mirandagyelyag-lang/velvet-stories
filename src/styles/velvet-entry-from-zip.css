@@ -187,3 +187,13 @@
 .velvet-zip-entry__brand{text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
 @media(min-width:900px){.velvet-zip-entry__ribbons{width:100%;height:100%}.velvet-zip-entry__core{width:min(54vw,540px)}}
 @media(prefers-reduced-motion:reduce){.velvet-zip-entry__ribbons{transform:none;animation:none}}
+
+/* Corrected composition: restrained peripheral glass, no crossing foreground ribbons. */
+.velvet-zip-entry__ribbons{opacity:.62;filter:none;animation:velvetRibbonReveal 1.8s ease-out both}
+.velvet-zip-entry__ribbons path{stroke-width:.65}
+.velvet-zip-entry__crystal{border-color:rgba(215,143,165,.13)}
+.velvet-zip-entry__crystal::before{border-left-color:rgba(230,162,185,.18);border-right-color:rgba(230,162,185,.1)}
+.velvet-zip-entry__crystal::after{border-top-color:rgba(223,157,178,.08);border-bottom-color:rgba(223,157,178,.04)}
+.velvet-zip-entry__core{z-index:4}
+.velvet-zip-entry__pink-gate{z-index:6}
+@keyframes velvetRibbonReveal{from{opacity:0}to{opacity:.62}}
