@@ -1,88 +1,108 @@
-import { useState } from "react";
-import VelvetLamp from "../components/VelvetLamp";
-import { Eye, EyeOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import "../styles/velvet-crystal-auth.css";
-import "../styles/velvet-uiverse-auth.css";
+import "../styles/velvet-conversation-auth.css";
 
-function translateAuthError(message = "") {
-  const n = message.toLowerCase();
-  if (n.includes("invalid login credentials")) return "That email or password doesn't match.";
-  if (n.includes("email not confirmed")) return "Confirm your email before entering Velvet.";
-  if (n.includes("already registered")) return "That email already has a Velvet account. Try signing in.";
-  if (n.includes("rate limit")) return "Too many attempts. Wait a moment and try again.";
-  return message || "Velvet couldn't open your session.";
+const steps = {
+  signup: [
+    { key: "name", question: "Antes de comenzar… ¿cómo te llamas?", type: "text", placeholder: "Tu nombre", autocomplete: "name" },
+    { key: "email", question: (d) => `Mucho gusto, ${d.name}. ¿Dónde te escribo?`, type: "email", placeholder: "tu@correo.com", autocomplete: "email" },
+    { key: "password", question: "Última cosa: elige una contraseña. Será nuestro secreto.", type: "password", placeholder: "Mínimo 6 caracteres", autocomplete: "new-password" },
+  ],
+  signin: [
+    { key: "email", question: "Qué bueno verte de nuevo. ¿Cuál es tu correo?", type: "email", placeholder: "tu@correo.com", autocomplete: "email" },
+    { key: "password", question: "Y tu contraseña, por favor.", type: "password", placeholder: "Tu contraseña", autocomplete: "current-password" },
+  ],
+};
+
+function readableError(error) {
+  const message = String(error?.message || "");
+  if (/invalid login credentials/i.test(message)) return "Ese correo o contraseña no coincide. ¿Lo intentamos otra vez?";
+  if (/email not confirmed/i.test(message)) return "Confirma tu correo electrónico antes de entrar.";
+  if (/already registered/i.test(message)) return "Ya existe una cuenta con ese correo. Prueba iniciar sesión.";
+  if (/rate limit/i.test(message)) return "Demasiados intentos. Espera un momento y vuelve a probar.";
+  return message || "No pude abrir tu sesión. Inténtalo nuevamente.";
 }
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [mode, setMode] = useState("signup");
+  const [index, setIndex] = useState(0);
+  const [data, setData] = useState({});
+  const [value, setValue] = useState("");
+  const [messages, setMessages] = useState([{ from: "velvet", text: "Te estaba esperando…" }, { from: "velvet", text: steps.signup[0].question }]);
+  const [busy, setBusy] = useState(false);
+  const [reveal, setReveal] = useState(false);
+  const input = useRef(null);
+  const bottom = useRef(null);
+  const current = steps[mode][index];
 
-  async function handleSubmit(event) {
-    event.preventDefault(); setError(""); setNotice("");
-    if (!email.includes("@")) return setError("Enter a valid email.");
-    if (password.length < 6) return setError("Your password needs at least 6 characters.");
-    try {
-      setSubmitting(true);
-      if (mode === "signup") {
-        const data = await signUp({ email, password });
-        if (!data?.session) setNotice("Account created. Check your email to confirm it, then sign in.");
-      } else await signIn({ email, password });
-    } catch (e) { setError(translateAuthError(e.message)); }
-    finally { setSubmitting(false); }
+  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages]);
+  useEffect(() => { if (!busy) input.current?.focus({ preventScroll: true }); }, [index, busy, mode]);
+
+  function switchMode(next) {
+    setMode(next); setIndex(0); setData({}); setValue(""); setBusy(false); setReveal(false);
+    setMessages(next === "signin" ? [{ from: "velvet", text: "Te estaba esperando…" }, { from: "velvet", text: steps.signin[0].question }] : [{ from: "velvet", text: "Te estaba esperando…" }, { from: "velvet", text: steps.signup[0].question }]);
   }
 
-  return <main className="velvet-crystal-auth velvet-atelier-auth">
-    <svg className="velvet-ink-filter" aria-hidden="true" focusable="false" width="0" height="0">
-      <defs><filter id="velvet-advanced-texture" x="0" y="0" width="100%" height="100%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.018 0.034" numOctaves="4" seed="12" result="noise"/>
-        <feColorMatrix in="noise" type="saturate" values="0" result="mono"/>
-        <feComponentTransfer in="mono"><feFuncR type="discrete" tableValues="0 .18 .65 1"/><feFuncG type="discrete" tableValues="0 .18 .65 1"/><feFuncB type="discrete" tableValues="0 .18 .65 1"/></feComponentTransfer>
-      </filter></defs>
-    </svg>
-    <div className="velvet-ink-texture" aria-hidden="true"/>
-    <div className="velvet-atelier-auth__grid" aria-hidden="true"/>
-    <VelvetLamp />
-    <header className="velvet-crystal-auth__header"><span>VELVET<small>STORIES</small></span></header>
-    <div className="velvet-crystal-auth__layout">
-      <section className="velvet-atelier-auth__identity" aria-label="Velvet Stories">
-        <div className="velvet-atelier-auth__index">EST. 2026 <span> / </span> THE STORY IS YOURS</div>
-        <div className="velvet-atelier-auth__monogram" aria-hidden="true"><span>V</span><i/></div>
-        <div className="velvet-atelier-auth__identity-copy"><span>AN OPEN WORLD OF STORIES</span><h1>Enter a world<br/>of <em>your own.</em></h1><p>Characters to meet. Stories to shape.<br/>Every choice belongs to you.</p></div>
-        <div className="velvet-atelier-auth__bottom">VELVET STORIES <span>✳</span> MADE TO FEEL</div>
-      </section>
-      <section className="velvet-uiverse-login" aria-label="Account access">
-        <p className="velvet-uiverse-login__title">{mode==="signup"?"Begin your story.":"Your story awaits."}</p>
-        <p className="velvet-uiverse-login__intro">{mode==="signup"?"A world of your own is waiting.":"Step back into your world."}</p>
-        <div className="velvet-uiverse-login__modes">
-          <button type="button" className={mode==="signin"?"selected":""} aria-pressed={mode==="signin"} disabled={submitting} onClick={()=>{setMode("signin");setError("");setNotice("");}}>SIGN IN</button>
-          <button type="button" className={mode==="signup"?"selected":""} aria-pressed={mode==="signup"} disabled={submitting} onClick={()=>{setMode("signup");setError("");setNotice("");}}>CREATE ACCOUNT</button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="velvet-uiverse-login__user-box">
-            <input id="velvet-email" type="email" autoComplete="email" placeholder=" " value={email} required onChange={e=>{setEmail(e.target.value);setError("");}}/>
-            <label htmlFor="velvet-email">Email address</label>
-          </div>
-          <div className="velvet-uiverse-login__user-box velvet-uiverse-login__password">
-            <input id="velvet-password" type={showPassword?"text":"password"} autoComplete={mode==="signup"?"new-password":"current-password"} placeholder=" " value={password} minLength={6} required onChange={e=>{setPassword(e.target.value);setError("");}}/>
-            <label htmlFor="velvet-password">Password</label>
-            <button className="velvet-uiverse-login__eye" type="button" aria-label={showPassword?"Hide password":"Show password"} onClick={()=>setShowPassword(v=>!v)}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button>
-          </div>
-          {error&&<p className="velvet-crystal-auth__error" role="alert">{error}</p>}
-          {notice&&<p className="velvet-crystal-auth__notice" role="status">{notice}</p>}
-          <button className="velvet-uiverse-login__enter" type="submit" disabled={submitting}>
-            <span aria-hidden="true"/><span aria-hidden="true"/><span aria-hidden="true"/><span aria-hidden="true"/>
-            {submitting?"Opening...":mode==="signup"?"Create account":"Enter Velvet"}
-          </button>
-        </form>
-        <p className="velvet-uiverse-login__footer">A little more than a story.</p>
-      </section>
-    </div>
+  async function submit(event) {
+    event.preventDefault();
+    if (busy) return;
+    const answer = value.trim();
+    if (!answer) return;
+    if (current.key === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(answer)) {
+      setMessages(m => [...m, { from: "velvet", text: "Ese correo no parece válido. ¿Lo revisamos?" }]); return;
+    }
+    if (current.key === "password" && answer.length < 6) {
+      setMessages(m => [...m, { from: "velvet", text: "Necesitamos al menos seis caracteres." }]); return;
+    }
+    const nextData = { ...data, [current.key]: answer };
+    setData(nextData);
+    setMessages(m => [...m, { from: "me", text: current.key === "password" ? "••••••••" : answer }]);
+    setValue("");
+    if (index + 1 < steps[mode].length) {
+      const next = steps[mode][index + 1];
+      setMessages(m => [...m, { from: "velvet", text: typeof next.question === "function" ? next.question(nextData) : next.question }]);
+      setIndex(i => i + 1);
+      return;
+    }
+    setBusy(true);
+    try {
+      if (mode === "signin") {
+        await signIn({ email: nextData.email, password: nextData.password });
+      } else {
+        const result = await signUp({ email: nextData.email, password: nextData.password });
+        if (!result?.session) {
+          setMessages(m => [...m, { from: "velvet", text: "Tu cuenta está creada. Revisa tu correo para confirmarla; después podrás iniciar sesión." }]);
+          setBusy(false);
+          return;
+        }
+      }
+    } catch (error) {
+      setMessages(m => [...m, { from: "velvet", text: readableError(error) }]);
+      setBusy(false);
+    }
+  }
+
+  return <main className="velvet-chat-auth">
+    <div className="velvet-chat-auth__ambient" aria-hidden="true" />
+    <header className="velvet-chat-auth__head">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M15 17 50 88 85 17 M27 17 50 68 73 17" /></svg>
+      <h1>VELVET</h1><p>STORIES</p>
+    </header>
+    <section className="velvet-chat-auth__conversation" aria-label="Conversación de acceso" aria-live="polite">
+      {messages.map((m, i) => <div key={i} className={`velvet-chat-auth__message velvet-chat-auth__message--${m.from}`}>
+        {m.from === "velvet" && <span className="velvet-chat-auth__avatar">V</span>}
+        <span className="velvet-chat-auth__bubble">{m.text}</span>
+      </div>)}
+      <div ref={bottom} />
+    </section>
+    <footer className="velvet-chat-auth__footer">
+      <form className="velvet-chat-auth__form" onSubmit={submit}>
+        <input ref={input} aria-label={current.key} type={current.type === "password" && reveal ? "text" : current.type} autoComplete={current.autocomplete} placeholder={current.placeholder} value={value} onChange={e => setValue(e.target.value)} disabled={busy} required />
+        {current.type === "password" && <button type="button" className="velvet-chat-auth__eye" onClick={() => setReveal(v => !v)}>{reveal ? "ocultar" : "ver"}</button>}
+        <button type="submit" className="velvet-chat-auth__send" disabled={busy} aria-label="Enviar">{busy ? "…" : "↑"}</button>
+      </form>
+      <button type="button" className="velvet-chat-auth__switch" disabled={busy} onClick={() => switchMode(mode === "signup" ? "signin" : "signup")}>{mode === "signup" ? "¿Ya tienes cuenta? Iniciar sesión" : "¿Primera vez aquí? Crear cuenta"}</button>
+    </footer>
   </main>;
 }
