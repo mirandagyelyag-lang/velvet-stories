@@ -139,6 +139,27 @@ html[data-theme="light"] #login .send,html[data-theme="comfort"] #login .send{ba
 </style>
 </head>
 <body>
+<script>
+(function(){
+  var buttons=document.querySelectorAll("[data-lighting]");
+  function apply(theme){
+    if(["dark","light","comfort"].indexOf(theme)<0)return;
+    document.documentElement.setAttribute("data-theme",theme);
+    buttons.forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.lighting===theme));});
+  }
+  buttons.forEach(function(b){b.addEventListener("click",function(){
+    var theme=b.dataset.lighting;
+    apply(theme);
+    try{localStorage.setItem("velvet-theme",theme)}catch(e){}
+    window.parent.postMessage({type:"velvet-theme-select",theme:theme},window.location.origin);
+  });});
+  window.addEventListener("message",function(e){
+    if(e.origin===window.location.origin&&e.data&&e.data.type==="velvet-theme-sync")apply(e.data.theme);
+  });
+  try{apply(localStorage.getItem("velvet-theme")||"light")}catch(e){apply("light")}
+  window.parent.postMessage({type:"velvet-theme-ready"},window.location.origin);
+})();
+</script>
 <nav class="velvet-lighting" aria-label="Iluminación"><button type="button" data-lighting="dark">Original</button><button type="button" data-lighting="comfort">Cómoda</button><button type="button" data-lighting="light">Blanca</button></nav>
 <main class="stage" id="stage">
   <div class="spot"></div>
