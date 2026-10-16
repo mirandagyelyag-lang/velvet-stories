@@ -70,3 +70,98 @@
 .velvet-zip-entry__tip{filter:drop-shadow(0 0 4px #ffd3e077);animation:none}
 .velvet-zip-entry__glow{opacity:.55;animation:velvetLuminousBreathe 14s ease-in-out infinite alternate}
 @media(prefers-reduced-motion:reduce){.velvet-zip-entry__shine,.velvet-zip-entry__shine--inner{animation:none;stroke-dashoffset:0}}
+
+
+/* Velvet Crystal Edition — approved low-luminance entrance. Scoped to splash only. */
+.velvet-zip-entry{
+  background:radial-gradient(ellipse 85% 64% at 50% 46%,#32121f 0%,#210c17 56%,#130810 100%);
+  color:#d9b7c4;
+  transition:opacity .72s cubic-bezier(.22,.7,.2,1),visibility .72s;
+}
+.velvet-zip-entry::before{
+  content:"";position:absolute;inset:-10%;pointer-events:none;
+  background:radial-gradient(ellipse 56% 35% at 50% 50%,rgba(130,47,75,.12),transparent 76%);
+}
+.velvet-zip-entry__silk{
+  width:108vw;height:37vh;opacity:.22;filter:blur(9px);border-radius:48%;
+  background:linear-gradient(155deg,transparent 12%,rgba(188,131,152,.08) 33%,rgba(220,146,172,.18) 47%,rgba(63,19,38,.08) 55%,transparent 75%);
+  animation:velvetCrystalDrift 18s ease-in-out infinite alternate;
+}
+.velvet-zip-entry__silk--left{top:-9%;left:-47%;transform:rotate(-34deg)}
+.velvet-zip-entry__silk--right{top:68%;right:-48%;transform:rotate(-30deg);animation-direction:alternate-reverse}
+.velvet-zip-entry__glow{
+  inset:0;opacity:.4;animation:none;
+  background:radial-gradient(ellipse 55% 34% at 50% 47%,rgba(157,68,95,.16),transparent 83%);
+}
+.velvet-zip-entry__crystal{
+  position:absolute;z-index:1;left:50%;top:46%;width:min(91vw,570px);aspect-ratio:1;
+  transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
+  border:1px solid rgba(214,145,167,.19);
+  background:radial-gradient(circle at 50% 46%,rgba(157,69,96,.045),transparent 62%);
+  box-shadow:inset 0 0 0 10px rgba(190,115,144,.009),inset 0 0 30px rgba(206,123,152,.025),0 0 25px rgba(133,47,75,.035);
+}
+.velvet-zip-entry__crystal::before,.velvet-zip-entry__crystal::after{
+  content:"";position:absolute;border-radius:50%;pointer-events:none;
+}
+.velvet-zip-entry__crystal::before{
+  inset:-3.5%;border:1px solid rgba(208,133,160,.11);
+  border-left-color:rgba(230,162,185,.29);border-right-color:rgba(230,162,185,.19);
+  transform:rotate(-23deg);
+}
+.velvet-zip-entry__crystal::after{
+  inset:-7%;border:1px solid transparent;border-top-color:rgba(223,157,178,.13);
+  border-bottom-color:rgba(223,157,178,.09);transform:rotate(22deg);
+}
+.velvet-zip-entry__core{
+  z-index:2;width:min(82vw,480px);top:-4vh;
+}
+.velvet-zip-entry__emblem{
+  opacity:1;color:#b77b91;filter:none;overflow:visible;
+}
+.velvet-zip-entry__outer{opacity:.35;animation:velvetZipRotate 320s linear infinite}
+.velvet-zip-entry__inner{opacity:.48;animation:velvetZipRotate 140s linear infinite reverse}
+.velvet-zip-entry__line{stroke:#b87991;stroke-width:1.1;filter:none;opacity:.8}
+.velvet-zip-entry__line--2{stroke-width:.85;opacity:.58}
+.velvet-zip-entry__line--3{stroke-width:.7;opacity:.38}
+.velvet-zip-entry__shine,.velvet-zip-entry__shine--inner{
+  opacity:.43;filter:drop-shadow(0 0 2px rgba(236,164,185,.24));
+  animation:velvetZipDraw 2.1s ease-in-out .35s forwards;
+}
+.velvet-zip-entry__shine--inner{opacity:.31;animation-delay:.6s}
+.velvet-zip-entry__tip{fill:#d6a0b3;filter:drop-shadow(0 0 3px rgba(229,158,183,.25));animation:none}
+.velvet-zip-entry__brand{
+  position:absolute;top:calc(100% - 12px);left:50%;transform:translateX(-50%);
+  padding:0 0 0 .3em;color:#e7c4cd;text-shadow:none;white-space:nowrap;
+  font:400 clamp(25px,4.3vw,37px)/1.2 Georgia,'Times New Roman',serif;letter-spacing:.3em;
+}
+.velvet-zip-entry__brand small{
+  margin-top:12px;color:#b98a9c;font:400 10px/1.5 system-ui,sans-serif;letter-spacing:.55em;padding-left:.25em;
+}
+.velvet-zip-entry__pink-gate{bottom:9%;width:190px;z-index:5}
+.velvet-zip-entry__pink-gate::after{
+  content:"";display:block;width:100%;height:1px;margin-top:7px;
+  background:linear-gradient(90deg,transparent,rgba(210,135,160,.35) 40%,rgba(235,180,194,.55) 50%,rgba(210,135,160,.35) 60%,transparent);
+}
+.velvet-zip-entry__pink-gate button,
+.velvet-zip-entry__pink-gate button:hover,
+.velvet-zip-entry__pink-gate button:focus-visible{
+  color:#d9a6b7;text-shadow:none;font:500 12px/1.4 system-ui,sans-serif;
+  letter-spacing:.46em;min-height:44px;background:transparent;border:0;box-shadow:none;
+}
+.velvet-zip-entry--leaving .velvet-zip-entry__crystal{
+  opacity:0;transform:translate(-50%,-50%) scale(1.14);transition:transform .72s ease,opacity .72s ease;
+}
+.velvet-zip-entry--leaving .velvet-zip-entry__core{
+  opacity:0;transform:scale(.96);transition:transform .65s ease,opacity .65s ease;
+}
+@keyframes velvetCrystalDrift{to{translate:4% -4%;opacity:.32}}
+@media(max-width:650px){
+  .velvet-zip-entry__crystal{top:45%;width:90vw}
+  .velvet-zip-entry__core{width:81vw;top:-5vh}
+  .velvet-zip-entry__brand{top:calc(100% - 4px);font-size:clamp(24px,6.5vw,32px)}
+  .velvet-zip-entry__pink-gate{bottom:8%;width:190px}
+}
+@media(prefers-reduced-motion:reduce){
+  .velvet-zip-entry__silk,.velvet-zip-entry__outer,.velvet-zip-entry__inner{animation:none!important}
+  .velvet-zip-entry__line,.velvet-zip-entry__shine,.velvet-zip-entry__shine--inner{animation:none!important;stroke-dashoffset:0!important}
+}
