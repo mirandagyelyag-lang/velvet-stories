@@ -247,7 +247,7 @@ h1 span{display:inline-block;opacity:0;filter:blur(10px);transform:translateY(12
   window.addEventListener("message",function(event){
     if(event.origin!==window.location.origin||!event.data||event.data.type!=="velvet-auth-result")return;
     if(event.data.ok){say(["Bienvenida a Velvet."],function(){app.classList.add("out");hi.classList.add("on");});}
-    else{say([event.data.message||"No pude abrir tu sesión. Inténtalo otra vez."],function(){busy=false;si=steps.length-1;ask();});}
+    else{say([event.data.message||"No pude abrir tu sesión. Inténtalo otra vez."],function(){si=steps.length-1;ask();});}
   });
   bar.addEventListener('submit',function(e){
     e.preventDefault();if(busy)return;
