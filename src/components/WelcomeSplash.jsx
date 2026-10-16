@@ -2,41 +2,45 @@ import { useEffect, useState } from "react";
 import "../styles/velvet-entry-from-zip.css";
 
 export default function WelcomeSplash() {
-  const [visible, setVisible] = useState(() => {
-    try { return sessionStorage.getItem("velvet-entry-seen-v3") !== "1"; }
-    catch { return true; }
+  const [stage,setStage]=useState("loading");
+  const [visible,setVisible]=useState(() => {
+    try { return sessionStorage.getItem("velvet-entry-seen-v2")!=="1"; } catch { return true; }
   });
-  const [leaving, setLeaving] = useState(false);
-
   useEffect(() => {
     if (!visible) return;
-    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const timer = window.setTimeout(() => setLeaving(true), reduced ? 100 : 1250);
-    return () => window.clearTimeout(timer);
-  }, [visible]);
-
+    const timer=window.setTimeout(()=>{
+      setStage("gate");
+    },3200);
+    return ()=>window.clearTimeout(timer);
+  },[visible]);
   useEffect(() => {
-    if (!leaving) return;
-    const timer = window.setTimeout(() => {
-      try { sessionStorage.setItem("velvet-entry-seen-v3", "1"); } catch {}
-      setVisible(false);
-    }, 350);
-    return () => window.clearTimeout(timer);
-  }, [leaving]);
-
-  if (!visible) return null;
-  return (
-    <div className={`velvet-private-entry${leaving ? " velvet-private-entry--leaving" : ""}`} aria-label="Abriendo Velvet Stories">
-      <div className="velvet-private-entry__fold velvet-private-entry__fold--left" aria-hidden="true" />
-      <div className="velvet-private-entry__fold velvet-private-entry__fold--right" aria-hidden="true" />
-      <div className="velvet-private-entry__identity">
-        <svg className="velvet-private-entry__mark" viewBox="0 0 120 120" aria-hidden="true">
-          <defs><linearGradient id="velvetPrivateMetal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#F7F0ED"/><stop offset=".52" stopColor="#EBDACD"/><stop offset="1" stopColor="#BC8398"/></linearGradient></defs>
-          <path d="M24 24 L60 98 L96 24" fill="none" stroke="url(#velvetPrivateMetal)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        <div className="velvet-private-entry__name">VELVET</div>
-        <div className="velvet-private-entry__subtitle">STORIES</div>
-      </div>
+    if (stage!=="leaving") return;
+    const timer=window.setTimeout(()=>setVisible(false),850);
+    return ()=>window.clearTimeout(timer);
+  },[stage]);
+  const enterVelvet=()=>{
+    try { sessionStorage.setItem("velvet-entry-seen-v2","1"); } catch {}
+    setStage("leaving");
+  };
+  if(!visible)return null;
+  return <div className={`velvet-zip-entry velvet-zip-entry--${stage}`} aria-label="Velvet Stories entrance">
+    <div className="velvet-zip-entry__silk velvet-zip-entry__silk--left" aria-hidden="true"/>
+    <div className="velvet-zip-entry__silk velvet-zip-entry__silk--right" aria-hidden="true"/>
+    <div className="velvet-zip-entry__glow" aria-hidden="true"/>
+    <div className="velvet-zip-entry__core">
+      <svg viewBox="0 0 400 400" className="velvet-zip-entry__emblem" fill="none" stroke="currentColor" aria-hidden="true">
+        <defs><linearGradient id="velvetLuminousMetal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffebec"/><stop offset=".24" stopColor="#f5a6bc"/><stop offset=".52" stopColor="#8c3e62"/><stop offset=".78" stopColor="#ffd2de"/><stop offset="1" stopColor="#b75e84"/></linearGradient></defs>
+        <g className="velvet-zip-entry__outer"><circle cx="200" cy="200" r="186" strokeWidth=".6"/><path d="M200 14 A186 186 0 0 1 386 200" strokeWidth=".9"/></g>
+        <g className="velvet-zip-entry__inner"><circle cx="200" cy="200" r="132" strokeWidth=".5" strokeDasharray="1 10"/></g>
+        <path className="velvet-zip-entry__line" d="M88 92 L200 336 L312 92" strokeWidth=".9"/>
+        <path className="velvet-zip-entry__line velvet-zip-entry__line--2" d="M116 92 L200 288 L284 92" strokeWidth=".7"/>
+        <path className="velvet-zip-entry__line velvet-zip-entry__line--3" d="M142 92 L200 246 L258 92" strokeWidth=".55"/>
+        <circle cx="200" cy="336" r="3.6" fill="#ffe0e8" stroke="none" className="velvet-zip-entry__tip"/>
+        <path className="velvet-zip-entry__shine" d="M88 92 L200 336 L312 92" fill="none" stroke="url(#velvetLuminousMetal)" strokeWidth="2.7" strokeLinecap="round"/>
+        <path className="velvet-zip-entry__shine velvet-zip-entry__shine--inner" d="M116 92 L200 288 L284 92" fill="none" stroke="url(#velvetLuminousMetal)" strokeWidth="1.6" strokeLinecap="round"/>
+      </svg>
+      <div className="velvet-zip-entry__brand">VELVET<small>STORIES</small></div>
     </div>
-  );
+    {stage==="gate" && <div className="velvet-zip-entry__pink-gate"><button type="button" onClick={enterVelvet}>ENTRAR</button></div>}
+  </div>;
 }
