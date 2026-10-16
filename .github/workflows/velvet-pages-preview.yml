@@ -34,15 +34,11 @@ jobs:
           html = Path('public/velvet-reference-auth.html').read_text()
           # Pages is a visual sandbox, not a replacement for Supabase/Vercel auth.
           preview = """
-          <style>
-          .velvet-preview-note{position:fixed;z-index:50;bottom:6px;left:50%;transform:translateX(-50%);pointer-events:none;white-space:nowrap;font:10px Sora,sans-serif;letter-spacing:.08em;color:#9a607b;background:rgba(255,250,250,.8);padding:5px 12px;border-radius:30px}
-          </style>
-          <div class="velvet-preview-note">VISTA PREVIA · SIN INICIO DE SESIÓN</div>
           <script>
           document.addEventListener('submit',function(e){
             if(e.target && e.target.id==='bar' && document.getElementById('in').type==='password'){
               e.preventDefault();e.stopImmediatePropagation();
-              alert('Esta es una vista previa visual. Para crear una cuenta o entrar, usa la app principal en Vercel.');
+              alert('Vista previa de diseño. Para iniciar sesión, abre Velvet en Vercel.');
             }
           },true);
           </script>
