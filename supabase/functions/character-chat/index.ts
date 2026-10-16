@@ -11604,7 +11604,13 @@ async function streamRoleplayV19({
               lastResortReply = String(freshLastResort?.reply || "").trim();
               if (freshLastResort?.model) sendEvent(controller, { type: "model", model: freshLastResort.model });
             }
-            if (!lastResortReply) throw new Error(lastCorrectionFailure || "Velvet could not finish this reply cleanly. Please try again.");
+            if (!lastResortReply) {
+              // Provider rescue may fail after the original model already returned usable prose.
+              // Do not turn that recoverable condition into a terminal chat error.
+              lastResortReply = String(originalResult?.reply || modelDraftReply || result?.reply || "").trim();
+              if (!lastResortReply) throw new Error(lastCorrectionFailure || "Velvet could not finish this reply cleanly. Please try again.");
+              console.warn("[character-chat] rescue provider returned empty; preserving existing nonempty draft");
+            }
             console.error("[character-chat] compact final rescue rejected; using grounded last-resort reply", { blocking: rescueBlocking, hard: rescueHard });
             result = { ...(finalRescue || result), reply: lastResortReply };
             validationIssues = validateNarrativeReply(result.reply, {
