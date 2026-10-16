@@ -6764,6 +6764,8 @@ function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMes
   } else if (kind === "advance_scene") {
     base.push("- DOUBLE-DOT ADVANCE: the user explicitly asked for SOMETHING NEW TO HAPPEN. Do not paraphrase, echo, reframe, or merely intensify the previous beat.");
     base.push("- STORY DIRECTOR MODE: continue the WORLD, not necessarily a conversation with the user. Preserve the last confirmed location, time, departures, relationships, NPC identities and unresolved consequences. If the lead has left the user, follow the lead elsewhere; show independent choices, an interaction with an established NPC when plausible, or a purposeful solo activity. Do not teleport the user into that scene.");
+    base.push("- DEPARTURE LOCK: inspect the last two character turns. If the character already walked away, turned toward another building, ended the conversation, or physically left, that departure is DONE. The next beat starts at their destination or en route away from the user. They cannot speak another line to the user across the distance, resume the umbrella argument, or repeat a goodbye unless a new user-authored encounter occurs.");
+    base.push("- AFTER-DEPARTURE EXAMPLE: if Nathan already walked toward the lecture hall, follow Nathan entering the hall, dealing with his own work, or encountering a grounded colleague. Do NOT generate 'Forget it. Get inside before you catch something' because the conversation has ended. Do not imply illness from rain.");
     base.push("- SCENE TRANSITION: if the previous beat has naturally concluded, a modest clearly signaled time skip is allowed; preserve causality and do not skip a pending consequential user decision. If the scene remains active, progress it without an arbitrary jump.");
     base.push("- USER AGENCY: never narrate the user's new dialogue, consent, actions, feelings, travel, or reaction. An offscreen scene can end without demanding the user's response. Never force the lead to return, flirt, apologize, or reconnect just to keep the user in focus.");
     base.push("- Introduce ONE meaningful change that is causally plausible from the established scene. Good forms include: an already-grounded person approaches, an interruption occurs, a small accident or mishap happens, a consequence arrives, the environment changes in a way that matters, the lead makes a consequential decision, a conflict or opportunity appears, or an existing unresolved thread materially moves.");
@@ -9481,7 +9483,7 @@ function shouldBufferDraftUntilValidated({ latestUserMessage = "", turnIntent = 
 
   // Silent continuations and time skips are director-style turns. Their first draft
   // must be checked for real progression before anything becomes visible.
-  if (["silent_continue", "return_main_pov", "time_skip"].includes(kind)) return true;
+  if (["silent_continue", "advance_scene", "return_main_pov", "time_skip"].includes(kind)) return true;
 
   // High-tension micro beats and departures are the exact places where an optimistic
   // raw stream can expose a draft that the validator is about to reject.
