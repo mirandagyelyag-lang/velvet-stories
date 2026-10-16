@@ -1,5 +1,4 @@
 import { useState } from "react";
-import VelvetGlyphOrb from "../components/VelvetGlyphOrb";
 import { ArrowUpRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import "../styles/velvet-crystal-auth.css";
@@ -39,7 +38,6 @@ export default function Auth() {
 
   return <main className="velvet-crystal-auth velvet-atelier-auth">
     <div className="velvet-atelier-auth__grid" aria-hidden="true"/>
-    <VelvetGlyphOrb />
     <header className="velvet-crystal-auth__header"><span>VELVET<small>STORIES</small></span></header>
     <div className="velvet-crystal-auth__layout">
       <section className="velvet-atelier-auth__identity" aria-label="Velvet Stories">
