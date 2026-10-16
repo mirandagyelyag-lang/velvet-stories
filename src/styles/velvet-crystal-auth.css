@@ -89,3 +89,9 @@
 .velvet-atelier-auth .velvet-crystal-auth__submit{height:48px;margin-top:3px;font-size:15px}
 .velvet-atelier-auth .velvet-crystal-auth__footer{margin-top:15px}
 }
+
+/* Procedural ink-marble backdrop inspired by Uiverse pattern; no images. */
+.velvet-atelier-auth .velvet-ink-filter{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
+.velvet-atelier-auth .velvet-ink-texture{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.17;background:linear-gradient(145deg,#100b12,#7d4a65 50%,#2e1427);filter:url(#velvet-advanced-texture);mix-blend-mode:screen}
+.velvet-atelier-auth .velvet-atelier-auth__grid{opacity:.08}
+@media(max-width:900px){.velvet-atelier-auth .velvet-ink-texture{opacity:.11}}
