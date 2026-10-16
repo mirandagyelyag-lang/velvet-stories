@@ -73,3 +73,19 @@
 .velvet-atelier-auth .velvet-crystal-auth__field input::placeholder{color:#bc8398!important;opacity:1}
 .velvet-atelier-auth .velvet-crystal-auth__field input:-webkit-autofill{-webkit-text-fill-color:#f7f0ed!important;box-shadow:0 0 0 100px #1a101c inset!important}
 .velvet-atelier-auth .velvet-crystal-auth__submit{background:#d9b7c4!important;color:#2b1627!important;border-color:#ebdacd!important}
+
+/* Compact, centered sign-in card; preserve comfortable mobile touch targets. */
+@media(min-width:901px){
+.velvet-atelier-auth .velvet-crystal-auth__access{width:min(100%,410px);padding:29px 31px 27px}
+.velvet-atelier-auth .velvet-crystal-auth__access h2{font-size:clamp(31px,3vw,39px);margin-bottom:7px}
+.velvet-atelier-auth .velvet-crystal-auth__eyebrow:after{margin:10px 0 15px}
+.velvet-atelier-auth .velvet-crystal-auth__subtitle{margin-bottom:19px;font-size:13px}
+.velvet-atelier-auth .velvet-crystal-auth__tabs{margin-bottom:17px}
+.velvet-atelier-auth .velvet-crystal-auth__tabs button{padding-bottom:10px}
+.velvet-atelier-auth .velvet-crystal-auth__form{gap:13px}
+.velvet-atelier-auth .velvet-crystal-auth__form label{gap:7px}
+.velvet-atelier-auth .velvet-crystal-auth__field{min-height:46px;padding:0 13px}
+.velvet-atelier-auth .velvet-crystal-auth__field input{height:44px;font-size:13px}
+.velvet-atelier-auth .velvet-crystal-auth__submit{height:48px;margin-top:3px;font-size:15px}
+.velvet-atelier-auth .velvet-crystal-auth__footer{margin-top:15px}
+}
