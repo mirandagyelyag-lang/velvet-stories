@@ -23,6 +23,37 @@ function readableError(error) {
   return message || "No pude abrir tu sesión. Inténtalo nuevamente.";
 }
 
+
+function TypedMessage({ text, delay = 320, onComplete }) {
+  const [visible, setVisible] = useState("");
+  const [started, setStarted] = useState(false);
+  useEffect(() => {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (reduce) {
+      setVisible(text);
+      setStarted(true);
+      onComplete?.();
+      return;
+    }
+    let interval;
+    const chars = Array.from(text);
+    let count = 0;
+    const start = window.setTimeout(() => {
+      setStarted(true);
+      interval = window.setInterval(() => {
+        count = Math.min(count + 1, chars.length);
+        setVisible(chars.slice(0, count).join(""));
+        if (count >= chars.length) {
+          window.clearInterval(interval);
+          onComplete?.();
+        }
+      }, 34);
+    }, delay);
+    return () => { window.clearTimeout(start); window.clearInterval(interval); };
+  }, [text, delay]);
+  return <span className="velvet-chat-auth__typed">{visible}{started && visible.length < text.length && <span className="velvet-chat-auth__caret" aria-hidden="true" />}</span>;
+}
+
 export default function Auth() {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState("signup");
@@ -31,6 +62,7 @@ export default function Auth() {
   const [value, setValue] = useState("");
   const [messages, setMessages] = useState([{ from: "velvet", text: "Te estaba esperando…" }, { from: "velvet", text: steps.signup[0].question }]);
   const [busy, setBusy] = useState(false);
+  const [typing, setTyping] = useState(true);
   const [reveal, setReveal] = useState(false);
   const input = useRef(null);
   const bottom = useRef(null);
@@ -38,6 +70,7 @@ export default function Auth() {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(null);
   const current = steps[mode][index];
+  const lastVelvet = messages.reduce((last, message, i) => message.from === "velvet" ? i : last, -1);
 
   useEffect(() => {
     const area = conversation.current;
@@ -62,20 +95,20 @@ export default function Auth() {
   }, []);
 
   function switchMode(next) {
-    setMode(next); setIndex(0); setData({}); setValue(""); setBusy(false); setReveal(false);
+    setMode(next); setIndex(0); setData({}); setValue(""); setBusy(false); setReveal(false); setTyping(true);
     setMessages(next === "signin" ? [{ from: "velvet", text: "Te estaba esperando…" }, { from: "velvet", text: steps.signin[0].question }] : [{ from: "velvet", text: "Te estaba esperando…" }, { from: "velvet", text: steps.signup[0].question }]);
   }
 
   async function submit(event) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || typing) return;
     const answer = value.trim();
     if (!answer) return;
     if (current.key === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(answer)) {
-      setMessages(m => [...m, { from: "velvet", text: "Ese correo no parece válido. ¿Lo revisamos?" }]); return;
+      setTyping(true); setMessages(m => [...m, { from: "velvet", text: "Ese correo no parece válido. ¿Lo revisamos?" }]); return;
     }
     if (current.key === "password" && answer.length < 6) {
-      setMessages(m => [...m, { from: "velvet", text: "Necesitamos al menos seis caracteres." }]); return;
+      setTyping(true); setMessages(m => [...m, { from: "velvet", text: "Necesitamos al menos seis caracteres." }]); return;
     }
     const nextData = { ...data, [current.key]: answer };
     setData(nextData);
@@ -83,6 +116,7 @@ export default function Auth() {
     setValue("");
     if (index + 1 < steps[mode].length) {
       const next = steps[mode][index + 1];
+      setTyping(true);
       setMessages(m => [...m, { from: "velvet", text: typeof next.question === "function" ? next.question(nextData) : next.question }]);
       setIndex(i => i + 1);
       return;
@@ -94,13 +128,13 @@ export default function Auth() {
       } else {
         const result = await signUp({ email: nextData.email, password: nextData.password });
         if (!result?.session) {
-          setMessages(m => [...m, { from: "velvet", text: "Tu cuenta está creada. Revisa tu correo para confirmarla; después podrás iniciar sesión." }]);
+          setTyping(true); setMessages(m => [...m, { from: "velvet", text: "Tu cuenta está creada. Revisa tu correo para confirmarla; después podrás iniciar sesión." }]);
           setBusy(false);
           return;
         }
       }
     } catch (error) {
-      setMessages(m => [...m, { from: "velvet", text: readableError(error) }]);
+      setTyping(true); setMessages(m => [...m, { from: "velvet", text: readableError(error) }]);
       setBusy(false);
     }
   }
@@ -112,17 +146,17 @@ export default function Auth() {
       <h1>VELVET</h1><p>STORIES</p>
     </header>
     <section ref={conversation} className="velvet-chat-auth__conversation" aria-label="Conversación de acceso" aria-live="polite">
-      {messages.map((m, i) => <div key={i} className={`velvet-chat-auth__message velvet-chat-auth__message--${m.from}`}>
+      {messages.map((m, i) => <div key={`${mode}-${i}`} className={`velvet-chat-auth__message velvet-chat-auth__message--${m.from}`}>
         {m.from === "velvet" && <span className="velvet-chat-auth__avatar">V</span>}
-        <span className="velvet-chat-auth__bubble">{m.text}</span>
+        <span className="velvet-chat-auth__bubble">{m.from === "velvet" ? <TypedMessage text={m.text} delay={i === 0 ? 350 : i === 1 ? 1600 : 400} onComplete={i === lastVelvet ? () => setTyping(false) : undefined} /> : m.text}</span>
       </div>)}
       <div ref={bottom} />
     </section>
     <footer className="velvet-chat-auth__footer">
       <form className="velvet-chat-auth__form" onSubmit={submit}>
-        <input ref={input} aria-label={current.key} type={current.type === "password" && reveal ? "text" : current.type} autoComplete={current.autocomplete} placeholder={current.placeholder} value={value} onChange={e => setValue(e.target.value)} disabled={busy} required />
+        <input ref={input} aria-label={current.key} type={current.type === "password" && reveal ? "text" : current.type} autoComplete={current.autocomplete} placeholder={current.placeholder} value={value} onChange={e => setValue(e.target.value)} disabled={busy || typing} required />
         {current.type === "password" && <button type="button" className="velvet-chat-auth__eye" onClick={() => setReveal(v => !v)}>{reveal ? "ocultar" : "ver"}</button>}
-        <button type="submit" className="velvet-chat-auth__send" disabled={busy} aria-label="Enviar">{busy ? "…" : "↑"}</button>
+        <button type="submit" className="velvet-chat-auth__send" disabled={busy || typing} aria-label="Enviar">{busy ? "…" : "↑"}</button>
       </form>
       <button type="button" className="velvet-chat-auth__switch" disabled={busy} onClick={() => switchMode(mode === "signup" ? "signin" : "signup")}>{mode === "signup" ? "¿Ya tienes cuenta? Iniciar sesión" : "¿Primera vez aquí? Crear cuenta"}</button>
     </footer>
