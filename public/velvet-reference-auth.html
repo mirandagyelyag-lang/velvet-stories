@@ -413,6 +413,18 @@ html[data-theme="comfort"] #login .bar,html[data-theme="light"] #login .bar{back
 @media(max-width:600px){#login .chat{padding-left:24px;padding-right:24px}#login .b{line-height:1.5}#login .foot{padding-bottom:max(28px,env(safe-area-inset-bottom))}#login .alt{margin-top:12px}}
 @media(prefers-reduced-motion:reduce){#login .row{animation:none}#login::before{animation:none}}
 
+
+/* Velvet's story-first conversational gateway */
+#login .bar[hidden],#login .velvet-choices[hidden]{display:none!important}
+#login .velvet-choices{width:min(100% - 36px,520px);margin:0 auto clamp(30px,7vh,90px);display:grid;gap:12px;position:relative;z-index:3;animation:velvet-atelier-arrive .75s both}
+#login .velvet-choices button{display:flex;align-items:center;justify-content:space-between;gap:20px;text-align:left;padding:17px 21px;border:1px solid rgba(199,149,174,.35);border-radius:20px;background:linear-gradient(115deg,rgba(199,149,174,.18),rgba(199,149,174,.055));color:var(--ink);font:300 clamp(13px,3.4vw,16px)/1.4 "Sora",sans-serif;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 12px 32px rgba(20,5,15,.12);transition:transform .3s,border-color .3s,background .3s,box-shadow .3s}
+#login .velvet-choices button span{font-size:23px;color:var(--rose);transition:transform .3s}
+#login .velvet-choices button:hover,#login .velvet-choices button:focus-visible{transform:translateY(-3px);border-color:var(--rose);box-shadow:0 16px 38px rgba(20,5,15,.19)}
+#login .velvet-choices button:hover span{transform:translate(3px,-3px)}
+html[data-theme="comfort"] #login .velvet-choices button,html[data-theme="light"] #login .velvet-choices button{background:rgba(255,255,255,.52);border-color:rgba(126,73,100,.25)}
+#login .foot:has(.bar[hidden]){padding:0}
+@media(max-width:600px){#login .velvet-choices{margin-bottom:clamp(30px,7vh,72px)}#login .velvet-choices button{padding:16px 18px}}
+
 </style>
 </head>
 <body>
@@ -463,6 +475,7 @@ html[data-theme="comfort"] #login .bar,html[data-theme="light"] #login .bar{back
     </button>
   </header>
   <div class="chat" id="chat" aria-live="polite"></div>
+  <div class="velvet-choices" id="velvet-choices" hidden><button type="button" data-choice="signup">Es mi primera vez aquí <span>↗</span></button><button type="button" data-choice="signin">Ya tengo una historia contigo <span>↗</span></button></div>
   <div class="foot">
     <form class="bar" id="bar" autocomplete="on">
       <input id="in" required>
@@ -519,12 +532,12 @@ html[data-theme="comfort"] #login .bar,html[data-theme="light"] #login .bar{back
   var chat=document.getElementById('chat'),inp=document.getElementById('in'),bar=document.getElementById('bar'),eye=document.getElementById('eye'),alt=document.getElementById('alt'),
       app=document.getElementById('app'),hi=document.getElementById('hello'),login=document.getElementById('login'),ui=document.getElementById('ui'),mk=document.getElementById('mark'),data={},steps,si=0,busy=true;
   var SIGNUP=[
-    {k:'name',q:['¿Quién eres?'],t:'text',p:'Tu nombre',ac:'name'},
-    {k:'email',q:function(){return['Mucho gusto, '+data.name+'. ¿Dónde te escribo?']},t:'email',p:'tu@correo.com',ac:'email'},
-    {k:'pass',q:['Última cosa: elige una contraseña. Será nuestro secreto.'],t:'password',p:'Mínimo 6 caracteres',ac:'new-password'}];
+    {k:'name',q:['Entonces empecemos por lo esencial. ¿Cómo te gustaría que te llamara?'],t:'text',p:'Cómo te llamo',ac:'name'},
+    {k:'email',q:function(){return['Encantada, '+data.name+'. ¿Cuál es tu correo?']},t:'email',p:'tu@correo.com',ac:'email'},
+    {k:'pass',q:['Ahora crea una contraseña para guardar tu historia.'],t:'password',p:'Mínimo 6 caracteres',ac:'new-password'}];
   var LOGIN=[
-    {k:'email',q:['Qué bueno verte de nuevo. ¿Cuál es tu correo?'],t:'email',p:'tu@correo.com',ac:'email'},
-    {k:'pass',q:['Y tu contraseña, por favor.'],t:'password',p:'Tu contraseña',ac:'current-password'}];
+    {k:'email',q:['Me alegra que hayas vuelto. ¿Cuál es tu correo?'],t:'email',p:'tu@correo.com',ac:'email'},
+    {k:'pass',q:['¿Y tu contraseña?'],t:'password',p:'Tu contraseña',ac:'current-password'}];
   function scroll(){chat.scrollTo({top:chat.scrollHeight,behavior:'smooth'})}
   function row(me,html){var r=document.createElement('div');r.className='row'+(me?' me':'');
     r.innerHTML=(me?'':'<span class="av"><svg viewBox="0 0 60 60"><path d="M10 12L30 50L50 12"/></svg></span>')+html;chat.appendChild(r);scroll();return r;}
@@ -556,15 +569,31 @@ html[data-theme="comfort"] #login .bar,html[data-theme="light"] #login .bar{back
     if(++si<steps.length)ask();else{busy=true;finish();}
   });
   eye.addEventListener('click',function(){var h=inp.type==='password';inp.type=h?'text':'password';eye.textContent=h?'ocultar':'ver';});
-  function start(list,hello){steps=list;si=0;data={};chat.innerHTML='';alt.hidden=!!hello;say(hello?[]:['Te estaba esperando…'],ask);}
-  alt.addEventListener('click',function(){start(LOGIN,true);});
-  function reset(){login.classList.remove('on');app.classList.remove('out');hi.classList.remove('on');ui.classList.remove('out');mk.classList.remove('pulse');chat.innerHTML='';}
+  var choices=document.getElementById('velvet-choices'),session=0;
+  function start(list){session++;steps=list;si=0;data={};chat.innerHTML='';choices.hidden=true;bar.hidden=false;alt.hidden=false;alt.textContent=list===LOGIN?'Crear una cuenta':'Ya tengo cuenta';ask();}
+  function welcome(){
+    var current=++session;steps=null;si=0;data={};busy=true;chat.innerHTML='';
+    bar.hidden=true;alt.hidden=true;choices.hidden=true;
+    say(['Toda historia comienza en algún lugar. ¿Cómo comienza la tuya?'],function(){
+      if(current!==session)return;
+      choices.hidden=false;
+    });
+  }
+  choices.addEventListener('click',function(e){
+    var button=e.target.closest('[data-choice]');if(!button)return;
+    me(button.textContent.replace('↗','').trim());
+    var list=button.dataset.choice==='signin'?LOGIN:SIGNUP;
+    choices.hidden=true;
+    setTimeout(function(){start(list);},350);
+  });
+  alt.addEventListener('click',function(){start(steps===LOGIN?SIGNUP:LOGIN);});
+  function reset(){session++;choices.hidden=true;bar.hidden=true;login.classList.remove('on');app.classList.remove('out');hi.classList.remove('on');ui.classList.remove('out');mk.classList.remove('pulse');chat.innerHTML='';}
   document.getElementById("velvet-home-link").addEventListener("click",function(){
-    if(busy && si>=steps.length)return;
+    if(busy && steps && si>=steps.length)return;
     reset();
     inp.blur();
   });
-  window.velvetLogin={open:function(){login.classList.add('on');start(SIGNUP,false);},reset:reset};
+  window.velvetLogin={open:function(){login.classList.add('on');welcome();},reset:reset};
 })();
 </script>
 <script>
