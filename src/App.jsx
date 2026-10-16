@@ -454,7 +454,6 @@ function App() {
   if (!user) {
     return (
       <>
-        {!nativeRuntime && <WelcomeSplash />}
         <Auth />
         {nativeRuntime && nativeLaunchVisible && <NativeCrystalLaunch key="velvet-native-launch" />}
       </>
