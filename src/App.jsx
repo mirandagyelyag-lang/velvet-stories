@@ -454,7 +454,7 @@ function App() {
   if (!user) {
     return (
       <>
-        {/* Web entry temporarily disabled to prevent unstyled overlay blocking Velvet. */}
+        {!nativeRuntime && <WelcomeSplash />}
         <Auth />
         {nativeRuntime && nativeLaunchVisible && <NativeCrystalLaunch key="velvet-native-launch" />}
       </>
