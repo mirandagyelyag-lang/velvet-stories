@@ -698,7 +698,7 @@ function App() {
 
   return (
     <>
-    {!nativeRuntime && <WelcomeSplash />}
+    {/* Web splash disabled until entry styles are repaired. */}
     <div className={`app ${selectedCharacter ? "app--chat" : ""}`}>
       {!selectedCharacter && !creatorOpen && (
         <Sidebar activePage={["personas", "lorebooks", "settings", "diagnostics"].includes(activePage) ? "profile" : activePage} onNavigate={navigate} />
