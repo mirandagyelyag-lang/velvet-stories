@@ -10,9 +10,9 @@ export default function VelvetStarburst() {
     if (!ctx) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let w = 0, h = 0, raf = 0, frame = 0;
-    const stars = Array.from({ length: 125 }, (_, i) => {
+    const stars = Array.from({ length: 220 }, (_, i) => {
       const angle = i * 2.399963229728653;
-      const radius = Math.sqrt((i + .5) / 125);
+      const radius = Math.sqrt((i + .5) / 220);
       return { angle, radius, phase: (i * 0.61803398875) % 1, size: .45 + (i % 7) * .12 };
     });
     function resize() {
@@ -28,7 +28,7 @@ export default function VelvetStarburst() {
     function draw() {
       ctx.clearRect(0, 0, w, h);
       const cx = w * .5, cy = h * .5;
-      const maxR = Math.hypot(w, h) * .52;
+      const maxR = Math.hypot(w, h) * .62;
       for (const star of stars) {
         const pulse = reduced ? 0 : frame * .00065;
         const dist = ((star.radius + pulse + star.phase * .06) % 1) * maxR;
@@ -36,13 +36,13 @@ export default function VelvetStarburst() {
         const y = cy + Math.sin(star.angle) * dist * .75;
         const fade = Math.min(1, dist / (maxR * .18)) * Math.max(0, 1 - dist / maxR);
         const twinkle = reduced ? .75 : .65 + .35 * Math.sin(frame * .018 + star.phase * 15);
-        const alpha = fade * twinkle * .48;
+        const alpha = fade * twinkle * .94;
         if (alpha < .015) continue;
         ctx.strokeStyle = "rgba(235,218,205," + alpha.toFixed(3) + ")";
-        ctx.lineWidth = .7;
-        const r = star.size * (1 + dist / maxR);
+        ctx.lineWidth = 1.1;
+        const r = (1.5 + star.size * 1.9) * (1 + dist / maxR);
         ctx.beginPath();
-        ctx.moveTo(x-r*2.3,y);ctx.lineTo(x+r*2.3,y);
+        ctx.moveTo(x-r*2.8,y);ctx.lineTo(x+r*2.8,y);
         ctx.moveTo(x,y-r*2.3);ctx.lineTo(x,y+r*2.3);
         ctx.stroke();
         ctx.fillStyle = "rgba(217,183,196," + (alpha*.65).toFixed(3) + ")";
