@@ -6763,6 +6763,9 @@ function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMes
     base.push("- Opening: establish one concrete active situation with almost no setup tax. Prefer dialogue first. Use at most one useful environmental detail, no prop inventory, and no choreographed entrance. The first spoken line should sound like something this person would actually say aloud, not a polished premise summary. End with an immediate opening the user can answer.");
   } else if (kind === "advance_scene") {
     base.push("- DOUBLE-DOT ADVANCE: the user explicitly asked for SOMETHING NEW TO HAPPEN. Do not paraphrase, echo, reframe, or merely intensify the previous beat.");
+    base.push("- STORY DIRECTOR MODE: continue the WORLD, not necessarily a conversation with the user. Preserve the last confirmed location, time, departures, relationships, NPC identities and unresolved consequences. If the lead has left the user, follow the lead elsewhere; show independent choices, an interaction with an established NPC when plausible, or a purposeful solo activity. Do not teleport the user into that scene.");
+    base.push("- SCENE TRANSITION: if the previous beat has naturally concluded, a modest clearly signaled time skip is allowed; preserve causality and do not skip a pending consequential user decision. If the scene remains active, progress it without an arbitrary jump.");
+    base.push("- USER AGENCY: never narrate the user's new dialogue, consent, actions, feelings, travel, or reaction. An offscreen scene can end without demanding the user's response. Never force the lead to return, flirt, apologize, or reconnect just to keep the user in focus.");
     base.push("- Introduce ONE meaningful change that is causally plausible from the established scene. Good forms include: an already-grounded person approaches, an interruption occurs, a small accident or mishap happens, a consequence arrives, the environment changes in a way that matters, the lead makes a consequential decision, a conflict or opportunity appears, or an existing unresolved thread materially moves.");
     base.push("- Novelty is mandatory: the resulting beat must change what can happen next. Repeating the same joke, apology, posture, flirt, question, prop interaction, or emotional point in new wording is a failure.");
     base.push("- Do NOT manufacture momentum with a phantom NPC, invented prior plan, fake forgotten appointment, unseen promise, fabricated message, or retroactive shared history. New anonymous background people may enter only when the setting naturally supports them and they are introduced clearly in the same reply.");
@@ -6770,6 +6773,7 @@ function buildCurrentBeatPolicy({ turnIntent = {}, character = {}, latestUserMes
     base.push("- Advance exactly one event or decision, then stop before deciding the user's reaction.");
   } else if (kind === "silent_continue") {
     base.push("- SILENT CONTINUE: the user intentionally yielded the narrative turn. Continue from the exact last state and add one concrete new beat: dialogue, decision, movement with purpose, a real social exchange, an external event with consequence, or a specific action that changes what can happen next.");
+    base.push("- DIRECTOR CONTINUATION: the lead has an independent life. When the shared scene ends, continue their own next meaningful activity, established NPC interaction, or a causally justified time transition. No automatic reunion, forced user participation, or invented user response. Preserve who is physically present and where.");
     base.push("- If the user is currently off-scene, follow the character's OWN life. Do not spend the turn watching the doorway, remembering where the user vanished, leaning against a wall/pillar, breathing, or stating that the character is not looking for them. Independent activity must actually happen on-page.");
   } else if (kind === "time_skip") {
     const skip = extractTimeSkipDirective(latestUserMessage);
@@ -10612,7 +10616,7 @@ function validateNarrativeReply(reply = "", options = {}) {
     const digitalMarkers = (normalizeText(text).match(/\b(?:message|text|dm|reply|replied|screen|phone|notification|typing|chat|mensaje|respondio|respondió|escribio|escribió)\b/g) || []).length;
     if (words.length < 85 || (dialogueUnits < 3 && digitalMarkers < 4)) issues.push("interactive_thread_collapsed");
   }
-  if (["reassurance", "affection", "silent_continue", "advance_scene"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
+  if (["reassurance", "affection"].includes(turnIntent.kind) && !/["“”]/.test(text)) issues.push("missing_character_dialogue");
   if (turnIntent.kind === "affection" && words.length < 24) issues.push("missing_emotional_impact");
   if (["confrontation", "confrontation_exit"].includes(turnIntent.kind) && words.length < 28) issues.push("underdeveloped_emotional_confrontation");
   if (["challenge", "charged_nonverbal"].includes(turnIntent.kind) && words.length < 20) issues.push("underdeveloped_charged_beat");
