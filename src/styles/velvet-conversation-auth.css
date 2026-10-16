@@ -1,0 +1,26 @@
+.velvet-chat-auth{position:fixed;inset:0;z-index:1;display:flex;flex-direction:column;overflow:hidden;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);color:#f0dce6;background:radial-gradient(ellipse 85% 60% at 50% 38%,#3b1b30 0%,#22101d 60%,#100810 100%);font-family:"Sora",system-ui,sans-serif}
+.velvet-chat-auth *{box-sizing:border-box}
+.velvet-chat-auth__ambient{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 20%,rgba(188,131,152,.1),transparent 40%),linear-gradient(125deg,transparent 30%,rgba(188,131,152,.025) 50%,transparent 70%)}
+.velvet-chat-auth__head{position:relative;display:flex;flex-direction:column;align-items:center;padding:clamp(22px,5vh,48px) 20px 18px;flex:none}
+.velvet-chat-auth__head svg{width:64px;height:64px;fill:none;stroke:#c68da6;stroke-width:1.8;filter:drop-shadow(0 0 9px rgba(188,131,152,.22))}
+.velvet-chat-auth__head h1{font:400 clamp(28px,7vw,43px)/1.2 Georgia,serif;letter-spacing:.32em;margin:13px -.32em 0 0;color:#e8c3d4}
+.velvet-chat-auth__head p{font:300 10px/1.5 system-ui,sans-serif;letter-spacing:.65em;margin:8px -.65em 0 0;color:#bc8398}
+.velvet-chat-auth__conversation{position:relative;flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:13px;padding:24px max(20px,calc((100vw - 460px)/2)) 18px;scrollbar-width:thin;scrollbar-color:#70415c transparent}
+.velvet-chat-auth__message{display:flex;align-items:flex-end;gap:9px;animation:velvetChatPop .35s ease both}
+.velvet-chat-auth__message--me{justify-content:flex-end}
+.velvet-chat-auth__avatar{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;font:400 17px Georgia,serif;color:#321626;background:linear-gradient(145deg,#e3b6c7,#9b5b7b)}
+.velvet-chat-auth__bubble{max-width:min(80%,350px);padding:12px 16px;border:1px solid rgba(199,149,174,.24);border-radius:19px 19px 19px 5px;background:rgba(199,149,174,.1);font-size:14px;line-height:1.55;font-weight:300;overflow-wrap:anywhere}
+.velvet-chat-auth__message--me .velvet-chat-auth__bubble{background:linear-gradient(125deg,#a9748e,#6e3452);color:white;border:0;border-radius:19px 19px 5px 19px}
+.velvet-chat-auth__footer{position:relative;flex:none;padding:14px max(20px,calc((100vw - 460px)/2)) max(20px,env(safe-area-inset-bottom,20px));background:linear-gradient(0deg,rgba(16,8,16,.94),rgba(16,8,16,.1))}
+.velvet-chat-auth__form{display:flex;align-items:center;gap:8px;padding:6px 7px 6px 19px;background:rgba(199,149,174,.09);border:1px solid rgba(199,149,174,.38);border-radius:999px}
+.velvet-chat-auth__form:focus-within{border-color:#d9b7c4;box-shadow:0 0 20px rgba(199,149,174,.12)}
+.velvet-chat-auth__form input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#f7f0ed;font:300 15px system-ui,sans-serif}
+.velvet-chat-auth__form input::placeholder{color:rgba(234,211,222,.44)}
+.velvet-chat-auth__form button{border:0;cursor:pointer}
+.velvet-chat-auth__eye{background:transparent;color:#d9b7c4;font:300 12px system-ui,sans-serif;padding:8px}
+.velvet-chat-auth__send{flex:none;width:42px;height:42px;border-radius:50%;background:#d9b7c4;color:#291020;font-size:24px}
+.velvet-chat-auth__send:disabled{opacity:.55;cursor:wait}
+.velvet-chat-auth__switch{display:block;margin:13px auto 0;padding:8px;border:0;background:transparent;color:#d9b7c4;font:300 12px system-ui,sans-serif;cursor:pointer}
+@keyframes velvetChatPop{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+@media(min-width:800px){.velvet-chat-auth__head{padding-top:5vh}.velvet-chat-auth__conversation{padding-top:40px}}
+@media(prefers-reduced-motion:reduce){.velvet-chat-auth__message{animation:none}}
