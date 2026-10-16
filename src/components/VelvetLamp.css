@@ -1,0 +1,11 @@
+.velvet-atelier-auth .velvet-lamp{position:absolute;inset:0;overflow:hidden;z-index:1;pointer-events:none;isolation:isolate;--lamp:#d9a1bd}
+.velvet-lamp__beam{position:absolute;top:-12%;left:50%;width:min(58vw,850px);height:64%;opacity:.6;filter:blur(19px);transform-origin:top center;animation:velvetLampAwaken 1.8s ease-out both}
+.velvet-lamp__beam--left{background:conic-gradient(from 230deg at 100% 0%,transparent 0deg,rgba(216,130,174,.02) 22deg,rgba(216,130,174,.35) 49deg,transparent 71deg);transform:translateX(-100%) rotate(-7deg)}
+.velvet-lamp__beam--right{background:conic-gradient(from 60deg at 0% 0%,transparent 0deg,rgba(216,130,174,.33) 27deg,rgba(216,130,174,.02) 52deg,transparent 72deg);transform:rotate(7deg)}
+.velvet-lamp__halo{position:absolute;left:50%;top:15%;width:min(70vw,1050px);height:44%;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 0%,rgba(232,175,203,.26),rgba(190,107,150,.12) 34%,transparent 72%);filter:blur(33px);animation:velvetLampPulse 8s ease-in-out infinite alternate}
+.velvet-lamp__line{position:absolute;top:15%;left:50%;width:min(49vw,690px);height:2px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,#f0c9db 30%,#fff0f5 50%,#f0c9db 70%,transparent);box-shadow:0 0 13px 3px rgba(237,174,206,.46),0 0 48px 8px rgba(217,143,183,.3);opacity:.85}
+.velvet-lamp__bloom{position:absolute;top:13%;left:50%;width:min(36vw,500px);height:27%;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 0%,rgba(244,195,221,.3),rgba(195,112,159,.13) 40%,transparent 73%);filter:blur(29px)}
+@keyframes velvetLampAwaken{from{opacity:0;filter:blur(35px)}to{opacity:.6;filter:blur(19px)}}
+@keyframes velvetLampPulse{from{opacity:.72;transform:translateX(-50%) scaleX(.94)}to{opacity:1;transform:translateX(-50%) scaleX(1.06)}}
+@media(max-width:900px){.velvet-lamp__beam{width:90vw;height:42%;top:0}.velvet-lamp__halo{top:16%;width:110vw;height:34%}.velvet-lamp__line{top:17%;width:77vw}.velvet-lamp__bloom{top:15%;width:75vw}}
+@media(prefers-reduced-motion:reduce){.velvet-lamp__beam,.velvet-lamp__halo{animation:none}}
