@@ -39,11 +39,13 @@ export default function WelcomeSplash() {
         <path d="M-67 832 C65 738 132 749 229 640 C290 572 338 558 446 538 C328 601 314 665 243 725 C141 802 44 772 -67 892Z"/>
         <path d="M440 705 C308 614 253 637 195 570 C281 606 332 592 446 646Z"/>
       </g>
-      <g fill="none" stroke="url(#velvetRibbonEdge)" strokeWidth="1">
+      <g fill="none" stroke="url(#velvetRibbonEdge)" strokeWidth=".8">
         <path d="M-24 7 C125 102 -19 202 29 321 C88 465 312 458 407 320"/>
         <path d="M411 135 C326 178 397 264 369 361 C337 459 178 502 -10 452"/>
         <path d="M-25 472 C107 531 266 491 384 426"/>
         <path d="M-26 839 C119 741 164 776 258 649 C321 562 367 581 418 534"/>
+        <path d="M-50 88 C120 165 -10 335 90 398 C210 478 332 391 419 289" opacity=".42"/>
+        <path d="M412 188 C308 240 423 335 312 427 C198 517 64 459 -15 418" opacity=".34"/>
       </g>
     </svg>
     <div className="velvet-zip-entry__crystal velvet-zip-entry__crystal--back" aria-hidden="true" />
