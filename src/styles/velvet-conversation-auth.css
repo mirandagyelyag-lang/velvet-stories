@@ -46,3 +46,14 @@ html.velvet-entry-transitioning .velvet-chat-auth__footer{animation:velvetLoginR
 .velvet-chat-auth .velvet-chat-auth__switch{display:block;width:fit-content;margin:17px auto 0;padding:9px 14px;background:none;border:0;border-bottom:1px solid rgba(217,183,196,.28);border-radius:0;box-shadow:none;color:#d9b7c4;font:400 12px/1.5 system-ui,sans-serif;letter-spacing:.055em;opacity:.85;transition:opacity .2s,border-color .2s}
 .velvet-chat-auth .velvet-chat-auth__switch:hover{opacity:1;border-color:#d9b7c4}
 @media(max-width:480px){.velvet-chat-auth .velvet-chat-auth__footer{padding-left:18px;padding-right:18px}.velvet-chat-auth .velvet-chat-auth__form{min-height:61px;padding-left:18px}.velvet-chat-auth .velvet-chat-auth__form .velvet-chat-auth__send{width:45px;height:45px;min-width:45px;min-height:45px;flex-basis:45px}}
+
+/* Android virtual keyboard: keep the composer inside the visual viewport. */
+.velvet-chat-auth{top:0;bottom:auto;max-height:100dvh;overscroll-behavior:contain}
+.velvet-chat-auth__conversation{overscroll-behavior:contain}
+.velvet-chat-auth--keyboard .velvet-chat-auth__head{padding-top:9px;padding-bottom:6px}
+.velvet-chat-auth--keyboard .velvet-chat-auth__head svg{width:34px;height:34px}
+.velvet-chat-auth--keyboard .velvet-chat-auth__head h1{font-size:23px;margin-top:3px}
+.velvet-chat-auth--keyboard .velvet-chat-auth__head p{font-size:8px;margin-top:2px}
+.velvet-chat-auth--keyboard .velvet-chat-auth__footer{padding-top:5px;padding-bottom:8px}
+.velvet-chat-auth--keyboard .velvet-chat-auth__switch{margin-top:4px;padding:5px 9px}
+@media(max-height:500px){.velvet-chat-auth__head{padding-top:6px;padding-bottom:5px}.velvet-chat-auth__head svg{width:30px;height:30px}.velvet-chat-auth__head h1{font-size:21px;margin-top:2px}.velvet-chat-auth__head p{margin-top:1px}.velvet-chat-auth__footer{padding-top:5px;padding-bottom:7px}}
