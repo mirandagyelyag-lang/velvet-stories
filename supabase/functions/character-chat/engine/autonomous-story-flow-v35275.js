@@ -50,12 +50,12 @@ export function buildAutonomousStoryFlowV35275({
   const silent=isSilent(latestUserMessage);
 
   let authority="normal";
-  if(streak===1) authority="beat";
+  if(streak===1) authority="scene";
   else if(streak===2) authority="scene";
   else if(streak>=3) authority="story";
 
   const authorityRule = streak===1
-    ? "HANDOFF LEVEL 1 · CONTINUE THE BEAT: make one concrete character-owned choice inside the current scene. Do not just wait, watch, or ask the user what happens next."
+    ? "HANDOFF LEVEL 1 · CONTINUE THE LIVING SCENE: make meaningful forward progress. If the character has already left, follow their independent life, NPC encounter or established destination rather than resetting the user-facing scene. If the beat is naturally complete, a causal time skip is allowed immediately. Never just wait or ask the user what happens next."
     : streak===2
       ? "HANDOFF LEVEL 2 · ADVANCE THE SCENE: the user is intentionally observing. Resolve or alter one character-owned action, shift focus to the character's own life / NPCs / consequence, or let the character leave. A modest time or location transition is allowed when it follows from already-established motion and does NOT invent the user's action."
       : streak>=3
@@ -67,6 +67,9 @@ export function buildAutonomousStoryFlowV35275({
     `SILENT STREAK=${streak}. NARRATIVE AUTHORITY=${authority}.`,
     authorityRule,
     "USER AGENCY FIREWALL: narrative authority applies to the CHARACTER and the world, never to the user's unspoken choices. Do not write the user's dialogue, thoughts, consent, decisions, voluntary movement, romantic response, or agreement.",
+    "SCENE-EXIT PRIORITY: when the last character turn establishes an exit, departure, closed conversation, or separate locations, do not snap back to the user, repeat the farewell, or reopen the same exchange. Follow the character to their next plausible action, obligation, private reflection, or NPC interaction. A time skip is allowed when no meaningful beat remains.",
+    "OFFSCREEN POV: follow only what the viewpoint character can know, observe, remember, or privately think. NPCs have independent motives and dialogue; they must not exist solely to discuss or praise the user.",
+    "TIME-SKIP DISCIPLINE: when advancing hours or days, preserve established chronology and relationships; do not silently move, speak for, or decide on behalf of the user. Establish the new time/place through action, not an exposition dump.",
     "CHARACTER-OWNED TRANSITIONS ARE ALLOWED: the character can leave, go to practice/work/home, meet friends, make a call, flirt elsewhere, start a task, sleep, wake later, deal with a problem, or begin another scene from their own side when causally grounded.",
     "ALREADY-COMMITTED MOTION MAY COMPLETE: if both are already traveling toward an explicitly established destination, repeated handoff may allow arrival because the transit was already chosen. Do not replace the destination or invent a new one.",
     "DO NOT TELEPORT THE USER: if the character changes location independently, do not silently place the user there too. Reconnect later through a message/call/new encounter only when grounded.",
