@@ -9250,6 +9250,7 @@ const HARD_REPAIR_REQUIRED_ISSUES = new Set([
   "rejected_offer_pushed_again",
   "user_concern_ignored_for_offer",
   "care_misread_as_hostility",
+  "care_reduced_to_literal_symptom",
   "caring_refusal_generic_checkin",
   "repeated_question_without_development",
   "meaningful_turn_no_move",
