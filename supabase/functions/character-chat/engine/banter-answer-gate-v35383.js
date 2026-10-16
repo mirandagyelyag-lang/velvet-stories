@@ -104,7 +104,8 @@ export function banterAnswerGateIssuesV35383({reply="",latestUserMessage="",rece
   const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-4);
   const saturated=recent.slice(-2).filter(isBanterHeavy).length>=2||recent.filter(isBanterHeavy).length>=3;
   if(saturated&&isBanterHeavy(reply))issues.push("banter_saturation_loop");
-  // Repeated openings are advisory: never fail an otherwise usable reply.\n  // The prompt discourages repetition without triggering expensive repair loops.
+  // Repeated openings are advisory: never fail an otherwise usable reply.
+  // The prompt discourages repetition without triggering expensive repair loops.
   const q=directQuestionInfo(latestUserMessage);
   if(q&&!answersDirectQuestion(reply,latestUserMessage))issues.push("conversational_answer_gate_miss");
   const recentTechnically=recent.slice(-4).filter(x=>/\btechnically\b/i.test(dialogue(x))).length;
