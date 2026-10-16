@@ -9247,6 +9247,11 @@ const REPAIR_TRIGGER_ISSUES = new Set([
 // These are not cosmetic preferences. If a draft violates one of these, never
 // surface/save the rejected draft merely because the one repair call timed out.
 const HARD_REPAIR_REQUIRED_ISSUES = new Set([
+  "rejected_offer_pushed_again",
+  "user_concern_ignored_for_offer",
+  "care_misread_as_hostility",
+  "caring_refusal_generic_checkin",
+  "repeated_question_without_development",
   "meaningful_turn_no_move",
   "meaningful_turn_stalled_regeneration",
   "turn_state_commitment_reversal",
