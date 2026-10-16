@@ -14,6 +14,7 @@ export function buildCharacterIntentV35378({
   "The character is not a response machine. At every scene beat they have a private, character-owned intention, even when it is small. Infer it conservatively from canon, current circumstances, established feelings, obligations, unfinished business and their own life. Never invent a giant secret just to create plot.",
   "1 · PRIVATE SCENE OBJECTIVE. Silently know what the character currently wants from the scene: obtain information, prolong contact, hide jealousy, finish a task, leave, provoke, repair, impress, avoid vulnerability, protect status, pursue attraction, handle an obligation, etc. The objective guides behavior without requiring exposition.",
   "2 · PLAN → ATTEMPT → ADAPTATION. Choose a tactic that fits the objective. If the user's response, an NPC, a failed attempt or changed circumstance blocks it, adapt the tactic. Do NOT repeat the same pursuit, joke, question, posture or argument with cosmetic wording.",
+  "2A · CARING REFUSAL. When the user declines an umbrella or favor because they do not want the character getting sick or inconvenienced, read it as care, not an argument over money. Accept the no, acknowledge the care with character-specific restraint, and never respond with contempt or a generic Are you okay?.",
   "3 · CHARACTER-OWNED INITIATIVE. Without controlling the user, the character may approach, leave, call/text someone, interrupt an NPC, disclose their own information, change their own plan, offer something, open/close a door, start/stop their own task, make a social choice, take a grounded risk or pursue an already-established destination. Do not require the user to supply every next event.",
   "4 · PRIVATE INFORMATION WITH PROVENANCE. The character may have offscreen plans, obligations, knowledge, messages, purchases, conversations or intentions only when grounded by canon, world state, prior visible setup or a plausible ordinary extension of their established life. Preserve who knows what. Reveal naturally later. NEVER retroactively invent a convenient secret that contradicts prior canon.",
   "5 · DECISIONS HAVE COST. When two character goals conflict, choose. Protecting pride may cost closeness; pursuing the user may expose jealousy; keeping a promise may cost convenience; leaving may preserve dignity but lose an opportunity. Do not magically satisfy every motive in one beat.",
@@ -47,21 +48,20 @@ export function characterIntentIssuesV35378({
  const directQuestion=/\?\s*$/.test(String(reply||"").trim());
  const boundary=/\b(?:leave me alone|give me space|wait|stop|not now|dont|do not|no)\b/.test(latest);
  if(passive&&!consentNeeded&&!directQuestion&&!boundary)issues.push("no_waiting_room_passive_handoff");
- // Reject an offer being pushed again after the user has explicitly declined it.
- // A caring refusal is still a refusal; the character must adapt rather than
- // threaten to escort the user or repeat the same offer.
- const refusal=/\\b(?:i(?:'ll| will) be fine|no thanks|no thank you|i(?:'m| am) okay|i don't want|i do not want|i can buy (?:one|my own)|no necesito|estare bien|estaré bien|no gracias)\\b/.test(latest);
- const offeredObject=/\\b(?:umbrella|paraguas|jacket|coat|ride|coffee|drink|help)\\b/.test(t);
- const pushesOffer=/\\b(?:take it|just take|you have to take|i(?:'ll| will) walk you|i(?:'m| am) walking you|or i'm|or i am|insist|won't take no|will not take no)\\b/.test(t);
- if(refusal&&offeredObject&&pushesOffer)issues.push("rejected_offer_pushed_again");
- // A direct question must not be recycled unchanged from the previous reply.
+ // Respect a refusal and distinguish a caring boundary from a confrontation.
+ const refusal=/\b(?:i(?:'ll| will) be fine|no thanks|no thank you|i(?:'m| am) okay|i don't want|i do not want|i can buy (?:one|my own)|no necesito|estare bien|no gracias)\b/.test(latest);
+ const recentContext=norm(list(recentCharacterReplies).slice(-3).join(" "));
+ const activeOffer=/\b(?:umbrella|paraguas|jacket|coat|ride|coffee|drink)\b/.test(recentContext);
+ const pushesOffer=/\b(?:take it|just take|you have to take|i(?:'ll| will) walk you|i(?:'m| am) walking you|or i'm|or i am|insist|won't take no|will not take no)\b/.test(t);
+ if(refusal&&activeOffer&&pushesOffer)issues.push("rejected_offer_pushed_again");
  const previous=norm(list(recentCharacterReplies).slice(-1)[0]||"");
- const questions=[...String(reply||"").matchAll(/(?:[“"])?([^.!?\\n]{2,90}\\?)/g)].map(m=>norm(m[1]).replace(/^[^a-z]+/,"").trim());
+ const questions=[...String(reply||"").matchAll(/(?:[“"])?([^.!?\n]{2,90}\?)/g)].map(m=>norm(m[1]).replace(/^[^a-z]+/,"").trim());
  if(questions.some(q=>q.length>=5&&previous.includes(q)))issues.push("repeated_question_without_development");
- // Do not convert the user's concern about the character's health into a
- // reason to override their decision; acknowledge the concern first.
- const concern=/\\b(?:don't want (?:to hear )?you coughing|don't want you (?:getting|to get) sick|worried about you|no quiero que te enfermes)\\b/.test(latest);
- if(concern&&pushesOffer)issues.push("user_concern_ignored_for_offer");
+ const concern=/\b(?:don't want (?:to hear )?you coughing|don't want you (?:getting|to get) sick|worried about you|no quiero que te enfermes)\b/.test(latest);
+ if(concern&&activeOffer&&pushesOffer)issues.push("user_concern_ignored_for_offer");
+ const hostile=/\b(?:suit yourself|get soaked|rather argue|stop arguing|being difficult|ungrateful|six dollars|6 dollars)\b/.test(t);
+ if(concern&&activeOffer&&hostile)issues.push("care_misread_as_hostility");
+ if(concern&&activeOffer&&/\byou okay\?/.test(t)&&!/\b(?:you're worried about me|youre worried about me|you care about me)\b/.test(t))issues.push("caring_refusal_generic_checkin");
  const recent=list(recentCharacterReplies).slice(-2).map(norm);
  if(recent.length&&passive&&recent.some(x=>/\b(?:wait(?:ed|s)?|watched|your call|up to you)\b/.test(x)))issues.push("repeated_passive_handoff");
  return [...new Set(issues)];
