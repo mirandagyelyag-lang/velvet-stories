@@ -67,3 +67,9 @@
  .velvet-atelier-auth .velvet-crystal-auth__layout{display:flex;align-items:center;justify-content:center}
  .velvet-atelier-auth .velvet-atelier-auth__monogram{left:-33%;top:20%;width:80vw}
 }
+
+/* Override browser/global input and button themes on the auth form. */
+.velvet-atelier-auth .velvet-crystal-auth__field input,.velvet-atelier-auth .velvet-crystal-auth__field input:is(:focus,:hover,:active){background:transparent!important;background-color:transparent!important;color:#f7f0ed!important;border:0!important;border-radius:0!important;box-shadow:none!important;appearance:none!important;-webkit-appearance:none!important}
+.velvet-atelier-auth .velvet-crystal-auth__field input::placeholder{color:#bc8398!important;opacity:1}
+.velvet-atelier-auth .velvet-crystal-auth__field input:-webkit-autofill{-webkit-text-fill-color:#f7f0ed!important;box-shadow:0 0 0 100px #1a101c inset!important}
+.velvet-atelier-auth .velvet-crystal-auth__submit{background:#d9b7c4!important;color:#2b1627!important;border-color:#ebdacd!important}
