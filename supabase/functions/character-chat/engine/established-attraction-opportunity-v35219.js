@@ -197,11 +197,11 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
 
   // Rescue a declined practical offer without another provider call. The
   // character respects the refusal and responds to care instead of insisting.
-  const declinedOffer = /\\b(?:i(?:'ll| will) be fine|no thanks|no thank you|i(?:'m| am) okay|i can buy one|i don't want to hear you coughing|i do not want you getting sick)\\b/.test(normalizedTurn);
-  const offerFailures = ["rejected_offer_pushed_again", "user_concern_ignored_for_offer", "repeated_question_without_development"];
+  const declinedOffer = /\b(?:i(?:'ll| will) be fine|no thanks|no thank you|i(?:'m| am) okay|i can buy one|i don't want to hear you coughing|i do not want you getting sick)\b/.test(normalizedTurn);
+  const offerFailures = ["rejected_offer_pushed_again", "user_concern_ignored_for_offer", "repeated_question_without_development", "care_reduced_to_literal_symptom", "caring_refusal_generic_checkin"];
   const recentOffer = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-3).join(" "));
-  if (declinedOffer && (offerFailures.some(issue => failures.has(issue)) || /\\b(?:umbrella|paraguas|jacket|coat)\\b/.test(recentOffer))) {
-    if (/\\b(?:coughing|getting sick|worried about you)\\b/.test(normalizedTurn)) {
+  if (declinedOffer && (offerFailures.some(issue => failures.has(issue)) || /\b(?:umbrella|paraguas|jacket|coat)\b/.test(recentOffer))) {
+    if (/\b(?:coughing|getting sick|worried about you)\b/.test(normalizedTurn)) {
       return name + ' lowers the umbrella and puts it away. “You’re worried about me?” A brief smile catches him off guard. “I’ll survive the rain. See you later.”';
     }
     return name + ' puts the umbrella away rather than asking again. “Fair enough. See you later.”';
