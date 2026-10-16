@@ -1,0 +1,62 @@
+name: Velvet visual preview (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "public/velvet-reference-auth.html"
+      - ".github/workflows/velvet-pages-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: velvet-pages
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Prepare visual-only preview
+        run: |
+          mkdir -p _site
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path('public/velvet-reference-auth.html').read_text()
+          # Pages is a visual sandbox, not a replacement for Supabase/Vercel auth.
+          preview = """
+          <style>
+          .velvet-preview-note{position:fixed;z-index:50;bottom:6px;left:50%;transform:translateX(-50%);pointer-events:none;white-space:nowrap;font:10px Sora,sans-serif;letter-spacing:.08em;color:#9a607b;background:rgba(255,250,250,.8);padding:5px 12px;border-radius:30px}
+          </style>
+          <div class="velvet-preview-note">VISTA PREVIA · SIN INICIO DE SESIÓN</div>
+          <script>
+          document.addEventListener('submit',function(e){
+            if(e.target && e.target.id==='bar' && document.getElementById('in').type==='password'){
+              e.preventDefault();e.stopImmediatePropagation();
+              alert('Esta es una vista previa visual. Para crear una cuenta o entrar, usa la app principal en Vercel.');
+            }
+          },true);
+          </script>
+          """
+          html = html.replace('</body>', preview + '</body>')
+          Path('_site/index.html').write_text(html)
+          Path('_site/.nojekyll').touch()
+          PY
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
