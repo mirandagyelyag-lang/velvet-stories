@@ -195,6 +195,18 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
   const normalizedTurn = normalize(effectiveTurn);
   const failures = new Set(Array.isArray(issues) ? issues : []);
 
+  // Rescue a declined practical offer without another provider call. The
+  // character respects the refusal and responds to care instead of insisting.
+  const declinedOffer = /\\b(?:i(?:'ll| will) be fine|no thanks|no thank you|i(?:'m| am) okay|i can buy one|i don't want to hear you coughing|i do not want you getting sick)\\b/.test(normalizedTurn);
+  const offerFailures = ["rejected_offer_pushed_again", "user_concern_ignored_for_offer", "repeated_question_without_development"];
+  const recentOffer = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-3).join(" "));
+  if (declinedOffer && (offerFailures.some(issue => failures.has(issue)) || /\\b(?:umbrella|paraguas|jacket|coat)\\b/.test(recentOffer))) {
+    if (/\\b(?:coughing|getting sick|worried about you)\\b/.test(normalizedTurn)) {
+      return name + ' lowers the umbrella and puts it away. “You’re worried about me?” A brief smile catches him off guard. “I’ll survive the rain. See you later.”';
+    }
+    return name + ' puts the umbrella away rather than asking again. “Fair enough. See you later.”';
+  }
+
   if (failures.has("chosen_time_attraction_flattened") || failures.has("delegated_social_task_condescension")) {
     return "“Fine. I’ll handle them.” " + name + " starts toward the others, then looks back at you. “Wait for me. I want to do this with you.”";
   }
