@@ -325,6 +325,13 @@ html[data-theme="comfort"] .enter::after,html[data-theme="light"] .enter::after{
   html[data-theme="comfort"] .enter::after,html[data-theme="light"] .enter::after{animation:none;opacity:0}
 }
 
+
+/* The Velvet wordmark in login is a real, keyboard-accessible home control. */
+#login .velvet-home-link{display:block;width:max-content;max-width:100%;margin:0 auto;padding:0 10px 7px;border:0;background:transparent;color:inherit;cursor:pointer;text-align:center;border-radius:14px;transition:opacity .2s,transform .2s}
+#login .velvet-home-link:hover{opacity:.82;transform:translateY(-2px)}
+#login .velvet-home-link:active{transform:scale(.98)}
+#login .velvet-home-link:focus-visible{outline:2px solid var(--rose);outline-offset:5px}
+
 </style>
 </head>
 <body>
@@ -369,8 +376,10 @@ html[data-theme="comfort"] .enter::after,html[data-theme="light"] .enter::after{
 <section id="login" aria-label="Crear cuenta">
 <div class="app chatting" id="app">
   <header class="hd">
+    <button type="button" class="velvet-home-link" id="velvet-home-link" aria-label="Volver al inicio de Velvet" title="Volver al inicio">
     <div class="vw"><svg viewBox="0 0 200 200" aria-hidden="true"><path class="vv o" pathLength="1" d="M40 44L100 160L160 44"/><path class="vv i" pathLength="1" d="M68 44L100 106L132 44"/></svg></div>
     <h2>VELVET</h2><div class="lsub">STORIES</div>
+    </button>
   </header>
   <div class="chat" id="chat" aria-live="polite"></div>
   <div class="foot">
@@ -469,6 +478,11 @@ html[data-theme="comfort"] .enter::after,html[data-theme="light"] .enter::after{
   function start(list,hello){steps=list;si=0;data={};chat.innerHTML='';alt.hidden=!!hello;say(hello?[]:['Te estaba esperando…'],ask);}
   alt.addEventListener('click',function(){start(LOGIN,true);});
   function reset(){login.classList.remove('on');app.classList.remove('out');hi.classList.remove('on');ui.classList.remove('out');mk.classList.remove('pulse');chat.innerHTML='';}
+  document.getElementById("velvet-home-link").addEventListener("click",function(){
+    if(busy && si>=steps.length)return;
+    reset();
+    inp.blur();
+  });
   window.velvetLogin={open:function(){login.classList.add('on');start(SIGNUP,false);},reset:reset};
 })();
 </script>
