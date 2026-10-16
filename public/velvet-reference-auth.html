@@ -136,6 +136,37 @@ html[data-theme="light"] #login .bar,html[data-theme="comfort"] #login .bar{back
 html[data-theme="light"] #login input::placeholder,html[data-theme="comfort"] #login input::placeholder{color:rgba(73,50,57,.55)}
 html[data-theme="light"] #login .send,html[data-theme="comfort"] #login .send{background:#87546f;color:#fff}
 
+
+/* Contrast-corrected Velvet lighting: retain the identity, not a washed-out inversion. */
+html[data-theme="light"]{--bg0:#f6f0ed;--bg1:#f0e3e8;--wine:#e8cbd7;--rose:#773b59;--dim:#80516a;--gold:#713450;--ink:#38202f}
+html[data-theme="comfort"]{--bg0:#e9d8c8;--bg1:#e5ccbd;--wine:#d8adab;--rose:#753e50;--dim:#78505b;--gold:#663744;--ink:#35232a}
+html[data-theme="light"] .stage{background:radial-gradient(ellipse 55% 58% at 50% 43%,#e4c5d2 0%,#f0e4e8 55%,#f6f0ed 100%)}
+html[data-theme="comfort"] .stage{background:radial-gradient(ellipse 58% 65% at 50% 43%,#d8b0ad 0%,#e5cebf 55%,#ecdfd0 100%)}
+html[data-theme="light"] .spot,html[data-theme="comfort"] .spot{opacity:.25}
+html[data-theme="light"] .vig,html[data-theme="comfort"] .vig{opacity:.14}
+html[data-theme="light"] .grain,html[data-theme="comfort"] .grain{opacity:.035}
+html[data-theme="light"] .ring,html[data-theme="comfort"] .ring{stroke:#7a415d;opacity:.5}
+html[data-theme="light"] .ticks,html[data-theme="comfort"] .ticks{stroke:#81405d;opacity:.55}
+html[data-theme="light"] .wisps path,html[data-theme="comfort"] .wisps path{stroke:#88546b;opacity:.24}
+html[data-theme="light"] .mark svg,html[data-theme="comfort"] .mark svg{filter:drop-shadow(0 8px 22px rgba(99,43,72,.16))}
+html[data-theme="light"] .v,html[data-theme="comfort"] .v{stroke:#70304f!important;filter:drop-shadow(0 0 6px rgba(123,55,86,.23))}
+html[data-theme="light"] .title h1,html[data-theme="comfort"] .title h1{background:linear-gradient(180deg,#59243f 0%,#7b3b5d 65%,#a0667e 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 7px rgba(83,35,59,.1))}
+html[data-theme="light"] .sub,html[data-theme="comfort"] .sub{color:#77465f!important}
+html[data-theme="light"] .enter,html[data-theme="comfort"] .enter{color:#fff!important;border-color:#6f3652!important;background:linear-gradient(145deg,#814661,#4a2438)!important;box-shadow:0 12px 32px rgba(76,31,55,.22),inset 0 1px rgba(255,255,255,.2)!important}
+html[data-theme="light"] .enter::before,html[data-theme="comfort"] .enter::before{background:linear-gradient(145deg,#814661,#4a2438)!important}
+html[data-theme="light"] .enter .ln,html[data-theme="comfort"] .enter .ln{background:#f9e5ed!important}
+html[data-theme="light"] .velvet-lighting,html[data-theme="comfort"] .velvet-lighting{background:rgba(255,249,247,.86);border:1px solid rgba(105,51,80,.24);box-shadow:0 6px 24px rgba(72,37,55,.1)}
+html[data-theme="light"] .velvet-lighting button,html[data-theme="comfort"] .velvet-lighting button{color:#78465f}
+html[data-theme="light"] .velvet-lighting button[aria-pressed="true"],html[data-theme="comfort"] .velvet-lighting button[aria-pressed="true"]{background:#66354f;color:#fff;box-shadow:0 2px 10px rgba(72,29,53,.18)}
+html[data-theme="light"] #login,html[data-theme="comfort"] #login{background:radial-gradient(ellipse at 50% 35%,var(--wine),var(--bg0) 80%);color:var(--ink)}
+html[data-theme="light"] #login h2,html[data-theme="comfort"] #login h2{background:linear-gradient(#58263e,#955c77);-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-theme="light"] #login .vv,html[data-theme="comfort"] #login .vv{stroke:#70304f;filter:none}
+html[data-theme="light"] #login .b,html[data-theme="comfort"] #login .b{background:rgba(110,55,83,.11);border-color:rgba(105,49,78,.28);color:var(--ink)}
+html[data-theme="light"] #login .me .b,html[data-theme="comfort"] #login .me .b{background:#77405e;color:#fff}
+html[data-theme="light"] #login .bar,html[data-theme="comfort"] #login .bar{background:rgba(255,250,248,.72);border-color:rgba(105,49,78,.4)}
+html[data-theme="light"] #login .bar input,html[data-theme="comfort"] #login .bar input{color:#38202f}
+html[data-theme="light"] #login .send,html[data-theme="comfort"] #login .send{background:#713b58;color:#fff}
+
 </style>
 </head>
 <body>
