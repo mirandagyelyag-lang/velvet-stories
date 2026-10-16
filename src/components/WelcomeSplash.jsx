@@ -27,6 +27,7 @@ export default function WelcomeSplash() {
     <div className="velvet-zip-entry__silk velvet-zip-entry__silk--left" aria-hidden="true"/>
     <div className="velvet-zip-entry__silk velvet-zip-entry__silk--right" aria-hidden="true"/>
     <div className="velvet-zip-entry__glow" aria-hidden="true"/>
+    <div className="velvet-zip-entry__crystal velvet-zip-entry__crystal--back" aria-hidden="true" />
     <div className="velvet-zip-entry__core">
       <svg viewBox="0 0 400 400" className="velvet-zip-entry__emblem" fill="none" stroke="currentColor" aria-hidden="true">
         <defs><linearGradient id="velvetLuminousMetal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffebec"/><stop offset=".24" stopColor="#f5a6bc"/><stop offset=".52" stopColor="#8c3e62"/><stop offset=".78" stopColor="#ffd2de"/><stop offset="1" stopColor="#b75e84"/></linearGradient></defs>
