@@ -51,17 +51,18 @@ export function characterIntentIssuesV35378({
  // Respect a refusal and distinguish a caring boundary from a confrontation.
  const refusal=/\b(?:i(?:'ll| will) be fine|no thanks|no thank you|i(?:'m| am) okay|i don't want|i do not want|i can buy (?:one|my own)|no necesito|estare bien|no gracias)\b/.test(latest);
  const recentContext=norm(list(recentCharacterReplies).slice(-3).join(" "));
- const activeOffer=/\b(?:umbrella|paraguas|jacket|coat|ride|coffee|drink)\b/.test(recentContext);
- const pushesOffer=/\b(?:take it|just take|you have to take|i(?:'ll| will) walk you|i(?:'m| am) walking you|or i'm|or i am|insist|won't take no|will not take no)\b/.test(t);
+ const activeOffer=/\b(?:umbrella|paraguas|jacket|coat|ride|coffee|drink)\b/.test(recentContext) || (/\b(?:coughing|getting sick)\b/.test(latest) && /\b(?:take it|take the|umbrella|bag|jacket)\b/.test(t));
+ const pushesOffer=/\b(?:take it|take the (?:bag|umbrella|jacket|coat)|just take|you have to take|i(?:'ll| will) walk you|i(?:'m| am) walking you|or i'm|or i am|insist|won't take no|will not take no)\b/.test(t);
  if(refusal&&activeOffer&&pushesOffer)issues.push("rejected_offer_pushed_again");
  const previous=norm(list(recentCharacterReplies).slice(-1)[0]||"");
  const questions=[...String(reply||"").matchAll(/(?:[“"])?([^.!?\n]{2,90}\?)/g)].map(m=>norm(m[1]).replace(/^[^a-z]+/,"").trim());
  if(questions.some(q=>q.length>=5&&previous.includes(q)))issues.push("repeated_question_without_development");
  const concern=/\b(?:don't want (?:to hear )?you coughing|don't want you (?:getting|to get) sick|worried about you|no quiero que te enfermes)\b/.test(latest);
  if(concern&&activeOffer&&pushesOffer)issues.push("user_concern_ignored_for_offer");
+ if(concern&&/\b(?:i(?:\x27m| am) not coughing|not coughing|not sick)\b/.test(t))issues.push("care_reduced_to_literal_symptom");
  const hostile=/\b(?:suit yourself|get soaked|rather argue|stop arguing|being difficult|ungrateful|six dollars|6 dollars)\b/.test(t);
  if(concern&&activeOffer&&hostile)issues.push("care_misread_as_hostility");
- if(concern&&activeOffer&&/\byou okay\?/.test(t)&&!/\b(?:you're worried about me|youre worried about me|you care about me)\b/.test(t))issues.push("caring_refusal_generic_checkin");
+ if(concern&&/\byou okay\?/.test(t)&&!/\b(?:you're worried about me|youre worried about me|you care about me)\b/.test(t))issues.push("caring_refusal_generic_checkin");
  const recent=list(recentCharacterReplies).slice(-2).map(norm);
  if(recent.length&&passive&&recent.some(x=>/\b(?:wait(?:ed|s)?|watched|your call|up to you)\b/.test(x)))issues.push("repeated_passive_handoff");
  return [...new Set(issues)];
