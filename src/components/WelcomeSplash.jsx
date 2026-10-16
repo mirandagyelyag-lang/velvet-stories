@@ -27,6 +27,25 @@ export default function WelcomeSplash() {
     <div className="velvet-zip-entry__silk velvet-zip-entry__silk--left" aria-hidden="true"/>
     <div className="velvet-zip-entry__silk velvet-zip-entry__silk--right" aria-hidden="true"/>
     <div className="velvet-zip-entry__glow" aria-hidden="true"/>
+    <svg className="velvet-zip-entry__ribbons" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="velvetRibbonGlass" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#efb6c5" stopOpacity=".02"/><stop offset=".38" stopColor="#c57a98" stopOpacity=".22"/><stop offset=".53" stopColor="#f5bdc9" stopOpacity=".37"/><stop offset=".65" stopColor="#9d466b" stopOpacity=".11"/><stop offset="1" stopColor="#b85d80" stopOpacity="0"/></linearGradient>
+        <linearGradient id="velvetRibbonEdge" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#f7d0d7" stopOpacity="0"/><stop offset=".42" stopColor="#f4a9c0" stopOpacity=".45"/><stop offset=".52" stopColor="#ffd3d9" stopOpacity=".75"/><stop offset=".66" stopColor="#e89db5" stopOpacity=".18"/><stop offset="1" stopColor="#f5b5c8" stopOpacity="0"/></linearGradient>
+      </defs>
+      <g fill="url(#velvetRibbonGlass)" stroke="url(#velvetRibbonEdge)" strokeWidth=".7">
+        <path d="M-64 -60 C115 30 12 130 10 265 C3 400 140 464 380 376 C184 490 -55 405 -48 253 C-39 122 92 57 -64 -60Z"/>
+        <path d="M430 90 C264 145 385 239 387 336 C392 441 287 500 -23 484 C181 537 452 475 454 324 C452 212 339 165 430 90Z"/>
+        <path d="M-84 431 C77 483 170 478 318 438 C182 521 47 543 -80 491Z"/>
+        <path d="M-67 832 C65 738 132 749 229 640 C290 572 338 558 446 538 C328 601 314 665 243 725 C141 802 44 772 -67 892Z"/>
+        <path d="M440 705 C308 614 253 637 195 570 C281 606 332 592 446 646Z"/>
+      </g>
+      <g fill="none" stroke="url(#velvetRibbonEdge)" strokeWidth="1">
+        <path d="M-24 7 C125 102 -19 202 29 321 C88 465 312 458 407 320"/>
+        <path d="M411 135 C326 178 397 264 369 361 C337 459 178 502 -10 452"/>
+        <path d="M-25 472 C107 531 266 491 384 426"/>
+        <path d="M-26 839 C119 741 164 776 258 649 C321 562 367 581 418 534"/>
+      </g>
+    </svg>
     <div className="velvet-zip-entry__crystal velvet-zip-entry__crystal--back" aria-hidden="true" />
     <div className="velvet-zip-entry__core">
       <svg viewBox="0 0 400 400" className="velvet-zip-entry__emblem" fill="none" stroke="currentColor" aria-hidden="true">
