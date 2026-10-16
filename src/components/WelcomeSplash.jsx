@@ -4,7 +4,7 @@ import "../styles/velvet-entry-from-zip.css";
 export default function WelcomeSplash() {
   const [stage,setStage]=useState("loading");
   const [visible,setVisible]=useState(() => {
-    try { return sessionStorage.getItem("velvet-entry-seen-v2")!=="1"; } catch { return true; }
+    try { return sessionStorage.getItem("velvet-entry-seen-restored-v1")!=="1"; } catch { return true; }
   });
   useEffect(() => {
     if (!visible) return;
@@ -19,7 +19,7 @@ export default function WelcomeSplash() {
     return ()=>window.clearTimeout(timer);
   },[stage]);
   const enterVelvet=()=>{
-    try { sessionStorage.setItem("velvet-entry-seen-v2","1"); } catch {}
+    try { sessionStorage.setItem("velvet-entry-seen-restored-v1","1"); } catch {}
     setStage("leaving");
   };
   if(!visible)return null;
