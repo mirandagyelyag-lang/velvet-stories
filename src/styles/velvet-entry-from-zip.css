@@ -1,72 +1,15 @@
-.velvet-zip-entry{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;overflow:hidden;background:radial-gradient(ellipse at 50% 52%,#300d20 0%,#1b0813 47%,#10070e 79%,#0c060b 100%);color:#d9b7c4;isolation:isolate;transition:opacity .8s ease,visibility .8s}
-.velvet-zip-entry--leaving{opacity:0;visibility:hidden;pointer-events:none}
-
-.velvet-zip-entry__core{position:relative;width:min(84vw,540px);aspect-ratio:1;display:grid;place-items:center}
-.velvet-zip-entry__emblem{position:absolute;inset:0;width:100%;height:100%;opacity:.46;filter:drop-shadow(0 0 12px #bc83983a)}
-.velvet-zip-entry__outer{transform-origin:50% 50%;animation:velvetZipRotate 320s linear infinite}
-.velvet-zip-entry__inner{transform-origin:50% 50%;animation:velvetZipRotate 140s linear infinite reverse}
-.velvet-zip-entry__line{stroke-dasharray:650;stroke-dashoffset:650;animation:velvetZipDraw 2s ease-in-out .25s forwards}
-.velvet-zip-entry__line--2{animation-delay:.5s;opacity:.65}.velvet-zip-entry__line--3{animation-delay:.75s;opacity:.4}
-.velvet-zip-entry__brand{position:relative;z-index:1;text-align:center;color:#f7f0ed;font:400 clamp(14px,1.4vw,19px)/1.4 'Space Mono',monospace;letter-spacing:.6em;padding-left:.6em;text-shadow:0 0 22px #1b101c}
-.velvet-zip-entry__brand small{display:block;margin-top:9px;font:400 8px system-ui,sans-serif;letter-spacing:.4em;padding-left:.4em;color:#bc8398}
-.velvet-zip-entry__loading{position:absolute;bottom:10%;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;white-space:nowrap;font:9px system-ui,sans-serif;letter-spacing:.3em}
-.velvet-zip-entry__loading i{width:130px;height:1px;background:linear-gradient(90deg,#ebdacd 0%,#ebdacd 100%);transform-origin:left;animation:velvetZipLoad 2.3s ease both}
-.velvet-zip-entry__gate{position:absolute;bottom:9%;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:space-between;width:min(86vw,790px);gap:24px;animation:velvetZipAppear .8s ease both}
-.velvet-zip-entry__gate button{border:1px solid #d9b7c480;background:#34203328;color:#ebdacd;padding:16px 30px;font:500 10px system-ui,sans-serif;letter-spacing:.29em;cursor:pointer;transition:border-color .3s,background .3s}
-.velvet-zip-entry__gate button:hover,.velvet-zip-entry__gate button:focus-visible{background:#541f3870;border-color:#ebdacd}
-.velvet-zip-entry__gate button:last-child{border:0;border-bottom:1px solid #d9b7c480;color:#d9b7c4}
-.velvet-zip-entry__skip{position:absolute;right:26px;bottom:25px;background:transparent;border:0;color:#d9b7c4;font:10px system-ui,sans-serif;letter-spacing:.2em;cursor:pointer}
-@keyframes velvetZipRotate{to{transform:rotate(360deg)}}@keyframes velvetZipDraw{to{stroke-dashoffset:0}}@keyframes velvetZipLoad{from{transform:scaleX(0)}to{transform:scaleX(1)}}@keyframes velvetZipAppear{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
-@media(max-width:650px){.velvet-zip-entry__gate{flex-direction:column;gap:12px}.velvet-zip-entry__gate button{width:100%}.velvet-zip-entry__gate button:last-child{width:auto}.velvet-zip-entry__brand{font-size:14px}}
-@media(prefers-reduced-motion:reduce){.velvet-zip-entry__outer,.velvet-zip-entry__inner,.velvet-zip-entry__line,.velvet-zip-entry__loading i{animation:none}.velvet-zip-entry__line{stroke-dashoffset:0}}
-
-/* Velvet noir: completely smooth background; no turbulence/noise texture. */
-.velvet-zip-entry__glow{position:absolute;inset:5% 10%;pointer-events:none;background:radial-gradient(ellipse at center,#a9325928 0%,#641b3b12 30%,transparent 67%);animation:velvetLuminousBreathe 8s ease-in-out infinite alternate}
-.velvet-zip-entry__silk{position:absolute;z-index:0;pointer-events:none;width:75vw;height:24vh;border-radius:45% 55% 30% 70%;opacity:.36;filter:blur(25px);background:linear-gradient(160deg,transparent 0%,#8c2a4e0d 17%,#a73b6466 31%,#3810226b 43%,#ad496944 55%,transparent 78%);animation:velvetLuminousSilk 15s ease-in-out infinite alternate}
-.velvet-zip-entry__silk--left{top:28%;left:-28%;transform:rotate(-24deg) skewY(-8deg)}
-.velvet-zip-entry__silk--right{top:48%;right:-28%;transform:rotate(18deg) skewY(8deg);animation-direction:alternate-reverse;animation-duration:19s}
-.velvet-zip-entry__core{z-index:1}
-.velvet-zip-entry__emblem{color:#eab3c5;opacity:1;filter:drop-shadow(0 0 12px #f9a3bd7a) drop-shadow(0 0 38px #e54d8650)}
-.velvet-zip-entry__outer{opacity:.45}
-.velvet-zip-entry__line{stroke:#e9a4b8;stroke-width:1.4;filter:drop-shadow(0 0 7px #ff9dbe)}
-.velvet-zip-entry__line--2{stroke-width:1.1}
-.velvet-zip-entry__line--3{stroke-width:.9}
-.velvet-zip-entry__shine{stroke-dasharray:650;stroke-dashoffset:650;animation:velvetZipDraw 2.1s ease-in-out .35s forwards,velvetLuminousPulse 5s ease-in-out 2.4s infinite;filter:drop-shadow(0 0 5px #ffb4cc) drop-shadow(0 0 16px #ff639e);opacity:.94}
-.velvet-zip-entry__shine--inner{animation-delay:.6s,2.7s;opacity:.7}
-.velvet-zip-entry__tip{filter:drop-shadow(0 0 8px #ffd3e0) drop-shadow(0 0 19px #ff7ca5);animation:velvetLuminousPulse 5s ease-in-out infinite}
-.velvet-zip-entry__brand{color:#fff3f5;text-shadow:0 0 14px #1b0813,0 0 24px #f5a0bc77}
-.velvet-zip-entry__gate{z-index:3}
-.velvet-zip-entry__gate button{box-shadow:0 0 15px #e480a019}
-@keyframes velvetLuminousPulse{0%,100%{opacity:.67;filter:drop-shadow(0 0 4px #ffb4cc) drop-shadow(0 0 11px #ff639e)}50%{opacity:1;filter:drop-shadow(0 0 9px #ffd1e0) drop-shadow(0 0 27px #ff639e)}}
-@keyframes velvetLuminousBreathe{to{opacity:.58;transform:scale(1.1)}}
-@keyframes velvetLuminousSilk{to{translate:8% -12%;scale:1.1;opacity:.56}}
-@media(prefers-reduced-motion:reduce){.velvet-zip-entry__silk,.velvet-zip-entry__glow,.velvet-zip-entry__shine,.velvet-zip-entry__tip{animation:none}.velvet-zip-entry__shine{stroke-dashoffset:0}}
-
-/* Single pink entry action, identical behavior on desktop and mobile. */
-.velvet-zip-entry__pink-gate{position:absolute;z-index:5;bottom:9%;left:50%;transform:translateX(-50%);width:min(82vw,300px);animation:velvetPinkGateAppear .65s ease both}
-.velvet-zip-entry__pink-gate button{width:100%;min-height:60px;display:flex;align-items:center;justify-content:center;gap:24px;padding:14px 25px;border:1px solid #ffd5e0;border-radius:12px;background:linear-gradient(110deg,#e6a3b8,#bc718e);color:#2c1120;box-shadow:0 0 24px #e589ad65,inset 0 1px #fff1f3;font:700 12px system-ui,sans-serif;letter-spacing:.28em;cursor:pointer;transition:filter .2s,transform .2s}
-.velvet-zip-entry__pink-gate button:hover,.velvet-zip-entry__pink-gate button:focus-visible{filter:brightness(1.13);transform:translateY(-2px)}
-.velvet-zip-entry__pink-gate button:focus-visible{outline:2px solid #fff0f4;outline-offset:4px}
-.velvet-zip-entry__pink-gate button span{font-size:21px;font-weight:400;letter-spacing:0}
-@keyframes velvetPinkGateAppear{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
-@media(max-width:650px){.velvet-zip-entry__pink-gate{bottom:8%;width:min(82vw,310px)}}
-@media(prefers-reduced-motion:reduce){.velvet-zip-entry__pink-gate{animation:none}}
-
-/* Quiet editorial entry: lettering only, no pink rectangle. */
-.velvet-zip-entry__pink-gate{bottom:8%;width:auto;min-width:150px;text-align:center}
-.velvet-zip-entry__pink-gate button,.velvet-zip-entry__pink-gate button:hover,.velvet-zip-entry__pink-gate button:focus-visible{width:auto;min-height:44px;padding:8px 22px;border:0;border-radius:0;background:transparent;color:#e9a9be;box-shadow:none;font:500 12px/1.4 'Space Mono',system-ui,sans-serif;letter-spacing:.42em;text-shadow:0 0 12px #e8a0b355;transition:color .25s,text-shadow .25s,transform .25s}
-.velvet-zip-entry__pink-gate button:hover,.velvet-zip-entry__pink-gate button:focus-visible{color:#ffd4e0;text-shadow:0 0 18px #e8a0b3a0;transform:none}
-.velvet-zip-entry__pink-gate button:focus-visible{outline:1px solid #e9a9be;outline-offset:5px}
-
-.velvet-zip-entry__pink-gate{left:50%;width:180px;min-width:0;display:grid;place-items:center;transform:translateX(-50%)}
-.velvet-zip-entry__pink-gate button{width:100%!important;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px 0 8px .42em!important}
-@media(max-width:650px){.velvet-zip-entry__pink-gate{width:180px;left:50%}}
-
-/* Gentle consistent luminance: prevent the early focus/flash effect. */
-.velvet-zip-entry__emblem{filter:drop-shadow(0 0 5px #f9a3bd36) drop-shadow(0 0 15px #e54d8620)}
-.velvet-zip-entry__line{filter:drop-shadow(0 0 3px #ff9dbe50)}
-.velvet-zip-entry__shine,.velvet-zip-entry__shine--inner{filter:drop-shadow(0 0 3px #ffb4cc70);opacity:.68;animation:velvetZipDraw 2.1s ease-in-out .35s forwards}
-.velvet-zip-entry__shine--inner{animation-delay:.6s}
-.velvet-zip-entry__tip{filter:drop-shadow(0 0 4px #ffd3e077);animation:none}
-.velvet-zip-entry__glow{opacity:.55;animation:velvetLuminousBreathe 14s ease-in-out infinite alternate}
-@media(prefers-reduced-motion:reduce){.velvet-zip-entry__shine,.velvet-zip-entry__shine--inner{animation:none;stroke-dashoffset:0}}
+.velvet-private-entry{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;overflow:hidden;isolation:isolate;background:radial-gradient(ellipse at 50% 46%,#342033 0%,#251523 56%,#170e19 100%);color:#ebdacd;opacity:1;transition:opacity .35s ease,visibility .35s ease;pointer-events:none}
+.velvet-private-entry--leaving{opacity:0;visibility:hidden}
+.velvet-private-entry__fold{position:absolute;inset:-18%;background:linear-gradient(112deg,transparent 20%,rgba(188,131,152,.035) 36%,rgba(84,31,56,.18) 48%,rgba(235,218,205,.035) 50%,transparent 67%);filter:blur(24px);transform:skewX(-14deg)}
+.velvet-private-entry__fold--left{clip-path:inset(0 50% 0 0);animation:velvetFoldLeft 1.4s cubic-bezier(.22,.7,.2,1) both}
+.velvet-private-entry__fold--right{clip-path:inset(0 0 0 50%);animation:velvetFoldRight 1.4s cubic-bezier(.22,.7,.2,1) both}
+.velvet-private-entry__identity{position:relative;display:flex;flex-direction:column;align-items:center;transform:translateY(-2%);animation:velvetIdentityReveal .8s cubic-bezier(.2,.7,.2,1) both}
+.velvet-private-entry__mark{width:clamp(82px,20vw,124px);height:auto;overflow:visible;filter:drop-shadow(0 0 9px rgba(235,218,205,.12))}
+.velvet-private-entry__mark path{stroke-dasharray:190;stroke-dashoffset:190;animation:velvetMarkDraw .85s cubic-bezier(.2,.7,.2,1) .12s forwards}
+.velvet-private-entry__name{margin-top:12px;font:400 clamp(24px,5vw,38px)/1.2 Georgia,serif;letter-spacing:.28em;text-indent:.28em;color:#f7f0ed}
+.velvet-private-entry__subtitle{margin-top:9px;font:500 9px/1.4 system-ui,sans-serif;letter-spacing:.55em;text-indent:.55em;color:#d9b7c4}
+@keyframes velvetMarkDraw{to{stroke-dashoffset:0}}
+@keyframes velvetIdentityReveal{from{opacity:0;transform:translateY(12px);filter:blur(4px)}to{opacity:1;transform:translateY(-2%);filter:blur(0)}}
+@keyframes velvetFoldLeft{to{transform:translateX(-12%) skewX(-14deg);opacity:.4}}
+@keyframes velvetFoldRight{to{transform:translateX(12%) skewX(-14deg);opacity:.4}}
+@media(prefers-reduced-motion:reduce){.velvet-private-entry,.velvet-private-entry__fold,.velvet-private-entry__identity,.velvet-private-entry__mark path{animation:none!important;transition-duration:.01ms!important}.velvet-private-entry__mark path{stroke-dashoffset:0}}
