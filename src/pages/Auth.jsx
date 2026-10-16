@@ -4,7 +4,7 @@ import "../styles/velvet-conversation-auth.css";
 
 const steps = {
   signup: [
-    { key: "name", question: "Antes de comenzar… ¿cómo te llamas?", type: "text", placeholder: "Tu nombre", autocomplete: "name" },
+    { key: "name", question: "¿Quién eres?", type: "text", placeholder: "Tu nombre", autocomplete: "name" },
     { key: "email", question: (d) => `Mucho gusto, ${d.name}. ¿Dónde te escribo?`, type: "email", placeholder: "tu@correo.com", autocomplete: "email" },
     { key: "password", question: "Última cosa: elige una contraseña. Será nuestro secreto.", type: "password", placeholder: "Mínimo 6 caracteres", autocomplete: "new-password" },
   ],
@@ -51,7 +51,7 @@ function TypedMessage({ text, delay = 320, onComplete }) {
     }, delay);
     return () => { window.clearTimeout(start); window.clearInterval(interval); };
   }, [text, delay]);
-  return <span className="velvet-chat-auth__typed">{visible}{started && visible.length < text.length && <span className="velvet-chat-auth__caret" aria-hidden="true" />}</span>;
+  return <span className="velvet-chat-auth__typed">{!started ? <span className="velvet-chat-auth__typing-dots" aria-label="Velvet está escribiendo"><i/><i/><i/></span> : <>{visible}{visible.length < text.length && <span className="velvet-chat-auth__caret" aria-hidden="true" />}</>}</span>;
 }
 
 export default function Auth() {
@@ -67,6 +67,7 @@ export default function Auth() {
   const input = useRef(null);
   const bottom = useRef(null);
   const conversation = useRef(null);
+  const stars = useRef(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(null);
   const current = steps[mode][index];
@@ -92,6 +93,55 @@ export default function Auth() {
       viewport.removeEventListener("resize", update);
       viewport.removeEventListener("scroll", update);
     };
+  }, []);
+
+  useEffect(() => {
+    const canvas = stars.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    let frame = 0;
+    let w = 0, h = 0;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const points = Array.from({ length: 44 }, () => ({
+      x: Math.random(), y: Math.random(), radius: Math.random() * 1.2 + .4,
+      speed: Math.random() * .00013 + .00005, phase: Math.random() * Math.PI * 2
+    }));
+    const resize = () => {
+      const bounds = canvas.getBoundingClientRect();
+      w = bounds.width; h = bounds.height;
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(w * ratio); canvas.height = Math.round(h * ratio);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+    const draw = (time) => {
+      ctx.clearRect(0, 0, w, h);
+      points.forEach((point) => {
+        if (!reduce) point.y = (point.y - point.speed + 1) % 1;
+        const x = point.x * w + Math.sin(time * .0004 + point.phase) * 7;
+        const y = point.y * h;
+        ctx.beginPath(); ctx.arc(x, y, point.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(220,179,198,.48)"; ctx.fill();
+      });
+      for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+          const a = points[i], b = points[j];
+          const dx = (a.x - b.x) * w, dy = (a.y - b.y) * h;
+          const distance = Math.hypot(dx, dy);
+          if (distance < 95) {
+            ctx.strokeStyle = `rgba(199,149,174,${(1 - distance / 95) * .19})`;
+            ctx.lineWidth = .6; ctx.beginPath();
+            ctx.moveTo(a.x * w, a.y * h); ctx.lineTo(b.x * w, b.y * h); ctx.stroke();
+          }
+        }
+      }
+      if (!reduce) frame = requestAnimationFrame(draw);
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    frame = requestAnimationFrame(draw);
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
   }, []);
 
   function switchMode(next) {
@@ -141,6 +191,7 @@ export default function Auth() {
 
   return <main className={`velvet-chat-auth${keyboardOpen ? " velvet-chat-auth--keyboard" : ""}`} style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}>
     <div className="velvet-chat-auth__ambient" aria-hidden="true" />
+    <canvas ref={stars} className="velvet-chat-auth__stars" aria-hidden="true" />
     <header className="velvet-chat-auth__head">
       <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M15 17 50 88 85 17 M27 17 50 68 73 17" /></svg>
       <h1>VELVET</h1><p>STORIES</p>
@@ -148,7 +199,7 @@ export default function Auth() {
     <section ref={conversation} className="velvet-chat-auth__conversation" aria-label="Conversación de acceso" aria-live="polite">
       {messages.map((m, i) => <div key={`${mode}-${i}`} className={`velvet-chat-auth__message velvet-chat-auth__message--${m.from}`}>
         {m.from === "velvet" && <span className="velvet-chat-auth__avatar">V</span>}
-        <span className="velvet-chat-auth__bubble">{m.from === "velvet" ? <TypedMessage text={m.text} delay={i === 0 ? 350 : i === 1 ? 1600 : 400} onComplete={i === lastVelvet ? () => setTyping(false) : undefined} /> : m.text}</span>
+        <span className="velvet-chat-auth__bubble">{m.from === "velvet" ? <TypedMessage text={m.text} delay={i === 0 ? 750 : i === 1 ? 850 : 750} onComplete={i === lastVelvet ? () => setTyping(false) : undefined} /> : m.text}</span>
       </div>)}
       <div ref={bottom} />
     </section>
