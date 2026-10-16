@@ -34,10 +34,32 @@ export default function Auth() {
   const [reveal, setReveal] = useState(false);
   const input = useRef(null);
   const bottom = useRef(null);
+  const conversation = useRef(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(null);
   const current = steps[mode][index];
 
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages]);
-  useEffect(() => { if (!busy) input.current?.focus({ preventScroll: true }); }, [index, busy, mode]);
+  useEffect(() => {
+    const area = conversation.current;
+    if (area) area.scrollTo({ top: area.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      const height = viewport.height;
+      const open = window.innerHeight - height > 140;
+      setKeyboardOpen(open);
+      setViewportHeight(height);
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, []);
 
   function switchMode(next) {
     setMode(next); setIndex(0); setData({}); setValue(""); setBusy(false); setReveal(false);
@@ -83,13 +105,13 @@ export default function Auth() {
     }
   }
 
-  return <main className="velvet-chat-auth">
+  return <main className={`velvet-chat-auth${keyboardOpen ? " velvet-chat-auth--keyboard" : ""}`} style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}>
     <div className="velvet-chat-auth__ambient" aria-hidden="true" />
     <header className="velvet-chat-auth__head">
       <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M15 17 50 88 85 17 M27 17 50 68 73 17" /></svg>
       <h1>VELVET</h1><p>STORIES</p>
     </header>
-    <section className="velvet-chat-auth__conversation" aria-label="Conversación de acceso" aria-live="polite">
+    <section ref={conversation} className="velvet-chat-auth__conversation" aria-label="Conversación de acceso" aria-live="polite">
       {messages.map((m, i) => <div key={i} className={`velvet-chat-auth__message velvet-chat-auth__message--${m.from}`}>
         {m.from === "velvet" && <span className="velvet-chat-auth__avatar">V</span>}
         <span className="velvet-chat-auth__bubble">{m.text}</span>
