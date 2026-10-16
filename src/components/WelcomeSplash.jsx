@@ -29,23 +29,29 @@ export default function WelcomeSplash() {
     <div className="velvet-zip-entry__glow" aria-hidden="true"/>
     <svg className="velvet-zip-entry__ribbons" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
-        <linearGradient id="velvetRibbonGlass" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#efb6c5" stopOpacity=".02"/><stop offset=".38" stopColor="#c57a98" stopOpacity=".22"/><stop offset=".53" stopColor="#f5bdc9" stopOpacity=".37"/><stop offset=".65" stopColor="#9d466b" stopOpacity=".11"/><stop offset="1" stopColor="#b85d80" stopOpacity="0"/></linearGradient>
-        <linearGradient id="velvetRibbonEdge" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#f7d0d7" stopOpacity="0"/><stop offset=".42" stopColor="#f4a9c0" stopOpacity=".45"/><stop offset=".52" stopColor="#ffd3d9" stopOpacity=".75"/><stop offset=".66" stopColor="#e89db5" stopOpacity=".18"/><stop offset="1" stopColor="#f5b5c8" stopOpacity="0"/></linearGradient>
+        <linearGradient id="velvetGlassEdge" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#bc8398" stopOpacity="0"/>
+          <stop offset=".42" stopColor="#d9a0b4" stopOpacity=".12"/>
+          <stop offset=".54" stopColor="#edc0cb" stopOpacity=".32"/>
+          <stop offset="1" stopColor="#bc8398" stopOpacity="0"/>
+        </linearGradient>
+        <linearGradient id="velvetGlassFill" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#bc8398" stopOpacity="0"/>
+          <stop offset=".52" stopColor="#b76d89" stopOpacity=".07"/>
+          <stop offset="1" stopColor="#bc8398" stopOpacity="0"/>
+        </linearGradient>
       </defs>
-      <g fill="url(#velvetRibbonGlass)" stroke="url(#velvetRibbonEdge)" strokeWidth=".7">
-        <path d="M-64 -60 C115 30 12 130 10 265 C3 400 140 464 380 376 C184 490 -55 405 -48 253 C-39 122 92 57 -64 -60Z"/>
-        <path d="M430 90 C264 145 385 239 387 336 C392 441 287 500 -23 484 C181 537 452 475 454 324 C452 212 339 165 430 90Z"/>
-        <path d="M-84 431 C77 483 170 478 318 438 C182 521 47 543 -80 491Z"/>
-        <path d="M-67 832 C65 738 132 749 229 640 C290 572 338 558 446 538 C328 601 314 665 243 725 C141 802 44 772 -67 892Z"/>
-        <path d="M440 705 C308 614 253 637 195 570 C281 606 332 592 446 646Z"/>
+      <g fill="url(#velvetGlassFill)" stroke="url(#velvetGlassEdge)" strokeWidth=".8">
+        <path d="M-42 -52 C106 45 55 123 16 210 C-15 286 -10 339 33 381 C-38 332 -53 266 -25 187 C11 91 59 45 -42 -52Z"/>
+        <path d="M440 101 C347 145 377 214 398 281 C424 351 401 405 357 441 C395 372 380 310 365 259 C341 178 349 139 440 101Z"/>
+        <path d="M-53 877 C47 787 108 789 159 748 C202 714 225 664 246 616 C210 712 164 773 99 813 C41 850 -1 857 -53 877Z"/>
+        <path d="M448 882 C337 788 309 764 290 724 C325 779 378 803 448 834Z"/>
       </g>
-      <g fill="none" stroke="url(#velvetRibbonEdge)" strokeWidth=".8">
-        <path d="M-24 7 C125 102 -19 202 29 321 C88 465 312 458 407 320"/>
-        <path d="M411 135 C326 178 397 264 369 361 C337 459 178 502 -10 452"/>
-        <path d="M-25 472 C107 531 266 491 384 426"/>
-        <path d="M-26 839 C119 741 164 776 258 649 C321 562 367 581 418 534"/>
-        <path d="M-50 88 C120 165 -10 335 90 398 C210 478 332 391 419 289" opacity=".42"/>
-        <path d="M412 188 C308 240 423 335 312 427 C198 517 64 459 -15 418" opacity=".34"/>
+      <g fill="none" stroke="url(#velvetGlassEdge)" strokeWidth=".7">
+        <path d="M-29 8 C92 111 -30 239 19 336"/>
+        <path d="M413 130 C341 196 424 306 369 407"/>
+        <path d="M-20 850 C84 765 173 787 232 657"/>
+        <path d="M419 846 C332 790 309 746 291 717"/>
       </g>
     </svg>
     <div className="velvet-zip-entry__crystal velvet-zip-entry__crystal--back" aria-hidden="true" />
