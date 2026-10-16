@@ -6,7 +6,6 @@ import Auth from "./pages/Auth";
 import PWAStatus from "./components/PWAStatus";
 import { useChats } from "./context/ChatsContext";
 import { useCharacters } from "./context/CharactersContext";
-import WelcomeSplash from "./components/WelcomeSplash";
 import NativeCrystalLaunch from "./components/NativeCrystalLaunch";
 import { isVelvetNativeRuntime } from "./native/velvetNative";
 import "./App.css";
@@ -697,7 +696,6 @@ function App() {
 
   return (
     <>
-    {!nativeRuntime && <WelcomeSplash />}
     <div className={`app ${selectedCharacter ? "app--chat" : ""}`}>
       {!selectedCharacter && !creatorOpen && (
         <Sidebar activePage={["personas", "lorebooks", "settings", "diagnostics"].includes(activePage) ? "profile" : activePage} onNavigate={navigate} />
