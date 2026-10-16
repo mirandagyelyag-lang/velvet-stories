@@ -165,3 +165,14 @@
   .velvet-zip-entry__silk,.velvet-zip-entry__outer,.velvet-zip-entry__inner{animation:none!important}
   .velvet-zip-entry__line,.velvet-zip-entry__shine,.velvet-zip-entry__shine--inner{animation:none!important;stroke-dashoffset:0!important}
 }
+
+/* Artwork layers: translucent rose glass ribbons, mobile-first framing. */
+.velvet-zip-entry__ribbons{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:.9;filter:drop-shadow(0 0 8px rgba(177,83,115,.09));animation:velvetRibbonReveal 2.2s ease-out both}
+.velvet-zip-entry__crystal{z-index:2;top:45%;width:min(92vw,580px);border-color:rgba(218,145,168,.16);box-shadow:inset 0 0 35px rgba(171,74,106,.04)}
+.velvet-zip-entry__core{z-index:3;top:-5vh}
+.velvet-zip-entry__pink-gate{z-index:5}
+.velvet-zip-entry__brand{top:calc(100% - 5px)}
+.velvet-zip-entry--leaving .velvet-zip-entry__ribbons{opacity:0;transform:scale(1.07);transition:opacity .7s,transform .7s}
+@keyframes velvetRibbonReveal{from{opacity:0;transform:scale(1.025)}to{opacity:.9;transform:scale(1)}}
+@media(max-width:650px){.velvet-zip-entry__crystal{top:45%;width:92vw}.velvet-zip-entry__core{top:-5vh;width:81vw}.velvet-zip-entry__brand{top:calc(100% - 3px)}}
+@media(prefers-reduced-motion:reduce){.velvet-zip-entry__ribbons{animation:none}}
