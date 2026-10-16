@@ -176,3 +176,14 @@
 @keyframes velvetRibbonReveal{from{opacity:0;transform:scale(1.025)}to{opacity:.9;transform:scale(1)}}
 @media(max-width:650px){.velvet-zip-entry__crystal{top:45%;width:92vw}.velvet-zip-entry__core{top:-5vh;width:81vw}.velvet-zip-entry__brand{top:calc(100% - 3px)}}
 @media(prefers-reduced-motion:reduce){.velvet-zip-entry__ribbons{animation:none}}
+
+/* Crisp high-density web rendering: vectors remain sharp at 4K / high DPR. */
+.velvet-zip-entry__ribbons{filter:none;opacity:.98;shape-rendering:geometricPrecision;transform:translateZ(0);backface-visibility:hidden}
+.velvet-zip-entry__ribbons path{vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.velvet-zip-entry__emblem{filter:none;shape-rendering:geometricPrecision;overflow:visible}
+.velvet-zip-entry__emblem path,.velvet-zip-entry__emblem circle{vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.velvet-zip-entry__silk{filter:blur(5px);opacity:.18}
+.velvet-zip-entry__crystal{box-shadow:inset 0 0 0 1px rgba(223,157,179,.055),inset 0 0 40px rgba(171,74,106,.04)}
+.velvet-zip-entry__brand{text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+@media(min-width:900px){.velvet-zip-entry__ribbons{width:100%;height:100%}.velvet-zip-entry__core{width:min(54vw,540px)}}
+@media(prefers-reduced-motion:reduce){.velvet-zip-entry__ribbons{transform:none;animation:none}}
