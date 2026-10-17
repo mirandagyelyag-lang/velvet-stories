@@ -1,0 +1,206 @@
+/* Velvet Stories · identidad unificada (inicio + login → interior)
+   Esta hoja se carga la ÚLTIMA. Reúne en un solo lugar la paleta, la
+   tipografía y los detalles del inicio/login para el resto de la app.
+   Rosa palo único: #e9a9be / #d9b7c4 / #bc8398 · vino: #22101d → #100810 */
+
+html[data-theme="dark"] {
+  --velvet-rose: #e9a9be;
+  --velvet-rose-soft: #d9b7c4;
+  --velvet-rose-dim: #bc8398;
+  --velvet-ink: #f0d3df;
+  --velvet-line: rgba(199, 149, 174, .24);
+  --velvet-line-strong: rgba(217, 183, 196, .4);
+
+  --stories-accent: #e9a9be;
+  --stories-accent-strong: #b8728b;
+  --stories-ink: #f6e6ec;
+  --stories-ink-soft: #f0d3df;
+  --stories-muted: #bc8398;
+  --stories-line: rgba(199, 149, 174, .24);
+  --stories-line-strong: rgba(217, 183, 196, .4);
+  --stories-canvas: #150a12;
+  --stories-canvas-2: #22101d;
+  --stories-panel: rgba(46, 21, 38, .6);
+  --stories-panel-strong: rgba(54, 26, 44, .82);
+  --stories-row: linear-gradient(95deg, rgba(59, 27, 48, .6), rgba(30, 14, 25, .5));
+  --stories-atmosphere:
+    radial-gradient(ellipse 90% 34% at 50% 8%, #43203a 0%, transparent 100%),
+    radial-gradient(ellipse 80% 24% at 100% 62%, rgba(125, 39, 66, .26), transparent),
+    radial-gradient(ellipse 80% 24% at 0% 38%, rgba(82, 18, 43, .28), transparent),
+    linear-gradient(180deg, #22101d, #150a12 60%, #100810);
+}
+
+/* ── Título: "Velvet" en script + STORIES espaciado ─────────────── */
+html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__script {
+  color: var(--velvet-rose) !important;
+  font-size: 3.4rem !important;
+  text-shadow: 0 0 18px rgba(233, 169, 190, .35);
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title h1 {
+  color: var(--velvet-ink) !important;
+  font-family: "Cormorant Garamond", serif !important;
+  font-weight: 400 !important;
+  letter-spacing: .3em !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__line {
+  background: linear-gradient(90deg, transparent, #b8728b) !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__line--right {
+  background: linear-gradient(90deg, #b8728b, transparent) !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__spark { color: var(--velvet-rose-dim) !important; }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-hero__private,
+html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-hero__private span {
+  color: var(--velvet-rose-dim) !important;
+  letter-spacing: .42em !important;
+  font-size: 9px !important;
+}
+
+/* ── Tagline + estadísticas ─────────────────────────────────────── */
+.velvet-identity-tagline { display: none; }
+html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-tagline {
+  display: block; margin: 6px 0 0; text-align: center;
+  font: italic 400 15px "Cormorant Garamond", serif; letter-spacing: .06em; color: var(--velvet-rose-dim);
+}
+.velvet-identity-stats { display: none; }
+html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-stats {
+  display: flex; align-items: center; margin: 18px 0 0; padding: 14px 0;
+  border-top: 1px solid var(--velvet-line); border-bottom: 1px solid var(--velvet-line);
+}
+.velvet-identity-stats div { flex: 1; text-align: center; }
+.velvet-identity-stats b { display: block; font: 500 28px/1 "Cormorant Garamond", serif; color: var(--velvet-ink); }
+.velvet-identity-stats span { display: block; margin-top: 5px; font: 400 8px "Manrope", sans-serif; letter-spacing: .3em; color: var(--velvet-rose-dim); }
+.velvet-identity-stats i { width: 1px; height: 30px; background: var(--velvet-line); }
+
+/* ── Encabezados de sección ─────────────────────────────────────── */
+.velvet-identity-heading { display: flex; align-items: center; gap: 12px; margin: 22px 0 12px; }
+.velvet-identity-heading span { font: 400 9px "Manrope", sans-serif; letter-spacing: .42em; color: var(--velvet-rose-dim); }
+.velvet-identity-heading i { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(217, 183, 196, .4), transparent); }
+.velvet-identity-heading em { font: italic 400 14px "Cormorant Garamond", serif; color: var(--velvet-rose-dim); }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-collections h2,
+html[data-theme="dark"] body.velvet-burgundy-route .reference-section-heading h2 {
+  font-family: "Manrope", sans-serif !important; font-weight: 400 !important;
+  font-size: 9px !important; letter-spacing: .42em !important; color: var(--velvet-rose-dim) !important;
+}
+
+/* ── Tarjeta "Continuar" ────────────────────────────────────────── */
+.velvet-identity-continue { display: none; }
+html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-continue { display: block; }
+.velvet-identity-continue__card {
+  position: relative; display: block; width: 100%; height: 176px; padding: 0; overflow: hidden; cursor: pointer; text-align: left;
+  border: 1px solid rgba(233, 169, 190, .4); border-radius: 24px; color: #fbe7ee; background: #1a0a14;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .4), 0 0 26px rgba(185, 80, 120, .15);
+}
+.velvet-identity-continue__art, .velvet-identity-continue__shade { position: absolute; inset: 0; display: block; }
+.velvet-identity-continue__art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; filter: saturate(.8) brightness(.7); }
+.velvet-identity-continue__fallback { display: grid; place-items: center; width: 100%; height: 100%; font: 400 64px "Cormorant Garamond", serif; color: #e3b6c7; background: linear-gradient(160deg, #6e2a4a, #1a0a14); }
+.velvet-identity-continue__shade {
+  background: repeating-linear-gradient(105deg, rgba(255, 255, 255, .04) 0 1px, transparent 1px 9px),
+    linear-gradient(90deg, rgba(14, 7, 11, .92) 0%, rgba(14, 7, 11, .55) 55%, transparent 100%);
+}
+.velvet-identity-continue__corner { position: absolute; width: 12px; height: 12px; border: 0 solid rgba(233, 169, 190, .7); }
+.velvet-identity-continue__corner--tl { left: 10px; top: 10px; border-top-width: 1px; border-left-width: 1px; }
+.velvet-identity-continue__corner--tr { right: 10px; top: 10px; border-top-width: 1px; border-right-width: 1px; }
+.velvet-identity-continue__corner--bl { left: 10px; bottom: 10px; border-bottom-width: 1px; border-left-width: 1px; }
+.velvet-identity-continue__corner--br { right: 10px; bottom: 10px; border-bottom-width: 1px; border-right-width: 1px; }
+.velvet-identity-continue__copy { position: absolute; left: 22px; right: 70px; bottom: 20px; display: flex; flex-direction: column; gap: 4px; }
+.velvet-identity-continue__copy small { align-self: flex-start; padding: 5px 11px; border: 1px solid rgba(233, 169, 190, .6); border-radius: 999px; background: rgba(120, 40, 70, .35); font: 400 8px "Manrope", sans-serif; letter-spacing: .24em; color: #ffe0ea; margin-bottom: 8px; }
+.velvet-identity-continue__copy strong { font: 500 28px/1 "Cormorant Garamond", serif; color: #fbe7ee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.velvet-identity-continue__copy em { font: italic 400 15px "Cormorant Garamond", serif; color: var(--velvet-rose-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.velvet-identity-continue__play { position: absolute; right: 20px; bottom: 20px; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--velvet-rose-soft); color: #291020; box-shadow: 0 0 18px rgba(233, 169, 190, .35); }
+
+/* ── Chips de vista ─────────────────────────────────────────────── */
+.velvet-identity-chips { display: none; }
+html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-chips { display: flex; gap: 8px; margin: 14px 0 2px; overflow-x: auto; scrollbar-width: none; }
+.velvet-identity-chips::-webkit-scrollbar { display: none; }
+.velvet-identity-chips button {
+  flex: none; padding: 8px 15px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(199, 149, 174, .28); background: transparent;
+  font: 400 9px "Manrope", sans-serif; letter-spacing: .24em; text-transform: uppercase; color: rgba(234, 211, 222, .62);
+}
+.velvet-identity-chips button.is-active { color: #ffe0ea; border-color: var(--velvet-rose); background: rgba(233, 169, 190, .16); }
+
+/* ── Búsqueda y botón nueva historia: píldoras ──────────────────── */
+html[data-theme="dark"] body.velvet-burgundy-route .reference-search {
+  border: 1px solid rgba(199, 149, 174, .38) !important; border-radius: 999px !important;
+  background: rgba(199, 149, 174, .09) !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-search:focus-within {
+  border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(199, 149, 174, .14) !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-new {
+  color: #ffe0ea !important; border: 1px solid var(--velvet-rose) !important;
+  background: linear-gradient(110deg, rgba(233, 169, 190, .2), rgba(150, 70, 100, .25)) !important;
+  box-shadow: 0 0 18px rgba(229, 137, 173, .22) !important;
+}
+
+/* ── Colecciones ────────────────────────────────────────────────── */
+html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card {
+  border: 1px solid rgba(217, 183, 196, .26) !important; border-radius: 20px !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card__icon {
+  color: #f0b4c3 !important; border: 1px solid rgba(233, 169, 190, .55) !important; background: rgba(40, 14, 28, .55) !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card strong {
+  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .04em; color: #f3dbe5 !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card small {
+  font-size: 8px !important; letter-spacing: .26em !important; text-transform: uppercase; color: #e3b6c7 !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card.is-active { border-color: var(--velvet-rose) !important; box-shadow: 0 0 22px rgba(229, 137, 173, .2); }
+
+/* ── Filas de historias ─────────────────────────────────────────── */
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row {
+  border: 1px solid rgba(199, 149, 174, .22) !important; border-radius: 22px !important;
+  background: linear-gradient(95deg, rgba(59, 27, 48, .6), rgba(30, 14, 25, .5)) !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row--favorite { border-color: rgba(233, 169, 190, .5) !important; }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__art {
+  border: 1px solid rgba(233, 169, 190, .45) !important; box-shadow: inset 0 0 18px rgba(255, 255, 255, .05);
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy h3 {
+  font-family: "Cormorant Garamond", serif !important; font-weight: 560 !important; font-size: 1.4rem !important; color: var(--velvet-ink) !important;
+}
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy p { color: rgba(234, 211, 222, .62) !important; font-weight: 300; }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy time {
+  font-size: 8px !important; letter-spacing: .2em !important; text-transform: uppercase; color: var(--velvet-rose-dim) !important;
+}
+.velvet-identity-tags { display: flex; gap: 5px; margin: 6px 0 2px; }
+.velvet-identity-tags span { padding: 3px 8px; border-radius: 999px; background: rgba(199, 149, 174, .12); font: 400 7.5px "Manrope", sans-serif; letter-spacing: .22em; color: var(--velvet-rose-soft); }
+
+/* ── Navegación móvil: línea luminosa en la pestaña activa ──────── */
+html[data-theme="dark"] body .mobile-nav.velvet-reference-nav {
+  background: linear-gradient(0deg, #100810 60%, rgba(16, 8, 16, .85)) !important;
+  border-top: 1px solid rgba(199, 149, 174, .18) !important;
+}
+html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link { color: rgba(234, 211, 222, .5) !important; letter-spacing: .14em; }
+html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active { color: var(--velvet-ink) !important; }
+html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active svg { color: var(--velvet-rose) !important; stroke: var(--velvet-rose); }
+html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active::after {
+  background: var(--velvet-rose) !important; box-shadow: 0 0 8px var(--velvet-rose) !important;
+}
+
+/* ── Chat: burbujas, divisor de fecha y barra de escribir ───────── */
+html[data-theme="dark"] .chat-message--character .chat-message__body p,
+html[data-theme="dark"] .chat-message--character .chat-message__body {
+  border-color: rgba(199, 149, 174, .26);
+}
+html[data-theme="dark"] .chat-message--character p {
+  background: rgba(199, 149, 174, .1) !important; border: 1px solid rgba(199, 149, 174, .26) !important;
+  border-radius: 19px 19px 19px 5px !important; font-weight: 300;
+}
+html[data-theme="dark"] .chat-message--user p {
+  background: linear-gradient(125deg, #a9748e, #6e3452) !important; color: #fff !important; border: 0 !important;
+  border-radius: 19px 19px 5px 19px !important; box-shadow: 0 6px 18px rgba(80, 20, 50, .35);
+}
+html[data-theme="dark"] .chat__date-divider span {
+  font-family: "Manrope", sans-serif !important; font-size: 9px !important; letter-spacing: .4em !important;
+  text-transform: uppercase; color: var(--velvet-rose-dim) !important;
+}
+html[data-theme="dark"] .chat__composer {
+  border-radius: 999px !important; border: 1px solid rgba(199, 149, 174, .4) !important; background: rgba(199, 149, 174, .09) !important;
+}
+html[data-theme="dark"] .chat__composer:focus-within { border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(199, 149, 174, .14) !important; }
+html[data-theme="dark"] .chat__character-name-button--primary {
+  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .08em; color: #f6dde8 !important;
+}
