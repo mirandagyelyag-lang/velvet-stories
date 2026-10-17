@@ -15,7 +15,7 @@ export default function Auth() {
   useEffect(() => {
     const onMessage = (event) => {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
-      if (event.data?.type === "velvet-original-entry-enter") setEntered(true);
+      if (event.data?.type === "velvet-original-entry-enter") { setEntered(true); frame.current?.contentWindow?.postMessage({ type: "velvet-entry-pause" }, window.location.origin); }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -105,6 +105,10 @@ export default function Auth() {
       .velvet-gold-auth .panel{animation:none}
 
       /* The animated scene remains underneath, but its previous logo and UI are fully masked. */
+      .velvet-gold-auth .entry-scene--behind{opacity:0;visibility:hidden;filter:none;transform:none;transition:opacity .35s ease,visibility 0s linear .35s}
+      .velvet-gold-auth .login{background:radial-gradient(ellipse at 80% 12%,#71312a,transparent 55%),linear-gradient(155deg,#19070e,#42101e 55%,#200810)!important}
+      .velvet-gold-auth .login.login--visible{transition:opacity .45s ease,transform .45s ease,visibility 0s}
+
       .velvet-gold-auth .entry-scene--behind{filter:blur(32px) brightness(.32) saturate(.75);transform:scale(1.09)}
       .velvet-gold-auth .login{background:linear-gradient(180deg,rgba(21,5,12,.89),rgba(44,10,23,.91))!important;backdrop-filter:none}
       .velvet-gold-auth .login::before{opacity:.3}
@@ -115,7 +119,7 @@ export default function Auth() {
     `}</style>
     <iframe ref={frame} className={entered ? "entry-scene entry-scene--behind" : "entry-scene"} title="Velvet Stories — entrada" src={`/velvet-original-entry.html?build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
       <section className={entered ? "login login--visible" : "login"} aria-hidden={!entered} inert={!entered}><div className="chat-decor" aria-hidden="true"><span className="bubble bubble-one">•••</span><span className="bubble bubble-two">•••</span><span className="bubble bubble-three">•••</span><span className="bubble bubble-four">•••</span></div><div className="panel">
-        <button className="back" type="button" onClick={() => {setEntered(false);setMessage("");}} aria-label="Volver al inicio">↶</button>
+        <button className="back" type="button" onClick={() => {setEntered(false);setMessage("");frame.current?.contentWindow?.postMessage({ type: "velvet-entry-resume" }, window.location.origin);}} aria-label="Volver al inicio">↶</button>
         <div className="emblem" aria-hidden="true"><span className="ring outer"/><span className="ring"/><span className="letter">V</span></div>
         <h1>VELVET</h1><div className="stories-word">STORIES</div><span className="ornament">✦</span><p className="tag">Historias para leer y vivir</p>
         <form onSubmit={submit}>
