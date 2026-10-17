@@ -103,6 +103,12 @@ export default function Auth() {
       .velvet-gold-auth .login.login--visible{visibility:visible;opacity:1;pointer-events:auto;transform:translateY(0);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1),visibility 0s}
       .velvet-gold-auth .login::before{opacity:.28}
       .velvet-gold-auth .panel{animation:none}
+
+      /* The animated scene remains underneath, but its previous logo and UI are fully masked. */
+      .velvet-gold-auth .entry-scene--behind{filter:blur(32px) brightness(.32) saturate(.75);transform:scale(1.09)}
+      .velvet-gold-auth .login{background:linear-gradient(180deg,rgba(21,5,12,.89),rgba(44,10,23,.91))!important;backdrop-filter:none}
+      .velvet-gold-auth .login::before{opacity:.3}
+      .velvet-gold-auth .login.login--visible{transition:opacity .65s ease .12s,transform .8s cubic-bezier(.2,.7,.2,1),visibility 0s}
       @media(prefers-reduced-motion:reduce){.velvet-gold-auth .entry-scene,.velvet-gold-auth .login{transition:none;transform:none}}
       @media(prefers-reduced-motion:reduce){.velvet-gold-auth .bubble{animation:none}}
       @media(max-height:730px){.velvet-gold-auth .emblem{height:190px;margin-top:15px}.velvet-gold-auth .ring{width:180px}.velvet-gold-auth .ring.outer{width:210px}.velvet-gold-auth .letter{font-size:140px}.velvet-gold-auth .tag{margin-bottom:16px}}
