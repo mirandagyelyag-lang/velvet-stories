@@ -66,7 +66,7 @@ function outQ(k){k=Math.max(0,Math.min(1,k));return 1-Math.pow(1-k,4)}
 var renderer;
 try{renderer=new THREE.WebGLRenderer({canvas:cvs,antialias:true,powerPreference:'high-performance'})}catch(e){renderer=null}
 if(!renderer||typeof THREE==='undefined'){document.body.classList.add('nogl');ui.classList.add('on');document.getElementById('go').addEventListener('click',function(){try{window.parent.postMessage({type:'velvet-original-entry-enter'},window.location.origin)}catch(e){}});return}
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));
 renderer.autoClear=false;
 
 /* ---- fondo: seda líquida vino con vetas de oro ---- */
@@ -157,7 +157,9 @@ window.addEventListener('deviceorientation',function(e){if(e.gamma!=null){tmx=Ma
 /* ---- línea de tiempo ---- */
 var T0=performance.now(),state='intro',dive=0,fired=false,revealed=false;
 function restart(){T0=performance.now();state='intro';fired=false;revealed=false;ui.classList.remove('on');flash.style.opacity=0;ui.style.transition='';ui.style.opacity=1}
-document.getElementById('go').addEventListener('click',function(){if(state!=='idle')return;state='dive';dive=performance.now();ui.style.transition='opacity .6s';ui.style.opacity=0;if(navigator.vibrate)navigator.vibrate(25)});
+document.getElementById('go').addEventListener('click',function(){if(state!=='idle')return;state='done';ui.style.pointerEvents='none';try{window.parent.postMessage({type:'velvet-original-entry-enter'},window.location.origin)}catch(e){}});
+window.addEventListener('message',function(e){if(e.origin!==window.location.origin)return;if(e.data?.type==='velvet-entry-pause')paused=true;if(e.data?.type==='velvet-entry-resume'){paused=false;requestAnimationFrame(frame)}});
+var paused=false;
 var HIT=3.1;
 function frame(now){
  var t=reduce?9:(now-T0)/1000;
@@ -175,14 +177,12 @@ function frame(now){
  bgMat.uniforms.uGlow.value=ease(t/3.4)*.9+solid*.3;bgMat.uniforms.uT.value=now/1000;bgMat.uniforms.uM.value.set(mx,my);
  bgMat.uniforms.uFl.value=t>HIT?Math.max(0,.9-(t-HIT)*1.1):0;
  var cz=9.8-outQ(t/4.4)*3.2,gs=s;
- if(state==='dive'){var k=(now-dive)/1600;cz=6.6-ease(k)*5.9;gs=s*(1+ease(k)*.6);bgMat.uniforms.uFl.value=Math.pow(Math.min(1,k),2.2);flash.style.opacity=Math.pow(Math.min(1,k),3);
-  if(k>=1&&state==='dive'){state='done';try{window.parent.postMessage({type:'velvet-original-entry-enter'},window.location.origin)}catch(e){}}}
  G.scale.setScalar(gs);
  G.rotation.y=mx*.5+Math.sin(now/1700)*.12;G.rotation.x=-my*.28;
  cam.position.set(mx*.25,-my*.15,cz);cam.lookAt(0,G.position.y*.55,0);
  if(t>HIT+.35&&!revealed){revealed=true;ui.classList.add('on');state=state==='intro'?'idle':state}
  renderer.clear();renderer.render(bgScene,bgCam);renderer.clearDepth();renderer.render(scene,cam);
- requestAnimationFrame(frame)}
+ if(!paused)requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 })();
 </script>
