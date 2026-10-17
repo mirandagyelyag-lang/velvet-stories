@@ -247,3 +247,54 @@ html[data-theme="light"] {
   --stories-nav:linear-gradient(100deg,rgba(255,255,255,.97),rgba(250,246,244,.97));
   --stories-atmosphere:radial-gradient(ellipse 58% 58% at 50% 42%,#f6ebed 0%,#faf6f4 57%,#fcfaf8 100%);
 }
+
+
+/* Mobile story library: compact hierarchy and clear collection cards. */
+@media (max-width: 600px) {
+  body.velvet-burgundy-route .chats-page--reference {
+    padding-top: 20px !important;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important;
+  }
+  body.velvet-burgundy-route .reference-stories-hero {
+    min-height: 148px !important;
+    margin-bottom: 8px !important;
+  }
+  body.velvet-burgundy-route .reference-stories-title {
+    top: 42px !important;
+    width: min(82vw, 370px) !important;
+  }
+  body.velvet-burgundy-route .reference-stories-title h1 {
+    font-size: clamp(3.4rem, 12vw, 4.7rem) !important;
+  }
+  body.velvet-burgundy-route .library-purpose-note {
+    margin: 8px 0 18px !important;
+    padding: 0 !important;
+  }
+  body.velvet-burgundy-route .library-purpose-note strong {
+    font-size: 1.2rem !important;
+  }
+  body.velvet-burgundy-route .library-purpose-note span {
+    font-size: .85rem !important;
+    line-height: 1.45 !important;
+  }
+  body.velvet-burgundy-route .reference-search-wrap {
+    margin-top: 0 !important;
+    margin-bottom: 22px !important;
+  }
+  body.velvet-burgundy-route .reference-collections {
+    margin-top: 12px !important;
+  }
+  body.velvet-burgundy-route .reference-collections__grid {
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    gap: 12px !important;
+  }
+  body.velvet-burgundy-route .reference-collection-card {
+    aspect-ratio: 1.15 !important;
+    min-height: 146px !important;
+    border-radius: 18px !important;
+  }
+  body.velvet-burgundy-route .reference-collection-card strong {
+    font-size: 10px !important;
+    letter-spacing: .12em !important;
+  }
+}
