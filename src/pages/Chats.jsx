@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Bug, Check, ChevronRight, Copy, Crown, Download, FolderHeart, FolderPlus, Heart, HeartOff, History, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Plus, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, Bug, Check, ChevronRight, Copy, Crown, Download, FolderHeart, FolderPlus, Heart, HeartOff, History, LoaderCircle, MessageCircle, MoreHorizontal, Pencil, Play, Plus, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
@@ -546,6 +546,17 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
 
   const visibleStories = showAllRecent ? filtered : filtered.slice(0, 3);
 
+  const identityStats = useMemo(() => ({
+    stories: conversations.filter((item) => !item.trashed_at && !item.archived_at && !pendingDeletionIds.includes(item.id)).length,
+    characters: (characters || []).length,
+    favorites: collectionCounts.favorites,
+  }), [conversations, characters, pendingDeletionIds, collectionCounts.favorites]);
+
+  const featuredStory = useMemo(() => {
+    const live = conversations.filter((item) => item.character && !item.trashed_at && !item.archived_at && !pendingDeletionIds.includes(item.id));
+    return live.reduce((best, item) => (!best || new Date(item.updated_at || 0) > new Date(best.updated_at || 0) ? item : best), null);
+  }, [conversations, pendingDeletionIds]);
+
   const activeCustomCollection = useMemo(() => String(view).startsWith("collection:")
     ? collections.find((item) => item.id === String(view).slice("collection:".length)) || null
     : null, [view, collections]);
@@ -612,6 +623,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
             </form>
           ) : <h3>{title}</h3>}
           <p>{preview}</p>
+          {(character.tags || []).length > 0 && <div className="velvet-identity-tags">{character.tags.slice(0, 2).map((tag) => <span key={tag}>{String(tag).toUpperCase()}</span>)}</div>}
           <time>{formatShelfDate(conversation.updated_at)}</time>
         </div>
         {renderStoryMenu(conversation, title, "reference")}
@@ -701,6 +713,43 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         </div>
       </header>
 
+      <p className="velvet-identity-tagline">Your stories, only for you</p>
+
+      {!loading && conversations.length > 0 && (
+        <div className="velvet-identity-stats" aria-label="Library summary">
+          <div><b>{identityStats.stories}</b><span>STORIES</span></div>
+          <i />
+          <div><b>{identityStats.characters}</b><span>CHARACTERS</span></div>
+          <i />
+          <div><b>{identityStats.favorites}</b><span>FAVORITES</span></div>
+        </div>
+      )}
+
+      {!loading && featuredStory && view === "active" && !search.trim() && (() => {
+        const fc = featuredStory.character;
+        const fart = featuredStory.cover_url || fc.coverUrl || fc.imageUrl;
+        const fline = shelfPreview(featuredStory.latestMessage?.content || fc.firstMessage || fc.role || "Continue the story.");
+        return (
+          <section className="velvet-identity-continue">
+            <header className="velvet-identity-heading"><span>CONTINUE</span><i /><em>{formatShelfDate(featuredStory.updated_at)}</em></header>
+            <button type="button" className="velvet-identity-continue__card" onClick={() => onOpenCharacter(fc, featuredStory.id)}>
+              <span className="velvet-identity-continue__art">{fart ? <img src={fart} alt="" /> : <span className="velvet-identity-continue__fallback">{fc.initials}</span>}</span>
+              <span className="velvet-identity-continue__shade" />
+              <span className="velvet-identity-continue__corner velvet-identity-continue__corner--tl" />
+              <span className="velvet-identity-continue__corner velvet-identity-continue__corner--tr" />
+              <span className="velvet-identity-continue__corner velvet-identity-continue__corner--bl" />
+              <span className="velvet-identity-continue__corner velvet-identity-continue__corner--br" />
+              <span className="velvet-identity-continue__copy">
+                <small>{(fc.tags && fc.tags[0]) ? String(fc.tags[0]).toUpperCase() : "IN PROGRESS"}</small>
+                <strong>{featuredStory.title || fc.name}</strong>
+                <em>{fline}</em>
+              </span>
+              <span className="velvet-identity-continue__play"><Play size={15} fill="currentColor" /></span>
+            </button>
+          </section>
+        );
+      })()}
+
       <div className="library-purpose-note"><strong>Stories are your archive.</strong><span>Organize, favorite, duplicate, export or restore complete story timelines here.</span></div>
 
       <div className="reference-search-wrap">
@@ -711,6 +760,14 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         </label>
         <button className={`reference-filter${filtersOpen ? " is-open" : ""}`} type="button" onClick={() => setFiltersOpen((value) => !value)} aria-label="Filter stories"><SlidersHorizontal size={25}/></button>
       </div>
+
+      {!loading && conversations.length > 0 && (
+        <div className="velvet-identity-chips" role="tablist" aria-label="Story views">
+          {[["active", "All"], ["favorites", "Favorites"], ["archived", "Archived"], ...collections.map((item) => [`collection:${item.id}`, item.name])].map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={view === id} className={view === id ? "is-active" : ""} onClick={() => { setView(id); setShowAllRecent(true); }}>{label}</button>
+          ))}
+        </div>
+      )}
 
       {filtersOpen && (
         <div className="reference-filter-menu">
