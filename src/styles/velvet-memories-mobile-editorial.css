@@ -1,0 +1,132 @@
+/* Velvet Memories: responsive editorial layout, scoped to Memories only. */
+@media (max-width: 760px) {
+  body.velvet-burgundy-route .memories-reference-page {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 20px 16px calc(150px + env(safe-area-inset-bottom)) !important;
+    overflow-x: clip !important;
+  }
+  body.velvet-burgundy-route .memories-reference__hero {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 48px !important;
+    align-items: start !important;
+    min-height: 166px !important;
+    height: auto !important;
+    margin: 0 0 16px !important;
+    gap: 8px !important;
+  }
+  body.velvet-burgundy-route .memories-reference__private {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    max-width: 100% !important;
+    font-size: .58rem !important;
+    letter-spacing: .17em !important;
+  }
+  body.velvet-burgundy-route .memories-reference__title {
+    position: relative !important;
+    inset: auto !important;
+    transform: none !important;
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    justify-self: center !important;
+    width: min(100%, 350px) !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 12px auto 0 !important;
+    text-align: center !important;
+  }
+  body.velvet-burgundy-route .memories-reference__title h1 {
+    max-width: 100% !important;
+    margin: 20px 0 0 !important;
+    font-size: clamp(2.5rem, 11vw, 4.15rem) !important;
+    letter-spacing: .025em !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+  body.velvet-burgundy-route .memories-reference__title .reference-stories-title__script {
+    top: -12px !important;
+    font-size: clamp(2rem, 8vw, 2.7rem) !important;
+  }
+  body.velvet-burgundy-route .memories-reference__title .reference-stories-title__line {
+    display: none !important;
+  }
+  body.velvet-burgundy-route .memories-reference__title .reference-stories-title__spark {
+    display: none !important;
+  }
+  body.velvet-burgundy-route .memories-reference__new {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    width: 46px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    margin: 0 !important;
+  }
+  body.velvet-burgundy-route .memories-character-index__search {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 54px !important;
+    padding: 0 !important;
+    margin: 0 0 22px !important;
+    border-radius: 16px !important;
+  }
+  body.velvet-burgundy-route .memories-character-index__search .reference-search {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 52px !important;
+    padding: 0 14px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 16px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  body.velvet-burgundy-route .memories-character-index__search input {
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    height: 50px !important;
+    padding: 0 8px !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    font-size: 1rem !important;
+  }
+  body.velvet-burgundy-route .memory-character-index__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+  body.velvet-burgundy-route .memory-character-index-card__main {
+    width: 100% !important;
+    min-height: 0 !important;
+    aspect-ratio: .78 !important;
+    border-radius: 17px !important;
+  }
+  body.velvet-burgundy-route .memory-character-index-card__main > img {
+    filter: saturate(.92) brightness(.91) !important;
+  }
+  body.velvet-burgundy-route .memory-character-index-card__shade {
+    background: linear-gradient(180deg, transparent 36%, rgba(12,5,10,.22) 58%, rgba(10,4,9,.91) 100%) !important;
+  }
+  body.velvet-burgundy-route .memory-character-index-card__copy {
+    inset: auto 12px 14px !important;
+    min-width: 0 !important;
+  }
+  body.velvet-burgundy-route .memory-character-index-card__copy strong {
+    overflow-wrap: anywhere !important;
+    font-size: clamp(1.08rem, 4.5vw, 1.45rem) !important;
+    line-height: 1.08 !important;
+  }
+}
+@media (max-width: 380px) {
+  body.velvet-burgundy-route .memories-reference__title h1 {
+    font-size: 10.4vw !important;
+  }
+  body.velvet-burgundy-route .memories-reference-page {
+    padding-inline: 12px !important;
+  }
+}
