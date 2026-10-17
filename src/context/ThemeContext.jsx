@@ -8,9 +8,9 @@ export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     try {
       const saved = localStorage.getItem("velvet-theme");
-      return THEMES.includes(saved) ? saved : "light";
+      return THEMES.includes(saved) ? saved : "dark";
     } catch {
-      return "light";
+      return "dark";
     }
   });
 
