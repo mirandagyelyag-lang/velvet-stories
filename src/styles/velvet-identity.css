@@ -204,3 +204,46 @@ html[data-theme="dark"] .chat__composer:focus-within { border-color: var(--velve
 html[data-theme="dark"] .chat__character-name-button--primary {
   font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .08em; color: #f6dde8 !important;
 }
+
+/* Palette parity with the entrance/login: Original, Cómoda, Blanca.
+   This stylesheet loads last so the interior follows the same lighting. */
+html[data-theme="dark"] {
+  --stories-canvas:#130a11;--stories-canvas-2:#1c0f18;
+  --stories-ink:#ead3de;--stories-ink-soft:#dcb3c6;
+  --stories-muted:#b88fa3;--stories-accent:#c795ae;--stories-accent-strong:#e8c3d4;
+  --stories-panel:rgba(39,19,32,.84);--stories-panel-strong:rgba(45,23,37,.96);
+  --stories-panel-solid:#21101c;
+  --stories-sidebar:linear-gradient(180deg,#1c0f18,#130a11);
+  --stories-nav:linear-gradient(100deg,rgba(28,15,24,.97),rgba(19,10,17,.97));
+  --stories-atmosphere:radial-gradient(ellipse at 50% 38%,#3f1a2b 0%,#1c0f18 58%,#130a11 100%);
+}
+html[data-theme="comfort"] {
+  --stories-canvas:#d9bdc0;--stories-canvas-2:#d9b9bd;
+  --stories-ink:#44243a;--stories-ink-soft:#65394e;
+  --stories-muted:#785067;--stories-muted-2:#876475;
+  --stories-accent:#783f59;--stories-accent-strong:#663249;
+  --stories-line:rgba(120,63,89,.20);--stories-line-strong:rgba(120,63,89,.34);
+  --stories-panel:rgba(244,226,228,.70);--stories-panel-strong:rgba(248,234,235,.91);
+  --stories-panel-solid:#f0dfe1;
+  --stories-row:linear-gradient(95deg,rgba(244,226,228,.82),rgba(222,191,198,.74));
+  --stories-search:linear-gradient(105deg,rgba(247,232,233,.83),rgba(225,198,204,.75));
+  --stories-sidebar:linear-gradient(180deg,#e7cbd0,#d9bdc0);
+  --stories-sidebar-control:rgba(248,232,234,.65);
+  --stories-nav:linear-gradient(100deg,rgba(239,215,220,.94),rgba(217,185,189,.94));
+  --stories-atmosphere:radial-gradient(ellipse 60% 60% at 50% 42%,#d0aeb8 0%,#d9b9bd 57%,#d9bdc0 100%);
+}
+html[data-theme="light"] {
+  --stories-canvas:#fcfaf8;--stories-canvas-2:#faf6f4;
+  --stories-ink:#40243a;--stories-ink-soft:#69425a;
+  --stories-muted:#8d5d75;--stories-muted-2:#a17a8c;
+  --stories-accent:#753653;--stories-accent-strong:#633047;
+  --stories-line:rgba(141,93,117,.17);--stories-line-strong:rgba(141,93,117,.3);
+  --stories-panel:rgba(255,255,255,.84);--stories-panel-strong:rgba(255,255,255,.97);
+  --stories-panel-solid:#fffdfb;
+  --stories-row:linear-gradient(95deg,rgba(255,255,255,.96),rgba(250,243,245,.94));
+  --stories-search:linear-gradient(105deg,rgba(255,255,255,.97),rgba(250,244,246,.95));
+  --stories-sidebar:linear-gradient(180deg,#fffdfb,#faf6f4);
+  --stories-sidebar-control:rgba(255,255,255,.8);
+  --stories-nav:linear-gradient(100deg,rgba(255,255,255,.97),rgba(250,246,244,.97));
+  --stories-atmosphere:radial-gradient(ellipse 58% 58% at 50% 42%,#f6ebed 0%,#faf6f4 57%,#fcfaf8 100%);
+}
