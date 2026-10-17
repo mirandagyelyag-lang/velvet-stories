@@ -1,22 +1,179 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Jost:wght@300;400&display=swap" rel="stylesheet"><style>
-:root{--bg0:#0f080d;--bg1:#1d0f19;--wine:#4a1d36;--rose:#d9a9bf;--rose-dim:#a9728d;--ink:#f3dfe8;color-scheme:dark}
-*{box-sizing:border-box;margin:0}html,body{height:100%;width:100%}body{background:var(--bg0);color:var(--ink);font-family:Jost,system-ui,sans-serif;overflow:hidden}
-.stage{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6vh 24px 7vh;background:radial-gradient(ellipse 80% 55% at 50% 42%,var(--wine) 0%,var(--bg1) 45%,var(--bg0) 100%)}
-.grain{position:absolute;inset:0;opacity:.07;pointer-events:none;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>")}
-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.mark{position:relative;width:min(82vw,340px);aspect-ratio:1;margin-top:auto;flex:none}.mark svg{width:100%;height:100%;overflow:visible}
-.ring{fill:none;stroke:var(--rose);stroke-width:.6;opacity:.35}.dots{fill:none;stroke:var(--rose);stroke-width:1.2;stroke-dasharray:.5 7;stroke-linecap:round;opacity:.55;transform-origin:200px 200px;animation:spin 70s linear infinite}
-.v{fill:none;stroke:url(#g);stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 6px rgba(217,169,191,.55));animation:draw 2.6s cubic-bezier(.6,.05,.2,1) forwards}.v.a{stroke-width:2.2}.v.b{stroke-width:1.6;animation-delay:.35s;opacity:.8}.v.c{stroke-width:1;animation-delay:.7s;opacity:.55}
-.pearl{fill:var(--rose);opacity:0;filter:drop-shadow(0 0 10px var(--rose));animation:pearl 1.6s 2.2s ease forwards}.halo{fill:none;stroke:var(--rose);opacity:0;transform-origin:200px 340px;animation:halo 4s 2.6s ease-out infinite}
-.title{text-align:center;margin-top:3.5vh;opacity:0;animation:rise 1.6s 1.6s ease forwards}
-h1{font-family:"Cormorant Garamond",Georgia,serif;font-weight:400;font-size:clamp(40px,13vw,58px);letter-spacing:.32em;margin-right:-.32em;line-height:1;background:linear-gradient(180deg,#fbeaf1,var(--rose) 60%,var(--rose-dim));-webkit-background-clip:text;background-clip:text;color:transparent}
-.sub{margin-top:14px;font-weight:300;font-size:13px;letter-spacing:.55em;margin-right:-.55em;color:var(--rose-dim)}
-.tag{margin-top:22px;font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:19px;color:rgba(243,223,232,.7)}
-.cta{margin-top:auto;position:relative;opacity:0;animation:rise 1.4s 2.4s ease forwards;padding-top:4vh}
-button{position:relative;overflow:hidden;font:400 15px Jost,sans-serif;letter-spacing:.4em;padding:18px 54px 18px 58px;color:var(--ink);background:linear-gradient(135deg,rgba(217,169,191,.14),rgba(74,29,54,.35));border:1px solid rgba(217,169,191,.5);border-radius:999px;cursor:pointer;backdrop-filter:blur(6px);box-shadow:0 0 40px rgba(217,169,191,.12),inset 0 0 18px rgba(217,169,191,.08);transition:transform .25s,box-shadow .25s}
-button::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-20deg);animation:shine 4.5s 3.5s infinite}button:active{transform:scale(.96)}button:focus-visible{outline:2px solid var(--rose);outline-offset:4px}
-.veil{position:absolute;inset:0;background:var(--bg0);opacity:0;pointer-events:none;display:flex;align-items:center;justify-content:center;font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:26px;color:var(--rose);letter-spacing:.08em;transition:opacity .9s ease}.veil.on{opacity:1;pointer-events:auto}
-@keyframes draw{to{stroke-dashoffset:0}}@keyframes pearl{to{opacity:1}}@keyframes halo{0%{opacity:.6;transform:scale(.2)}100%{opacity:0;transform:scale(3)}}@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes shine{0%,60%{left:-60%}100%{left:130%}}
-@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important;animation-iteration-count:1!important}}
-</style></head><body><main class="stage"><div class="grain"></div><canvas id="p" aria-hidden="true"></canvas><div class="mark" aria-hidden="true"><svg viewBox="0 0 400 400"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbeaf1"/><stop offset="1" stop-color="#c58aa6"/></linearGradient></defs><circle class="ring" cx="200" cy="200" r="198"/><circle class="ring" cx="200" cy="200" r="168" style="opacity:.2"/><circle class="ring" cx="200" cy="200" r="132" style="opacity:.5"/><circle class="dots" cx="200" cy="200" r="105"/><path class="v a" pathLength="1" d="M96 112 L200 330 L304 112"/><path class="v b" pathLength="1" d="M122 112 L200 276 L278 112"/><path class="v c" pathLength="1" d="M148 112 L200 222 L252 112"/><circle class="halo" cx="200" cy="330" r="14" stroke-width=".8"/><circle class="pearl" cx="200" cy="330" r="5.5"/></svg></div><div class="title"><h1>VELVET</h1><div class="sub">STORIES</div><p class="tag">Historias que se sienten.</p></div><div class="cta"><button id="go" type="button">ENTRAR</button></div><div class="veil" id="veil" role="status">Bienvenida a Velvet</div></main>
-<script>(function(){var c=document.getElementById('p'),x=c.getContext('2d'),W,H,pts=[],dpr=Math.min(window.devicePixelRatio||1,2);function size(){W=c.clientWidth;H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0)}size();window.addEventListener('resize',size);for(var i=0;i<38;i++)pts.push({x:Math.random(),y:Math.random(),r:Math.random()*1.6+.4,s:Math.random()*.00006+.00002,a:Math.random()*6.28});var calm=window.matchMedia('(prefers-reduced-motion:reduce)').matches;function tick(t){x.clearRect(0,0,W,H);pts.forEach(function(p){if(!calm)p.y-=p.s*16;if(p.y<-.02)p.y=1.02;var px=p.x*W+Math.sin(t*.0004+p.a)*10,py=p.y*H,al=.15+.35*Math.abs(Math.sin(t*.0008+p.a));x.beginPath();x.arc(px,py,p.r,0,6.28);x.fillStyle='rgba(235,190,212,'+al+')';x.shadowBlur=8;x.shadowColor='rgba(235,190,212,.6)';x.fill()});if(!calm)requestAnimationFrame(tick)}requestAnimationFrame(tick);document.getElementById('go').addEventListener('click',function(){document.getElementById('veil').classList.add('on');window.parent.postMessage({type:'velvet-original-entry-enter'},window.location.origin)})})();</script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0306">
+<title>Velvet Stories</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@300;400;500&display=swap">
+<style>
+:root{--bg:#0a0306;--ink:#f3e7d3;--g:#d8b878;--g2:#e6d3a8;--mu:#c2a67a;--ln:rgba(216,184,120,.3);color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a0306}}
+:root[data-theme="dark"]{--bg:#0a0306}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);overflow:hidden;font-family:'Manrope',system-ui,sans-serif;color:var(--ink);-webkit-tap-highlight-color:transparent;touch-action:none}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+body.nogl{background:radial-gradient(ellipse 90% 50% at 50% 25%,#4a1a28,#0a0306)}
+#flash{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 27%,#fff3d6,rgba(216,184,120,.55) 32%,transparent 70%)}
+#flash.fl{animation:fl 1.5s ease-out}
+@keyframes fl{0%{opacity:0}12%{opacity:1}100%{opacity:0}}
+#ui{position:fixed;left:0;right:0;bottom:0;z-index:2;max-width:400px;margin:0 auto;padding:0 28px calc(26px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;pointer-events:none}
+#ui.on{pointer-events:auto}
+h1{margin:0 -.26em 0 0;display:flex;white-space:nowrap;font:500 clamp(20px,6.3vw,27px)/1.1 'Cormorant Garamond',serif;letter-spacing:.26em;color:var(--g2);text-shadow:0 0 22px rgba(216,184,120,.45)}
+h1 span{display:inline-block;opacity:0;filter:blur(10px);transform:translateY(16px);transition:opacity .9s,filter .9s,transform .9s;transition-delay:calc(var(--i)*.06s)}
+.on h1 span{opacity:1;filter:blur(0);transform:none}
+.tag{margin:10px 0 0;font:italic 400 17px 'Cormorant Garamond',serif;color:var(--mu);opacity:0;transition:opacity 1.2s .9s}
+.on .tag{opacity:1}
+.cta{width:100%;margin-top:26px;opacity:0;transform:translateY(24px);transition:opacity 1s 1.2s,transform 1s 1.2s cubic-bezier(.2,.8,.2,1)}
+.on .cta{opacity:1;transform:none}
+input{width:100%;height:50px;margin:0 0 10px;padding:0 16px;border:1px solid var(--ln);border-radius:12px;background:rgba(20,6,10,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font:300 15px 'Manrope',sans-serif;color:var(--ink);outline:none;transition:border-color .3s,box-shadow .3s}
+input::placeholder{color:var(--mu);opacity:1}
+input:focus{border-color:var(--g);box-shadow:0 0 24px rgba(216,184,120,.2)}
+button.go{position:relative;overflow:hidden;width:100%;height:54px;margin-top:6px;border:0;border-radius:12px;background:linear-gradient(120deg,#c9a35e,#f0dba8 50%,#c9a35e);color:#1c0a12;font:500 12px 'Manrope',sans-serif;letter-spacing:.34em;cursor:pointer;box-shadow:0 10px 34px rgba(216,184,120,.28)}
+button.go::after{content:"";position:absolute;top:0;bottom:0;width:70px;left:-90px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.7),transparent);transform:skewX(-18deg);animation:sw 3.2s 5s infinite}
+@keyframes sw{0%{left:-90px}35%,100%{left:125%}}
+button.go:active{transform:scale(.985)}
+.links{display:flex;justify-content:space-between;width:100%;margin-top:16px;font:300 12.5px 'Manrope',sans-serif}
+.links a{color:var(--g2)}
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="Apertura de Velvet Stories"></canvas>
+<div id="flash"></div>
+<div id="ui">
+<h1 aria-label="Velvet Stories"><span style="--i:0">V</span><span style="--i:1">E</span><span style="--i:2">L</span><span style="--i:3">V</span><span style="--i:4">E</span><span style="--i:5">T</span><span style="--i:6">&nbsp;</span><span style="--i:7">S</span><span style="--i:8">T</span><span style="--i:9">O</span><span style="--i:10">R</span><span style="--i:11">I</span><span style="--i:12">E</span><span style="--i:13">S</span></h1>
+<p class="tag">Historias para leer y vivir</p>
+<div class="cta"><button class="go" id="go" type="button">ENTRAR</button></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+var cvs=document.getElementById('gl'),ui=document.getElementById('ui'),flash=document.getElementById('flash');
+var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function ease(k){k=Math.max(0,Math.min(1,k));return k*k*(3-2*k)}
+function outQ(k){k=Math.max(0,Math.min(1,k));return 1-Math.pow(1-k,4)}
+var renderer;
+try{renderer=new THREE.WebGLRenderer({canvas:cvs,antialias:true,powerPreference:'high-performance'})}catch(e){renderer=null}
+if(!renderer||typeof THREE==='undefined'){document.body.classList.add('nogl');ui.classList.add('on');document.getElementById('go').addEventListener('click',function(){try{window.parent.postMessage({type:'velvet-original-entry-enter'},window.location.origin)}catch(e){}});return}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
+renderer.autoClear=false;
+
+/* ---- fondo: seda líquida vino con vetas de oro ---- */
+var bgScene=new THREE.Scene(),bgCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+var bgMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:{uT:{value:0},uRes:{value:new THREE.Vector2(1,1)},uGlow:{value:0},uM:{value:new THREE.Vector2(0,0)},uFl:{value:0}},
+vertexShader:'void main(){gl_Position=vec4(position.xy,0.,1.);}',
+fragmentShader:[
+'precision highp float;uniform float uT,uGlow,uFl;uniform vec2 uRes,uM;',
+'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}',
+'float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}',
+'float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p=p*2.02+vec2(1.7,9.2);a*=.5;}return v;}',
+'void main(){',
+' vec2 uv=(gl_FragCoord.xy-.5*uRes)/uRes.y; float t=uT*.07;',
+' vec2 q=vec2(fbm(uv*1.5+t),fbm(uv*1.5+vec2(5.2,1.3)-t));',
+' vec2 r=vec2(fbm(uv*1.6+3.5*q+vec2(1.7,9.2)+.15*t),fbm(uv*1.6+3.5*q+vec2(8.3,2.8)+.126*t));',
+' float f=fbm(uv*1.4+3.5*r);',
+' vec3 w0=vec3(.045,.008,.02),w1=vec3(.30,.05,.12),gd=vec3(.88,.68,.36);',
+' vec3 c=mix(w0,w1,clamp(f*f*2.4,0.,1.));',
+' float rg=1.-abs(2.*fbm(uv*2.1+2.*r+uT*.02)-1.); rg=pow(rg,7.);',
+' c+=gd*rg*.55*uGlow*(.4+.6*smoothstep(1.2,0.,length(uv-vec2(uM.x*.1,.18))));',
+' float d=length(uv-vec2(uM.x*.05,.2));',
+' c+=vec3(.9,.65,.3)*.30*exp(-d*3.2)*uGlow;',
+' c+=vec3(1.,.9,.65)*uFl*exp(-d*2.);',
+' c*=smoothstep(1.5,.15,length(uv*vec2(.9,.75)));',
+' gl_FragColor=vec4(c,1.);}'
+].join('\n')});
+bgScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bgMat));
+
+/* ---- escena 3D ---- */
+var scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(50,1,.1,100);
+var G=new THREE.Group();scene.add(G);
+
+/* partículas que forman la V */
+var S=[],Tg=[],Rn=[],Sz=[],Sh=[];
+function add(t,sh){var th=Math.random()*6.2832,ph=Math.acos(2*Math.random()-1),r=6+Math.random()*10;
+S.push(Math.sin(ph)*Math.cos(th)*r,Math.sin(ph)*Math.sin(th)*r*.8,Math.cos(ph)*r);Tg.push(t[0],t[1],t[2]);Rn.push(Math.random());Sz.push(Math.random()*1.7+.7);Sh.push(sh)}
+function line(a,b,n){for(var i=0;i<n;i++){var t=Math.random();add([a[0]+(b[0]-a[0])*t+(Math.random()-.5)*.07,a[1]+(b[1]-a[1])*t+(Math.random()-.5)*.07,(Math.random()-.5)*.12],1)}}
+line([-1,1],[0,-1.05],1000);line([0,-1.05],[1,1],1000);
+for(var i=0;i<900;i++){var a=Math.random()*6.2832;add([Math.cos(a)*1.6,Math.sin(a)*1.6,(Math.random()-.5)*.05],1)}
+for(var i=0;i<520;i++){var a=Math.random()*6.2832;add([Math.cos(a)*1.95,Math.sin(a)*1.95,(Math.random()-.5)*.05],1)}
+for(var i=0;i<1000;i++)add([(Math.random()-.5)*18,(Math.random()-.5)*20,(Math.random()-.5)*9],0);
+var pg=new THREE.BufferGeometry();
+pg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(S.length),3));
+pg.setAttribute('aStart',new THREE.BufferAttribute(new Float32Array(S),3));
+pg.setAttribute('aTarget',new THREE.BufferAttribute(new Float32Array(Tg),3));
+pg.setAttribute('aRand',new THREE.BufferAttribute(new Float32Array(Rn),1));
+pg.setAttribute('aSize',new THREE.BufferAttribute(new Float32Array(Sz),1));
+pg.setAttribute('aShape',new THREE.BufferAttribute(new Float32Array(Sh),1));
+var pm=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{uProg:{value:0},uT:{value:0},uPx:{value:renderer.getPixelRatio()},uSolid:{value:0}},
+vertexShader:['attribute vec3 aStart;attribute vec3 aTarget;attribute float aRand,aSize,aShape;uniform float uProg,uT,uPx,uSolid;varying float vA;',
+'vec3 rotY(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);}',
+'void main(){float k=clamp((uProg-aRand*.45)/.55,0.,1.);float e=k*k*(3.-2.*k);e=e*e*(3.-2.*e);',
+' vec3 p=mix(rotY(aStart,(1.-e)*5.),aTarget,e);',
+' p+=.018*vec3(sin(uT*2.+aRand*40.),cos(uT*1.7+aRand*30.),sin(uT+aRand*20.))*e;',
+' vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;',
+' float tw=.55+.45*sin(uT*3.+aRand*60.);',
+' gl_PointSize=aSize*uPx*(1.+(1.-e)*.9)*tw*(7./-mv.z)*2.2;',
+' vA=(aShape>.5?mix(1.,.4,uSolid):.55)*tw;}'].join('\n'),
+fragmentShader:['varying float vA;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,0.,d);',
+' vec3 col=mix(vec3(.85,.6,.26),vec3(1.,.94,.78),smoothstep(.28,0.,d));gl_FragColor=vec4(col*vA,a*vA);}'].join('\n')});
+G.add(new THREE.Points(pg,pm));
+
+/* V metálica 3D */
+var sh=new THREE.Shape();sh.moveTo(-1,1);sh.lineTo(-.72,1);sh.lineTo(0,-.5);sh.lineTo(.72,1);sh.lineTo(1,1);sh.lineTo(.14,-1.05);sh.lineTo(-.14,-1.05);sh.closePath();
+var eg=new THREE.ExtrudeGeometry(sh,{depth:.2,bevelEnabled:true,bevelThickness:.05,bevelSize:.045,bevelSegments:5,curveSegments:2});eg.center();
+var vm=new THREE.ShaderMaterial({uniforms:{uT:{value:0},uA:{value:0},uF:{value:0}},
+vertexShader:'varying vec3 vN,vV;void main(){vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}',
+fragmentShader:['precision highp float;varying vec3 vN,vV;uniform float uT,uA,uF;void main(){vec3 N=normalize(vN),V=normalize(vV);',
+' vec3 L=normalize(vec3(sin(uT*.6)*1.6,1.1,1.));float df=max(dot(N,L),0.);',
+' float sp=pow(max(dot(reflect(-L,N),V),0.),40.);float fr=pow(1.-max(dot(N,V),0.),3.);',
+' float bd=.5+.5*sin(N.y*6.+N.x*4.+uT*.9);',
+' vec3 dk=vec3(.26,.14,.05),md=vec3(.82,.60,.28),hi=vec3(1.,.92,.66);',
+' vec3 c=mix(dk,md,clamp(df*.75+bd*.35,0.,1.));c=mix(c,hi,clamp(sp*1.3+fr*.4,0.,1.));c+=uF*vec3(1.,.88,.6);',
+' gl_FragColor=vec4(c*uA,1.);}'].join('\n')});
+var V=new THREE.Mesh(eg,vm);V.scale.setScalar(.001);G.add(V);
+function ring(r,tb,op){var m=new THREE.Mesh(new THREE.TorusGeometry(r,tb,8,200),new THREE.MeshBasicMaterial({color:0xd8b878,transparent:true,opacity:op}));m.scale.setScalar(.001);G.add(m);return m}
+var R1=ring(1.6,.012,.9),R2=ring(1.95,.007,.55),SW=ring(1,.014,0);
+
+/* ---- tamaño / entrada ---- */
+var mx=0,my=0,tmx=0,tmy=0,asp=1;
+function resize(){var w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();asp=w/h;bgMat.uniforms.uRes.value.set(w*renderer.getPixelRatio(),h*renderer.getPixelRatio());
+ var s=.56*Math.min(1,asp/.56);G.userData.s=s;G.position.y=asp<.8?1.5:.7}
+window.addEventListener('resize',resize);resize();
+function pt(e){var p=e.touches?e.touches[0]:e;tmx=(p.clientX/window.innerWidth-.5)*2;tmy=(p.clientY/window.innerHeight-.5)*2}
+window.addEventListener('pointermove',pt);window.addEventListener('touchmove',pt,{passive:true});
+window.addEventListener('deviceorientation',function(e){if(e.gamma!=null){tmx=Math.max(-1,Math.min(1,e.gamma/30));tmy=Math.max(-1,Math.min(1,(e.beta-45)/30))}});
+
+/* ---- línea de tiempo ---- */
+var T0=performance.now(),state='intro',dive=0,fired=false,revealed=false;
+function restart(){T0=performance.now();state='intro';fired=false;revealed=false;ui.classList.remove('on');flash.style.opacity=0;ui.style.transition='';ui.style.opacity=1}
+document.getElementById('go').addEventListener('click',function(){if(state!=='idle')return;state='dive';dive=performance.now();ui.style.transition='opacity .6s';ui.style.opacity=0;if(navigator.vibrate)navigator.vibrate(25)});
+var HIT=3.1;
+function frame(now){
+ var t=reduce?9:(now-T0)/1000;
+ mx+=(tmx-mx)*.06;my+=(tmy-my)*.06;
+ var prog=ease(t/3.3);
+ pm.uniforms.uProg.value=prog;pm.uniforms.uT.value=now/1000;
+ var s=G.userData.s;
+ var solid=ease((t-HIT)/1.2);
+ pm.uniforms.uSolid.value=solid;
+ if(t>HIT&&!fired){fired=true;flash.classList.remove('fl');void flash.offsetWidth;flash.classList.add('fl');if(navigator.vibrate)navigator.vibrate([18,40,18])}
+ var pop=t>HIT?outQ((t-HIT)/1.1):0;var el=1+Math.sin(Math.min(1,(t-HIT)/1.1)*9)*.08*(1-Math.min(1,(t-HIT)/1.1));
+ V.scale.setScalar(Math.max(.001,pop*el*.92));vm.uniforms.uA.value=Math.min(1,pop*1.4);vm.uniforms.uT.value=now/1000;vm.uniforms.uF.value=t>HIT?Math.max(0,1-(t-HIT)*1.6):0;
+ R1.scale.setScalar(Math.max(.001,outQ((t-HIT-.1)/1.4)));R2.scale.setScalar(Math.max(.001,outQ((t-HIT-.25)/1.6)));
+ var sk=(t-HIT)/1.8;SW.scale.setScalar(Math.max(.001,1+sk*4));SW.material.opacity=sk>0&&sk<1?(1-sk)*.7:0;
+ bgMat.uniforms.uGlow.value=ease(t/3.4)*.9+solid*.3;bgMat.uniforms.uT.value=now/1000;bgMat.uniforms.uM.value.set(mx,my);
+ bgMat.uniforms.uFl.value=t>HIT?Math.max(0,.9-(t-HIT)*1.1):0;
+ var cz=9.8-outQ(t/4.4)*3.2,gs=s;
+ if(state==='dive'){var k=(now-dive)/1600;cz=6.6-ease(k)*5.9;gs=s*(1+ease(k)*.6);bgMat.uniforms.uFl.value=Math.pow(Math.min(1,k),2.2);flash.style.opacity=Math.pow(Math.min(1,k),3);
+  if(k>=1&&state==='dive'){state='done';try{window.parent.postMessage({type:'velvet-original-entry-enter'},window.location.origin)}catch(e){}}}
+ G.scale.setScalar(gs);
+ G.rotation.y=mx*.5+Math.sin(now/1700)*.12;G.rotation.x=-my*.28;
+ cam.position.set(mx*.25,-my*.15,cz);cam.lookAt(0,G.position.y*.55,0);
+ if(t>HIT+.35&&!revealed){revealed=true;ui.classList.add('on');state=state==='intro'?'idle':state}
+ renderer.clear();renderer.render(bgScene,bgCam);renderer.clearDepth();renderer.render(scene,cam);
+ requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
