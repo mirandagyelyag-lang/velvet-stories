@@ -45,7 +45,7 @@ export default function Auth() {
     return () => window.removeEventListener("message",handle);
   }, [signIn,signUp,theme,setTheme]);
   return <main style={{position:"fixed",inset:0,background:"#100810",zIndex:100,overflow:"hidden"}}>
-    <iframe ref={frame} src="/velvet-reference-auth.html" title="Velvet Stories: entrada y registro" style={{width:"100%",height:"100%",border:0,display:"block"}} />
+    <iframe ref={frame} src="/velvet-reference-auth.html?v=velvet-entry-20261016" title="Velvet Stories: entrada y registro" style={{width:"100%",height:"100%",border:0,display:"block"}} />
     {error && <span role="status" style={{position:"absolute",width:1,height:1,overflow:"hidden"}}>{error}</span>}
   </main>;
 }
