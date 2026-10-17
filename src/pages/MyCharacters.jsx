@@ -179,14 +179,6 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onOpenStory, onEditC
     <section className={`chats-page chats-page--reference discover-burgundy characters-library ${view === "trash" ? "discover-burgundy--trash" : ""}`}>
       <CharacterLibraryHero view={view} count={sourceCharacters.length} onCreateCharacter={onCreateCharacter} onBack={openCharacters} />
 
-      {view === "active" && storyHighlights.length > 0 && !search && activeChip === "All" && <section className="v311-discover-now">
-        <header><div><small>FOR YOU</small><h2>Pick the story back up</h2></div><Sparkles size={18}/></header>
-        <div className="v311-discover-now__rail">{storyHighlights.map((item)=><button type="button" key={item.id} onClick={()=>onOpenStory ? onOpenStory(item.character,item.id) : onOpenCharacter(item.character)}>
-          <span className="v311-discover-now__art">{item.character.imageUrl||item.character.coverUrl?<img src={item.character.imageUrl||item.character.coverUrl} alt=""/>:<i style={{"--character-color":item.character.color}}>{item.character.initials||item.character.name?.slice(0,2)}</i>}</span>
-          <span><small>{item.reason}</small><strong>{item.character.name}</strong><p>{item.story_recap || item.title || "Your story is still here."}</p><em>{relativeStoryTime(item.updated_at)}</em></span><ArrowRight size={16}/>
-        </button>)}</div>
-      </section>}
-
       <div className="discover-burgundy__controls characters-library__controls">
         <label className="discover-burgundy__search">
           <Search size={20} />
