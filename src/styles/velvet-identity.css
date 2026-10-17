@@ -298,3 +298,26 @@ html[data-theme="light"] {
     letter-spacing: .12em !important;
   }
 }
+
+
+/* Character title: never crop the word CHARACTERS on narrow screens. */
+@media (max-width: 600px) {
+  body.velvet-burgundy-route .characters-library__editorial-title {
+    width: calc(100vw - 32px) !important;
+    max-width: 100% !important;
+    left: 50% !important;
+    overflow: visible !important;
+    grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) !important;
+  }
+  body.velvet-burgundy-route .characters-library__editorial-title h1 {
+    font-size: clamp(2.25rem, 9.3vw, 3.9rem) !important;
+    letter-spacing: -.045em !important;
+    white-space: nowrap !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: calc(100vw - 38px) !important;
+  }
+  body.velvet-burgundy-route .characters-library__editorial-title .reference-stories-title__script {
+    font-size: clamp(2rem, 8vw, 3.2rem) !important;
+  }
+}
