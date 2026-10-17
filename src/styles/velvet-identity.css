@@ -1,40 +1,43 @@
 /* Velvet Stories · identidad unificada (inicio + login → interior)
    Esta hoja se carga la ÚLTIMA. Reúne en un solo lugar la paleta, la
    tipografía y los detalles del inicio/login para el resto de la app.
-   Rosa palo único: #e9a9be / #d9b7c4 / #bc8398 · vino: #22101d → #100810 */
+   Rosa palo único: #d8b878 / #e6d3a8 / #c2a67a · vino: #1c0a12 → #0f0509 */
 
 html[data-theme="dark"] {
-  --velvet-rose: #e9a9be;
-  --velvet-rose-soft: #d9b7c4;
-  --velvet-rose-dim: #bc8398;
-  --velvet-ink: #f0d3df;
-  --velvet-line: rgba(199, 149, 174, .24);
-  --velvet-line-strong: rgba(217, 183, 196, .4);
+  --velvet-rose: #d8b878;
+  --velvet-rose-soft: #e6d3a8;
+  --velvet-rose-dim: #c2a67a;
+  --velvet-ink: #f3e7d3;
+  --velvet-line: rgba(216, 184, 120, .24);
+  --velvet-line-strong: rgba(216, 184, 120, .4);
 
-  --stories-accent: #e9a9be;
-  --stories-accent-strong: #b8728b;
-  --stories-ink: #f6e6ec;
-  --stories-ink-soft: #f0d3df;
-  --stories-muted: #bc8398;
-  --stories-line: rgba(199, 149, 174, .24);
-  --stories-line-strong: rgba(217, 183, 196, .4);
-  --stories-canvas: #150a12;
-  --stories-canvas-2: #22101d;
-  --stories-panel: rgba(46, 21, 38, .6);
-  --stories-panel-strong: rgba(54, 26, 44, .82);
-  --stories-row: linear-gradient(95deg, rgba(59, 27, 48, .6), rgba(30, 14, 25, .5));
+  --stories-accent: #d8b878;
+  --stories-accent-strong: #a8834f;
+  --stories-ink: #f3e7d3;
+  --stories-ink-soft: #f3e7d3;
+  --stories-muted: #c2a67a;
+  --stories-line: rgba(216, 184, 120, .24);
+  --stories-line-strong: rgba(216, 184, 120, .4);
+  --stories-canvas: #150810;
+  --stories-canvas-2: #1c0a12;
+  --stories-panel: rgba(54, 20, 32, .6);
+  --stories-panel-strong: rgba(60, 22, 36, .82);
+  --stories-row: linear-gradient(95deg, rgba(74, 26, 40, .6), rgba(28, 10, 18, .5));
   --stories-atmosphere:
-    radial-gradient(ellipse 90% 34% at 50% 8%, #43203a 0%, transparent 100%),
-    radial-gradient(ellipse 80% 24% at 100% 62%, rgba(125, 39, 66, .26), transparent),
-    radial-gradient(ellipse 80% 24% at 0% 38%, rgba(82, 18, 43, .28), transparent),
-    linear-gradient(180deg, #22101d, #150a12 60%, #100810);
+    radial-gradient(ellipse 90% 34% at 50% 8%, #4a1a28 0%, transparent 100%),
+    radial-gradient(ellipse 80% 24% at 100% 62%, rgba(110, 30, 52, .26), transparent),
+    radial-gradient(ellipse 80% 24% at 0% 38%, rgba(74, 20, 38, .28), transparent),
+    linear-gradient(180deg, #1c0a12, #150810 60%, #0f0509);
 }
 
 /* ── Título: "Velvet" en script + STORIES espaciado ─────────────── */
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__script {
   color: var(--velvet-rose) !important;
-  font-size: 3.4rem !important;
-  text-shadow: 0 0 18px rgba(233, 169, 190, .35);
+  font-family: "Cormorant Garamond", serif !important;
+  font-style: italic !important;
+  font-size: 1.5rem !important;
+  letter-spacing: .12em !important;
+  text-shadow: none !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title h1 {
   color: var(--velvet-ink) !important;
@@ -43,10 +46,10 @@ html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title h1 {
   letter-spacing: .3em !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__line {
-  background: linear-gradient(90deg, transparent, #b8728b) !important;
+  background: linear-gradient(90deg, transparent, #a8834f) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__line--right {
-  background: linear-gradient(90deg, #b8728b, transparent) !important;
+  background: linear-gradient(90deg, #a8834f, transparent) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__spark { color: var(--velvet-rose-dim) !important; }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-hero__private,
@@ -75,7 +78,7 @@ html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-stats {
 /* ── Encabezados de sección ─────────────────────────────────────── */
 .velvet-identity-heading { display: flex; align-items: center; gap: 12px; margin: 22px 0 12px; }
 .velvet-identity-heading span { font: 400 9px "Manrope", sans-serif; letter-spacing: .42em; color: var(--velvet-rose-dim); }
-.velvet-identity-heading i { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(217, 183, 196, .4), transparent); }
+.velvet-identity-heading i { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(216, 184, 120, .4), transparent); }
 .velvet-identity-heading em { font: italic 400 14px "Cormorant Garamond", serif; color: var(--velvet-rose-dim); }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collections h2,
 html[data-theme="dark"] body.velvet-burgundy-route .reference-section-heading h2 {
@@ -88,26 +91,26 @@ html[data-theme="dark"] body.velvet-burgundy-route .reference-section-heading h2
 html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-continue { display: block; }
 .velvet-identity-continue__card {
   position: relative; display: block; width: 100%; height: 176px; padding: 0; overflow: hidden; cursor: pointer; text-align: left;
-  border: 1px solid rgba(233, 169, 190, .4); border-radius: 24px; color: #fbe7ee; background: #1a0a14;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .4), 0 0 26px rgba(185, 80, 120, .15);
+  border: 1px solid rgba(216, 184, 120, .4); border-radius: 24px; color: #f3e7d3; background: #1a0a10;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .4), 0 0 26px rgba(216, 184, 120, .15);
 }
 .velvet-identity-continue__art, .velvet-identity-continue__shade { position: absolute; inset: 0; display: block; }
 .velvet-identity-continue__art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; filter: saturate(.8) brightness(.7); }
-.velvet-identity-continue__fallback { display: grid; place-items: center; width: 100%; height: 100%; font: 400 64px "Cormorant Garamond", serif; color: #e3b6c7; background: linear-gradient(160deg, #6e2a4a, #1a0a14); }
+.velvet-identity-continue__fallback { display: grid; place-items: center; width: 100%; height: 100%; font: 400 64px "Cormorant Garamond", serif; color: #e6d3a8; background: linear-gradient(160deg, #5a1a2c, #1a0a10); }
 .velvet-identity-continue__shade {
   background: repeating-linear-gradient(105deg, rgba(255, 255, 255, .04) 0 1px, transparent 1px 9px),
-    linear-gradient(90deg, rgba(14, 7, 11, .92) 0%, rgba(14, 7, 11, .55) 55%, transparent 100%);
+    linear-gradient(90deg, rgba(15, 5, 9, .92) 0%, rgba(15, 5, 9, .55) 55%, transparent 100%);
 }
-.velvet-identity-continue__corner { position: absolute; width: 12px; height: 12px; border: 0 solid rgba(233, 169, 190, .7); }
+.velvet-identity-continue__corner { position: absolute; width: 12px; height: 12px; border: 0 solid rgba(216, 184, 120, .7); }
 .velvet-identity-continue__corner--tl { left: 10px; top: 10px; border-top-width: 1px; border-left-width: 1px; }
 .velvet-identity-continue__corner--tr { right: 10px; top: 10px; border-top-width: 1px; border-right-width: 1px; }
 .velvet-identity-continue__corner--bl { left: 10px; bottom: 10px; border-bottom-width: 1px; border-left-width: 1px; }
 .velvet-identity-continue__corner--br { right: 10px; bottom: 10px; border-bottom-width: 1px; border-right-width: 1px; }
 .velvet-identity-continue__copy { position: absolute; left: 22px; right: 70px; bottom: 20px; display: flex; flex-direction: column; gap: 4px; }
-.velvet-identity-continue__copy small { align-self: flex-start; padding: 5px 11px; border: 1px solid rgba(233, 169, 190, .6); border-radius: 999px; background: rgba(120, 40, 70, .35); font: 400 8px "Manrope", sans-serif; letter-spacing: .24em; color: #ffe0ea; margin-bottom: 8px; }
-.velvet-identity-continue__copy strong { font: 500 28px/1 "Cormorant Garamond", serif; color: #fbe7ee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.velvet-identity-continue__copy small { align-self: flex-start; padding: 5px 11px; border: 1px solid rgba(216, 184, 120, .6); border-radius: 999px; background: rgba(74, 26, 40, .35); font: 400 8px "Manrope", sans-serif; letter-spacing: .24em; color: #f3e7d3; margin-bottom: 8px; }
+.velvet-identity-continue__copy strong { font: 500 28px/1 "Cormorant Garamond", serif; color: #f3e7d3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .velvet-identity-continue__copy em { font: italic 400 15px "Cormorant Garamond", serif; color: var(--velvet-rose-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.velvet-identity-continue__play { position: absolute; right: 20px; bottom: 20px; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--velvet-rose-soft); color: #291020; box-shadow: 0 0 18px rgba(233, 169, 190, .35); }
+.velvet-identity-continue__play { position: absolute; right: 20px; bottom: 20px; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--velvet-rose-soft); color: #1c0a12; box-shadow: 0 0 18px rgba(216, 184, 120, .35); }
 
 /* ── Chips de vista ─────────────────────────────────────────────── */
 .velvet-identity-chips { display: none; }
@@ -115,65 +118,65 @@ html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-chips { disp
 .velvet-identity-chips::-webkit-scrollbar { display: none; }
 .velvet-identity-chips button {
   flex: none; padding: 8px 15px; border-radius: 999px; cursor: pointer;
-  border: 1px solid rgba(199, 149, 174, .28); background: transparent;
-  font: 400 9px "Manrope", sans-serif; letter-spacing: .24em; text-transform: uppercase; color: rgba(234, 211, 222, .62);
+  border: 1px solid rgba(216, 184, 120, .28); background: transparent;
+  font: 400 9px "Manrope", sans-serif; letter-spacing: .24em; text-transform: uppercase; color: rgba(243, 231, 211, .62);
 }
-.velvet-identity-chips button.is-active { color: #ffe0ea; border-color: var(--velvet-rose); background: rgba(233, 169, 190, .16); }
+.velvet-identity-chips button.is-active { color: #f3e7d3; border-color: var(--velvet-rose); background: rgba(216, 184, 120, .16); }
 
 /* ── Búsqueda y botón nueva historia: píldoras ──────────────────── */
 html[data-theme="dark"] body.velvet-burgundy-route .reference-search {
-  border: 1px solid rgba(199, 149, 174, .38) !important; border-radius: 999px !important;
-  background: rgba(199, 149, 174, .09) !important;
+  border: 1px solid rgba(216, 184, 120, .38) !important; border-radius: 999px !important;
+  background: rgba(216, 184, 120, .09) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-search:focus-within {
-  border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(199, 149, 174, .14) !important;
+  border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(216, 184, 120, .14) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-new {
-  color: #ffe0ea !important; border: 1px solid var(--velvet-rose) !important;
-  background: linear-gradient(110deg, rgba(233, 169, 190, .2), rgba(150, 70, 100, .25)) !important;
-  box-shadow: 0 0 18px rgba(229, 137, 173, .22) !important;
+  color: #f3e7d3 !important; border: 1px solid var(--velvet-rose) !important;
+  background: linear-gradient(110deg, rgba(216, 184, 120, .2), rgba(74, 26, 40, .25)) !important;
+  box-shadow: 0 0 18px rgba(216, 184, 120, .22) !important;
 }
 
 /* ── Colecciones ────────────────────────────────────────────────── */
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card {
-  border: 1px solid rgba(217, 183, 196, .26) !important; border-radius: 20px !important;
+  border: 1px solid rgba(216, 184, 120, .26) !important; border-radius: 20px !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card__icon {
-  color: #f0b4c3 !important; border: 1px solid rgba(233, 169, 190, .55) !important; background: rgba(40, 14, 28, .55) !important;
+  color: #e6d3a8 !important; border: 1px solid rgba(216, 184, 120, .55) !important; background: rgba(28, 10, 18, .55) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card strong {
-  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .04em; color: #f3dbe5 !important;
+  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .04em; color: #f3e7d3 !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card small {
-  font-size: 8px !important; letter-spacing: .26em !important; text-transform: uppercase; color: #e3b6c7 !important;
+  font-size: 8px !important; letter-spacing: .26em !important; text-transform: uppercase; color: #e6d3a8 !important;
 }
-html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card.is-active { border-color: var(--velvet-rose) !important; box-shadow: 0 0 22px rgba(229, 137, 173, .2); }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card.is-active { border-color: var(--velvet-rose) !important; box-shadow: 0 0 22px rgba(216, 184, 120, .2); }
 
 /* ── Filas de historias ─────────────────────────────────────────── */
 html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row {
-  border: 1px solid rgba(199, 149, 174, .22) !important; border-radius: 22px !important;
-  background: linear-gradient(95deg, rgba(59, 27, 48, .6), rgba(30, 14, 25, .5)) !important;
+  border: 1px solid rgba(216, 184, 120, .22) !important; border-radius: 22px !important;
+  background: linear-gradient(95deg, rgba(74, 26, 40, .6), rgba(28, 10, 18, .5)) !important;
 }
-html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row--favorite { border-color: rgba(233, 169, 190, .5) !important; }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row--favorite { border-color: rgba(216, 184, 120, .5) !important; }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__art {
-  border: 1px solid rgba(233, 169, 190, .45) !important; box-shadow: inset 0 0 18px rgba(255, 255, 255, .05);
+  border: 1px solid rgba(216, 184, 120, .45) !important; box-shadow: inset 0 0 18px rgba(255, 255, 255, .05);
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy h3 {
   font-family: "Cormorant Garamond", serif !important; font-weight: 560 !important; font-size: 1.4rem !important; color: var(--velvet-ink) !important;
 }
-html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy p { color: rgba(234, 211, 222, .62) !important; font-weight: 300; }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy p { color: rgba(243, 231, 211, .62) !important; font-weight: 300; }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy time {
   font-size: 8px !important; letter-spacing: .2em !important; text-transform: uppercase; color: var(--velvet-rose-dim) !important;
 }
 .velvet-identity-tags { display: flex; gap: 5px; margin: 6px 0 2px; }
-.velvet-identity-tags span { padding: 3px 8px; border-radius: 999px; background: rgba(199, 149, 174, .12); font: 400 7.5px "Manrope", sans-serif; letter-spacing: .22em; color: var(--velvet-rose-soft); }
+.velvet-identity-tags span { padding: 3px 8px; border-radius: 999px; background: rgba(216, 184, 120, .12); font: 400 7.5px "Manrope", sans-serif; letter-spacing: .22em; color: var(--velvet-rose-soft); }
 
 /* ── Navegación móvil: línea luminosa en la pestaña activa ──────── */
 html[data-theme="dark"] body .mobile-nav.velvet-reference-nav {
-  background: linear-gradient(0deg, #100810 60%, rgba(16, 8, 16, .85)) !important;
-  border-top: 1px solid rgba(199, 149, 174, .18) !important;
+  background: linear-gradient(0deg, #0f0509 60%, rgba(15, 5, 9, .85)) !important;
+  border-top: 1px solid rgba(216, 184, 120, .18) !important;
 }
-html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link { color: rgba(234, 211, 222, .5) !important; letter-spacing: .14em; }
+html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link { color: rgba(243, 231, 211, .5) !important; letter-spacing: .14em; }
 html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active { color: var(--velvet-ink) !important; }
 html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active svg { color: var(--velvet-rose) !important; stroke: var(--velvet-rose); }
 html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active::after {
@@ -183,141 +186,49 @@ html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--ac
 /* ── Chat: burbujas, divisor de fecha y barra de escribir ───────── */
 html[data-theme="dark"] .chat-message--character .chat-message__body p,
 html[data-theme="dark"] .chat-message--character .chat-message__body {
-  border-color: rgba(199, 149, 174, .26);
+  border-color: rgba(216, 184, 120, .26);
 }
 html[data-theme="dark"] .chat-message--character p {
-  background: rgba(199, 149, 174, .1) !important; border: 1px solid rgba(199, 149, 174, .26) !important;
+  background: rgba(216, 184, 120, .1) !important; border: 1px solid rgba(216, 184, 120, .26) !important;
   border-radius: 19px 19px 19px 5px !important; font-weight: 300;
 }
 html[data-theme="dark"] .chat-message--user p {
-  background: linear-gradient(125deg, #a9748e, #6e3452) !important; color: #fff !important; border: 0 !important;
-  border-radius: 19px 19px 5px 19px !important; box-shadow: 0 6px 18px rgba(80, 20, 50, .35);
+  background: linear-gradient(125deg, #7a2438, #4a1424) !important; color: #fff !important; border: 0 !important;
+  border-radius: 19px 19px 5px 19px !important; box-shadow: 0 6px 18px rgba(40, 8, 20, .35);
 }
 html[data-theme="dark"] .chat__date-divider span {
   font-family: "Manrope", sans-serif !important; font-size: 9px !important; letter-spacing: .4em !important;
   text-transform: uppercase; color: var(--velvet-rose-dim) !important;
 }
 html[data-theme="dark"] .chat__composer {
-  border-radius: 999px !important; border: 1px solid rgba(199, 149, 174, .4) !important; background: rgba(199, 149, 174, .09) !important;
+  border-radius: 999px !important; border: 1px solid rgba(216, 184, 120, .4) !important; background: rgba(216, 184, 120, .09) !important;
 }
-html[data-theme="dark"] .chat__composer:focus-within { border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(199, 149, 174, .14) !important; }
+html[data-theme="dark"] .chat__composer:focus-within { border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(216, 184, 120, .14) !important; }
 html[data-theme="dark"] .chat__character-name-button--primary {
-  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .08em; color: #f6dde8 !important;
-}
-
-/* Palette parity with the entrance/login: Original, Cómoda, Blanca.
-   This stylesheet loads last so the interior follows the same lighting. */
-html[data-theme="dark"] {
-  --stories-canvas:#130a11;--stories-canvas-2:#1c0f18;
-  --stories-ink:#ead3de;--stories-ink-soft:#dcb3c6;
-  --stories-muted:#b88fa3;--stories-accent:#c795ae;--stories-accent-strong:#e8c3d4;
-  --stories-panel:rgba(39,19,32,.84);--stories-panel-strong:rgba(45,23,37,.96);
-  --stories-panel-solid:#21101c;
-  --stories-sidebar:linear-gradient(180deg,#1c0f18,#130a11);
-  --stories-nav:linear-gradient(100deg,rgba(28,15,24,.97),rgba(19,10,17,.97));
-  --stories-atmosphere:radial-gradient(ellipse at 50% 38%,#3f1a2b 0%,#1c0f18 58%,#130a11 100%);
-}
-html[data-theme="comfort"] {
-  --stories-canvas:#d9bdc0;--stories-canvas-2:#d9b9bd;
-  --stories-ink:#44243a;--stories-ink-soft:#65394e;
-  --stories-muted:#785067;--stories-muted-2:#876475;
-  --stories-accent:#783f59;--stories-accent-strong:#663249;
-  --stories-line:rgba(120,63,89,.20);--stories-line-strong:rgba(120,63,89,.34);
-  --stories-panel:rgba(244,226,228,.70);--stories-panel-strong:rgba(248,234,235,.91);
-  --stories-panel-solid:#f0dfe1;
-  --stories-row:linear-gradient(95deg,rgba(244,226,228,.82),rgba(222,191,198,.74));
-  --stories-search:linear-gradient(105deg,rgba(247,232,233,.83),rgba(225,198,204,.75));
-  --stories-sidebar:linear-gradient(180deg,#e7cbd0,#d9bdc0);
-  --stories-sidebar-control:rgba(248,232,234,.65);
-  --stories-nav:linear-gradient(100deg,rgba(239,215,220,.94),rgba(217,185,189,.94));
-  --stories-atmosphere:radial-gradient(ellipse 60% 60% at 50% 42%,#d0aeb8 0%,#d9b9bd 57%,#d9bdc0 100%);
-}
-html[data-theme="light"] {
-  --stories-canvas:#fcfaf8;--stories-canvas-2:#faf6f4;
-  --stories-ink:#40243a;--stories-ink-soft:#69425a;
-  --stories-muted:#8d5d75;--stories-muted-2:#a17a8c;
-  --stories-accent:#753653;--stories-accent-strong:#633047;
-  --stories-line:rgba(141,93,117,.17);--stories-line-strong:rgba(141,93,117,.3);
-  --stories-panel:rgba(255,255,255,.84);--stories-panel-strong:rgba(255,255,255,.97);
-  --stories-panel-solid:#fffdfb;
-  --stories-row:linear-gradient(95deg,rgba(255,255,255,.96),rgba(250,243,245,.94));
-  --stories-search:linear-gradient(105deg,rgba(255,255,255,.97),rgba(250,244,246,.95));
-  --stories-sidebar:linear-gradient(180deg,#fffdfb,#faf6f4);
-  --stories-sidebar-control:rgba(255,255,255,.8);
-  --stories-nav:linear-gradient(100deg,rgba(255,255,255,.97),rgba(250,246,244,.97));
-  --stories-atmosphere:radial-gradient(ellipse 58% 58% at 50% 42%,#f6ebed 0%,#faf6f4 57%,#fcfaf8 100%);
+  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .08em; color: #f3e7d3 !important;
 }
 
 
-/* Mobile story library: compact hierarchy and clear collection cards. */
-@media (max-width: 600px) {
-  body.velvet-burgundy-route .chats-page--reference {
-    padding-top: 20px !important;
-    padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important;
-  }
-  body.velvet-burgundy-route .reference-stories-hero {
-    min-height: 148px !important;
-    margin-bottom: 8px !important;
-  }
-  body.velvet-burgundy-route .reference-stories-title {
-    top: 42px !important;
-    width: min(82vw, 370px) !important;
-  }
-  body.velvet-burgundy-route .reference-stories-title h1 {
-    font-size: clamp(3.4rem, 12vw, 4.7rem) !important;
-  }
-  body.velvet-burgundy-route .library-purpose-note {
-    margin: 8px 0 18px !important;
-    padding: 0 !important;
-  }
-  body.velvet-burgundy-route .library-purpose-note strong {
-    font-size: 1.2rem !important;
-  }
-  body.velvet-burgundy-route .library-purpose-note span {
-    font-size: .85rem !important;
-    line-height: 1.45 !important;
-  }
-  body.velvet-burgundy-route .reference-search-wrap {
-    margin-top: 0 !important;
-    margin-bottom: 22px !important;
-  }
-  body.velvet-burgundy-route .reference-collections {
-    margin-top: 12px !important;
-  }
-  body.velvet-burgundy-route .reference-collections__grid {
-    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
-    gap: 12px !important;
-  }
-  body.velvet-burgundy-route .reference-collection-card {
-    aspect-ratio: 1.15 !important;
-    min-height: 146px !important;
-    border-radius: 18px !important;
-  }
-  body.velvet-burgundy-route .reference-collection-card strong {
-    font-size: 10px !important;
-    letter-spacing: .12em !important;
-  }
+/* ── Login (pantalla de conversación) en burdeos y oro ──────────── */
+.velvet-chat-auth {
+  background:
+    repeating-linear-gradient(45deg, rgba(216, 184, 120, .045) 0 1px, transparent 1px 16px),
+    repeating-linear-gradient(-45deg, rgba(216, 184, 120, .045) 0 1px, transparent 1px 16px),
+    radial-gradient(ellipse 95% 38% at 50% 0%, #4a1a28, transparent),
+    linear-gradient(180deg, #1c0a12, #0f0509) !important;
+  color: #f3e7d3 !important;
 }
-
-
-/* Character title: never crop the word CHARACTERS on narrow screens. */
-@media (max-width: 600px) {
-  body.velvet-burgundy-route .characters-library__editorial-title {
-    width: calc(100vw - 32px) !important;
-    max-width: 100% !important;
-    left: 50% !important;
-    overflow: visible !important;
-    grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) !important;
-  }
-  body.velvet-burgundy-route .characters-library__editorial-title h1 {
-    font-size: clamp(2.25rem, 9.3vw, 3.9rem) !important;
-    letter-spacing: -.045em !important;
-    white-space: nowrap !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    max-width: calc(100vw - 38px) !important;
-  }
-  body.velvet-burgundy-route .characters-library__editorial-title .reference-stories-title__script {
-    font-size: clamp(2rem, 8vw, 3.2rem) !important;
-  }
-}
+.velvet-chat-auth__ambient { background: radial-gradient(ellipse at 50% 0%, rgba(216, 184, 120, .1), transparent 60%) !important; }
+.velvet-chat-auth__head svg { stroke: #d8b878 !important; }
+.velvet-chat-auth__head h1 { font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .26em !important; color: #e6d3a8 !important; text-shadow: none !important; }
+.velvet-chat-auth__head p { color: #c2a67a !important; }
+.velvet-chat-auth__avatar { border: 1px solid rgba(216, 184, 120, .45) !important; background: radial-gradient(circle at 50% 35%, #5a1a2c, #1a0a10) !important; color: #e6d3a8 !important; }
+.velvet-chat-auth__bubble { border-color: rgba(216, 184, 120, .26) !important; background: rgba(216, 184, 120, .08) !important; color: #f3e7d3 !important; box-shadow: none !important; }
+.velvet-chat-auth__message--me .velvet-chat-auth__bubble { background: linear-gradient(125deg, #7a2438, #4a1424) !important; border-color: rgba(216, 184, 120, .4) !important; color: #f3e7d3 !important; }
+.velvet-chat-auth__footer { background: linear-gradient(0deg, #0f0509 60%, rgba(15, 5, 9, .5)) !important; }
+.velvet-chat-auth__form { border-color: rgba(216, 184, 120, .4) !important; background: rgba(216, 184, 120, .07) !important; }
+.velvet-chat-auth__form:focus-within { border-color: #d8b878 !important; box-shadow: 0 0 20px rgba(216, 184, 120, .16) !important; }
+.velvet-chat-auth__form input { color: #f3e7d3 !important; }
+.velvet-chat-auth__form input::placeholder { color: rgba(243, 231, 211, .5) !important; }
+.velvet-chat-auth__eye, .velvet-chat-auth__switch { color: #e6d3a8 !important; }
+.velvet-chat-auth__send { background: #d8b878 !important; color: #1c0a12 !important; }
