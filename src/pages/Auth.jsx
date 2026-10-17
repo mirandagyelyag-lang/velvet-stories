@@ -95,11 +95,20 @@ export default function Auth() {
       .velvet-gold-auth .submit{height:62px;margin-top:13px;border:1px solid #e2b575;border-radius:18px;background:linear-gradient(110deg,rgba(35,9,19,.94),rgba(77,25,34,.85),rgba(35,9,19,.94));box-shadow:0 0 23px rgba(225,164,92,.16);color:#f1d29c;font:400 20px "Cormorant Garamond",Georgia,serif;letter-spacing:.4em}
       .velvet-gold-auth .links button{font:400 17px "Cormorant Garamond",Georgia,serif;text-underline-offset:4px}
       @media(max-height:760px){.velvet-gold-auth .emblem{height:160px}.velvet-gold-auth .ring{width:175px}.velvet-gold-auth .ring.outer{width:205px}.velvet-gold-auth .letter{font-size:145px}.velvet-gold-auth .tag{margin-bottom:13px}.velvet-gold-auth input{height:53px}.velvet-gold-auth .submit{height:54px}}
+
+      /* Continuous cinematic scene: keep the original animated canvas mounted. */
+      .velvet-gold-auth .entry-scene{position:absolute;inset:0;z-index:0;transition:filter .8s ease,transform 1.1s cubic-bezier(.2,.7,.2,1);transform-origin:center 43%}
+      .velvet-gold-auth .entry-scene--behind{filter:brightness(.4) saturate(.9);transform:scale(1.035);pointer-events:none}
+      .velvet-gold-auth .login{z-index:2;visibility:hidden;opacity:0;pointer-events:none;transform:translateY(18px);transition:opacity .7s ease,transform .8s cubic-bezier(.2,.7,.2,1),visibility 0s linear .8s;background:linear-gradient(180deg,rgba(19,5,12,.23),rgba(35,7,18,.4))!important;backdrop-filter:blur(3px)}
+      .velvet-gold-auth .login.login--visible{visibility:visible;opacity:1;pointer-events:auto;transform:translateY(0);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1),visibility 0s}
+      .velvet-gold-auth .login::before{opacity:.28}
+      .velvet-gold-auth .panel{animation:none}
+      @media(prefers-reduced-motion:reduce){.velvet-gold-auth .entry-scene,.velvet-gold-auth .login{transition:none;transform:none}}
       @media(prefers-reduced-motion:reduce){.velvet-gold-auth .bubble{animation:none}}
       @media(max-height:730px){.velvet-gold-auth .emblem{height:190px;margin-top:15px}.velvet-gold-auth .ring{width:180px}.velvet-gold-auth .ring.outer{width:210px}.velvet-gold-auth .letter{font-size:140px}.velvet-gold-auth .tag{margin-bottom:16px}}
     `}</style>
-    {!entered ? <iframe ref={frame} title="Velvet Stories — entrada" src={`/velvet-original-entry.html?build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} /> :
-      <section className="login"><div className="chat-decor" aria-hidden="true"><span className="bubble bubble-one">•••</span><span className="bubble bubble-two">•••</span><span className="bubble bubble-three">•••</span><span className="bubble bubble-four">•••</span></div><div className="panel">
+    <iframe ref={frame} className={entered ? "entry-scene entry-scene--behind" : "entry-scene"} title="Velvet Stories — entrada" src={`/velvet-original-entry.html?build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
+      <section className={entered ? "login login--visible" : "login"} aria-hidden={!entered} inert={!entered}><div className="chat-decor" aria-hidden="true"><span className="bubble bubble-one">•••</span><span className="bubble bubble-two">•••</span><span className="bubble bubble-three">•••</span><span className="bubble bubble-four">•••</span></div><div className="panel">
         <button className="back" type="button" onClick={() => {setEntered(false);setMessage("");}} aria-label="Volver al inicio">↶</button>
         <div className="emblem" aria-hidden="true"><span className="ring outer"/><span className="ring"/><span className="letter">V</span></div>
         <h1>VELVET</h1><div className="stories-word">STORIES</div><span className="ornament">✦</span><p className="tag">Historias para leer y vivir</p>
@@ -110,6 +119,6 @@ export default function Auth() {
         </form>
         {message && <p className="message" role="status">{message}</p>}
         <div className="links"><button type="button" disabled={busy} onClick={resetPassword}>¿Olvidaste tu contraseña?</button><button type="button" onClick={()=>{setMode(mode==="signin"?"signup":"signin");setMessage("");}}>{mode==="signin"?"Crear cuenta":"Iniciar sesión"}</button></div>
-      </div></section>}
+      </div></section>
   </main>;
 }
