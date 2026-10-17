@@ -71,13 +71,38 @@ export default function Auth() {
       .velvet-gold-auth .links{width:100%;display:flex;justify-content:space-between;gap:10px;margin-top:20px}
       .velvet-gold-auth .links button{background:none;border:0;padding:0;color:#e6d3a8;text-decoration:underline;font-size:13px;cursor:pointer}
       .velvet-gold-auth .message{font-size:13px;line-height:1.5;color:#f3e7d3;margin:12px 0 0;text-align:center}
+
+      .velvet-gold-auth .login{isolation:isolate;background:radial-gradient(ellipse at 80% 10%,rgba(183,88,58,.3),transparent 48%),radial-gradient(ellipse at 0% 75%,rgba(130,38,61,.3),transparent 55%),linear-gradient(145deg,#19070e,#42101e 55%,#200810)}
+      .velvet-gold-auth .login::before{background:radial-gradient(ellipse at 85% 25%,rgba(239,165,100,.15),transparent 45%),radial-gradient(ellipse at 5% 85%,rgba(224,111,84,.13),transparent 45%);opacity:1}
+      .velvet-gold-auth .chat-decor{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+      .velvet-gold-auth .bubble{position:absolute;width:95px;height:55px;display:grid;place-items:center;border:1px solid rgba(224,172,106,.36);border-radius:22px 22px 22px 7px;background:rgba(112,52,59,.22);backdrop-filter:blur(5px);color:rgba(242,198,135,.72);font-size:22px;letter-spacing:7px;animation:velvetBubbleFloat 8s ease-in-out infinite alternate}
+      .velvet-gold-auth .bubble-one{top:8%;left:-38px;transform:rotate(-13deg)}
+      .velvet-gold-auth .bubble-two{top:17%;right:-36px;transform:rotate(12deg);animation-delay:-3s}
+      .velvet-gold-auth .bubble-three{top:57%;left:-65px;animation-delay:-5s}
+      .velvet-gold-auth .bubble-four{bottom:5%;right:-26px;animation-delay:-2s}
+      @keyframes velvetBubbleFloat{to{translate:0 -15px;opacity:.55}}
+      .velvet-gold-auth .panel{z-index:1}
+      .velvet-gold-auth .emblem{height:clamp(170px,28vh,250px);margin-top:10px}
+      .velvet-gold-auth .ring{width:min(57vw,235px)}
+      .velvet-gold-auth .ring.outer{width:min(66vw,275px)}
+      .velvet-gold-auth .letter{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;color:#e5b76c;text-shadow:3px 5px #70401e,0 0 24px rgba(223,166,92,.3)}
+      .velvet-gold-auth h1{font-size:clamp(48px,14vw,70px);line-height:.95;letter-spacing:.14em;padding-left:.14em;background:linear-gradient(160deg,#fff2d5,#ddb377 55%,#b37a3e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+      .velvet-gold-auth .stories-word{display:flex;align-items:center;gap:13px;width:85%;margin-top:11px;color:#e6c38c;font:400 12px "Cormorant Garamond",Georgia,serif;letter-spacing:.55em;padding-left:.55em}
+      .velvet-gold-auth .stories-word::before,.velvet-gold-auth .stories-word::after{content:"";height:1px;flex:1;background:rgba(220,176,120,.6)}
+      .velvet-gold-auth .ornament{color:#e6c38c;margin-top:8px}
+      .velvet-gold-auth .tag{font-size:22px;margin:7px 0 22px;text-align:center}
+      .velvet-gold-auth input{height:60px;border-radius:19px;border-color:rgba(220,166,103,.5);background:rgba(33,9,18,.8);box-shadow:inset 0 1px rgba(249,208,146,.08);font-size:16px}
+      .velvet-gold-auth .submit{height:62px;margin-top:13px;border:1px solid #e2b575;border-radius:18px;background:linear-gradient(110deg,rgba(35,9,19,.94),rgba(77,25,34,.85),rgba(35,9,19,.94));box-shadow:0 0 23px rgba(225,164,92,.16);color:#f1d29c;font:400 20px "Cormorant Garamond",Georgia,serif;letter-spacing:.4em}
+      .velvet-gold-auth .links button{font:400 17px "Cormorant Garamond",Georgia,serif;text-underline-offset:4px}
+      @media(max-height:760px){.velvet-gold-auth .emblem{height:160px}.velvet-gold-auth .ring{width:175px}.velvet-gold-auth .ring.outer{width:205px}.velvet-gold-auth .letter{font-size:145px}.velvet-gold-auth .tag{margin-bottom:13px}.velvet-gold-auth input{height:53px}.velvet-gold-auth .submit{height:54px}}
+      @media(prefers-reduced-motion:reduce){.velvet-gold-auth .bubble{animation:none}}
       @media(max-height:730px){.velvet-gold-auth .emblem{height:190px;margin-top:15px}.velvet-gold-auth .ring{width:180px}.velvet-gold-auth .ring.outer{width:210px}.velvet-gold-auth .letter{font-size:140px}.velvet-gold-auth .tag{margin-bottom:16px}}
     `}</style>
     {!entered ? <iframe ref={frame} title="Velvet Stories — entrada" src={`/velvet-original-entry.html?build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} /> :
-      <section className="login"><div className="panel">
+      <section className="login"><div className="chat-decor" aria-hidden="true"><span className="bubble bubble-one">•••</span><span className="bubble bubble-two">•••</span><span className="bubble bubble-three">•••</span><span className="bubble bubble-four">•••</span></div><div className="panel">
         <button className="back" type="button" onClick={() => {setEntered(false);setMessage("");}} aria-label="Volver al inicio">↶</button>
         <div className="emblem" aria-hidden="true"><span className="ring outer"/><span className="ring"/><span className="letter">V</span></div>
-        <h1>VELVET STORIES</h1><p className="tag">Historias para leer y vivir</p>
+        <h1>VELVET</h1><div className="stories-word">STORIES</div><span className="ornament">✦</span><p className="tag">Historias para leer y vivir</p>
         <form onSubmit={submit}>
           <input type="email" required autoComplete="email" placeholder="Correo" value={email} onChange={e=>setEmail(e.target.value)} />
           <input type="password" required minLength={6} autoComplete={mode==="signup"?"new-password":"current-password"} placeholder="Contraseña" value={password} onChange={e=>setPassword(e.target.value)} />
