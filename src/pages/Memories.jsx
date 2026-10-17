@@ -33,6 +33,7 @@ import { supabase } from "../services/supabase";
 import { useFeedback } from "../context/FeedbackContext";
 import SwipeToTrash from "../components/SwipeToTrash";
 import "../styles/memories.css";
+import "../styles/velvet-memories-mobile-editorial.css";
 
 const categories = [
   { id: "all", label: "All memories" },
