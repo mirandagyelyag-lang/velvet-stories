@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../services/supabase";
 import { useTheme } from "../context/ThemeContext";
+import IdentidadViva from "../components/IdentidadViva/IdentidadViva";
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
