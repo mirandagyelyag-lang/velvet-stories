@@ -151,3 +151,11 @@
 .identidad-viva--light .iv-next{color:#553277;background:rgba(130,92,175,.1);border-color:rgba(92,56,137,.55)}
 .identidad-viva--light .iv-links button,.identidad-viva--light .iv-back{color:#553a6c}
 @media(max-width:600px){.iv-content{width:min(82vw,420px);padding:0}.iv-content::before{font-size:clamp(28px,7vw,38px);margin-bottom:clamp(30px,7vh,62px)}.iv-step h1{font-size:clamp(21px,5.2vw,26px);margin:0 0 26px}.iv-step form{padding:5px 5px 5px 14px}.iv-step input{padding:11px 0;font-size:16px}.iv-next{width:42px;height:42px}.iv-links{margin-top:23px}.iv-links button{font-size:12px}}
+
+
+/* Restore the original animated metallic stage behind login. */
+.identidad-viva{background:rgba(10,4,23,.12)!important}
+.identidad-viva--light{background:rgba(247,240,237,.1)!important}
+.identidad-viva::before{display:block!important;content:""!important;position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 54% 43% at 50% 49%,rgba(12,4,29,.76) 0%,rgba(12,4,29,.5) 56%,rgba(12,4,29,.08) 100%)}
+.identidad-viva--light::before{background:radial-gradient(ellipse 54% 43% at 50% 49%,rgba(247,240,237,.85),rgba(247,240,237,.48) 60%,rgba(247,240,237,.06))}
+.iv-content{z-index:2}
