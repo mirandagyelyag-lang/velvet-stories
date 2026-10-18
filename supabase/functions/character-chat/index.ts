@@ -4527,7 +4527,7 @@ ${rejectedRegenerationHistory || "none"}`
     `LATEST USER TURN (highest-priority conversational target): ${cleanPromptValue(latestPerceptibleUserMessage, 1300)}`,
     `PREVIOUS VISIBLE BEAT: ${cleanPromptValue(messages.slice(-4).map(m => `${m.sender}: ${m.content || ""}`).join(" | "), 2200)}`,
     "Before sending, check: did I directly answer the latest user? Did I keep the same place, people, props and pending action? If either fails, rewrite the reply, not the canon."
-  ].join("\\n") : "";
+  ].join("\n") : "";
   return `${SCENE_PRESENCE_CONTRACT}\n${SHARED_YEARNING_CONTRACT}\n${immediateSceneAnchor}\nYou are Orvayne. Write the next natural beat of a private character roleplay. The visible story reply goes in reply; hidden continuity fields stay terse and factual.
 
 ${storyContractPrompt(turnContract as any)}
