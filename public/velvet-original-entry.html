@@ -13,6 +13,13 @@
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--bg);overflow:hidden;font-family:'Manrope',system-ui,sans-serif;color:var(--ink);-webkit-tap-highlight-color:transparent;touch-action:none}
 canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+#starfield{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at bottom,#291629 0%,#0b0710 100%)}
+#starfield .star-layer{position:absolute;inset:0;background-repeat:repeat;animation:orvayneStarDrift 75s linear infinite;will-change:transform}
+#starfield .star-layer:nth-child(2){animation-duration:115s;opacity:.7}
+#starfield .star-layer:nth-child(3){animation-duration:160s;opacity:.48}
+@keyframes orvayneStarDrift{from{transform:translateY(0)}to{transform:translateY(-120px)}}
+@media(prefers-reduced-motion:reduce){#starfield .star-layer{animation:none}}
+canvas#gl{z-index:1;background:transparent}
 body.nogl{background:radial-gradient(ellipse 90% 50% at 50% 25%,#4a1a28,#0a0306)}
 #flash{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 27%,#fff3d6,rgba(216,184,120,.55) 32%,transparent 70%)}
 #flash.fl{animation:fl 1.5s ease-out}
@@ -45,6 +52,7 @@ button.go .go-detail{position:absolute;right:14%;top:50%;transform:translateY(-5
 </style>
 </head>
 <body>
+<div id="starfield" aria-hidden="true"><div class="star-layer"></div><div class="star-layer"></div><div class="star-layer"></div></div>
 <canvas id="gl" aria-label="Apertura de Orvayne"></canvas>
 <div id="flash"></div>
 <div id="ui">
@@ -68,6 +76,7 @@ try{renderer=new THREE.WebGLRenderer({canvas:cvs,antialias:true,powerPreference:
 if(!renderer||typeof THREE==='undefined'){document.body.classList.add('nogl');ui.classList.add('on');document.getElementById('go').addEventListener('click',function(){try{window.parent.postMessage({type:'velvet-original-entry-enter'},window.location.origin)}catch(e){}});return}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));
 renderer.autoClear=false;
+renderer.setClearColor(0x000000,0);
 
 /* ---- fondo: seda líquida vino con vetas de oro ---- */
 var bgScene=new THREE.Scene(),bgCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
@@ -174,7 +183,7 @@ function frame(now){
  V.scale.setScalar(Math.max(.001,pop*el*.92));vm.uniforms.uA.value=Math.min(1,pop*1.4);vm.uniforms.uT.value=now/1000;vm.uniforms.uF.value=t>HIT?Math.max(0,1-(t-HIT)*1.6):0;
  R1.scale.setScalar(Math.max(.001,outQ((t-HIT-.1)/1.4)));R2.scale.setScalar(Math.max(.001,outQ((t-HIT-.25)/1.6)));
  var sk=(t-HIT)/1.8;SW.scale.setScalar(Math.max(.001,1+sk*4));SW.material.opacity=sk>0&&sk<1?(1-sk)*.7:0;
- bgMat.uniforms.uGlow.value=ease(t/3.4)*.9+solid*.3;bgMat.uniforms.uT.value=now/1000;bgMat.uniforms.uM.value.set(mx,my);
+ bgMat.uniforms.uGlow.value=0;bgMat.uniforms.uT.value=now/1000;bgMat.uniforms.uM.value.set(mx,my);
  bgMat.uniforms.uFl.value=t>HIT?Math.max(0,.9-(t-HIT)*1.1):0;
  var cz=9.8-outQ(t/4.4)*3.2,gs=s;
  if(state==='dive'){
@@ -191,9 +200,24 @@ function frame(now){
  G.rotation.y=mx*.5+Math.sin(now/1700)*.12;G.rotation.x=-my*.28;
  cam.position.set(mx*.25,-my*.15,cz);cam.lookAt(0,state==='dive'||state==='done'?G.position.y-.55*s:G.position.y*.55,0);
  if(t>HIT+.35&&!revealed){revealed=true;ui.classList.add('on');state=state==='intro'?'idle':state}
- renderer.clear();renderer.render(bgScene,bgCam);renderer.clearDepth();renderer.render(scene,cam);
+ renderer.clear();/* Background replaced by Uiverse starfield */renderer.clearDepth();renderer.render(scene,cam);
  if(!paused)requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
+})();
+
+// Uiverse.io by jaykdoe — CSS-style drifting starfield, scoped to the ENTRAR screen only.
+(function(){
+  var layers=document.querySelectorAll('#starfield .star-layer');
+  var counts=[105,65,35],sizes=[1,1.5,2];
+  layers.forEach(function(layer,k){
+    var seed=7123+k*1193;
+    function rand(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+    var dots=[];
+    for(var i=0;i<counts[k];i++){var x=Math.floor(rand()*1000),y=Math.floor(rand()*1000);dots.push(x+'px '+y+'px rgba(255,239,246,'+(.3+rand()*.55).toFixed(2)+')')}
+    layer.style.width=sizes[k]+'px';layer.style.height=sizes[k]+'px';
+    layer.style.background='transparent';layer.style.boxShadow=dots.join(',');
+    layer.style.opacity=String(1-k*.16);
+  });
 })();
 </script>
 </body>
