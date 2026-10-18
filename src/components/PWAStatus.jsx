@@ -43,7 +43,7 @@ function PWAStatus() {
     {pwa.updateProblem && !showUpdate && (
       <aside className="pwa-toast pwa-toast--repair" role="alert">
         <span className="pwa-toast__icon"><RefreshCw size={19}/></span>
-        <div><strong>Velvet update needs repair</strong><small>{pwa.updateProblem}</small></div>
+        <div><strong>Orvayne update needs repair</strong><small>{pwa.updateProblem}</small></div>
         <button className="pwa-toast__primary" onClick={pwa.repairUpdate} disabled={pwa.updating}>{pwa.updating ? "Repairing…" : "Repair & reopen"}</button>
       </aside>
     )}
@@ -53,7 +53,7 @@ function PWAStatus() {
           <button className="pwa-guide__close" onClick={pwa.closeIOSInstructions} aria-label="Close"><X size={20}/></button>
           <span className="pwa-guide__symbol">✦</span>
           <p>{pwa.platform === "ios" ? "INSTALL ON IPHONE OR IPAD" : "INSTALL ON YOUR PHONE"}</p>
-          <h2 id="pwa-guide-title">Keep Velvet close</h2>
+          <h2 id="pwa-guide-title">Keep Orvayne close</h2>
           {pwa.platform === "ios" ? <ol>
             <li><span>1</span><div>Open this page in <strong>Safari</strong>.</div></li>
             <li><span>2</span><div>Tap the <Share size={17}/> <strong>Share</strong> button.</div></li>
