@@ -15,7 +15,7 @@ function PWAStatus() {
     {showUpdate && (
       <aside className="pwa-toast" role="status">
         <span className="pwa-toast__icon"><RefreshCw size={19}/></span>
-        <div><strong>Velvet has an update</strong><small>{pwa.serverVersion ? `v${pwa.serverVersion} is ready. ` : ""}Install it without losing your place.</small></div>
+        <div><strong>Orvayne has an update</strong><small>{pwa.serverVersion ? `v${pwa.serverVersion} is ready. ` : ""}Install it without losing your place.</small></div>
         <button className="pwa-toast__primary" onClick={pwa.updateApp} disabled={pwa.updating}>{pwa.updating ? "Updating…" : "Update now"}</button>
         <button className="pwa-toast__close" onClick={pwa.dismissRefresh} aria-label="Dismiss"><X size={17}/></button>
       </aside>
@@ -24,7 +24,7 @@ function PWAStatus() {
     {!showUpdate && !pwa.updateProblem && pwa.offlineReady && !showInstall && (
       <aside className="pwa-toast" role="status">
         <span className="pwa-toast__icon">✦</span>
-        <div><strong>Velvet is ready</strong><small>The interface can now open without a connection.</small></div>
+        <div><strong>Orvayne is ready</strong><small>The interface can now open without a connection.</small></div>
         <button className="pwa-toast__primary" onClick={pwa.dismissOfflineReady}>Lovely</button>
         <button className="pwa-toast__close" onClick={pwa.dismissOfflineReady} aria-label="Dismiss"><X size={17}/></button>
       </aside>
@@ -33,7 +33,7 @@ function PWAStatus() {
     {!showUpdate && !pwa.updateProblem && showInstall && (
       <aside className="pwa-toast pwa-toast--install">
         <span className="pwa-toast__icon"><Download size={19}/></span>
-        <div><strong>Install Velvet Stories</strong><small>Open it from your home screen like an app.</small></div>
+        <div><strong>Install Orvayne</strong><small>Open it from your home screen like an app.</small></div>
         <button className="pwa-toast__primary" onClick={pwa.installApp}>Install</button>
         <button className="pwa-toast__close" onClick={pwa.dismissInstall} aria-label="Not now"><X size={17}/></button>
       </aside>
@@ -59,7 +59,7 @@ function PWAStatus() {
             <li><span>2</span><div>Tap the <Share size={17}/> <strong>Share</strong> button.</div></li>
             <li><span>3</span><div>Choose <strong>Add to Home Screen</strong>, then tap Add.</div></li>
           </ol> : <ol>
-            <li><span>1</span><div>Open Velvet Stories in <strong>Chrome</strong>.</div></li>
+            <li><span>1</span><div>Open Orvayne in <strong>Chrome</strong>.</div></li>
             <li><span>2</span><div>Tap Chrome's <strong>three-dot menu</strong>.</div></li>
             <li><span>3</span><div>Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</div></li>
           </ol>}
