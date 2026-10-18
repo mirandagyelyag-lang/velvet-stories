@@ -40,7 +40,7 @@ export default function WelcomeSplash() {
       pointerEvents: leaving ? "none" : "auto",
       transition: "opacity 1.1s cubic-bezier(.22,1,.36,1), filter 1.1s ease, transform 1.1s cubic-bezier(.22,1,.36,1)"
     }} aria-label="Inicio de Orvayne">
-      <iframe ref={frameRef} title="Inicio Orvayne" src="/orvayne-aero-entry.html"
+      <iframe ref={frameRef} title="Inicio Orvayne" src="/orvayne-ghost-entry.html"
         style={{ width: "100%", height: "100%", display: "block", border: 0, background: "#0f080d" }} />
     </div>
   );
