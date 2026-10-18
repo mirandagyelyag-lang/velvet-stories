@@ -4515,7 +4515,20 @@ Previously rejected responses:
 ${rejectedRegenerationHistory || "none"}`
       : "This is a new canonical turn.";
 
-  return `${SCENE_PRESENCE_CONTRACT}\n${SHARED_YEARNING_CONTRACT}\nYou are Velvet. Write the next natural beat of a private character roleplay. The visible story reply goes in reply; hidden continuity fields stay terse and factual.
+  const immediateSceneAnchor = !openingRegeneration ? [
+    "ORVAYNE IMMEDIATE CONTINUITY PRIORITY (overrides novelty, dramatic initiative, scene variety and stylistic flourish):",
+    "A) The most recent USER turn is the question, action or statement to answer NOW. First respond to its literal meaning, including negation, corrections, refusals and who was addressed. Never substitute a generic check-in, invented concern, recycled opening line or unrelated plot hook.",
+    "B) The last established location, room, time of day, participants, positions and objects remain true unless a visible action or explicit time skip changes them. A time skip changes time, NOT location by default. Never teleport anyone, reintroduce a present person or switch an established object for another.",
+    "C) Keep the immediate cause-and-effect chain: previous character action -> latest user response -> next character reaction. Do not skip a pending question, order, payment, offer, decision or unfinished activity in order to create new drama.",
+    "D) A character may act independently only after acknowledging the latest user turn, and only within established physical and social circumstances. New NPCs cannot appear in the room without an arrival; absent characters cannot speak in person.",
+    "E) If the stored scene summary contradicts the newest visible dialogue, trust the newest explicit dialogue. If details are unknown, leave them unspecified instead of inventing them. Never author the user's feelings, dialogue, movement or consent.",
+    "F) Silent continue: progress the character's own current activity in the SAME established place unless the story explicitly establishes travel. Preserve who is already there and all unresolved topics.",
+    `CURRENT SCENE STATE: ${cleanPromptValue(JSON.stringify(conversation.scene_state || {}), 1300)}`,
+    `LATEST USER TURN (highest-priority conversational target): ${cleanPromptValue(latestPerceptibleUserMessage, 1300)}`,
+    `PREVIOUS VISIBLE BEAT: ${cleanPromptValue(messages.slice(-4).map(m => `${m.sender}: ${m.content || ""}`).join(" | "), 2200)}`,
+    "Before sending, check: did I directly answer the latest user? Did I keep the same place, people, props and pending action? If either fails, rewrite the reply, not the canon."
+  ].join("\\n") : "";
+  return `${SCENE_PRESENCE_CONTRACT}\n${SHARED_YEARNING_CONTRACT}\n${immediateSceneAnchor}\nYou are Orvayne. Write the next natural beat of a private character roleplay. The visible story reply goes in reply; hidden continuity fields stay terse and factual.
 
 ${storyContractPrompt(turnContract as any)}
 
