@@ -95,7 +95,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         }
         if (!cancelled) setDeepMatches(matches.sort((a,b)=>b.score-a.score||new Date(b.date||0)-new Date(a.date||0)).slice(0,18));
       } catch (requestError) {
-        console.warn("Velvet deep story search skipped:", requestError?.message || requestError);
+        console.warn("Orvayne deep story search skipped:", requestError?.message || requestError);
         if (!cancelled) setDeepMatches([]);
       } finally { if (!cancelled) setDeepSearching(false); }
     }, 260);
@@ -170,7 +170,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       setCollectionName("");
       setCollectionDialog(null);
       setLibraryNotice("Collection created.");
-    } catch (requestError) { setLibraryNotice(requestError?.message || "Velvet couldn't create that collection."); }
+    } catch (requestError) { setLibraryNotice(requestError?.message || "Orvayne couldn't create that collection."); }
   }
 
   function toggleCollectionStory(collectionId, storyId) {
@@ -189,7 +189,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       setLibraryNotice(`Story restored from Safety Vault · ${result.restored} records recovered${result.failures.length ? ` · ${result.failures.length} optional sections skipped` : ""}.`);
     } catch (requestError) {
       console.error("Safety Vault restore failed:", requestError);
-      setLibraryNotice(requestError?.message || "Velvet couldn't restore that recovery copy.");
+      setLibraryNotice(requestError?.message || "Orvayne couldn't restore that recovery copy.");
     } finally { setUpdatingId(null); }
   }
 
@@ -197,7 +197,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     try {
       await deleteStorySafetySnapshotV34915(snapshotId);
       setRecoverySnapshots((current) => current.filter((item) => item.id !== snapshotId));
-    } catch (requestError) { setLibraryNotice(requestError?.message || "Velvet couldn't remove that recovery copy."); }
+    } catch (requestError) { setLibraryNotice(requestError?.message || "Orvayne couldn't remove that recovery copy."); }
   }
 
   async function deleteActiveCollection() {
@@ -639,7 +639,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       <div className="v34915-recovery-row__copy">
         <small>LOCAL SAFETY COPY · {formatShelfDate(snapshot.capturedAt)}</small>
         <strong>{snapshot.title || character?.name || "Recovered story"}</strong>
-        <p>{snapshot.characterName || character?.name || "Velvet story"} · {snapshot.recordCount || 0} records · expires after 30 days</p>
+        <p>{snapshot.characterName || character?.name || "Orvayne story"} · {snapshot.recordCount || 0} records · expires after 30 days</p>
       </div>
       <div className="v34915-recovery-row__actions">
         <button type="button" onClick={() => restoreSafetySnapshot(snapshot)} disabled={updatingId === snapshot.id}><RotateCcw size={15}/>{updatingId === snapshot.id ? "Restoring…" : "Restore"}</button>
