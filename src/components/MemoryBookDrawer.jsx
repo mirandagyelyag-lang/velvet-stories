@@ -111,7 +111,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
     } catch (requestError) {
       if (sequence !== loadSequence.current) return;
       console.error("Memory book load failed:", requestError);
-      setError("Velvet couldn't open this memory book.");
+      setError("Orvayne couldn't open this memory book.");
     } finally {
       if (sequence === loadSequence.current) setLoading(false);
     }
@@ -160,7 +160,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
       setMemories(next);
       onCountChange?.(next.length);
     } catch (requestError) {
-      setError(requestError?.message || "Velvet couldn't clean duplicate memories.");
+      setError(requestError?.message || "Orvayne couldn't clean duplicate memories.");
     } finally {
       setCleaning(false);
     }
@@ -247,7 +247,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
       setDraft(EMPTY_DRAFT);
     } catch (requestError) {
       console.error("Memory book save failed:", requestError);
-      setError(requestError?.message || "Velvet couldn't save that memory.");
+      setError(requestError?.message || "Orvayne couldn't save that memory.");
     } finally {
       setSaving(false);
     }
@@ -265,7 +265,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
       if (requestError) throw requestError;
       setMemories((current) => sortMemories(current.map((item) => item.id === data.id ? data : item)));
     } catch (requestError) {
-      setError(requestError.message || "Velvet couldn't update that memory.");
+      setError(requestError.message || "Orvayne couldn't update that memory.");
     } finally {
       setWorkingId("");
     }
@@ -294,7 +294,7 @@ export default function MemoryBookDrawer({ open, onClose, character, conversatio
       setMemories(next);
       onCountChange?.(next.length);
     } catch (requestError) {
-      setError(requestError.message || "Velvet couldn't forget that memory.");
+      setError(requestError.message || "Orvayne couldn't forget that memory.");
     } finally {
       setWorkingId("");
     }
