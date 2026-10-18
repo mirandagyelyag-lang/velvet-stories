@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 export default function WelcomeSplash() {
   const frameRef = useRef(null);
   const [visible, setVisible] = useState(() => {
-    try { return sessionStorage.getItem("orvayne-prismatic-entry-v1") !== "1"; }
+    try { return sessionStorage.getItem("orvayne-molten-winner-v1") !== "1"; }
     catch { return true; }
   });
   const [leaving, setLeaving] = useState(false);
@@ -13,7 +13,7 @@ export default function WelcomeSplash() {
     const onMessage = (event) => {
       if (event.origin !== window.location.origin || event.source !== frameRef.current?.contentWindow) return;
       if (event.data?.type !== "velvet-original-entry-enter") return;
-      try { sessionStorage.setItem("orvayne-prismatic-entry-v1", "1"); } catch {}
+      try { sessionStorage.setItem("orvayne-molten-winner-v1", "1"); } catch {}
       document.documentElement.classList.add("velvet-entry-transitioning");
       setLeaving(true);
     };
@@ -40,7 +40,7 @@ export default function WelcomeSplash() {
       pointerEvents: leaving ? "none" : "auto",
       transition: "opacity 1.1s cubic-bezier(.22,1,.36,1), filter 1.1s ease, transform 1.1s cubic-bezier(.22,1,.36,1)"
     }} aria-label="Inicio de Orvayne">
-      <iframe ref={frameRef} title="Inicio Orvayne" src="/orvayne-prismatic-entry.html?v=1"
+      <iframe ref={frameRef} title="Inicio Orvayne" src="/orvayne-molten-entry.html?v=2"
         style={{ width: "100%", height: "100%", display: "block", border: 0, background: "#0f080d" }} />
     </div>
   );
