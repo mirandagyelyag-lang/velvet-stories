@@ -1,6 +1,6 @@
 {
   "appId": "com.velvetstories.app",
-  "appName": "Velvet Stories",
+  "appName": "Orvayne",
   "webDir": "dist",
   "server": {
     "hostname": "localhost",
