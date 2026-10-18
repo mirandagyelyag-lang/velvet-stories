@@ -237,7 +237,7 @@ function stripUnsupportedReferenceSentence(reply = "") {
   return out;
 }
 
-export function sanitizeDiscourseCoherenceReply(reply = "", issues: string[] = [], engine: Partial<DiscourseCoherenceEventTruth> = {}, recentCharacterReplies: string[] = []) {
+export function sanitizeDiscourseCoherenceReply(reply = "", issues: string[] = [], engine: Partial<DiscourseCoherenceEventTruth> = {}, recentCharacterReplies: string[] = [], latestUserMessage = "") {
   const active = new Set(Array.isArray(issues) ? issues : []);
   let out = String(reply || "").trim();
   if (active.has("recent_line_echo") || active.has("clarification_echo_before_answer")) out = removeRecentEchoes(out, recentCharacterReplies);
@@ -245,6 +245,15 @@ export function sanitizeDiscourseCoherenceReply(reply = "", issues: string[] = [
   if (active.has("phantom_event_claim") || active.has("unresolved_reference_claim") || active.has("clarification_reference_unresolved")) {
     if (engine.clarificationDue) return '"Nothing specific. I worded that badly."';
     out = stripUnsupportedReferenceSentence(out);
+  }
+  if (active.has("user_introduced_arrival_ignored")) {
+    const actor = userIntroducedArrival(latestUserMessage);
+    if (actor && !arrivalAcknowledged(out, actor)) {
+      const arrival = /waiter|waitress|server|mesero|mesera/.test(actor)
+        ? "The server reaches the table. He turns toward them, giving them his attention."
+        : "The " + actor + " arrives. He looks up to acknowledge them.";
+      out = arrival + (out ? " " + out : "");
+    }
   }
   out = out.replace(/\s+([,.!?])/g, "$1").replace(/\s+/g, " ").trim();
   if (!out && engine.clarificationDue) return '"Nothing specific. I worded that badly."';
