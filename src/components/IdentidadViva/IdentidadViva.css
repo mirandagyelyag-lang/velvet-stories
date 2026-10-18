@@ -122,3 +122,32 @@
 }
 @media(max-width:380px){.iv-content{width:68vw}.iv-portal--image{width:129vw}}
 @media(prefers-reduced-motion:reduce){.iv-portal--image{animation:none}}
+
+
+/* ORVAYNE access reset — no oversized glow, no portal imagery. */
+.identidad-viva{background:radial-gradient(ellipse 90% 75% at 50% 45%,#1d0d32 0%,#10071e 63%,#08040e 100%);isolation:isolate}
+.identidad-viva::before,.identidad-viva::after{display:none!important;content:none!important}
+.iv-halo{display:none!important}
+.iv-portal,.iv-portal--image{display:none!important}
+.iv-content{width:min(84vw,420px);padding:0;transform:none;z-index:2}
+.iv-content::before{content:"ORVAYNE";position:static;display:block;order:-2;margin-bottom:clamp(30px,7vh,65px);font:400 clamp(30px,7.6vw,44px) Georgia,serif;letter-spacing:.19em;color:#f1e5ff;opacity:1;text-shadow:0 0 26px rgba(139,91,210,.22);white-space:nowrap}
+.iv-spark{order:-1;margin-bottom:17px;font-size:15px;color:#bda3e9;filter:none;opacity:.85}
+.iv-step{width:100%}
+.iv-step h1{font-size:clamp(21px,5vw,28px);font-weight:300;line-height:1.35;letter-spacing:.005em;margin:0 0 28px;text-shadow:none}
+.iv-step form{display:flex;align-items:center;gap:10px;width:100%;padding:5px 4px 5px 18px;box-sizing:border-box;background:rgba(43,26,63,.54);border:1px solid rgba(189,163,224,.36);border-radius:16px;box-shadow:0 12px 35px rgba(4,0,15,.16);backdrop-filter:none;-webkit-backdrop-filter:none}
+.iv-step input{flex:1;min-width:0;padding:12px 0;font-size:clamp(16px,3.8vw,19px);color:#f5ebff}
+.iv-step input::placeholder{color:rgba(213,194,228,.53)}
+.iv-next{width:43px;height:43px;border-radius:50%;font-size:23px;background:rgba(114,76,166,.25);border:1px solid rgba(228,208,255,.6);box-shadow:none;color:#f7ecff}
+.iv-next:hover{background:rgba(142,96,205,.35);box-shadow:0 0 16px rgba(153,111,214,.2)}
+.iv-links{margin-top:25px;padding:0;border:0;gap:20px;align-items:start}
+.iv-links button{max-width:48%;font-size:clamp(11px,2.7vw,13px);letter-spacing:.02em;line-height:1.5;color:#e4d4f0;text-shadow:none;opacity:.82}
+.iv-back{top:max(30px,env(safe-area-inset-top));left:clamp(24px,6vw,72px);font-size:13px;letter-spacing:.1em;color:#e4d4f0;text-shadow:none}
+.iv-message{max-width:100%}
+.identidad-viva--light{background:radial-gradient(ellipse 85% 75% at 50% 45%,#f7f0fc 0%,#eee4f5 75%,#e8ddeb 100%);color:#3e2652}
+.identidad-viva--light .iv-content::before{color:#4b2c6b;text-shadow:none}
+.identidad-viva--light .iv-step form{background:rgba(255,255,255,.68);border-color:rgba(110,73,153,.27)}
+.identidad-viva--light .iv-step input{color:#3e2652}
+.identidad-viva--light .iv-step input::placeholder{color:#8b779a}
+.identidad-viva--light .iv-next{color:#553277;background:rgba(130,92,175,.1);border-color:rgba(92,56,137,.55)}
+.identidad-viva--light .iv-links button,.identidad-viva--light .iv-back{color:#553a6c}
+@media(max-width:600px){.iv-content{width:min(82vw,420px);padding:0}.iv-content::before{font-size:clamp(28px,7vw,38px);margin-bottom:clamp(30px,7vh,62px)}.iv-step h1{font-size:clamp(21px,5.2vw,26px);margin:0 0 26px}.iv-step form{padding:5px 5px 5px 14px}.iv-step input{padding:11px 0;font-size:16px}.iv-next{width:42px;height:42px}.iv-links{margin-top:23px}.iv-links button{font-size:12px}}
