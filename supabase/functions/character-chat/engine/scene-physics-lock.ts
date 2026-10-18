@@ -207,11 +207,34 @@ function closeRangeAction(reply = "") {
   return /\bwhisper(?:ed|s|ing)?\b|\b(?:touch(?:ed|es|ing)?|brush(?:ed|es|ing)?|grab(?:bed|s|bing)?|take|took|hold|held|reach(?:ed|es|ing)? for) (?:your|her|his|their) (?:hand|arm|wrist|shoulder|waist|back|face|cheek)\b|\bhand (?:on|against) (?:your|her|his|their)\b/.test(text);
 }
 
+
+// Guard completed user actions and previously established vehicle state.
+// The newest user action is canonical; the character cannot ask them to repeat it.
+function completedUserExit(value = "") {
+  const t = normalized(value);
+  return /\bi\s+(?:huff(?:ed)?\s+and\s+)?(?:get|got|step(?:ped)?|climb(?:ed)?|hop(?:ped)?|walk(?:ed)?)\s+out\s+(?:of|from)\s+(?:the|a|my)?\s*(?:car|vehicle|passenger seat)\b/.test(t)
+    || /\bi\s+(?:exit|exited|leave|left)\s+(?:the|my|a)\s+(?:car|vehicle)\b/.test(t);
+}
+function asksUserToExit(value = "") {
+  const t = normalized(value);
+  return /\b(?:are you|you|will you|would you|can you|could you|do you|when are you|why don't you)\b.{0,35}\b(?:getting out|get out|coming out|come out|leave the car|leaving the car)\b/.test(t)
+    || /\b(?:need to|have to|should i|shall i)\s+(?:carry|pull|drag|help)\s+you\s+out\b/.test(t);
+}
+function engineStateContradiction(reply = "", recent = [], previousScene = {}) {
+  const prior = list(recent).slice(-3).join(" ") + " " + clean(previousScene?.engine_state || "", 80);
+  const stopped = /\b(?:engine (?:dying|died|stopped|shut off|was off)|(?:killed|cut|turned off|switched off|shut off) (?:the )?engine|engine off)\b/i.test(prior);
+  const running = /\b(?:engine (?:running|idling|still on)|(?:left|leaving|kept|keeping) (?:the )?engine running)\b/i.test(reply);
+  const restarted = /\b(?:restart(?:ed|s)?|start(?:ed|s)? (?:the )?engine|turn(?:ed|s)? (?:the )?engine back on)\b/i.test(reply);
+  return stopped && running && !restarted;
+}
+
 export function scenePhysicsIssues({ reply = "", latestUserMessage = "", recentCharacterReplies = [], previousScene = {}, characterName = "", userName = "" } = {}) {
   const issues = [];
   const text = normalized(reply);
   const latest = normalized(latestUserMessage);
   if (!text) return issues;
+  if (completedUserExit(latestUserMessage) && asksUserToExit(reply)) issues.push("completed_user_vehicle_exit_ignored");
+  if (engineStateContradiction(reply, recentCharacterReplies, previousScene)) issues.push("vehicle_engine_state_rewind");
 
   const charBody = bodyEntry(previousScene, characterName);
   const previousBody = normalized(charBody?.state || "");
@@ -279,10 +302,13 @@ export function sanitizeScenePhysicsReply(reply = "", issues = []) {
     "body_state_redundant_transition", "spatial_anchor_teleport", "object_possession_break", "object_state_rewind",
     "line_of_sight_violation", "interaction_geometry_violation", "precise_time_invention", "unsupported_elapsed_time_claim",
     "door_state_continuity_break", "repeated_action_fingerprint", "vehicle_driver_transition_missing", "vehicle_character_entry_omitted",
+    "completed_user_vehicle_exit_ignored", "vehicle_engine_state_rewind",
   ]);
   if ([...active].some((item) => physicalHard.has(item))) {
     parts = parts.filter((piece) => {
       const p = normalized(piece);
+      if (active.has("completed_user_vehicle_exit_ignored") && asksUserToExit(piece)) return false;
+      if (active.has("vehicle_engine_state_rewind") && /\\bengine\\b.{0,30}\\b(?:running|idling|still on)\\b|\\b(?:leaving|left|keeping|kept) (?:the )?engine running\\b/.test(p)) return false;
       if (active.has("body_state_redundant_transition") && /\b(?:stood|stand|got up|gets up|out of the chair)\b/.test(p)) return false;
       if (active.has("spatial_anchor_teleport") && /\b(?:wall|doorway|counter|window|table|couch|car)\b/.test(p) && !hasLocomotionBridge(piece)) return false;
       if ((active.has("object_possession_break") || active.has("object_state_rewind")) && /\b(?:cup|coffee|mug|phone|bag|backpack|purse|keys?|jacket|coat|book|umbrella|laptop)\b/.test(p) && /\b(?:take|took|grab|held|hold|sip|drink|slide|slid|use|open|lift|in my hand)\b/.test(p)) return false;
