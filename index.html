@@ -13,12 +13,12 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Velvet Stories" />
+    <meta name="apple-mobile-web-app-title" content="Orvayne" />
     <meta name="format-detection" content="telephone=no" />
 
     <link rel="icon" href="/logo-velvet.png" type="image/png" sizes="256x256" />
     <link rel="apple-touch-icon" href="/logo-velvet.png" />
-    <title>Velvet Stories</title>
+    <title>Orvayne</title>
 
     <style>
       html, body { margin:0; }
@@ -160,7 +160,7 @@
 
           rescue.innerHTML = native
             ? `<div><b>Velvet Android could not start.</b><p>${cleanDetails}</p><button type="button">Reopen Velvet</button></div>`
-            : '<div><b>Velvet could not finish opening.</b><p>Your stories are safe. Repair the web cache and reopen the newest version.</p><button type="button">Repair & reopen Velvet</button></div>';
+            : '<div><b>Orvayne could not finish opening.</b><p>Your stories are safe. Repair the web cache and reopen the newest version.</p><button type="button">Repair & reopen Velvet</button></div>';
 
           Object.assign(rescue.style, {
             position: "fixed", inset: "0", zIndex: "2147483647", display: "grid",
@@ -190,7 +190,7 @@
   <body>
     <div id="velvet-native-prepaint" aria-hidden="true"></div>
     <div id="root"></div>
-    <noscript>Velvet Stories requires JavaScript to work.</noscript>
+    <noscript>Orvayne requires JavaScript to work.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
