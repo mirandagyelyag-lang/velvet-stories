@@ -115,24 +115,8 @@ function WebPWAProvider({ children }) {
     acknowledgedVersion && compareVersions(newestKnownVersion, acknowledgedVersion) > 0,
   );
 
-  useEffect(() => {
-    if (!("serviceWorker" in navigator)) return undefined;
-    let reloading = false;
-    const onControllerChange = () => {
-      if (reloading) return;
-      const guardKey = `velvet:sw-controller-reload:${VELVET_VERSION}`;
-      try {
-        const lastReload = Number(sessionStorage.getItem(guardKey) || 0);
-        if (Date.now() - lastReload < 8000) return;
-        sessionStorage.setItem(guardKey, String(Date.now()));
-      } catch {}
-      reloading = true;
-      window.location.reload();
-    };
-    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
-    navigator.serviceWorker.getRegistration().then((registration) => { if (registration) return registration.update(); }).catch(() => {});
-    return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
-  }, []);
+  // An updated service worker must never reload an active story by itself.
+  // The explicit update action below owns the single navigation.
 
   async function checkForUpdate({ silent = true } = {}) {
     if (!navigator.onLine) return { available: false, version: serverVersion || "" };
@@ -224,7 +208,7 @@ function WebPWAProvider({ children }) {
         : VELVET_VERSION;
       try { localStorage.setItem(UPDATE_ACK_KEY, acknowledged); } catch {}
       setAcknowledgedVersion(acknowledged);
-      window.setTimeout(() => window.location.reload(), 1200);
+      // One user-initiated reload, never a second timer/controllerchange reload.\n      window.location.reload();
     } catch (error) {
       setUpdateProblem(error?.message || "The update was interrupted before Velvet could reopen.");
       setUpdating(false);
