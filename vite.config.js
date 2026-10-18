@@ -89,7 +89,7 @@ export default defineConfig(({ mode }) => {
 
       !androidBuild &&
         VitePWA({
-          registerType: "autoUpdate",
+          registerType: "prompt",
           injectRegister: "auto",
 
           includeAssets: [
@@ -164,8 +164,8 @@ export default defineConfig(({ mode }) => {
             // Keep headroom for cinematic launch artwork while source images stay optimized.
             maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
             cleanupOutdatedCaches: true,
-            clientsClaim: true,
-            skipWaiting: true,
+            clientsClaim: false,
+            skipWaiting: false,
             // Never precache index.html. A stale HTML shell can point at hashed
             // bundles that no longer exist after a Vercel deployment.
             navigateFallback: null,
