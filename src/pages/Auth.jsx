@@ -5,7 +5,7 @@ import { useTheme } from "../context/ThemeContext";
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const lightEntry = theme === "light";
   const [entered, setEntered] = useState(false);
   const [mode, setMode] = useState("signin");
@@ -18,11 +18,12 @@ export default function Auth() {
   useEffect(() => {
     const onMessage = (event) => {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
+      if (event.data?.type === "orvayne-entry-theme" && ["light", "dark"].includes(event.data.theme)) setTheme(event.data.theme);
       if (event.data?.type === "velvet-original-entry-enter") { setEntered(true); frame.current?.contentWindow?.postMessage({ type: "velvet-entry-pause" }, window.location.origin); }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [setTheme]);
 
   async function submit(event) {
     event.preventDefault();
