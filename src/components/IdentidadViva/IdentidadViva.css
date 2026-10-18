@@ -79,3 +79,17 @@
 @keyframes iv-sheen{to{transform:rotate(360deg)}}
 @media(max-width:600px){.iv-portal{width:119vw;height:min(67vh,640px);top:47%}.iv-content{width:83vw;padding:16px 3px}.iv-content::before{font-size:clamp(23px,7vw,32px);letter-spacing:.22em;bottom:calc(100% + 18px)}.iv-step h1{font-size:clamp(21px,5vw,27px)}.iv-links button{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.iv-portal-ring,.iv-portal-sheen{animation:none}}
+
+
+/* Uploaded transparent artwork replaces the earlier CSS-generated ring. */
+.iv-portal--image{width:min(94vw,760px);height:auto;aspect-ratio:1;top:50%;filter:drop-shadow(0 0 30px rgba(126,65,213,.3));animation:iv-portal-float 11s ease-in-out infinite alternate;overflow:visible}
+.iv-portal--image img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;filter:saturate(1.06) contrast(1.05)}
+.iv-portal--image .iv-portal-ring,.iv-portal--image .iv-portal-core,.iv-portal--image .iv-portal-sheen{display:none}
+.iv-content{z-index:1}
+.iv-halo{z-index:0}
+.iv-portal--image{z-index:0}
+.identidad-viva::before{z-index:0}
+.iv-content::before{z-index:1}
+@keyframes iv-portal-float{0%{transform:translate(-50%,-50%) rotate(-3deg) scale(.98)}50%{transform:translate(-50%,-51%) rotate(1deg) scale(1.02)}100%{transform:translate(-50%,-49%) rotate(4deg) scale(.99)}}
+@media(max-width:600px){.iv-portal--image{width:112vw;height:auto;top:49%;aspect-ratio:1}.iv-content{width:82vw}}
+@media(prefers-reduced-motion:reduce){.iv-portal--image{animation:none}}
