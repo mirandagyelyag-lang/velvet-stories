@@ -224,7 +224,7 @@ export default function CharacterDetail({
       );
     } catch (error) {
       console.error("Instant Story failed:", error);
-      setInstantError(error?.message || "Velvet couldn't open an instant story. Try again.");
+      setInstantError(error?.message || "Orvayne couldn't open an instant story. Try again.");
     } finally {
       setInstantLoading(false);
     }
@@ -616,7 +616,7 @@ function CharacterInfoSheet({
       }
       setEditing(false);
     } catch (error) {
-      setSaveError(error?.message || "Velvet couldn't save those changes.");
+      setSaveError(error?.message || "Orvayne couldn't save those changes.");
     } finally {
       setSaving(false);
     }
@@ -631,7 +631,7 @@ function CharacterInfoSheet({
       setStoryEditingId("");
       setStoryTitleDraft("");
     } catch (error) {
-      setSaveError(error?.message || "Velvet couldn't rename that story.");
+      setSaveError(error?.message || "Orvayne couldn't rename that story.");
     } finally {
       setStorySavingId("");
     }
