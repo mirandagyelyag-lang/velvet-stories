@@ -1,0 +1,24 @@
+.identidad-viva{position:fixed;inset:0;z-index:20;display:grid;place-items:center;visibility:hidden;opacity:0;pointer-events:none;transition:opacity .7s ease,visibility 0s linear .7s;color:#f8eafa;font-family:Jost,Manrope,system-ui,sans-serif;overflow:hidden}
+.identidad-viva.is-open{visibility:visible;opacity:1;pointer-events:auto;transition:opacity .7s ease}
+.iv-halo{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 43% 34% at center,rgba(13,5,23,.86),rgba(13,5,23,.42) 70%,transparent);animation:iv-breathe 8s ease-in-out infinite alternate}
+.iv-content{position:relative;width:min(84vw,490px);display:flex;flex-direction:column;align-items:center;text-align:center}
+.iv-spark{font-size:20px;filter:drop-shadow(0 0 10px #d9b7c4);animation:iv-pulse 3.6s ease-in-out infinite}
+.iv-step{width:100%;animation:iv-arrive .55s cubic-bezier(.2,.7,.2,1) both}
+.iv-step h1{font-size:clamp(19px,2.6vw,25px);font-weight:300;letter-spacing:.05em;margin:25px 0 32px}
+.iv-step form{display:flex;gap:14px;align-items:center;width:100%;border-bottom:1px solid rgba(234,196,230,.7);padding-bottom:9px}
+.iv-step input{flex:1;min-width:0;outline:0;border:0;background:transparent;color:inherit;font:300 clamp(16px,2vw,20px) Jost,system-ui,sans-serif;padding:12px 0}
+.iv-step input::placeholder{color:rgba(238,207,232,.53)}
+.iv-next{flex:none;width:44px;height:44px;border:1px solid currentColor;border-radius:50%;background:rgba(90,42,94,.18);color:inherit;font-size:24px;cursor:pointer;transition:transform .25s ease,background .25s ease}
+.iv-next:hover{transform:translateX(3px);background:rgba(188,131,152,.24)}
+.iv-next:disabled{opacity:.55;cursor:wait}
+.iv-links{display:flex;width:100%;justify-content:space-between;gap:18px;margin-top:30px}
+.iv-links button,.iv-back,.iv-change{border:0;background:transparent;color:inherit;opacity:.76;font:300 12px Jost,system-ui,sans-serif;letter-spacing:.06em;cursor:pointer}
+.iv-links button:hover,.iv-back:hover,.iv-change:hover{opacity:1}
+.iv-back{position:absolute;top:max(24px,env(safe-area-inset-top));left:clamp(20px,4vw,60px);z-index:2;font-size:13px}
+.iv-change{margin-top:16px}.iv-message{font-size:13px;line-height:1.6;margin:20px 0 0}
+.identidad-viva--light{color:#541f38}.identidad-viva--light .iv-halo{background:radial-gradient(ellipse 43% 34% at center,rgba(247,240,237,.94),rgba(247,240,237,.53) 70%,transparent)}.identidad-viva--light .iv-step input::placeholder{color:rgba(84,31,56,.45)}
+@keyframes iv-arrive{from{opacity:0;filter:blur(5px);transform:translateY(15px)}to{opacity:1;filter:blur(0);transform:none}}
+@keyframes iv-pulse{50%{opacity:.4;transform:scale(.8)}}
+@keyframes iv-breathe{to{transform:scale(1.17);opacity:.84}}
+@media(max-width:480px){.iv-content{width:83vw}.iv-links{gap:10px}.iv-links button{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.identidad-viva,.iv-halo,.iv-spark,.iv-step{animation:none;transition:none}}
