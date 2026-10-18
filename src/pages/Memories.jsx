@@ -410,7 +410,7 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
       if (updates.length) setMemories((current)=>current.map((item)=>{ const hit=updates.find((u)=>u.id===item.id); return hit ? {...item,superseded_at:now,superseded_by:hit.keeper} : item; }));
       setCleanupNotice(updates.length ? `${updates.length} safe duplicate ${updates.length===1?"memory":"memories"} merged across your Memory Book.` : "No safe duplicates needed merging.");
     } catch (requestError) {
-      setError(requestError.message || "Velvet couldn't clean duplicate memories.");
+      setError(requestError.message || "Orvayne couldn't clean duplicate memories.");
     } finally {
       setWorkingId(null);
     }
@@ -434,7 +434,7 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
       }
       if (updates.length) setMemories((current)=>current.map((item)=>{ const hit=updates.find((u)=>u.id===item.id); return hit ? {...item,superseded_at:now,superseded_by:hit.keeper} : item; }));
       setCleanupNotice(updates.length ? `${updates.length} duplicate ${updates.length===1?"memory":"memories"} merged into the clearest versions.` : "No safe duplicates needed merging.");
-    } catch (requestError) { setError(requestError.message || "Velvet couldn't merge duplicates."); }
+    } catch (requestError) { setError(requestError.message || "Orvayne couldn't merge duplicates."); }
     finally { setWorkingId(null); }
   }
 
