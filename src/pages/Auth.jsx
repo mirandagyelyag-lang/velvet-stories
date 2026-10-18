@@ -20,7 +20,7 @@ export default function Auth() {
     const onMessage = (event) => {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
       if (event.data?.type === "orvayne-entry-theme" && ["light", "dark"].includes(event.data.theme)) setTheme(event.data.theme);
-      if (event.data?.type === "velvet-original-entry-enter") { setEntered(true); frame.current?.contentWindow?.postMessage({ type: "velvet-entry-pause" }, window.location.origin); }
+      if (event.data?.type === "velvet-original-entry-enter") { setEntered(true); frame.current?.contentWindow?.postMessage({ type: "orvayne-auth-open" }, window.location.origin); }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -128,7 +128,7 @@ export default function Auth() {
       .velvet-gold-auth.orvayne-auth--light .back{background:#fff9f8;color:#541f38;border-color:#bc8398}
       .velvet-gold-auth.orvayne-auth--light .entry-scene--behind{opacity:0}
     `}</style>
-    <iframe ref={frame} className={entered ? "entry-scene entry-scene--behind" : "entry-scene"} title="Orvayne — entrada" src={`/orvayne-molten-entry.html?theme=${lightEntry ? "light" : "dark"}&build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
+    <iframe ref={frame} className="entry-scene" title="Orvayne — entrada" src={`/orvayne-molten-entry.html?theme=${lightEntry ? "light" : "dark"}&build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
     <IdentidadViva open={entered} theme={lightEntry ? "light" : "dark"} onBack={() => {setEntered(false);frame.current?.contentWindow?.postMessage({type:"orvayne-auth-close"},window.location.origin);}} onSignIn={signIn} onSignUp={signUp} onResetPassword={async address => {const {error}=await supabase.auth.resetPasswordForEmail(address,{redirectTo:window.location.origin});if(error)throw error;}} />
   </main>;
 }
