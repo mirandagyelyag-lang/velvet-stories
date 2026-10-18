@@ -8757,7 +8757,7 @@ function sanitizeValidatedHardIntentResult(result, issues = [], options = {}) {
     reply = sanitizeSceneIntelligenceReply(reply, issues, options.turnContract?.sceneIntelligenceDynamicWorld || {});
   }
   if (issues.some((issue) => discourseHard.includes(issue))) {
-    reply = sanitizeDiscourseCoherenceReply(reply, issues, options.turnContract?.discourseCoherenceEventTruth || {}, options.recentCharacterReplies || []);
+    reply = sanitizeDiscourseCoherenceReply(reply, issues, options.turnContract?.discourseCoherenceEventTruth || {}, options.recentCharacterReplies || [], options.latestUserMessage || "");
   }
   if (issues.some((issue) => evolutionHard.includes(issue))) {
     reply = sanitizeLongTermCharacterEvolutionReply(reply, issues);
