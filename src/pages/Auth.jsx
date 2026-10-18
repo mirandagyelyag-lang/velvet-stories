@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../services/supabase";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
+  const { theme } = useTheme();
+  const lightEntry = theme === "light";
   const [entered, setEntered] = useState(false);
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
@@ -49,7 +52,7 @@ export default function Auth() {
     finally { setBusy(false); }
   }
 
-  return <main className="velvet-gold-auth">
+  return <main className={`velvet-gold-auth${lightEntry ? " orvayne-auth--light" : ""}`}>
     <style>{`
       .velvet-gold-auth{position:fixed;inset:0;overflow:hidden;background:#0a0306;color:#f3e7d3;font-family:Manrope,system-ui,sans-serif;z-index:100}
       .velvet-gold-auth iframe{width:100%;height:100%;border:0;display:block}
@@ -116,8 +119,14 @@ export default function Auth() {
       @media(prefers-reduced-motion:reduce){.velvet-gold-auth .entry-scene,.velvet-gold-auth .login{transition:none;transform:none}}
       @media(prefers-reduced-motion:reduce){.velvet-gold-auth .bubble{animation:none}}
       @media(max-height:730px){.velvet-gold-auth .emblem{height:190px;margin-top:15px}.velvet-gold-auth .ring{width:180px}.velvet-gold-auth .ring.outer{width:210px}.velvet-gold-auth .letter{font-size:140px}.velvet-gold-auth .tag{margin-bottom:16px}}
+      .velvet-gold-auth.orvayne-auth--light{background:#f7f0ed;color:#541f38}
+      .velvet-gold-auth.orvayne-auth--light .login{background:radial-gradient(ellipse at 70% 0%,#fff8f8,transparent 56%),linear-gradient(160deg,#f7f0ed,#ebdacd)!important;color:#541f38}
+      .velvet-gold-auth.orvayne-auth--light .login::before{opacity:.08}
+      .velvet-gold-auth.orvayne-auth--light .panel{color:#541f38}
+      .velvet-gold-auth.orvayne-auth--light .back{background:#fff9f8;color:#541f38;border-color:#bc8398}
+      .velvet-gold-auth.orvayne-auth--light .entry-scene--behind{opacity:0}
     `}</style>
-    <iframe ref={frame} className={entered ? "entry-scene entry-scene--behind" : "entry-scene"} title="Orvayne — entrada" src={`/orvayne-molten-entry.html?build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
+    <iframe ref={frame} className={entered ? "entry-scene entry-scene--behind" : "entry-scene"} title="Orvayne — entrada" src={`/orvayne-molten-entry.html?theme=${lightEntry ? "light" : "dark"}&build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
       <section className={entered ? "login login--visible" : "login"} aria-hidden={!entered} inert={!entered}><div className="chat-decor" aria-hidden="true"><span className="bubble bubble-one">•••</span><span className="bubble bubble-two">•••</span><span className="bubble bubble-three">•••</span><span className="bubble bubble-four">•••</span></div><div className="panel">
         <button className="back" type="button" onClick={() => {setEntered(false);setMessage("");frame.current?.contentWindow?.postMessage({ type: "velvet-entry-resume" }, window.location.origin);}} aria-label="Volver al inicio">↶</button>
         <div className="emblem" aria-hidden="true"><span className="ring outer"/><span className="ring"/><span className="letter">V</span></div>
