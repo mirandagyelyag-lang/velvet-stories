@@ -131,7 +131,7 @@ export default function Auth() {
       <section className={entered ? "login login--visible" : "login"} aria-hidden={!entered} inert={!entered}><div className="chat-decor" aria-hidden="true"><span className="bubble bubble-one">•••</span><span className="bubble bubble-two">•••</span><span className="bubble bubble-three">•••</span><span className="bubble bubble-four">•••</span></div><div className="panel">
         <button className="back" type="button" onClick={() => {setEntered(false);setMessage("");frame.current?.contentWindow?.postMessage({ type: "velvet-entry-resume" }, window.location.origin);}} aria-label="Volver al inicio">↶</button>
         <div className="emblem" aria-hidden="true"><span className="ring outer"/><span className="ring"/><span className="letter">V</span></div>
-        <h1>ORVAYNE</h1><div className="stories-word">STORIES</div><span className="ornament">✦</span><p className="tag">Historias para leer y vivir</p>
+        <h1>ORVAYNE</h1><div className="stories-word">STORIES</div><span className="ornament">✦</span>
         <form onSubmit={submit}>
           <input type="email" required autoComplete="email" placeholder="Correo" value={email} onChange={e=>setEmail(e.target.value)} />
           <input type="password" required minLength={6} autoComplete={mode==="signup"?"new-password":"current-password"} placeholder="Contraseña" value={password} onChange={e=>setPassword(e.target.value)} />
