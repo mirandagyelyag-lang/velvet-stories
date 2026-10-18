@@ -110,7 +110,7 @@ export function deriveDiscourseCoherenceEventTruth(args: Args = {}): DiscourseCo
     clarificationPolicy: clarification.due ? "The latest user turn is a clarification request. Answer the requested WHAT/WHO/WHEN/WHICH immediately and plainly before any callback, banter, social-gravity beat, atmosphere, or repeated line. If the prior wording had no valid referent, admit the wording was wrong instead of manufacturing one." : "If the user asks for clarification later, preserve the exact real antecedent rather than improvising a new explanation.",
     repetitionPolicy: "Do not repeat a distinctive sentence or question from the last few character turns. A recent line may be referred to, but not reissued verbatim as if it were new dialogue.",
     socialCadencePolicy: socialBeatHold ? "Hold optional social-gravity manifestations for this beat. Clarification or current embodied salience outranks a random wave, admirer, passerby, greeting, recognition beat, or NPC cameo unless an already-active social thread directly matters." : "Social gravity may surface organically when causally relevant; it is not a periodic quota.",
-    instruction: "Maintain local conversational truth. Every definite event claim needs evidence, every pronoun needs a real antecedent, clarification answers first, recent dialogue cannot echo itself, and social gravity never interrupts a higher-priority clarification or embodied-state beat just because it is due.",
+    instruction: "The latest user-authored physical/social event is binding: if someone arrives, enters, interrupts or approaches, acknowledge that presence and react to it before resuming the old topic. Never ignore a newly arrived waiter or NPC merely to continue prior dialogue. Maintain local conversational truth. Every definite event claim needs evidence, every pronoun needs a real antecedent, clarification answers first, recent dialogue cannot echo itself, and social gravity never interrupts a higher-priority clarification or embodied-state beat just because it is due.",
   };
 }
 
@@ -167,11 +167,33 @@ function optionalSocialIntrusion(reply = "", engine: Partial<DiscourseCoherenceE
   return /\b(?:someone from (?:a|the) nearby|someone at (?:a|the) nearby|someone (?:waves?|calls? out|recognizes?|approaches?)|a (?:student|girl|guy|person|stranger) (?:waves?|calls? out|recognizes?|approaches?)|nearby table .*waves?|waves? in passing|calls? his name|calls? her name)\b/.test(t);
 }
 
+
+function userIntroducedArrival(value = "") {
+  const t = norm(value);
+  const actor = t.match(/\b(?:a|an|the)\s+(waiter|waitress|server|mesero|mesera|friend|stranger|customer|professor|teacher|doctor|nurse|bartender|manager)\s+(?:arrives?|approaches?|enters?|comes? (?:over|up|in)|walks? (?:over|up|in)|llega|se acerca|entra)\b/);
+  return actor?.[1] || "";
+}
+function arrivalAcknowledged(reply = "", actor = "") {
+  const t = norm(reply);
+  const aliases = /waiter|waitress|server|mesero|mesera/.test(actor)
+    ? /\b(?:waiter|waitress|server|mesero|mesera|order|ordering|menu|menus|drink|food|table service)\b/
+    : new RegExp("\\b" + actor + "\\b");
+  // Merely asking the user what to order does not acknowledge a newly arrived server.
+  if (/waiter|waitress|server|mesero|mesera/.test(actor)) {
+    return /\b(?:waiter|waitress|server|mesero|mesera)\b/.test(t)
+      || /\b(?:turns?|looks?|glances?|nods?|faces?|addresses?|speaks?|replies?|answers?)\s+(?:to|at|toward|towards)?\s*(?:the|a)?\s*(?:waiter|waitress|server|mesero|mesera)\b/.test(t)
+      || /\b(?:he|she|chase|they)\s+(?:orders?|asks? for|tells? (?:him|her|them)|says? to (?:him|her|them))\b/.test(t);
+  }
+  return aliases.test(t);
+}
+
 export function discourseCoherenceIssues(args: IssueArgs = {}): string[] {
   const reply = String(args.reply || "");
   const engine = args.engine || {};
   const recent = Array.isArray(args.recentCharacterReplies) ? args.recentCharacterReplies : [];
   const issues: string[] = [];
+  const arrived = userIntroducedArrival(args.latestUserMessage || "");
+  if (arrived && !arrivalAcknowledged(reply, arrived)) issues.push("user_introduced_arrival_ignored");
   if (sentenceEcho(reply, recent)) issues.push("recent_line_echo");
   if (clarificationEchoBeforeAnswer(reply, engine, recent)) issues.push("clarification_echo_before_answer");
   if (hasDefiniteUnsupportedConflict(reply, engine)) issues.push("phantom_event_claim");
