@@ -145,7 +145,7 @@ function Profile({
       setProfileEditorOpen(false);
     } catch (error) {
       console.error("Error updating profile:", error);
-      setProfileError(error?.message || "Velvet couldn't update your profile.");
+      setProfileError(error?.message || "Orvayne couldn't update your profile.");
     } finally {
       setSavingProfile(false);
     }
