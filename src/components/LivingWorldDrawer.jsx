@@ -129,7 +129,7 @@ export default function LivingWorldDrawer({
     setNotice("Living World controls reset. Story messages were not touched.");
   }
   function exportEpub() {
-    downloadStoryEpub({ title: conversation?.title || `${character?.name || "Velvet"} Story`, characterName: character?.name || "Character", messages });
+    downloadStoryEpub({ title: conversation?.title || `${character?.name || "Orvayne"} Story`, characterName: character?.name || "Character", messages });
     setNotice("EPUB exported locally.");
   }
 
