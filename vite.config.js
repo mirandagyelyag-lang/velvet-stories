@@ -10,7 +10,7 @@ const pkg = JSON.parse(
 );
 
 const velvetVersion = pkg.version;
-const velvetRelease = "Living Threads V1 + Instant Story fix";
+const velvetRelease = "Orvayne branding and PWA refresh";
 
 function upsertMetaTag(html, name, content) {
   const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -103,8 +103,8 @@ export default defineConfig(({ mode }) => {
 
           manifest: {
             id: "/",
-            name: "Velvet Stories",
-            short_name: "Velvet",
+            name: "Orvayne",
+            short_name: "Orvayne",
             description: "Private worlds and endless stories with AI characters.",
             lang: "en",
             start_url: "/",
