@@ -29,7 +29,7 @@ export default function IdentidadViva({open,theme="dark",onBack,onSignIn,onSignU
   }
   return <section className={`identidad-viva identidad-viva--${theme}${open?" is-open":""}`} aria-hidden={!open} inert={!open} aria-label="Acceso a Orvayne">
     <button type="button" className="iv-back" onClick={onBack}>← VOLVER</button>
-    <div className="iv-halo" aria-hidden="true"/>
+    <div className="iv-halo" aria-hidden="true"/><div className="iv-portal" aria-hidden="true"><div className="iv-portal-ring iv-portal-ring--outer"/><div className="iv-portal-ring iv-portal-ring--inner"/><div className="iv-portal-core"/><div className="iv-portal-sheen"/></div>
     <div className="iv-content"><span className="iv-spark" aria-hidden="true">✦</span>
       <div className="iv-step" key={step+"-"+mode}>
         <h1>{step==="email"?(mode==="signup"?"Empecemos por tu correo":"¿Cuál es tu correo?"):"Ahora tu contraseña"}</h1>
