@@ -28,7 +28,7 @@ function Sidebar({ activePage, onNavigate }) {
   const displayName =
     user?.user_metadata?.display_name ||
     user?.email?.split("@")[0] ||
-    "Velvet member";
+    "Orvayne member";
   const initial = displayName.trim()[0]?.toUpperCase() || "V";
 
   return (
@@ -36,7 +36,7 @@ function Sidebar({ activePage, onNavigate }) {
       <aside className="sidebar">
         <button className="sidebar__brand" onClick={() => onNavigate("chats")}>
           <img src={velvetLogo} alt="" />
-          <span>VELVET</span>
+          <span>ORVAYNE</span>
         </button>
 
         <nav className="sidebar__navigation" aria-label="Main navigation">
