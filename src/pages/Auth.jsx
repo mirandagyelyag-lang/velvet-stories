@@ -129,17 +129,6 @@ export default function Auth() {
       .velvet-gold-auth.orvayne-auth--light .entry-scene--behind{opacity:0}
     `}</style>
     <iframe ref={frame} className={entered ? "entry-scene entry-scene--behind" : "entry-scene"} title="Orvayne — entrada" src={`/orvayne-molten-entry.html?theme=${lightEntry ? "light" : "dark"}&build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
-      <section className={entered ? "login login--visible" : "login"} aria-hidden={!entered} inert={!entered}><div className="chat-decor" aria-hidden="true"><span className="bubble bubble-one">•••</span><span className="bubble bubble-two">•••</span><span className="bubble bubble-three">•••</span><span className="bubble bubble-four">•••</span></div><div className="panel">
-        <button className="back" type="button" onClick={() => {setEntered(false);setMessage("");frame.current?.contentWindow?.postMessage({ type: "velvet-entry-resume" }, window.location.origin);}} aria-label="Volver al inicio">↶</button>
-        <div className="emblem" aria-hidden="true"><span className="ring outer"/><span className="ring"/><span className="letter">V</span></div>
-        <h1>ORVAYNE</h1><div className="stories-word">STORIES</div><span className="ornament">✦</span>
-        <form onSubmit={submit}>
-          <input type="email" required autoComplete="email" placeholder="Correo" value={email} onChange={e=>setEmail(e.target.value)} />
-          <input type="password" required minLength={6} autoComplete={mode==="signup"?"new-password":"current-password"} placeholder="Contraseña" value={password} onChange={e=>setPassword(e.target.value)} />
-          <button className="submit" type="submit" disabled={busy}>{busy?"UN MOMENTO…":mode==="signup"?"CREAR CUENTA":"ENTRAR"}</button>
-        </form>
-        {message && <p className="message" role="status">{message}</p>}
-        <div className="links"><button type="button" disabled={busy} onClick={resetPassword}>¿Olvidaste tu contraseña?</button><button type="button" onClick={()=>{setMode(mode==="signin"?"signup":"signin");setMessage("");}}>{mode==="signin"?"Crear cuenta":"Iniciar sesión"}</button></div>
-      </div></section>
+    <IdentidadViva open={entered} theme={lightEntry ? "light" : "dark"} onBack={() => {setEntered(false);frame.current?.contentWindow?.postMessage({type:"orvayne-auth-close"},window.location.origin);}} onSignIn={signIn} onSignUp={signUp} onResetPassword={async address => {const {error}=await supabase.auth.resetPasswordForEmail(address,{redirectTo:window.location.origin});if(error)throw error;}} />
   </main>;
 }
