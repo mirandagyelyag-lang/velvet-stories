@@ -322,7 +322,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
       setToolNotice("Profile organized. Velvet distributed what you wrote into the matching sections.");
     } catch (requestError) {
       console.error("Character profile organization failed:", requestError);
-      setError(requestError.message || "Velvet couldn't organize this profile.");
+      setError(requestError.message || "Orvayne couldn't organize this profile.");
     } finally {
       setOrganizing(false);
     }
@@ -405,7 +405,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
     try {
       setVoiceTesting(true); setError(""); setVoiceSample("");
       setVoiceSample(await testCharacterVoice(form));
-    } catch (requestError) { setError(requestError.message || "Velvet couldn't test this voice."); }
+    } catch (requestError) { setError(requestError.message || "Orvayne couldn't test this voice."); }
     finally { setVoiceTesting(false); }
   }
 
@@ -414,7 +414,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
     try {
       setVoiceLabLoading(true); setError("");
       setVoiceLab(await buildCharacterVoiceLab(form));
-    } catch (requestError) { setError(requestError.message || "Velvet couldn't build this Voice Lab."); }
+    } catch (requestError) { setError(requestError.message || "Orvayne couldn't build this Voice Lab."); }
     finally { setVoiceLabLoading(false); }
   }
 
@@ -426,7 +426,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
   async function runLearningRoom() {
     if (aiBusy || !form.name.trim() || !form.personality.trim()) return;
     try { setLearningLoading(true); setError(""); setLearningSelected([]); setLearningSamples(await openCharacterLearningRoom(form, learningSituation)); }
-    catch (requestError) { setError(requestError.message || "Velvet couldn't open the Learning Room."); }
+    catch (requestError) { setError(requestError.message || "Orvayne couldn't open the Learning Room."); }
     finally { setLearningLoading(false); }
   }
   async function applyLearningRoom() {
@@ -439,7 +439,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
       setVoiceLab(genome);
       setToolNotice(`${chosen.length} creator-approved voice ${chosen.length===1?"example":"examples"} learned into the Dialogue Genome.`);
     } catch (requestError) {
-      setError(requestError.message || "Velvet couldn't learn these voice examples.");
+      setError(requestError.message || "Orvayne couldn't learn these voice examples.");
     } finally { setGenomeLearning(false); }
   }
 
@@ -957,7 +957,7 @@ function translateCharacterAIError(message = "") {
   if (error.includes("incomplete character draft") || error.includes("empty character draft")) return "Gemini sent an incomplete draft. Try once more; your idea is still here.";
   if (error.includes("model") && (error.includes("not found") || error.includes("not supported"))) return "The configured Gemini model is unavailable. Velvet will need a valid fallback model.";
   if (/edge function returned a non-2xx/i.test(message)) return "The character generator failed before returning its reason. Redeploy the v1.3.1 Edge Function and try again.";
-  return message || "Velvet couldn't create this character. Try again.";
+  return message || "Orvayne couldn't create this character. Try again.";
 }
 
 export default CreateCharacterModal;
