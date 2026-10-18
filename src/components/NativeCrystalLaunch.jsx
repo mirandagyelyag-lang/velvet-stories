@@ -8,7 +8,7 @@ export default function NativeCrystalLaunch() {
   }, []);
 
   return (
-    <main className="app-loading app-loading--native velvet-crystal-launch" aria-label="Velvet is opening">
+    <main className="app-loading app-loading--native velvet-crystal-launch" aria-label="Orvayne is opening">
       <div className="velvet-crystal-launch__base" aria-hidden="true" />
       <div className="velvet-crystal-launch__glow" aria-hidden="true" />
       <div className="velvet-crystal-launch__sheen" aria-hidden="true" />
