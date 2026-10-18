@@ -1076,8 +1076,8 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     } catch (error) {
       // Supabase client errors such as “Edge Function returned a non-2xx status code”
       // are implementation details. Never leak them into the story UI.
-      console.warn("[Velvet Reply Assist] request failed", error);
-      setReplyAssistError("Velvet couldn't load reply ideas right now. Try again in a moment.");
+      console.warn("[Orvayne Reply Assist] request failed", error);
+      setReplyAssistError("Orvayne couldn't load reply ideas right now. Try again in a moment.");
     } finally { setReplyAssistLoading(false); }
   }
 
@@ -1114,11 +1114,11 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
       });
       if (error) throw error;
       const paths = Array.isArray(data?.paths) ? data.paths.filter((item) => String(item?.direction || "").trim()).slice(0, 4) : [];
-      if (!paths.length) throw new Error(data?.error || "Velvet couldn't find a natural next path.");
+      if (!paths.length) throw new Error(data?.error || "Orvayne couldn't find a natural next path.");
       setStoryPaths(paths);
     } catch (error) {
-      console.warn("[Velvet Story Paths] request failed", error);
-      setStoryPathsError("Velvet couldn't find a natural next path right now. Try again in a moment.");
+      console.warn("[Orvayne Story Paths] request failed", error);
+      setStoryPathsError("Orvayne couldn't find a natural next path right now. Try again in a moment.");
     } finally {
       setStoryPathsLoading(false);
     }
@@ -1882,7 +1882,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
         await rewindToMessage(character.id, targetId);
         if (safetySnapshot?.id) armRewindUndo(safetySnapshot.id);
       } catch (rewindError) {
-        setSendError(rewindError?.message || "Velvet couldn't prepare this story point for regeneration.");
+        setSendError(rewindError?.message || "Orvayne couldn't prepare this story point for regeneration.");
         return;
       }
     }
@@ -2898,7 +2898,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
                 </section>
                 <section className="chat-controls__simple-section">
                   <span><Clock3 size={17}/><strong>Story pace</strong></span>
-                  <p>Controls rhythm, not how many words Velvet is forced to write.</p>
+                  <p>Controls rhythm, not how many words Orvayne is forced to write.</p>
                   <div className="chat-controls__simple-chips">
                     {["quick", "natural", "cinematic"].map((pace) => <button key={pace} type="button" className={(controlDraft.pacingMode || "natural") === pace ? "active" : ""} onClick={async () => { setControlDraft((current) => ({ ...current, pacingMode: pace })); try { setSavingControls(true); await updateConversationSettings(character.id, { pacingMode: pace }); } catch (error) { setSendError(error.message); } finally { setSavingControls(false); } }}>{pace === "quick" ? "Quick" : pace === "cinematic" ? "Cinematic" : "Natural"}</button>)}
                   </div>
@@ -3589,9 +3589,9 @@ function translateMessageError(message = "") {
   if (error.includes("authentication") || error.includes("invalid session") || error.includes("jwt")) return "Your session expired. Sign in again.";
   if (/^Groq is rate-limited\. Retry in \d+ seconds\.$/.test(message)) return message;
   if (error.includes("quota") || error.includes("rate limit") || error.includes("rate-limited") || error.includes("resource_exhausted")) return "AI providers are rate-limited right now. Wait for quota to recover before retrying.";
-  if (error.includes("high demand") || error.includes("overload") || error.includes("unavailable") || error.includes("503") || error.includes("502") || error.includes("504")) return "Velvet couldn't finish this reply right now. Retry in a moment.";
+  if (error.includes("high demand") || error.includes("overload") || error.includes("unavailable") || error.includes("503") || error.includes("502") || error.includes("504")) return "Orvayne couldn't finish this reply right now. Retry in a moment.";
   if (error.includes("network") || error.includes("failed to fetch")) return "Velvet lost the connection before the reply finished. Retry.";
-  if (error.includes("protected interaction beat") || error.includes("valid protected reply") || error.includes("repair still violated")) return "Velvet couldn't finish that reply cleanly. Try again.";
+  if (error.includes("protected interaction beat") || error.includes("valid protected reply") || error.includes("repair still violated")) return "Orvayne couldn't finish that reply cleanly. Try again.";
   return message || "The character couldn't respond.";
 }
 
