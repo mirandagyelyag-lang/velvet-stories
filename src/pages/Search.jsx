@@ -133,8 +133,8 @@ export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpen
 
       setResults(found.sort((a,b) => b.score - a.score || new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 80));
     } catch (requestError) {
-      console.error("Velvet search failed:", requestError);
-      setError(requestError?.message || "Velvet couldn't search your library.");
+      console.error("Orvayne search failed:", requestError);
+      setError(requestError?.message || "Orvayne couldn't search your library.");
       setResults([]);
     } finally {
       setLoading(false);
@@ -158,7 +158,7 @@ export default function Search({ onBack, onOpenCharacter, onOpenMemories, onOpen
   return <section className="chats-page chats-page--reference velvet-search-page">
     <header className="reference-stories-hero velvet-search-hero">
       <div className="reference-stories-hero__private"><Crown size={19}/><span>PRIVATE LIBRARY</span></div>
-      <div className="reference-stories-title" aria-label="Search Velvet"><span className="reference-stories-title__script">search</span><span className="reference-stories-title__line reference-stories-title__line--left"/><h1>VELVET</h1><span className="reference-stories-title__spark">✦</span><span className="reference-stories-title__line reference-stories-title__line--right"/></div>
+      <div className="reference-stories-title" aria-label="Search Velvet"><span className="reference-stories-title__script">search</span><span className="reference-stories-title__line reference-stories-title__line--left"/><h1>ORVAYNE</h1><span className="reference-stories-title__spark">✦</span><span className="reference-stories-title__line reference-stories-title__line--right"/></div>
       <button className="reference-stories-new" type="button" onClick={onBack} aria-label="Back"><ArrowLeft size={22}/></button>
     </header>
 
