@@ -1,33 +1,33 @@
 /* Velvet Stories · identidad unificada (inicio + login → interior)
    Esta hoja se carga la ÚLTIMA. Reúne en un solo lugar la paleta, la
    tipografía y los detalles del inicio/login para el resto de la app.
-   Rosa palo único: #b78aff / #ddc5ff / #9e7bcd · vino: #1a0e24 → #100716 */
+   Rosa palo único: #a78bfa / #c5c8d0 / #a3a9b7 · vino: #202833 → #11151b */
 
 html[data-theme="dark"] {
-  --velvet-rose: #b78aff;
-  --velvet-rose-soft: #ddc5ff;
-  --velvet-rose-dim: #9e7bcd;
-  --velvet-ink: #f4eaff;
-  --velvet-line: rgba(183, 138, 255, .24);
-  --velvet-line-strong: rgba(183, 138, 255, .4);
+  --velvet-rose: #a78bfa;
+  --velvet-rose-soft: #c5c8d0;
+  --velvet-rose-dim: #a3a9b7;
+  --velvet-ink: #f0eef5;
+  --velvet-line: rgba(167, 139, 250, .24);
+  --velvet-line-strong: rgba(167, 139, 250, .4);
 
-  --stories-accent: #b78aff;
-  --stories-accent-strong: #8650d3;
-  --stories-ink: #f4eaff;
-  --stories-ink-soft: #f4eaff;
-  --stories-muted: #9e7bcd;
-  --stories-line: rgba(183, 138, 255, .24);
-  --stories-line-strong: rgba(183, 138, 255, .4);
-  --stories-canvas: #100716;
-  --stories-canvas-2: #1a0e24;
-  --stories-panel: rgba(45, 26, 68, .6);
-  --stories-panel-strong: rgba(52, 30, 80, .82);
-  --stories-row: linear-gradient(95deg, rgba(67, 36, 101, .6), rgba(26, 14, 36, .5));
+  --stories-accent: #a78bfa;
+  --stories-accent-strong: #8d81c2;
+  --stories-ink: #f0eef5;
+  --stories-ink-soft: #f0eef5;
+  --stories-muted: #a3a9b7;
+  --stories-line: rgba(167, 139, 250, .24);
+  --stories-line-strong: rgba(167, 139, 250, .4);
+  --stories-canvas: #11151b;
+  --stories-canvas-2: #202833;
+  --stories-panel: rgba(32, 40, 51, .6);
+  --stories-panel-strong: rgba(37, 45, 57, .82);
+  --stories-row: linear-gradient(95deg, rgba(48, 55, 71, .6), rgba(32, 40, 51, .5));
   --stories-atmosphere:
-    radial-gradient(ellipse 90% 34% at 50% 8%, #35204e 0%, transparent 100%),
-    radial-gradient(ellipse 80% 24% at 100% 62%, rgba(104, 54, 163, .26), transparent),
-    radial-gradient(ellipse 80% 24% at 0% 38%, rgba(75, 38, 121, .28), transparent),
-    linear-gradient(180deg, #1a0e24, #100716 60%, #100716);
+    radial-gradient(ellipse 90% 34% at 50% 8%, #303747 0%, transparent 100%),
+    radial-gradient(ellipse 80% 24% at 100% 62%, rgba(89, 98, 123, .26), transparent),
+    radial-gradient(ellipse 80% 24% at 0% 38%, rgba(64, 72, 96, .28), transparent),
+    linear-gradient(180deg, #202833, #11151b 60%, #11151b);
 }
 
 /* ── Título: "Velvet" en script + STORIES espaciado ─────────────── */
@@ -46,10 +46,10 @@ html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title h1 {
   letter-spacing: .3em !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__line {
-  background: linear-gradient(90deg, transparent, #8650d3) !important;
+  background: linear-gradient(90deg, transparent, #8d81c2) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__line--right {
-  background: linear-gradient(90deg, #8650d3, transparent) !important;
+  background: linear-gradient(90deg, #8d81c2, transparent) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-title__spark { color: var(--velvet-rose-dim) !important; }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-hero__private,
@@ -78,7 +78,7 @@ html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-stats {
 /* ── Encabezados de sección ─────────────────────────────────────── */
 .velvet-identity-heading { display: flex; align-items: center; gap: 12px; margin: 22px 0 12px; }
 .velvet-identity-heading span { font: 400 9px "Manrope", sans-serif; letter-spacing: .42em; color: var(--velvet-rose-dim); }
-.velvet-identity-heading i { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(183, 138, 255, .4), transparent); }
+.velvet-identity-heading i { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(167, 139, 250, .4), transparent); }
 .velvet-identity-heading em { font: italic 400 14px "Cormorant Garamond", serif; color: var(--velvet-rose-dim); }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collections h2,
 html[data-theme="dark"] body.velvet-burgundy-route .reference-section-heading h2 {
@@ -91,26 +91,26 @@ html[data-theme="dark"] body.velvet-burgundy-route .reference-section-heading h2
 html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-continue { display: block; }
 .velvet-identity-continue__card {
   position: relative; display: block; width: 100%; height: 176px; padding: 0; overflow: hidden; cursor: pointer; text-align: left;
-  border: 1px solid rgba(183, 138, 255, .4); border-radius: 24px; color: #f4eaff; background: #1a0e24;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .4), 0 0 26px rgba(183, 138, 255, .15);
+  border: 1px solid rgba(167, 139, 250, .4); border-radius: 24px; color: #f0eef5; background: #202833;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .4), 0 0 26px rgba(167, 139, 250, .15);
 }
 .velvet-identity-continue__art, .velvet-identity-continue__shade { position: absolute; inset: 0; display: block; }
 .velvet-identity-continue__art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; filter: saturate(.8) brightness(.7); }
-.velvet-identity-continue__fallback { display: grid; place-items: center; width: 100%; height: 100%; font: 400 64px "Cormorant Garamond", serif; color: #ddc5ff; background: linear-gradient(160deg, #42245f, #1a0e24); }
+.velvet-identity-continue__fallback { display: grid; place-items: center; width: 100%; height: 100%; font: 400 64px "Cormorant Garamond", serif; color: #c5c8d0; background: linear-gradient(160deg, #303747, #202833); }
 .velvet-identity-continue__shade {
   background: repeating-linear-gradient(105deg, rgba(255, 255, 255, .04) 0 1px, transparent 1px 9px),
     linear-gradient(90deg, rgba(15, 5, 9, .92) 0%, rgba(15, 5, 9, .55) 55%, transparent 100%);
 }
-.velvet-identity-continue__corner { position: absolute; width: 12px; height: 12px; border: 0 solid rgba(183, 138, 255, .7); }
+.velvet-identity-continue__corner { position: absolute; width: 12px; height: 12px; border: 0 solid rgba(167, 139, 250, .7); }
 .velvet-identity-continue__corner--tl { left: 10px; top: 10px; border-top-width: 1px; border-left-width: 1px; }
 .velvet-identity-continue__corner--tr { right: 10px; top: 10px; border-top-width: 1px; border-right-width: 1px; }
 .velvet-identity-continue__corner--bl { left: 10px; bottom: 10px; border-bottom-width: 1px; border-left-width: 1px; }
 .velvet-identity-continue__corner--br { right: 10px; bottom: 10px; border-bottom-width: 1px; border-right-width: 1px; }
 .velvet-identity-continue__copy { position: absolute; left: 22px; right: 70px; bottom: 20px; display: flex; flex-direction: column; gap: 4px; }
-.velvet-identity-continue__copy small { align-self: flex-start; padding: 5px 11px; border: 1px solid rgba(183, 138, 255, .6); border-radius: 999px; background: rgba(67, 36, 101, .35); font: 400 8px "Manrope", sans-serif; letter-spacing: .24em; color: #f4eaff; margin-bottom: 8px; }
-.velvet-identity-continue__copy strong { font: 500 28px/1 "Cormorant Garamond", serif; color: #f4eaff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.velvet-identity-continue__copy small { align-self: flex-start; padding: 5px 11px; border: 1px solid rgba(167, 139, 250, .6); border-radius: 999px; background: rgba(48, 55, 71, .35); font: 400 8px "Manrope", sans-serif; letter-spacing: .24em; color: #f0eef5; margin-bottom: 8px; }
+.velvet-identity-continue__copy strong { font: 500 28px/1 "Cormorant Garamond", serif; color: #f0eef5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .velvet-identity-continue__copy em { font: italic 400 15px "Cormorant Garamond", serif; color: var(--velvet-rose-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.velvet-identity-continue__play { position: absolute; right: 20px; bottom: 20px; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--velvet-rose-soft); color: #1a0e24; box-shadow: 0 0 18px rgba(183, 138, 255, .35); }
+.velvet-identity-continue__play { position: absolute; right: 20px; bottom: 20px; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--velvet-rose-soft); color: #202833; box-shadow: 0 0 18px rgba(167, 139, 250, .35); }
 
 /* ── Chips de vista ─────────────────────────────────────────────── */
 .velvet-identity-chips { display: none; }
@@ -118,65 +118,65 @@ html[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-chips { disp
 .velvet-identity-chips::-webkit-scrollbar { display: none; }
 .velvet-identity-chips button {
   flex: none; padding: 8px 15px; border-radius: 999px; cursor: pointer;
-  border: 1px solid rgba(183, 138, 255, .28); background: transparent;
-  font: 400 9px "Manrope", sans-serif; letter-spacing: .24em; text-transform: uppercase; color: rgba(244, 234, 255, .62);
+  border: 1px solid rgba(167, 139, 250, .28); background: transparent;
+  font: 400 9px "Manrope", sans-serif; letter-spacing: .24em; text-transform: uppercase; color: rgba(240, 238, 245, .62);
 }
-.velvet-identity-chips button.is-active { color: #f4eaff; border-color: var(--velvet-rose); background: rgba(183, 138, 255, .16); }
+.velvet-identity-chips button.is-active { color: #f0eef5; border-color: var(--velvet-rose); background: rgba(167, 139, 250, .16); }
 
 /* ── Búsqueda y botón nueva historia: píldoras ──────────────────── */
 html[data-theme="dark"] body.velvet-burgundy-route .reference-search {
-  border: 1px solid rgba(183, 138, 255, .38) !important; border-radius: 999px !important;
-  background: rgba(183, 138, 255, .09) !important;
+  border: 1px solid rgba(167, 139, 250, .38) !important; border-radius: 999px !important;
+  background: rgba(167, 139, 250, .09) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-search:focus-within {
-  border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(183, 138, 255, .14) !important;
+  border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(167, 139, 250, .14) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-stories-new {
-  color: #f4eaff !important; border: 1px solid var(--velvet-rose) !important;
-  background: linear-gradient(110deg, rgba(183, 138, 255, .2), rgba(67, 36, 101, .25)) !important;
-  box-shadow: 0 0 18px rgba(183, 138, 255, .22) !important;
+  color: #f0eef5 !important; border: 1px solid var(--velvet-rose) !important;
+  background: linear-gradient(110deg, rgba(167, 139, 250, .2), rgba(48, 55, 71, .25)) !important;
+  box-shadow: 0 0 18px rgba(167, 139, 250, .22) !important;
 }
 
 /* ── Colecciones ────────────────────────────────────────────────── */
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card {
-  border: 1px solid rgba(183, 138, 255, .26) !important; border-radius: 20px !important;
+  border: 1px solid rgba(167, 139, 250, .26) !important; border-radius: 20px !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card__icon {
-  color: #ddc5ff !important; border: 1px solid rgba(183, 138, 255, .55) !important; background: rgba(26, 14, 36, .55) !important;
+  color: #c5c8d0 !important; border: 1px solid rgba(167, 139, 250, .55) !important; background: rgba(32, 40, 51, .55) !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card strong {
-  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .04em; color: #f4eaff !important;
+  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .04em; color: #f0eef5 !important;
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card small {
-  font-size: 8px !important; letter-spacing: .26em !important; text-transform: uppercase; color: #ddc5ff !important;
+  font-size: 8px !important; letter-spacing: .26em !important; text-transform: uppercase; color: #c5c8d0 !important;
 }
-html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card.is-active { border-color: var(--velvet-rose) !important; box-shadow: 0 0 22px rgba(183, 138, 255, .2); }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-collection-card.is-active { border-color: var(--velvet-rose) !important; box-shadow: 0 0 22px rgba(167, 139, 250, .2); }
 
 /* ── Filas de historias ─────────────────────────────────────────── */
 html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row {
-  border: 1px solid rgba(183, 138, 255, .22) !important; border-radius: 22px !important;
-  background: linear-gradient(95deg, rgba(67, 36, 101, .6), rgba(26, 14, 36, .5)) !important;
+  border: 1px solid rgba(167, 139, 250, .22) !important; border-radius: 22px !important;
+  background: linear-gradient(95deg, rgba(48, 55, 71, .6), rgba(32, 40, 51, .5)) !important;
 }
-html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row--favorite { border-color: rgba(183, 138, 255, .5) !important; }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row--favorite { border-color: rgba(167, 139, 250, .5) !important; }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__art {
-  border: 1px solid rgba(183, 138, 255, .45) !important; box-shadow: inset 0 0 18px rgba(255, 255, 255, .05);
+  border: 1px solid rgba(167, 139, 250, .45) !important; box-shadow: inset 0 0 18px rgba(255, 255, 255, .05);
 }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy h3 {
   font-family: "Cormorant Garamond", serif !important; font-weight: 560 !important; font-size: 1.4rem !important; color: var(--velvet-ink) !important;
 }
-html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy p { color: rgba(244, 234, 255, .62) !important; font-weight: 300; }
+html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy p { color: rgba(240, 238, 245, .62) !important; font-weight: 300; }
 html[data-theme="dark"] body.velvet-burgundy-route .reference-story-row__copy time {
   font-size: 8px !important; letter-spacing: .2em !important; text-transform: uppercase; color: var(--velvet-rose-dim) !important;
 }
 .velvet-identity-tags { display: flex; gap: 5px; margin: 6px 0 2px; }
-.velvet-identity-tags span { padding: 3px 8px; border-radius: 999px; background: rgba(183, 138, 255, .12); font: 400 7.5px "Manrope", sans-serif; letter-spacing: .22em; color: var(--velvet-rose-soft); }
+.velvet-identity-tags span { padding: 3px 8px; border-radius: 999px; background: rgba(167, 139, 250, .12); font: 400 7.5px "Manrope", sans-serif; letter-spacing: .22em; color: var(--velvet-rose-soft); }
 
 /* ── Navegación móvil: línea luminosa en la pestaña activa ──────── */
 html[data-theme="dark"] body .mobile-nav.velvet-reference-nav {
-  background: linear-gradient(0deg, #100716 60%, rgba(15, 5, 9, .85)) !important;
-  border-top: 1px solid rgba(183, 138, 255, .18) !important;
+  background: linear-gradient(0deg, #11151b 60%, rgba(15, 5, 9, .85)) !important;
+  border-top: 1px solid rgba(167, 139, 250, .18) !important;
 }
-html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link { color: rgba(244, 234, 255, .5) !important; letter-spacing: .14em; }
+html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link { color: rgba(240, 238, 245, .5) !important; letter-spacing: .14em; }
 html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active { color: var(--velvet-ink) !important; }
 html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active svg { color: var(--velvet-rose) !important; stroke: var(--velvet-rose); }
 html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active::after {
@@ -186,14 +186,14 @@ html[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--ac
 /* ── Chat: burbujas, divisor de fecha y barra de escribir ───────── */
 html[data-theme="dark"] .chat-message--character .chat-message__body p,
 html[data-theme="dark"] .chat-message--character .chat-message__body {
-  border-color: rgba(183, 138, 255, .26);
+  border-color: rgba(167, 139, 250, .26);
 }
 html[data-theme="dark"] .chat-message--character p {
-  background: rgba(183, 138, 255, .1) !important; border: 1px solid rgba(183, 138, 255, .26) !important;
+  background: rgba(167, 139, 250, .1) !important; border: 1px solid rgba(167, 139, 250, .26) !important;
   border-radius: 19px 19px 19px 5px !important; font-weight: 300;
 }
 html[data-theme="dark"] .chat-message--user p {
-  background: linear-gradient(125deg, #6d3caa, #432465) !important; color: #fff !important; border: 0 !important;
+  background: linear-gradient(125deg, #58617a, #303747) !important; color: #fff !important; border: 0 !important;
   border-radius: 19px 19px 5px 19px !important; box-shadow: 0 6px 18px rgba(40, 8, 20, .35);
 }
 html[data-theme="dark"] .chat__date-divider span {
@@ -201,34 +201,34 @@ html[data-theme="dark"] .chat__date-divider span {
   text-transform: uppercase; color: var(--velvet-rose-dim) !important;
 }
 html[data-theme="dark"] .chat__composer {
-  border-radius: 999px !important; border: 1px solid rgba(183, 138, 255, .4) !important; background: rgba(183, 138, 255, .09) !important;
+  border-radius: 999px !important; border: 1px solid rgba(167, 139, 250, .4) !important; background: rgba(167, 139, 250, .09) !important;
 }
-html[data-theme="dark"] .chat__composer:focus-within { border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(183, 138, 255, .14) !important; }
+html[data-theme="dark"] .chat__composer:focus-within { border-color: var(--velvet-rose-soft) !important; box-shadow: 0 0 20px rgba(167, 139, 250, .14) !important; }
 html[data-theme="dark"] .chat__character-name-button--primary {
-  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .08em; color: #f4eaff !important;
+  font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .08em; color: #f0eef5 !important;
 }
 
 
 /* ── Login (pantalla de conversación) en burdeos y oro ──────────── */
 .velvet-chat-auth {
   background:
-    repeating-linear-gradient(45deg, rgba(183, 138, 255, .045) 0 1px, transparent 1px 16px),
-    repeating-linear-gradient(-45deg, rgba(183, 138, 255, .045) 0 1px, transparent 1px 16px),
-    radial-gradient(ellipse 95% 38% at 50% 0%, #35204e, transparent),
-    linear-gradient(180deg, #1a0e24, #100716) !important;
-  color: #f4eaff !important;
+    repeating-linear-gradient(45deg, rgba(167, 139, 250, .045) 0 1px, transparent 1px 16px),
+    repeating-linear-gradient(-45deg, rgba(167, 139, 250, .045) 0 1px, transparent 1px 16px),
+    radial-gradient(ellipse 95% 38% at 50% 0%, #303747, transparent),
+    linear-gradient(180deg, #202833, #11151b) !important;
+  color: #f0eef5 !important;
 }
-.velvet-chat-auth__ambient { background: radial-gradient(ellipse at 50% 0%, rgba(183, 138, 255, .1), transparent 60%) !important; }
-.velvet-chat-auth__head svg { stroke: #b78aff !important; }
-.velvet-chat-auth__head h1 { font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .26em !important; color: #ddc5ff !important; text-shadow: none !important; }
-.velvet-chat-auth__head p { color: #9e7bcd !important; }
-.velvet-chat-auth__avatar { border: 1px solid rgba(183, 138, 255, .45) !important; background: radial-gradient(circle at 50% 35%, #42245f, #1a0e24) !important; color: #ddc5ff !important; }
-.velvet-chat-auth__bubble { border-color: rgba(183, 138, 255, .26) !important; background: rgba(183, 138, 255, .08) !important; color: #f4eaff !important; box-shadow: none !important; }
-.velvet-chat-auth__message--me .velvet-chat-auth__bubble { background: linear-gradient(125deg, #6d3caa, #432465) !important; border-color: rgba(183, 138, 255, .4) !important; color: #f4eaff !important; }
-.velvet-chat-auth__footer { background: linear-gradient(0deg, #100716 60%, rgba(15, 5, 9, .5)) !important; }
-.velvet-chat-auth__form { border-color: rgba(183, 138, 255, .4) !important; background: rgba(183, 138, 255, .07) !important; }
-.velvet-chat-auth__form:focus-within { border-color: #b78aff !important; box-shadow: 0 0 20px rgba(183, 138, 255, .16) !important; }
-.velvet-chat-auth__form input { color: #f4eaff !important; }
-.velvet-chat-auth__form input::placeholder { color: rgba(244, 234, 255, .5) !important; }
-.velvet-chat-auth__eye, .velvet-chat-auth__switch { color: #ddc5ff !important; }
-.velvet-chat-auth__send { background: #b78aff !important; color: #1a0e24 !important; }
+.velvet-chat-auth__ambient { background: radial-gradient(ellipse at 50% 0%, rgba(167, 139, 250, .1), transparent 60%) !important; }
+.velvet-chat-auth__head svg { stroke: #a78bfa !important; }
+.velvet-chat-auth__head h1 { font-family: "Cormorant Garamond", serif !important; font-weight: 500 !important; letter-spacing: .26em !important; color: #c5c8d0 !important; text-shadow: none !important; }
+.velvet-chat-auth__head p { color: #a3a9b7 !important; }
+.velvet-chat-auth__avatar { border: 1px solid rgba(167, 139, 250, .45) !important; background: radial-gradient(circle at 50% 35%, #303747, #202833) !important; color: #c5c8d0 !important; }
+.velvet-chat-auth__bubble { border-color: rgba(167, 139, 250, .26) !important; background: rgba(167, 139, 250, .08) !important; color: #f0eef5 !important; box-shadow: none !important; }
+.velvet-chat-auth__message--me .velvet-chat-auth__bubble { background: linear-gradient(125deg, #58617a, #303747) !important; border-color: rgba(167, 139, 250, .4) !important; color: #f0eef5 !important; }
+.velvet-chat-auth__footer { background: linear-gradient(0deg, #11151b 60%, rgba(15, 5, 9, .5)) !important; }
+.velvet-chat-auth__form { border-color: rgba(167, 139, 250, .4) !important; background: rgba(167, 139, 250, .07) !important; }
+.velvet-chat-auth__form:focus-within { border-color: #a78bfa !important; box-shadow: 0 0 20px rgba(167, 139, 250, .16) !important; }
+.velvet-chat-auth__form input { color: #f0eef5 !important; }
+.velvet-chat-auth__form input::placeholder { color: rgba(240, 238, 245, .5) !important; }
+.velvet-chat-auth__eye, .velvet-chat-auth__switch { color: #c5c8d0 !important; }
+.velvet-chat-auth__send { background: #a78bfa !important; color: #202833 !important; }
