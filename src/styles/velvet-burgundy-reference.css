@@ -7,7 +7,7 @@
 
 html.velvet-burgundy-route, body.velvet-burgundy-route {
   min-height: 100%;
-  background: #0f090e !important;
+  background: #100716 !important;
 }
 
 body.velvet-burgundy-route {
@@ -16,21 +16,21 @@ body.velvet-burgundy-route {
 }
 
 body.velvet-burgundy-route::before {
-  background: radial-gradient(ellipse at 72% 7%, rgba(125,39,66,.22), transparent 52%),
-    radial-gradient(ellipse at 14% 60%, rgba(82,18,43,.16), transparent 38%) !important;
+  background: radial-gradient(ellipse at 72% 7%, rgba(117,80,183,.22), transparent 52%),
+    radial-gradient(ellipse at 14% 60%, rgba(89,49,142,.16), transparent 38%) !important;
 }
 
 body.velvet-burgundy-route .app {
   min-height: 100vh;
   min-height: 100dvh;
   align-items: stretch;
-  background: #0f090e !important;
+  background: #100716 !important;
 }
 
 body.velvet-burgundy-route .app__content {
   min-height: 100vh;
   min-height: 100dvh;
-  background: #0f090e !important;
+  background: #100716 !important;
 }
 
 body.velvet-burgundy-route .chats-page.chats-page--reference {
@@ -40,7 +40,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 }
 
 .chats-page--reference, .reference-inbox {
-  --ref-bg: #0f090e;
+  --ref-bg: #100716;
   --ref-bg-2: #170b12;
   --ref-panel: rgba(34, 20, 27, .82);
   --ref-panel-strong: rgba(41, 22, 31, .94);
@@ -656,16 +656,16 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 
 @media (max-width: 760px) {
   html:has(.chats-page--reference), body:has(.chats-page--reference), html:has(.reference-inbox), body:has(.reference-inbox) {
-    background: #0f090e !important;
+    background: #100716 !important;
   }
 
   .app:has(.chats-page--reference), .app:has(.reference-inbox) {
-    background: #0f090e !important;
+    background: #100716 !important;
   }
 
   .app__content:has(.chats-page--reference), .app__content:has(.reference-inbox) {
     padding-bottom: 0 !important;
-    background: #0f090e !important;
+    background: #100716 !important;
   }
 
   .chats-page.chats-page--reference {
@@ -990,7 +990,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
    ========================================================= */
 
 html[data-theme="dark"] {
-  --stories-canvas: #0f090e;
+  --stories-canvas: #100716;
   --stories-canvas-2: #170b12;
   --stories-ink: #f8edf0;
   --stories-ink-soft: #f0c8d2;
@@ -1012,8 +1012,8 @@ html[data-theme="dark"] {
   --stories-art-filter: saturate(.68) brightness(.58) sepia(.08);
   --stories-row-art-filter: saturate(.72) brightness(.72);
   --stories-card-shade: linear-gradient(180deg, rgba(9,5,8,.12), rgba(14,7,11,.40) 42%, rgba(13,7,10,.88) 100%);
-  --stories-atmosphere: radial-gradient(ellipse at 72% 7%, rgba(125,39,66,.28) 0%, rgba(77,20,40,.13) 26%, transparent 52%),
-    radial-gradient(ellipse at 15% 42%, rgba(82,18,43,.24) 0%, transparent 34%),
+  --stories-atmosphere: radial-gradient(ellipse at 72% 7%, rgba(117,80,183,.28) 0%, rgba(77,20,40,.13) 26%, transparent 52%),
+    radial-gradient(ellipse at 15% 42%, rgba(89,49,142,.24) 0%, transparent 34%),
     radial-gradient(ellipse at 86% 70%, rgba(112,26,52,.18) 0%, transparent 34%),
     linear-gradient(155deg, #0d080c 0%, #160a11 47%, #0b080b 100%);
 }
