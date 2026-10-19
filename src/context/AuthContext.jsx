@@ -39,12 +39,22 @@ export function AuthProvider({ children }) {
     return data;
   }
 
+  async function signInWithProvider(provider) {
+    if (!["google", "apple"].includes(provider)) throw new Error("Proveedor no compatible.");
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin, skipBrowserRedirect: false },
+    });
+    if (error) throw error;
+    return data;
+  }
+
   async function signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }
 
-  return <AuthContext.Provider value={{ session, user, authLoading, privateMode: false, signIn, signUp, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ session, user, authLoading, privateMode: false, signIn, signUp, signInWithProvider, signOut }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
