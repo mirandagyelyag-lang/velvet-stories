@@ -22,16 +22,16 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --background: #100716;
-  --surface: #1a0e24;
-  --surface-soft: #231431;
-  --surface-strong: #2c1a3d;
-  --text-primary: #f6e6f4;
-  --text-secondary: #b9a3c9;
-  --accent: #b78aff;
-  --accent-dark: #6326c9;
-  --gold: #c0a5f2;
-  --border: rgba(221, 169, 235, 0.16);
+  --background: #11151b;
+  --surface: #202833;
+  --surface-soft: #252d39;
+  --surface-strong: #303747;
+  --text-primary: #f0eef5;
+  --text-secondary: #a3a9b7;
+  --accent: #a78bfa;
+  --accent-dark: #6f63b5;
+  --gold: #c5c8d0;
+  --border: rgba(163, 169, 183, 0.16);
   --soft-shadow: 0 20px 52px rgba(8, 3, 14, 0.4);
   --velvet-glass: rgba(26, 14, 36, 0.84);
   --velvet-veil: rgba(16, 7, 22, 0.9);
