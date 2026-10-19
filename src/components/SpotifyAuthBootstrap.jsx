@@ -8,7 +8,7 @@ export default function SpotifyAuthBootstrap() {
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    const hasCallback = url.searchParams.has("code") || url.searchParams.has("error");
+    // OAuth code is shared by Google/Supabase and Spotify. Only handle a Spotify callback\n    // when Spotify login explicitly stored its own return destination.\n    const hasSpotifyFlow = Boolean(sessionStorage.getItem(RETURN_KEY));\n    const hasCallback = hasSpotifyFlow && (url.searchParams.has("code") || url.searchParams.has("error"));
     if (!hasCallback) return;
 
     let alive = true;
