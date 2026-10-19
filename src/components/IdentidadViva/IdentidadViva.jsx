@@ -36,7 +36,7 @@ export default function IdentidadViva({open,theme="dark",onBack,onSignIn,onSignU
   return <section className={`identidad-viva identidad-viva--${theme}${open?" is-open":""}`} aria-hidden={!open} inert={!open} aria-label="Acceso a Orvayne">
     <button type="button" className="iv-back" onClick={onBack}>← VOLVER</button>
     <div className="iv-halo" aria-hidden="true"/>
-    <div className="iv-content"><div className="iv-wordmark" aria-label="ORVAYNE"><span>ORVAYN</span><span className="iv-wordmark__e" aria-hidden="true"><i/><i/><i/></span></div><span className="iv-spark" aria-hidden="true">✦</span>
+    <div className="iv-content"><div className="iv-wordmark" aria-label="ORVAYNE"><span>ORVAYN</span><span className="iv-wordmark__e" aria-hidden="true"><i/><i/><i/></span></div><div className="iv-sculpture" aria-hidden="true"><span className="iv-sculpture__a"/><span className="iv-sculpture__b"/><span className="iv-sculpture__core"/></div><span className="iv-spark" aria-hidden="true">✦</span>
       <div className="iv-step" key={step+"-"+mode}>
         <h1>{step==="email"?(mode==="signup"?"Empecemos por tu correo":"¿Cuál es tu correo?"):"Ahora tu contraseña"}</h1>
         <form onSubmit={next}>
