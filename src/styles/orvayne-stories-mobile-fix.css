@@ -8,3 +8,14 @@ html body .chats-page--reference .reference-stories-title h1{position:static!imp
 html body .chats-page--reference .reference-stories-title__spark{position:static!important;transform:none!important;margin:4px 0 0!important}
 html body .chats-page--reference .reference-stories-title__line{display:none!important}
 @media(max-width:760px){html body .chats-page--reference{padding-inline:16px!important}html body .chats-page--reference .reference-stories-hero{padding:19px 15px 22px!important}html body .chats-page--reference .reference-stories-title h1{font-size:clamp(26px,8vw,46px)!important}}
+
+/* Isolated component classes: old .reference-stories-* rules cannot move this title. */
+.chats-page--reference .orvayne-library-head{box-sizing:border-box;position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:start;gap:24px 8px;width:100%;max-width:100%;min-width:0;min-height:210px;margin:0 0 24px;padding:24px 22px;overflow:hidden;isolation:isolate;border:1px solid rgba(174,128,229,.38);border-radius:28px;background:radial-gradient(ellipse at 100% 0%,rgba(110,65,169,.25),transparent 58%),linear-gradient(145deg,#2a153d,#160a24);color:#f4eafa}
+.chats-page--reference .orvayne-library-head__eyebrow{display:flex;align-items:center;gap:12px;grid-column:1;grid-row:1;min-width:0;color:#c9a7e9;font-size:clamp(9px,2.4vw,12px);letter-spacing:.22em;font-weight:600;white-space:nowrap}
+.chats-page--reference .orvayne-library-head__action{grid-column:2;grid-row:1;justify-self:end}
+.chats-page--reference .orvayne-library-head__title{display:flex;flex-direction:column;align-items:center;justify-content:center;grid-column:1/-1;grid-row:2;position:static;width:100%;max-width:100%;min-width:0;margin:0;padding:0;text-align:center;overflow:hidden}
+.chats-page--reference .orvayne-library-head__script{font-family:"Cormorant Garamond",serif;font-size:clamp(23px,5vw,32px);font-style:italic;line-height:1;color:#dbc0f0}
+.chats-page--reference .orvayne-library-head__title h1{position:static;transform:none;inset:auto;width:100%;max-width:100%;min-width:0;margin:0;padding:0;white-space:nowrap;font-family:"Cormorant Garamond",serif;font-weight:500;font-size:clamp(32px,9vw,70px);line-height:1.1;letter-spacing:.045em;color:#f4eafa}
+.chats-page--reference .orvayne-library-head__spark{color:#c4a0ee;font-size:18px;line-height:1}
+.chats-page--reference .orvayne-library-head__line{display:none}
+@media(max-width:760px){.chats-page--reference .orvayne-library-head{min-height:190px;padding:20px 16px;border-radius:24px;gap:20px 6px}.chats-page--reference .orvayne-library-head__title h1{font-size:clamp(30px,9vw,49px)}}
