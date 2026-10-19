@@ -7,7 +7,7 @@ import SpotifyAuthBootstrap from "./components/SpotifyAuthBootstrap";
 import SpotifyHub from "./components/SpotifyHub";
 import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
 
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CharactersProvider } from "./context/CharactersContext";
 import { ChatsProvider } from "./context/ChatsContext";
 import { FeedbackProvider } from "./context/FeedbackContext";
@@ -148,6 +148,12 @@ window.addEventListener("unhandledrejection", (event) => {
   recordVelvetRuntimeError(event.reason, "unhandled-rejection");
 });
 
+function AuthenticatedSpotify() {
+  const { user, authLoading } = useAuth();
+  if (authLoading || !user) return null;
+  return <SpotifyHub />;
+}
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <VelvetErrorBoundary>
@@ -161,7 +167,7 @@ createRoot(document.getElementById("root")).render(
                     <LorebooksProvider>
                       <ChatsProvider>
                         <SpotifyAuthBootstrap />
-                        <SpotifyHub />
+                        <AuthenticatedSpotify />
                         <App />
                       </ChatsProvider>
                     </LorebooksProvider>
