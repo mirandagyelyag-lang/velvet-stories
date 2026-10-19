@@ -116,7 +116,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
     setBackupBusy(true); setBackupNotice("");
     try {
       const result = await restoreAccountSafetySnapshotV34915({ supabase, userId:user.id, payload });
-      setBackupNotice(`Restore finished · ${result.restored} records${result.failures.length ? ` · ${result.failures.length} optional sections need attention` : ""}. Reopen Velvet to refresh everything.`);
+      setBackupNotice(`Restore finished · ${result.restored} records${result.failures.length ? ` · ${result.failures.length} optional sections need attention` : ""}. Reopen Orvayne to refresh everything.`);
     } catch (error) { setBackupNotice(error?.message || "Restore stopped unexpectedly."); }
     finally { setBackupBusy(false); }
   }
@@ -168,7 +168,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
   }
   const jumpTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: settings.reduceMotion ? "auto" : "smooth", block: "start" });
   return <section className="settings-page settings-page--editorial">
-    <header className="page-heading settings-page__heading"><div><button onClick={onBack}><ArrowLeft size={17}/>Profile</button><p>YOUR VELVET</p><h1>Settings</h1><span>Everything you can shape, protect and update, in one calm place.</span></div></header>
+    <header className="page-heading settings-page__heading"><div><button onClick={onBack}><ArrowLeft size={17}/>Profile</button><p>YOUR ORVAYNE</p><h1>Settings</h1><span>Everything you can shape, protect and update, in one calm place.</span></div></header>
     <nav className="settings-page__nav" aria-label="Settings sections">
       <button onClick={()=>jumpTo("settings-personalize")}><Sparkles size={14}/>Personalize</button>
       <button onClick={()=>jumpTo("settings-storytelling")}><Heart size={14}/>Stories</button>
@@ -178,10 +178,10 @@ function Settings({ onBack, onOpenDiagnostics }) {
     </nav>
     <div className="settings-plan-card">
       <span className="settings-plan-card__icon"><Crown size={20}/></span>
-      <div className="settings-plan-card__copy"><small>VELVET PLAN</small><strong>{plan.loading ? "Checking…" : plan.name === "owner" ? "Owner" : plan.name === "plus" ? "Velvet+" : "Velvet Free"}</strong><span>{plan.name === "owner" ? "Full access · no daily generation limit" : plan.name === "plus" ? "Up to 300 AI generations per day" : "30 AI generations per day"}</span></div>
-      <div className="settings-plan-card__usage"><small>TODAY</small><strong>{plan.loading ? "…" : plan.dailyLimit ? `${plan.usedToday} / ${plan.dailyLimit}` : "∞"}</strong><span>{plan.name === "free" ? "Velvet+ founder price · $2.990 CLP/month · coming soon" : plan.name === "plus" ? (plan.founder ? "Founder plan" : "Plus plan") : "Creator account"}</span></div>
+      <div className="settings-plan-card__copy"><small>ORVAYNE PLAN</small><strong>{plan.loading ? "Checking…" : plan.name === "owner" ? "Owner" : plan.name === "plus" ? "Orvayne+" : "Orvayne Free"}</strong><span>{plan.name === "owner" ? "Full access · no daily generation limit" : plan.name === "plus" ? "Up to 300 AI generations per day" : "30 AI generations per day"}</span></div>
+      <div className="settings-plan-card__usage"><small>TODAY</small><strong>{plan.loading ? "…" : plan.dailyLimit ? `${plan.usedToday} / ${plan.dailyLimit}` : "∞"}</strong><span>{plan.name === "free" ? "Orvayne+ founder price · $2.990 CLP/month · coming soon" : plan.name === "plus" ? (plan.founder ? "Founder plan" : "Plus plan") : "Creator account"}</span></div>
     </div>
-    <div className="settings-section-label" id="settings-personalize"><span>01</span><div><strong>Personalize</strong><small>How Velvet looks and feels on your phone.</small></div></div>
+    <div className="settings-section-label" id="settings-personalize"><span>01</span><div><strong>Personalize</strong><small>How Orvayne looks and feels on your phone.</small></div></div>
     <div className="settings-group" id="settings-appearance"><header><Eye size={19}/><div><h2>Appearance</h2><p>Choose the light that feels best for reading.</p></div></header>
       <div className="setting-row"><strong>Theme</strong><div className="setting-segments">
         <button className={theme==='light'?'active':''} onClick={()=>setTheme('light')}><Sun size={14}/> Light</button>
@@ -227,7 +227,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
     <div className="settings-group settings-group--exports"><header><FileDown size={19}/><div><h2>Stories & backup</h2><p>Export one story normally, or keep a full safety copy of your Orvayne world.</p></div></header>
       <SettingChoice label="Default story export" value={settings.exportFormat} options={[["markdown","Markdown"],["text","Plain text"],["json","JSON story"]]} onChange={(value)=>updateSetting("exportFormat",value)}/>
       <div className="v312-backup-center v34915-safety-center">
-        <div><strong>Safety Vault</strong><small>Velvet keeps up to five private local account snapshots for 30 days. One is refreshed automatically each day; manual downloads still work too.</small></div>
+        <div><strong>Safety Vault</strong><small>Orvayne keeps up to five private local account snapshots for 30 days. One is refreshed automatically each day; manual downloads still work too.</small></div>
         <div className="v312-backup-center__actions">
           <button type="button" onClick={exportVelvetBackup} disabled={backupBusy}>{backupBusy?<LoaderCircle className="spin" size={15}/>:<FileDown size={15}/>}Back up & download</button>
           <button type="button" onClick={createLocalSafetyCopy} disabled={backupBusy}><ShieldCheck size={15}/>Save local copy</button>
@@ -236,7 +236,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
         </div>
         <div className="v34915-safety-snapshots">
           <header><span><ShieldCheck size={15}/><strong>Local recovery copies</strong></span><small>{safetySnapshots.length}/5</small></header>
-          {safetySnapshots.length ? <div>{safetySnapshots.map((snapshot,index)=><article key={snapshot.id} className={index===0?"is-latest":""}><span><strong>{index===0?"Latest safety copy":"Earlier safety copy"}</strong><small>{formatSafetyTime(snapshot.capturedAt)} · {snapshot.recordCount || 0} records · {snapshot.reason === "automatic-daily" ? "automatic" : "manual"}</small></span><span className="v34915-safety-snapshot-actions">{index===0&&<><button type="button" onClick={restoreLatestLocalSafetyCopy} disabled={backupBusy}><RotateCcw size={14}/>Restore</button><button type="button" onClick={downloadLatestLocalSafetyCopy}><Download size={14}/>Download</button></>}<button type="button" className="danger" onClick={()=>removeLocalSafetyCopy(snapshot.id)} aria-label="Remove local safety copy"><Trash2 size={14}/></button></span></article>)}</div> : <p className="v34915-safety-empty">No local safety copy yet. Velvet will create one automatically after you sign in, or you can make one now.</p>}
+          {safetySnapshots.length ? <div>{safetySnapshots.map((snapshot,index)=><article key={snapshot.id} className={index===0?"is-latest":""}><span><strong>{index===0?"Latest safety copy":"Earlier safety copy"}</strong><small>{formatSafetyTime(snapshot.capturedAt)} · {snapshot.recordCount || 0} records · {snapshot.reason === "automatic-daily" ? "automatic" : "manual"}</small></span><span className="v34915-safety-snapshot-actions">{index===0&&<><button type="button" onClick={restoreLatestLocalSafetyCopy} disabled={backupBusy}><RotateCcw size={14}/>Restore</button><button type="button" onClick={downloadLatestLocalSafetyCopy}><Download size={14}/>Download</button></>}<button type="button" className="danger" onClick={()=>removeLocalSafetyCopy(snapshot.id)} aria-label="Remove local safety copy"><Trash2 size={14}/></button></span></article>)}</div> : <p className="v34915-safety-empty">No local safety copy yet. Orvayne will create one automatically after you sign in, or you can make one now.</p>}
         </div>
         {backupNotice&&<p className="v312-backup-center__notice">{backupNotice}</p>}
       </div>
@@ -244,22 +244,22 @@ function Settings({ onBack, onOpenDiagnostics }) {
     <div className="settings-group" id="settings-privacy"><header><ShieldCheck size={19}/><div><h2>Privacy & safety</h2><p>Protection against accidental destructive actions.</p></div></header>
       <Toggle label="Confirm before deleting" description="Ask before deleting characters, conversations and lore." checked={settings.confirmBeforeDelete} onChange={(value)=>updateSetting('confirmBeforeDelete',value)}/>
     </div>
-    <div className="settings-section-label" id="settings-updates"><span>04</span><div><strong>Updates</strong><small>You choose when this phone moves to a new Velvet build.</small></div></div>
-    <div className="settings-group settings-update-center"><header><RefreshCw size={19}/><div><h2>Velvet updates</h2><p>You decide when the app on this phone changes.</p></div></header>
+    <div className="settings-section-label" id="settings-updates"><span>04</span><div><strong>Updates</strong><small>You choose when this phone moves to a new Orvayne build.</small></div></div>
+    <div className="settings-group settings-update-center"><header><RefreshCw size={19}/><div><h2>Orvayne updates</h2><p>You decide when the app on this phone changes.</p></div></header>
       <div className="settings-update-center__status">
         <div><small>APP ON THIS PHONE</small><strong>v{pwa.localVersion}</strong><em>{pwa.serverUpdateAvailable ? `v${pwa.serverVersion} is ready` : "Latest app installed ✓"}</em></div>
         <div><small>STORY ENGINE</small><strong>{health.engineVersion ? `Engine ${health.engineVersion}` : health.engine === "checking" ? "Checking…" : "Connected"}</strong><em>{health.engine === "connected" ? "Live on Supabase ✓" : health.engine}</em></div>
       </div>
       <div className="settings-update-center__actions">
         <button type="button" onClick={()=>pwa.checkForUpdate({ silent:false })} disabled={pwa.checkingForUpdate || pwa.updating}><RefreshCw size={16}/>{pwa.checkingForUpdate ? "Checking…" : "Check for updates"}</button>
-        <button type="button" className="primary" onClick={pwa.updateApp} disabled={pwa.updating || (!pwa.serverUpdateAvailable && !pwa.needRefresh)}>{pwa.updating ? "Updating Velvet…" : pwa.serverUpdateAvailable || pwa.needRefresh ? `Update to v${pwa.serverVersion || "latest"}` : "Orvayne is up to date ✓"}</button>
+        <button type="button" className="primary" onClick={pwa.updateApp} disabled={pwa.updating || (!pwa.serverUpdateAvailable && !pwa.needRefresh)}>{pwa.updating ? "Updating Orvayne…" : pwa.serverUpdateAvailable || pwa.needRefresh ? `Update to v${pwa.serverVersion || "latest"}` : "Orvayne is up to date ✓"}</button>
         {pwa.updateProblem && <button type="button" onClick={pwa.repairUpdate}>Repair updater</button>}
       </div>
-      <p className="settings-update-center__note">Checking never installs anything. When a new app build is available, Velvet waits for you to press Update.</p>
+      <p className="settings-update-center__note">Checking never installs anything. When a new app build is available, Orvayne waits for you to press Update.</p>
     </div>
     <div className="settings-section-label" id="settings-system"><span>05</span><div><strong>System</strong><small>Installation, diagnostics and technical details.</small></div></div>
     <div className="settings-group settings-diagnostics" id="settings-app"><header><Activity size={19}/><div><h2>AI & diagnostics</h2><p>Check the app version, mobile touch, Supabase, the Edge Function and Gemini separately.</p></div></header><div className="settings-install__body"><span className="settings-install__icon">✦</span><div><strong>Something acting weird?</strong><small>Open diagnostics before changing code or reinstalling the app.</small></div><button onClick={onOpenDiagnostics}><Activity size={17}/>Open diagnostics</button></div><div className={`settings-safe-mode${safeMode ? " is-active" : ""}`}><span><Wrench size={17}/><span><strong>Orvayne Safe Mode</strong><small>Temporarily disables motion-heavy extras, then clears only app cache. Stories, characters and Memories stay untouched.</small></span></span><button type="button" onClick={toggleSafeMode} disabled={safeModeBusy}>{safeModeBusy ? "Working…" : safeMode ? "Leave Safe Mode" : "Start Safe Mode"}</button></div></div>
-    <div className="settings-group settings-install"><header><MonitorSmartphone size={19}/><div><h2>Velvet on your phone</h2><p>Install it with its own icon and full-screen experience.</p></div></header>
+    <div className="settings-group settings-install"><header><MonitorSmartphone size={19}/><div><h2>Orvayne on your phone</h2><p>Install it with its own icon and full-screen experience.</p></div></header>
       <div className="settings-install__body">
         <span className="settings-install__icon">✦</span>
         <div>
@@ -271,7 +271,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
         {pwa.installed && <span className="settings-install__installed"><Check size={16}/>Installed</span>}
       </div>
     </div>
-    <details className="settings-group settings-about settings-about--collapsed" id="settings-about"><summary><span><Sparkles size={18}/><span><strong>Technical details</strong><small>Version, build, connection and engine status</small></span></span><span>View</span></summary><div className="settings-about__inside"><header><Sparkles size={19}/><div><h2>About Velvet</h2><p>Know exactly which build is on your phone before chasing ghosts.</p></div></header>
+    <details className="settings-group settings-about settings-about--collapsed" id="settings-about"><summary><span><Sparkles size={18}/><span><strong>Technical details</strong><small>Version, build, connection and engine status</small></span></span><span>View</span></summary><div className="settings-about__inside"><header><Sparkles size={19}/><div><h2>About Orvayne</h2><p>Know exactly which build is on your phone before chasing ghosts.</p></div></header>
       <div className="settings-about__grid">
         <span><small>VERSION</small><strong>Orvayne {VELVET_VERSION}</strong><em>{VELVET_RELEASE}</em></span>
         <span><small>BUILD</small><strong>Production build</strong><em>{formatBuild(VELVET_BUILD_TIME)}</em></span>
@@ -308,7 +308,7 @@ const feedbackLabels = {
 function LearnedStoryPreferences({ positiveCounts = {}, negativeCounts = {}, onRemove }) {
   const positive = Object.entries(positiveCounts || {}).filter(([, count]) => Number(count) > 0);
   const negative = Object.entries(negativeCounts || {}).filter(([, count]) => Number(count) > 0);
-  if (!positive.length && !negative.length) return <div className="settings-story-dna__learning"><Sparkles size={15}/><span>Use 👍 or 👎 under replies. After the same choice twice, Velvet applies that preference to every character.</span></div>;
+  if (!positive.length && !negative.length) return <div className="settings-story-dna__learning"><Sparkles size={15}/><span>Use 👍 or 👎 under replies. After the same choice twice, Orvayne applies that preference to every character.</span></div>;
   return <div className="settings-story-dna__learned">
     <div><span><Sparkles size={15}/><strong>What Orvayne has learned</strong></span></div>
     <LearningPreferenceGroup title="Preserve" kind="positive" entries={positive} onRemove={onRemove}/>
