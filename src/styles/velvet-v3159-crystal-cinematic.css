@@ -579,3 +579,108 @@ body[data-velvet-page] .app:not(.app--chat) :is(button,input,textarea,select):fo
 @media(prefers-reduced-motion:reduce){
   body[data-velvet-page] .app:not(.app--chat) :is(.story-feature,.story-poster,.pulse-character-card){transition:none}
 }
+
+
+/* ORVAYNE WORLD v2 — unmistakable cinematic interior, not just recolored borders. */
+body[data-velvet-page] .app:not(.app--chat) .velvet-route-stage{
+  background:radial-gradient(ellipse 95% 32% at 50% 0%,rgba(128,77,192,.18),transparent 85%);
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.chats-page--shelf,.pulse-page){
+  background:transparent!important;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial){
+  position:relative;
+  min-height:205px;
+  padding:34px clamp(20px,4vw,44px) 35px!important;
+  margin-bottom:34px;
+  overflow:hidden;
+  border:1px solid var(--orv-line)!important;
+  border-radius:26px!important;
+  background:
+    radial-gradient(ellipse 78% 130% at 100% 8%,rgba(161,116,227,.22),transparent 70%),
+    linear-gradient(135deg,rgba(56,27,91,.75),rgba(19,8,35,.95) 66%)!important;
+  box-shadow:inset 0 1px 0 rgba(231,210,255,.16),0 24px 65px rgba(8,2,19,.23)!important;
+  isolation:isolate;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial)::after{
+  content:"";
+  position:absolute;z-index:-1;pointer-events:none;
+  width:340px;height:340px;right:-130px;top:-170px;
+  border:1px solid rgba(228,206,255,.22);
+  border-radius:50%;
+  box-shadow:0 0 0 25px rgba(166,115,231,.055),0 0 0 57px rgba(166,115,231,.035),inset 0 0 36px rgba(201,164,255,.08);
+  animation:orv-inner-orbit 18s ease-in-out infinite alternate;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-header h1,.pulse-header--editorial h1){
+  color:#f3eaff!important;
+  text-shadow:0 0 30px rgba(205,172,255,.2)!important;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-header__eyebrow,.reference-stories-hero__private){
+  color:#cbb0fa!important;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-header__new,.pulse-header__library,.reference-stories-new){
+  border:1px solid rgba(220,189,255,.48)!important;
+  background:linear-gradient(135deg,rgba(138,88,200,.38),rgba(44,18,74,.65))!important;
+  color:#f4e9ff!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 8px 22px rgba(0,0,0,.16)!important;
+}
+body[data-velvet-page] .app:not(.app--chat) .stories-search{
+  height:54px!important;
+  padding:0 17px!important;
+  border:1px solid var(--orv-line)!important;
+  border-radius:14px!important;
+  background:var(--orv-panel)!important;
+}
+body[data-velvet-page] .app:not(.app--chat) .stories-tabs{
+  padding:5px!important;
+  border:1px solid var(--orv-line)!important;
+  border-radius:14px!important;
+  background:var(--orv-panel)!important;
+}
+body[data-velvet-page] .app:not(.app--chat) .stories-tabs button.active{
+  border-radius:10px!important;
+  background:linear-gradient(120deg,rgba(144,91,208,.28),rgba(107,68,165,.12))!important;
+  color:var(--orv-ink)!important;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.story-feature,.story-poster,.pulse-character-card){
+  border-radius:22px!important;
+  border:1px solid rgba(166,127,217,.36)!important;
+  background-color:#1c102c!important;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.story-feature,.story-poster,.pulse-character-card)::selection{background:#8a59c0}
+body[data-velvet-page] .app:not(.app--chat) .pulse-page{
+  --pulse-accent:#c9a8f3;--pulse-accent-strong:#a67ce1;
+  --pulse-line:rgba(184,144,235,.28);
+  --pulse-muted:#c4b1d9;
+  --pulse-ink:#f1e8fa;--pulse-ink-soft:#e4d4f5;
+}
+body[data-velvet-page] .sidebar__brand img{
+  border-radius:50%!important;
+  border:1px solid var(--orv-line);
+  box-shadow:0 0 24px var(--orv-glow);
+}
+body[data-velvet-page] .mobile-nav .sidebar__link--active svg{
+  filter:drop-shadow(0 0 7px rgba(179,128,239,.55));
+}
+@keyframes orv-inner-orbit{from{transform:rotate(-12deg) scale(.95)}to{transform:rotate(14deg) scale(1.08)}}
+@media(max-width:600px){
+ body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial){
+   min-height:178px!important;padding:28px 22px 26px!important;border-radius:22px!important;
+ }
+ body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial)::after{
+   width:240px;height:240px;right:-115px;top:-90px;
+ }
+}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial),
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial){
+  background:radial-gradient(ellipse at 100% 0%,rgba(175,139,212,.26),transparent 72%),linear-gradient(135deg,#f7f0fb,#e9dff3)!important;
+}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header h1,.pulse-header--editorial h1),
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header h1,.pulse-header--editorial h1){color:#422c5c!important;text-shadow:none!important}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) .pulse-page,
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) .pulse-page{
+ --pulse-ink:#422c5c;--pulse-ink-soft:#634b78;--pulse-muted:#786788;
+}
+@media(prefers-reduced-motion:reduce){
+ body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial)::after{animation:none}
+}
