@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600&display=swap");
 .identidad-viva{position:fixed;inset:0;z-index:20;display:grid;place-items:center;visibility:hidden;opacity:0;pointer-events:none;transition:opacity .7s ease,visibility 0s linear .7s;color:#f8eafa;font-family:Jost,Manrope,system-ui,sans-serif;overflow:hidden}
 .identidad-viva.is-open{visibility:visible;opacity:1;pointer-events:auto;transition:opacity .7s ease}
 .iv-halo{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 43% 34% at center,rgba(13,5,23,.86),rgba(13,5,23,.42) 70%,transparent);animation:iv-breathe 8s ease-in-out infinite alternate}
@@ -130,7 +131,7 @@
 .iv-halo{display:none!important}
 .iv-portal,.iv-portal--image{display:none!important}
 .iv-content{width:min(84vw,420px);padding:0;transform:none;z-index:2}
-.iv-content::before{content:"ORVAYNE";position:static;display:block;order:-2;margin-bottom:clamp(30px,7vh,65px);font:400 clamp(30px,7.6vw,44px) Georgia,serif;letter-spacing:.19em;color:#f1e5ff;opacity:1;text-shadow:0 0 26px rgba(139,91,210,.22);white-space:nowrap}
+.iv-content::before{content:"ORVAYNE";position:static;display:block;order:-2;margin-bottom:clamp(30px,7vh,65px);font:600 clamp(24px,6.1vw,39px)/1.2 "Orbitron", "Rajdhani", system-ui,sans-serif;letter-spacing:.16em;color:#f1e5ff;opacity:1;text-shadow:0 0 26px rgba(139,91,210,.22);white-space:nowrap}
 .iv-spark{order:-1;margin-bottom:17px;font-size:15px;color:#bda3e9;filter:none;opacity:.85}
 .iv-step{width:100%}
 .iv-step h1{font-size:clamp(21px,5vw,28px);font-weight:300;line-height:1.35;letter-spacing:.005em;margin:0 0 28px;text-shadow:none}
