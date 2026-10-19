@@ -489,3 +489,93 @@
     scroll-padding-bottom: var(--velvet-mobile-dock-zone);
   }
 }
+
+
+/* ORVAYNE · unified inner-world visual language (intro / login / app)
+   Scope by the existing theme tokens; never affect the access animation itself. */
+:root[data-theme="dark"]{
+  --orv-page:#10081d;--orv-panel:rgba(37,21,57,.78);
+  --orv-ink:#f1e8fa;--orv-muted:#c1afd4;
+  --orv-line:rgba(190,153,236,.23);--orv-metal:#b99ce8;
+  --orv-glow:rgba(121,73,183,.14);
+}
+:root[data-theme="light"],:root[data-theme="comfort"]{
+  --orv-page:#f7f1fb;--orv-panel:rgba(255,255,255,.77);
+  --orv-ink:#3f2855;--orv-muted:#776585;
+  --orv-line:rgba(105,68,150,.22);--orv-metal:#7853a7;
+  --orv-glow:rgba(145,102,191,.09);
+}
+body[data-velvet-page] .app:not(.app--chat){
+  background:radial-gradient(ellipse 80% 42% at 55% 0%,var(--orv-glow),transparent 78%),var(--orv-page);
+}
+body[data-velvet-page] .app:not(.app--chat) .chats-page{
+  color:var(--orv-ink);
+  background:transparent !important;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.chats-page--shelf,.pulse-shell,.memories-page,.personas-page,.lore-page,.profile-page,.settings-page){
+  position:relative;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header,.reference-stories-hero,.pulse-library__heading){
+  border-color:var(--orv-line);
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-header h1,.reference-stories-title h1,.pulse-header h1,.pulse-library__heading h2,.memories-page h1,.personas-page h1,.profile-page h1,.settings-page h1){
+  color:var(--orv-ink);
+  font-family:"Cormorant Garamond",Georgia,serif;
+  font-weight:500;
+  letter-spacing:.12em;
+  text-shadow:0 0 26px var(--orv-glow);
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-header__eyebrow,.pulse-header__eyebrow,.pulse-library__heading>span,.reference-stories-hero__private){
+  color:var(--orv-metal);letter-spacing:.2em;
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-tools,.stories-search,.stories-tabs,.story-feature,.story-poster,.pulse-character-card,.pulse-moment-row,.pulse-continue,.pulse-quick-action,.memory-card,.persona-card,.lorebook-card,.profile-card,.settings-group){
+  border-color:var(--orv-line);
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.stories-search,.stories-tabs,.pulse-moment-row,.pulse-quick-action,.memory-card,.persona-card,.lorebook-card,.profile-card,.settings-group){
+  background:var(--orv-panel);
+  box-shadow:0 12px 38px rgba(8,2,20,.08);
+}
+body[data-velvet-page] .app:not(.app--chat) :is(.story-feature,.story-poster,.pulse-character-card){
+  box-shadow:0 14px 40px rgba(8,2,20,.17),inset 0 0 0 1px var(--orv-line);
+  transition:transform .35s ease,box-shadow .35s ease,border-color .35s ease;
+}
+@media(hover:hover){
+  body[data-velvet-page] .app:not(.app--chat) :is(.story-feature,.story-poster,.pulse-character-card):hover{
+    transform:translateY(-3px);
+    box-shadow:0 20px 50px rgba(8,2,20,.24),0 0 24px var(--orv-glow);
+    border-color:var(--orv-metal);
+  }
+}
+body[data-velvet-page] .sidebar{
+  background:linear-gradient(180deg,var(--orv-panel),var(--orv-page));
+  border-right-color:var(--orv-line);
+}
+body[data-velvet-page] .sidebar__brand span{
+  font-family:"Cormorant Garamond",Georgia,serif;
+  font-weight:600;letter-spacing:.16em;color:var(--orv-ink);
+}
+body[data-velvet-page] .sidebar__link--active{
+  background:linear-gradient(90deg,var(--orv-glow),transparent);
+  color:var(--orv-ink);
+}
+body[data-velvet-page] .sidebar__link--active::before{
+  background:linear-gradient(180deg,#e3d2ff,#7650a8);
+}
+body[data-velvet-page] .mobile-nav{
+  background:color-mix(in srgb,var(--orv-page) 91%,transparent);
+  border-top:1px solid var(--orv-line);
+  backdrop-filter:blur(22px);
+  -webkit-backdrop-filter:blur(22px);
+}
+body[data-velvet-page] .mobile-nav .sidebar__link--active{
+  color:var(--orv-metal);
+}
+body[data-velvet-page] .app:not(.app--chat) :is(button,input,textarea,select):focus-visible{
+  outline:2px solid var(--orv-metal);outline-offset:3px;
+}
+@media(max-width:600px){
+  body[data-velvet-page] .app:not(.app--chat) :is(.stories-header h1,.pulse-header h1,.reference-stories-title h1){letter-spacing:.08em}
+}
+@media(prefers-reduced-motion:reduce){
+  body[data-velvet-page] .app:not(.app--chat) :is(.story-feature,.story-poster,.pulse-character-card){transition:none}
+}
