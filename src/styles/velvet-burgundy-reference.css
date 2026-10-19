@@ -41,23 +41,23 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 
 .chats-page--reference, .reference-inbox {
   --ref-bg: #100716;
-  --ref-bg-2: #170b12;
+  --ref-bg-2: #1a0e24;
   --ref-panel: rgba(34, 20, 27, .82);
   --ref-panel-strong: rgba(41, 22, 31, .94);
   --ref-line: rgba(224, 117, 143, .18);
   --ref-line-strong: rgba(231, 116, 143, .34);
-  --ref-rose: #e28aa0;
-  --ref-rose-soft: #f0b4c3;
-  --ref-rose-pale: #f5d0d9;
+  --ref-rose: #b78aff;
+  --ref-rose-soft: #c9a7f1;
+  --ref-rose-pale: #dec9f8;
   --ref-muted: #a5868e;
-  --ref-ink: #f8edf0;
+  --ref-ink: #f5edff;
   position: relative;
   isolation: isolate;
   color: var(--ref-ink);
   background: radial-gradient(ellipse at 72% 7%, rgba(125, 39, 66, .28) 0%, rgba(77, 20, 40, .13) 26%, transparent 52%),
     radial-gradient(ellipse at 15% 42%, rgba(82, 18, 43, .24) 0%, transparent 34%),
     radial-gradient(ellipse at 86% 70%, rgba(112, 26, 52, .18) 0%, transparent 34%),
-    linear-gradient(155deg, #0d080c 0%, #160a11 47%, #0b080b 100%);
+    linear-gradient(155deg, #100716 0%, #1a0e24 47%, #100716 100%);
 }
 
 .chats-page--reference::before, .reference-inbox::before {
@@ -112,7 +112,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   grid-column: 2;
   grid-row: 1;
   margin: 29px 22px 0;
-  color: #f0c1cc;
+  color: #d4b4f5;
   font-family: "Cormorant Garamond", serif;
   font-size: clamp(3.5rem, 8vw, 5rem);
   font-weight: 500;
@@ -126,7 +126,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   top: -2px;
   left: 50%;
   z-index: 2;
-  color: #b84865;
+  color: #8650d3;
   font-family: "Allura", cursive;
   font-size: 3rem;
   line-height: 1;
@@ -137,18 +137,18 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   width: 100%;
   height: 1px;
   margin-top: 33px;
-  background: linear-gradient(90deg, transparent, #8d334c);
+  background: linear-gradient(90deg, transparent, #6331a5);
 }
 
 .reference-stories-title__line--right {
-  background: linear-gradient(90deg, #8d334c, transparent);
+  background: linear-gradient(90deg, #6331a5, transparent);
 }
 
 .reference-stories-title__spark {
   position: absolute;
   top: 64px;
   left: 50%;
-  color: #a73f5b;
+  color: #8650d3;
   font-size: .85rem;
   transform: translateX(-50%);
 }
@@ -164,7 +164,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   place-items: center;
   touch-action: manipulation;
   pointer-events: auto;
-  color: #f6c4d0;
+  color: #ddc3fa;
   background: radial-gradient(circle at 50% 42%, rgba(197, 73, 105, .24), rgba(59, 17, 31, .66) 68%),
     rgba(24, 11, 17, .82);
   border: 1px solid rgba(195, 71, 101, .30);
@@ -269,7 +269,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 }
 
 .reference-filter-menu button.active {
-  color: #ffd8e1;
+  color: #e8d8ff;
   background: rgba(198, 75, 105, .13);
 }
 
@@ -279,7 +279,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 
 .reference-collections > h2, .reference-section-heading h2 {
   margin: 0 0 17px;
-  color: #d47e94;
+  color: #ad83e7;
   font-family: "Manrope", sans-serif;
   font-size: .73rem;
   font-weight: 600;
@@ -302,8 +302,8 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   flex-direction: column;
   overflow: hidden;
   padding: 16px 8px 17px;
-  color: #f3cbd4;
-  background: #1f1017;
+  color: #dec9f8;
+  background: #231431;
   border: 1px solid rgba(205, 79, 110, .20);
   border-radius: 20px;
   box-shadow: inset 0 0 38px rgba(255,255,255,.018);
@@ -333,7 +333,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 }
 
 .reference-collection-card__fallback--favorites {
-  background: radial-gradient(circle at 35% 24%, #702541, transparent 45%), linear-gradient(145deg,#29111d,#120b10);
+  background: radial-gradient(circle at 35% 24%, #59318e, transparent 45%), linear-gradient(145deg,#231431,#100716);
 }
 
 .reference-collection-card__fallback--archived {
@@ -341,7 +341,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 }
 
 .reference-collection-card__fallback--trash {
-  background: radial-gradient(circle at 62% 52%, #692a34, transparent 40%), linear-gradient(145deg,#251116,#10090d);
+  background: radial-gradient(circle at 62% 52%, #692a34, transparent 40%), linear-gradient(145deg,#231431,#100716);
 }
 
 .reference-collection-card__shade {
@@ -357,7 +357,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   display: grid;
   place-items: center;
   margin-bottom: 10px;
-  color: #eda6b8;
+  color: #c9a7f1;
   background: rgba(22, 10, 16, .70);
   border: 1px solid rgba(212, 94, 123, .28);
   border-radius: 50%;
@@ -405,7 +405,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   gap: 3px;
   min-height: 36px;
   padding: 0;
-  color: #a65f71;
+  color: #9472be;
   background: transparent;
   border: 0;
   font-size: .62rem;
@@ -457,8 +457,8 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   display: grid;
   place-items: center;
   overflow: hidden;
-  color: #f1c4cf;
-  background: linear-gradient(145deg,#351522,#140a10);
+  color: #dec9f8;
+  background: linear-gradient(145deg,#2c1a3d,#100716);
   border-radius: 17px 0 0 17px;
   font-family: "Cormorant Garamond", serif;
   font-size: 1.45rem;
@@ -484,7 +484,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 .reference-story-row__copy h3 {
   margin: 0 0 2px;
   overflow: hidden;
-  color: #f3ced7;
+  color: #dec9f8;
   font-family: "Cormorant Garamond", serif;
   font-size: 1.35rem;
   font-weight: 500;
@@ -552,7 +552,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 }
 
 .reference-empty > span {
-  color: #d77f95;
+  color: #ad83e7;
   font-size: .65rem;
   letter-spacing: .17em;
 }
@@ -576,7 +576,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 }
 
 .reference-inbox__header > span {
-  color: #d77f95;
+  color: #ad83e7;
   font-size: .65rem;
   font-weight: 700;
   letter-spacing: .17em;
@@ -818,7 +818,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
     max-height: 62vh !important;
     max-height: 62dvh !important;
     overflow-y: auto !important;
-    background: #1b1016 !important;
+    background: #231431 !important;
     border: 1px solid rgba(225, 112, 141, .20) !important;
     border-radius: 22px !important;
     box-shadow: 0 25px 70px rgba(0,0,0,.48) !important;
@@ -964,7 +964,7 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
   min-width: 0;
   height: 34px;
   padding: 0 9px;
-  color: #f3ced7;
+  color: #dec9f8;
   background: rgba(9,5,8,.46);
   border: 1px solid rgba(226,138,160,.22);
   border-radius: 10px;
@@ -991,18 +991,18 @@ body.velvet-burgundy-route .chats-page.chats-page--reference {
 
 html[data-theme="dark"] {
   --stories-canvas: #100716;
-  --stories-canvas-2: #170b12;
-  --stories-ink: #f8edf0;
+  --stories-canvas-2: #1a0e24;
+  --stories-ink: #f5edff;
   --stories-ink-soft: #f0c8d2;
   --stories-muted: #a5868e;
   --stories-muted-2: #8f727b;
-  --stories-accent: #e28aa0;
-  --stories-accent-strong: #b84865;
+  --stories-accent: #b78aff;
+  --stories-accent-strong: #8650d3;
   --stories-line: rgba(224,117,143,.18);
   --stories-line-strong: rgba(231,116,143,.34);
   --stories-panel: rgba(34,20,27,.84);
   --stories-panel-strong: rgba(41,22,31,.95);
-  --stories-panel-solid: #1b1016;
+  --stories-panel-solid: #231431;
   --stories-row: linear-gradient(95deg, rgba(43,19,30,.95), rgba(28,16,22,.90));
   --stories-search: linear-gradient(105deg, rgba(26,17,22,.94), rgba(39,22,30,.90));
   --stories-sidebar: linear-gradient(180deg, rgba(24,15,21,.99), rgba(14,9,13,.995));
@@ -1015,7 +1015,7 @@ html[data-theme="dark"] {
   --stories-atmosphere: radial-gradient(ellipse at 72% 7%, rgba(117,80,183,.28) 0%, rgba(77,20,40,.13) 26%, transparent 52%),
     radial-gradient(ellipse at 15% 42%, rgba(89,49,142,.24) 0%, transparent 34%),
     radial-gradient(ellipse at 86% 70%, rgba(112,26,52,.18) 0%, transparent 34%),
-    linear-gradient(155deg, #0d080c 0%, #160a11 47%, #0b080b 100%);
+    linear-gradient(155deg, #100716 0%, #1a0e24 47%, #100716 100%);
 }
 
 html[data-theme="light"] {
@@ -1031,7 +1031,7 @@ html[data-theme="light"] {
   --stories-line-strong: rgba(132,48,76,.26);
   --stories-panel: rgba(255,250,251,.88);
   --stories-panel-strong: rgba(255,249,251,.97);
-  --stories-panel-solid: #fff8fa;
+  --stories-panel-solid: #faf6ff;
   --stories-row: linear-gradient(95deg, rgba(255,250,251,.98), rgba(249,239,243,.96));
   --stories-search: linear-gradient(105deg, rgba(255,251,252,.96), rgba(246,235,240,.93));
   --stories-sidebar: linear-gradient(180deg, #fffafb 0%, #f4e9ed 100%);
@@ -1236,7 +1236,7 @@ body.velvet-burgundy-route .story-action-menu--reference .story-action-menu__tri
 }
 
 body.velvet-burgundy-route .reference-empty button {
-  color: #fff8fa !important;
+  color: #faf6ff !important;
   background: var(--stories-accent-strong) !important;
   border-color: color-mix(in srgb, var(--stories-accent-strong) 72%, white 8%) !important;
 }
@@ -1344,7 +1344,7 @@ body.velvet-burgundy-route .reference-stories-new {
   }
 
   body.velvet-burgundy-route .sidebar__avatar {
-    color: #fff8fa !important;
+    color: #faf6ff !important;
     background: var(--stories-accent-strong) !important;
     border-color: var(--stories-line-strong) !important;
   }
@@ -1508,7 +1508,7 @@ body.velvet-burgundy-route .reference-stories-new {
 }
 
 .reference-inbox__tabs > button.is-active b {
-  color: #35101f;
+  color: #2c1a3d;
   background: color-mix(in srgb, var(--stories-accent) 84%, #f2bdca);
 }
 
@@ -1650,7 +1650,7 @@ body.velvet-burgundy-route .reference-stories-new {
   display: grid;
   place-items: center;
   padding: 0 6px;
-  color: #35101f;
+  color: #2c1a3d;
   background: var(--stories-accent);
   border-radius: 999px;
   font-size: .69rem;
