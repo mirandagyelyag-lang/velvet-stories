@@ -188,3 +188,21 @@
 /* Access questions: contemporary geometric sans, coordinated with the futuristic wordmark. */
 .iv-step h1{font-family:"Rajdhani","Orbitron",system-ui,sans-serif;font-weight:500;letter-spacing:.015em;font-size:clamp(26px,5.4vw,37px);line-height:1.2}
 @media(max-width:600px){.iv-step h1{font-size:clamp(25px,5.8vw,33px);letter-spacing:0}}
+
+/* Living identity: lightweight CSS crystal sculpture, no images or canvas. */
+.iv-wordmark{margin-bottom:clamp(12px,2.6vh,24px)}
+.iv-sculpture{order:-1;position:relative;width:clamp(100px,12vw,150px);height:clamp(106px,15vh,150px);margin:0 auto 10px;perspective:550px;pointer-events:none;filter:drop-shadow(0 12px 19px rgba(95,42,122,.18));animation:iv-crystal-hover 7s ease-in-out infinite}
+.iv-sculpture__a,.iv-sculpture__b,.iv-sculpture__core{position:absolute;inset:15% 24%;display:block;transform-style:preserve-3d}
+.iv-sculpture__a{border-radius:30% 70% 44% 56%/54% 34% 66% 46%;background:linear-gradient(138deg,rgba(255,246,251,.75),rgba(223,167,201,.62) 27%,rgba(167,101,175,.44) 59%,rgba(252,223,239,.65));border:1px solid rgba(255,239,251,.7);box-shadow:inset -12px -8px 18px rgba(127,64,145,.2),inset 9px 8px 19px rgba(255,255,255,.52),0 0 22px rgba(211,150,211,.23);animation:iv-crystal-turn 13s ease-in-out infinite alternate}
+.iv-sculpture__b{inset:24% 13%;border-radius:63% 37% 58% 42%/34% 61% 39% 66%;border:1.5px solid rgba(226,165,212,.68);background:linear-gradient(130deg,rgba(255,236,248,.28),rgba(188,128,193,.13) 55%,rgba(255,255,255,.35));transform:rotate(-30deg) rotateY(54deg);animation:iv-crystal-orbit 17s linear infinite}
+.iv-sculpture__core{inset:39% 39%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff9ff,#e9b9dc 43%,#9c69b9 100%);box-shadow:0 0 24px rgba(227,169,231,.48);animation:iv-crystal-pulse 5s ease-in-out infinite alternate}
+.identidad-viva--dark .iv-sculpture__a{background:linear-gradient(138deg,rgba(244,210,255,.7),rgba(152,91,191,.55) 30%,rgba(65,29,111,.64) 65%,rgba(215,166,250,.62));border-color:rgba(228,185,255,.65)}
+.identidad-viva--dark .iv-sculpture__b{border-color:rgba(177,119,231,.72);background:linear-gradient(120deg,rgba(199,145,249,.23),rgba(91,46,143,.12))}
+.iv-spark{position:relative;z-index:1}
+@keyframes iv-crystal-hover{0%,100%{transform:translateY(4px) rotate(-4deg)}50%{transform:translateY(-9px) rotate(5deg)}}
+@keyframes iv-crystal-turn{from{transform:rotate(-25deg) rotateY(-30deg) rotateX(13deg)}to{transform:rotate(30deg) rotateY(38deg) rotateX(-15deg)}}
+@keyframes iv-crystal-orbit{from{transform:rotate(-30deg) rotateY(54deg)}to{transform:rotate(330deg) rotateY(414deg)}}
+@keyframes iv-crystal-pulse{to{transform:scale(1.25);opacity:.65}}
+@media(max-width:600px){.iv-wordmark{margin-bottom:10px}.iv-sculpture{width:92px;height:88px;margin-bottom:5px}.iv-spark{margin-bottom:10px}}
+@media(max-height:720px){.iv-sculpture{height:76px;width:84px;margin-bottom:3px}.iv-wordmark{margin-bottom:8px}}
+@media(prefers-reduced-motion:reduce){.iv-sculpture,.iv-sculpture__a,.iv-sculpture__b,.iv-sculpture__core{animation:none}}
