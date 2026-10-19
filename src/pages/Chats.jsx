@@ -699,16 +699,16 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
 
   return (
     <section className="chats-page chats-page--reference">
-      <header className="reference-stories-hero">
-        <div className="reference-stories-hero__private"><Crown size={19}/><span>STORY LIBRARY</span></div>
-        <div className="reference-stories-title" aria-label="Your Stories">
-          <span className="reference-stories-title__script">your</span>
-          <span className="reference-stories-title__line reference-stories-title__line--left" />
+      <header className="orvayne-library-head">
+        <div className="orvayne-library-head__eyebrow"><Crown size={19}/><span>STORY LIBRARY</span></div>
+        <div className="orvayne-library-head__title" aria-label="Your Stories">
+          <span className="orvayne-library-head__script">your</span>
+          <span className="orvayne-library-head__line orvayne-library-head__line--left" />
           <h1>STORIES</h1>
-          <span className="reference-stories-title__spark">✦</span>
-          <span className="reference-stories-title__line reference-stories-title__line--right" />
+          <span className="orvayne-library-head__spark">✦</span>
+          <span className="orvayne-library-head__line orvayne-library-head__line--right" />
         </div>
-        <div className="reference-stories-hero__actions">
+        <div className="orvayne-library-head__action">
           <button className="reference-stories-new" type="button" onClick={() => setPickerOpen(true)} aria-label="New story"><Sparkles size={26}/></button>
         </div>
       </header>
