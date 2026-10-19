@@ -990,3 +990,67 @@
     border-radius: 26px 26px 0 0;
   }
 }
+
+
+/* ORVAYNE 2026: actual Stories markup (reference-*, velvet-identity-*).
+   These are the live selectors, not the legacy .stories-header selectors. */
+.chats-page--reference{
+  background:radial-gradient(ellipse 115% 48% at 50% 0%,rgba(101,51,169,.28),transparent 77%),linear-gradient(180deg,#12081f,#0c0617 80%)!important;
+  color:#eee2ff!important;
+}
+.chats-page--reference .reference-stories-hero{
+  position:relative!important;overflow:hidden!important;isolation:isolate;
+  padding:38px 24px 48px!important;
+  border:1px solid rgba(189,145,245,.35)!important;
+  border-radius:26px!important;
+  background:radial-gradient(ellipse 70% 110% at 105% 10%,rgba(175,115,246,.3),transparent 72%),linear-gradient(145deg,#30154f,#160a2c 70%)!important;
+  box-shadow:inset 0 1px 0 rgba(235,213,255,.23),0 20px 60px rgba(5,0,15,.3)!important;
+}
+.chats-page--reference .reference-stories-hero::after{
+  content:"";position:absolute;z-index:-1;pointer-events:none;
+  width:250px;height:250px;right:-120px;top:-95px;
+  border:2px solid rgba(230,199,255,.45);border-radius:48%;
+  box-shadow:0 0 0 22px rgba(182,120,247,.1),inset 0 0 32px rgba(222,184,255,.2),0 0 38px rgba(151,91,222,.24);
+  animation:orv-story-orbit 14s ease-in-out infinite alternate;
+}
+.chats-page--reference .reference-stories-title h1{
+  color:#f1e6ff!important;text-shadow:0 0 28px rgba(186,133,255,.24)!important;
+  font-size:clamp(3rem,11vw,6rem)!important;letter-spacing:.13em!important;
+}
+.chats-page--reference :is(.reference-stories-hero__private,.reference-stories-title__script,.reference-stories-title__spark,.velvet-identity-tagline,.velvet-identity-heading,.velvet-identity-stats){
+  color:#c6a7f1!important;
+}
+.chats-page--reference .velvet-identity-stats{
+  margin-top:20px!important;margin-bottom:30px!important;
+  padding:17px 12px!important;border:1px solid rgba(176,131,232,.27)!important;
+  border-radius:17px!important;background:rgba(48,23,79,.5)!important;
+}
+.chats-page--reference .velvet-identity-stats b{color:#f1e6ff!important}
+.chats-page--reference .velvet-identity-continue__card{
+  border:1px solid rgba(184,144,238,.53)!important;border-radius:23px!important;
+  box-shadow:0 20px 60px rgba(5,0,16,.35),0 0 30px rgba(122,68,195,.13)!important;
+}
+.chats-page--reference .velvet-identity-continue__play{
+  background:#c5a4f3!important;color:#1a0a2e!important;
+}
+.chats-page--reference .library-purpose-note{
+  padding:19px 22px!important;border:1px solid rgba(176,131,232,.26)!important;
+  border-radius:18px!important;background:rgba(46,22,76,.55)!important;color:#dfc9fa!important;
+}
+.chats-page--reference :is(.reference-search,.reference-filter,.velvet-identity-chips){
+  background:rgba(43,20,73,.75)!important;border:1px solid rgba(186,146,239,.35)!important;
+  border-radius:16px!important;color:#e7d7ff!important;
+}
+.chats-page--reference .velvet-identity-chips .is-active{background:rgba(153,96,220,.36)!important;color:#fff!important}
+.chats-page--reference .reference-stories-new{
+  background:linear-gradient(145deg,#7c48bc,#361655)!important;
+  border:1px solid rgba(230,201,255,.6)!important;color:#f5eaff!important;
+  box-shadow:0 0 26px rgba(166,101,245,.24)!important;
+}
+@keyframes orv-story-orbit{from{transform:rotate(-18deg) scale(.92)}to{transform:rotate(18deg) scale(1.06)}}
+@media(max-width:700px){
+ .chats-page--reference .reference-stories-hero{padding:27px 19px 35px!important;margin:0 0 22px!important}
+ .chats-page--reference .reference-stories-title h1{font-size:clamp(2.5rem,10vw,4.4rem)!important;letter-spacing:.11em!important}
+ .chats-page--reference .reference-stories-hero::after{width:185px;height:185px;right:-95px;top:-70px}
+}
+@media(prefers-reduced-motion:reduce){.chats-page--reference .reference-stories-hero::after{animation:none}}
