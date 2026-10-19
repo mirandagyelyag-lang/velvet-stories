@@ -5,7 +5,7 @@ import { useTheme } from "../context/ThemeContext";
 import IdentidadViva from "../components/IdentidadViva/IdentidadViva";
 
 export default function Auth() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithProvider } = useAuth();
   const { theme, setTheme } = useTheme();
   const lightEntry = theme === "light";
   const [entered, setEntered] = useState(false);
@@ -57,6 +57,6 @@ export default function Auth() {
   return <main className={`velvet-gold-auth${lightEntry ? " orvayne-auth--light" : ""}`}>
     <style>{`.velvet-gold-auth{position:fixed;inset:0;z-index:100;overflow:hidden;background:#100716}.velvet-gold-auth.orvayne-auth--light{background:#f7f0ed}.velvet-gold-auth .entry-scene{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}`}</style>
     <iframe ref={frame} className="entry-scene" title="Orvayne — entrada" src={`/orvayne-molten-entry.html?theme=${lightEntry ? "light" : "dark"}&build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
-    <IdentidadViva open={entered} theme={lightEntry ? "light" : "dark"} onBack={() => {setEntered(false);frame.current?.contentWindow?.postMessage({type:"orvayne-auth-close"},window.location.origin);}} onSignIn={signIn} onSignUp={signUp} onResetPassword={async address => {const {error}=await supabase.auth.resetPasswordForEmail(address,{redirectTo:window.location.origin});if(error)throw error;}} />
+    <IdentidadViva open={entered} theme={lightEntry ? "light" : "dark"} onBack={() => {setEntered(false);frame.current?.contentWindow?.postMessage({type:"orvayne-auth-close"},window.location.origin);}} onSignIn={signIn} onSignUp={signUp} onSocialSignIn={signInWithProvider} onResetPassword={async address => {const {error}=await supabase.auth.resetPasswordForEmail(address,{redirectTo:window.location.origin});if(error)throw error;}} />
   </main>;
 }
