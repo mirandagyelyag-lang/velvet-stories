@@ -148,6 +148,14 @@ window.addEventListener("unhandledrejection", (event) => {
   recordVelvetRuntimeError(event.reason, "unhandled-rejection");
 });
 
+function AuthReadyApp() {
+  const { authLoading } = useAuth();
+  // Do not mount App's URL-rewriting navigation until Supabase has exchanged
+  // the Google OAuth ?code= callback for a persisted session.
+  if (authLoading) return null;
+  return <App />;
+}
+
 function AuthenticatedSpotify() {
   const { user, authLoading } = useAuth();
   if (authLoading || !user) return null;
@@ -168,7 +176,7 @@ createRoot(document.getElementById("root")).render(
                       <ChatsProvider>
                         <SpotifyAuthBootstrap />
                         <AuthenticatedSpotify />
-                        <App />
+                        <AuthReadyApp />
                       </ChatsProvider>
                     </LorebooksProvider>
                   </PersonasProvider>
