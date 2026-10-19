@@ -992,65 +992,101 @@
 }
 
 
-/* ORVAYNE 2026: actual Stories markup (reference-*, velvet-identity-*).
-   These are the live selectors, not the legacy .stories-header selectors. */
-.chats-page--reference{
-  background:radial-gradient(ellipse 115% 48% at 50% 0%,rgba(101,51,169,.28),transparent 77%),linear-gradient(180deg,#12081f,#0c0617 80%)!important;
-  color:#eee2ff!important;
+
+/* ORVAYNE Stories · quiet violet, legible mobile editorial layout */
+html body .chats-page--reference{
+ background:linear-gradient(180deg,#160b25 0%,#11091d 55%,#0c0716 100%)!important;
+ color:#eee5f8!important;
 }
-.chats-page--reference .reference-stories-hero{
-  position:relative!important;overflow:hidden!important;isolation:isolate;
-  padding:38px 24px 48px!important;
-  border:1px solid rgba(189,145,245,.35)!important;
-  border-radius:26px!important;
-  background:radial-gradient(ellipse 70% 110% at 105% 10%,rgba(175,115,246,.3),transparent 72%),linear-gradient(145deg,#30154f,#160a2c 70%)!important;
-  box-shadow:inset 0 1px 0 rgba(235,213,255,.23),0 20px 60px rgba(5,0,15,.3)!important;
+html body .chats-page--reference .reference-stories-hero{
+ display:grid!important;grid-template-columns:1fr auto!important;
+ align-items:start!important;gap:22px 12px!important;
+ min-height:0!important;height:auto!important;
+ margin:0 0 22px!important;padding:22px 18px 26px!important;
+ background:linear-gradient(145deg,#28163e,#180e29)!important;
+ border:1px solid rgba(171,136,212,.26)!important;
+ border-radius:18px!important;box-shadow:none!important;
+ overflow:visible!important;
 }
-.chats-page--reference .reference-stories-hero::after{
-  content:"";position:absolute;z-index:-1;pointer-events:none;
-  width:250px;height:250px;right:-120px;top:-95px;
-  border:2px solid rgba(230,199,255,.45);border-radius:48%;
-  box-shadow:0 0 0 22px rgba(182,120,247,.1),inset 0 0 32px rgba(222,184,255,.2),0 0 38px rgba(151,91,222,.24);
-  animation:orv-story-orbit 14s ease-in-out infinite alternate;
+html body .chats-page--reference .reference-stories-hero::after{display:none!important;content:none!important}
+html body .chats-page--reference .reference-stories-hero__private{
+ grid-column:1!important;grid-row:1!important;
+ position:static!important;transform:none!important;
+ display:flex!important;align-items:center!important;gap:10px!important;
+ margin:0!important;color:#bda5da!important;font-size:10px!important;
+ letter-spacing:.2em!important;
 }
-.chats-page--reference .reference-stories-title h1{
-  color:#f1e6ff!important;text-shadow:0 0 28px rgba(186,133,255,.24)!important;
-  font-size:clamp(3rem,11vw,6rem)!important;letter-spacing:.13em!important;
+html body .chats-page--reference .reference-stories-title{
+ grid-column:1 / -1!important;grid-row:2!important;
+ position:relative!important;display:flex!important;flex-direction:column!important;
+ align-items:center!important;justify-content:center!important;
+ width:100%!important;margin:0!important;padding:0!important;
+ transform:none!important;gap:5px!important;
 }
-.chats-page--reference :is(.reference-stories-hero__private,.reference-stories-title__script,.reference-stories-title__spark,.velvet-identity-tagline,.velvet-identity-heading,.velvet-identity-stats){
-  color:#c6a7f1!important;
+html body .chats-page--reference .reference-stories-title__script{
+ display:block!important;position:static!important;
+ transform:none!important;margin:0!important;
+ font-size:clamp(22px,6vw,32px)!important;line-height:1.1!important;
+ color:#c9b4e1!important;
 }
-.chats-page--reference .velvet-identity-stats{
-  margin-top:20px!important;margin-bottom:30px!important;
-  padding:17px 12px!important;border:1px solid rgba(176,131,232,.27)!important;
-  border-radius:17px!important;background:rgba(48,23,79,.5)!important;
+html body .chats-page--reference .reference-stories-title h1{
+ position:static!important;transform:none!important;
+ margin:0!important;padding:0!important;width:100%!important;
+ text-align:center!important;white-space:nowrap!important;
+ font-size:clamp(36px,9.5vw,65px)!important;line-height:1.05!important;
+ letter-spacing:.1em!important;color:#f1e8fa!important;
+ text-shadow:none!important;
 }
-.chats-page--reference .velvet-identity-stats b{color:#f1e6ff!important}
-.chats-page--reference .velvet-identity-continue__card{
-  border:1px solid rgba(184,144,238,.53)!important;border-radius:23px!important;
-  box-shadow:0 20px 60px rgba(5,0,16,.35),0 0 30px rgba(122,68,195,.13)!important;
+html body .chats-page--reference .reference-stories-title__spark{
+ display:block!important;position:static!important;transform:none!important;
+ margin:4px 0 0!important;color:#b79bd7!important;
 }
-.chats-page--reference .velvet-identity-continue__play{
-  background:#c5a4f3!important;color:#1a0a2e!important;
+html body .chats-page--reference :is(.reference-stories-title__line--left,.reference-stories-title__line--right){display:none!important}
+html body .chats-page--reference .reference-stories-hero__actions{
+ grid-column:2!important;grid-row:1!important;
+ position:static!important;transform:none!important;
+ display:flex!important;align-items:center!important;justify-content:end!important;
+ margin:0!important;padding:0!important;
 }
-.chats-page--reference .library-purpose-note{
-  padding:19px 22px!important;border:1px solid rgba(176,131,232,.26)!important;
-  border-radius:18px!important;background:rgba(46,22,76,.55)!important;color:#dfc9fa!important;
+html body .chats-page--reference .reference-stories-new{
+ width:44px!important;height:44px!important;min-height:44px!important;
+ border-radius:50%!important;background:rgba(115,77,156,.18)!important;
+ color:#dfcbf4!important;border:1px solid rgba(187,150,228,.42)!important;
+ box-shadow:none!important;
 }
-.chats-page--reference :is(.reference-search,.reference-filter,.velvet-identity-chips){
-  background:rgba(43,20,73,.75)!important;border:1px solid rgba(186,146,239,.35)!important;
-  border-radius:16px!important;color:#e7d7ff!important;
+html body .chats-page--reference .velvet-identity-tagline{
+ margin:0 0 23px!important;color:#bfaed1!important;
+ text-align:center!important;font-size:clamp(16px,4vw,21px)!important;
 }
-.chats-page--reference .velvet-identity-chips .is-active{background:rgba(153,96,220,.36)!important;color:#fff!important}
-.chats-page--reference .reference-stories-new{
-  background:linear-gradient(145deg,#7c48bc,#361655)!important;
-  border:1px solid rgba(230,201,255,.6)!important;color:#f5eaff!important;
-  box-shadow:0 0 26px rgba(166,101,245,.24)!important;
+html body .chats-page--reference .velvet-identity-stats{
+ margin:0 0 28px!important;padding:15px 8px!important;
+ background:transparent!important;border:0!important;
+ border-top:1px solid rgba(180,145,215,.23)!important;
+ border-bottom:1px solid rgba(180,145,215,.23)!important;
+ border-radius:0!important;box-shadow:none!important;
 }
-@keyframes orv-story-orbit{from{transform:rotate(-18deg) scale(.92)}to{transform:rotate(18deg) scale(1.06)}}
+html body .chats-page--reference .velvet-identity-stats b{color:#eee2f9!important}
+html body .chats-page--reference .velvet-identity-continue__card{
+ border:1px solid rgba(188,158,221,.32)!important;
+ border-radius:18px!important;box-shadow:none!important;
+}
+html body .chats-page--reference .velvet-identity-continue__play{
+ background:#c2a3e5!important;color:#170c26!important;
+}
+html body .chats-page--reference .library-purpose-note{
+ background:transparent!important;border:0!important;
+ border-top:1px solid rgba(180,145,215,.2)!important;
+ border-radius:0!important;box-shadow:none!important;
+ padding:16px 2px!important;color:#cfc0df!important;
+}
+html body .chats-page--reference :is(.reference-search,.reference-filter,.velvet-identity-chips){
+ background:rgba(47,29,67,.6)!important;
+ border:1px solid rgba(184,148,220,.28)!important;
+ border-radius:14px!important;box-shadow:none!important;
+}
 @media(max-width:700px){
- .chats-page--reference .reference-stories-hero{padding:27px 19px 35px!important;margin:0 0 22px!important}
- .chats-page--reference .reference-stories-title h1{font-size:clamp(2.5rem,10vw,4.4rem)!important;letter-spacing:.11em!important}
- .chats-page--reference .reference-stories-hero::after{width:185px;height:185px;right:-95px;top:-70px}
+ html body .chats-page--reference{padding:18px 16px calc(115px + env(safe-area-inset-bottom))!important}
+ html body .chats-page--reference .reference-stories-hero{padding:19px 17px 25px!important}
+ html body .chats-page--reference .reference-stories-title h1{font-size:clamp(33px,9vw,50px)!important}
+ html body .chats-page--reference .reference-stories-title__script{font-size:24px!important}
 }
-@media(prefers-reduced-motion:reduce){.chats-page--reference .reference-stories-hero::after{animation:none}}
