@@ -31,7 +31,7 @@ const EMPTY_STATS = { stories: 0, memories: 0 };
 function maskEmail(value = "") {
   const email = String(value || "").trim();
   const [local = "", domain = ""] = email.split("@");
-  if (!local || !domain) return "Signed in to Velvet";
+  if (!local || !domain) return "Signed in to Orvayne";
 
   const [domainName = "", ...domainRest] = domain.split(".");
   const maskedLocal = `${local.slice(0, 1) || "*"}${"*".repeat(Math.max(4, local.length - 1))}`;
@@ -63,7 +63,7 @@ function Profile({
   const [draft, setDraft] = useState({ displayName: "", tagline: "", quote: "", avatarUrl: "" });
 
   const metadata = user?.user_metadata || {};
-  const displayName = metadata.display_name || "Velvet owner";
+  const displayName = metadata.display_name || "Orvayne owner";
   const tagline = metadata.profile_tagline || "Private story collector.";
   const maskedEmail = maskEmail(user?.email);
   const quote = metadata.profile_quote || "Your private library, your rules.";
@@ -166,7 +166,7 @@ function Profile({
     { icon: UsersRound, label: "Roleplay Personas", value: personas.length, action: onManagePersonas },
     { icon: Globe2, label: "World & Lorebooks", value: lorebooks.length, action: onManageLorebooks },
     { icon: BookHeart, label: "Memories", value: stats.memories, action: onOpenMemories },
-    { icon: Search, label: "Search Velvet", action: onOpenSearch },
+    { icon: Search, label: "Search Orvayne", action: onOpenSearch },
     { icon: Settings2, label: "Settings", action: onOpenSettings },
     { icon: Activity, label: "AI Status", action: onOpenDiagnostics },
   ];
@@ -209,7 +209,7 @@ function Profile({
 
         <div className="profile-reference__private-banner">
           <span className="profile-reference__private-mark"><Crown size={20}/></span>
-          <div><strong>VELVET PRIVATE</strong><p>Your stories, characters and memories stay inside your private account.</p></div>
+          <div><strong>ORVAYNE PRIVATE</strong><p>Your stories, characters and memories stay inside your private account.</p></div>
           <button type="button" onClick={() => setAccessOpen(true)}>Manage <ChevronRight size={17}/></button>
         </div>
 
@@ -243,7 +243,7 @@ function Profile({
           <section className="profile-access-panel" role="dialog" aria-modal="true" aria-labelledby="profile-access-title">
             <header><div><p>PROFILE & ACCESS</p><h2 id="profile-access-title">Your private account</h2></div><button type="button" onClick={() => setAccessOpen(false)} aria-label="Close Profile and Access"><X size={20}/></button></header>
             <div className="profile-access-panel__identity"><div className="profile-access-panel__avatar">{avatarUrl ? <img src={avatarUrl} alt=""/> : <span>{initial}</span>}</div><div><strong>{displayName}</strong><small>{maskedEmail}</small></div></div>
-            <div className="profile-access-panel__status"><ShieldCheck size={18}/><div><strong>Private account</strong><p>Your stories, characters and memories are tied to this signed-in account. Velvet does not publish a public profile.</p></div></div>
+            <div className="profile-access-panel__status"><ShieldCheck size={18}/><div><strong>Private account</strong><p>Your stories, characters and memories are tied to this signed-in account. Orvayne does not publish a public profile.</p></div></div>
             <div className="profile-access-panel__rows">
               <div><span>Account</span><strong>{maskedEmail}</strong></div>
               <div><span>Session</span><strong>Active on this device</strong></div>
