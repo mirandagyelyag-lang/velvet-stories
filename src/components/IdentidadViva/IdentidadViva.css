@@ -159,3 +159,19 @@
 .identidad-viva::before{display:block!important;content:""!important;position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 54% 43% at 50% 49%,rgba(12,4,29,.76) 0%,rgba(12,4,29,.5) 56%,rgba(12,4,29,.08) 100%)}
 .identidad-viva--light::before{background:radial-gradient(ellipse 54% 43% at 50% 49%,rgba(247,240,237,.85),rgba(247,240,237,.48) 60%,rgba(247,240,237,.06))}
 .iv-content{z-index:2}
+
+
+/* ORVAYNE social sign-in: understated, readable over animated metal */
+.iv-social{width:100%;margin:26px auto 0;display:flex;flex-direction:column;gap:14px;position:relative;z-index:3}
+.iv-social__divider{display:flex;align-items:center;gap:12px;justify-content:center;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#d0bce9;white-space:nowrap}
+.iv-social__divider::before,.iv-social__divider::after{content:"";height:1px;flex:1;background:rgba(211,184,245,.28)}
+.iv-social__options{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.iv-social__options button{display:flex;align-items:center;justify-content:center;gap:10px;min-height:49px;padding:10px 12px;border-radius:13px;border:1px solid rgba(209,180,246,.45);background:rgba(28,12,48,.77);color:#f3eaff;font:500 14px system-ui,sans-serif;cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .2s,background .2s}
+.iv-social__options button:hover{background:rgba(75,37,112,.86);border-color:#d7b9fa}
+.iv-social__options button:disabled{opacity:.55;cursor:wait}
+.iv-social__options svg{width:20px;height:20px;flex:none}
+.identidad-viva--light .iv-social__divider{color:#67477f}
+.identidad-viva--light .iv-social__divider::before,.identidad-viva--light .iv-social__divider::after{background:rgba(96,63,139,.24)}
+.identidad-viva--light .iv-social__options button{background:rgba(255,255,255,.8);border-color:rgba(104,72,148,.33);color:#412a59}
+.identidad-viva--light .iv-social__options button:hover{background:#f0e7f9}
+@media(max-width:600px){.iv-social{margin-top:22px;gap:11px}.iv-social__options{gap:9px}.iv-social__options button{min-height:46px;font-size:13px;padding:9px 7px}}
