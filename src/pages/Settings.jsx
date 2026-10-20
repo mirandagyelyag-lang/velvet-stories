@@ -56,7 +56,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
     document.body.classList.add("velvet-burgundy-route");
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     const previousThemeColor = themeMeta?.getAttribute("content") || "";
-    const colors = { light: "#f7eff2", comfort: "#eee4dc", dark: "#10090e" };
+    const colors = { light: "#f7f0ed", comfort: "#e5f2fc", dark: "#120a1d" };
     themeMeta?.setAttribute("content", colors[theme] || colors.dark);
     return () => {
       document.documentElement.classList.remove("velvet-burgundy-route");
@@ -184,9 +184,9 @@ function Settings({ onBack, onOpenDiagnostics }) {
     <div className="settings-section-label" id="settings-personalize"><span>01</span><div><strong>Personalize</strong><small>How Orvayne looks and feels on your phone.</small></div></div>
     <div className="settings-group" id="settings-appearance"><header><Eye size={19}/><div><h2>Appearance</h2><p>Choose the light that feels best for reading.</p></div></header>
       <div className="setting-row"><strong>Theme</strong><div className="setting-segments">
-        <button className={theme==='light'?'active':''} onClick={()=>setTheme('light')}><Sun size={14}/> Light</button>
-        <button className={theme==='dark'?'active':''} onClick={()=>setTheme('dark')}><Moon size={14}/> Dark</button>
-        <button className={theme==='comfort'?'active':''} onClick={()=>setTheme('comfort')}><Eye size={14}/> Comfort</button>
+        <button className={theme==='light'?'active':''} onClick={()=>setTheme('light')}><Sun size={14}/> Blanco</button>
+        <button className={theme==='dark'?'active':''} onClick={()=>setTheme('dark')}><Moon size={14}/> Oscuro</button>
+        <button className={theme==='comfort'?'active':''} onClick={()=>setTheme('comfort')}><Eye size={14}/> Celeste</button>
       </div></div>
     </div>
     <div className="settings-group settings-group--reading"><header><Type size={19}/><div><h2>Reading experience</h2><p>Adjust stories without changing their content.</p></div></header>
