@@ -1213,6 +1213,10 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
     const noteForThisGeneration = chosenStoryPath
       ? `[CREATOR_SELECTED_STORY_PATH — REQUIRED NEXT BEAT]\n${chosenStoryPath}\n[END CREATOR_SELECTED_STORY_PATH]\n\n${ordinaryDirectorHints}`
       : ordinaryDirectorHints;
+    // Characters may advance time on their own when the scene naturally calls for it.
+    // Preserve user agency and the established physical continuity.
+    const characterTimeSkipRule = `[CHARACTER_INITIATED_TIME_SKIP — OPTIONAL, CONTINUITY FIRST]\n${character.name} may independently initiate a brief, natural time skip when an established activity, wait, sleep, work session, travel, or quiet interval genuinely warrants one. Do not require the user to request it. Never force a skip every turn, skip over an unresolved user action/question, or take control of the user's dialogue, feelings, decisions, or movements. Preserve the current location unless a transition was actually established; preserve who is present/absent, relationships, objects, unfinished tasks and the exact preceding events. Show a clear time transition (e.g. *[Two hours later]*), then resume with ${character.name} doing something concrete, consistent with their personality and the elapsed time. If the user is absent, ${character.name} can continue their own life or interact with already-established NPCs without teleporting the user back into the scene. Prefer a meaningful present-tense beat over filler or random resets. This is permission, not an obligation. [END CHARACTER_INITIATED_TIME_SKIP]`;
+    const generationDirectorInstruction = mergeDirectorHints(noteForThisGeneration, characterTimeSkipRule);
     const submittedDraft = cleanMessage;
     let userMessageSaved = false;
     let savedUserMessageId = "";
@@ -1241,7 +1245,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
           replyPreview: replyForThisMessage.content,
           replySender: replyForThisMessage.sender,
         } : {}),
-        directorInstruction: noteForThisGeneration,
+        directorInstruction: generationDirectorInstruction,
       });
       userMessageSaved = true;
       savedUserMessageId = savedUserMessage?.id || "";
@@ -1260,7 +1264,7 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
 
       setSending(false);
       const generationResult = await generateCharacterReply(character.id, {
-        directorInstruction: noteForThisGeneration,
+        directorInstruction: generationDirectorInstruction,
         expectedUserMessageId: savedUserMessage.id,
         diagnosticSource: "send",
       });
