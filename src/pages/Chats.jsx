@@ -147,7 +147,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
-    const colors = { light: "#f7eff2", comfort: "#eee4dc", dark: "#10090e" };
+    const colors = { light: "#f7f0ed", comfort: "#e5f2fc", dark: "#120a1d" };
     meta?.setAttribute("content", colors[theme] || colors.dark);
   }, [theme]);
 
