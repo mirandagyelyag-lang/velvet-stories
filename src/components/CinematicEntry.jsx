@@ -24,7 +24,11 @@ export default function CinematicEntry({ theme, onTheme, onEnter, entered=false,
         <div className="orv-cinema__art-halo" aria-hidden="true"/>
         <div className="orv-cinema__art-ring orv-cinema__art-ring--one" aria-hidden="true"/>
         <div className="orv-cinema__art-ring orv-cinema__art-ring--two" aria-hidden="true"/>
-        <div className="orv-cinema__art-mark" aria-hidden="true">“</div>{children}
+        <div className="orv-cinema__chat-preview" aria-label="Ejemplo ficticio de conversación">
+          <div className="orv-cinema__chat-bubble orv-cinema__chat-bubble--first">¿Y si cambiamos el final?</div>
+          <div className="orv-cinema__chat-bubble orv-cinema__chat-bubble--reply">Entonces tendremos que improvisar.</div>
+          <div className="orv-cinema__chat-bubble orv-cinema__chat-bubble--last">Eso suena mucho mejor.</div>
+        </div>{children}
         <div className="orv-cinema__art-caption">CADA PALABRA ABRE UN MUNDO <span>✦</span></div>
       </section>
     </main>
