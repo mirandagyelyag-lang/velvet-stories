@@ -1219,3 +1219,64 @@ html[data-theme="dark"] body .chats-page--reference :is(.reference-search,.refer
 }
 html[data-theme="dark"] body .chats-page--reference :is(.reference-search,.reference-filter) :is(input,button,svg){color:#ead8f3!important}
 html[data-theme="dark"] body .chats-page--reference .library-purpose-note{background:transparent!important;color:#d5c2df!important;border-color:rgba(188,143,211,.22)!important}
+
+/* Compact editorial Story Library header — all themes. */
+html body .chats-page--reference .orvayne-library-head{
+  position:relative!important;
+  min-height:190px!important;
+  height:auto!important;
+  padding:23px 30px 25px!important;
+  margin-bottom:20px!important;
+  border-radius:28px!important;
+  overflow:hidden!important;
+  box-shadow:0 10px 30px rgba(9,5,18,.12)!important;
+}
+html body .chats-page--reference .orvayne-library-head::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  pointer-events:none!important;
+  background:radial-gradient(ellipse at 50% 110%,rgba(201,153,225,.09),transparent 60%)!important;
+}
+html body .chats-page--reference .orvayne-library-head__eyebrow{
+  position:relative!important;z-index:1!important;
+  font-size:10px!important;letter-spacing:.19em!important;
+  gap:9px!important;
+}
+html body .chats-page--reference .orvayne-library-head__title{
+  position:relative!important;z-index:1!important;
+  display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:center!important;
+  gap:0!important;margin:-1px auto 0!important;
+  padding:0!important;transform:none!important;
+}
+html body .chats-page--reference .orvayne-library-head__script{
+  font-size:clamp(18px,2vw,25px)!important;
+  line-height:1!important;margin:0 0 3px!important;
+}
+html body .chats-page--reference .orvayne-library-head__title h1{
+  font-size:clamp(39px,5vw,62px)!important;
+  line-height:.96!important;letter-spacing:.075em!important;
+  margin:0!important;font-weight:500!important;
+}
+html body .chats-page--reference .orvayne-library-head__spark{
+  font-size:13px!important;margin-top:9px!important;
+}
+html body .chats-page--reference .orvayne-library-head__action{
+  position:absolute!important;right:25px!important;top:22px!important;
+  z-index:2!important;
+}
+html body .chats-page--reference .orvayne-library-head .reference-stories-new{
+  width:39px!important;height:39px!important;min-height:39px!important;
+}
+html body .chats-page--reference .orvayne-library-head .reference-stories-new svg{
+  width:19px!important;height:19px!important;
+}
+@media(max-width:600px){
+ html body .chats-page--reference .orvayne-library-head{
+   min-height:158px!important;padding:19px 18px 21px!important;border-radius:22px!important;
+ }
+ html body .chats-page--reference .orvayne-library-head__eyebrow{font-size:9px!important}
+ html body .chats-page--reference .orvayne-library-head__title h1{font-size:clamp(35px,9vw,48px)!important}
+ html body .chats-page--reference .orvayne-library-head__action{right:16px!important;top:15px!important}
+}
