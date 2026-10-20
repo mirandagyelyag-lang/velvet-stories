@@ -17,9 +17,9 @@ export default function CinematicEntry({ theme, onTheme, onEnter, entered=false,
     <div className="orv-cinema__aura orv-cinema__aura--two" aria-hidden="true"/>
     <header className="orv-cinema__top">
       <div className="orv-cinema__logo" aria-label="ORVAYNE">ORVAYN<span className="orv-cinema__e"><i/><i/><i/></span></div>
-      <div className="orv-cinema__topnote" aria-label="Personajes, conversaciones e historias"><span>PERSONAJES</span><i aria-hidden="true"/><span>CONVERSACIONES</span><i aria-hidden="true"/><span>HISTORIAS</span></div>
+      <div className="orv-cinema__topnote" aria-label="Characters, conversations and stories"><span>CHARACTERS</span><i aria-hidden="true"/><span>CONVERSATIONS</span><i aria-hidden="true"/><span>STORIES</span></div>
       <div className="orv-cinema__themes" aria-label="Apariencia">
-        {[["dark","Oscuro"],["light","Blanco"],["comfort","Celeste"]].map(([value,label])=><button key={value} type="button" className={theme===value?"is-active":""} aria-pressed={theme===value} onClick={()=>onTheme(value)}>{label}</button>)}
+        {[["dark","Dark"],["light","Light"],["comfort","Sky Blue"]].map(([value,label])=><button key={value} type="button" className={theme===value?"is-active":""} aria-pressed={theme===value} onClick={()=>onTheme(value)}>{label}</button>)}
       </div>
     </header>
     <main className="orv-cinema__stage">
