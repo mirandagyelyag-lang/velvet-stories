@@ -224,3 +224,13 @@
 .iv-globe{width:148px;height:148px;flex-basis:148px;margin-bottom:-3px;filter:drop-shadow(0 0 12px rgba(173,93,236,.4))}
 .iv-globe__canvas{width:180px;height:180px;transform:scale(.8222);transform-origin:top left}
 @media(max-width:600px){.iv-globe{width:148px;height:148px;flex-basis:148px;margin-bottom:-3px}}
+
+/* Clean orbit silhouettes outside the rotating globe; no diagonal map paths. */
+.iv-globe{position:relative;isolation:isolate;overflow:visible}
+.iv-globe__canvas{position:relative;z-index:1}
+.iv-globe__ring{position:absolute;left:-8%;top:19%;width:116%;height:62%;border:1px solid rgba(213,147,255,.7);border-radius:50%;pointer-events:none;z-index:2;box-shadow:0 0 4px rgba(186,106,244,.3);animation:iv-globe-orbit 15s linear infinite}
+.iv-globe__ring--one{transform:rotate(-28deg);animation-name:iv-globe-orbit}
+.iv-globe__ring--two{transform:rotate(63deg);border-color:rgba(188,108,245,.48);animation-name:iv-globe-orbit-alt;animation-duration:20s}
+@keyframes iv-globe-orbit{from{transform:rotate(-28deg)}to{transform:rotate(332deg)}}
+@keyframes iv-globe-orbit-alt{from{transform:rotate(63deg)}to{transform:rotate(-297deg)}}
+@media(prefers-reduced-motion:reduce){.iv-globe__ring{animation:none}}
