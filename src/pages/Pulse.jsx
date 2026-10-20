@@ -175,20 +175,14 @@ function Pulse({ onOpenCharacter, onBrowseStories, onNewStory, onOpenMemories, o
           />
         ) : (
           <>
-            <header className="pulse-header pulse-header--editorial reference-stories-hero">
-              <div className="reference-stories-hero__private"><Crown size={19}/><span>STORY MOMENTS</span></div>
+            <header className="pulse-header pulse-header--compact">
               <div className="pulse-header__copy">
-                <div className="reference-stories-title pulse-header__editorial-title" aria-label="Your Pulse">
-                  <span className="reference-stories-title__script">your</span>
-                  <span className="reference-stories-title__line reference-stories-title__line--left" />
-                  <h1>PULSE</h1>
-                  <span className="reference-stories-title__spark">✦</span>
-                  <span className="reference-stories-title__line reference-stories-title__line--right" />
-                </div>
+                <span className="pulse-header__eyebrow">STORY MOMENTS</span>
+                <h1>Your Pulse</h1>
                 <p>Your stories, tucked back into the people they belong to.</p>
               </div>
-              <button className="pulse-header__library reference-stories-new" type="button" onClick={onBrowseStories} aria-label="Open Stories">
-                <BookOpenText size={26}/>
+              <button className="pulse-header__library" type="button" onClick={onBrowseStories} aria-label="Open Stories">
+                <BookOpenText size={23}/>
               </button>
             </header>
 
