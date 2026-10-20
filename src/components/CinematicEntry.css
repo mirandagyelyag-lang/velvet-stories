@@ -45,3 +45,16 @@
 .orv-cinema__topnote span:hover{color:var(--accent);transform:translateY(-1px)}
 @media(max-width:1150px){.orv-cinema__topnote{gap:9px;letter-spacing:.09em;font-size:9px}}
 @media(max-width:900px){.orv-cinema__topnote{display:none!important}}
+
+/* Stronger editorial hierarchy for the introductory statement. */
+.orv-cinema__copy{max-width:610px}
+.orv-cinema__eyebrow{display:inline-flex;align-items:center;gap:13px;font-size:11px;letter-spacing:.2em}
+.orv-cinema__eyebrow:before{content:"";display:block;width:32px;height:1px;background:var(--accent);opacity:.85}
+.orv-cinema__copy h1{font-family:'Playfair Display',Georgia,serif;font-size:clamp(56px,5.1vw,86px);font-weight:400;line-height:1.13;letter-spacing:-.055em;margin:25px 0 25px}
+.orv-cinema__copy h1 em{font-weight:400;color:var(--accent);letter-spacing:-.045em}
+.orv-cinema__copy>p{max-width:470px;font-size:clamp(15px,1.1vw,18px);line-height:1.85;letter-spacing:.005em}
+.orv-cinema__actions{margin-top:35px}
+.orv-cinema__enter{display:inline-flex;align-items:center;justify-content:space-between;gap:40px;min-width:195px;padding:17px 23px;border-radius:999px;letter-spacing:.18em;font-size:11px}
+.orv-cinema__enter span{margin-left:0;font-size:19px;font-weight:400}
+@media(max-width:900px){.orv-cinema__copy{max-width:none}.orv-cinema__eyebrow{justify-content:center}.orv-cinema__copy>p{margin-left:auto;margin-right:auto}}
+@media(max-width:540px){.orv-cinema__copy h1{font-size:clamp(48px,11vw,66px)}.orv-cinema__enter{min-width:180px}}
