@@ -699,31 +699,14 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
 
   return (
     <section className="chats-page chats-page--reference" ref={(node) => { if (node) node.style.setProperty("background", theme === "dark" ? "radial-gradient(ellipse at 50% 0%, #30203e 0%, #1c1228 52%, #100b18 100%)" : "", theme === "dark" ? "important" : ""); }}>
-      <header className="orvayne-library-head">
-        <div className="orvayne-library-head__eyebrow"><Crown size={19}/><span>STORY LIBRARY</span></div>
-        <div className="orvayne-library-head__title" aria-label="Your Stories">
-          <span className="orvayne-library-head__script">your</span>
-          <span className="orvayne-library-head__line orvayne-library-head__line--left" />
-          <h1>STORIES</h1>
-          <span className="orvayne-library-head__spark">✦</span>
-          <span className="orvayne-library-head__line orvayne-library-head__line--right" />
+      <header className="orvayne-library-head orvayne-library-head--editorial">
+        <div className="orvayne-library-head__editorial-copy">
+          <span className="orvayne-library-head__eyebrow">YOUR PRIVATE LIBRARY</span>
+          <h1>Your Stories</h1>
+          {!loading && <p className="orvayne-library-head__summary">{identityStats.stories} {identityStats.stories === 1 ? "story" : "stories"} <span>·</span> {identityStats.characters} characters <span>·</span> {identityStats.favorites} favorites</p>}
         </div>
-        <div className="orvayne-library-head__action">
-          <button className="reference-stories-new" type="button" onClick={() => setPickerOpen(true)} aria-label="New story"><Sparkles size={26}/></button>
-        </div>
+        <button className="orvayne-library-head__editorial-new" type="button" onClick={() => setPickerOpen(true)} aria-label="Create new story"><Plus size={22}/></button>
       </header>
-
-      <p className="velvet-identity-tagline">Your stories, only for you</p>
-
-      {!loading && conversations.length > 0 && (
-        <div className="velvet-identity-stats" aria-label="Library summary">
-          <div><b>{identityStats.stories}</b><span>STORIES</span></div>
-          <i />
-          <div><b>{identityStats.characters}</b><span>CHARACTERS</span></div>
-          <i />
-          <div><b>{identityStats.favorites}</b><span>FAVORITES</span></div>
-        </div>
-      )}
 
       {!loading && featuredStory && view === "active" && !search.trim() && (() => {
         const fc = featuredStory.character;
@@ -731,7 +714,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         const fline = shelfPreview(featuredStory.latestMessage?.content || fc.firstMessage || fc.role || "Continue the story.");
         return (
           <section className="velvet-identity-continue">
-            <header className="velvet-identity-heading"><span>CONTINUE</span><i /><em>{formatShelfDate(featuredStory.updated_at)}</em></header>
+            <header className="velvet-identity-heading"><span>CONTINUE READING</span><i /><em>{formatShelfDate(featuredStory.updated_at)}</em></header>
             <button type="button" className="velvet-identity-continue__card" onClick={() => onOpenCharacter(fc, featuredStory.id)}>
               <span className="velvet-identity-continue__art">{fart ? <img src={fart} alt="" /> : <span className="velvet-identity-continue__fallback">{fc.initials}</span>}</span>
               <span className="velvet-identity-continue__shade" />
@@ -749,8 +732,6 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
           </section>
         );
       })()}
-
-      <div className="library-purpose-note"><strong>Stories are your archive.</strong><span>Organize, favorite, duplicate, export or restore complete story timelines here.</span></div>
 
       <div className="reference-search-wrap">
         <label className="reference-search">
