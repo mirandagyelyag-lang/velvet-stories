@@ -444,3 +444,42 @@
    border-radius:17px!important;overflow:hidden!important;
  }
 }
+
+/* Solid plum canvas: identical to Your Stories, without discover blue overlays. */
+@media(max-width:760px){
+ html.velvet-discover-route.velvet-burgundy-route,
+ html.velvet-discover-route.velvet-burgundy-route body,
+ html.velvet-discover-route.velvet-burgundy-route body #root,
+ html.velvet-discover-route.velvet-burgundy-route body .app,
+ html.velvet-discover-route.velvet-burgundy-route body .app__content,
+ html.velvet-discover-route.velvet-burgundy-route body .velvet-route-stage,
+ html.velvet-discover-route.velvet-burgundy-route body .chats-page.characters-library,
+ body.velvet-discover-route.velvet-burgundy-route,
+ body.velvet-discover-route.velvet-burgundy-route #root,
+ body.velvet-discover-route.velvet-burgundy-route .app,
+ body.velvet-discover-route.velvet-burgundy-route .app__content,
+ body.velvet-discover-route.velvet-burgundy-route .velvet-route-stage,
+ body.velvet-discover-route.velvet-burgundy-route .chats-page.characters-library {
+   --discover-bg:#1d1124!important;
+   --discover-panel:#29182f!important;
+   --stories-canvas:#1d1124!important;
+   --stories-atmosphere:none!important;
+   background:#1d1124!important;
+   background-color:#1d1124!important;
+   background-image:none!important;
+ }
+ body.velvet-discover-route.velvet-burgundy-route .characters-library::before,
+ body.velvet-discover-route.velvet-burgundy-route .characters-library::after,
+ body.velvet-discover-route.velvet-burgundy-route .velvet-route-stage::before,
+ body.velvet-discover-route.velvet-burgundy-route .velvet-route-stage::after {
+   background:none!important;
+   background-image:none!important;
+   box-shadow:none!important;
+ }
+ body.velvet-discover-route.velvet-burgundy-route .characters-library__hero-simple h1{
+   color:#f7edf3!important;-webkit-text-fill-color:#f7edf3!important;
+ }
+ body.velvet-discover-route.velvet-burgundy-route .characters-library__hero-simple .characters-library__hero-create{
+   background:#352039!important;color:#eac6da!important;border-color:#956582!important;
+ }
+}
