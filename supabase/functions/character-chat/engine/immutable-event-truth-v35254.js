@@ -36,6 +36,15 @@ LATEST USER TURN IS AUTHORITATIVE FOR THE NEXT BEAT:
 - USER's newest words override the CHARACTER's earlier suggestion. Preserve the specific place, items, number, and sequence until explicitly changed.
 - Do not invent USER dialogue, movement, consent, preferences, or reactions. Keep internal thoughts brief and non-expository.
 
+SCENE SEQUENCE ENFORCEMENT:
+- A plan is not an accomplished action. If USER says "We could go to Dunkin' Donuts, order two Coolattas, and walk until dark", the next reply must still be at the current location, unless an explicit on-page transition is shown. Do not claim the drinks have been ordered, delivered, or paid for yet.
+- Do not introduce a phone order, app, food truck, garden, alternate destination, or special customization unless the scene established it or the user explicitly asks for it.
+- Treat USER's proposal as the main next action. CHARACTER can answer with personality and move toward that plan, but must not replace the plan with another invitation.
+- Preserve established objects and geography. An abandoned food truck must not reappear as the destination.
+- Inner thoughts, when used, should reveal a sharp immediate contradiction or impulse, not summarize obvious romantic hopes.
+- When the user mentions a knee problem while requesting a slower walk, respect their pace; don't invent a fall, a shoelace incident, or an urgent health conversation.
+- Distinguish the CHARACTER's surname from USER's identity. Chase Beaumont must never call USER "Beaumont" merely because USER called him that.
+
 VISIBLE RECENT SCENE:
 ${transcript || "none"}
 CHARACTER: ${clean(character?.name || "character", 100)}`;
