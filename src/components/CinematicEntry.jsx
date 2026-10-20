@@ -14,28 +14,21 @@ export default function CinematicEntry({ theme, onTheme, onEnter }) {
     </header>
     <main className="orv-cinema__stage">
       <section className="orv-cinema__copy">
-        <span className="orv-cinema__eyebrow">UN ESPACIO PARA IMAGINAR</span>
-        <h1>No solo lees.<br/><em>Lo vives.</em></h1>
-        <p>Crea personajes, conversa sin guiones y descubre hasta dónde puede llegar una historia cuando tú decides qué sucede.</p>
+        <span className="orv-cinema__eyebrow">PERSONAJES QUE COBRAN VIDA</span>
+        <h1>Todo empieza<br/>con un <em>hola.</em></h1>
+        <p>Conversaciones que se convierten en historias. El resto lo decides tú.</p>
         <div className="orv-cinema__actions">
           <button type="button" className="orv-cinema__enter" onClick={onEnter}>ENTRAR <span>↗</span></button>
         </div>
       </section>
-      <section className="orv-cinema__theater" aria-label="Un universo privado de historias">
-        <div className="orv-cinema__orbit" aria-hidden="true"/>
-        <div className="orv-cinema__halo" aria-hidden="true"/>
-        <div className="orv-cinema__core" aria-hidden="true"><span>O</span></div>
-        <div className="orv-cinema__scene orv-cinema__scene--private">
-          <div className="orv-cinema__scene-top"><span className="orv-cinema__live-dot"/> UN UNIVERSO POR DESCUBRIR</div>
-          <div className="orv-cinema__scene-body">
-            <span className="orv-cinema__sender">SOLO TUYO</span>
-            <blockquote>Cada conversación abre una nueva posibilidad.</blockquote>
-            <p>Tus personajes y tus historias permanecen dentro de tu espacio personal.</p>
-          </div>
-          <div className="orv-cinema__scene-bottom"><span>TU HISTORIA. TUS DECISIONES.</span><span aria-hidden="true">✧</span></div>
-        </div>
+      <section className="orv-cinema__theater orv-cinema__theater--art" aria-label="Arte abstracto inspirado en conversaciones">
+        <div className="orv-cinema__art-halo" aria-hidden="true"/>
+        <div className="orv-cinema__art-ring orv-cinema__art-ring--one" aria-hidden="true"/>
+        <div className="orv-cinema__art-ring orv-cinema__art-ring--two" aria-hidden="true"/>
+        <div className="orv-cinema__art-mark" aria-hidden="true">“</div>
+        <div className="orv-cinema__art-caption">CADA PALABRA ABRE UN MUNDO <span>✦</span></div>
       </section>
     </main>
-    <footer className="orv-cinema__foot"><span>ORVAYNE <strong>PRIVATE STORIES</strong></span><span>NO SOLO LEES LA HISTORIA. FORMAS PARTE DE ELLA.</span></footer>
+    <footer className="orv-cinema__foot"><span>ORVAYNE <strong>PRIVATE STORIES</strong></span><span>IMAGINA · CONVERSA · CREA</span></footer>
   </div>;
 }
