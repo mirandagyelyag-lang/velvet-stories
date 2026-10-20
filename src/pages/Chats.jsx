@@ -577,7 +577,8 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
 
   function collectionArt(type) {
     const custom = String(type).startsWith("collection:") ? collections.find((item) => item.id === String(type).slice("collection:".length)) : null;
-    const match = conversations.find((item) => {
+    const orderedConversations = type === "trash" ? [...conversations].sort((a, b) => new Date(b.trashed_at || 0) - new Date(a.trashed_at || 0)) : conversations;
+    const match = orderedConversations.find((item) => {
       if (type === "favorites") return !item.trashed_at && !item.archived_at && item.is_pinned;
       if (type === "archived") return !item.trashed_at && item.archived_at;
       if (type === "trash") return Boolean(item.trashed_at);
