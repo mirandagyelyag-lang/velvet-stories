@@ -87,3 +87,18 @@
 .orv-cinema__copy h1.orv-cinema__slogan{font-family:'Jost',Arial,sans-serif!important;font-weight:500!important;font-size:clamp(62px,6.2vw,105px)!important;letter-spacing:-.045em!important;line-height:1.06!important}
 .orv-cinema__copy h1.orv-cinema__slogan em{font-family:inherit!important;font-style:normal!important;font-weight:400!important;letter-spacing:-.055em!important}
 @media(max-width:540px){.orv-cinema__copy h1.orv-cinema__slogan{font-size:clamp(46px,10.6vw,70px)!important}}
+
+/* Login inhabits the orbital theater, replacing the quotation art. */
+.orv-cinema--login .orv-cinema__art-mark,.orv-cinema--login .orv-cinema__art-caption{display:none}
+.orv-cinema--login .orv-cinema__theater--art{isolation:isolate}
+.orv-cinema--login .identidad-viva{position:absolute!important;inset:0!important;z-index:5!important;background:transparent!important;overflow:visible!important;isolation:auto!important}
+.orv-cinema--login .identidad-viva::before,.orv-cinema--login .identidad-viva::after,.orv-cinema--login .iv-halo{display:none!important}
+.orv-cinema--login .iv-back{top:-10px;left:0}
+.orv-cinema--login .iv-content{width:min(100%,460px);padding:18px 8px!important}
+.orv-cinema--login .iv-content::before{display:none!important}
+.orv-cinema--login .iv-wordmark{display:none!important}
+.orv-cinema--login .iv-globe{width:105px!important;height:105px!important;flex-basis:105px!important;transform:scale(.7)!important;margin:-18px auto -12px!important}
+.orv-cinema--login .iv-step h1{font-size:clamp(23px,2.5vw,33px)!important;margin:14px 0 23px!important}
+.orv-cinema--login .iv-links{margin-top:18px}
+@media(max-width:900px){.orv-cinema--login .orv-cinema__copy{display:none}.orv-cinema--login .orv-cinema__stage{display:flex;align-items:center;justify-content:center;min-height:calc(100dvh - 150px)}.orv-cinema--login .orv-cinema__theater--art{width:min(92vw,520px);height:570px;min-height:570px}.orv-cinema--login .iv-content{width:min(88vw,460px)}}
+@media(max-width:540px){.orv-cinema--login .orv-cinema__theater--art{height:540px;min-height:540px}.orv-cinema--login .iv-back{top:0}}
