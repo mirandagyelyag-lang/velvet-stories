@@ -25,9 +25,9 @@ export default function CinematicEntry({ theme, onTheme, onEnter, entered=false,
     <main className="orv-cinema__stage">
       <section className="orv-cinema__copy">
         <h1 className="orv-cinema__slogan">Beyond<br/><em>the Script.</em></h1>
-        <p>Más allá del guion. Personajes, conversaciones e historias que toman forma con tus decisiones.</p>
+        <p>Beyond the script. Characters, conversations, and stories shaped by your choices.</p>
         <div className="orv-cinema__actions">
-          <button type="button" className="orv-cinema__enter" onClick={onEnter}>ENTRAR <span>↗</span></button>
+          <button type="button" className="orv-cinema__enter" onClick={onEnter}>ENTER <span>↗</span></button>
         </div>
       </section>
       <section className="orv-cinema__theater orv-cinema__theater--art" aria-label="Arte abstracto inspirado en conversaciones">
