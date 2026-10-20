@@ -277,3 +277,52 @@
 :root[data-theme="comfort"] .sidebar__footer .sidebar__profile:hover{
   background:linear-gradient(135deg,#a6c9e9,#92bde2)!important;
 }
+
+/* Dark mode: a cohesive plum-purple sidebar instead of near-black/brown. */
+:root[data-theme="dark"] body .sidebar{
+ background:linear-gradient(180deg,#261332 0%,#21112c 48%,#1b1027 100%)!important;
+ border-right:1px solid rgba(184,136,216,.22)!important;
+ color:#eee2f6!important;
+}
+:root[data-theme="dark"] body .sidebar__brand,
+:root[data-theme="dark"] body .sidebar__brand span{color:#f3e7fb!important}
+:root[data-theme="dark"] body .sidebar__link{
+ color:#bfaecf!important;
+}
+:root[data-theme="dark"] body .sidebar__link svg,
+:root[data-theme="dark"] body .sidebar__global-search svg{color:#bb93ed!important}
+:root[data-theme="dark"] body .sidebar__link--active{
+ background:#3a254c!important;
+ color:#fff4ff!important;
+ border-color:rgba(195,155,233,.10)!important;
+}
+:root[data-theme="dark"] body .sidebar__link:hover,
+:root[data-theme="dark"] body .sidebar__global-search:hover{
+ background:#342143!important;color:#fff4ff!important;
+}
+:root[data-theme="dark"] body .sidebar__footer{
+ border-top-color:rgba(194,154,220,.2)!important;
+}
+:root[data-theme="dark"] body .sidebar__global-search{
+ background:#2b1939!important;
+ border:1px solid rgba(189,145,215,.30)!important;
+ color:#e2ccef!important;
+}
+:root[data-theme="dark"] body .sidebar__global-search kbd{
+ color:#cbb4da!important;border-color:rgba(189,145,215,.3)!important;
+}
+:root[data-theme="dark"] body .sidebar__footer .sidebar__theme,
+:root[data-theme="dark"] body .sidebar__footer .sidebar__profile{
+ background:#382346!important;
+ border:1px solid rgba(192,145,220,.17)!important;
+ color:#eee0f5!important;
+}
+:root[data-theme="dark"] body .sidebar__footer .sidebar__profile-copy strong{color:#f4e8fa!important}
+:root[data-theme="dark"] body .sidebar__footer .sidebar__profile-copy small{color:#c6afd5!important}
+:root[data-theme="dark"] body .sidebar__footer .sidebar__theme:hover,
+:root[data-theme="dark"] body .sidebar__footer .sidebar__profile:hover{
+ background:#483054!important;
+}
+:root[data-theme="dark"] body .sidebar__avatar{
+ background:#79569c!important;border-color:rgba(216,185,240,.35)!important;
+}
