@@ -1148,3 +1148,27 @@ html[data-theme="light"] body .chats-page--reference :is(.reference-search,.refe
 html[data-theme="light"] body .chats-page--reference :is(.reference-search,.reference-filter) :is(input,button,svg){
  color:#785269!important;
 }
+
+/* The live Stories banner is .orvayne-library-head (not .reference-stories-hero). */
+html[data-theme="comfort"] body .chats-page--reference .orvayne-library-head{
+ background:linear-gradient(135deg,#cfe6fa 0%,#e9f5ff 58%,#dceefd 100%)!important;
+ border:1px solid rgba(73,145,213,.42)!important;
+ box-shadow:0 16px 40px rgba(44,106,171,.10)!important;
+ color:#183a61!important;
+}
+html[data-theme="comfort"] body .chats-page--reference .orvayne-library-head :is(.orvayne-library-head__eyebrow,.orvayne-library-head__script,.orvayne-library-head__spark,.orvayne-library-head__title h1,.orvayne-library-head__title){
+ color:#183a61!important;text-shadow:none!important;
+}
+html[data-theme="comfort"] body .chats-page--reference .orvayne-library-head__eyebrow{color:#3979b5!important}
+html[data-theme="comfort"] body .chats-page--reference .orvayne-library-head__line{background:rgba(57,121,181,.34)!important}
+html[data-theme="light"] body .chats-page--reference .orvayne-library-head{
+ background:linear-gradient(135deg,#f1e4e9 0%,#fffaf8 58%,#f5e8ec 100%)!important;
+ border:1px solid rgba(164,119,141,.38)!important;
+ box-shadow:0 16px 40px rgba(108,66,90,.08)!important;
+ color:#493240!important;
+}
+html[data-theme="light"] body .chats-page--reference .orvayne-library-head :is(.orvayne-library-head__eyebrow,.orvayne-library-head__script,.orvayne-library-head__spark,.orvayne-library-head__title h1,.orvayne-library-head__title){
+ color:#493240!important;text-shadow:none!important;
+}
+html[data-theme="light"] body .chats-page--reference .orvayne-library-head__eyebrow{color:#a4778d!important}
+html[data-theme="light"] body .chats-page--reference .orvayne-library-head__line{background:rgba(164,119,141,.3)!important}
