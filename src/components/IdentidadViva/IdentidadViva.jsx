@@ -1,6 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import "./IdentidadViva.css";
 
+function OrvayneGlobe(){
+  const host=useRef(null);
+  useEffect(()=>{
+    let disposed=false,globe;
+    const el=host.current;
+    if(!el)return;
+    const setup=()=>{
+      if(disposed||!window.Globe||!el)return;
+      try{
+        globe=window.Globe()(el).width(142).height(142).backgroundColor('rgba(0,0,0,0)').showAtmosphere(true).atmosphereColor('#bb83ee').atmosphereAltitude(.2).globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg').pointsData(Array.from({length:95},(_,i)=>({lat:Math.asin(2*(i+.5)/95-1)*180/Math.PI,lng:(i*137.508)%360-180,size:.09}))).pointLat('lat').pointLng('lng').pointAltitude(.008).pointRadius('size').pointColor(()=>'#e6b9ff');
+        const controls=globe.controls();controls.autoRotate=true;controls.autoRotateSpeed=.65;controls.enableZoom=false;controls.enablePan=false;controls.enableDamping=true;
+        const canvas=el.querySelector('canvas');if(canvas)canvas.setAttribute('aria-hidden','true');
+      }catch(err){console.warn('Globe preview unavailable',err)}
+    };
+    if(window.Globe){setup()}else{
+      const script=document.createElement('script');script.src='https://unpkg.com/globe.gl';script.async=true;script.onload=setup;document.head.appendChild(script);
+    }
+    return()=>{disposed=true;if(globe){try{globe.pauseAnimation();globe._destructor?.()}catch{}}if(el)el.replaceChildren()};
+  },[]);
+  return <div className="iv-globe" aria-label="Globo 3D animado" role="img"><div ref={host} className="iv-globe__canvas"/></div>;
+}
+
 export default function IdentidadViva({open,theme="dark",onBack,onSignIn,onSignUp,onResetPassword,onSocialSignIn}) {
   const [step,setStep]=useState("email");
   const [mode,setMode]=useState("signin");
@@ -36,7 +58,7 @@ export default function IdentidadViva({open,theme="dark",onBack,onSignIn,onSignU
   return <section className={`identidad-viva identidad-viva--${theme}${open?" is-open":""}`} aria-hidden={!open} inert={!open} aria-label="Acceso a Orvayne">
     <button type="button" className="iv-back" onClick={onBack}>← VOLVER</button>
     <div className="iv-halo" aria-hidden="true"/>
-    <div className="iv-content"><div className="iv-wordmark" aria-label="ORVAYNE"><span>ORVAYN</span><span className="iv-wordmark__e" aria-hidden="true"><i/><i/><i/></span></div><div className="iv-sculpture" aria-hidden="true"><span className="iv-sculpture__a"/><span className="iv-sculpture__b"/><span className="iv-sculpture__core"/></div>
+    <div className="iv-content"><div className="iv-wordmark" aria-label="ORVAYNE"><span>ORVAYN</span><span className="iv-wordmark__e" aria-hidden="true"><i/><i/><i/></span></div><OrvayneGlobe/>
       <div className="iv-step" key={step+"-"+mode}>
         <h1>{step==="email"?(mode==="signup"?"Empecemos por tu correo":"¿Cuál es tu correo?"):"Ahora tu contraseña"}</h1>
         <form onSubmit={next}>
