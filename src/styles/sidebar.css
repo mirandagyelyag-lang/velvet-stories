@@ -259,3 +259,21 @@
     box-shadow: 0 0 0 2px color-mix(in srgb,var(--stories-accent,var(--accent)) 35%,transparent);
   }
 }
+
+/* Comfort: richer blue footer cards, retaining readable navy text. */
+:root[data-theme="comfort"] .sidebar__footer .sidebar__theme,
+:root[data-theme="comfort"] .sidebar__footer .sidebar__profile{
+  background:linear-gradient(135deg,#b8d7f1 0%,#a7cbea 100%)!important;
+  border:1px solid #84b3db!important;
+  color:#173e69!important;
+  box-shadow:0 5px 15px rgba(31,91,147,.10);
+}
+:root[data-theme="comfort"] .sidebar__footer .sidebar__theme svg,
+:root[data-theme="comfort"] .sidebar__footer .sidebar__profile-copy strong,
+:root[data-theme="comfort"] .sidebar__footer .sidebar__profile-copy small{
+  color:#173e69!important;
+}
+:root[data-theme="comfort"] .sidebar__footer .sidebar__theme:hover,
+:root[data-theme="comfort"] .sidebar__footer .sidebar__profile:hover{
+  background:linear-gradient(135deg,#a6c9e9,#92bde2)!important;
+}
