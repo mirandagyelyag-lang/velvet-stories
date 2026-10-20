@@ -102,3 +102,15 @@
 .orv-cinema--login .iv-links{margin-top:18px}
 @media(max-width:900px){.orv-cinema--login .orv-cinema__copy{display:none}.orv-cinema--login .orv-cinema__stage{display:flex;align-items:center;justify-content:center;min-height:calc(100dvh - 150px)}.orv-cinema--login .orv-cinema__theater--art{width:min(92vw,520px);height:570px;min-height:570px}.orv-cinema--login .iv-content{width:min(88vw,460px)}}
 @media(max-width:540px){.orv-cinema--login .orv-cinema__theater--art{height:540px;min-height:540px}.orv-cinema--login .iv-back{top:0}}
+
+/* Anonymous fictional chat preview: no private character names or messages. */
+.orv-cinema__chat-preview{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;gap:17px;width:min(88%,410px);margin:auto;pointer-events:none}
+.orv-cinema__chat-bubble{max-width:83%;padding:16px 20px;border-radius:20px;font-family:'Jost',Arial,sans-serif;font-size:clamp(14px,1.15vw,18px);line-height:1.45;letter-spacing:.005em;box-shadow:0 12px 34px rgba(0,0,0,.12);backdrop-filter:blur(12px);animation:orvChatFloat 7s ease-in-out infinite}
+.orv-cinema__chat-bubble--first,.orv-cinema__chat-bubble--last{align-self:flex-end;border-bottom-right-radius:6px;background:var(--accent);color:var(--bg,#1b0f26)}
+.orv-cinema__chat-bubble--reply{align-self:flex-start;border-bottom-left-radius:6px;background:color-mix(in srgb,var(--ink) 9%,var(--bg) 91%);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);color:var(--ink);animation-delay:-2s}
+.orv-cinema__chat-bubble--last{animation-delay:-4s}
+.orv-cinema__theater--art>.orv-cinema__art-mark{display:none!important}
+.orv-cinema--login .orv-cinema__chat-preview{display:none!important}
+@keyframes orvChatFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@media(max-width:540px){.orv-cinema__chat-preview{width:min(92%,340px);gap:10px}.orv-cinema__chat-bubble{padding:11px 14px;font-size:13px;border-radius:16px}.orv-cinema__chat-bubble--first,.orv-cinema__chat-bubble--last{border-bottom-right-radius:5px}.orv-cinema__chat-bubble--reply{border-bottom-left-radius:5px}}
+@media(prefers-reduced-motion:reduce){.orv-cinema__chat-bubble{animation:none}}
