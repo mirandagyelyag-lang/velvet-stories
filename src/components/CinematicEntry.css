@@ -82,3 +82,8 @@
 .orv-cinema__copy h1.orv-cinema__slogan{font-size:clamp(64px,6.2vw,108px);line-height:1.08;letter-spacing:-.055em}
 .orv-cinema__copy h1.orv-cinema__slogan em{white-space:nowrap;color:var(--accent)}
 @media(max-width:540px){.orv-cinema__copy h1.orv-cinema__slogan{font-size:clamp(49px,11vw,72px)}}
+
+/* Brand headline: modern, confident sans serif instead of ornate book typography. */
+.orv-cinema__copy h1.orv-cinema__slogan{font-family:'Jost',Arial,sans-serif!important;font-weight:500!important;font-size:clamp(62px,6.2vw,105px)!important;letter-spacing:-.045em!important;line-height:1.06!important}
+.orv-cinema__copy h1.orv-cinema__slogan em{font-family:inherit!important;font-style:normal!important;font-weight:400!important;letter-spacing:-.055em!important}
+@media(max-width:540px){.orv-cinema__copy h1.orv-cinema__slogan{font-size:clamp(46px,10.6vw,70px)!important}}
