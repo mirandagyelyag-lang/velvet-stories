@@ -220,3 +220,7 @@
 .iv-globe__canvas{width:180px;height:180px}
 @media(max-width:600px){.iv-globe{width:180px;height:180px;flex-basis:180px;margin-bottom:-8px}}
 @media(max-height:720px){.iv-globe{transform:scale(.78);margin-top:-20px;margin-bottom:-22px}}
+
+.iv-globe{width:148px;height:148px;flex-basis:148px;margin-bottom:-3px;filter:drop-shadow(0 0 12px rgba(173,93,236,.4))}
+.iv-globe__canvas{width:180px;height:180px;transform:scale(.8222);transform-origin:top left}
+@media(max-width:600px){.iv-globe{width:148px;height:148px;flex-basis:148px;margin-bottom:-3px}}
