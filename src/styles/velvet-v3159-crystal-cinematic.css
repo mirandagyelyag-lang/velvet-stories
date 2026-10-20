@@ -684,3 +684,22 @@ body[data-velvet-page] .mobile-nav .sidebar__link--active svg{
 @media(prefers-reduced-motion:reduce){
  body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial)::after{animation:none}
 }
+
+/* Internal identity parity: the same three palettes as the animated entrance. */
+:root[data-theme="dark"] body[data-velvet-page]{--orv-ink:#f2e8ff;--orv-line:rgba(190,145,232,.24);--orv-panel:rgba(32,19,46,.87);--orv-glow:rgba(167,122,213,.27)}
+:root[data-theme="light"] body[data-velvet-page]{--orv-ink:#493240;--orv-line:rgba(157,111,135,.25);--orv-panel:rgba(255,250,248,.87);--orv-glow:rgba(164,119,141,.2)}
+:root[data-theme="comfort"] body[data-velvet-page]{--orv-ink:#183a61;--orv-line:rgba(57,121,181,.25);--orv-panel:rgba(244,250,255,.88);--orv-glow:rgba(57,121,181,.22)}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial){background:radial-gradient(ellipse at 100% 0%,rgba(188,131,152,.18),transparent 72%),linear-gradient(135deg,#fffaf8,#f2e7e9)!important}
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header,.pulse-header--editorial){background:radial-gradient(ellipse at 100% 0%,rgba(92,165,232,.22),transparent 72%),linear-gradient(135deg,#f4faff,#dceefa)!important}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header h1,.pulse-header--editorial h1){color:#493240!important}
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header h1,.pulse-header--editorial h1){color:#183a61!important}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) .pulse-page{--pulse-accent:#a4778d;--pulse-accent-strong:#785269;--pulse-line:rgba(157,111,135,.25);--pulse-ink:#493240;--pulse-ink-soft:#715266;--pulse-muted:#806575}
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) .pulse-page{--pulse-accent:#3979b5;--pulse-accent-strong:#245c92;--pulse-line:rgba(57,121,181,.25);--pulse-ink:#183a61;--pulse-ink-soft:#355f89;--pulse-muted:#4e7094}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header__new,.pulse-header__library,.reference-stories-new){background:linear-gradient(135deg,#f5e5eb,#e8d4dd)!important;border-color:rgba(157,111,135,.4)!important;color:#493240!important;box-shadow:none!important}
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header__new,.pulse-header__library,.reference-stories-new){background:linear-gradient(135deg,#dceefa,#c4e1f7)!important;border-color:rgba(57,121,181,.4)!important;color:#183a61!important;box-shadow:none!important}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) :is(.story-feature,.story-poster,.pulse-character-card){background-color:#fffaf8!important;border-color:rgba(157,111,135,.26)!important}
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) :is(.story-feature,.story-poster,.pulse-character-card){background-color:#f4faff!important;border-color:rgba(57,121,181,.26)!important}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header__eyebrow,.reference-stories-hero__private){color:#a4778d!important}
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) :is(.stories-header__eyebrow,.reference-stories-hero__private){color:#3979b5!important}
+:root[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) .stories-tabs button.active{background:rgba(57,121,181,.16)!important}
+:root[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) .stories-tabs button.active{background:rgba(164,119,141,.15)!important}
