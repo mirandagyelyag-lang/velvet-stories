@@ -7,20 +7,46 @@ function OrvayneGlobe(){
     let disposed=false,globe;
     const el=host.current;
     if(!el)return;
-    const setup=()=>{
+    const setup=async()=>{
       if(disposed||!window.Globe||!el)return;
       try{
-        globe=window.Globe()(el).width(142).height(142).backgroundColor('rgba(0,0,0,0)').showAtmosphere(true).atmosphereColor('#bb83ee').atmosphereAltitude(.2).globeImageUrl('//unpkg.com/three-globe/example/img/earth-night.jpg').pointsData(Array.from({length:95},(_,i)=>({lat:Math.asin(2*(i+.5)/95-1)*180/Math.PI,lng:(i*137.508)%360-180,size:.09}))).pointLat('lat').pointLng('lng').pointAltitude(.008).pointRadius('size').pointColor(()=>'#e6b9ff');
-        const controls=globe.controls();controls.autoRotate=true;controls.autoRotateSpeed=.65;controls.enableZoom=false;controls.enablePan=false;controls.enableDamping=true;
+        const size=180;
+        globe=window.Globe()(el).width(size).height(size).backgroundColor('rgba(0,0,0,0)')
+          .showAtmosphere(true).atmosphereColor('#a66ac8').atmosphereAltitude(.075)
+          .globeImageUrl(null).showGraticules(false);
+        const material=globe.globeMaterial();
+        if(material?.color)material.color.set('#100b18');
+        if(material?.emissive)material.emissive.set('#090512');
+        const arcs=[
+          {startLat:-34,startLng:-70,endLat:51,endLng:-1},
+          {startLat:40,startLng:-74,endLat:35,endLng:139},
+          {startLat:19,startLng:-99,endLat:48,endLng:2},
+          {startLat:-23,startLng:-46,endLat:52,endLng:13},
+          {startLat:37,startLng:127,endLat:-34,endLng:18}
+        ];
+        globe.arcsData(arcs).arcColor(()=>['#bb78cb','#78428f']).arcAltitude(.22)
+          .arcStroke(.28).arcDashLength(.42).arcDashGap(.16).arcDashAnimateTime(6500);
+        const controls=globe.controls();controls.autoRotate=true;controls.autoRotateSpeed=.65;
+        controls.enableZoom=false;controls.enablePan=false;controls.enableDamping=true;
         const canvas=el.querySelector('canvas');if(canvas)canvas.setAttribute('aria-hidden','true');
-      }catch(err){console.warn('Globe preview unavailable',err)}
+        // Public geographic boundaries, converted into tiny hexagonal light points.
+        const response=await fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson');
+        if(!response.ok)throw new Error('Map data unavailable');
+        const geo=await response.json();
+        if(disposed)return;
+        globe.hexPolygonsData(geo.features).hexPolygonGeoJsonGeometry('geometry')
+          .hexPolygonResolution(3).hexPolygonMargin(.78).hexPolygonAltitude(.008)
+          .hexPolygonColor(()=> '#a99aae').hexPolygonUseDots(true)
+          .hexPolygonDotResolution(1);
+      }catch(err){console.warn('ORVAYNE globe detail unavailable',err)}
     };
     if(window.Globe){setup()}else{
-      const script=document.createElement('script');script.src='https://unpkg.com/globe.gl';script.async=true;script.onload=setup;document.head.appendChild(script);
+      const script=document.createElement('script');script.src='https://unpkg.com/globe.gl@2.45.0/dist/globe.gl.min.js';
+      script.async=true;script.onload=setup;document.head.appendChild(script);
     }
     return()=>{disposed=true;if(globe){try{globe.pauseAnimation();globe._destructor?.()}catch{}}if(el)el.replaceChildren()};
   },[]);
-  return <div className="iv-globe" aria-label="Globo 3D animado" role="img"><div ref={host} className="iv-globe__canvas"/></div>;
+  return <div className="iv-globe" aria-label="Planeta 3D de puntos con órbitas violetas" role="img"><div ref={host} className="iv-globe__canvas"/></div>;
 }
 
 export default function IdentidadViva({open,theme="dark",onBack,onSignIn,onSignUp,onResetPassword,onSocialSignIn}) {
