@@ -1,4 +1,5 @@
 // Velvet 3.53.90 · Story Authority Engine
+import { buildUserAgencyContract } from "./user-intent-agency-v1.js";
 const clean=(v="",m=900)=>String(v??"").replace(/\s+/g," ").trim().slice(0,m);
 const norm=v=>clean(v,4000).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’']/g,"'").replace(/[^a-z0-9' ]/g," ").replace(/\s+/g," ").trim();
 const PATH_MARKER="[CREATOR_SELECTED_STORY_PATH — REQUIRED NEXT BEAT]";
@@ -33,8 +34,8 @@ export function evaluateStoryAuthorityV35390({contract={},reply=""}={}){
  return {required:true,fulfilled,issues,action:contract.action,strength:contract.strength};
 }
 export function storyAuthorityPromptV35390(contract={}){
- if(!contract?.action)return "";
- return `STORY AUTHORITY ENGINE 3.53.90 · strength ${contract.strength}/100
+ if(!contract?.action)return buildUserAgencyContract({latestUserMessage:contract?.instruction||""});
+ return `${buildUserAgencyContract({latestUserMessage:contract?.instruction||""})}\nSTORY AUTHORITY ENGINE 3.53.90 · strength ${contract.strength}/100
 CREATOR INTENT CONTROLS WHAT HAPPENS. CHARACTER IDENTITY CONTROLS HOW IT HAPPENS.
 Required action/outcome: ${contract.action}. Execute it visibly when physically/canonically possible. Do not replace completion with wanting, almost doing, preparing, discussing, implying or asking permission on the creator's behalf. Preserve user agency: never invent the user's reciprocation, feelings, dialogue or voluntary movement. Character voice, emotion, hesitation before execution, style and consequences remain character-specific. A newer explicit creator override cancels an older path. Public actions create witness/consequence state for people actually present.`;
 }
