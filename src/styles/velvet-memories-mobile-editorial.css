@@ -130,3 +130,65 @@
     padding-inline: 12px !important;
   }
 }
+
+/* Memories index: same solid plum canvas and editorial scale as Stories. */
+@media(max-width:760px){
+ html.velvet-burgundy-route:has(.memories-character-index),
+ html.velvet-burgundy-route:has(.memories-character-index) body,
+ body.velvet-burgundy-route:has(.memories-character-index),
+ body.velvet-burgundy-route:has(.memories-character-index) #root,
+ body.velvet-burgundy-route:has(.memories-character-index) .app,
+ body.velvet-burgundy-route:has(.memories-character-index) .app__content,
+ body.velvet-burgundy-route:has(.memories-character-index) .velvet-route-stage,
+ body.velvet-burgundy-route:has(.memories-character-index) .memories-character-index {
+   --stories-canvas:#1d1124!important;
+   --stories-atmosphere:none!important;
+   background:#1d1124!important;background-image:none!important;
+ }
+ body.velvet-burgundy-route:has(.memories-character-index) .velvet-route-stage::before,
+ body.velvet-burgundy-route:has(.memories-character-index) .velvet-route-stage::after,
+ body.velvet-burgundy-route:has(.memories-character-index) .memories-character-index::before,
+ body.velvet-burgundy-route:has(.memories-character-index) .memories-character-index::after {
+   background:none!important;background-image:none!important;box-shadow:none!important;
+ }
+ body.velvet-burgundy-route .memories-character-index .memories-reference__hero--compact{
+   display:flex!important;flex-direction:row!important;align-items:center!important;
+   justify-content:space-between!important;gap:12px!important;
+   width:100%!important;height:auto!important;min-height:0!important;
+   margin:0 0 18px!important;padding:12px 0 10px!important;
+   border:0!important;border-radius:0!important;
+   background:transparent!important;background-image:none!important;box-shadow:none!important;
+ }
+ body.velvet-burgundy-route .memories-character-index .memories-reference__hero-copy{
+   display:block!important;flex:1 1 auto!important;min-width:0!important;
+ }
+ body.velvet-burgundy-route .memories-character-index .memories-reference__eyebrow{
+   display:block!important;margin:0 0 8px!important;color:#d4adc3!important;
+   font:600 10px/1.4 "Manrope",sans-serif!important;letter-spacing:.19em!important;
+ }
+ body.velvet-burgundy-route .memories-character-index .memories-reference__hero--compact h1{
+   margin:0!important;padding:0!important;
+   font:500 clamp(36px,9vw,46px)/1.08 "Cormorant Garamond",Georgia,serif!important;
+   letter-spacing:-.02em!important;text-transform:none!important;
+   color:#f7edf3!important;-webkit-text-fill-color:#f7edf3!important;
+   background:none!important;
+ }
+ body.velvet-burgundy-route .memories-character-index .memories-reference__hero--compact p{
+   margin:9px 0 0!important;font-size:12px!important;line-height:1.4!important;
+   color:#bfa6b9!important;
+ }
+ body.velvet-burgundy-route .memories-character-index .memories-reference__new--compact{
+   display:grid!important;place-items:center!important;flex:0 0 46px!important;
+   width:46px!important;height:46px!important;min-height:46px!important;
+   margin:0!important;padding:0!important;border-radius:50%!important;
+   background:#352039!important;color:#eac6da!important;
+   border:1px solid #956582!important;box-shadow:none!important;
+ }
+ body.velvet-burgundy-route .memories-character-index .memories-reference__search-wrap{
+   margin:0 0 16px!important;
+ }
+ body.velvet-burgundy-route .memories-character-index .reference-search{
+   background:#29182f!important;background-image:none!important;
+   border:1px solid #503353!important;border-radius:17px!important;box-shadow:none!important;
+ }
+}
