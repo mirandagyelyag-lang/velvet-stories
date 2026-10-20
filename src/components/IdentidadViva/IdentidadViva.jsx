@@ -14,21 +14,9 @@ function OrvayneGlobe(){
         globe=window.Globe()(el).width(size).height(size).backgroundColor('rgba(0,0,0,0)')
           .showAtmosphere(true).atmosphereColor('#b879e9').atmosphereAltitude(.055).showGraticules(false);
         const material=globe.globeMaterial();
-        if(material?.color)material.color.set('#d4a2f4');
-        if(material?.emissive)material.emissive.set('#190b25');
-        // Three complete orbital rings, not short surface-to-surface arcs.
-        const rings=[
-          {tilt:25,shift:10,color:'rgba(212,143,255,.82)'},
-          {tilt:-49,shift:72,color:'rgba(175,99,237,.7)'},
-          {tilt:67,shift:-48,color:'rgba(225,178,255,.55)'}
-        ];
-        const paths=rings.map(r=>({color:r.color,coords:Array.from({length:181},(_,i)=>{
-          const angle=i*2*Math.PI/180;
-          const tilt=r.tilt*Math.PI/180;
-          return {lat:Math.asin(Math.sin(tilt)*Math.sin(angle))*180/Math.PI,lng:(angle*180/Math.PI+r.shift+540)%360-180};
-        })}));
-        globe.pathsData(paths).pathPoints('coords').pathPointLat('lat').pathPointLng('lng')
-          .pathColor('color').pathAltitude(.31).pathStroke(.36).pathResolution(2);
+        if(material?.color)material.color.set('#ffffff');
+        if(material?.emissive)material.emissive.set('#000000');
+        // Avoid geographic paths that draw diagonal lines over the globe.
         globe.pointOfView({lat:18,lng:-42,altitude:1.9},0);
         const controls=globe.controls();controls.autoRotate=true;controls.autoRotateSpeed=1.1;
         controls.enableZoom=false;controls.enablePan=false;controls.enableDamping=true;
@@ -68,7 +56,7 @@ function OrvayneGlobe(){
     }
     return()=>{disposed=true;if(script)script.onload=null;if(globe){try{globe.pauseAnimation();globe._destructor?.()}catch{}}if(el)el.replaceChildren()};
   },[]);
-  return <div className="iv-globe" aria-label="Globo terráqueo violeta con continentes punteados y órbitas animadas" role="img"><div ref={host} className="iv-globe__canvas"/></div>;
+  return <div className="iv-globe" aria-label="Globo terráqueo violeta con continentes punteados y órbitas animadas" role="img"><div ref={host} className="iv-globe__canvas"/><span className="iv-globe__ring iv-globe__ring--one"/><span className="iv-globe__ring iv-globe__ring--two"/></div>;
 }
 
 export default function IdentidadViva({open,theme="dark",onBack,onSignIn,onSignUp,onResetPassword,onSocialSignIn}) {
