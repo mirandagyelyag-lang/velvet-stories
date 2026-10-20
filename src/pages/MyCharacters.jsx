@@ -258,28 +258,15 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onOpenStory, onEditC
 function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, onBack }) {
   const inTrash = view === "trash";
   return (
-    <header className={`characters-library__compact-hero${inTrash ? "" : " reference-stories-hero"}`}>
-      {!inTrash && <div className="reference-stories-hero__private"><Crown size={19}/><span>PRIVATE CAST</span></div>}
+    <header className="characters-library__compact-hero characters-library__hero-simple">
       <div className="characters-library__compact-copy">
-        {inTrash ? (
-          <h1>Trash</h1>
-        ) : (
-          <div className="reference-stories-title characters-library__editorial-title" aria-label="Your Characters">
-            <span className="reference-stories-title__script">your</span>
-            <span className="reference-stories-title__line reference-stories-title__line--left" />
-            <h1>CHARACTERS</h1>
-            <span className="reference-stories-title__spark">✦</span>
-            <span className="reference-stories-title__line reference-stories-title__line--right" />
-          </div>
-        )}
-        <p>{inTrash ? `${count} deleted ${count === 1 ? "character" : "characters"}` : `Your private cast · ${count} saved`}</p>
+        {inTrash ? <h1>Trash</h1> : <>
+          <span className="characters-library__simple-eyebrow">YOUR PRIVATE CAST</span>
+          <h1>Your Characters</h1>
+        </>}
+        <p>{inTrash ? `${count} deleted ${count === 1 ? "character" : "characters"}` : `${count} characters · Your private cast`}</p>
       </div>
-
-      {inTrash ? (
-        <button className="characters-library__hero-back" type="button" onClick={onBack}>Back</button>
-      ) : (
-        <button className="characters-library__hero-create reference-stories-new" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={26}/></button>
-      )}
+      {inTrash ? <button className="characters-library__hero-back" type="button" onClick={onBack}>Back</button> : <button className="characters-library__hero-create" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={22}/></button>}
     </header>
   );
 }
