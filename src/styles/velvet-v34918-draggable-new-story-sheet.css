@@ -49,15 +49,6 @@
 
   .conversation-picker.conversation-picker--editorial > .conversation-picker__scroll {
     min-height: 0 !important;
-    height: 0 !important;
-    flex: 1 1 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    touch-action: pan-y !important;
-    -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior-y: contain !important;
-  }
-  .conversation-picker.conversation-picker--editorial .conversation-picker__list > button {
-    touch-action: pan-y !important;
+    height: auto !important;
   }
 }
