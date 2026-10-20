@@ -16,12 +16,19 @@ function OrvayneGlobe(){
         const material=globe.globeMaterial();
         if(material?.color)material.color.set('#d4a2f4');
         if(material?.emissive)material.emissive.set('#190b25');
-        globe.arcsData([
-          {startLat:-34,startLng:-70,endLat:51,endLng:-1},
-          {startLat:40,startLng:-74,endLat:35,endLng:139},
-          {startLat:-23,startLng:-46,endLat:52,endLng:13}
-        ]).arcColor(()=>['rgba(207,131,255,.95)','rgba(157,78,224,.45)'])
-          .arcAltitude(.42).arcStroke(.35).arcDashLength(.85).arcDashGap(.15).arcDashAnimateTime(9000);
+        // Three complete orbital rings, not short surface-to-surface arcs.
+        const rings=[
+          {tilt:25,shift:10,color:'rgba(212,143,255,.82)'},
+          {tilt:-49,shift:72,color:'rgba(175,99,237,.7)'},
+          {tilt:67,shift:-48,color:'rgba(225,178,255,.55)'}
+        ];
+        const paths=rings.map(r=>({color:r.color,coords:Array.from({length:181},(_,i)=>{
+          const angle=i*2*Math.PI/180;
+          const tilt=r.tilt*Math.PI/180;
+          return {lat:Math.asin(Math.sin(tilt)*Math.sin(angle))*180/Math.PI,lng:(angle*180/Math.PI+r.shift+540)%360-180};
+        })}));
+        globe.pathsData(paths).pathPoints('coords').pathPointLat('lat').pathPointLng('lng')
+          .pathColor('color').pathAltitude(.31).pathStroke(.36).pathResolution(2);
         globe.pointOfView({lat:18,lng:-42,altitude:1.9},0);
         const controls=globe.controls();controls.autoRotate=true;controls.autoRotateSpeed=1.1;
         controls.enableZoom=false;controls.enablePan=false;controls.enableDamping=true;
@@ -45,7 +52,13 @@ function OrvayneGlobe(){
         const pattern=document.createElement('canvas');pattern.width=8;pattern.height=8;
         const pc=pattern.getContext('2d');pc.fillStyle='#d5a1f7';pc.beginPath();pc.arc(4,4,1.5,0,Math.PI*2);pc.fill();
         ctx.globalCompositeOperation='destination-in';ctx.fillStyle=ctx.createPattern(pattern,'repeat');ctx.fillRect(0,0,2048,1024);
-        ctx.globalCompositeOperation='destination-over';ctx.fillStyle='#090512';ctx.fillRect(0,0,2048,1024);
+        // A faint dot field on the oceans prevents the globe going blank as it turns.
+        ctx.globalCompositeOperation='destination-over';
+        const ocean=document.createElement('canvas');ocean.width=12;ocean.height=12;
+        const oc=ocean.getContext('2d');oc.fillStyle='rgba(145,88,182,.24)';
+        oc.beginPath();oc.arc(6,6,.85,0,Math.PI*2);oc.fill();
+        ctx.fillStyle=ctx.createPattern(ocean,'repeat');ctx.fillRect(0,0,2048,1024);
+        ctx.fillStyle='#090512';ctx.fillRect(0,0,2048,1024);
         globe.globeImageUrl(canvas.toDataURL('image/png'));
       }catch(err){console.warn('ORVAYNE globe detail unavailable',err)}
     };
