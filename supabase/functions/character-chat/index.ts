@@ -493,7 +493,10 @@ Deno.serve(async (request) => {
     const turnIntent = openingRegeneration
       ? { kind: "opening", silentCount: 0, medium: "in_person", isQuestion: false, normalized: "" }
       : classifyTurnIntent(latestUserMessage, messages);
-    const responseLanguage = detectResponseLanguage(latestUserMessage, previousCharacterMessage);
+    const isMateoSpanishOnly = /^mateo(?:\s+silva)?$/i.test(String(configuredCharacter.name || "").trim());
+    const responseLanguage = isMateoSpanishOnly
+      ? "Español exclusivamente: narración, diálogos, pensamientos, aperturas Instant Story, regeneraciones y continuaciones deben estar en español. No mezcles inglés con español aunque el usuario escriba en inglés o haya respuestas anteriores en inglés. Conserva nombres propios y no traduzcas los mensajes del usuario."
+      : detectResponseLanguage(latestUserMessage, previousCharacterMessage);
     const selectedMemories = selectLongStoryMemories(loaded.memories, { recentText: messages.slice(-20).map((message) => message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content).join(" "), latestUserMessage, characterName: configuredCharacter.name, userName: userIdentity.name });
     // An opening rewrite has no preceding transcript from which relevance can
     // be inferred. Keep the lorebook available instead of accidentally giving
@@ -4890,7 +4893,7 @@ STORY MOVEMENT
 - Interest is proved through choices with cost: staying, rearranging plans, inviting, remembering and using a detail, risking embarrassment, sharing access, telling an inconvenient truth. Do not merely narrate that they care.
 - Keep side characters ordinary and independent. Preserve active calls, chats, games, arguments and tasks across silent turns.
 - Do not invent exact time spans, prior messages, promises, relatives, group chats, gifts, schedules, betrayal, illness, danger, exes or jealousy without visible support.
-- Match the user's current language: ${responseLanguage}. Keep established names and character voice intact.
+- LANGUAGE IS MANDATORY: ${responseLanguage}. For Mateo Silva, use Spanish ONLY for narration, dialogue, internal thoughts and generated openings regardless of earlier English messages. Keep established names and character voice intact.
 
 ${currentBeatPolicy}\n\n${storyAuthorityPromptV35390Text}\n\n${fullStoryIntegrationPromptV35391}\n\n${relationshipEvolutionPromptV35392}\n\n${socialWorldPromptV35393}\n\nTURN
 Mode: ${turnIntent.kind}; question: ${turnIntent.isQuestion ? "yes" : "no"}; medium: ${turnIntent.medium}; silent streak: ${turnIntent.silentCount}.
