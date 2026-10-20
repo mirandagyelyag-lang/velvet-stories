@@ -1,64 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./IdentidadViva.css";
 
-function OrvayneGlobe({theme='dark'}){
-  const host=useRef(null);
-  useEffect(()=>{
-    let disposed=false,globe,script;
-    const el=host.current;
-    if(!el)return;
-    const setup=async()=>{
-      if(disposed||!window.Globe||!el)return;
-      try{
-        const size=180;
-        globe=window.Globe()(el).width(size).height(size).backgroundColor('rgba(0,0,0,0)')
-          .showAtmosphere(true).atmosphereColor(theme==='comfort'?'#5eaeef':theme==='light'?'#b889aa':'#b879e9').atmosphereAltitude(.055).showGraticules(false);
-        const material=globe.globeMaterial();
-        if(material?.color)material.color.set('#ffffff');
-        if(material?.emissive)material.emissive.set('#000000');
-        // Avoid geographic paths that draw diagonal lines over the globe.
-        globe.pointOfView({lat:18,lng:-42,altitude:1.9},0);
-        const controls=globe.controls();controls.autoRotate=true;controls.autoRotateSpeed=1.1;
-        controls.enableZoom=false;controls.enablePan=false;controls.enableDamping=true;
-        const response=await fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson');
-        if(!response.ok)throw new Error('Map data unavailable');
-        const geo=await response.json();if(disposed)return;
-        const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=1024;
-        const ctx=canvas.getContext('2d');
-        const xy=p=>[(p[0]+180)/360*canvas.width,(90-p[1])/180*canvas.height];
-        ctx.fillStyle=theme==='comfort'?'#7ec7ff':theme==='light'?'#684356':'#d5a1f7';
-        for(const feature of geo.features){
-          const geom=feature.geometry;if(!geom)continue;
-          const polys=geom.type==='Polygon'?[geom.coordinates]:geom.type==='MultiPolygon'?geom.coordinates:[];
-          for(const rings of polys){
-            ctx.beginPath();
-            for(const ring of rings){ring.forEach((point,i)=>{const [x,y]=xy(point);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.closePath()}
-            ctx.fill('evenodd');
-          }
-        }
-        // Keep only tiny white dots inside geographic land shapes.
-        const pattern=document.createElement('canvas');pattern.width=8;pattern.height=8;
-        const pc=pattern.getContext('2d');pc.fillStyle=theme==='comfort'?'#7ec7ff':theme==='light'?'#684356':'#d5a1f7';pc.beginPath();pc.arc(4,4,1.5,0,Math.PI*2);pc.fill();
-        ctx.globalCompositeOperation='destination-in';ctx.fillStyle=ctx.createPattern(pattern,'repeat');ctx.fillRect(0,0,2048,1024);
-        // A faint dot field on the oceans prevents the globe going blank as it turns.
-        ctx.globalCompositeOperation='destination-over';
-        const ocean=document.createElement('canvas');ocean.width=12;ocean.height=12;
-        const oc=ocean.getContext('2d');oc.fillStyle=theme==='comfort'?'rgba(65,139,207,.3)':theme==='light'?'rgba(126,87,110,.22)':'rgba(145,88,182,.24)';
-        oc.beginPath();oc.arc(6,6,.85,0,Math.PI*2);oc.fill();
-        ctx.fillStyle=ctx.createPattern(ocean,'repeat');ctx.fillRect(0,0,2048,1024);
-        ctx.fillStyle=theme==='comfort'?'#061c39':theme==='light'?'#eee5e9':'#090512';ctx.fillRect(0,0,2048,1024);
-        globe.globeImageUrl(canvas.toDataURL('image/png'));
-      }catch(err){console.warn('ORVAYNE globe detail unavailable',err)}
-    };
-    if(window.Globe){setup()}else{
-      script=document.createElement('script');script.src='https://unpkg.com/globe.gl@2.45.0/dist/globe.gl.min.js';
-      script.async=true;script.onload=setup;document.head.appendChild(script);
-    }
-    return()=>{disposed=true;if(script)script.onload=null;if(globe){try{globe.pauseAnimation();globe._destructor?.()}catch{}}if(el)el.replaceChildren()};
-  },[theme]);
-  return <div className="iv-globe" aria-label="Globo terráqueo violeta con continentes punteados y órbitas animadas" role="img"><div ref={host} className="iv-globe__canvas"/><span className="iv-globe__ring iv-globe__ring--one"/><span className="iv-globe__ring iv-globe__ring--two"/></div>;
-}
-
 export default function IdentidadViva({open,theme="dark",onBack,onSignIn,onSignUp,onResetPassword,onSocialSignIn}) {
   const [step,setStep]=useState("email");
   const [mode,setMode]=useState("signin");
@@ -94,7 +36,7 @@ export default function IdentidadViva({open,theme="dark",onBack,onSignIn,onSignU
   return <section className={`identidad-viva identidad-viva--${theme}${open?" is-open":""}`} aria-hidden={!open} inert={!open} aria-label="Acceso a Orvayne">
     <button type="button" className="iv-back" onClick={onBack}>← VOLVER</button>
     <div className="iv-halo" aria-hidden="true"/>
-    <div className="iv-content"><div className="iv-wordmark" aria-label="ORVAYNE"><span>ORVAYN</span><span className="iv-wordmark__e" aria-hidden="true"><i/><i/><i/></span></div><OrvayneGlobe theme={theme}/>
+    <div className="iv-content"><div className="iv-wordmark" aria-label="ORVAYNE"><span>ORVAYN</span><span className="iv-wordmark__e" aria-hidden="true"><i/><i/><i/></span></div>
       <div className="iv-step" key={step+"-"+mode}>
         <h1>{step==="email"?(mode==="signup"?"Empecemos por tu correo":"¿Cuál es tu correo?"):"Ahora tu contraseña"}</h1>
         <form onSubmit={next}>
