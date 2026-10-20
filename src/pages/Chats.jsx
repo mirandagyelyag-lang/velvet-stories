@@ -698,7 +698,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   }
 
   return (
-    <section className="chats-page chats-page--reference">
+    <section className="chats-page chats-page--reference" ref={(node) => { if (node) node.style.setProperty("background", theme === "dark" ? "radial-gradient(ellipse at 50% 0%, #30203e 0%, #1c1228 52%, #100b18 100%)" : "", theme === "dark" ? "important" : ""); }}>
       <header className="orvayne-library-head">
         <div className="orvayne-library-head__eyebrow"><Crown size={19}/><span>STORY LIBRARY</span></div>
         <div className="orvayne-library-head__title" aria-label="Your Stories">
