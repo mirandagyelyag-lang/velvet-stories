@@ -114,3 +114,14 @@
 @keyframes orvChatFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @media(max-width:540px){.orv-cinema__chat-preview{width:min(92%,340px);gap:10px}.orv-cinema__chat-bubble{padding:11px 14px;font-size:13px;border-radius:16px}.orv-cinema__chat-bubble--first,.orv-cinema__chat-bubble--last{border-bottom-right-radius:5px}.orv-cinema__chat-bubble--reply{border-bottom-left-radius:5px}}
 @media(prefers-reduced-motion:reduce){.orv-cinema__chat-bubble{animation:none}}
+
+/* Refined cinematic dialogue fragments — restrained, no messenger UI. */
+.orv-cinema__theater--art{overflow:hidden}
+.orv-cinema__chat-preview{width:min(88%,450px);gap:34px;transform:translateY(-6px)}
+.orv-cinema__chat-bubble{position:relative;display:flex;flex-direction:column;gap:12px;max-width:86%;padding:20px 25px;border-radius:13px!important;box-shadow:0 16px 55px rgba(0,0,0,.1);backdrop-filter:blur(20px);font-family:'Jost',Arial,sans-serif;font-size:clamp(17px,1.45vw,24px);font-weight:400;line-height:1.35;letter-spacing:-.02em;animation:orvChatFloat 9s ease-in-out infinite}
+.orv-cinema__chat-kicker{display:block;font-size:9px;letter-spacing:.18em;font-weight:600;line-height:1.4;opacity:.75}
+.orv-cinema__chat-bubble--first{align-self:flex-start;margin-left:0;background:color-mix(in srgb,var(--bg) 78%,var(--accent) 22%);color:var(--ink);border:1px solid color-mix(in srgb,var(--accent) 26%,transparent)}
+.orv-cinema__chat-bubble--reply{align-self:flex-end;margin-right:0;background:color-mix(in srgb,var(--bg) 60%,var(--accent) 40%);color:var(--ink);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);animation-delay:-4s}
+.orv-cinema__chat-bubble--last{display:none}
+.orv-cinema__art-ring{opacity:.45}
+@media(max-width:540px){.orv-cinema__chat-preview{gap:17px;width:91%}.orv-cinema__chat-bubble{padding:13px 16px;font-size:15px;gap:7px}.orv-cinema__chat-kicker{font-size:8px}}
