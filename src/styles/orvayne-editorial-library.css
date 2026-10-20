@@ -59,3 +59,12 @@
  html body .chats-page--reference .reference-collection-card__shade {display:none!important;}
  html body .chats-page--reference .reference-recent {padding-top:0!important;margin-top:12px!important;}
 }
+
+/* Restore the last trashed conversation photo on the Trash shelf only. */
+@media(max-width:760px){
+ html body .chats-page--reference .reference-collection-card:has(.reference-collection-card__fallback--trash)>img {display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;opacity:.8!important;z-index:0!important;}
+ html body .chats-page--reference .reference-collection-card:has(.reference-collection-card__fallback--trash) .reference-collection-card__shade {display:block!important;position:absolute!important;inset:0!important;background:linear-gradient(180deg,rgba(19,9,24,.08),rgba(19,9,24,.88))!important;z-index:1!important;}
+ html body .chats-page--reference .reference-collection-card:has(.reference-collection-card__fallback--trash) .reference-collection-card__icon,
+ html body .chats-page--reference .reference-collection-card:has(.reference-collection-card__fallback--trash) strong,
+ html body .chats-page--reference .reference-collection-card:has(.reference-collection-card__fallback--trash) small {position:relative!important;z-index:2!important;color:#fff!important;}
+}
