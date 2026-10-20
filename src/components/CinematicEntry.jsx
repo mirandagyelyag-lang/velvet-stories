@@ -14,12 +14,11 @@ export default function CinematicEntry({ theme, onTheme, onEnter }) {
     </header>
     <main className="orv-cinema__stage">
       <section className="orv-cinema__copy">
-        <span className="orv-cinema__eyebrow">TU HISTORIA COMIENZA AQUÍ</span>
-        <h1>Hay historias<br/>que <em>te esperan.</em></h1>
-        <p>Personajes con voz propia. Conversaciones que dejan huella. Un universo que cambia con cada palabra que eliges.</p>
+        <span className="orv-cinema__eyebrow">UN ESPACIO PARA IMAGINAR</span>
+        <h1>No solo lees.<br/><em>Lo vives.</em></h1>
+        <p>Crea personajes, conversa sin guiones y descubre hasta dónde puede llegar una historia cuando tú decides qué sucede.</p>
         <div className="orv-cinema__actions">
-          <button type="button" className="orv-cinema__enter" onClick={onEnter}>ENTRAR A ORVAYNE <span>↗</span></button>
-          <button type="button" className="orv-cinema__listen" onClick={onEnter}>Comenzar tu historia ↗</button>
+          <button type="button" className="orv-cinema__enter" onClick={onEnter}>ENTRAR <span>↗</span></button>
         </div>
       </section>
       <section className="orv-cinema__theater" aria-label="Un universo privado de historias">
