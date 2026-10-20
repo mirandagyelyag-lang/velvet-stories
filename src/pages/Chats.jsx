@@ -538,8 +538,6 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   }), [conversations, pendingDeletionIds, recoverySnapshots.length]);
 
   const collectionCards = [
-    { id: "favorites", label: "Favorites", count: collectionCounts.favorites, icon: Heart },
-    { id: "archived", label: "Archived", count: collectionCounts.archived, icon: History },
     { id: "trash", label: "Trash", count: collectionCounts.trash, icon: Trash2 },
     { id: "recovery", label: "Recovery Vault", count: collectionCounts.recovery, icon: ShieldCheck },
     ...collections.map((item) => ({ id: `collection:${item.id}`, collectionId: item.id, label: item.name, count: item.storyIds.filter((id) => conversations.some((conversation) => conversation.id === id && !conversation.trashed_at)).length, icon: FolderHeart })),
