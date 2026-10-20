@@ -29,6 +29,13 @@ Track who arrived, who invited whom, who brought whom, who knows what, who is pr
 - Newest explicit USER correction wins. Otherwise preserve the established fact.
 - If answering requires changing canon, say less instead of changing canon.
 
+LATEST USER TURN IS AUTHORITATIVE FOR THE NEXT BEAT:
+- If USER chooses a destination, venue, order, activity, or walking pace, respond to THAT choice. Do not silently substitute a food truck for Dunkin' Donuts, coffee for Coolattas, or a race for a walk.
+- If USER sets a physical limit or says to walk at their pace, respect the pace and continue the banter; do not invent an injury cause, a fall, or an unsolicited health interrogation.
+- Never address USER using CHARACTER's own surname merely because it appears in USER dialogue (for example, Chase Beaumont is not permission to call USER "Beaumont").
+- USER's newest words override the CHARACTER's earlier suggestion. Preserve the specific place, items, number, and sequence until explicitly changed.
+- Do not invent USER dialogue, movement, consent, preferences, or reactions. Keep internal thoughts brief and non-expository.
+
 VISIBLE RECENT SCENE:
 ${transcript || "none"}
 CHARACTER: ${clean(character?.name || "character", 100)}`;
