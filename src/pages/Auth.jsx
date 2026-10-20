@@ -48,7 +48,8 @@ export default function Auth() {
 
   return <main className={`velvet-gold-auth${lightEntry ? " orvayne-auth--light" : comfortEntry ? " orvayne-auth--comfort" : ""}`}>
     <style>{`.velvet-gold-auth{position:fixed;inset:0;z-index:100;overflow:hidden;background:#100716}.velvet-gold-auth.orvayne-auth--light{background:#f7f0ed}.velvet-gold-auth.orvayne-auth--comfort{background:#e5f2fc}.velvet-gold-auth .entry-scene{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}`}</style>
-    {!entered && <CinematicEntry theme={theme} onTheme={setTheme} onEnter={() => setEntered(true)} />}
+    <CinematicEntry theme={theme} onTheme={setTheme} onEnter={() => setEntered(true)} entered={entered}>
     <IdentidadViva open={entered} theme={theme} onBack={() => setEntered(false)} onSignIn={signIn} onSignUp={signUp} onSocialSignIn={signInWithProvider} onResetPassword={async address => {const {error}=await supabase.auth.resetPasswordForEmail(address,{redirectTo:window.location.origin});if(error)throw error;}} />
+    </CinematicEntry>
   </main>;
 }
