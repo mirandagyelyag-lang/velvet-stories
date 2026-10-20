@@ -1,0 +1,46 @@
+/* New Story: one native scrolling surface for the entire sheet, header included. */
+@media (max-width:760px) {
+  html body .conversation-picker.conversation-picker--editorial {
+    display:block!important;
+    height:68dvh!important;
+    max-height:calc(100dvh - 12px)!important;
+    min-height:0!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    -webkit-overflow-scrolling:touch!important;
+    scroll-behavior:auto!important;
+  }
+  html body .conversation-picker.conversation-picker--editorial.is-expanded {
+    height:calc(100dvh - 12px)!important;
+  }
+  html body .conversation-picker.conversation-picker--editorial > header {
+    position:static!important;
+    top:auto!important;
+    flex:none!important;
+    touch-action:pan-y!important;
+    user-select:auto!important;
+    -webkit-user-select:auto!important;
+  }
+  html body .conversation-picker.conversation-picker--editorial > .conversation-picker__scroll {
+    display:block!important;
+    position:static!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    flex:none!important;
+    overflow:visible!important;
+    touch-action:pan-y!important;
+    padding:14px 16px calc(36px + env(safe-area-inset-bottom))!important;
+  }
+  html body .conversation-picker.conversation-picker--editorial .conversation-picker__list {
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+    touch-action:pan-y!important;
+  }
+  html body .conversation-picker.conversation-picker--editorial .conversation-picker__list > button {
+    touch-action:pan-y!important;
+  }
+}
