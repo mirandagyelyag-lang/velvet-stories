@@ -40,6 +40,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerExpanded, setPickerExpanded] = useState(false);
   const [pickerDragStartY, setPickerDragStartY] = useState(null);
+  const [pickerListTouchStartY, setPickerListTouchStartY] = useState(null);
   const [creatingId, setCreatingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
@@ -851,7 +852,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
               <div><p>NEW STORY</p><h2 id="conversation-picker-title">Who is this story with?</h2><span>Choose a character. Velvet will create a fresh timeline.</span></div>
               <button onClick={() => { setPickerOpen(false); setPickerExpanded(false); }} disabled={Boolean(creatingId)} aria-label="Close"><X size={20}/></button>
             </header>
-            <div className="conversation-picker__scroll">
+            <div className="conversation-picker__scroll" onTouchStart={(event) => { if (!pickerExpanded) setPickerListTouchStartY(event.touches[0]?.clientY ?? null); }} onTouchEnd={(event) => { if (pickerExpanded || pickerListTouchStartY == null) return; const endY = event.changedTouches[0]?.clientY; if (typeof endY === "number" && pickerListTouchStartY - endY > 35) setPickerExpanded(true); setPickerListTouchStartY(null); }}>
             {characters.length > 0 ? (
               <div className="conversation-picker__list conversation-picker__list--editorial">
                 {characters.map((character) => (
