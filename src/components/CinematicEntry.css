@@ -58,3 +58,22 @@
 .orv-cinema__enter span{margin-left:0;font-size:19px;font-weight:400}
 @media(max-width:900px){.orv-cinema__copy{max-width:none}.orv-cinema__eyebrow{justify-content:center}.orv-cinema__copy>p{margin-left:auto;margin-right:auto}}
 @media(max-width:540px){.orv-cinema__copy h1{font-size:clamp(48px,11vw,66px)}.orv-cinema__enter{min-width:180px}}
+
+/* Intro v3 — a single typographic statement and abstract conversational art. */
+.orv-cinema__stage{grid-template-columns:minmax(0,1fr) minmax(0,.85fr);gap:clamp(30px,6vw,110px)}
+.orv-cinema__copy{max-width:660px}
+.orv-cinema__copy h1{font-size:clamp(62px,5.8vw,102px);line-height:1.1;letter-spacing:-.052em;margin:25px 0 22px}
+.orv-cinema__copy h1 em{font-style:italic}
+.orv-cinema__copy>p{max-width:450px;font-size:clamp(16px,1.25vw,20px);line-height:1.65}
+.orv-cinema__actions{margin-top:38px}
+.orv-cinema__theater--art{position:relative;min-height:420px;height:min(620px,68vh);overflow:visible}
+.orv-cinema__art-halo{position:absolute;width:min(420px,80%);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle, color-mix(in srgb,var(--accent) 24%,transparent),transparent 68%);filter:blur(25px);animation:orvPulse 9s ease-in-out infinite alternate}
+.orv-cinema__art-ring{position:absolute;width:min(390px,80%);height:min(390px,80%);border:1px solid color-mix(in srgb,var(--accent) 33%,transparent);border-radius:47% 53% 56% 44%/52% 43% 57% 48%;transform:rotate(-24deg);animation:orvArtSpin 24s linear infinite;box-shadow:inset 0 0 45px color-mix(in srgb,var(--accent) 6%,transparent)}
+.orv-cinema__art-ring--two{width:min(310px,65%);height:min(420px,85%);border-color:color-mix(in srgb,var(--accent) 47%,transparent);border-radius:50%;animation-duration:31s;animation-direction:reverse;transform:rotate(35deg)}
+.orv-cinema__art-mark{font:400 clamp(210px,25vw,390px)/1 Georgia,serif;color:var(--accent);opacity:.85;transform:translate(0,-.04em);text-shadow:0 0 80px color-mix(in srgb,var(--accent) 18%,transparent);animation:orvFloat 8s ease-in-out infinite;user-select:none}
+.orv-cinema__art-caption{position:absolute;bottom:7%;left:50%;transform:translateX(-50%);white-space:nowrap;color:var(--muted);font-size:10px;letter-spacing:.2em;font-weight:600}
+.orv-cinema__art-caption span{color:var(--accent);margin-left:9px}
+@keyframes orvArtSpin{from{transform:rotate(-24deg)}to{transform:rotate(336deg)}}
+@media(max-width:900px){.orv-cinema__stage{grid-template-columns:1fr;gap:0}.orv-cinema__copy h1{font-size:clamp(55px,9vw,83px)}.orv-cinema__theater--art{min-height:310px;height:310px}.orv-cinema__art-ring{width:250px;height:250px}.orv-cinema__art-ring--two{width:210px;height:280px}.orv-cinema__art-mark{font-size:245px}.orv-cinema__art-caption{bottom:0}}
+@media(max-width:540px){.orv-cinema__copy h1{font-size:clamp(48px,11vw,68px)}.orv-cinema__theater--art{min-height:240px;height:240px}.orv-cinema__art-ring{width:190px;height:190px}.orv-cinema__art-ring--two{width:160px;height:210px}.orv-cinema__art-mark{font-size:190px}.orv-cinema__art-caption{font-size:8px}}
+@media(prefers-reduced-motion:reduce){.orv-cinema__art-halo,.orv-cinema__art-ring,.orv-cinema__art-mark{animation:none!important}}
