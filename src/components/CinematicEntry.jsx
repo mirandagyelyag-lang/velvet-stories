@@ -1,7 +1,7 @@
 import "./CinematicEntry.css";
 
-export default function CinematicEntry({ theme, onTheme, onEnter }) {
-  return <div className={`orv-cinema orv-cinema--${theme}`}>
+export default function CinematicEntry({ theme, onTheme, onEnter, entered=false, children }) {
+  return <div className={`orv-cinema orv-cinema--${theme}${entered?" orv-cinema--login":""}`}>
     <div className="orv-cinema__grain" aria-hidden="true"/>
     <div className="orv-cinema__aura orv-cinema__aura--one" aria-hidden="true"/>
     <div className="orv-cinema__aura orv-cinema__aura--two" aria-hidden="true"/>
@@ -24,7 +24,7 @@ export default function CinematicEntry({ theme, onTheme, onEnter }) {
         <div className="orv-cinema__art-halo" aria-hidden="true"/>
         <div className="orv-cinema__art-ring orv-cinema__art-ring--one" aria-hidden="true"/>
         <div className="orv-cinema__art-ring orv-cinema__art-ring--two" aria-hidden="true"/>
-        <div className="orv-cinema__art-mark" aria-hidden="true">“</div>
+        <div className="orv-cinema__art-mark" aria-hidden="true">“</div>{children}
         <div className="orv-cinema__art-caption">CADA PALABRA ABRE UN MUNDO <span>✦</span></div>
       </section>
     </main>
