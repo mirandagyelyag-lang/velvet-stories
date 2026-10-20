@@ -8,6 +8,7 @@ export default function Auth() {
   const { signIn, signUp, signInWithProvider } = useAuth();
   const { theme, setTheme } = useTheme();
   const lightEntry = theme === "light";
+  const comfortEntry = theme === "comfort";
   const [entered, setEntered] = useState(false);
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
@@ -19,7 +20,7 @@ export default function Auth() {
   useEffect(() => {
     const onMessage = (event) => {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
-      if (event.data?.type === "orvayne-entry-theme" && ["light", "dark"].includes(event.data.theme)) setTheme(event.data.theme);
+      if (event.data?.type === "orvayne-entry-theme" && ["light", "dark", "comfort"].includes(event.data.theme)) setTheme(event.data.theme);
       if (event.data?.type === "velvet-original-entry-enter") { setEntered(true); frame.current?.contentWindow?.postMessage({ type: "orvayne-auth-open" }, window.location.origin); }
     };
     window.addEventListener("message", onMessage);
@@ -54,9 +55,9 @@ export default function Auth() {
     finally { setBusy(false); }
   }
 
-  return <main className={`velvet-gold-auth${lightEntry ? " orvayne-auth--light" : ""}`}>
-    <style>{`.velvet-gold-auth{position:fixed;inset:0;z-index:100;overflow:hidden;background:#100716}.velvet-gold-auth.orvayne-auth--light{background:#f7f0ed}.velvet-gold-auth .entry-scene{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}`}</style>
-    <iframe ref={frame} className="entry-scene" title="Orvayne — entrada" src={`/orvayne-molten-entry.html?theme=${lightEntry ? "light" : "dark"}&build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
-    <IdentidadViva open={entered} theme={lightEntry ? "light" : "dark"} onBack={() => {setEntered(false);frame.current?.contentWindow?.postMessage({type:"orvayne-auth-close"},window.location.origin);}} onSignIn={signIn} onSignUp={signUp} onSocialSignIn={signInWithProvider} onResetPassword={async address => {const {error}=await supabase.auth.resetPasswordForEmail(address,{redirectTo:window.location.origin});if(error)throw error;}} />
+  return <main className={`velvet-gold-auth${lightEntry ? " orvayne-auth--light" : comfortEntry ? " orvayne-auth--comfort" : ""}`}>
+    <style>{`.velvet-gold-auth{position:fixed;inset:0;z-index:100;overflow:hidden;background:#100716}.velvet-gold-auth.orvayne-auth--light{background:#f7f0ed}.velvet-gold-auth.orvayne-auth--comfort{background:#e5f2fc}.velvet-gold-auth .entry-scene{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}`}</style>
+    <iframe ref={frame} className="entry-scene" title="Orvayne — entrada" src={`/orvayne-molten-entry.html?theme=${theme}&build=${encodeURIComponent(__VELVET_BUILD_TIME__)}`} />
+    <IdentidadViva open={entered} theme={theme} onBack={() => {setEntered(false);frame.current?.contentWindow?.postMessage({type:"orvayne-auth-close"},window.location.origin);}} onSignIn={signIn} onSignUp={signUp} onSocialSignIn={signInWithProvider} onResetPassword={async address => {const {error}=await supabase.auth.resetPasswordForEmail(address,{redirectTo:window.location.origin});if(error)throw error;}} />
   </main>;
 }
