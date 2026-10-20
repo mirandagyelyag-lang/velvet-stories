@@ -273,3 +273,11 @@
 .identidad-viva--light .iv-globe{filter:drop-shadow(0 0 12px rgba(134,73,118,.36))}
 .identidad-viva--light .iv-globe__ring{left:-8%;top:19%;width:116%;height:62%;border:1.5px solid rgba(133,64,119,.84);box-shadow:0 0 6px rgba(155,73,133,.45)}
 .identidad-viva--light .iv-globe__ring--two{left:-8%;top:19%;width:116%;height:62%;border-color:rgba(168,79,146,.68);box-shadow:0 0 6px rgba(155,73,133,.34)}
+
+/* Dedicated authentication scene, separate from the cinematic landing. */
+.identidad-viva.is-open{background:radial-gradient(ellipse at 50% 45%,#271536 0%,#160c22 58%,#0e0917 100%)!important}
+.identidad-viva--light.is-open{background:radial-gradient(ellipse at 50% 40%,#fffaf8 0%,#f7f0ed 65%,#eee3e7 100%)!important}
+.identidad-viva--comfort.is-open{background:radial-gradient(ellipse at 50% 40%,#f5fbff 0%,#e5f2fc 65%,#d4e8f8 100%)!important}
+.identidad-viva.is-open::after{display:none!important}
+.identidad-viva.is-open .iv-halo{opacity:.25;pointer-events:none}
+.identidad-viva.is-open .iv-content{z-index:1}
