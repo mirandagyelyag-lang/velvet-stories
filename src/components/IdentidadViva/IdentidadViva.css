@@ -268,3 +268,8 @@
 .identidad-viva--light .iv-globe{filter:drop-shadow(0 0 7px rgba(125,91,108,.14))}
 .identidad-viva--light .iv-globe__ring{left:2%;top:24%;width:96%;height:52%;border:1px solid rgba(149,108,127,.38);box-shadow:none}
 .identidad-viva--light .iv-globe__ring--two{left:5%;top:27%;width:90%;height:46%;border-color:rgba(157,119,137,.28)}
+
+/* Theme parity: same globe geometry, ring scale and movement in all themes. */
+.identidad-viva--light .iv-globe{filter:drop-shadow(0 0 12px rgba(134,73,118,.36))}
+.identidad-viva--light .iv-globe__ring{left:-8%;top:19%;width:116%;height:62%;border:1.5px solid rgba(133,64,119,.84);box-shadow:0 0 6px rgba(155,73,133,.45)}
+.identidad-viva--light .iv-globe__ring--two{left:-8%;top:19%;width:116%;height:62%;border-color:rgba(168,79,146,.68);box-shadow:0 0 6px rgba(155,73,133,.34)}
