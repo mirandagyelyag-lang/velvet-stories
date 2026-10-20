@@ -1090,3 +1090,13 @@ html body .chats-page--reference :is(.reference-search,.reference-filter,.velvet
  html body .chats-page--reference .reference-stories-title h1{font-size:clamp(33px,9vw,50px)!important}
  html body .chats-page--reference .reference-stories-title__script{font-size:24px!important}
 }
+
+/* Three-theme parity for the interior editorial library and profile. */
+html[data-theme="comfort"] body .chats-page--reference{--stories-ink:#183a61;--stories-ink-soft:#355f89;--stories-muted:#4e7094;--stories-accent:#3979b5;--stories-line:rgba(57,121,181,.24);--stories-line-strong:rgba(57,121,181,.4);--stories-panel-solid:#f4faff;--stories-panel-strong:rgba(250,253,255,.93);--stories-shadow:rgba(33,87,143,.12);--stories-search:#f5faff;--stories-row-art-filter:none;background:linear-gradient(180deg,#e5f2fc,#dcecf9)!important;color:#183a61!important}
+html[data-theme="light"] body .chats-page--reference{--stories-ink:#493240;--stories-ink-soft:#715266;--stories-muted:#806575;--stories-accent:#a4778d;--stories-line:rgba(157,111,135,.24);--stories-line-strong:rgba(157,111,135,.4);--stories-panel-solid:#fffaf8;--stories-panel-strong:rgba(255,250,248,.94);--stories-shadow:rgba(108,66,90,.12);--stories-search:#fffaf8;--stories-row-art-filter:none;background:linear-gradient(180deg,#f7f0ed,#f2e7e9)!important;color:#493240!important}
+html[data-theme="comfort"] body .chats-page--reference .reference-stories-hero{background:linear-gradient(145deg,#d8eafb,#eff8ff)!important;border-color:rgba(57,121,181,.3)!important;color:#183a61!important}
+html[data-theme="light"] body .chats-page--reference .reference-stories-hero{background:linear-gradient(145deg,#f3e5e9,#fffaf8)!important;border-color:rgba(157,111,135,.3)!important;color:#493240!important}
+html[data-theme="comfort"] body .chats-page--reference .reference-stories-hero__private{color:#3979b5!important}
+html[data-theme="light"] body .chats-page--reference .reference-stories-hero__private{color:#a4778d!important}
+html[data-theme="comfort"] body .chats-page--reference .reference-stories-title,html[data-theme="comfort"] body .chats-page--reference .reference-stories-title h1{color:#183a61!important;text-shadow:none!important}
+html[data-theme="light"] body .chats-page--reference .reference-stories-title,html[data-theme="light"] body .chats-page--reference .reference-stories-title h1{color:#493240!important;text-shadow:none!important}
