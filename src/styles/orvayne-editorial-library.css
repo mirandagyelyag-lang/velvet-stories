@@ -69,29 +69,29 @@
  html body .chats-page--reference .reference-collection-card:has(.reference-collection-card__fallback--trash) small {position:relative!important;z-index:2!important;color:#fff!important;}
 }
 
-/* Velvet library visual rhythm v3 — unify palette and vertical spacing. */
+
+/* Library coherence: one canvas owner, no black band or blue story cards. */
 @media(max-width:760px){
- html body .chats-page.chats-page--reference {background:#1d1124!important;background-image:none!important;padding-bottom:calc(104px + env(safe-area-inset-bottom))!important;}
- html body .chats-page--reference .orvayne-library-head {margin-bottom:14px!important;}
- html body .chats-page--reference .velvet-identity-continue {margin:0 0 18px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;}
- html body .chats-page--reference .velvet-identity-heading {margin:0 0 9px!important;}
- html body .chats-page--reference .velvet-identity-continue__card {height:176px!important;min-height:176px!important;max-height:176px!important;border:1px solid rgba(188,131,152,.3)!important;border-radius:21px!important;box-shadow:none!important;overflow:hidden!important;}
- html body .chats-page--reference .velvet-identity-continue__shade {background:linear-gradient(90deg,rgba(24,12,29,.87),rgba(24,12,29,.3))!important;}
- html body .chats-page--reference .velvet-identity-continue__copy {max-width:calc(100% - 70px)!important;}
- html body .chats-page--reference .velvet-identity-continue__copy strong {font-size:clamp(22px,6vw,30px)!important;line-height:1.1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
- html body .chats-page--reference .velvet-identity-continue__copy em {font-size:12px!important;line-height:1.35!important;display:-webkit-box!important;-webkit-line-clamp:1!important;-webkit-box-orient:vertical!important;overflow:hidden!important;}
- html body .chats-page--reference .reference-search-wrap {margin:0 0 20px!important;gap:9px!important;}
- html body .chats-page--reference .reference-search,html body .chats-page--reference .reference-filter {background:#29182f!important;border:1px solid #503353!important;box-shadow:none!important;}
- html body .chats-page--reference .reference-collections {margin:0 0 22px!important;}
- html body .chats-page--reference .reference-collections>h2,html body .chats-page--reference .reference-section-heading h2 {font-family:inherit!important;font-size:11px!important;font-weight:500!important;letter-spacing:.2em!important;text-transform:uppercase!important;color:#c9a6be!important;line-height:1.4!important;margin:0 0 12px!important;}
- html body .chats-page--reference .reference-collections__grid {grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-auto-rows:116px!important;gap:8px!important;}
- html body .chats-page--reference .reference-collection-card {height:116px!important;max-height:116px!important;min-height:116px!important;background:#2b1b32!important;border-color:#503353!important;border-radius:17px!important;padding:11px!important;}
- html body .chats-page--reference .reference-collection-card strong {font-size:11px!important;line-height:1.2!important;font-weight:600!important;}
- html body .chats-page--reference .reference-collection-card small {font-size:10px!important;line-height:1.25!important;letter-spacing:0!important;}
- html body .chats-page--reference .reference-collection-card__icon svg {width:23px!important;height:23px!important;stroke-width:1.7!important;}
- html body .chats-page--reference .reference-recent {margin:0!important;padding:0!important;}
- html body .chats-page--reference .reference-section-heading {margin:0 0 12px!important;}
- html body .chats-page--reference .reference-story-row {min-height:92px!important;border:1px solid #503353!important;background:#291a30!important;border-radius:18px!important;box-shadow:none!important;}
- html body .chats-page--reference .reference-story-row__art {height:92px!important;min-height:92px!important;}
- html body .chats-page--reference .reference-story-row__content strong {font-size:16px!important;line-height:1.2!important;}
+ html[data-velvet-page="chats"].velvet-burgundy-route,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route{
+   --stories-canvas:#1d1124!important;
+   --stories-atmosphere:linear-gradient(#1d1124,#1d1124)!important;
+   background:#1d1124!important;
+   background-image:none!important;
+ }
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route #root,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .app,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .app__content,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .velvet-route-stage,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .chats-page.chats-page--reference{
+   background:transparent!important;background-image:none!important;
+ }
+ html body .chats-page--reference .reference-story-row{
+   background:#2b1b32!important;background-color:#2b1b32!important;
+   background-image:none!important;border-color:rgba(188,131,152,.35)!important;
+   box-shadow:none!important;
+ }
+ html body .chats-page--reference .reference-recent{margin-bottom:0!important;padding-bottom:0!important;}
+ html body .chats-page--reference .reference-collections{margin-bottom:20px!important;}
+ html body .chats-page--reference .velvet-identity-continue{margin-bottom:18px!important;}
 }
