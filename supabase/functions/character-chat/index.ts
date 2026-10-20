@@ -1,3 +1,4 @@
+import { buildThirdPartySocialMomentumV1 } from "./engine/third-party-social-momentum-v1.js";
 import { ADJACENT_DIALOGUE_RULE, buildCharacterInitiativeContext, removeReplayedOpening } from "./engine/adjacent-dialogue.js";
 import { withoutRepeatedLatest } from "./engine/economical-context.js";
 import { callEconomicalBackup } from "./engine/openai-fallback.js";
@@ -3878,6 +3879,7 @@ function buildNarrativePromptV3({
   });
   const existingSocialWorldV35393 = conversation.intelligence_state?.social_world_v35393 || {};
   const socialWorldPromptV35393 = buildSocialWorldPromptV35393(existingSocialWorldV35393);
+  const thirdPartySocialMomentumV1 = buildThirdPartySocialMomentumV1({character,scene:conversation.scene_state || {},recentCharacterReplies:messages.filter(m=>m.sender === "character").slice(-5).map(m=>String(m.content||""))});
   const existingRelationshipEvolutionV35392 = conversation.intelligence_state?.relationship_evolution_v35392 || {};
   const relationshipEvolutionPromptV35392 = buildRelationshipEvolutionPromptV35392(existingRelationshipEvolutionV35392);
   const existingFullStoryIntegrationV35391 = conversation.intelligence_state?.full_story_integration_v35391 || {};
@@ -4895,7 +4897,7 @@ STORY MOVEMENT
 - Do not invent exact time spans, prior messages, promises, relatives, group chats, gifts, schedules, betrayal, illness, danger, exes or jealousy without visible support.
 - LANGUAGE IS MANDATORY: ${responseLanguage}. For Mateo Silva, use Spanish ONLY for narration, dialogue, internal thoughts and generated openings regardless of earlier English messages. Keep established names and character voice intact.
 
-${currentBeatPolicy}\n\n${storyAuthorityPromptV35390Text}\n\n${fullStoryIntegrationPromptV35391}\n\n${relationshipEvolutionPromptV35392}\n\n${socialWorldPromptV35393}\n\nTURN
+${currentBeatPolicy}\n\n${storyAuthorityPromptV35390Text}\n\n${fullStoryIntegrationPromptV35391}\n\n${relationshipEvolutionPromptV35392}\n\n${socialWorldPromptV35393}\n\n${thirdPartySocialMomentumV1}\n\nTURN
 Mode: ${turnIntent.kind}; question: ${turnIntent.isQuestion ? "yes" : "no"}; medium: ${turnIntent.medium}; silent streak: ${turnIntent.silentCount}.
 Length: ${getLengthGuidance(character.response_length, turnIntent.kind, latestPerceptibleUserMessage)}
 ${regeneration}
