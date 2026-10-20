@@ -55,5 +55,13 @@ export function immediateTurnContinuityIssues(reply = "", latestUserMessage = ""
   const groundedEatingHabit = /\b(?:i|me|my)\b.{0,80}\b(?:not eating|dont eat|do not eat|forgot to eat|forget to eat|picking at|distracted|no appetite|not hungry)\b/.test(latest);
   if (inventedEatingHabit && !groundedEatingHabit) issues.push("unsupported_user_habit_claim");
 
+  const confusion = /^(huh|what|what do you mean|wait what|que|como|no entiendo|eh)$/i.test(latest);
+  const unearnedAgreement = /\b(yeah|come on|lets go|follow me)\b/.test(text);
+  const clarification = /\b(sorry|my bad|i meant|let me explain|forget i said)\b/.test(text);
+  if (confusion && unearnedAgreement && !clarification) issues.push("confusion_misread_as_agreement");
+  const previousPatio = /\b(on|at) (the )?(student union )?patio\b/.test(previous);
+  const goesToPatio = /\b(heads|heading|walks|walking|goes|going) (to|toward|for) (the )?patio\b/.test(text);
+  if (previousPatio && goesToPatio) issues.push("location_reset_to_current_place");
+
   return [...new Set(issues)];
 }
