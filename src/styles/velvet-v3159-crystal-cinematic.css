@@ -735,3 +735,29 @@ html[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) .chats-page
 html[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) .chats-page--reference :is(.stories-search input,.stories-search input::placeholder){color:#355f89!important}
 html[data-theme="light"] body[data-velvet-page] .app:not(.app--chat) .chats-page--reference :is(.stories-search input,.stories-search input::placeholder){color:#715266!important}
 html[data-theme="comfort"] body[data-velvet-page] .app:not(.app--chat) .chats-page--reference .stories-intro p{color:#355f89!important}
+
+/* Actual Recent Stories card: blue in Comfort, pearl in Light. */
+:root[data-theme="comfort"] body[data-velvet-page] .chats-page--reference .reference-story-row{
+ background:linear-gradient(115deg,#f2f9ff,#dceefa)!important;
+ border:1px solid #b5d5ef!important;
+ box-shadow:0 10px 26px rgba(42,103,166,.09)!important;
+ color:#183a61!important;
+}
+:root[data-theme="comfort"] body[data-velvet-page] .chats-page--reference .reference-story-row__copy :is(h3,p,time){
+ color:#245c92!important;
+}
+:root[data-theme="comfort"] body[data-velvet-page] .chats-page--reference .reference-story-row__copy p{color:#4e7094!important}
+:root[data-theme="comfort"] body[data-velvet-page] .chats-page--reference .reference-story-row :is(.reference-story-row__menu,.reference-story-menu__trigger){
+ background:#f4faff!important;border-color:#b5d5ef!important;color:#3979b5!important;
+}
+:root[data-theme="light"] body[data-velvet-page] .chats-page--reference .reference-story-row{
+ background:linear-gradient(115deg,#fffaf8,#f1e6e9)!important;
+ border:1px solid #dec7d1!important;
+ box-shadow:0 10px 26px rgba(108,66,90,.08)!important;
+ color:#493240!important;
+}
+:root[data-theme="light"] body[data-velvet-page] .chats-page--reference .reference-story-row__copy :is(h3,p,time){color:#785269!important}
+:root[data-theme="light"] body[data-velvet-page] .chats-page--reference .reference-story-row__copy p{color:#806575!important}
+:root[data-theme="light"] body[data-velvet-page] .chats-page--reference .reference-story-row :is(.reference-story-row__menu,.reference-story-menu__trigger){
+ background:#fffaf8!important;border-color:#dec7d1!important;color:#a4778d!important;
+}
