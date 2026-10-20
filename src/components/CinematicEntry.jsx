@@ -14,7 +14,6 @@ export default function CinematicEntry({ theme, onTheme, onEnter }) {
     </header>
     <main className="orv-cinema__stage">
       <section className="orv-cinema__copy">
-        <span className="orv-cinema__eyebrow">PERSONAJES QUE COBRAN VIDA</span>
         <h1>Todo empieza<br/>con un <em>hola.</em></h1>
         <p>Conversaciones que se convierten en historias. El resto lo decides tú.</p>
         <div className="orv-cinema__actions">
