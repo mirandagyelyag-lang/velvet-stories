@@ -37,9 +37,9 @@ export default function CinematicEntry({ theme, onTheme, onEnter, entered=false,
         <div className="orv-cinema__chat-preview" aria-label="Fragmentos ficticios de conversaciones" aria-live="off" key={sceneIndex}>
           {scenes[sceneIndex].map((item,i)=><div key={i} className={`orv-cinema__chat-bubble orv-cinema__chat-bubble--card-${i+1}`}><span className="orv-cinema__chat-dot" aria-hidden="true"/><span className="orv-cinema__chat-line">{item.line}</span><span className="orv-cinema__chat-detail">{item.detail}</span></div>)}
         </div>{children}
-        <div className="orv-cinema__art-caption">CADA PALABRA ABRE UN MUNDO <span>✦</span></div>
+        <div className="orv-cinema__art-caption">EVERY WORD OPENS A WORLD <span>✦</span></div>
       </section>
     </main>
-    <footer className="orv-cinema__foot"><span>ORVAYNE <strong>PRIVATE STORIES</strong></span><span>IMAGINA · CONVERSA · CREA</span></footer>
+    <footer className="orv-cinema__foot"><span>ORVAYNE <strong>PRIVATE STORIES</strong></span><span>IMAGINE · CONNECT · CREATE</span></footer>
   </div>;
 }
