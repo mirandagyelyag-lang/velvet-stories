@@ -263,3 +263,8 @@
 .identidad-viva--comfort .iv-globe{filter:drop-shadow(0 0 12px rgba(65,145,229,.35))}
 .identidad-viva--comfort .iv-globe__ring{border-color:rgba(47,150,248,.78);box-shadow:0 0 5px rgba(65,145,229,.38)}
 .identidad-viva--comfort .iv-globe__ring--two{border-color:rgba(79,169,255,.52)}
+
+/* Refined pearl theme: smaller orbital rings, neutral halo, stronger planet contrast. */
+.identidad-viva--light .iv-globe{filter:drop-shadow(0 0 7px rgba(125,91,108,.14))}
+.identidad-viva--light .iv-globe__ring{left:2%;top:24%;width:96%;height:52%;border:1px solid rgba(149,108,127,.38);box-shadow:none}
+.identidad-viva--light .iv-globe__ring--two{left:5%;top:27%;width:90%;height:46%;border-color:rgba(157,119,137,.28)}
