@@ -742,13 +742,6 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         <button className={`reference-filter${filtersOpen ? " is-open" : ""}`} type="button" onClick={() => setFiltersOpen((value) => !value)} aria-label="Filter stories"><SlidersHorizontal size={25}/></button>
       </div>
 
-      {!loading && conversations.length > 0 && (
-        <div className="velvet-identity-chips" role="tablist" aria-label="Story views">
-          {[["active", "All"], ["favorites", "Favorites"], ["archived", "Archived"], ...collections.map((item) => [`collection:${item.id}`, item.name])].map(([id, label]) => (
-            <button key={id} type="button" role="tab" aria-selected={view === id} className={view === id ? "is-active" : ""} onClick={() => { setView(id); setShowAllRecent(true); }}>{label}</button>
-          ))}
-        </div>
-      )}
 
       {filtersOpen && (
         <div className="reference-filter-menu">
