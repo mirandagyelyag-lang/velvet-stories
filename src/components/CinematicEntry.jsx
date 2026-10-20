@@ -14,8 +14,8 @@ export default function CinematicEntry({ theme, onTheme, onEnter }) {
     </header>
     <main className="orv-cinema__stage">
       <section className="orv-cinema__copy">
-        <h1>Todo empieza<br/>con un <em>hola.</em></h1>
-        <p>Conversaciones que se convierten en historias. El resto lo decides tú.</p>
+        <h1>La historia<br/><em>te responde.</em></h1>
+        <p>Crea personajes, habla con ellos y deja que cada decisión cambie lo que viene.</p>
         <div className="orv-cinema__actions">
           <button type="button" className="orv-cinema__enter" onClick={onEnter}>ENTRAR <span>↗</span></button>
         </div>
