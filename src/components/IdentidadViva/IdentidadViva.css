@@ -206,3 +206,11 @@
 @media(max-width:600px){.iv-wordmark{margin-bottom:10px}.iv-sculpture{width:92px;height:88px;margin-bottom:5px}.iv-spark{margin-bottom:10px}}
 @media(max-height:720px){.iv-sculpture{height:76px;width:84px;margin-bottom:3px}.iv-wordmark{margin-bottom:8px}}
 @media(prefers-reduced-motion:reduce){.iv-sculpture,.iv-sculpture__a,.iv-sculpture__b,.iv-sculpture__core{animation:none}}
+
+/* Rotating 3D globe preview replacing the crystal. */
+.iv-globe{order:-1;position:relative;width:142px;height:142px;flex:0 0 142px;margin:0 auto 4px;overflow:hidden;display:grid;place-items:center;filter:drop-shadow(0 0 12px rgba(179,112,231,.22))}
+.iv-globe__canvas{width:142px;height:142px;pointer-events:none}
+.iv-globe canvas{display:block;max-width:100%}
+@media(max-width:600px){.iv-globe{width:142px;height:142px;flex-basis:142px;margin-bottom:0}}
+@media(max-height:720px){.iv-globe{transform:scale(.82);margin-top:-13px;margin-bottom:-14px}}
+@media(prefers-reduced-motion:reduce){.iv-globe{filter:none}}
