@@ -1036,3 +1036,63 @@
   .pulse-header__wordmark strong{font-size:1.08rem;letter-spacing:.18em}
   .pulse-header--editorial .pulse-header__copy>p{max-width:250px;margin-top:11px}
 }
+
+/* Pulse mobile: same uninterrupted plum canvas and compact header as Stories/Characters. */
+@media(max-width:760px){
+ html.velvet-burgundy-route:has(.pulse-page),
+ html.velvet-burgundy-route:has(.pulse-page) body,
+ body.velvet-burgundy-route:has(.pulse-page),
+ body.velvet-burgundy-route:has(.pulse-page) #root,
+ body.velvet-burgundy-route:has(.pulse-page) .app,
+ body.velvet-burgundy-route:has(.pulse-page) .app__content,
+ body.velvet-burgundy-route:has(.pulse-page) .velvet-route-stage,
+ body.velvet-burgundy-route:has(.pulse-page) .pulse-page,
+ body.velvet-burgundy-route:has(.pulse-page) .pulse-shell{
+   --stories-canvas:#1d1124!important;
+   --stories-atmosphere:none!important;
+   background:#1d1124!important;
+   background-color:#1d1124!important;
+   background-image:none!important;
+ }
+ body.velvet-burgundy-route:has(.pulse-page) .pulse-page::before,
+ body.velvet-burgundy-route:has(.pulse-page) .pulse-page::after,
+ body.velvet-burgundy-route:has(.pulse-page) .velvet-route-stage::before,
+ body.velvet-burgundy-route:has(.pulse-page) .velvet-route-stage::after{
+   background:none!important;background-image:none!important;box-shadow:none!important;
+ }
+ body.velvet-burgundy-route .pulse-page .pulse-header--compact{
+   display:flex!important;flex-direction:row!important;align-items:center!important;
+   justify-content:space-between!important;gap:12px!important;
+   width:100%!important;height:auto!important;min-height:0!important;
+   margin:0 0 22px!important;padding:12px 0 10px!important;
+   background:transparent!important;background-image:none!important;
+   border:0!important;border-radius:0!important;box-shadow:none!important;
+ }
+ body.velvet-burgundy-route .pulse-page .pulse-header--compact .pulse-header__copy{
+   display:block!important;flex:1 1 auto!important;min-width:0!important;text-align:left!important;
+ }
+ body.velvet-burgundy-route .pulse-page .pulse-header--compact .pulse-header__eyebrow{
+   display:block!important;font:600 10px/1.4 "Manrope",sans-serif!important;
+   letter-spacing:.19em!important;color:#d4adc3!important;margin:0 0 8px!important;
+ }
+ body.velvet-burgundy-route .pulse-page .pulse-header--compact h1{
+   font:500 clamp(36px,9vw,46px)/1.08 "Cormorant Garamond",Georgia,serif!important;
+   letter-spacing:-.02em!important;text-transform:none!important;
+   color:#f7edf3!important;-webkit-text-fill-color:#f7edf3!important;
+   margin:0!important;padding:0!important;background:none!important;
+ }
+ body.velvet-burgundy-route .pulse-page .pulse-header--compact p{
+   color:#bfa6b9!important;font-size:12px!important;line-height:1.4!important;
+   margin:9px 0 0!important;max-width:265px!important;
+ }
+ body.velvet-burgundy-route .pulse-page .pulse-header--compact .pulse-header__library{
+   display:grid!important;place-items:center!important;flex:0 0 46px!important;
+   width:46px!important;height:46px!important;min-height:46px!important;
+   margin:0!important;padding:0!important;border-radius:50%!important;
+   background:#352039!important;color:#eac6da!important;
+   border:1px solid #956582!important;box-shadow:none!important;
+ }
+ body.velvet-burgundy-route .pulse-page .pulse-library__heading h2{
+   color:#f7edf3!important;
+ }
+}
