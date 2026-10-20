@@ -234,3 +234,32 @@
 @keyframes iv-globe-orbit{from{transform:rotate(-28deg)}to{transform:rotate(332deg)}}
 @keyframes iv-globe-orbit-alt{from{transform:rotate(63deg)}to{transform:rotate(-297deg)}}
 @media(prefers-reduced-motion:reduce){.iv-globe__ring{animation:none}}
+
+/* ORVAYNE: coordinated dark / pearl-white / icy-blue appearance. */
+.identidad-viva--light{color:#49323f;background:rgba(247,240,237,.08)!important}
+.identidad-viva--light::before{background:radial-gradient(ellipse 58% 45% at 50% 49%,rgba(247,240,237,.83),rgba(247,240,237,.49) 60%,transparent)!important}
+.identidad-viva--light .iv-wordmark{color:#855a70}
+.identidad-viva--light .iv-step h1{color:#684253}
+.identidad-viva--light .iv-step form{background:rgba(255,255,255,.76);border-color:rgba(176,132,147,.3)}
+.identidad-viva--light .iv-step input{color:#49323f}
+.identidad-viva--light .iv-step input::placeholder{color:#a88b99}
+.identidad-viva--light .iv-next{color:#75485e;background:rgba(235,211,219,.6);border-color:rgba(164,111,134,.6)}
+.identidad-viva--light .iv-back,.identidad-viva--light .iv-links button,.identidad-viva--light .iv-social__divider{color:#75485e}
+.identidad-viva--light .iv-social__options button{background:rgba(255,255,255,.79);border-color:rgba(185,143,159,.4);color:#593748}
+.identidad-viva--light .iv-social__divider::before,.identidad-viva--light .iv-social__divider::after{background:rgba(164,111,134,.28)}
+.identidad-viva--light .iv-globe__ring{border-color:rgba(219,142,156,.72);box-shadow:0 0 4px rgba(219,142,156,.28)}
+.identidad-viva--light .iv-globe__ring--two{border-color:rgba(202,136,153,.5)}
+.identidad-viva--comfort{color:#183a61;background:rgba(229,242,252,.09)!important}
+.identidad-viva--comfort::before{display:block!important;content:""!important;position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 58% 45% at 50% 49%,rgba(229,242,252,.83),rgba(229,242,252,.48) 60%,transparent)!important}
+.identidad-viva--comfort .iv-wordmark{color:#183f76;text-shadow:none}
+.identidad-viva--comfort .iv-step h1{color:#183a61}
+.identidad-viva--comfort .iv-step form{background:rgba(241,249,255,.81);border-color:rgba(75,148,218,.42)}
+.identidad-viva--comfort .iv-step input{color:#183a61}
+.identidad-viva--comfort .iv-step input::placeholder{color:#779bc0}
+.identidad-viva--comfort .iv-next{color:#184e86;background:rgba(162,209,247,.52);border-color:rgba(65,141,213,.65)}
+.identidad-viva--comfort .iv-back,.identidad-viva--comfort .iv-links button,.identidad-viva--comfort .iv-social__divider{color:#24568a}
+.identidad-viva--comfort .iv-social__options button{background:rgba(250,253,255,.8);border-color:rgba(93,158,221,.49);color:#183a61}
+.identidad-viva--comfort .iv-social__divider::before,.identidad-viva--comfort .iv-social__divider::after{background:rgba(62,129,193,.31)}
+.identidad-viva--comfort .iv-globe{filter:drop-shadow(0 0 12px rgba(65,145,229,.35))}
+.identidad-viva--comfort .iv-globe__ring{border-color:rgba(47,150,248,.78);box-shadow:0 0 5px rgba(65,145,229,.38)}
+.identidad-viva--comfort .iv-globe__ring--two{border-color:rgba(79,169,255,.52)}
