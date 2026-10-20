@@ -1335,3 +1335,7 @@ html body .chats-page--reference .velvet-identity-continue__copy small{
   flex-basis:40px;width:40px;height:40px;
  }
 }
+
+/* Softer icon discs for the sky-blue collection theme. */
+html[data-theme='comfort'] .chats-page--reference .reference-collection-card__icon{background:#477eaa!important;border-color:#87b2d0!important;box-shadow:none!important}
+html[data-theme='comfort'] .chats-page--reference .reference-collection-card__icon svg{color:#f5faff!important}
