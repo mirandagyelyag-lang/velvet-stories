@@ -12,7 +12,7 @@ function OrvayneGlobe({theme='dark'}){
       try{
         const size=180;
         globe=window.Globe()(el).width(size).height(size).backgroundColor('rgba(0,0,0,0)')
-          .showAtmosphere(true).atmosphereColor(theme==='comfort'?'#5eaeef':theme==='light'?'#ffffff':'#b879e9').atmosphereAltitude(.055).showGraticules(false);
+          .showAtmosphere(true).atmosphereColor(theme==='comfort'?'#5eaeef':theme==='light'?'#e6d8de':'#b879e9').atmosphereAltitude(.055).showGraticules(false);
         const material=globe.globeMaterial();
         if(material?.color)material.color.set('#ffffff');
         if(material?.emissive)material.emissive.set('#000000');
@@ -26,7 +26,7 @@ function OrvayneGlobe({theme='dark'}){
         const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=1024;
         const ctx=canvas.getContext('2d');
         const xy=p=>[(p[0]+180)/360*canvas.width,(90-p[1])/180*canvas.height];
-        ctx.fillStyle=theme==='comfort'?'#7ec7ff':theme==='light'?'#947e8a':'#d5a1f7';
+        ctx.fillStyle=theme==='comfort'?'#7ec7ff':theme==='light'?'#66505e':'#d5a1f7';
         for(const feature of geo.features){
           const geom=feature.geometry;if(!geom)continue;
           const polys=geom.type==='Polygon'?[geom.coordinates]:geom.type==='MultiPolygon'?geom.coordinates:[];
@@ -38,15 +38,15 @@ function OrvayneGlobe({theme='dark'}){
         }
         // Keep only tiny white dots inside geographic land shapes.
         const pattern=document.createElement('canvas');pattern.width=8;pattern.height=8;
-        const pc=pattern.getContext('2d');pc.fillStyle=theme==='comfort'?'#7ec7ff':theme==='light'?'#947e8a':'#d5a1f7';pc.beginPath();pc.arc(4,4,1.5,0,Math.PI*2);pc.fill();
+        const pc=pattern.getContext('2d');pc.fillStyle=theme==='comfort'?'#7ec7ff':theme==='light'?'#66505e':'#d5a1f7';pc.beginPath();pc.arc(4,4,1.5,0,Math.PI*2);pc.fill();
         ctx.globalCompositeOperation='destination-in';ctx.fillStyle=ctx.createPattern(pattern,'repeat');ctx.fillRect(0,0,2048,1024);
         // A faint dot field on the oceans prevents the globe going blank as it turns.
         ctx.globalCompositeOperation='destination-over';
         const ocean=document.createElement('canvas');ocean.width=12;ocean.height=12;
-        const oc=ocean.getContext('2d');oc.fillStyle=theme==='comfort'?'rgba(65,139,207,.3)':theme==='light'?'rgba(160,143,154,.24)':'rgba(145,88,182,.24)';
+        const oc=ocean.getContext('2d');oc.fillStyle=theme==='comfort'?'rgba(65,139,207,.3)':theme==='light'?'rgba(149,127,139,.14)':'rgba(145,88,182,.24)';
         oc.beginPath();oc.arc(6,6,.85,0,Math.PI*2);oc.fill();
         ctx.fillStyle=ctx.createPattern(ocean,'repeat');ctx.fillRect(0,0,2048,1024);
-        ctx.fillStyle=theme==='comfort'?'#061c39':theme==='light'?'#ffffff':'#090512';ctx.fillRect(0,0,2048,1024);
+        ctx.fillStyle=theme==='comfort'?'#061c39':theme==='light'?'#e9e2e5':'#090512';ctx.fillRect(0,0,2048,1024);
         globe.globeImageUrl(canvas.toDataURL('image/png'));
       }catch(err){console.warn('ORVAYNE globe detail unavailable',err)}
     };
