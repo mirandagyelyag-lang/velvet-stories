@@ -12,11 +12,11 @@ function OrvayneGlobe(){
       try{
         const size=180;
         globe=window.Globe()(el).width(size).height(size).backgroundColor('rgba(0,0,0,0)')
-          .showAtmosphere(true).atmosphereColor('#a66ac8').atmosphereAltitude(.075)
+          .showAtmosphere(true).atmosphereColor('#ffffff').atmosphereAltitude(.045)
           .globeImageUrl(null).showGraticules(false);
         const material=globe.globeMaterial();
-        if(material?.color)material.color.set('#100b18');
-        if(material?.emissive)material.emissive.set('#090512');
+        if(material?.color)material.color.set('#030303');
+        if(material?.emissive)material.emissive.set('#000000');
         const arcs=[
           {startLat:-34,startLng:-70,endLat:51,endLng:-1},
           {startLat:40,startLng:-74,endLat:35,endLng:139},
@@ -24,8 +24,8 @@ function OrvayneGlobe(){
           {startLat:-23,startLng:-46,endLat:52,endLng:13},
           {startLat:37,startLng:127,endLat:-34,endLng:18}
         ];
-        globe.arcsData(arcs).arcColor(()=>['#bb78cb','#78428f']).arcAltitude(.22)
-          .arcStroke(.28).arcDashLength(.42).arcDashGap(.16).arcDashAnimateTime(6500);
+        globe.arcsData(arcs).arcColor(()=>['#ffffff','#a9a9a9']).arcAltitude(.22)
+          .arcStroke(.22).arcDashLength(.42).arcDashGap(.16).arcDashAnimateTime(6500);
         const controls=globe.controls();controls.autoRotate=true;controls.autoRotateSpeed=.65;
         controls.enableZoom=false;controls.enablePan=false;controls.enableDamping=true;
         const canvas=el.querySelector('canvas');if(canvas)canvas.setAttribute('aria-hidden','true');
@@ -36,7 +36,7 @@ function OrvayneGlobe(){
         if(disposed)return;
         globe.hexPolygonsData(geo.features).hexPolygonGeoJsonGeometry('geometry')
           .hexPolygonResolution(3).hexPolygonMargin(.78).hexPolygonAltitude(.008)
-          .hexPolygonColor(()=> '#a99aae').hexPolygonUseDots(true)
+          .hexPolygonColor(()=> '#f0f0f0').hexPolygonUseDots(true)
           .hexPolygonDotResolution(1);
       }catch(err){console.warn('ORVAYNE globe detail unavailable',err)}
     };
@@ -46,7 +46,7 @@ function OrvayneGlobe(){
     }
     return()=>{disposed=true;if(globe){try{globe.pauseAnimation();globe._destructor?.()}catch{}}if(el)el.replaceChildren()};
   },[]);
-  return <div className="iv-globe" aria-label="Planeta 3D de puntos con órbitas violetas" role="img"><div ref={host} className="iv-globe__canvas"/></div>;
+  return <div className="iv-globe" aria-label="Planeta 3D de puntos con órbitas blancas" role="img"><div ref={host} className="iv-globe__canvas"/></div>;
 }
 
 export default function IdentidadViva({open,theme="dark",onBack,onSignIn,onSignUp,onResetPassword,onSocialSignIn}) {
