@@ -36,18 +36,23 @@ export default function CinematicEntry({ theme, onTheme, onEnter }) {
         <p>Personajes con voz propia. Conversaciones que dejan huella. Un universo que cambia con cada palabra que eliges.</p>
         <div className="orv-cinema__actions">
           <button type="button" className="orv-cinema__enter" onClick={onEnter}>ENTRAR A ORVAYNE <span>↗</span></button>
-          <button type="button" className="orv-cinema__listen" onClick={()=>setIndex(i=>(i+1)%lines.length)}>Escuchar sus voces ↗</button>
+          <button type="button" className="orv-cinema__listen" onClick={()=>setIndex(i=>(i+1)%lines.length)}>Conocer sus voces ↗</button>
         </div>
       </section>
       <section className="orv-cinema__theater" aria-label="Fragmentos de conversaciones con personajes">
         <div className="orv-cinema__orbit" aria-hidden="true"/>
         <div className="orv-cinema__halo" aria-hidden="true"/>
-        <div className="orv-cinema__core" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M24 52C24 25 76 25 76 52S24 80 24 52Z"/><path d="M50 16C76 32 76 70 50 85M50 16C24 32 24 70 50 85"/><path d="M18 50H82"/></svg></div>
-        {voices.map((v,i)=><article className={`orv-cinema__message orv-cinema__message--${i+1}`} key={v.name}>
-          <span className="orv-cinema__sender"><b/> {v.name}</span>
-          <p key={index}>{'“'+lines[index][i]+'”'}</p>
-          <small>{v.detail}</small>
-        </article>)}
+        <div className="orv-cinema__core" aria-hidden="true"><span>O</span></div>
+        <div className="orv-cinema__scene">
+          <div className="orv-cinema__scene-top"><span className="orv-cinema__live-dot"/> UNA HISTORIA EN CURSO <span className="orv-cinema__scene-number">0{index+1} / 03</span></div>
+          <div className="orv-cinema__scene-body" key={index}>
+            <span className="orv-cinema__sender">{voices[index].name}</span>
+            <blockquote>“{lines[index][index]}”</blockquote>
+            <p>{voices[index].detail}</p>
+          </div>
+          <div className="orv-cinema__scene-bottom"><span>LAS HISTORIAS CONTINÚAN CONTIGO</span><button type="button" onClick={()=>setIndex(i=>(i+1)%lines.length)} aria-label="Siguiente conversación">↗</button></div>
+        </div>
+        <div className="orv-cinema__scene-dots" aria-label="Conversación seleccionada">{voices.map((v,i)=><button key={v.name} type="button" aria-label={`Ver a ${v.name}`} aria-pressed={index===i} className={index===i?"active":""} onClick={()=>setIndex(i)}/>)}</div>
       </section>
     </main>
     <footer className="orv-cinema__foot"><span>ORVAYNE <strong>PRIVATE STORIES</strong></span><span>NO SOLO LEES LA HISTORIA. FORMAS PARTE DE ELLA.</span></footer>
