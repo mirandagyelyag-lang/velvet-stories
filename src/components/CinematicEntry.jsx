@@ -1,6 +1,16 @@
+import { useEffect, useState } from "react";
 import "./CinematicEntry.css";
 
+const scenes = [
+  [{line:"“You came back.”",detail:"The door stays open a moment longer."},{line:"“I wasn’t finished talking to you.”",detail:"A smile almost breaks through."},{line:"“Then stay.”",detail:"Neither of them moves."}],
+  [{line:"“You remembered?”",detail:"The question comes out softer than intended."},{line:"“Of course I did.”",detail:"A small pause follows."},{line:"“I didn’t think you would.”",detail:"The silence says enough."}],
+  [{line:"“You’re impossible.”",detail:"There’s no real anger in it."},{line:"“And yet you’re still here.”",detail:"A glance lingers."},{line:"“Don’t get used to it.”",detail:"The smile gives everything away."}],
+  [{line:"“What happens now?”",detail:"Outside, the rain begins."},{line:"“That depends on you.”",detail:"No one looks away."},{line:"“Then don’t leave yet.”",detail:"The night stretches ahead."}]
+];
+
 export default function CinematicEntry({ theme, onTheme, onEnter, entered=false, children }) {
+  const [sceneIndex,setSceneIndex] = useState(0);
+  useEffect(() => { if (entered) return; const timer = setInterval(() => setSceneIndex(i => (i+1)%scenes.length), 8500); return () => clearInterval(timer); }, [entered]);
   return <div className={`orv-cinema orv-cinema--${theme}${entered?" orv-cinema--login":""}`}>
     <div className="orv-cinema__grain" aria-hidden="true"/>
     <div className="orv-cinema__aura orv-cinema__aura--one" aria-hidden="true"/>
@@ -24,9 +34,8 @@ export default function CinematicEntry({ theme, onTheme, onEnter, entered=false,
         <div className="orv-cinema__art-halo" aria-hidden="true"/>
         <div className="orv-cinema__art-ring orv-cinema__art-ring--one" aria-hidden="true"/>
         <div className="orv-cinema__art-ring orv-cinema__art-ring--two" aria-hidden="true"/>
-        <div className="orv-cinema__chat-preview" aria-label="Fragmentos ficticios de una conversación">
-          <div className="orv-cinema__chat-bubble orv-cinema__chat-bubble--first"><span className="orv-cinema__chat-kicker">01 / UNA POSIBILIDAD</span>¿Y si no termina aquí?</div>
-          <div className="orv-cinema__chat-bubble orv-cinema__chat-bubble--reply"><span className="orv-cinema__chat-kicker">02 / UNA RESPUESTA</span>Entonces sigue.</div>
+        <div className="orv-cinema__chat-preview" aria-label="Fragmentos ficticios de conversaciones" aria-live="off" key={sceneIndex}>
+          {scenes[sceneIndex].map((item,i)=><div key={i} className={`orv-cinema__chat-bubble orv-cinema__chat-bubble--card-${i+1}`}><span className="orv-cinema__chat-dot" aria-hidden="true"/><span className="orv-cinema__chat-line">{item.line}</span><span className="orv-cinema__chat-detail">{item.detail}</span></div>)}
         </div>{children}
         <div className="orv-cinema__art-caption">CADA PALABRA ABRE UN MUNDO <span>✦</span></div>
       </section>
