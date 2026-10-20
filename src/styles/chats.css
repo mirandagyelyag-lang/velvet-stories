@@ -1172,3 +1172,25 @@ html[data-theme="light"] body .chats-page--reference .orvayne-library-head :is(.
 }
 html[data-theme="light"] body .chats-page--reference .orvayne-library-head__eyebrow{color:#a4778d!important}
 html[data-theme="light"] body .chats-page--reference .orvayne-library-head__line{background:rgba(164,119,141,.3)!important}
+
+
+/* ORVAYNE collection shelves: coordinated palette for all three themes. */
+html[data-theme="comfort"] body .chats-page--reference .reference-collection-card:nth-child(4n+1){background:linear-gradient(155deg,#244a70,#183652)!important}
+html[data-theme="comfort"] body .chats-page--reference .reference-collection-card:nth-child(4n+2){background:linear-gradient(155deg,#32658c,#244969)!important}
+html[data-theme="comfort"] body .chats-page--reference .reference-collection-card:nth-child(4n+3){background:linear-gradient(155deg,#527fa6,#345a7d)!important}
+html[data-theme="comfort"] body .chats-page--reference .reference-collection-card:nth-child(4n){background:linear-gradient(155deg,#7098b8,#436d90)!important}
+html[data-theme="dark"] body .chats-page--reference .reference-collection-card:nth-child(4n+1){background:linear-gradient(155deg,#291638,#160e24)!important}
+html[data-theme="dark"] body .chats-page--reference .reference-collection-card:nth-child(4n+2){background:linear-gradient(155deg,#402450,#24142f)!important}
+html[data-theme="dark"] body .chats-page--reference .reference-collection-card:nth-child(4n+3){background:linear-gradient(155deg,#573364,#30203e)!important}
+html[data-theme="dark"] body .chats-page--reference .reference-collection-card:nth-child(4n){background:linear-gradient(155deg,#6c4a79,#3c2850)!important}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card:nth-child(4n+1){background:linear-gradient(155deg,#fffaf9,#ecdce4)!important}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card:nth-child(4n+2){background:linear-gradient(155deg,#f8edf1,#e6d0dc)!important}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card:nth-child(4n+3){background:linear-gradient(155deg,#f1e0e9,#dcbecf)!important}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card:nth-child(4n){background:linear-gradient(155deg,#ead2df,#cfa9bd)!important}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card :is(strong,small,.reference-collection-card__icon){color:#593c50!important}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card__shade{background:linear-gradient(180deg,transparent 30%,rgba(119,77,101,.12))!important}
+html[data-theme="comfort"] body .chats-page--reference .reference-collection-card__shade,
+html[data-theme="dark"] body .chats-page--reference .reference-collection-card__shade{background:linear-gradient(180deg,transparent 25%,rgba(0,0,0,.22))!important}
+html[data-theme="comfort"] body .chats-page--reference .reference-collection-card :is(strong,small,.reference-collection-card__icon),
+html[data-theme="dark"] body .chats-page--reference .reference-collection-card :is(strong,small,.reference-collection-card__icon){color:#f6f4fa!important}
+html[data-theme] body .chats-page--reference .reference-collection-card__fallback{background:transparent!important}
