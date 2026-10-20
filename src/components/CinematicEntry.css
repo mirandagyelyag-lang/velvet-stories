@@ -125,3 +125,19 @@
 .orv-cinema__chat-bubble--last{display:none}
 .orv-cinema__art-ring{opacity:.45}
 @media(max-width:540px){.orv-cinema__chat-preview{gap:17px;width:91%}.orv-cinema__chat-bubble{padding:13px 16px;font-size:15px;gap:7px}.orv-cinema__chat-kicker{font-size:8px}}
+
+/* Cinematic rotating scene cards: three floating fragments, no names. */
+.orv-cinema__theater--art{overflow:visible}
+.orv-cinema__chat-preview{position:absolute;inset:7% 0 13%;width:100%;max-width:none;height:auto;display:block;margin:0;transform:none;z-index:3;pointer-events:none}
+.orv-cinema__chat-bubble{position:absolute!important;display:flex;flex-direction:column;align-items:flex-start;gap:11px;width:clamp(215px,26vw,330px);max-width:58%;min-height:145px;padding:21px 23px!important;border-radius:22px!important;background:color-mix(in srgb,var(--bg) 91%,var(--accent) 9%)!important;color:var(--ink)!important;border:1px solid color-mix(in srgb,var(--accent) 34%,transparent)!important;box-shadow:0 20px 60px rgba(0,0,0,.16)!important;backdrop-filter:blur(18px);animation:orvSceneAppear .8s both!important}
+.orv-cinema__chat-bubble--card-1{top:0;left:0;transform:rotate(-5deg)!important;animation-delay:0s!important}
+.orv-cinema__chat-bubble--card-2{top:33%;right:-2%;left:auto;transform:rotate(4deg)!important;animation-delay:.18s!important}
+.orv-cinema__chat-bubble--card-3{bottom:0;left:7%;transform:rotate(-3deg)!important;animation-delay:.36s!important}
+.orv-cinema__chat-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 16px color-mix(in srgb,var(--accent) 45%,transparent);flex:none}
+.orv-cinema__chat-line{font-family:Georgia,'Times New Roman',serif;font-size:clamp(19px,1.75vw,27px);font-weight:400;line-height:1.27;letter-spacing:-.025em}
+.orv-cinema__chat-detail{font-family:'Jost',Arial,sans-serif;font-size:clamp(11px,.95vw,14px);font-style:italic;line-height:1.4;opacity:.7}
+.orv-cinema--login .orv-cinema__chat-preview{display:none!important}
+@keyframes orvSceneAppear{from{opacity:0;filter:blur(5px)}to{opacity:1;filter:blur(0)}}
+@media(max-width:900px){.orv-cinema__chat-preview{inset:0 3% 8%}.orv-cinema__chat-bubble{width:45%;min-height:95px;padding:12px 15px!important;border-radius:14px!important;gap:6px}.orv-cinema__chat-line{font-size:clamp(13px,2vw,19px)}.orv-cinema__chat-detail{font-size:10px}.orv-cinema__chat-bubble--card-2{right:0;top:24%}.orv-cinema__chat-bubble--card-3{bottom:0}}
+@media(max-width:540px){.orv-cinema__chat-preview{inset:1% 1% 10%}.orv-cinema__chat-bubble{width:52%;max-width:55%;min-height:80px;padding:9px 11px!important;gap:5px;border-radius:12px!important}.orv-cinema__chat-dot{width:6px;height:6px}.orv-cinema__chat-line{font-size:12px}.orv-cinema__chat-detail{font-size:9px}.orv-cinema__chat-bubble--card-2{top:27%;right:0}.orv-cinema__chat-bubble--card-3{left:3%;bottom:0}}
+@media(prefers-reduced-motion:reduce){.orv-cinema__chat-bubble{animation:none!important}}
