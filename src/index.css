@@ -40,20 +40,20 @@
 
 :root[data-theme="comfort"] {
   color-scheme: light;
-  --background: #e6dcee;
-  --surface: #f5eefa;
-  --surface-soft: #ddcfe7;
-  --surface-strong: #fffaf2;
-  --text-primary: #403446;
-  --text-secondary: #776a62;
-  --accent: #765085;
-  --accent-dark: #583d63;
-  --gold: #9168a5;
-  --border: rgba(72,52,83, 0.14);
-  --soft-shadow: 0 18px 46px rgba(56,37,69, 0.08);
-  --velvet-glass: rgba(245,238,250, 0.84);
-  --velvet-veil: rgba(230,220,238, 0.9);
-  --velvet-contrast: #fffaf3;
+  --background: #e5f2fc;
+  --surface: #f4faff;
+  --surface-soft: #d6eafa;
+  --surface-strong: #ffffff;
+  --text-primary: #183a61;
+  --text-secondary: #4e7094;
+  --accent: #3979b5;
+  --accent-dark: #245c92;
+  --gold: #428ac9;
+  --border: rgba(57,121,181,.22);
+  --soft-shadow: 0 18px 46px rgba(32,85,142,.12);
+  --velvet-glass: rgba(244,250,255,.86);
+  --velvet-veil: rgba(229,242,252,.91);
+  --velvet-contrast: #ffffff;
 }
 
 * {
@@ -162,3 +162,7 @@ html[data-reduce-motion="true"] *::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
 }
+
+/* Match internal palette to the three entrance identities. */
+:root[data-theme="dark"]{--background:#120a1d;--surface:#20132e;--surface-soft:#2c1b3c;--surface-strong:#392449;--text-primary:#f2e8ff;--text-secondary:#c0a9d3;--accent:#a77ad5;--accent-dark:#8055af;--gold:#c7a4ed;--border:rgba(190,145,232,.24);--velvet-glass:rgba(31,17,47,.87);--velvet-veil:rgba(18,10,29,.92)}
+:root[data-theme="light"]{--background:#f7f0ed;--surface:#fffaf8;--surface-soft:#f0e4e7;--surface-strong:#fff;--text-primary:#493240;--text-secondary:#806575;--accent:#a4778d;--accent-dark:#785269;--gold:#a4778d;--border:rgba(157,111,135,.23);--velvet-glass:rgba(255,250,248,.88);--velvet-veil:rgba(247,240,237,.93)}
