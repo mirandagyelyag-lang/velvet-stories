@@ -95,3 +95,21 @@
  html body .chats-page--reference .reference-collections{margin-bottom:20px!important;}
  html body .chats-page--reference .velvet-identity-continue{margin-bottom:18px!important;}
 }
+
+/* One solid canvas for Stories, including empty/loading state and bottom dock area. */
+@media(max-width:760px){
+ html[data-velvet-page="chats"].velvet-burgundy-route,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route #root,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .app,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .app__content,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .velvet-route-stage,
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .chats-page.chats-page--reference{
+   background-color:#1d1124!important;
+   background-image:none!important;
+   background:#1d1124!important;
+ }
+ body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route .chats-page.chats-page--reference{
+   min-height:100dvh!important;
+ }
+}
