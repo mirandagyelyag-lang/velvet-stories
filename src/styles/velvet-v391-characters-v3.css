@@ -370,3 +370,77 @@
     letter-spacing: .18em !important;
   }
 }
+
+/* Characters library: compact Velvet editorial layout on phones. */
+@media(max-width:760px){
+ body.velvet-discover-route:not(.velvet-page--chat){
+   --stories-canvas:#1d1124!important;
+   --stories-atmosphere:linear-gradient(#1d1124,#1d1124)!important;
+   background:#1d1124!important;background-image:none!important;
+ }
+ body.velvet-discover-route .app,
+ body.velvet-discover-route .app__content,
+ body.velvet-discover-route .velvet-route-stage,
+ body.velvet-discover-route .characters-library {
+   background:#1d1124!important;background-image:none!important;
+ }
+ body.velvet-discover-route .characters-library__hero-simple{
+   position:relative!important;display:flex!important;flex-direction:row!important;
+   align-items:center!important;justify-content:space-between!important;
+   width:100%!important;min-height:0!important;height:auto!important;
+   margin:0 0 18px!important;padding:12px 2px 10px!important;
+   border:0!important;border-radius:0!important;
+   background:transparent!important;background-image:none!important;
+   box-shadow:none!important;overflow:visible!important;
+ }
+ body.velvet-discover-route .characters-library__hero-simple::before,
+ body.velvet-discover-route .characters-library__hero-simple::after{content:none!important;display:none!important;}
+ body.velvet-discover-route .characters-library__hero-simple .characters-library__compact-copy{
+   flex:1 1 auto!important;min-width:0!important;display:block!important;
+   position:static!important;text-align:left!important;transform:none!important;
+ }
+ body.velvet-discover-route .characters-library__simple-eyebrow{
+   display:block!important;font:600 10px/1.4 "Manrope",sans-serif!important;
+   letter-spacing:.19em!important;color:#d4adc3!important;margin-bottom:8px!important;
+ }
+ body.velvet-discover-route .characters-library__hero-simple h1{
+   display:block!important;width:auto!important;max-width:100%!important;
+   margin:0!important;padding:0!important;white-space:normal!important;
+   font:500 clamp(36px,9vw,46px)/1.08 "Cormorant Garamond",Georgia,serif!important;
+   letter-spacing:-.02em!important;text-transform:none!important;
+   color:#f7edf3!important;-webkit-text-fill-color:#f7edf3!important;
+   background:none!important;overflow:visible!important;
+ }
+ body.velvet-discover-route .characters-library__hero-simple p{
+   margin:9px 0 0!important;font-size:12px!important;line-height:1.4!important;
+   color:#bfa6b9!important;letter-spacing:0!important;
+ }
+ body.velvet-discover-route .characters-library__hero-simple .characters-library__hero-create{
+   flex:0 0 46px!important;width:46px!important;height:46px!important;
+   min-height:46px!important;margin:0 0 0 12px!important;
+   border-radius:50%!important;background:#352039!important;
+   border:1px solid #956582!important;box-shadow:none!important;color:#eac6da!important;
+ }
+ body.velvet-discover-route .characters-library__controls{
+   margin:0 0 14px!important;gap:9px!important;
+ }
+ body.velvet-discover-route .characters-library__controls .discover-burgundy__search{
+   background:#29182f!important;background-image:none!important;
+   border:1px solid #503353!important;box-shadow:none!important;border-radius:16px!important;
+ }
+ body.velvet-discover-route .characters-library__controls .discover-burgundy__search input{
+   background:transparent!important;color:#f7edf3!important;
+ }
+ body.velvet-discover-route .characters-library__controls .discover-burgundy__chips button{
+   background:#29182f!important;border:1px solid #503353!important;
+   box-shadow:none!important;color:#d4b5c8!important;
+ }
+ body.velvet-discover-route .characters-library__controls .discover-burgundy__chips button[aria-selected="true"],
+ body.velvet-discover-route .characters-library__controls .discover-burgundy__chips button.is-active{
+   background:#bc8398!important;color:#211127!important;border-color:#bc8398!important;
+ }
+ body.velvet-discover-route .characters-library__grid{gap:10px!important;}
+ body.velvet-discover-route .characters-library__card .discover-burgundy__feature-card-main{
+   border-radius:17px!important;overflow:hidden!important;
+ }
+}
