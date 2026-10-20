@@ -528,16 +528,13 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
   }
 
   return <section className="chats-page chats-page--reference memories-reference-page memories-character-library memories-character-index">
-    <header className="reference-stories-hero memories-reference__hero">
-      <button className="reference-stories-hero__private memories-reference__private" type="button" onClick={onBack} aria-label="Go back"><Crown size={19}/><span>PRIVATE MEMORY BOOK</span></button>
-      <div className="reference-stories-title memories-reference__title" aria-label="Your Memories">
-        <span className="reference-stories-title__script">your</span>
-        <span className="reference-stories-title__line reference-stories-title__line--left" />
-        <h1>MEMORIES</h1>
-        <span className="reference-stories-title__spark">✦</span>
-        <span className="reference-stories-title__line reference-stories-title__line--right" />
+    <header className="memories-reference__hero memories-reference__hero--compact">
+      <div className="memories-reference__hero-copy">
+        <span className="memories-reference__eyebrow">PRIVATE MEMORY BOOK</span>
+        <h1>Your Memories</h1>
+        <p>Moments worth remembering.</p>
       </div>
-      <button className="reference-stories-new memories-reference__new" type="button" onClick={openCreate} disabled={!characters.length} aria-label="Add new memory"><Sparkles size={24}/></button>
+      <button className="memories-reference__new memories-reference__new--compact" type="button" onClick={openCreate} disabled={!characters.length} aria-label="Add new memory"><Sparkles size={23}/></button>
     </header>
 
     <div className="reference-search-wrap memories-reference__search-wrap memories-character-index__search">
