@@ -214,3 +214,9 @@
 @media(max-width:600px){.iv-globe{width:142px;height:142px;flex-basis:142px;margin-bottom:0}}
 @media(max-height:720px){.iv-globe{transform:scale(.82);margin-top:-13px;margin-bottom:-14px}}
 @media(prefers-reduced-motion:reduce){.iv-globe{filter:none}}
+
+/* Dotted Earth: compact orbital globe between wordmark and form. */
+.iv-globe{width:180px;height:180px;flex-basis:180px;margin:0 auto -5px;filter:drop-shadow(0 0 9px rgba(160,96,194,.20))}
+.iv-globe__canvas{width:180px;height:180px}
+@media(max-width:600px){.iv-globe{width:180px;height:180px;flex-basis:180px;margin-bottom:-8px}}
+@media(max-height:720px){.iv-globe{transform:scale(.78);margin-top:-20px;margin-bottom:-22px}}
