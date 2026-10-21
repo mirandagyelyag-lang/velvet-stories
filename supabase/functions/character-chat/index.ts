@@ -3272,7 +3272,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
       ],
       similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
     }))
-    .filter((item)=>item.finalHardBlocks.length === 0)
+    .filter((item)=>item.finalHardBlocks.every((issue)=>!["lead_self_address_by_own_name","dialogue_speaker_perspective_switch"].includes(issue)))
     .filter((item)=>{
       const text = String(item.opening || "").trim();
       const words = text.split(/\s+/).filter(Boolean).length;
