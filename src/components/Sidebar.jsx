@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import velvetLogo from "../assets/velvet-logo.webp";
 import "../styles/sidebar.css";
 
 const navigation = [
@@ -35,7 +34,7 @@ function Sidebar({ activePage, onNavigate }) {
     <>
       <aside className="sidebar">
         <button className="sidebar__brand" onClick={() => onNavigate("chats")}>
-          <img src={velvetLogo} alt="" />
+          <span className="sidebar__brand-mark" aria-hidden="true">V</span>
           <span>ORVAYNE</span>
         </button>
 
