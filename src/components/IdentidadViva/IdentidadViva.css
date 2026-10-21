@@ -24,107 +24,6 @@
 @media(max-width:480px){.iv-content{width:83vw}.iv-links{gap:10px}.iv-links button{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.identidad-viva,.iv-halo,.iv-spark,.iv-step{animation:none;transition:none}}
 
-
-/* ORVAYNE — sculptural access, continuous liquid-chrome stage */
-.identidad-viva{isolation:isolate}
-.identidad-viva::before{content:"";position:absolute;inset:0;z-index:-2;pointer-events:none;background:radial-gradient(ellipse 75% 62% at 50% 50%,transparent 26%,rgba(10,3,23,.24) 75%,rgba(10,3,23,.5) 100%)}
-.identidad-viva::after{content:"";position:absolute;z-index:-1;pointer-events:none;width:min(110vw,760px);height:min(80vh,690px);left:50%;top:50%;transform:translate(-50%,-50%) rotate(-23deg);border-radius:48% 52% 60% 40% / 56% 42% 58% 44%;border:clamp(13px,3.4vw,32px) solid transparent;background:linear-gradient(135deg,#ffffffd9 0%,#a789f0 10%,#2a075c 24%,#e4d6ff 34%,#5d29b7 44%,#12071d 56%,#a978f0 68%,#f7efff 79%,#3c1378 92%) border-box;mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);mask-composite:exclude;-webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;filter:drop-shadow(0 0 25px rgba(135,83,245,.65)) drop-shadow(0 0 70px rgba(100,42,200,.35));opacity:.8;animation:iv-sculpture 18s ease-in-out infinite alternate}
-.iv-halo{background:radial-gradient(ellipse 54% 38% at 50% 50%,rgba(12,4,30,.88) 0%,rgba(12,4,30,.58) 58%,transparent 100%);animation:iv-breathe 10s ease-in-out infinite alternate}
-.iv-content{width:min(84vw,550px);padding:clamp(28px,5vw,52px) clamp(12px,3vw,28px);box-sizing:border-box}
-.iv-content::before{content:"ORVAYNE  /  ACCESS";position:absolute;bottom:100%;left:0;right:0;font:400 10px Jost,system-ui,sans-serif;letter-spacing:.4em;color:#d9c2fa;opacity:.78}
-.iv-spark{font-size:25px;color:#e8d8ff;filter:drop-shadow(0 0 18px #ad79ff)}
-.iv-step h1{font-size:clamp(25px,4vw,39px);font-weight:300;letter-spacing:.015em;line-height:1.22;margin:24px 0 40px;text-shadow:0 3px 30px rgba(5,0,18,.85)}
-.iv-step form{gap:18px;padding:7px 5px 12px;border-bottom:1px solid rgba(210,178,255,.8);background:linear-gradient(90deg,rgba(22,8,43,.6),rgba(46,17,86,.3),rgba(22,8,43,.4));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:2px}
-.iv-step input{padding:16px 12px;font-size:clamp(17px,2.4vw,22px);letter-spacing:.025em}
-.iv-step input::placeholder{color:rgba(231,212,255,.62)}
-.iv-next{width:56px;height:56px;border:1px solid rgba(235,213,255,.9);background:linear-gradient(145deg,rgba(126,72,219,.45),rgba(30,10,60,.5));box-shadow:inset 0 1px 12px rgba(220,192,255,.22),0 0 25px rgba(139,87,242,.24);font-size:27px}
-.iv-next:hover{background:rgba(125,75,215,.55);box-shadow:0 0 35px rgba(167,113,255,.48)}
-.iv-links{margin-top:32px;padding-top:18px;border-top:1px solid rgba(207,177,251,.24)}
-.iv-links button,.iv-back,.iv-change{font-size:clamp(12px,1.5vw,14px);letter-spacing:.075em;text-shadow:0 2px 12px rgba(5,0,18,.8)}
-.iv-back{top:max(30px,env(safe-area-inset-top));left:clamp(22px,5vw,70px)}
-.identidad-viva--light::before{background:radial-gradient(ellipse 75% 62% at center,transparent 25%,rgba(247,240,237,.52) 100%)}
-.identidad-viva--light::after{background:linear-gradient(135deg,#fff 0%,#b7a0e8 12%,#6640a4 25%,#fff 36%,#9b74d8 48%,#ede2ff 63%,#6e49b5 78%,#fff 90%) border-box;opacity:.72}
-.identidad-viva--light .iv-halo{background:radial-gradient(ellipse 54% 38% at center,rgba(247,240,237,.94),rgba(247,240,237,.65) 60%,transparent)}
-.identidad-viva--light .iv-content::before{color:#6e429d}
-.identidad-viva--light .iv-step h1,.identidad-viva--light .iv-links button,.identidad-viva--light .iv-back{text-shadow:none}
-.identidad-viva--light .iv-step form{background:linear-gradient(90deg,rgba(255,255,255,.72),rgba(238,224,255,.55));border-bottom-color:#8c6bc9}
-.identidad-viva--light .iv-step input::placeholder{color:rgba(84,31,86,.53)}
-.identidad-viva--light .iv-next{color:#542b82;border-color:#9164bb;background:rgba(255,255,255,.68)}
-@keyframes iv-sculpture{0%{transform:translate(-50%,-50%) rotate(-24deg) scale(.95);border-radius:48% 52% 60% 40% / 56% 42% 58% 44%}50%{transform:translate(-50%,-51%) rotate(8deg) scale(1.05);border-radius:58% 42% 45% 55% / 43% 62% 38% 57%}100%{transform:translate(-50%,-49%) rotate(32deg) scale(.98);border-radius:42% 58% 53% 47% / 60% 41% 59% 40%}}
-@media(max-width:600px){.identidad-viva::after{width:116vw;height:63vh;border-width:17px;opacity:.68}.iv-content{width:88vw;padding:28px 8px}.iv-step h1{font-size:clamp(26px,6vw,34px);margin:25px 0 32px}.iv-step form{gap:8px}.iv-step input{padding:14px 8px}.iv-next{width:50px;height:50px}.iv-links{gap:18px}.iv-links button{font-size:12px;line-height:1.45}}
-@media(prefers-reduced-motion:reduce){.identidad-viva::after{animation:none}}
-
-
-/* PORTAL — layered CSS 3D chrome, no generated imagery */
-.identidad-viva::after{display:none}
-.iv-portal{position:absolute;left:50%;top:49%;width:min(110vw,760px);height:min(83vh,760px);transform:translate(-50%,-50%);pointer-events:none;z-index:-1;perspective:850px;filter:drop-shadow(0 0 26px rgba(137,78,239,.4))}
-.iv-portal-ring{position:absolute;inset:4%;border-radius:50%;transform-style:preserve-3d;will-change:transform,filter}
-.iv-portal-ring--outer{background:conic-gradient(from 15deg,#170725 0deg,#41116b 24deg,#f7eaff 36deg,#9c65e9 48deg,#200735 75deg,#4e2486 120deg,#e8c9ff 151deg,#502b9e 172deg,#13051e 205deg,#ac75f4 247deg,#fef7ff 262deg,#51217b 282deg,#13051d 310deg,#bd89f6 347deg,#170725 360deg);-webkit-mask:radial-gradient(ellipse at center,transparent 56%,#000 59%,#000 69%,transparent 74%);mask:radial-gradient(ellipse at center,transparent 56%,#000 59%,#000 69%,transparent 74%);animation:iv-orbit 17s ease-in-out infinite alternate;filter:drop-shadow(0 0 19px #8c48db)}
-.iv-portal-ring--inner{inset:6%;background:conic-gradient(from 210deg,transparent 0deg,#f2d9ff 22deg,#7e49c9 37deg,transparent 66deg,#a776ed 135deg,#fff 153deg,transparent 180deg,#51278d 230deg,#e4c4ff 257deg,transparent 300deg);-webkit-mask:radial-gradient(ellipse at center,transparent 62%,#000 65%,#000 67%,transparent 71%);mask:radial-gradient(ellipse at center,transparent 62%,#000 65%,#000 67%,transparent 71%);animation:iv-orbit-reverse 13s ease-in-out infinite alternate;opacity:.95}
-.iv-portal-core{position:absolute;inset:22%;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(13,4,29,.88) 0%,rgba(18,6,37,.78) 63%,rgba(66,22,111,.15) 85%,transparent);box-shadow:0 0 85px 40px rgba(13,3,28,.42)}
-.iv-portal-sheen{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 80deg,transparent 0deg,rgba(255,255,255,.12) 32deg,transparent 42deg,transparent 180deg,rgba(194,149,255,.18) 192deg,transparent 205deg);-webkit-mask:radial-gradient(ellipse at center,transparent 54%,#000 62%,transparent 77%);mask:radial-gradient(ellipse at center,transparent 54%,#000 62%,transparent 77%);animation:iv-sheen 9s linear infinite}
-.iv-halo{background:radial-gradient(ellipse 43% 34% at center,rgba(12,4,30,.72),rgba(12,4,30,.18) 65%,transparent);z-index:-1}
-.iv-content{width:min(82vw,470px);padding:clamp(18px,3vw,32px) clamp(8px,2vw,18px)}
-.iv-content::before{content:"ORVAYNE";font:300 clamp(25px,4vw,44px) Georgia,serif;letter-spacing:.26em;color:#f4e5ff;text-shadow:0 0 24px rgba(182,121,255,.65);bottom:calc(100% + 12px)}
-.iv-step h1{font-size:clamp(21px,3vw,29px);margin:16px 0 24px}
-.iv-step form{background:rgba(23,8,41,.53);border:1px solid rgba(202,165,244,.3);border-bottom-color:rgba(232,207,255,.8);border-radius:14px;padding:3px 8px 3px 12px}
-.iv-step input{font-size:clamp(15px,2vw,18px)}
-.iv-next{width:46px;height:46px}
-.iv-links{margin-top:20px;border-top:0;padding-top:0}
-.identidad-viva--light .iv-portal-core{background:radial-gradient(ellipse,rgba(247,240,237,.94),rgba(247,240,237,.78) 66%,transparent)}
-.identidad-viva--light .iv-portal-ring--outer{filter:drop-shadow(0 0 16px #8b60ca)}
-.identidad-viva--light .iv-halo{background:radial-gradient(ellipse 44% 35% at center,rgba(247,240,237,.72),transparent)}
-.identidad-viva--light .iv-content::before{color:#4c257c;text-shadow:0 0 18px #bba3e0}
-@keyframes iv-orbit{0%{transform:rotate(-15deg) rotateY(-20deg) rotateX(9deg) scale(.96)}50%{transform:rotate(10deg) rotateY(14deg) rotateX(-8deg) scale(1.03)}100%{transform:rotate(27deg) rotateY(-12deg) rotateX(12deg) scale(.98)}}
-@keyframes iv-orbit-reverse{0%{transform:rotate(16deg) rotateX(-13deg) scale(1.01)}100%{transform:rotate(-31deg) rotateX(12deg) scale(.97)}}
-@keyframes iv-sheen{to{transform:rotate(360deg)}}
-@media(max-width:600px){.iv-portal{width:119vw;height:min(67vh,640px);top:47%}.iv-content{width:83vw;padding:16px 3px}.iv-content::before{font-size:clamp(23px,7vw,32px);letter-spacing:.22em;bottom:calc(100% + 18px)}.iv-step h1{font-size:clamp(21px,5vw,27px)}.iv-links button{font-size:11px}}
-@media(prefers-reduced-motion:reduce){.iv-portal-ring,.iv-portal-sheen{animation:none}}
-
-
-/* Uploaded transparent artwork replaces the earlier CSS-generated ring. */
-.iv-portal--image{width:min(94vw,760px);height:auto;aspect-ratio:1;top:50%;filter:drop-shadow(0 0 30px rgba(126,65,213,.3));animation:iv-portal-float 11s ease-in-out infinite alternate;overflow:visible}
-.iv-portal--image img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;filter:saturate(1.06) contrast(1.05)}
-.iv-portal--image .iv-portal-ring,.iv-portal--image .iv-portal-core,.iv-portal--image .iv-portal-sheen{display:none}
-.iv-content{z-index:1}
-.iv-halo{z-index:0}
-.iv-portal--image{z-index:0}
-.identidad-viva::before{z-index:0}
-.iv-content::before{z-index:1}
-@keyframes iv-portal-float{0%{transform:translate(-50%,-50%) rotate(-3deg) scale(.98)}50%{transform:translate(-50%,-51%) rotate(1deg) scale(1.02)}100%{transform:translate(-50%,-49%) rotate(4deg) scale(.99)}}
-@media(max-width:600px){.iv-portal--image{width:112vw;height:auto;top:49%;aspect-ratio:1}.iv-content{width:82vw}}
-@media(prefers-reduced-motion:reduce){.iv-portal--image{animation:none}}
-
-
-/* Portal composition correction: keep all UI inside the clear opening. */
-.iv-portal--image{width:min(122vw,650px);height:auto;aspect-ratio:1;top:50%;opacity:.83;filter:drop-shadow(0 0 12px rgba(121,65,194,.18));animation:iv-portal-float-soft 16s ease-in-out infinite alternate}
-.iv-portal--image img{filter:saturate(.92) brightness(.9)}
-.iv-content{width:min(65vw,400px);padding:0;transform:translateY(0);z-index:3}
-.iv-content::before{bottom:calc(100% + 24px);font-size:clamp(22px,5vw,34px);letter-spacing:.18em;white-space:nowrap}
-.iv-spark{font-size:16px;opacity:.8}
-.iv-step h1{font-size:clamp(19px,3vw,25px);margin:10px 0 17px}
-.iv-step form{padding:1px 4px 1px 10px;border-radius:11px;gap:4px;background:rgba(17,6,33,.83);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
-.iv-step input{font-size:clamp(14px,2vw,17px);padding:11px 4px}
-.iv-next{width:38px;height:38px;font-size:22px}
-.iv-links{margin-top:14px;gap:8px}
-.iv-links button{font-size:clamp(10px,1.4vw,12px);letter-spacing:0;line-height:1.35;max-width:48%}
-.iv-halo{background:radial-gradient(ellipse 47% 37% at center,rgba(9,3,23,.9),rgba(9,3,23,.45) 68%,transparent 100%)}
-@keyframes iv-portal-float-soft{from{transform:translate(-50%,-50%) rotate(-2deg) scale(.99)}to{transform:translate(-50%,-50%) rotate(2deg) scale(1.01)}}
-@media(max-width:600px){
-.iv-portal--image{width:123vw;top:50%;opacity:.78}
-.iv-content{width:65vw;transform:translateY(0)}
-.iv-content::before{font-size:clamp(22px,5.3vw,29px);bottom:calc(100% + 22px)}
-.iv-step h1{font-size:clamp(18px,4.2vw,23px);margin:10px 0 14px}
-.iv-step form{gap:2px;padding:2px 3px 2px 8px}
-.iv-step input{font-size:14px;padding:10px 3px}
-.iv-next{width:36px;height:36px;font-size:20px}
-.iv-links{margin-top:13px;gap:6px}
-.iv-links button{font-size:10px}
-}
-@media(max-width:380px){.iv-content{width:68vw}.iv-portal--image{width:129vw}}
-@media(prefers-reduced-motion:reduce){.iv-portal--image{animation:none}}
-
-
 /* ORVAYNE access reset — no oversized glow, no portal imagery. */
 .identidad-viva{background:radial-gradient(ellipse 90% 75% at 50% 45%,#1d0d32 0%,#10071e 63%,#08040e 100%);isolation:isolate}
 .identidad-viva::before,.identidad-viva::after{display:none!important;content:none!important}
@@ -153,14 +52,12 @@
 .identidad-viva--light .iv-links button,.identidad-viva--light .iv-back{color:#553a6c}
 @media(max-width:600px){.iv-content{width:min(82vw,420px);padding:0}.iv-content::before{font-size:clamp(28px,7vw,38px);margin-bottom:clamp(30px,7vh,62px)}.iv-step h1{font-size:clamp(21px,5.2vw,26px);margin:0 0 26px}.iv-step form{padding:5px 5px 5px 14px}.iv-step input{padding:11px 0;font-size:16px}.iv-next{width:42px;height:42px}.iv-links{margin-top:23px}.iv-links button{font-size:12px}}
 
-
 /* Restore the original animated metallic stage behind login. */
 .identidad-viva{background:rgba(10,4,23,.12)!important}
 .identidad-viva--light{background:rgba(247,240,237,.1)!important}
 .identidad-viva::before{display:block!important;content:""!important;position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 54% 43% at 50% 49%,rgba(12,4,29,.76) 0%,rgba(12,4,29,.5) 56%,rgba(12,4,29,.08) 100%)}
 .identidad-viva--light::before{background:radial-gradient(ellipse 54% 43% at 50% 49%,rgba(247,240,237,.85),rgba(247,240,237,.48) 60%,rgba(247,240,237,.06))}
 .iv-content{z-index:2}
-
 
 /* ORVAYNE social sign-in: understated, readable over animated metal */
 .iv-social{width:100%;margin:26px auto 0;display:flex;flex-direction:column;gap:14px;position:relative;z-index:3}
@@ -189,52 +86,6 @@
 .iv-step h1{font-family:"Rajdhani","Orbitron",system-ui,sans-serif;font-weight:500;letter-spacing:.015em;font-size:clamp(26px,5.4vw,37px);line-height:1.2}
 @media(max-width:600px){.iv-step h1{font-size:clamp(25px,5.8vw,33px);letter-spacing:0}}
 
-/* Living identity: lightweight CSS crystal sculpture, no images or canvas. */
-.iv-wordmark{margin-bottom:clamp(12px,2.6vh,24px)}
-.iv-sculpture{order:-1;position:relative;width:clamp(100px,12vw,150px);height:clamp(106px,15vh,150px);margin:0 auto 10px;perspective:550px;pointer-events:none;filter:drop-shadow(0 12px 19px rgba(95,42,122,.18));animation:iv-crystal-hover 7s ease-in-out infinite}
-.iv-sculpture__a,.iv-sculpture__b,.iv-sculpture__core{position:absolute;inset:15% 24%;display:block;transform-style:preserve-3d}
-.iv-sculpture__a{border-radius:30% 70% 44% 56%/54% 34% 66% 46%;background:linear-gradient(138deg,rgba(255,246,251,.75),rgba(223,167,201,.62) 27%,rgba(167,101,175,.44) 59%,rgba(252,223,239,.65));border:1px solid rgba(255,239,251,.7);box-shadow:inset -12px -8px 18px rgba(127,64,145,.2),inset 9px 8px 19px rgba(255,255,255,.52),0 0 22px rgba(211,150,211,.23);animation:iv-crystal-turn 13s ease-in-out infinite alternate}
-.iv-sculpture__b{inset:24% 13%;border-radius:63% 37% 58% 42%/34% 61% 39% 66%;border:1.5px solid rgba(226,165,212,.68);background:linear-gradient(130deg,rgba(255,236,248,.28),rgba(188,128,193,.13) 55%,rgba(255,255,255,.35));transform:rotate(-30deg) rotateY(54deg);animation:iv-crystal-orbit 17s linear infinite}
-.iv-sculpture__core{inset:39% 39%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff9ff,#e9b9dc 43%,#9c69b9 100%);box-shadow:0 0 24px rgba(227,169,231,.48);animation:iv-crystal-pulse 5s ease-in-out infinite alternate}
-.identidad-viva--dark .iv-sculpture__a{background:linear-gradient(138deg,rgba(244,210,255,.7),rgba(152,91,191,.55) 30%,rgba(65,29,111,.64) 65%,rgba(215,166,250,.62));border-color:rgba(228,185,255,.65)}
-.identidad-viva--dark .iv-sculpture__b{border-color:rgba(177,119,231,.72);background:linear-gradient(120deg,rgba(199,145,249,.23),rgba(91,46,143,.12))}
-.iv-spark{position:relative;z-index:1}
-@keyframes iv-crystal-hover{0%,100%{transform:translateY(4px) rotate(-4deg)}50%{transform:translateY(-9px) rotate(5deg)}}
-@keyframes iv-crystal-turn{from{transform:rotate(-25deg) rotateY(-30deg) rotateX(13deg)}to{transform:rotate(30deg) rotateY(38deg) rotateX(-15deg)}}
-@keyframes iv-crystal-orbit{from{transform:rotate(-30deg) rotateY(54deg)}to{transform:rotate(330deg) rotateY(414deg)}}
-@keyframes iv-crystal-pulse{to{transform:scale(1.25);opacity:.65}}
-@media(max-width:600px){.iv-wordmark{margin-bottom:10px}.iv-sculpture{width:92px;height:88px;margin-bottom:5px}.iv-spark{margin-bottom:10px}}
-@media(max-height:720px){.iv-sculpture{height:76px;width:84px;margin-bottom:3px}.iv-wordmark{margin-bottom:8px}}
-@media(prefers-reduced-motion:reduce){.iv-sculpture,.iv-sculpture__a,.iv-sculpture__b,.iv-sculpture__core{animation:none}}
-
-/* Rotating 3D globe preview replacing the crystal. */
-.iv-globe{order:-1;position:relative;width:142px;height:142px;flex:0 0 142px;margin:0 auto 4px;overflow:hidden;display:grid;place-items:center;filter:drop-shadow(0 0 12px rgba(179,112,231,.22))}
-.iv-globe__canvas{width:142px;height:142px;pointer-events:none}
-.iv-globe canvas{display:block;max-width:100%}
-@media(max-width:600px){.iv-globe{width:142px;height:142px;flex-basis:142px;margin-bottom:0}}
-@media(max-height:720px){.iv-globe{transform:scale(.82);margin-top:-13px;margin-bottom:-14px}}
-@media(prefers-reduced-motion:reduce){.iv-globe{filter:none}}
-
-/* Dotted Earth: compact orbital globe between wordmark and form. */
-.iv-globe{width:180px;height:180px;flex-basis:180px;margin:0 auto -5px;filter:drop-shadow(0 0 9px rgba(160,96,194,.20))}
-.iv-globe__canvas{width:180px;height:180px}
-@media(max-width:600px){.iv-globe{width:180px;height:180px;flex-basis:180px;margin-bottom:-8px}}
-@media(max-height:720px){.iv-globe{transform:scale(.78);margin-top:-20px;margin-bottom:-22px}}
-
-.iv-globe{width:148px;height:148px;flex-basis:148px;margin-bottom:-3px;filter:drop-shadow(0 0 12px rgba(173,93,236,.4))}
-.iv-globe__canvas{width:180px;height:180px;transform:scale(.8222);transform-origin:top left}
-@media(max-width:600px){.iv-globe{width:148px;height:148px;flex-basis:148px;margin-bottom:-3px}}
-
-/* Clean orbit silhouettes outside the rotating globe; no diagonal map paths. */
-.iv-globe{position:relative;isolation:isolate;overflow:visible}
-.iv-globe__canvas{position:relative;z-index:1}
-.iv-globe__ring{position:absolute;left:-8%;top:19%;width:116%;height:62%;border:1px solid rgba(213,147,255,.7);border-radius:50%;pointer-events:none;z-index:2;box-shadow:0 0 4px rgba(186,106,244,.3);animation:iv-globe-orbit 15s linear infinite}
-.iv-globe__ring--one{transform:rotate(-28deg);animation-name:iv-globe-orbit}
-.iv-globe__ring--two{transform:rotate(63deg);border-color:rgba(188,108,245,.48);animation-name:iv-globe-orbit-alt;animation-duration:20s}
-@keyframes iv-globe-orbit{from{transform:rotate(-28deg)}to{transform:rotate(332deg)}}
-@keyframes iv-globe-orbit-alt{from{transform:rotate(63deg)}to{transform:rotate(-297deg)}}
-@media(prefers-reduced-motion:reduce){.iv-globe__ring{animation:none}}
-
 /* ORVAYNE: coordinated dark / pearl-white / icy-blue appearance. */
 .identidad-viva--light{color:#49323f;background:rgba(247,240,237,.08)!important}
 .identidad-viva--light::before{background:radial-gradient(ellipse 58% 45% at 50% 49%,rgba(247,240,237,.83),rgba(247,240,237,.49) 60%,transparent)!important}
@@ -247,8 +98,6 @@
 .identidad-viva--light .iv-back,.identidad-viva--light .iv-links button,.identidad-viva--light .iv-social__divider{color:#75485e}
 .identidad-viva--light .iv-social__options button{background:rgba(255,255,255,.79);border-color:rgba(185,143,159,.4);color:#593748}
 .identidad-viva--light .iv-social__divider::before,.identidad-viva--light .iv-social__divider::after{background:rgba(164,111,134,.28)}
-.identidad-viva--light .iv-globe__ring{border-color:rgba(219,142,156,.72);box-shadow:0 0 4px rgba(219,142,156,.28)}
-.identidad-viva--light .iv-globe__ring--two{border-color:rgba(202,136,153,.5)}
 .identidad-viva--comfort{color:#183a61;background:rgba(229,242,252,.09)!important}
 .identidad-viva--comfort::before{display:block!important;content:""!important;position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 58% 45% at 50% 49%,rgba(229,242,252,.83),rgba(229,242,252,.48) 60%,transparent)!important}
 .identidad-viva--comfort .iv-wordmark{color:#183f76;text-shadow:none}
@@ -260,19 +109,6 @@
 .identidad-viva--comfort .iv-back,.identidad-viva--comfort .iv-links button,.identidad-viva--comfort .iv-social__divider{color:#24568a}
 .identidad-viva--comfort .iv-social__options button{background:rgba(250,253,255,.8);border-color:rgba(93,158,221,.49);color:#183a61}
 .identidad-viva--comfort .iv-social__divider::before,.identidad-viva--comfort .iv-social__divider::after{background:rgba(62,129,193,.31)}
-.identidad-viva--comfort .iv-globe{filter:drop-shadow(0 0 12px rgba(65,145,229,.35))}
-.identidad-viva--comfort .iv-globe__ring{border-color:rgba(47,150,248,.78);box-shadow:0 0 5px rgba(65,145,229,.38)}
-.identidad-viva--comfort .iv-globe__ring--two{border-color:rgba(79,169,255,.52)}
-
-/* Refined pearl theme: smaller orbital rings, neutral halo, stronger planet contrast. */
-.identidad-viva--light .iv-globe{filter:drop-shadow(0 0 7px rgba(125,91,108,.14))}
-.identidad-viva--light .iv-globe__ring{left:2%;top:24%;width:96%;height:52%;border:1px solid rgba(149,108,127,.38);box-shadow:none}
-.identidad-viva--light .iv-globe__ring--two{left:5%;top:27%;width:90%;height:46%;border-color:rgba(157,119,137,.28)}
-
-/* Theme parity: same globe geometry, ring scale and movement in all themes. */
-.identidad-viva--light .iv-globe{filter:drop-shadow(0 0 12px rgba(134,73,118,.36))}
-.identidad-viva--light .iv-globe__ring{left:-8%;top:19%;width:116%;height:62%;border:1.5px solid rgba(133,64,119,.84);box-shadow:0 0 6px rgba(155,73,133,.45)}
-.identidad-viva--light .iv-globe__ring--two{left:-8%;top:19%;width:116%;height:62%;border-color:rgba(168,79,146,.68);box-shadow:0 0 6px rgba(155,73,133,.34)}
 
 /* Dedicated authentication scene, separate from the cinematic landing. */
 .identidad-viva.is-open{background:radial-gradient(ellipse at 50% 45%,#271536 0%,#160c22 58%,#0e0917 100%)!important}
