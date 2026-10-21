@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { useRegisterSW } from "virtual:pwa-register/react";
-import { lockVelvetPortrait } from "../utils/lockOrientation";
+
 import { VELVET_VERSION } from "../config/version";
 
 const PWAContext = createContext(null);
@@ -31,8 +31,8 @@ function NativePWAProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    void lockVelvetPortrait();
-    const relock = () => { if (document.visibilityState === "visible") void lockVelvetPortrait(); };
+    void (async () => { try { if (screen.orientation?.lock && Capacitor.isNativePlatform()) await screen.orientation.lock('portrait'); } catch (_) { /* unsupported orientation lock */ } })();
+    const relock = () => { if (document.visibilityState === "visible") void (async () => { try { if (screen.orientation?.lock && Capacitor.isNativePlatform()) await screen.orientation.lock('portrait'); } catch (_) { /* unsupported orientation lock */ } })(); };
     document.addEventListener("visibilitychange", relock);
     window.addEventListener("orientationchange", relock);
     window.addEventListener("velvet:app-resume", relock);
@@ -280,8 +280,8 @@ function WebPWAProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    void lockVelvetPortrait();
-    const relock = () => { if (document.visibilityState === "visible") void lockVelvetPortrait(); };
+    void (async () => { try { if (screen.orientation?.lock && Capacitor.isNativePlatform()) await screen.orientation.lock('portrait'); } catch (_) { /* unsupported orientation lock */ } })();
+    const relock = () => { if (document.visibilityState === "visible") void (async () => { try { if (screen.orientation?.lock && Capacitor.isNativePlatform()) await screen.orientation.lock('portrait'); } catch (_) { /* unsupported orientation lock */ } })(); };
     document.addEventListener("visibilitychange", relock);
     window.addEventListener("orientationchange", relock);
     return () => {
