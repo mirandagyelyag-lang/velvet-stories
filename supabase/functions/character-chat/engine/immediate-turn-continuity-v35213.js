@@ -8,6 +8,27 @@ export function immediateTurnContinuityIssues(reply = "", latestUserMessage = ""
   const latest = norm(latestUserMessage);
   const previous = norm((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
 
+  // Never accept an unchanged assistant turn as a continuation, including on retry.
+  // Compare against several recent assistant turns to catch A -> B -> A loops.
+  const priorReplies = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : [])
+    .map(norm).filter(Boolean).slice(-8);
+  if (text.length >= 35 && priorReplies.some(p => p === text)) {
+    issues.push("repeated_previous_character_reply");
+  }
+  // A short new user action must still advance the scene; copied paragraphs are not progress.
+  const words = value => new Set(value.split(" ").filter(w => w.length > 2));
+  if (text.length >= 140 && !issues.includes("repeated_previous_character_reply")) {
+    const currentWords = words(text);
+    const overlap = priorReplies.some(p => {
+      if (p.length < 140) return false;
+      const previousWords = words(p);
+      const shared = [...currentWords].filter(w => previousWords.has(w)).length;
+      return shared / Math.max(1, Math.min(currentWords.size, previousWords.size)) > 0.92
+        && Math.abs(p.length - text.length) / Math.max(p.length, text.length) < 0.18;
+    });
+    if (overlap) issues.push("near_duplicate_character_reply");
+  }
+
   const userKeepsOwnFood = /\b(?:its fine|it is fine|no thanks|im fine|i am fine)\b.{0,55}\b(?:ill|i will|let me|i can)\s+(?:eat|keep|take|have)\s+(?:mine|my own|my order)\b/.test(latest)
     || /\b(?:ill|i will)\s+(?:eat|keep|take|have)\s+(?:mine|my own|my order|the other one|the other thing|this one|that one)\b/.test(latest);
   const characterForcesSwap = /\b(?:push(?:es|ed|ing)?|slide(?:s|d|ing)?|shove(?:s|d|ing)?|place(?:s|d|ing)?)\b.{0,75}\b(?:container|food|meal|order|plate|drink|mine|extra)\b/.test(text)
