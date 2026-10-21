@@ -15,7 +15,10 @@ export function enforceSocialSceneV35395({reply="",character={},latestUserMessag
  const obligation=has(original,/\b(?:administrator|west wing|reception|check.in)\b/i);
  const dependency=has(original,/\b(?:come here|come with me|you're coming with me|don't expect me to|not going alone|walk over there alone|stand beside me|standing right next to)\b/i);
  const nameDrift=has(original,/\bjuliette\b/i);
- if(thirdParty&&obligation&&!dependency&&!nameDrift) return {reply:original,changed:false,reason:"social_scene_pass"};
+ const companionActs=has(original,/\bjules\b[^.!?\n]{0,85}\b(?:laughs?|says?|asks?|steps?|grins?|replies?|snorts?|points?)\b/i);
+ const friendActs=has(original,/\b(?:friend|friends)\b[^.!?\n]{0,85}\b(?:laughs?|says?|asks?|steps?|grins?|replies?|snorts?|points?|bursts?)\b/i);
+ const administratorActs=has(original,/\badministrator\b[^.!?\n]{0,100}\b(?:calls?|says?|steps?|walks?|shouts?|approaches?|starts?|demands?|insists?)\b/i);
+ if(thirdParty&&obligation&&companionActs&&friendActs&&administratorActs&&!dependency&&!nameDrift) return {reply:original,changed:false,reason:"social_scene_pass"};
  // Grounded scene rescue: preserve the user's laughter, the existing group,
  // Jules, and the administrator's pending instruction. Never move the user.
  const rescue=[
