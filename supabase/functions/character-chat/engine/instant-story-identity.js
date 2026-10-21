@@ -73,7 +73,7 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
 export function buildChaseInstantPrompt(draft = {}, idea = '', recentOpenings = []) {
   const profile = { name: draft.name, role: draft.role, description: draft.description, personality: draft.personality, habits: draft.habits, values: draft.values, coreMotivation: draft.coreMotivation, emotionalDefense: draft.emotionalDefense, contradictions: draft.contradictions, speechStyle: draft.speechStyle, voiceVocabulary: draft.voiceVocabulary, world: draft.world, relationship: draft.relationship, boundaries: draft.boundaries };
   const narrativeModes = [
-    "LIVE RIVALRY: a named established or anonymous rival challenges Chase in the current place; Chase makes a decision that raises stakes, and the rival remains active.",
+    "LIVE RIVALRY: a rival challenges Chase over an established personal or social conflict, never a sport, team, lineup, fraternity roster or scrimmage; Chase answers the rival directly, and the rival remains active.",
     "SOCIAL FLIRTATION: someone openly flirts with Chase while another person reacts; he responds in his own voice and the interaction remains unresolved without leaving.",
     "UNEXPECTED CONSEQUENCE: a public misunderstanding or previous commitment catches up to Chase; he acts to address it instead of recruiting the creator.",
     "FRIEND-GROUP PRESSURE: two other people want different things from Chase; he takes a side and the disagreement continues on-page.",
