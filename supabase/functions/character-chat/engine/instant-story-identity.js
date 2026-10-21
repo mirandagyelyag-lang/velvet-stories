@@ -53,6 +53,9 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
   if (/\b(?:bored|boring|monotonous|better distraction)\b/i.test(text) && /\b(?:balcony|escape|reprieve|exit|get out of here)\b/i.test(text)) issues.push('chase_bored_crowd_escape_template');
   if (/\b(?:spotted|noticed|saw) you\b.{0,100}\b(?:leaning|standing|sitting|across the room)\b/i.test(text)) issues.push('chase_invented_user_placement');
   if (/\b(?:running out of things to pretend to care about|decided to join the living|better than pretending to care|everyone else is boring)\b/i.test(text)) issues.push('chase_detached_bored_charmer');
+  if (/\\b(?:tell me we can leave|can we leave|let's get out of here|we should get out of here|you're coming with me|come with me|get in my car)\\b/i.test(text)) issues.push('chase_passive_escape_or_forced_outing_loop');
+  if (/\\b(?:car keys|keys (?:dangling|vanishing|in his pocket)|parking citation|parking ticket)\\b/i.test(text) && /\\b(?:leave|stairs|doors|exit|out of here|come with me)\\b/i.test(text)) issues.push('chase_keys_and_escape_choreography');
+  if (/\\b(?:group|students|classmates|friends)\\b/i.test(text) && /\\b(?:drifted|wandered|continued|headed|moved) (?:on|away|toward|towards|down)\\b/i.test(text) && /\\b(?:leave|escape|out of here)\\b/i.test(text)) issues.push('chase_disposable_group_escape');
   return issues;
 }
 
