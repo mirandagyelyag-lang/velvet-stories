@@ -63,5 +63,16 @@ export function immediateTurnContinuityIssues(reply = "", latestUserMessage = ""
   const goesToPatio = /\b(heads|heading|walks|walking|goes|going) (to|toward|for) (the )?patio\b/.test(text);
   if (previousPatio && goesToPatio) issues.push("location_reset_to_current_place");
 
+  // An accepted invitation keeps its named destination. A preference for quiet
+  // changes the atmosphere, not the destination or the character's prior plan.
+  const userAccepts = /\\b(?:yeah|yes|sure|okay|ok|sounds good|let'?s go|i'?m in|dale|si|vamos)\\b/.test(latest);
+  const userCancels = /\\b(?:instead|rather go|not going|don'?t want to go|change of plans|otro lugar|mejor no)\\b/.test(latest);
+  const rooftopPlan = /\\b(?:rooftop|roof terrace|azotea|terraza)\\b/.test(previous)
+    && /\\b(?:head|go|going|up|drink|sunset|meet|come|join|about to)\\b/.test(previous);
+  const replyRedirects = /\\b(?:back way out of here|let'?s get out of here|somewhere else|different place|my car'?s parked|come to my car|head to the parking lot)\\b/.test(text);
+  if (rooftopPlan && userAccepts && !userCancels && replyRedirects && !/\\b(?:rooftop|roof terrace|azotea|terraza)\\b/.test(text)) {
+    issues.push("accepted_destination_plan_dropped");
+  }
+
   return [...new Set(issues)];
 }
