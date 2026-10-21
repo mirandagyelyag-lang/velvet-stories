@@ -3878,7 +3878,7 @@ function buildNarrativePromptV3({
     worldConsequences: turnContract?.worldConsequencesCausalTimeline || {},
   });
   const existingSocialWorldV35393 = conversation.intelligence_state?.social_world_v35393 || {};
-  const socialWorldPromptV35393 = buildSocialWorldPromptV35393(existingSocialWorldV35393);
+  const socialWorldPromptV35393 = buildSocialWorldPromptV35393(existingSocialWorldV35393, { latestUserMessage, recentMessages: messages.slice(-8).map(m => ({ role: m.sender, text: String(m.content || '').slice(0, 500) })), scene: conversation.scene_state || {} });
   const thirdPartySocialMomentumV1 = buildThirdPartySocialMomentumV1({character,scene:conversation.scene_state || {},recentCharacterReplies:messages.filter(m=>m.sender === "character").slice(-5).map(m=>String(m.content||""))});
   const existingRelationshipEvolutionV35392 = conversation.intelligence_state?.relationship_evolution_v35392 || {};
   const relationshipEvolutionPromptV35392 = buildRelationshipEvolutionPromptV35392(existingRelationshipEvolutionV35392);
