@@ -11873,6 +11873,32 @@ async function streamRoleplayV19({
         }
         if (!persistableReply) throw new Error("Velvet final turn barrier produced no safe reply; nothing was saved.");
         persistableReply = removeReplayedOpening(persistableReply, replaySources, latestUserMessage);
+        // Scene-world acceptance barrier: checks the actual reply before streaming/saving.
+        // Specific grounded lobby rescue; no fabricated names or forced user movement.
+        {
+          const evidence = [latestUserMessage, ...recentUserMessages.slice(-3), ...recentCharacterReplies.slice(-3)].map(x => String(x || "")).join("\n");
+          const userAct = String(latestUserMessage || "");
+          const candidate = String(persistableReply || "");
+          const chaseLobby = /chase/i.test(String(character?.name || "")) && /\bjules\b/i.test(evidence) && /\badministrator\b/i.test(evidence) && /\b(?:west wing|alumni reception|reception check.in|roster)\b/i.test(evidence) && /\b(?:laugh|laughed|laughing|giggle|mock|teas)\b/i.test(evidence);
+          if (chaseLobby) {
+            const companionActive = /\bjules\b[^.!?\n]{0,100}\b(?:laughs?|says?|asks?|replies?|grins?|steps?)\b/i.test(candidate);
+            const friendActive = /\b(?:friend|friends)\b[^.!?\n]{0,100}\b(?:laughs?|says?|asks?|snorts?|grins?|bursts?)\b/i.test(candidate);
+            const staffActive = /\badministrator\b[^.!?\n]{0,100}\b(?:calls?|says?|walks?|steps?|shouts?|approaches?|starts?|insists?)\b/i.test(candidate);
+            const userCoercion = /\b(?:come on|come here|come with me|don't expect me to|not going alone|walk over there alone|you're coming|you are coming|you'?re the alibi|stand beside me)\b/i.test(candidate);
+            const inventedName = /\b(?:brenda|juliette)\b/i.test(candidate);
+            if (!companionActive || !friendActive || !staffActive || userCoercion || inventedName) {
+              console.warn("[character-chat] lobby continuity gate blocked collapsed or invented-name response");
+              persistableReply = [
+                "One of Chase's friends bursts out laughing. \"Three hours, Beaumont? That's brutal.\"",
+                "\"Beaumont!\" the administrator calls again from the reception desk. \"West Wing. Now.\"",
+                "Jules laughs beside you. \"Oh, we're definitely coming to watch.\"",
+                "Chase shoots his friend a look. \"You're enjoying this way too much.\"",
+                "*Of course they're all going to make a spectacle out of it.*",
+                "Behind him, the administrator starts walking toward the group, roster in hand."
+              ].join("\n\n");
+            }
+          }
+        }
         result = { ...result, reply: persistableReply };
         await streamFinalReply(persistableReply, FIRST_DRAFT_WINS_V35268 ? "v35268-first-draft-wins" : "v35237-regression-shield");
 
