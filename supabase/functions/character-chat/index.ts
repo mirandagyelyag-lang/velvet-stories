@@ -11844,6 +11844,33 @@ async function streamRoleplayV19({
           });
         }
 
+        // Social scene quality gate: only intervene when the current scene explicitly
+        // contains both a companion and an unresolved third-party obligation.
+        // Avoid forcing NPC dialogue into private or two-person scenes.
+        const socialContextV35394 = [String(latestUserMessage || ""), ...recentUserMessages.slice(-2).map(String), ...recentCharacterReplies.slice(-2).map(String)].join("\\n");
+        const hasCompanionV35394 = /\\b(jules|juliette)\\b/i.test(socialContextV35394);
+        const hasPendingStaffV35394 = /\\b(administrator|reception|west wing|check.in|roster|alumni)\\b/i.test(socialContextV35394);
+        const socialReplyV35394 = String(persistableReply || "");
+        const thirdPartyActsV35394 = /(?:administrator|staff|friend|jules|juliette)[^.!?\\n]{0,100}\\b(?:says|asks|calls|laughs|interrupts|steps|walks|shouts|replies|points|grins|snorts|insists|waves|taps|cuts in)\\b|["“][^"”]{2,110}["”]\\s*(?:jules|juliette|the administrator|one of his friends)/i.test(socialReplyV35394);
+        const repeatedCommandV35394 = /\\b(?:come here|you're coming with me|you are coming with me|you're standing right next to|come with me)\\b/i.test(socialReplyV35394);
+        if (hasCompanionV35394 && hasPendingStaffV35394 && (!thirdPartyActsV35394 || repeatedCommandV35394)) {
+          try {
+            const socialRepairV35394 = await callCurrentProvider({
+              apiKey,
+              systemInstruction: liveSystemInstruction + "\\nLIVE SOCIAL REPAIR: Keep the existing location and user action unchanged. Make a previously present third party take a concrete independent action and advance the unresolved staff obligation. Chase must not order or invite the user to follow him. Jules remains Jules unless her full name was established. Do not invent the user's actions. Natural prose, no checklist.",
+              prompt: prompt + "\\nREWRITE THE FOLLOWING FAILED CONTINUATION (do not paraphrase it):\\n" + socialReplyV35394 + "\\nA companion and an administrator are present. Let the social world move independently; preserve the exact scene and current user action.",
+              maxOutputTokens: getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling),
+              isCancelled,
+              interactionDeadlineMs: 16000,
+            });
+            const candidateV35394 = String(socialRepairV35394?.reply || "").trim();
+            if (candidateV35394 && candidateV35394 !== socialReplyV35394 && !/\\b(?:come here|you're coming with me|you are coming with me)\\b/i.test(candidateV35394)) {
+              persistableReply = candidateV35394;
+            }
+          } catch (socialRepairErrorV35394) {
+            console.warn("[character-chat] social-scene repair unavailable", String(socialRepairErrorV35394));
+          }
+        }
         if (!persistableReply) throw new Error("Velvet final turn barrier produced no safe reply; nothing was saved.");
         persistableReply = removeReplayedOpening(persistableReply, replaySources, latestUserMessage);
         result = { ...result, reply: persistableReply };
