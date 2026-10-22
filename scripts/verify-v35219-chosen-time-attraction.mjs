@@ -34,9 +34,14 @@ const blocking = edge.slice(edge.indexOf("const BLOCKING_NARRATIVE_ISSUES"), edg
 assert.match(blocking, /"chosen_time_attraction_flattened"/);
 assert.match(blocking, /"delegated_social_task_condescension"/);
 
+// Additional boundary and recovery regression assertions.
+assert.ok(badIssues.length >= 2, "flat, condescending reply must trigger independent blockers");
+assert.ok(!establishedAttractionOpportunityIssues({ reply: good, latestUserMessage, recentUserMessages, recentCharacterReplies, character }).includes("chosen_time_attraction_flattened"));
+assert.ok(edge.indexOf("const BLOCKING_NARRATIVE_ISSUES") >= 0 && edge.indexOf("const REPAIR_TRIGGER_ISSUES") > edge.indexOf("const BLOCKING_NARRATIVE_ISSUES"), "blocking list boundaries must exist");
+
 console.log("PASS  the exact emotionally flat Alexander reply is rejected");
 console.log("PASS  condescension about handling the group is rejected");
 console.log("PASS  natural chosen-time interest is accepted without forcing a confession");
 console.log("PASS  attraction is never invented for a neutral relationship");
 console.log("PASS  both failures are hard-blocked before display");
-console.log("\n5 chosen-time attraction checks passed.");
+console.log("\nRegression assertions passed.");
