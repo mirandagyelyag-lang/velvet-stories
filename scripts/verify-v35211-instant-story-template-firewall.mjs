@@ -18,9 +18,28 @@ assert.match(edge, /If the profile explicitly says the character already likes t
 assert.match(edge, /instant story fallback failed structural completion/);
 assert.match(client, /const leakedTemplate =/);
 
+
+// Focused regressions for template leakage and safe rejection.
+const leakedFragments = [
+  "Between you sits You've been close friends for years",
+  "occupied with something connected to Campus King rather than waiting around for anyone",
+  "Their response carries Alex is confident, witty, and effortlessly charismatic",
+];
+for (const fragment of leakedFragments) {
+  assert.ok(leaked.includes(fragment), `fixture must retain leaked fragment: ${fragment}`);
+}
+assert.equal(instantStoryHasTemplateLeak(leaked), true, "combined template leak must remain blocked");
+assert.equal(instantStoryLooksComplete(leaked, "STOP"), false, "template text is not a complete scene");
+assert.ok(edge.indexOf("function instantStoryFallbackOpening") >= 0, "fallback function must exist");
+assert.ok(edge.indexOf("async function handleInstantStory") > edge.indexOf("function instantStoryFallbackOpening"),
+  "fallback extraction must have valid boundaries");
+assert.ok(fallbackBody.length > 100, "fallback extraction must not be empty");
+assert.match(edge, /instantStoryHasTemplateLeak|instantStoryLooksComplete/,
+  "server must call the template/completeness guards");
+
 console.log("PASS  the exact leaked-template opening is rejected");
 console.log("PASS  the old profile-splicing fallback has been removed");
 console.log("PASS  fallback prose is a concrete playable scene");
 console.log("PASS  explicit attraction changes a visible choice or cost");
 console.log("PASS  server and client both firewall template language");
-console.log("\n5 Instant Story template-firewall checks passed.");
+console.log("\nInstant Story template-firewall assertions passed.");
