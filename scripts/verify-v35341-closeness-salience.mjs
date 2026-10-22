@@ -25,6 +25,7 @@ const good=narrativeDirectorIssuesV35334({
 });
 assert.ok(!good.includes("physical_action_answered_as_argument"));
 assert.ok(!good.includes("alexander_relationship_beat_flattened"));
+assert.ok(!good.includes("physical_action_answered_as_argument"));
 
 const directive=buildNarrativeDirectorV35334({character:alex,latestUserMessage:'*I let go from your arm*'});
 assert.match(directive,/USER-INITIATED CLOSENESS IS HIGH-SALIENCE/);
