@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const auth = readFileSync(join(root, "src/pages/Auth.jsx"), "utf8");
 const css = readFileSync(join(root, "src/styles/auth.css"), "utf8");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
