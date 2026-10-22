@@ -1,6 +1,7 @@
 import fs from 'node:fs';
-const src=fs.readFileSync('supabase/functions/character-chat/index.ts','utf8');
-const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const src = read('supabase/functions/character-chat/index.ts');
+const pkg = JSON.parse(read('package.json'));
 const tests=[
  ['version is v3.50.1+ descendant', /^(?:3\.50\.(?:[1-9]|[1-9]\d+)|3\.(?:5[1-9]|[6-9]\d)\.\d+)$/.test(pkg.version)],
  ['non-academic scene pool exists', src.includes('INSTANT_STORY_NON_ACADEMIC_SCENES')],
@@ -17,4 +18,4 @@ const tests=[
 let pass=0;
 for(const [name,ok] of tests){console.log(`${ok?'PASS':'FAIL'} · ${name}`); if(ok) pass++;}
 console.log(`\\n${pass}/${tests.length} PASS`);
-if(pass!==tests.length) process.exit(1);
+if(pass!==tests.length) process.exitCode=1;
