@@ -66,6 +66,11 @@ assert.ok(savePos > barrierPos, "final barrier must run before persistence");
 assert.doesNotMatch(edge.slice(edge.indexOf("compact final rescue rejected"), edge.indexOf("ABSOLUTE PERSISTENCE GUARD")), /validationIssues\s*=\s*\[\]/);
 assert.doesNotMatch(edge, /validated-protected-final/);
 
+// Additional targeted regressions.
+assert.ok(barrierPos >= 0 && savePos > barrierPos, "barrier must precede persistence");
+assert.ok(fixed.reply.trim().length > 0, "replacement must not be blank");
+assert.ok(!finalDelegatedChoiceBarrierIssues({ reply: fixed.reply, latestUserMessage, recentUserMessages, recentCharacterReplies, character }).length, "replacement must pass its own barrier");
+
 console.log("PASS  exact live 'I'll trust you' regression is rejected");
 console.log("PASS  final barrier commits to the grounded diner instead of returning a menu");
 console.log("PASS  established/open attraction remains visibly present in the rescue");
