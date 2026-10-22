@@ -23,12 +23,17 @@ assert.equal(hasRandomActivityFiller(
   "[SILENT_CONTINUE]", [], [], {}, [],
 ), true);
 
+// Preserve negative controls so the guards do not block ordinary dialogue.
+assert.equal(hasRepeatedLowSignalMannerism('"Really?"', []), false);
+assert.equal(hasNarrationTenseFlip('"Ready?"', []), false);
+
 const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts", import.meta.url), "utf8");
 assert.match(edge, /Conversation turns are not elapsed travel time/);
 assert.match(edge, /allow at least ten character replies/);
 assert.match(edge, /Never replay the user's completed action/);
 assert.match(edge, /narration_tense_flip/);
 assert.match(edge, /repeated_low_signal_mannerism/);
+assert.match(edge, /random_activity_filler|hasRandomActivityFiller/, "random filler guard must be wired into the engine");
 
 console.log("PASS  scene clock does not use message count as elapsed travel time");
 console.log("PASS  narration tense changes are rejected");
