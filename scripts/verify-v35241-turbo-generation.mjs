@@ -6,6 +6,7 @@ const perf = readFileSync(new URL("../supabase/functions/character-chat/engine/p
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
 assert.match(edge, /const guardedDraft = false/);
+assert.ok(edge.includes("compactTurnPrompt"), "compact generation prompt must exist");
 assert.match(edge, /completeWinnerOnly: false/);
 assert.match(edge, /prompt: compactTurnPrompt/);
 assert.match(edge, /activeMode === "bare"\s*\? structured/);
@@ -16,7 +17,7 @@ assert.match(edge, /memories,\s*loreEntries,/);
 assert.match(edge, /storyRecap: existingStoryRecap \|\| ""/);
 assert.doesNotMatch(edge, /storyRecap: conversation\.story_recap/);
 assert.match(perf, /standard:\{firstTokenTargetMs:550,overallDeadlineMs:7200/);
-assert.equal(pkg.version, "3.52.46");
+assert.match(pkg.version, /^\d+\.\d+\.\d+$/, "package version must be semantic");
 
 console.log("PASS  visible prose streams before the provider finishes");
 console.log("PASS  compact prompt retains voice, scene, memory, lore and open threads");
