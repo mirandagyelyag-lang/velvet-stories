@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 
-const read = (file) => readFileSync(file, "utf8");
+const missingFiles = new Map();
+const read = (file) => {
+  try { return readFileSync(new URL(`../${file}`, import.meta.url), "utf8"); }
+  catch (error) { missingFiles.set(file, error.code || error.message); return ""; }
+};
+const exists = (file) => existsSync(new URL(`../${file}`, import.meta.url));
 const main = read("src/main.jsx");
 const app = read("src/App.jsx");
 const chat = read("src/pages/Chat.jsx");
@@ -123,7 +128,7 @@ check("Character Studio real-exit layer is the final mobile authority", main.inc
 check("Stories matches the burgundy library structure", ["STORY LIBRARY","COLLECTIONS","RECENT STORIES","Favorites","Archived","Trash"].every((label)=>stories.includes(label)) && reference.includes("reference-collections__grid") && reference.includes("grid-template-columns: repeat(3, minmax(0,1fr))"));
 check("Stories has reference search filter and glowing new story action", stories.includes("Search a story, character or moment...") && stories.includes("reference-filter") && reference.includes("reference-stories-new"));
 check("Stories three-dot menu is touch safe", stories.includes("onPointerDown={(event) => event.stopPropagation()}") && stories.includes('aria-haspopup="menu"') && stabilityStyles.includes("Stories three-dot menu interaction shield") && !read("src/styles/velvet-v220.css").includes(".reference-story-row,.discover-burgundy__card"));
-check("Pulse replaces the redundant Chats destination", app.includes('activePage === "pulse"') && existsSync("src/pages/Pulse.jsx") && sidebar.includes('id: "pulse"') && !existsSync("src/pages/ChatInbox.jsx"));
+check("Pulse replaces the redundant Chats destination", app.includes('activePage === "pulse"') && exists("src/pages/Pulse.jsx") && sidebar.includes('id: "pulse"') && !exists("src/pages/ChatInbox.jsx"));
 check("inactive stories stay out of active surfaces while archive is searchable in Story Library", pulse.includes('.is("trashed_at", null)') && pulse.includes('.is("archived_at", null)') && searchPage.includes('.is("trashed_at", null)') && searchPage.includes("archived_at") && memories.includes('activeConversationIds.has(memory.conversation_id)') && characterDetailV240.includes('.is("archived_at", null)') && chatsContextV260.includes('.is("archived_at", null)'));
 check("archived and trashed stories cannot reopen through cards or old URLs", stories.includes('!conversation.trashed_at && !conversation.archived_at && onOpenCharacter') && chatsContextV260.includes('.eq("character_id", characterId)\n      .is("trashed_at", null)\n      .is("archived_at", null)'));
 check("permanent story deletion removes its memories before the conversation", stories.includes('from("memories").delete().eq("conversation_id", conversationId)') && chatsContextV260.includes('memoryDeleteError'));
@@ -236,7 +241,7 @@ check("story snapshots and portable backups can restore a story", keepsakeMigrat
 check("Catch Me Up appears only after a meaningful return", chatsContextV260.includes("catchUpAvailable") && chatsContextV260.includes("6 * 60 * 60 * 1000") && chat.includes("Last time in this story") && chat.includes("dismissCatchUp"));
 
 check("PWA Update Doctor checks a network version outside the precache", pwaContext.includes("velvet-version.json") && pwaContext.includes('cache: "no-store"') && publicVersion.includes(`"${pkg.version}"`));
-check("audio system is fully removed", !existsSync("public/audio") && !existsSync("src/utils/audioBus.js") && !existsSync("src/utils/speech.js") && !existsSync("src/components/StoryAmbience.jsx") && !existsSync("src/components/AudioStatusPill.jsx") && !chat.includes("runAction(\"listen\")") && !storyHubDrawer.includes("Audio Center") && !diagnostics.includes("Audio engine"));
+check("audio system is fully removed", !exists("public/audio") && !exists("src/utils/audioBus.js") && !exists("src/utils/speech.js") && !exists("src/components/StoryAmbience.jsx") && !exists("src/components/AudioStatusPill.jsx") && !chat.includes("runAction(\"listen\")") && !storyHubDrawer.includes("Audio Center") && !diagnostics.includes("Audio engine"));
 check("Characters keeps the compact private-library layout with the current wordmark", read("src/pages/MyCharacters.jsx").includes("characters-library__compact-hero") && read("src/pages/MyCharacters.jsx").includes("characters-library__wordmark") && read("src/pages/MyCharacters.jsx").includes('const inTrash = view === "trash"') && read("src/styles/velvet-v298-characters-clean-mobile.css").includes("characters-library__compact"));
 check("updater only offers genuinely newer semantic versions", pwaContext.includes("compareVersions(serverVersion, VELVET_VERSION) > 0") && pwaContext.includes("compareVersions(remote, VELVET_VERSION) > 0"));
 check("Stories rapid cleanup uses intentional right swipe with no confirmation", stories.includes('direction="right"') && stories.includes('batchKey: "story-cleanup"') && !stories.includes('title: "Delete this conversation?"'));
@@ -290,17 +295,15 @@ check("long chats keep the full header available at every scroll position", !cha
 check("Character AI header authority remains intact after the custom scroll reset", main.includes('import "./styles/chat-header-overlay.css";') && !main.includes("velvet-v3130-scroll-authority.css") && !main.includes("velvet-v3131-native-edges.css"));
 check("chat header escapes every route containing block through a body portal", chat.includes("createPortal((<header") && chat.includes("</header>), document.body)}") && read("src/styles/chat-header-overlay.css").includes("body > .chat__header"));
 
-let failed=0;
-for (const item of checks) { console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`); if(!item.pass) failed++; }
-if(failed){ console.error(`\n${failed} UI checks failed.`); process.exit(1); }
+
 
 // v2.10.14 typing indicator should be a brief glimpse, not a full generation screen.
 const typingChatSource = read("src/pages/Chat.jsx");
-check(typingChatSource.includes("VELVET_TYPING_GLIMPSE_V1"), "Chat delays the inline typing indicator");
-check(typingChatSource.includes("}, 700)"), "Typing glimpse waits before appearing");
-check(typingChatSource.includes("1250"), "Typing glimpse auto-hides quickly");
-check(typingChatSource.includes("typingIndicatorVisible &&"), "Typing bubble uses bounded visibility state");
-console.log(`\n${checks.length} UI checks passed.`);
+check("Chat delays the inline typing indicator", typingChatSource.includes("VELVET_TYPING_GLIMPSE_V1"));
+check("Typing glimpse waits before appearing", typingChatSource.includes("}, 700)"));
+check("Typing glimpse auto-hides quickly", typingChatSource.includes("1250"));
+check("Typing bubble uses bounded visibility state", typingChatSource.includes("typingIndicatorVisible &&"));
+
 
 
 
@@ -317,3 +320,13 @@ console.log(`\n${checks.length} UI checks passed.`);
 
 // v2.10.14: mobile SSE should not declare a normal slow response dead after only 30 seconds.
 check("chat stream stall guard allows slow-but-live responses", chatsContextV260.includes("45000") && !chatsContextV260.includes("\n              30000\n"));
+ 
+// Final report must run after every check, including later regression additions.
+let failed = 0;
+for (const item of checks) {
+  console.log(`${item.pass ? "PASS" : "FAIL"}  ${item.name}`);
+  if (!item.pass) failed++;
+}
+for (const [file, reason] of missingFiles) console.error(`MISSING  ${file}: ${reason}`);
+console.log(`\nUI audit: ${checks.length - failed}/${checks.length} checks passed; ${missingFiles.size} missing files.`);
+if (failed || missingFiles.size) process.exitCode = 1;
