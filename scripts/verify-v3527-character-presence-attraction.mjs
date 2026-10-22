@@ -19,6 +19,7 @@ assert.match(alexander.personalityManifestation.policy, /do not flatten attracti
 
 const neutral = deriveRelationshipChemistryV2({ character: { personality: "Friendly and observant." } });
 assert.equal(neutral.personalityManifestation.attractionCanonExplicit, false);
+assert.notEqual(alexander.personalityManifestation.attractionCanonExplicit, neutral.personalityManifestation.attractionCanonExplicit, "romantic and neutral canon must differ");
 assert.match(neutral.personalityManifestation.attractionVisibility, /do not invent attraction/i);
 
 const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts", import.meta.url), "utf8");
