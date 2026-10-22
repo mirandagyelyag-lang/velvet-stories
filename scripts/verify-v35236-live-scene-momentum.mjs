@@ -46,7 +46,7 @@ assert(!sceneMomentumBarrierV35236Issues({ reply: offeredAlternative, latestUser
 const prompt = buildSceneMomentumBarrierV35236({ latestUserMessage: latest, recentCharacterReplies: recent, character: { name: 'Alex' } });
 assert(/CURRENT TRANSIT=ACTIVE/.test(prompt) && /micro reaction/i.test(prompt), 'prompt injects live transit state and microbeat pacing rule');
 
-const index = fs.readFileSync('supabase/functions/character-chat/index.ts', 'utf8');
+const index = fs.readFileSync(new URL('../supabase/functions/character-chat/index.ts', import.meta.url), 'utf8');
 assert(index.includes('${sceneMomentumBarrierV35236}') && index.includes('finalizeRegressionSafeTurnV35237'), 'character-chat wires the prompt layer and regression-safe final barrier');
 
-console.log(`\nVelvet v3.52.36 live-scene momentum: ${passed}/10 PASS`);
+console.log(`\nVelvet v3.52.36 live-scene momentum: ${passed}/${passed} PASS`);
