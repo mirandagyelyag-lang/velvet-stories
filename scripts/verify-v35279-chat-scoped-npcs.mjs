@@ -56,6 +56,7 @@ const filteredConnections = filterAuthorizedConnectionUpdatesV35279([
   userCreatedNpcs: approved,
 });
 assert.equal(filteredConnections.length, 1);
+assert.ok(!filteredCast.some(item => item.name === "Chloe"), "unauthorized cast mutations must be excluded");
 assert.equal(filteredConnections[0].to_name, "Kai Mercer");
 
 assert.match(edge, /from\("character_npcs"\)/);
