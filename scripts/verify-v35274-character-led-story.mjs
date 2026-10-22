@@ -46,6 +46,9 @@ assert.ok(characterLedStoryV35274Issues({
   recentCharacterReplies:[],
 }).includes("silent_handoff_dead_end"));
 
+const emptyDialogue=`Chase stayed there and watched the doorway. "Okay."`;
+assert.ok(characterLedStoryV35274Issues({reply:emptyDialogue,latestUserMessage:"[SILENT_CONTINUE]",recentCharacterReplies:[]}).includes("silent_handoff_dead_end"), "short filler dialogue cannot disguise a passive dead end");
+
 const handedBack=`"Your call. What do you want to do?"`;
 assert.ok(characterLedStoryV35274Issues({
   reply:handedBack,
