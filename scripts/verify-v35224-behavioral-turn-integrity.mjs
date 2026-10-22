@@ -34,6 +34,9 @@ const healthy = `Alex kept his eyes on the road. "Close your eyes if you want. I
 const healthyIssues = behavioralTurnIntegrityIssues({ reply: healthy, latestUserMessage: "*I close my eyes and nod* Okay", recentUserMessages, recentCharacterReplies });
 if (healthyIssues.length) throw new Error(`healthy care turn incorrectly blocked: ${healthyIssues}`);
 
+const cleanedTwice = sanitizeBehavioralTurnIntegrity(cleanedTransit, behavioralTurnIntegrityIssues({ reply: cleanedTransit, latestUserMessage: '*I close my eyes and nod* Okay', recentUserMessages, recentCharacterReplies }), { recentCharacterReplies });
+if (typeof cleanedTwice !== 'string' || !cleanedTwice.trim()) throw new Error('second sanitizer pass produced empty text');
+
 console.log("v3.52.24 behavioral turn integrity: PASS");
 console.log("- exact driving-state rewind caught");
 console.log("- repetitive care-command loop caught");
