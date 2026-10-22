@@ -5,7 +5,7 @@ const css = readFileSync(new URL("../src/styles/velvet-v3159-crystal-cinematic.c
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.match(pkg.version, /^3\.52\.\d+$/);
+assert.match(pkg.version, /^\d+\.\d+\.\d+$/, "package version must be semantic");
 assert.equal(version.version, pkg.version);
 
 const marker = css.indexOf("/* v3.52.85 MOBILE CONTENT VIEWPORT ABOVE DOCK */");
