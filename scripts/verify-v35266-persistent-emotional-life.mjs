@@ -32,6 +32,7 @@ const regen=updateRelationshipEmotionCoreV35266({
   messageId:"c1b"
 });
 assert.equal(regen.turns_observed,chase1.turns_observed,"regeneration must rewrite, not double count the turn");
+assert.equal(chase1.undo_snapshot.turns_observed, chase0.turns_observed, "undo snapshot must retain the pre-turn count");
 
 const alex0=normalizeRelationshipEmotionCoreV35266({},alex,{});
 const alex1=updateRelationshipEmotionCoreV35266({
