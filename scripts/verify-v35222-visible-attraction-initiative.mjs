@@ -47,6 +47,11 @@ assert.match(edge, /TRUST\/DELEGATED ONE-ON-ONE OPENINGS ARE HIGH-VALUE/);
 const blocking = edge.slice(edge.indexOf("const BLOCKING_NARRATIVE_ISSUES"), edge.indexOf("const REPAIR_TRIGGER_ISSUES"));
 assert.match(blocking, /"trusted_choice_attraction_flattened"/);
 
+// Additional targeted regressions.
+assert.ok(badIssues.includes("trusted_choice_attraction_flattened"), "pure logistics must not erase established attraction");
+assert.ok(!establishedAttractionOpportunityIssues({ reply: good, latestUserMessage: "I'll trust you", recentUserMessages, recentCharacterReplies, character }).includes("trusted_choice_attraction_flattened"));
+assert.ok(edge.indexOf("const BLOCKING_NARRATIVE_ISSUES") >= 0 && edge.indexOf("const REPAIR_TRIGGER_ISSUES") > edge.indexOf("const BLOCKING_NARRATIVE_ISSUES"), "blocking range must be valid");
+
 console.log("PASS  established attraction gets a visible-signal cadence");
 console.log("PASS  open-flirt canon requires some actual flirting, not service-only affection");
 console.log("PASS  'I'll trust you' during chosen one-on-one time becomes an attraction opportunity now");
