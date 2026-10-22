@@ -91,7 +91,7 @@ const doubleBarrier=buildSceneMomentumBarrierV35236({
 assert.match(doubleBarrier,/DELEGATED PROGRESSION=YES/);
 assert.match(doubleBarrier,/already-committed transit may reach its established destination/i);
 
-const arrival='Chase pulled up outside the dorm and cut the engine. "We're here."';
+const arrival=`Chase pulled up outside the dorm and cut the engine. "We're here."`;
 const singleIssues=sceneMomentumBarrierV35236Issues({
   reply:arrival,
   latestUserMessage:"[SILENT_CONTINUE]",
