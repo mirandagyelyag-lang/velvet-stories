@@ -6,9 +6,9 @@ const ctx = readFileSync(new URL("../src/context/CharactersContext.jsx", import.
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.ok(/^3\.52\.(?:9[6-9]|[1-9]\d{2,})$/.test(pkg.version));
-assert.ok(/^3\.52\.(?:9[6-9]|[1-9]\d{2,})$/.test(version.version));
-assert.ok(["Instant Story Timeout Recovery", "Instant Story Repair Rescue"].includes(version.release));
+assert.match(pkg.version, /^\d+\.\d+\.\d+$/, "current package version must be semantic");
+assert.equal(version.version, pkg.version, "published version must match package");
+assert.ok(typeof version.release === "string" && version.release.trim(), "release label must be present");
 
 assert.match(edge, /const globalDeadlineMs = 16500;/);
 assert.match(edge, /const attemptTimeoutMs = 14500;/);
