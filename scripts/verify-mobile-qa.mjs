@@ -1,5 +1,13 @@
 import { readFileSync } from "node:fs";
-const read=(f)=>readFileSync(f,"utf8"), mobile=read("src/styles/velvet-mobile-foundation.css"), stability=read("src/styles/velvet-v265-stability.css"), chat=read("src/pages/Chat.jsx"), app=read("src/App.jsx"), studio=read("src/components/CreateCharacterModal.jsx"), reference=read("src/styles/velvet-burgundy-reference.css"), studio269=read("src/styles/velvet-v269-character-studio-mobile.css"), studio2610=read("src/styles/velvet-v2610-character-studio-scroll.css"), sixFix=read("src/styles/velvet-v2611-six-fixes.css"), stories=read("src/pages/Chats.jsx"), pulse=read("src/pages/Pulse.jsx"), pulseCss=read("src/styles/pulse.css"), memories=read("src/pages/Memories.jsx"), feedback=read("src/context/FeedbackContext.jsx"), feedbackCss=read("src/styles/feedback.css"), studioLite=read("src/styles/velvet-v290-character-studio-lite.css"), privateLibrary=read("src/styles/velvet-v291-private-library-rework.css"), mobileLibrary=read("src/styles/velvet-v292-mobile-library-polish.css"), swipeTrash=read("src/components/SwipeToTrash.jsx"), precisionActions=read("src/styles/velvet-v296-precision-actions.css"), charactersClean=read("src/styles/velvet-v298-characters-clean-mobile.css");
+const missingFiles = new Map();
+const read = (file) => {
+  try { return readFileSync(new URL(`../${file}`, import.meta.url), "utf8"); }
+  catch (error) {
+    missingFiles.set(file, error.code || error.message);
+    return "";
+  }
+};
+const mobile=read("src/styles/velvet-mobile-foundation.css"), stability=read("src/styles/velvet-v265-stability.css"), chat=read("src/pages/Chat.jsx"), app=read("src/App.jsx"), studio=read("src/components/CreateCharacterModal.jsx"), reference=read("src/styles/velvet-burgundy-reference.css"), studio269=read("src/styles/velvet-v269-character-studio-mobile.css"), studio2610=read("src/styles/velvet-v2610-character-studio-scroll.css"), sixFix=read("src/styles/velvet-v2611-six-fixes.css"), stories=read("src/pages/Chats.jsx"), pulse=read("src/pages/Pulse.jsx"), pulseCss=read("src/styles/pulse.css"), memories=read("src/pages/Memories.jsx"), feedback=read("src/context/FeedbackContext.jsx"), feedbackCss=read("src/styles/feedback.css"), studioLite=read("src/styles/velvet-v290-character-studio-lite.css"), privateLibrary=read("src/styles/velvet-v291-private-library-rework.css"), mobileLibrary=read("src/styles/velvet-v292-mobile-library-polish.css"), swipeTrash=read("src/components/SwipeToTrash.jsx"), precisionActions=read("src/styles/velvet-v296-precision-actions.css"), charactersClean=read("src/styles/velvet-v298-characters-clean-mobile.css");
 const checks=[]; const check=(n,p)=>checks.push({n,p:Boolean(p)});
 const indexHtml=read("index.html"), mainEntry=read("src/main.jsx"), viewportLock=read("src/utils/mobileViewportLock.js"), nativeViewport=read("src/styles/velvet-v21033-native-viewport-lock.css"), composerAuthority=read("src/styles/velvet-v374-chat-composer-authority.css"), headerOverlay=read("src/styles/chat-header-overlay.css");
 check("v2.10.33 viewport meta locks installed app scale", indexHtml.includes("minimum-scale=1")&&indexHtml.includes("maximum-scale=1")&&indexHtml.includes("user-scalable=no")&&indexHtml.includes("interactive-widget=resizes-content"));
@@ -64,7 +72,7 @@ check("header is a permanent viewport overlay with no scroll logic", headerOverl
 check("Memory Book is body-portaled above chat chrome", read("src/components/MemoryBookDrawer.jsx").includes("createPortal((") && read("src/components/MemoryBookDrawer.jsx").includes("), document.body)") && headerOverlay.includes("z-index: 7000 !important"));
 check("Memory Book owns fluid one-finger scrolling", headerOverlay.includes(".memory-book__scroll") && headerOverlay.includes("-webkit-overflow-scrolling: touch !important") && headerOverlay.includes("overscroll-behavior-y: contain !important"));
 check("opening Memory Book freezes and restores the chat position", read("src/components/MemoryBookDrawer.jsx").includes('body.style.position = "fixed"') && read("src/components/MemoryBookDrawer.jsx").includes("window.scrollTo(0, scrollY)"));
-let failed=0; for(const x of checks){console.log(`${x.p?"PASS":"FAIL"}  ${x.n}`);if(!x.p)failed++;} if(failed){console.error(`\n${failed} mobile QA checks failed.`);process.exit(1);} console.log(`\n${checks.length} mobile QA checks passed.`);
+
 
 
 
@@ -83,3 +91,15 @@ let failed=0; for(const x of checks){console.log(`${x.p?"PASS":"FAIL"}  ${x.n}`)
   check("Memories detail clears the floating mobile dock", memoriesSafe.includes("padding-bottom: calc(188px + env(safe-area-inset-bottom))") && memoriesSafe.includes("scroll-padding-bottom: calc(164px + env(safe-area-inset-bottom))"));
   check("Memories final action stays in normal scroll flow above the dock", memoriesSafe.includes(".memories-reference__add-bottom") && memoriesSafe.includes("margin: 12px auto 0"));
 }
+
+// Report only after every regression check has been registered.
+let failed = 0;
+for (const { n, p } of checks) {
+  console.log(`${p ? "PASS" : "FAIL"}  ${n}`);
+  if (!p) failed++;
+}
+for (const [file, reason] of missingFiles) {
+  console.error(`MISSING  ${file} (${reason})`);
+}
+console.log(`\nMobile QA: ${checks.length - failed}/${checks.length} checks passed; ${missingFiles.size} source files missing.`);
+if (failed || missingFiles.size) process.exitCode = 1;
