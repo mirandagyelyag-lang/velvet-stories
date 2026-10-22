@@ -11,6 +11,7 @@ assert.match(edge,/Avoid ending on 'come on', 'deal', a joke, a generic question
 assert.match(edge,/salvageController\.abort\(\), 14500/);
 assert.match(edge,/maxOutputTokens: 1800/);
 assert.match(edge,/temperature: 0\.78/);
+assert.match(edge,/DEFAULT TO AN IN-PLACE SOCIAL OR PRACTICAL CHANGE/, "in-place story change remains required");
 
 console.log("PASS  unexpected_opportunity now prefers in-place story change");
 console.log("PASS  Instant Story salvage explicitly rejects blocking+banter as fake momentum");
