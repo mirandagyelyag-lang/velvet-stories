@@ -25,7 +25,7 @@ const emotion={
 };
 
 const score=userGravityScoreV35276(emotion,chase,{status:"not exclusive"});
-assert.ok(score>=34);
+assert.ok(Number.isFinite(score) && score>=34, "user gravity must be a finite numeric score");
 assert.ok(["medium","strong","anchored"].includes(userGravityLevelV35276(score)));
 
 const prompt=buildPersistentOffscreenLifeUserGravityV35276({
