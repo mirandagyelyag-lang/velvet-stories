@@ -16,8 +16,21 @@ assert.match(edge, /immediateTurnContinuityIssues\(text, options\.latestUserMess
 assert.match(edge, /"immediate_user_choice_overridden"/);
 assert.match(edge, /"immediate_event_truth_rewritten"/);
 
+// Additional isolated regressions for acceptance, agency, and retry behavior.
+
+const noOverride = [
+  '"Okay, keep yours." He sets the spare aside.',
+  '"Fair enough." Alexander leaves the other container untouched.',
+];
+for (const reply of noOverride) {
+  assert.ok(!immediateTurnContinuityIssues(reply, user, [opening]).includes("immediate_user_choice_overridden"));
+}
+const duplicate = immediateTurnContinuityIssues(rejected, user, [opening, rejected]);
+assert.ok(duplicate.includes("repeated_previous_character_reply"));
+assert.ok(duplicate.includes("immediate_user_choice_overridden"));
+
 console.log("PASS  exact reported first-turn contradiction is rejected");
 console.log("PASS  user's practical choice cannot be silently overridden");
 console.log("PASS  consistent in-character acceptance remains valid");
 console.log("PASS  deterministic guard runs in the live reply pipeline");
-console.log("\n4 first-turn continuity checks passed.");
+console.log("\nContinuity regression assertions passed.");
