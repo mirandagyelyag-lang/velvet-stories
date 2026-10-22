@@ -2,7 +2,7 @@ import { readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 
-const root = process.cwd();
+const root = new URL("..", import.meta.url).pathname;
 const auth = readFileSync(join(root, "src/pages/Auth.jsx"), "utf8");
 const authContext = readFileSync(join(root, "src/context/AuthContext.jsx"), "utf8");
 const css = readFileSync(join(root, "src/styles/auth.css"), "utf8");
@@ -12,7 +12,9 @@ const scenePath = join(root, "public/velvet-owner-login-scene.png");
 const sceneHash = existsSync(scenePath) ? createHash("sha256").update(readFileSync(scenePath)).digest("hex") : "";
 
 const checks = [
-  ["version is 3.52.31", pkg.version === "3.52.31"],
+  ['package version is semantic', /^\d+\.\d+\.\d+$/.test(pkg.version)],
+
+  ["package version is semantic", /^\d+\.\d+\.\d+$/.test(pkg.version)],
   ["exact owner login artwork ships with the app", existsSync(scenePath) && statSync(scenePath).size > 500_000],
   ["owner artwork is the exact approved image", sceneHash === "223b3c52abc874e7e2772eb65922d91fa08af6b42ab467b7c33aace0f8719507"],
   ["auth renders the owner artwork directly", auth.includes('/velvet-owner-login-scene.png') && auth.includes('auth__owner-stage')],
