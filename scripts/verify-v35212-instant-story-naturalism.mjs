@@ -24,9 +24,26 @@ assert.doesNotMatch(edge.slice(edge.indexOf("const INSTANT_STORY_NON_ACADEMIC_SC
 assert.match(edge,/Personality and attraction must change an actual decision/);
 assert.match(client,/const genericInstantStory =/);
 
+
+// Isolated negative fixtures make regressions diagnosable by failure category.
+const issue = (opening, profile = draft) => instantStoryQualityIssues(opening, profile);
+assert.ok(issue("You smiled and followed him.").includes("user_action_or_reaction_puppeteered"));
+assert.ok(issue("You felt relieved when he arrived.").includes("user_inner_state_puppeteered"));
+assert.ok(issue("Your mother called and told him to bring the keys.").includes("invented_personal_history_from_closeness"));
+assert.ok(issue("You always forget your keys.").includes("invented_personal_history_from_closeness"));
+assert.ok(issue("He glanced over. \"Come with me.\"").includes("forced_binary_choice"));
+assert.ok(issue("His gaze lingered on you for a beat too long.").includes("attraction_without_behavioral_proof"));
+assert.ok(issue("Jax complained about the energy drinks before the road trip.").includes("invented_named_npc"));
+assert.ok(issue("The flickering neon light hummed overhead.").includes("decorative_stock_atmosphere"));
+assert.ok(issue("He drove across campus to see you.").includes("romance_first_setup"));
+assert.ok(issue("The others left. That settled it.").includes("premature_resolution"));
+assert.ok(edge.indexOf("const INSTANT_STORY_NON_ACADEMIC_SCENES") >= 0, "scene pool must exist");
+assert.ok(edge.indexOf("function instantStorySceneSeed") > edge.indexOf("const INSTANT_STORY_NON_ACADEMIC_SCENES"),
+  "scene pool must precede seed builder");
+
 console.log("PASS  the exact neon/jerky/Jax opening is rejected");
 console.log("PASS  Instant Story cannot position or move the user");
 console.log("PASS  invented named NPC comedy is rejected");
 console.log("PASS  gaze-only attraction fails without behavioral proof");
 console.log("PASS  convenience-store road-trip filler is removed from scene selection");
-console.log("\n5 Instant Story naturalism checks passed.");
+console.log("\nInstant Story naturalism assertions passed.");
