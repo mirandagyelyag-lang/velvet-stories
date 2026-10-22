@@ -32,7 +32,10 @@ function passiveDeadEnd(reply=""){
   const passive=/\b(?:waited|watched|stayed there|remained there|gave (?:her|him|you|them) space|said nothing|didnt say anything|did not say anything|let the silence|stood there|sat there|looked at (?:her|him|you|them)|kept quiet)\b/.test(t);
   const initiative=/\b(?:decided|left|went|called|texted|sent|invited|asked|told|refused|changed|started|finished|grabbed|opened|closed|walked over|went back|joined|ordered|booked|planned|picked|chose|admitted|confessed|kissed|flirted|argued|confronted|apologized|offered|made|turned to|headed|returned|showed up)\b/.test(t);
   const dialogue=/["“][^"”]{3,}["”]/.test(String(reply||""));
-  return passive && !initiative && !dialogue;
+  const emptyDialogue=/^(?:okay|ok|fine|yeah|sure|alright|all right|right|hmm|uh huh|really|whatever|i see|go on|tell me|what now)[.!?…]*$/i;
+  const spoken=[...String(reply||"").matchAll(/["“]([^"”]+)["”]/g)].map((match)=>match[1].trim());
+  const meaningfulDialogue=dialogue && spoken.some((line)=>!emptyDialogue.test(line));
+  return passive && !initiative && !meaningfulDialogue;
 }
 
 function handsBackDecision(reply=""){
