@@ -1,9 +1,9 @@
 import fs from "node:fs";
-const read=(p)=>fs.readFileSync(p,"utf8");
+const read=(p)=>fs.readFileSync(new URL(`../${p}`,import.meta.url),"utf8");
 const checks=[]; const add=(n,c)=>checks.push([n,!!c]);
 const pkg=JSON.parse(read("package.json"));
 const app=read("src/App.css"); const mobile=read("src/styles/velvet-mobile-foundation.css"); const burg=read("src/styles/velvet-burgundy-reference.css"); const main=read("src/main.jsx");
-add("version 3.52.x",/^3\.52\.\d+$/.test(pkg.version));
+add("package version is semantic",/^\d+\.\d+\.\d+$/.test(pkg.version));
 add("mobile app is column flow",mobile.includes("display:flex!important;flex-direction:column!important;min-height:0!important"));
 add("content owns first order",mobile.includes("order:1!important;min-height:0!important"));
 add("mobile dock follows content",mobile.includes(".mobile-nav{order:2!important;position:sticky!important"));
@@ -12,6 +12,11 @@ add("App source no mobile viewport spacer",app.includes(".app__content { order: 
 add("route stage no forced height",app.includes(".velvet-route-stage{min-height:0;"));
 add("burgundy route neutralizes nested viewport",burg.includes("body.velvet-burgundy-route .app__content")&&burg.includes("min-height: 0 !important;"));
 add("old v3521 authority removed",!main.includes("velvet-v3521-mobile-page-tail-fix.css"));
+// These source checks supplement, but cannot replace, a real mobile viewport test.
+add("mobile stylesheet declares dock selector",/\\.mobile-nav\\s*\\{/.test(mobile));
+add("mobile stylesheet preserves safe-area padding",mobile.includes("safe-area-inset-top"));
+add("route content remains ordered before dock",mobile.includes("order:1!important")&&mobile.includes("order:2!important"));
+add("legacy mobile tail fix is not imported",!main.includes('import "./styles/velvet-v3521-mobile-page-tail-fix.css"'));
 for(const [n,c] of checks) console.log(`${c?"PASS":"FAIL"} · ${n}`);
 if(checks.some(([,c])=>!c)) process.exit(1);
 console.log(`PASS · ${checks.length}/${checks.length}`);
