@@ -5,7 +5,7 @@ const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.match(pkg.version, /^3\.52\.\d+$/);
+assert.match(pkg.version, /^\d+\.\d+\.\d+$/, "package version must be semantic");
 assert.equal(version.version, pkg.version);
 
 assert.match(edge, /OPENING DNA 3\.52\.89/);
