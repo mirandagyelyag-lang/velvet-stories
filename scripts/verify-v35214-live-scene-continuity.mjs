@@ -20,9 +20,20 @@ assert.deepEqual(immediateTurnContinuityIssues(coherent, user, [opening, firstRe
 const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts", import.meta.url), "utf8");
 for (const issue of issues) assert.match(edge, new RegExp(`"${issue}"`));
 
+// Additional isolated regressions for acceptance, agency, and retry behavior.
+
+const repeat = immediateTurnContinuityIssues(rejected, user, [opening, firstReply, rejected], profile);
+assert.ok(repeat.includes("repeated_previous_character_reply"));
+for (const reply of [
+  'Alexander sets his own food down and moves a bag off the chair beside him.',
+  'He shifts his drink aside to make room, then continues talking with the group.',
+]) {
+  assert.ok(!immediateTurnContinuityIssues(reply, user, [opening, firstReply], profile).includes("immediate_object_ownership_rewritten"));
+}
+
 console.log("PASS  exact reported second-turn reply fails all four continuity guards");
 console.log("PASS  user's food remains in the user's possession");
 console.log("PASS  dangling references and invented future plans are rejected");
 console.log("PASS  Alexander's established attraction survives through behavior");
 console.log("PASS  coherent selective interest remains valid");
-console.log("\n5 live-scene continuity checks passed.");
+console.log("\nContinuity regression assertions passed.");
