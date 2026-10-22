@@ -20,12 +20,22 @@ function floatingDialogue(v=""){return /^\s*["“][^"”]{2,}["”]/.test(String
 function userChoreography(v=""){return /\byou (?:walked|sat|stood|followed|nodded|smiled|laughed|felt|thought|wanted|took|grabbed|held|moved|stepped|arrived|entered|leaned|looked)\b/i.test(String(v||""))}
 function staleSetup(v="",recent=[]){const t=n(v);const fam=(x)=>[/\bparty\b|\bclub\b/,/\bhallway\b|\bcorridor\b/,/\bstation\b|\bplatform\b/,/\bdelivery\b|\bpackage\b/,/\bcoffee\b|\bcafe\b/,/\bkitchen\b/].map((r,i)=>r.test(n(x))?i:-1).filter(i=>i>=0);const f=fam(t);return f.length>0&&arr(recent).slice(-5).filter(x=>fam(x).some(i=>f.includes(i))).length>=2}
 
+function clipboardEscapePattern(v=""){
+ const t=n(v);
+ const pressure=/\\b(?:student|students|committee|volunteer|petition|clipboard|raffle|wristband|signup|sign up|shift|roster|passes|flyer|forms|paperwork|mixer|gala)\\b/.test(t);
+ const interception=/\\b(?:path|blocked|intercept|stepped into|approached|stopped|cornered)\\b/.test(t);
+ const escape=/\\b(?:ignore|ignored|brushed past|turned his back|walked away|toward you|towards you|near you|over to you|busy|instead|get out of)\\b/.test(t);
+ return pressure&&interception&&escape;
+}
 export function buildInstantStoryDirectorV35389({character={},idea="",recentOpenings=[]}={}){
  const stage=relationshipStage(character);
  return [
  "INSTANT STORY DIRECTOR 2.0 · VELVET 3.53.89:",
  "1) OPENING PREMISE COMPILER: silently resolve WHO is present, WHY this moment exists, WHAT is already happening, WHAT the lead wants now, and WHAT can materially change within minutes. Prose starts only after those five answers exist.",
  "2) RELATIONSHIP-AWARE OPENING: configured relationship stage="+stage+". Calibrate familiarity, touch, trust, jealousy, entitlement, knowledge and vulnerability to that stage. Attraction is not a relationship. Strangers do not inherit couple intimacy; established partners do not reset to strangers.",
+ "PREMISE DIVERSITY FIREWALL: never use the campus clipboard escape structure (student/committee intercepts lead with a sheet, shift, wristband, obligation or demand; lead ignores them, walks to user and asks to look busy). This is ONE repeated causal skeleton even if names, props and setting change. Start from a genuinely different causal event instead.",
+ "PRE-WRITING CAUSALITY: select a concrete goal for the lead and a distinct motive for every NPC. Establish why each action follows the previous action. No ambiguous pronoun referents, disproportionate emotional distress over trivial logistics, or invented pressure without a reason.",
+ "DIVERSE ACTION FAMILIES: rotate between character-initiated plans, social rivalries, surprising choices with grounded motives, third-party flirtation, mistakes with consequences, genuine intimacy, public conflict, and quiet tension. Do not make the user a perpetual escape hatch. A character can stay with other people while initiating a scene.",
  "3) IMMEDIATE PLAYABLE PROBLEM: create one ordinary but consequential pressure, opportunity, obligation, mistake, rumor, favor, changed plan, social complication or decision. It must be capable of evolving beyond the opening.",
  "4) OPENING SOCIAL WORLD: the lead may already be talking, planning, joking, working or dealing with other people. Supporting people keep their own local purpose. Do not freeze the world when the user is present.",
  "5) SPEAKER OWNERSHIP: every spoken line has an unmistakable addressee BEFORE or AT the line. No floating dialogue.",
@@ -43,6 +53,7 @@ export function buildInstantStoryDirectorV35389({character={},idea="",recentOpen
 
 export function instantStoryDirectorIssuesV35389(opening="",{character={},recentOpenings=[]}={}){
  const issues=[];
+ if(clipboardEscapePattern(opening))issues.push("instant_story_clipboard_escape_loop");
  if(rescuePattern(opening))issues.push("instant_story_rescue_template");
  if(objectUser(opening))issues.push("instant_story_user_as_object");
  if(fakeChoice(opening))issues.push("instant_story_fake_choice");
@@ -54,4 +65,4 @@ export function instantStoryDirectorIssuesV35389(opening="",{character={},recent
  if(!/\b(?:said|asked|told|turned|chose|decided|left|stayed|sent|called|refused|offered|changed|started|stopped|walked|moved|took|gave|opened|closed|arrived|interrupted|answered)\b/.test(t))issues.push("instant_story_low_initiative");
  return [...new Set(issues)];
 }
-export const __testV35389={relationshipStage,rescuePattern,objectUser,fakeChoice,floatingDialogue,userChoreography,staleSetup};
+export const __testV35389={relationshipStage,rescuePattern,objectUser,fakeChoice,floatingDialogue,userChoreography,staleSetup,clipboardEscapePattern};
