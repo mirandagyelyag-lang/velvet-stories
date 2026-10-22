@@ -18,6 +18,8 @@ assert.ok(issues('"Denial looks good on you. The room has spoken."').includes("g
 assert.ok(issues('"Look at you, finally admitting it. Progress."', "It's not a secret", ["We both know you missed me."]).includes("attraction_opening_wasted"));
 assert.ok(!issues('"I missed you too. That’s why I came to find you."', "It's not a secret", ["We both know you missed me."]).includes("attraction_opening_wasted"));
 
+assert.equal(issues('"I came because I wanted to see you."', "I missed you").includes("attraction_opening_wasted"), false, "direct emotional initiative should remain allowed");
+
 const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts", import.meta.url), "utf8");
 assert.match(edge, /function hasLocationIncompatibleCommerce/);
 assert.match(edge, /location_incompatible_commerce/);
