@@ -21,7 +21,13 @@ const declaredInputs = new Set(
 );
 assert.ok(declaredInputs.has("messages"), "messages must be a declared stream input");
 
+// Additional boundary and recovery regression assertions.
+assert.ok(streamStart >= 0 && signatureEnd > streamStart, "stream function signature must exist");
+assert.ok(streamBody.length > 100, "stream body must not be empty");
+assert.match(edge.slice(callStart, callEnd), /messages/, "call must pass history");
+assert.match(streamBody, /latestUserMessage/, "stream must retain latest user turn");
+
 console.log("PASS  request history is passed into the live stream");
 console.log("PASS  the live stream declares messages in its scope");
 console.log("PASS  compact recovery receives the scoped history");
-console.log("\n3 stream-context scope checks passed.");
+console.log("\nRegression assertions passed.");
