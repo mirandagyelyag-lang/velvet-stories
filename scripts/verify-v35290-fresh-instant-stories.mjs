@@ -6,7 +6,7 @@ const client = readFileSync(new URL("../src/context/CharactersContext.jsx", impo
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.match(pkg.version, /^3\.52\.\d+$/);
+assert.match(pkg.version, /^\d+\.\d+\.\d+$/, "current package version must be semantic");
 assert.equal(version.version, pkg.version);
 
 assert.match(edge, /FRESH INSTANT STORY 3\.52\.90/);
