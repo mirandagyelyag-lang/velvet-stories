@@ -26,6 +26,7 @@ const npcIssues = pursuitEmotionPriorityV35265Issues({
   recentUserMessages: [],
 });
 assert.ok(npcIssues.includes("departure_priority_stolen_by_npc"));
+assert.ok(exactBadIssues.length >= 2, "passive release must fail both pursuit and departure checks");
 
 const good = `Chase swore under his breath and went after you immediately. "Beaumont, Miller's looking for you about the tailgate—" "Not now." He didn't slow down, pushing through the hallway after you. "Hey. Wait."`;
 assert.deepEqual(pursuitEmotionPriorityV35265Issues({
