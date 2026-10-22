@@ -20,6 +20,13 @@ const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts
 const blocking = edge.slice(edge.indexOf("const BLOCKING_NARRATIVE_ISSUES"), edge.indexOf("const REPAIR_TRIGGER_ISSUES"));
 assert.match(blocking, /"delegated_choice_returned"/);
 
+// Additional targeted regressions.
+const alternatives = ["You decide", "Your choice", "Surprise me"];
+for (const request of alternatives) {
+  assert.ok(immediateTurnContinuityIssues('"Your call."', request, previous, {}).includes("delegated_choice_returned"), `delegation should not be returned: ${request}`);
+}
+assert.ok(edge.indexOf("const BLOCKING_NARRATIVE_ISSUES") >= 0 && edge.indexOf("const REPAIR_TRIGGER_ISSUES") > edge.indexOf("const BLOCKING_NARRATIVE_ISSUES"), "blocking range must be valid");
+
 console.log("PASS  'I'll trust you' cannot be answered with another menu");
 console.log("PASS  equivalent delegated-choice phrases follow the same rule");
 console.log("PASS  choosing the diner and advancing is accepted");
