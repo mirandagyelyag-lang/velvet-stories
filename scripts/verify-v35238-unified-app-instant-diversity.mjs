@@ -8,6 +8,7 @@ const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts
 const diversity = readFileSync(new URL("../supabase/functions/character-chat/engine/instant-story-diversity-v35245.ts", import.meta.url), "utf8");
 
 assert.match(main, /velvet-v35238-unified-app-canvas\.css/);
+assert.ok(main.indexOf("velvet-v35238-unified-app-canvas.css") >= 0, "unified canvas import must exist");
 assert.match(canvas, /body\.velvet-burgundy-route:not\(\.velvet-page--chat\):not\(\.velvet-page--studio\)/);
 assert.doesNotMatch(canvas, /data-velvet-page="chats"/);
 assert.match(canvas, /velvet-route-stage > :first-child \{[\s\S]*background: transparent !important;[\s\S]*background-image: none !important;/);
@@ -18,6 +19,8 @@ assert.match(client, /recentSceneSeeds/);
 assert.match(client, /variationKey/);
 assert.match(diversity, /const recent = new Set/);
 assert.match(diversity, /const available = pool\.filter/);
+assert.match(client, /recentSceneSeeds/);
+assert.match(edge, /instantStorySceneFamily/);
 assert.match(edge, /sceneSeed, sceneFamily: instantStorySceneFamily\(sceneSeed\)/);
 
 console.log("PASS  unified canvas applies to every non-chat Velvet route");
