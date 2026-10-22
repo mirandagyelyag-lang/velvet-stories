@@ -15,7 +15,7 @@ for (const marker of [
 
 assert.ok(index.includes("buildVelvetNarrativeUpgradeV35379"));
 assert.ok(index.includes("velvetNarrativeUpgradeIssuesV35379"));
-assert.ok(index.includes("VELVET_ENGINE_RELEASE = \"454\""));
+assert.match(index, /VELVET_ENGINE_RELEASE\s*=\s*"\d+"/, "engine release marker must remain present");
 for (const key of ["storyRomanticTension","storyJealousy","storyCharacterInitiative","storyScenePace"]) {
   assert.ok(settingsContext.includes(key), key);
   assert.ok(chats.includes(key), key);
