@@ -12,6 +12,7 @@ assert.match(edge, /Roof, patio, driveway, hallway, street outside the house, or
 // through source structure. The important regression here is that "no family
 // keywords detected" is accepted instead of treated as drift.
 assert.match(edge, /if \(!detected\.length\) return \[\];/);
+assert.ok(edge.indexOf("openingDnaOutputFamiliesV35317") >= 0, "output family classifier must remain defined");
 assert.match(edge, /detected\.some\(\(id\) => compatible\.has\(id\)\)/);
 
 // Ensure the original hard error still exists for genuinely incompatible worlds.
