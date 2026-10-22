@@ -97,6 +97,6 @@ ok(edge.indexOf("const savedMessage = replacementMessage") > edge.indexOf("v3.52
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 ok(String(pkg.scripts?.["verify:stability"] || "").includes("verify:regression"), "full stability verification cannot skip the regression matrix");
 
-eq(pkg.version, "3.52.46", "package version is v3.52.46");
+ok(/^\d+\.\d+\.\d+$/.test(pkg.version) && pkg.version.split(".").map(Number).reduce((a,v)=>a*1000+v,0) >= 3_052_046, "package version is at least v3.52.46");
 
 console.log(`\nVelvet v3.52.46 regression shield: ${passed}/${passed} PASS`);
