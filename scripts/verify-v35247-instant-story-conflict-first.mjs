@@ -24,6 +24,7 @@ const handlerAt = edge.indexOf("async function handleInstantStory");
 const afterHandler = edge.slice(handlerAt + 1);
 const nextFn = /\n(?:async\s+)?function\s+[A-Za-z_$][\w$]*\s*\(/.exec(afterHandler);
 const handlerEnd = nextFn ? handlerAt + 1 + nextFn.index + 1 : edge.length;
+assert.ok(handlerAt >= 0 && handlerEnd > handlerAt, "Instant Story handler boundaries must be valid");
 const handlerBody = edge.slice(handlerAt, handlerEnd);
 assert.doesNotMatch(handlerBody, /instantStoryFallbackOpening\(/);
 assert.doesNotMatch(handlerBody, /instantStorySceneSeed\(/);
