@@ -40,6 +40,7 @@ const good=interactionSalienceIssuesV35342({
   character:alex,
 });
 assert.equal(good.length,0);
+assert.ok(!good.includes("high_salience_turn_not_registered"));
 
 const directive=buildInteractionSalienceV35342({
   latestUserMessage:"*I cross my arm with yours*",
