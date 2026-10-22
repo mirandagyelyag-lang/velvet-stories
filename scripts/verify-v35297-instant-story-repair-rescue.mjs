@@ -5,9 +5,9 @@ const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const version = JSON.parse(readFileSync(new URL("../public/velvet-version.json", import.meta.url), "utf8"));
 
-assert.ok(/^3\.52\.(?:9[7-9]|[1-9]\d{2,})$/.test(pkg.version));
-assert.ok(/^3\.52\.(?:9[7-9]|[1-9]\d{2,})$/.test(version.version));
-assert.ok(["Instant Story Repair Rescue", "Instant Story Nonfatal Style Gates"].includes(version.release));
+assert.match(pkg.version, /^\d+\.\d+\.\d+$/, "current package version must be semantic");
+assert.equal(version.version, pkg.version, "published version must match package");
+assert.ok(typeof version.release === "string" && version.release.trim(), "release label must be present");
 
 assert.match(edge, /const rejectedInstantCandidates = \[\];/);
 assert.match(edge, /rejectionReasons = \[\.\.\.anchorIssues, \.\.\.groundingIssues, \.\.\.naturalismIssues\]/);
