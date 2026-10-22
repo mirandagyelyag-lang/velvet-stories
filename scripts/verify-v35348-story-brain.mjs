@@ -29,5 +29,6 @@ const stallIssues=storyBrainV35348Issues({
 });
 assert.ok(stallIssues.includes("story_brain_stagnation_not_broken"));
 assert.equal(__testV35348.moveFamily("Come with me."),"invite");
+assert.notEqual(__testV35348.moveFamily("Come with me."),__testV35348.moveFamily("I decided I'm leaving."));
 assert.equal(__testV35348.moveFamily("I decided I'm leaving."),"decision");
 console.log("v3.53.48 Story Brain regression checks passed");
