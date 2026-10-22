@@ -20,9 +20,15 @@ const absoluteFinalFlow = edge.slice(absoluteBarrierStart, saveStart);
 assert.match(absoluteFinalFlow, /streamFinalReply\(persistableReply, "v35237-regression-shield"\)/);
 assert.ok(edge.indexOf("compact final rescue rejected") < absoluteBarrierStart);
 
+// Additional boundary and recovery regression assertions.
+assert.ok(repairStart >= 0 && persistenceStart > repairStart, "protected repair boundaries must exist");
+assert.ok(absoluteBarrierStart >= persistenceStart && saveStart > absoluteBarrierStart, "final barrier boundaries must exist");
+assert.match(protectedFlow, /rescueBlocking|blockingNarrativeIssues/, "repair must check narrative blockers");
+assert.match(absoluteFinalFlow, /persistableReply/, "display must use the persistable final reply");
+
 console.log("PASS  bounded repair receives the compact visible-canon prompt");
 console.log("PASS  rejected repair and timeout drafts are never streamed early");
 console.log("PASS  persistent violations trigger one compact final rescue");
 console.log("PASS  the final rescue is validated and safely grounded before display");
 console.log("PASS  no rejected protected reply can cross the display barrier");
-console.log("\n5 hard quality-barrier checks passed.");
+console.log("\nRegression assertions passed.");
