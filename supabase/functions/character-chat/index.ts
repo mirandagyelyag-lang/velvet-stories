@@ -2661,9 +2661,22 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
           result = await run(bare);
         }
       }
+      // Provider overload must switch to an independent lane, not retry the same
+      // saturated Gemini model until the shared deadline expires.
+      if (!result.response.ok && [408, 500, 502, 503, 504].includes(result.response.status)) {
+        overloadedModels.add(model);
+        if ((Deno.env.get("GROQ_API_KEY") || Deno.env.get("OPENAI_API_KEY") || Deno.env.get("OPEN_AI_KEY")) && !controller.signal.aborted && deadlineAt-Date.now()>1500) {
+          try {
+            const independent = await requestGroqOpening(phase, effectivePrompt);
+            return {...independent, actualModel: independent.model};
+          } catch (independentError) {
+            console.warn("[character-chat] independent opening fallback unavailable", {phase, error:getErrorMessage(independentError)});
+          }
+        }
+      }
       // Direct REST calls have no SDK retry layer. Retry transient overload once,
       // with jitter, inside this same controller and the shared handler deadline.
-      if (phase !== "primary" && !result.response.ok && [408, 500, 502, 503, 504].includes(result.response.status) && requestBudgetMs - (Date.now() - requestStartedAt) > 2000) {
+      if (false && phase !== "primary" && !result.response.ok && [408, 500, 502, 503, 504].includes(result.response.status) && requestBudgetMs - (Date.now() - requestStartedAt) > 2000) {
         diagnose({ phase, model, status: result.response.status, code: "transient_retry", error: result.data?.error?.message });
         const retryDelayMs = 650 + Math.floor(Math.random() * 200);
         await new Promise<void>((resolve, reject) => {
