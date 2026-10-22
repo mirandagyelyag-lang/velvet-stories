@@ -54,6 +54,7 @@ const capped=deriveRelationshipArcStateV35278({
 });
 assert.equal(capped.stage_index,3);
 assert.equal(capped.stage,"pull");
+assert.ok(capped.stage_index < catchup.stage_index, "saved relationship history must constrain advancement");
 
 const noReset=deriveRelationshipArcStateV35278({
   character:chase,
