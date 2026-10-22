@@ -103,6 +103,7 @@ import { deriveEmotionalSupportPriorityV35321, buildEmotionalSupportPriorityV353
 import { buildCharacterIdentityGateV35321, characterIdentityGateIssuesV35321 } from "./engine/character-identity-gate-v35321.js";
 import { buildEmotionalAftercareV35322, emotionalAftercareIssuesV35322 } from "./engine/emotional-aftercare-v35322.js";
 import { normalizeInstantStoryProse, instantStoryProseValidation } from "./engine/instant-story-prose.js";
+import { instantStoryClarityIssuesV35341, instantStoryClarityPromptV35341 } from "./engine/instant-story-clarity-v35341.js";
 const VELVET_ENGINE_RELEASE = "513";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -2478,6 +2479,7 @@ IDEA
 ${cleanIdea || "No extra premise. Use the character's existing life and relationship."}`;
 
   const prompt = alexanderEngineActive ? buildAlexanderInstantPrompt(safeDraft, cleanIdea, recentOpenings) : nathanEngineActive ? buildNathanInstantPrompt(safeDraft, cleanIdea, recentOpenings) : chaseEngineActive ? buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings) : genericPrompt;
+  const clarityPromptV35341 = `${prompt}\n\n${instantStoryClarityPromptV35341()}`;
 
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
@@ -2695,7 +2697,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     if (remainingMs < 900) throw new Error("Instant Story global deadline reached.");
 
     const attemptStartedAt = Date.now();
-    const { data, actualModel } = await requestOpening({ model, prompt, phase: "primary", timeoutMs: Math.min(attemptTimeoutMs, remainingMs), maxOutputTokens: 1600, temperature: 0.9 });
+    const { data, actualModel } = await requestOpening({ model, prompt: clarityPromptV35341, phase: "primary", timeoutMs: Math.min(attemptTimeoutMs, remainingMs), maxOutputTokens: 1600, temperature: 0.9 });
 
     model = actualModel || model;
     const candidate = data?.candidates?.[0] || {};
@@ -2703,6 +2705,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const finishReason = String(candidate?.finishReason || "");
     const anchorIssues = instantStoryOpeningAnchorIssuesV35289(opening, safeDraft, cleanIdea);
     const qualityIssues = instantStoryQualityIssues(opening, safeDraft);
+    const clarityIssuesV35341 = instantStoryClarityIssuesV35341(opening);
     const fatalQualityIssues = qualityIssues.filter((issue)=>INSTANT_STORY_FATAL_ISSUES_V35290.has(issue));
     const premiseIssues = instantStoryPremiseGateIssues(opening, safeDraft);
     const groundingIssues = instantStoryGroundingIssuesV35292(opening, safeDraft, cleanIdea)
@@ -2718,6 +2721,8 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       opening: true,
     });
     const similarityIssue = instantStoryTooSimilarV3539(opening, recentOpenings) ? ["recent_opening_similarity"] : [];
+    // Clarity issues are editorial guidance, not fatal hard blocks.
+    if (clarityIssuesV35341.length) diagnose({ phase: "clarity", model, code: "clarity_advisory", reasons: clarityIssuesV35341 });
     const unifiedOpeningIssues = instantStoryStateFamilyIssuesV35312(opening, recentOpenings);
     const directorIssuesV35366 = instantStoryDirectorIssuesV35366(opening, recentOpenings);
     const directorIssuesV35389 = instantStoryDirectorIssuesV35389(opening, { character: safeDraft, recentOpenings });
@@ -13443,4 +13448,3 @@ function json(body, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
-
