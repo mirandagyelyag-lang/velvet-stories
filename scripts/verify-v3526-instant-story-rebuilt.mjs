@@ -15,6 +15,7 @@ assert.match(client, /controller\.abort\(\), 26000/);
 
 const longOpening = `The garage was almost empty, but Rowan still had grease across one wrist from the engine he had promised to finish before midnight. He set the wrench beside the open hood instead of pretending the job could wait. The argument from earlier had not disappeared; it sat between every practical word he chose. “The belt is wrong.” He checked the label on the box again, then held it out where it could be read. “They sent the part for last year's model.” A delivery window closed in forty minutes, and abandoning the car would cost him the only quiet night he had left that week. “I can call the supplier, or I can make this fit and regret it tomorrow.” His mouth tightened, more annoyed with the situation than with anyone standing near him. “You know the owner better than I do.” He picked up his phone but did not make the call yet. “Tell me if he’ll answer you.”`;
 assert.equal(instantStoryLooksComplete(longOpening, "STOP"), true);
+assert.ok(longOpening.trim().split(/\s+/).length >= 130, "complete opening fixture must be substantial");
 assert.equal(instantStoryLooksComplete('"Hey. Come with me."', "STOP"), false);
 assert.equal(instantStoryLooksComplete(longOpening.replace("Tell me if he’ll answer you.", "I need you for something."), "STOP"), false);
 
