@@ -1,8 +1,9 @@
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const auth = readFileSync(join(root, "src/pages/Auth.jsx"), "utf8");
 const authContext = readFileSync(join(root, "src/context/AuthContext.jsx"), "utf8");
 const css = readFileSync(join(root, "src/styles/auth.css"), "utf8");
