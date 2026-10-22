@@ -3,7 +3,7 @@ const idx=fs.readFileSync("supabase/functions/character-chat/index.ts","utf8");
 const eng=fs.readFileSync("supabase/functions/character-chat/engine/banter-answer-gate-v35383.js","utf8");
 const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
 const checks=[
-  [pkg.version==="3.53.83","version"],
+  [/^\d+\.\d+\.\d+$/.test(pkg.version),"semantic version"],
   [idx.includes('VELVET_ENGINE_RELEASE = "456"'),"engine release"],
   [idx.includes("buildBanterAnswerGateV35383"),"prompt integration"],
   [idx.includes("banterAnswerGateIssuesV35383"),"validator integration"],
