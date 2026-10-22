@@ -112,11 +112,11 @@ const corsHeaders = {
 };
 
 const encoder = new TextEncoder();
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash";
-const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
-const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini-3.1-flash-lite";
-const GEMINI_RECOVERY_MODEL = Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-3.5-flash";
-const GEMINI_INSTANT_RECOVERY_MODEL = Deno.env.get("GEMINI_INSTANT_RECOVERY_MODEL") || "gemini-3.6-flash";
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-2.5-flash-lite";
+const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini-2.5-flash-lite";
+const GEMINI_RECOVERY_MODEL = Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-2.5-flash";
+const GEMINI_INSTANT_RECOVERY_MODEL = Deno.env.get("GEMINI_INSTANT_RECOVERY_MODEL") || "gemini-2.5-flash";
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
 const VELVET_OWNER_EMAIL = "mirandagyelyag@gmail.com";
 const FIRST_DRAFT_WINS_V35268 = false;
@@ -2484,8 +2484,8 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))].slice(0, 4);
-  const globalDeadlineMs = 11000;
-  const attemptTimeoutMs = 10000;
+  const globalDeadlineMs = 20000;
+  const attemptTimeoutMs = 14000;
   const controllers = new Set<AbortController>();
   const rejectedInstantCandidates = [];
   const startedAt = Date.now();
@@ -2494,7 +2494,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   const requestId = /^[a-f0-9-]{36}$/i.test(String(variationKey)) ? variationKey : crypto.randomUUID();
   let primaryWinnerFound = false;
   const providerDiagnostics = [];
-  const deadlineAt = startedAt + 28000;
+  const deadlineAt = startedAt + 36000;
   const diagnose = (entry) => {
     const safeEntry = { ...entry, error: String(entry.error || "").replaceAll(apiKey, "[redacted]").slice(0, 240) };
     if (providerDiagnostics.length < 12) providerDiagnostics.push(safeEntry);
