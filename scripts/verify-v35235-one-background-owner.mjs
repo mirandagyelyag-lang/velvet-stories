@@ -1,14 +1,15 @@
 import fs from "node:fs";
+const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 const checks = [];
 const add = (name, ok) => checks.push({ name, ok: Boolean(ok) });
-const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-const main = fs.readFileSync("src/main.jsx", "utf8");
-const css = fs.readFileSync("src/styles/velvet-v35235-one-background-owner.css", "utf8");
+const pkg = JSON.parse(read("package.json"));
+const main = read("src/main.jsx");
+const css = read("src/styles/velvet-v35235-one-background-owner.css");
 const version = String(pkg.version).split(".").map(Number);
 
-add("release is v3.52.35 or newer", version[0] === 3 && version[1] === 52 && version[2] >= 35);
-add("new authority loads after v3.52.34", main.indexOf("velvet-v35235-one-background-owner.css") > main.indexOf("velvet-v35234-single-canvas.css"));
+add("release is v3.52.35 or newer", version.length === 3 && version.every(Number.isInteger) && (version[0] > 3 || (version[0] === 3 && (version[1] > 52 || (version[1] === 52 && version[2] >= 35)))));
+add("new authority loads after v3.52.34", main.includes("velvet-v35234-single-canvas.css") && main.indexOf("velvet-v35235-one-background-owner.css") > main.indexOf("velvet-v35234-single-canvas.css"));
 add("body alone owns Stories atmosphere", css.includes('body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route') && css.includes("background: var(--stories-atmosphere) !important"));
 add("nested Stories boxes are transparent", css.includes(".velvet-route-stage") && css.includes(".chats-page.chats-page--reference") && css.includes("background: transparent !important"));
 add("document fallback is solid only", css.includes('html[data-velvet-page="chats"].velvet-burgundy-route') && css.includes("background-image: none !important"));
