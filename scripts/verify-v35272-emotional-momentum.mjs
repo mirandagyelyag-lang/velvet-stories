@@ -54,6 +54,7 @@ const repeatedIssues=emotionalMomentumIntegrityV35272Issues({
 });
 assert.ok(repeatedIssues.includes("repeated_hands_in_pockets"));
 assert.ok(repeatedIssues.includes("repeated_following_geometry"));
+assert.ok(!emotionalMomentumIntegrityV35272Issues({reply:stopFollowingGood,latestUserMessage:"Stop following me!",recentUserMessages:[],recentCharacterReplies:recent}).includes("stop_following_overread_as_full_disengagement"));
 
 const prompt=buildEmotionalMomentumIntegrityV35272({
   character:chase,
