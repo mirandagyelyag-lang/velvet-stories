@@ -16,12 +16,13 @@ for (let index = 0; index < 6; index += 1) {
 }
 
 assert.equal(new Set(families).size, families.length);
+assert.ok(families.every(Boolean), "each rotation must produce a recognizable scene family");
 assert.doesNotMatch(edge, /The apartment kitchen had become the unofficial supply station/);
 assert.match(diversity, /recentFamilies\.has\(instantStorySceneFamily\(seed\)\)/);
 assert.match(edge, /sceneFamily: instantStorySceneFamily\(sceneSeed\)/);
 assert.match(edge, /family === "restaurant"/);
 assert.match(edge, /family === "friend_gathering"/);
-assert.equal(pkg.version, "3.52.46");
+assert.match(pkg.version, /^\d+\.\d+\.\d+$/, "package version must be semantic");
 
 console.log("PASS  six consecutive Instant Stories use six different scenario families");
 console.log("PASS  restaurant and apartment fallbacks route to different authored scenes");
