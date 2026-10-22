@@ -113,6 +113,7 @@ const nothing=inferStickyVisibleConsequenceV35277({
   scene:{},
 });
 assert.equal(nothing,null);
+assert.notDeepEqual(inferredKiss, inferredPromise);
 
 assert.match(edge,/buildConsequencesThatStickV35277/);
 assert.match(edge,/\$\{consequencesThatStickV35277\}/);
