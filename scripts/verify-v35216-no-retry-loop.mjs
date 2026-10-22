@@ -12,8 +12,15 @@ assert.doesNotMatch(edge.slice(edge.indexOf("} catch (streamFailure)"), edge.ind
 assert.match(edge, /quota \? "Gemini's quota is exhausted right now\. Retrying the same reply won't fix it/);
 assert.match(chat, /Gemini's quota is exhausted right now\. Retrying the same reply won't work/);
 
+// Additional boundary and recovery regression assertions.
+assert.ok(edge.indexOf("function buildCompactLiveRecoveryPrompt") >= 0, "compact recovery builder must exist");
+const failureStart = edge.indexOf("} catch (streamFailure)");
+const failureEnd = edge.indexOf("const firstDraftDurationMs", failureStart);
+assert.ok(failureStart >= 0 && failureEnd > failureStart, "stream failure recovery boundaries must exist");
+assert.match(edge.slice(failureStart, failureEnd), /compactTurnPrompt/, "stream recovery must use compact prompt");
+
 console.log("PASS  failed streaming switches to a compact ten-turn recovery prompt");
 console.log("PASS  recovery no longer repeats the oversized full prompt");
 console.log("PASS  compact recovery output is bounded for faster completion");
 console.log("PASS  exhausted quota is reported honestly instead of requesting useless retries");
-console.log("\n4 retry-loop recovery checks passed.");
+console.log("\nRegression assertions passed.");
