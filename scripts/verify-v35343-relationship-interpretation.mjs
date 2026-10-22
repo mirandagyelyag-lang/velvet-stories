@@ -43,6 +43,7 @@ const delegation=relationshipInterpretationIssuesV35343({
   latestUserMessage:"You choose.",
 });
 assert.ok(delegation.includes("delegated_decision_returned_to_user"));
+assert.equal(__testV35343.observableUserFunction("You choose"), "delegation");
 
 const perfect=relationshipInterpretationIssuesV35343({
   reply:'"I understand how you feel. Your feelings are valid, and I respect whatever you decide."',
