@@ -24,6 +24,7 @@ const badIssues = emotionalRelationshipCoreV35263Issues({
   character,
 });
 assert.ok(badIssues.includes("emotional_bid_unregistered"));
+assert.ok(badIssues.length >= 3, "broken emotional reply should trigger multiple independent checks");
 assert.ok(badIssues.includes("emotional_bid_practical_escape"));
 assert.ok(badIssues.includes("relational_hurt_deflected"));
 assert.ok(badIssues.includes("attachment_failed_to_affect_behavior"));
