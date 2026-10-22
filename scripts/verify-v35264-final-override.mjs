@@ -39,7 +39,7 @@ assert.ok(
 
 const repairStart = edge.indexOf("const REPAIR_TRIGGER_ISSUES");
 const hardStart = edge.indexOf("const HARD_REPAIR_REQUIRED_ISSUES");
-assert.ok(repairStart > -1 && hardStart > -1);
+assert.ok(repairStart >= 0 && hardStart > repairStart, "repair and hard-barrier ranges must be ordered");
 const repairBlock = edge.slice(repairStart, hardStart);
 const hardBlock = edge.slice(hardStart, edge.indexOf("function hardRepairRequiredIssues", hardStart));
 
