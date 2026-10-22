@@ -26,6 +26,7 @@ assert.ok(once.fear_of_loss>base.fear_of_loss);
 assert.ok(once.unresolved_intensity>base.unresolved_intensity);
 assert.equal(twice.fear_of_loss,once.fear_of_loss);
 assert.equal(twice.unresolved_intensity,once.unresolved_intensity);
+assert.ok(once.turns_observed >= base.turns_observed, "carryover must not rewind observed turns");
 
 const prompt=buildPersistentEmotionalLifeV35266({state:base,character:chase,relationship:{},latestUserMessage:silent,recentUserMessages:recent});
 assert.match(prompt,/SILENT CONTINUE CARRIES THE PREVIOUS USER BEAT/);
