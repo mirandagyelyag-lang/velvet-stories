@@ -56,13 +56,13 @@ test("hard boundaries replace momentum objectives", () => {
 
 test("persistent NPC state survives and merges with legacy cast state", () => {
   const contract = compileStoryContract({
-    character: {}, userName: "A", latestUserMessage: "*Maya comes back over*", turnIntent: {},
-    persistentCast: [{ name: "Maya", goals: "get a place on the racing team", turn_count: 4 }],
-    castState: { Maya: { current_dynamic: "annoyed but curious" } },
+    character: {}, userName: "A", latestUserMessage: "*Rowan comes back over*", turnIntent: {},
+    persistentCast: [{ name: "Rowan", goals: "get a place on the racing team", turn_count: 4 }],
+    castState: { Rowan: { current_dynamic: "annoyed but curious" } },
   });
-  const maya = contract.supportingCast.find((member) => member.name === "Maya");
-  assert.equal(maya.goals, "get a place on the racing team");
-  assert.equal(maya.current_dynamic, "annoyed but curious");
+  const rowan = contract.supportingCast.find((member) => member.name === "Rowan");
+  assert.equal(rowan.goals, "get a place on the racing team");
+  assert.equal(rowan.current_dynamic, "annoyed but curious");
 });
 
 test("romantic characters must prove interest through a costly visible choice", () => {
@@ -107,6 +107,56 @@ test("contract authority puts explicit corrections above the latest visible turn
   const contract = compileStoryContract({ character: {}, userName: "A", latestUserMessage: "correction", turnIntent: {} });
   assert.equal(contract.authority[0], "latest explicit canon correction");
   assert.equal(contract.authority[1], "latest visible user turn");
+});
+
+// Contract-level regressions: these assert the instructions/state supplied to the model,
+// not that an actual generated reply has obeyed them.
+test("established scene location and time survive an ordinary dialogue turn", () => {
+  const contract = compileStoryContract({
+    character: { name: "Theo" }, userName: "A",
+    latestUserMessage: "Okay, keep working.", turnIntent: { medium: "in_person" },
+    sceneState: { location: "library study room", time_label: "2:30 AM", present: ["Theo", "A"] },
+  });
+  assert.equal(contract.finalState.location, "library study room");
+  assert.equal(contract.finalState.time, "2:30 AM");
+  assert.ok(contract.finalState.present.includes("Theo"));
+});
+
+test("a spoken plan cannot teleport the user", () => {
+  const contract = compileStoryContract({
+    character: {}, userName: "A", latestUserMessage: "I might go to the rooftop later.",
+    turnIntent: {}, sceneState: { location: "library", present: ["A"] },
+  });
+  assert.equal(contract.userAuthored.movementIsExplicit, false);
+  assert.equal(contract.finalState.location, "library");
+});
+
+test("explicit user corrections outrank inferred state and memories", () => {
+  const contract = compileStoryContract({
+    character: {}, userName: "A", latestUserMessage: "Correction: we are still in the library.",
+    turnIntent: {}, sceneState: { location: "library", present: ["A"] },
+  });
+  assert.deepEqual(contract.authority.slice(0, 2), [
+    "latest explicit canon correction", "latest visible user turn",
+  ]);
+});
+
+test("existing cast remains stable without inventing a named extra in the contract", () => {
+  const contract = compileStoryContract({
+    character: {}, userName: "A", latestUserMessage: "Continue.", turnIntent: {},
+    persistentCast: [{ name: "Rowan", goals: "finish the research", turn_count: 3 }],
+    castState: { Rowan: { current_dynamic: "guarded trust" } },
+  });
+  const rowan = contract.supportingCast.find((member) => member.name === "Rowan");
+  assert.ok(rowan);
+  assert.equal(rowan.goals, "finish the research");
+  assert.equal(rowan.current_dynamic, "guarded trust");
+});
+
+test("different roles retain different social ecosystems", () => {
+  const racer = socialEcosystemsFor({ role: "professional race car driver", world: "paddock" });
+  const singer = socialEcosystemsFor({ role: "famous singer" });
+  assert.notDeepEqual(racer, singer);
 });
 
 for (const result of results) console.log(`${result.ok ? "PASS" : "FAIL"} ${result.name}${result.error ? ` — ${result.error}` : ""}`);
