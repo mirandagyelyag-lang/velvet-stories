@@ -1,13 +1,18 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const readErrors = new Map();
+const read = (path) => {
+  try { return readFileSync(new URL(`../${path}`, import.meta.url), "utf8"); }
+  catch (error) { readErrors.set(path, error.code || error.message); return ""; }
+};
 const edge = read("supabase/functions/character-chat/index.ts");
 const contract = read("supabase/functions/character-chat/engine/story-contract.ts");
 const migration = read("supabase/migrations/202608270001_velvet_v300_story_cast.sql");
 const checks = [];
-const check = (name, condition) => checks.push({ name, ok: Boolean(condition) });
+const check = (name, condition, hint = "") => checks.push({ name, ok: Boolean(condition), hint });
 
 check("v3 compiles a turn contract before generation", edge.includes("const turnContract = compileStoryContract({") && edge.includes("buildNarrativePromptV3({"));
 check("explicit corrections and latest user turn lead contract authority", contract.includes('["latest explicit canon correction", "latest visible user turn", "story bible canon"'));
@@ -36,11 +41,48 @@ check("edge keeps live streaming and bounded model failover", edge.includes("str
 check("no narrative fallback fabricates prose", !/function\s+\w*Fallback\s*\(/.test(edge));
 
 const characterChatPath = fileURLToPath(new URL("../supabase/functions/character-chat/index.ts", import.meta.url));
-const syntax = spawnSync(process.execPath, ["--experimental-strip-types", "--check", characterChatPath], { encoding: "utf8" });
-if (syntax.status !== 0 && syntax.stderr) console.error(syntax.stderr.trim());
-check("character-chat TypeScript syntax is valid", syntax.status === 0);
+const nodeMajor = Number(process.versions.node.split(".")[0]);
+if (nodeMajor >= 22) {
+  const syntax = spawnSync(process.execPath, ["--experimental-strip-types", "--check", characterChatPath], { encoding: "utf8" });
+  if (syntax.status !== 0 && syntax.stderr) console.error(syntax.stderr.trim());
+  check("character-chat TypeScript syntax is valid", syntax.status === 0, "Inspect index.ts syntax and Node TypeScript stripping support");
+} else {
+  // Node 20 and older do not reliably support the built-in TypeScript stripping flag.
+  const require = createRequire(import.meta.url);
+  try {
+    const ts = require("typescript");
+    const source = read("supabase/functions/character-chat/index.ts");
+    const parsed = ts.createSourceFile(characterChatPath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    check("character-chat TypeScript syntax is valid", parsed.parseDiagnostics.length === 0,
+      parsed.parseDiagnostics.map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n")).join("; "));
+  } catch (error) {
+    check("character-chat TypeScript syntax is valid", false,
+      `Node ${process.versions.node}: install TypeScript or use Node 22+ (${error.message})`);
+  }
+}
 
-for (const result of checks) console.log(`${result.ok ? "PASS" : "FAIL"} ${result.name}`);
+// These integration checks confirm the safeguards are wired into source code;
+// behavioral compliance of generated text needs separate live-response tests.
+check("scene continuity guard is present in the turn contract",
+  contract.includes("finalState") && contract.includes("location") && contract.includes("time_label"),
+  "Inspect story-contract.ts scene state and finalState");
+check("explicit user actions are tracked separately from character initiative",
+  contract.includes("extractUserActions") && contract.includes("movementIsExplicit") && contract.includes("initiativePlan"),
+  "Inspect story-contract.ts userAuthored and initiativePlan");
+check("persistent cast is available to generation",
+  edge.includes("persistentCast") && contract.includes("supportingCast"),
+  "Inspect character-chat/index.ts cast loading and story-contract.ts");
+check("character voice anchors remain part of the contract",
+  contract.includes("voiceAnchors") && contract.includes("speech_style"),
+  "Inspect story-contract.ts characterBehavior voice anchors");
+check("reply validation and bounded repair are connected",
+  edge.includes("validateNarrativeReply(") && edge.includes("repairRoleplayOnceV3({"),
+  "Inspect character-chat/index.ts validation and repair flow");
+
+for (const result of checks) {
+  console.log(`${result.ok ? "PASS" : "FAIL"} ${result.name}${!result.ok && result.hint ? ` — ${result.hint}` : ""}`);
+}
+for (const [path, error] of readErrors) console.error(`MISSING ${path}: ${error}`);
 const failed = checks.filter((result) => !result.ok);
-console.log(`\n${checks.length - failed.length}/${checks.length} Velvet v3 story-engine checks passed.`);
-if (failed.length) process.exit(1);
+console.log(`\n${checks.length - failed.length}/${checks.length} Velvet v3 story-engine checks passed; ${readErrors.size} unreadable sources.`);
+if (failed.length || readErrors.size) process.exitCode = 1;
