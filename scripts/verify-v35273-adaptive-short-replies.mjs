@@ -15,6 +15,7 @@ assert.match(edge,/REPLY LENGTH\n\$\{openingRegeneration \? "Instant Story openi
 // Old default budgets that encouraged over-writing must not remain in the active helper.
 const helperStart=edge.indexOf("function isSeriousDevelopmentBeat");
 const helperEnd=edge.indexOf("function getMaximumOutputTokens",helperStart);
+assert.ok(helperStart >= 0 && helperEnd > helperStart, "length guidance helper boundaries must exist");
 const helper=edge.slice(helperStart,helperEnd);
 assert.doesNotMatch(helper,/100–250 words/);
 assert.doesNotMatch(helper,/45–140 words/);
