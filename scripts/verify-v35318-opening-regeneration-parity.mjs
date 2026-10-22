@@ -10,5 +10,6 @@ assert.doesNotMatch(edge, /Write 150-230 words and never fewer than 130/);
 
 const finalGuard = edge.match(/openingRegeneration && !instantStoryCandidateUsableV35290\(persistableReply,[\s\S]{0,220}?previous opening was kept/);
 assert.ok(finalGuard, "final regeneration guard should use current Instant Story usability standard");
+assert.match(edge, /instantStoryCandidateUsableV35290/, "generation and regeneration must share a usability gate");
 
 console.log("v3.53.18 opening regeneration parity: PASS");
