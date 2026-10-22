@@ -11,8 +11,6 @@ const PROJECT_URL = `https://${PROJECT_REF}.supabase.co`;
 
 const DEPLOYED_VELVET_URLS = [
   "https://velvet-stories-ten.vercel.app/",
-  "https://velvet-stories-fenvqh2f3-miranda15.vercel.app/",
-  "https://velvet-stories-9ch3kend8-miranda15.vercel.app/",
 ];
 
 const KEY_NAMES = [
@@ -86,7 +84,8 @@ function isSafePublicKey(value) {
   if (/^sb_secret_/i.test(key)) return false;
   if (/^sb_publishable_[A-Za-z0-9_-]{8,}$/i.test(key)) return true;
   if (/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(key)) {
-    return decodeJwtPayload(key)?.role === "anon";
+    const p = decodeJwtPayload(key);
+    return p?.role === "anon" && (!p.ref || p.ref === PROJECT_REF);
   }
   return false;
 }
@@ -138,7 +137,7 @@ function scanBuiltDirectory(root) {
         const text = fs.readFileSync(full, "utf8");
         if (!text.includes(PROJECT_REF) && !/sb_publishable_|eyJ/.test(text)) continue;
         const key = findPublicKeyInText(text);
-        if (key) return { key, source: full };
+        if (key && text.includes(PROJECT_REF)) return { key, source: full };
       } catch {}
     }
   }
@@ -156,7 +155,7 @@ async function fetchPublicKeyFromDeployedVelvet() {
       const html = await response.text();
 
       const direct = findPublicKeyInText(html);
-      if (direct) return { key: direct, source: base };
+      if (direct && html.includes(PROJECT_REF)) return { key: direct, source: base };
 
       const assets = new Set();
       const re = /<(?:script|link)\b[^>]*(?:src|href)=["']([^"']+\.(?:js|mjs)(?:\?[^"']*)?)["'][^>]*>/gi;
@@ -176,7 +175,7 @@ async function fetchPublicKeyFromDeployedVelvet() {
           if (!jsResponse.ok) continue;
           const text = await jsResponse.text();
           const key = findPublicKeyInText(text);
-          if (key) return { key, source: asset };
+          if (key && text.includes(PROJECT_REF)) return { key, source: asset };
         } catch {}
       }
     } catch {}
@@ -242,18 +241,20 @@ for (const candidate of envCandidates) {
   const values = parseEnv(candidate);
   const key = pickFromEnv(values);
   if (!key) continue;
+  const candidateUrl = pickUrl(values);
+  if (candidateUrl && candidateUrl !== PROJECT_URL) continue;
   publicKey = key;
-  supabaseUrl = pickUrl(values) || PROJECT_URL;
+  supabaseUrl = PROJECT_URL;
   source = candidate;
   break;
 }
 
 if (!publicKey) {
   const buildCandidates = [
+    path.join(cwd, "dist"),
+    path.join(cwd, "android", "app", "src", "main", "assets", "public"),
     desktopVelvet && path.join(desktopVelvet, "dist"),
     desktopVelvet && path.join(desktopVelvet, "android", "app", "src", "main", "assets", "public"),
-    desktop && path.join(desktop, "VELVET-STORIES-APP-ANDROID-v3.13.11", "android", "app", "src", "main", "assets", "public"),
-    desktop && path.join(desktop, "VELVET-STORIES-APP-ANDROID-v3.13.13-FINAL", "android", "app", "src", "main", "assets", "public"),
   ].filter(Boolean);
 
   for (const candidate of buildCandidates) {
@@ -298,16 +299,28 @@ if (!publicKey) {
 }
 
 const target = path.join(cwd, ".env.android.local");
-fs.writeFileSync(
-  target,
-  [
-    "# Generated locally for the Android build. Do not commit or zip this file.",
-    `VITE_SUPABASE_URL=${supabaseUrl}`,
-    `VITE_SUPABASE_PUBLISHABLE_KEY=${publicKey}`,
-    "",
-  ].join("\n"),
-  "utf8"
-);
+const content = [
+  "# Generated locally for the Android build. Do not commit or zip this file.",
+  `VITE_SUPABASE_URL=${supabaseUrl}`,
+  `VITE_SUPABASE_PUBLISHABLE_KEY=${publicKey}`,
+  "",
+].join("\n");
+if (fs.existsSync(target)) {
+  if (fs.readFileSync(target, "utf8") === content) {
+    console.log("Android configuration already up to date.");
+    process.exit(0);
+  }
+  const backup = `${target}.backup-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+  fs.copyFileSync(target, backup, fs.constants.COPYFILE_EXCL);
+  console.log("Previous Android configuration backed up.");
+}
+const temporary = `${target}.${process.pid}.tmp`;
+try {
+  fs.writeFileSync(temporary, content, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  fs.renameSync(temporary, target);
+} finally {
+  if (fs.existsSync(temporary)) fs.rmSync(temporary, { force: true });
+}
 
 const sourceLabel = source && path.isAbsolute(source)
   ? (path.relative(cwd, source) || path.basename(source))
