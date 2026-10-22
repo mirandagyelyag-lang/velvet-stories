@@ -13,6 +13,7 @@ assert.match(edge,/blank-reply-recovery/);
 
 const originalIndex=edge.indexOf("const originalResult = result");
 const saveIndex=edge.indexOf("const savedMessage =",originalIndex);
+assert.ok(originalIndex >= 0 && saveIndex > originalIndex, 'draft and persistence markers must be ordered');
 const segment=edge.slice(originalIndex,saveIndex);
 
 // The only second model call allowed while FIRST_DRAFT_WINS is true is blank recovery,
