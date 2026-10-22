@@ -26,9 +26,15 @@ assert.match(rescueFlow, /using deterministic grounded reply/);
 assert.match(rescueFlow, /catch \(finalRescueError\)/);
 assert.match(rescueFlow, /if \(!finalRescue \|\| rescueBlocking\.length \|\| rescueHard\.length\)/);
 
+// Additional boundary and recovery regression assertions.
+assert.ok(rescueStart >= 0 && rescueEnd > rescueStart, "terminal rescue boundaries must exist");
+assert.ok(replies.every((reply) => typeof reply === "string" && reply.trim().length > 0), "fallback must produce text");
+assert.doesNotMatch(replies[0], /Velvet could not produce a coherent reply|Please try again/i);
+assert.ok(!/throw new Error/.test(rescueFlow), "terminal rescue must not throw");
+
 console.log("PASS  four consecutive rejected rescues resolve to a visible reply");
 console.log("PASS  Alexander accepts responsibility and keeps chosen-time attraction visible");
 console.log("PASS  explicit refusals receive a non-pushing fallback");
 console.log("PASS  the terminal rescue path cannot throw the old Retry error");
 console.log("PASS  a failed Gemini rescue call also resolves locally");
-console.log("\n5 terminal retry-loop checks passed.");
+console.log("\nRegression assertions passed.");
