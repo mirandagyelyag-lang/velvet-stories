@@ -20,9 +20,20 @@ assert.deepEqual(immediateTurnContinuityIssues(`"Got it." He leaves the spare un
 const edge = readFileSync(new URL("../supabase/functions/character-chat/index.ts", import.meta.url), "utf8");
 for (const issue of [...firstIssues, ...secondIssues]) assert.match(edge, new RegExp(`"${issue}"`));
 
+// Additional isolated regressions for acceptance, agency, and retry behavior.
+
+const delegated = immediateTurnContinuityIssues('"Your call. Which place do you want?"', 'You choose', [opening], {});
+assert.ok(delegated.includes("delegated_choice_returned"));
+const acceptedDelegation = immediateTurnContinuityIssues('"I pick the place by the river."', 'You choose', [opening], {});
+assert.ok(!acceptedDelegation.includes("delegated_choice_returned"));
+const settled = immediateTurnContinuityIssues('"Are you sure you do not want the other one?"', settledChoice, [opening], {});
+assert.ok(settled.includes("settled_choice_reopened"));
+const duplicate = immediateTurnContinuityIssues(repeatedOffer, settledChoice, [opening, repeatedOffer], {});
+assert.ok(duplicate.includes("repeated_previous_character_reply"));
+
 console.log("PASS  'I'll eat the other one' settles the choice semantically");
 console.log("PASS  asking again and offering to go again are rejected");
 console.log("PASS  adjacent unattributed dialogue fragments are rejected");
 console.log("PASS  invented eating and distraction habits are rejected");
 console.log("PASS  concise in-character acceptance and staying remain valid");
-console.log("\n5 semantic choice-continuity checks passed.");
+console.log("\nContinuity regression assertions passed.");
