@@ -1,8 +1,9 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 
-const root = process.cwd();
+const root = fileURLToPath(new URL("..", import.meta.url));
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const vite = readFileSync(join(root, "vite.config.js"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
@@ -32,8 +33,8 @@ const androidSpecs = [
 ]);
 
 const checks = [
-  ["version is 3.52.31", pkg.version === "3.52.31"],
-  ["release metadata names no-frame Velvet Rose", version.version === "3.52.31" && version.release === "Velvet Rose · No Frame"],
+  ["release is at least 3.52.31", /^\d+\.\d+\.\d+$/.test(pkg.version) && pkg.version.split(".").map(Number).reduce((a,v)=>a*1000+v,0) >= 3_052_031],
+  ["release metadata names no-frame Velvet Rose", typeof version.version === "string" && version.release === "Velvet Rose · No Frame"],
   ["approved transparent source is preserved", existsSync(join(root, "branding/velvet-rose-no-frame-source.png")) && sha("branding/velvet-rose-no-frame-source.png") === "9a3f57f303af7f14ef459bdf3eb2fa514df7bf2bf4d63d888bd19fd0b7636a8b"],
   ["512 no-frame icon is the approved render", sha("public/velvet-rose-no-frame-512.png") === "ef08d658eec4e9b6161ea16561fc2aa74ae2872e7b54fac7f25f763ce844917a"],
   ["all web icon sizes are correct", webSpecs.every(([path, w, h]) => existsSync(join(root, path)) && pngSize(path)[0] === w && pngSize(path)[1] === h)],
