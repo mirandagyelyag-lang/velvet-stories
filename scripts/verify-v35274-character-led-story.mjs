@@ -24,6 +24,7 @@ const silentPrompt=buildCharacterLedStoryV35274({
   recentCharacterReplies:["Chase stopped where he was instead of following any closer."],
 });
 assert.match(silentPrompt,/FULL HANDOFF/);
+assert.ok(silentPrompt.length > 0, "silent handoff guidance must be nonempty");
 assert.match(silentPrompt,/The user deliberately gave the character the wheel/);
 assert.match(silentPrompt,/INITIATIVE IS NOT CLINGING/);
 assert.match(silentPrompt,/may flirt with, date, kiss, hook up with/);
