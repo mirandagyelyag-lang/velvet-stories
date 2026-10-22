@@ -15,6 +15,6 @@ const TESTS=[
 assert.equal(CAST.length,9); const corpus=idx+"\n"+brain;
 for(const [id,markers] of TESTS) for(const m of markers) assert.ok(corpus.includes(m),id+": "+m);
 assert.ok(!["okay","fair enough","i don't know yet"].some(x=>x==="He changed the plan.".toLowerCase()));
-assert.equal(CAST.length*TESTS.length,90);
+assert.equal(CAST.length*TESTS.length,90); // Matrix size only; this script does not run 90 story generations.
 assert.equal(CAST.length*30,270);
 console.log("v3.53.87 verified: 9 characters × 10 regression families; 270 endurance turns.");
