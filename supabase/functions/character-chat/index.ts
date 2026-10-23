@@ -2504,19 +2504,17 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     if (providerDiagnostics.length < 12) providerDiagnostics.push(safeEntry);
     console.warn("[character-chat] instant_story_attempt_failed", { requestId, engineVersion: VELVET_ENGINE_RELEASE, ...safeEntry });
   };
+      const chaseRecycledStructure = (opening) => chaseEngineActive &&
+        /\b(?:student|junior|senior|volunteer|director|coordinator|briefing|flyers|meeting|committee|roster|installation|she|her)\b/i.test(opening) &&
+        /\b(?:eyes|gaze|sight|look|glanc(?:e|ed)|flicked|catching sight)\b/i.test(opening) &&
+        /\b(?:stepped away|moved toward|walked toward|crossed|stopped just|a few feet away|didn.t look back|without a backward glance)\b/i.test(opening) &&
+        /\b(?:don't|don.t|check with someone else|find someone else|let her|not going)\b/i.test(opening);
+
   const instantStoryResponse = (body, status = 200) => {
     if (status < 400) {
       const prose = instantStoryProseValidation(body.opening);
-      // Semantic structure guard: don't require the NPC to physically block a path.
-      // The repeated pattern is an NPC obligation/flirt, Chase noticing the creator,
-      // abandoning that NPC and delivering a content-free closer.
-      const chaseRecycledStructure = chaseEngineActive &&
-        /\b(?:student|junior|senior|volunteer|director|coordinator|briefing|flyers|meeting|committee|roster|installation|she|her)\b/i.test(prose.opening) &&
-        /\b(?:eyes|gaze|sight|look|glanc(?:e|ed)|flicked|catching sight)\b/i.test(prose.opening) &&
-        /\b(?:stepped away|moved toward|walked toward|crossed|stopped just|a few feet away|didn.t look back|without a backward glance)\b/i.test(prose.opening) &&
-        /\b(?:don't|don.t|check with someone else|find someone else|let her|not going)\b/i.test(prose.opening);
       const deliveryHardBlocks = [
-        ...(chaseRecycledStructure ? ["chase_recycled_npc_abandonment"] : []),
+        ...(chaseRecycledStructure(prose.opening) ? ["chase_recycled_npc_abandonment"] : []),
         ...(chaseEngineActive && /\b(?:junior|senior|student|volunteer|committee|board|pass|programs|ledger|tickets|raffle|shift|audit|sponsor|clipboard|meeting|proofing|roster|remarks)\b/i.test(prose.opening) && /\b(?:blocked|blocking|planted|cornered|intercepted|path)\b/i.test(prose.opening) && /\b(?:gaze|eyes|sight|look)\b/i.test(prose.opening) && /\b(?:stepped|walked|stopped|moved|shifted)\b/i.test(prose.opening) ? ["chase_recycled_institutional_escape"] : []),
         ...nathanOpeningIssues(prose.opening, safeDraft, cleanIdea),
         ...instantStoryHardBlockIssuesV35298(prose.opening, safeDraft, cleanIdea),
@@ -2776,8 +2774,8 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     // The same factual/agency/completeness contract applies on every delivery path.
     // Editorial heuristics are advisory; they must not reject a primary draft that
     // the deadline path would immediately deliver unchanged.
-    if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || deliveryHardIssues.length || chaseIssues.length) {
-      const rejectionReasons = [...chaseIssues, ...deliveryHardIssues, ...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
+    if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || deliveryHardIssues.length || chaseIssues.length || chaseRecycledStructure(opening)) {
+      const rejectionReasons = [...(chaseRecycledStructure(opening) ? ["chase_recycled_npc_abandonment"] : []), ...chaseIssues, ...deliveryHardIssues, ...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
       rejectedInstantCandidates.push({
         opening,
         model,
