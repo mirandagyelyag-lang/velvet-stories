@@ -2483,7 +2483,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
 
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
-  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL].filter(Boolean))].slice(0, 4);
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL, "gemini-2.5-flash", "gemini-2.5-flash-lite"].filter(Boolean))];
   const globalDeadlineMs = 20000;
   const attemptTimeoutMs = 14000;
   const controllers = new Set<AbortController>();
