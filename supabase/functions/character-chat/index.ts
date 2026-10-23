@@ -2504,11 +2504,18 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     if (providerDiagnostics.length < 12) providerDiagnostics.push(safeEntry);
     console.warn("[character-chat] instant_story_attempt_failed", { requestId, engineVersion: VELVET_ENGINE_RELEASE, ...safeEntry });
   };
-      const chaseRecycledStructure = (opening) => chaseEngineActive &&
-        /\b(?:student|junior|senior|volunteer|director|coordinator|briefing|flyers|meeting|committee|roster|installation|she|her)\b/i.test(opening) &&
-        /\b(?:eyes|gaze|sight|look|glanc(?:e|ed)|flicked|catching sight)\b/i.test(opening) &&
-        /\b(?:stepped away|moved toward|walked toward|crossed|stopped just|a few feet away|didn.t look back|without a backward glance)\b/i.test(opening) &&
-        /\b(?:don't|don.t|check with someone else|find someone else|let her|not going)\b/i.test(opening);
+      const chaseRecycledStructure = (opening) => {
+    if (!chaseEngineActive) return false;
+    const text = String(opening || "");
+    // Detect narrative choreography, not a particular prop, school role or line.
+    const npcIntercepts = /\b(?:student|major|girl|woman|friend|she|her|someone|volunteer|director|rehearsal|script|understudy|flyers|committee|briefing)\b/i.test(text) &&
+      /\b(?:blocked|blocking|stopped|intercepted|tapped|held|leaning|called out|confronted|stepped into|planted|handed|pressed|warned)\b/i.test(text);
+    const spotsCreator = /\b(?:eyes|gaze|sight|look|glance|glanced|flicked|locking|locked|spotted|catching sight)\b/i.test(text) &&
+      /\b(?:you|your)\b/i.test(text);
+    const abandonsNpc = /\b(?:stepped around|stepped away|moved toward|walked toward|closing the distance|closed the distance|didn.t look back|without looking back|didn.t glance back|pushed past|left (?:her|him|them)|stopped (?:just |right )?(?:a few feet|at the edge)|approached you|made (?:his|their) way toward)\b/i.test(text);
+    const genericPivot = /\b(?:smile|grin|warmth|expression|face|jaw|stillness|sharp|flat|dry|performative|vanished|shuttered|disappeared|dropped)\b/i.test(text);
+    return npcIntercepts && spotsCreator && abandonsNpc && genericPivot;
+  };
 
   const instantStoryResponse = (body, status = 200) => {
     if (status < 400) {
