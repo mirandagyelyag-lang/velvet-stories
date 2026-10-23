@@ -56,6 +56,13 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
   const dismisses = /\b(?:didn t look|did not look|ignored|brushed past|turned his back|gaze cut straight past|eyes slid past|stepped right around|without a backward glance)\b/.test(normalized);
   const pivots = /\b(?:you|your)\b/.test(normalized) && /\b(?:gaze|eyes|locking onto|fixed on|stopped a few feet|approached)\b/.test(normalized);
   if (bureaucracy && blocks && dismisses && pivots) issues.push("chase_recycled_bureaucracy_approach");
+  // The repeated structure also occurs when Chase pays, complies or makes a deal instead of ignoring the interruption.
+  const solicitation = /\b(?:raffle|tickets|volunteer|clipboard|petition|sign|donation|committee|gala|fundraiser|sponsor|forms|roster|meeting|audit)\b/.test(normalized);
+  const diversion = /\b(?:caught sight of you|gaze|eyes|looked toward you|spotted you|fixed on you|locking onto you)\b/.test(normalized);
+  const exitToUser = /\b(?:stepped away|walked over|toward you|stopped just a few feet from you|stopped a few feet from you|approached you|made his way to you)\b/.test(normalized);
+  if (solicitation && diversion && exitToUser) issues.push("chase_recycled_solicitation_to_user");
+  const emptyExit = /\b(?:i m done with|i am done with|i m starting to think|i don t care about|i m done funding)\b/.test(normalized);
+  if (solicitation && exitToUser && emptyExit) issues.push("chase_empty_bureaucratic_closer");
   if (/\b(?:dreadfully monotonous|care for a reprieve|i was hoping you(?:'|’)d show up|you(?:'|’)re enjoying this)\b/i.test(text)) issues.push('chase_stock_flirt_or_explanatory_close');
   if (/\b(?:bored|boring|monotonous|better distraction)\b/i.test(text) && /\b(?:balcony|escape|reprieve|exit|get out of here)\b/i.test(text)) issues.push('chase_bored_crowd_escape_template');
   if (/\b(?:spotted|noticed|saw) you\b.{0,100}\b(?:leaning|standing|sitting|across the room)\b/i.test(text)) issues.push('chase_invented_user_placement');
