@@ -27,6 +27,14 @@ function clipboardEscapePattern(v=""){
  const escape=/\\b(?:ignore|ignored|brushed past|turned his back|walked away|toward you|towards you|near you|over to you|busy|instead|get out of)\\b/.test(t);
  return pressure&&interception&&escape;
 }
+function genericApproachLoop(v=""){
+ const t=n(v);
+ const thirdParty=/\\b(?:student|volunteer|committee|petition|clipboard|forms|roster|sign|wristband|raffle|passes|flyer|clipboard|tablet|guest|lecturer)\\b/.test(t);
+ const interruption=/\\b(?:path|stopped|blocked|approached|demand|insist|held out|intercept|confront|stepped directly)\\b/.test(t);
+ const ignores=/\\b(?:didn t look|did not look|ignored|brushed past|without a backward glance|turned his back|eyes slid past|gaze flicked past)\\b/.test(t);
+ const userFocus=/\\b(?:you|your)\\b/.test(t)&&/\\b(?:eyes|gaze|look|toward|approached|stopped a few feet|fixed on)\\b/.test(t);
+ return thirdParty&&interruption&&ignores&&userFocus;
+}
 export function buildInstantStoryDirectorV35389({character={},idea="",recentOpenings=[]}={}){
  const stage=relationshipStage(character);
  return [
@@ -34,6 +42,9 @@ export function buildInstantStoryDirectorV35389({character={},idea="",recentOpen
  "1) OPENING PREMISE COMPILER: silently resolve WHO is present, WHY this moment exists, WHAT is already happening, WHAT the lead wants now, and WHAT can materially change within minutes. Prose starts only after those five answers exist.",
  "2) RELATIONSHIP-AWARE OPENING: configured relationship stage="+stage+". Calibrate familiarity, touch, trust, jealousy, entitlement, knowledge and vulnerability to that stage. Attraction is not a relationship. Strangers do not inherit couple intimacy; established partners do not reset to strangers.",
  "PREMISE DIVERSITY FIREWALL: never use the campus clipboard escape structure (student/committee intercepts lead with a sheet, shift, wristband, obligation or demand; lead ignores them, walks to user and asks to look busy). This is ONE repeated causal skeleton even if names, props and setting change. Start from a genuinely different causal event instead.",
+ "OPENING ANTI-REPETITION v3: Never use an administrative campus demand (petitions, clipboards, sign-offs, parking, rosters, committees, obligations) followed by Chase ignoring it, fixing his gaze on the user and approaching with a vague confession. This entire sequence is prohibited even if every noun changes.",
+ "NEW SOCIAL CAUSALITY: choose a distinctive concrete event whose consequence is visible NOW: a friend reveals a secret to the wrong person; someone openly flirts with Chase and expects an answer; Chase makes a surprising but motivated decision in front of his peers; an ongoing disagreement changes alliances; a prank rebounds on its instigator; two NPCs disagree with each other; a promise is called in. Only use events consistent with character canon. Make NPCs speak and act rather than functioning as disposable obstacles.",
+ "CHASE OPENING RHYTHM: Chase may be occupied with others and NOT immediately approach the user. Show an NPC's agency and Chase's response, including attraction from third parties. No repetitive gaze-lock, sudden unreadable intensity, empty serious monologue or obligatory final approach. Give the player a live social situation rather than a generic invitation.",
  "PRE-WRITING CAUSALITY: select a concrete goal for the lead and a distinct motive for every NPC. Establish why each action follows the previous action. No ambiguous pronoun referents, disproportionate emotional distress over trivial logistics, or invented pressure without a reason.",
  "DIVERSE ACTION FAMILIES: rotate between character-initiated plans, social rivalries, surprising choices with grounded motives, third-party flirtation, mistakes with consequences, genuine intimacy, public conflict, and quiet tension. Do not make the user a perpetual escape hatch. A character can stay with other people while initiating a scene.",
  "3) IMMEDIATE PLAYABLE PROBLEM: create one ordinary but consequential pressure, opportunity, obligation, mistake, rumor, favor, changed plan, social complication or decision. It must be capable of evolving beyond the opening.",
@@ -54,6 +65,7 @@ export function buildInstantStoryDirectorV35389({character={},idea="",recentOpen
 export function instantStoryDirectorIssuesV35389(opening="",{character={},recentOpenings=[]}={}){
  const issues=[];
  if(clipboardEscapePattern(opening))issues.push("instant_story_clipboard_escape_loop");
+ if(genericApproachLoop(opening))issues.push("instant_story_generic_third_party_approach_loop");
  if(rescuePattern(opening))issues.push("instant_story_rescue_template");
  if(objectUser(opening))issues.push("instant_story_user_as_object");
  if(fakeChoice(opening))issues.push("instant_story_fake_choice");
@@ -65,4 +77,4 @@ export function instantStoryDirectorIssuesV35389(opening="",{character={},recent
  if(!/\b(?:said|asked|told|turned|chose|decided|left|stayed|sent|called|refused|offered|changed|started|stopped|walked|moved|took|gave|opened|closed|arrived|interrupted|answered)\b/.test(t))issues.push("instant_story_low_initiative");
  return [...new Set(issues)];
 }
-export const __testV35389={relationshipStage,rescuePattern,objectUser,fakeChoice,floatingDialogue,userChoreography,staleSetup,clipboardEscapePattern};
+export const __testV35389={relationshipStage,rescuePattern,objectUser,fakeChoice,floatingDialogue,userChoreography,staleSetup,clipboardEscapePattern,genericApproachLoop};
