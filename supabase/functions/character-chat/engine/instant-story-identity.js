@@ -61,6 +61,14 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
   const diversion = /\b(?:caught sight of you|gaze|eyes|looked toward you|spotted you|fixed on you|locking onto you)\b/.test(normalized);
   const exitToUser = /\b(?:stepped away|walked over|toward you|stopped just a few feet from you|stopped a few feet from you|approached you|made his way to you)\b/.test(normalized);
   if (solicitation && diversion && exitToUser) issues.push("chase_recycled_solicitation_to_user");
+  // Reject the recurrent flirt -> glance at user -> abandon NPC -> empty closer structure.
+  // Evaluate the sequence, not the location or a specific prop.
+  const admirer = /\\b(?:student|girl|woman|friend|she|her|someone|admirer)\\b/i.test(text);
+  const flirt = /\\b(?:laugh(?:ed|ing)?|teas(?:ed|ing)?|flirt(?:ed|ing)?|brush(?:ed|ing)?|lean(?:ed|ing)?|touch(?:ed|ing)?|personal space)\\b/i.test(text);
+  const noticesUser = /\\b(?:eyes|gaze|sight|look|spott?ed|catching sight)\\b/i.test(text) && /\\byou\\b/i.test(text);
+  const leavesNPC = /\\b(?:stepped away|walked away|didn.t look back|closing the distance|stopped (?:just )?a few feet|walked (?:over|toward)|turned (?:away|his back))\\b/i.test(text);
+  if (admirer && flirt && noticesUser && leavesNPC) issues.push('chase_recycled_flirt_glance_abandon');
+  if (admirer && flirt && noticesUser && /\\b(?:find someone else|i.m not going|i am not going|not going over there)\\b/i.test(text)) issues.push('chase_empty_social_rejection');
   const emptyExit = /\b(?:i m done with|i am done with|i m starting to think|i don t care about|i m done funding)\b/.test(normalized);
   if (solicitation && exitToUser && emptyExit) issues.push("chase_empty_bureaucratic_closer");
   if (/\b(?:dreadfully monotonous|care for a reprieve|i was hoping you(?:'|’)d show up|you(?:'|’)re enjoying this)\b/i.test(text)) issues.push('chase_stock_flirt_or_explanatory_close');
