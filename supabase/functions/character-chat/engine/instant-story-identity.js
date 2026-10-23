@@ -46,7 +46,7 @@ Creator-authored focal trait: ${source}
 
 export function chaseOpeningIssues(opening = '', draft = {}) {
   const dna = draft.emotional_dna || draft.emotionalDna || {};
-  if (dna.official_engine !== 'chase_electricity_v1') return [];
+  if (dna.official_engine !== 'chase_electricity_v1' && !/^chase(?:\s|$)/i.test(String(draft.name || ''))) return [];
   const text = String(opening);
   const issues = [];
   // Hard-gated by character-chat through chaseOpeningIssues, unlike advisory director flags.
