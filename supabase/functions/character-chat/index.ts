@@ -2479,7 +2479,22 @@ IDEA
 ${cleanIdea || "No extra premise. Use the character's existing life and relationship."}`;
 
   const prompt = alexanderEngineActive ? buildAlexanderInstantPrompt(safeDraft, cleanIdea, recentOpenings) : nathanEngineActive ? buildNathanInstantPrompt(safeDraft, cleanIdea, recentOpenings) : chaseEngineActive ? buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings) : genericPrompt;
-  const clarityPromptV35341 = `${prompt}\n\n${instantStoryClarityPromptV35341()}`;
+  // Structural premise selection happens BEFORE generation, not as a post-hoc style warning.
+  const chasePremisesV4 = [
+    "An acquaintance openly flirts with Chase in front of their friends; Chase answers with actual banter, and the social interaction develops rather than disappearing.",
+    "Chase is already in the middle of a playful rivalry with someone who knows him well; a choice he makes changes the stakes for both people.",
+    "Two people who know Chase disagree about something personal and concrete; Chase takes a surprising but intelligible side, and the disagreement remains active.",
+    "Chase is enjoying attention at a lively social gathering when an unexpected piece of information changes how he responds; no escape or sudden confession.",
+    "A friend calls Chase out for a specific promise he made; Chase acts instead of avoiding the conversation, with real consequences for his social circle.",
+    "Chase starts a mischievous but plausible interaction with another person; it backfires and the other person gets the last word.",
+    "Someone directly challenges Chase's claim in a real conversation, not with paperwork; Chase responds sharply and the user has room to intervene.",
+    "Chase chooses to stay engaged in an ongoing activity even after noticing the user; the scene creates tension through competing interests, not walking over."
+  ];
+  const chasePremiseIndexV4 = Array.from(String(variationKey || crypto.randomUUID())).reduce((h,c)=>((h*31+c.charCodeAt(0))>>>0),7) % chasePremisesV4.length;
+  const chaseStructuralV4 = chaseEngineActive ? `CHASE PREMISE COMPILER V4 — mandatory causal skeleton:
+${chasePremisesV4[chasePremiseIndexV4]}
+This premise must determine the actual events, not just the decorative setting. NO campus administrative requests, documents, raffles, signups, tickets, ledgers, meetings, shifts, audits or bureaucratic confrontations. NO stranger intercepting Chase then Chase dismissing them and approaching the user. NO breathless hard gaze, hands in pockets and sudden serious monologue. A third party must act meaningfully beyond one interruption. Chase may not approach the user at all in the opening. End with a concrete live social beat.` : "";
+  const clarityPromptV35341 = `${chaseStructuralV4}\n\n${buildInstantStoryDirectorV35389({character:safeDraft,idea:cleanIdea,recentOpenings})}\n\n${prompt}\n\n${instantStoryClarityPromptV35341()}`;
 
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
@@ -2504,6 +2519,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     if (status < 400) {
       const prose = instantStoryProseValidation(body.opening);
       const deliveryHardBlocks = [
+        ...(chaseEngineActive && /\b(?:junior|senior|student|volunteer|committee|board|pass|programs|ledger|tickets|raffle|shift|audit|sponsor|clipboard|meeting|proofing|roster|remarks)\b/i.test(prose.opening) && /\b(?:blocked|blocking|planted|cornered|intercepted|path)\b/i.test(prose.opening) && /\b(?:gaze|eyes|sight|look)\b/i.test(prose.opening) && /\b(?:stepped|walked|stopped|moved|shifted)\b/i.test(prose.opening) ? ["chase_recycled_institutional_escape"] : []),
         ...nathanOpeningIssues(prose.opening, safeDraft, cleanIdea),
         ...instantStoryHardBlockIssuesV35298(prose.opening, safeDraft, cleanIdea),
         ...speakerOwnershipIssuesV35367(prose.opening, safeDraft),
