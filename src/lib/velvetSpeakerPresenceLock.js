@@ -43,7 +43,10 @@ export function speakerPresenceInstructions(ledger) {
     "Use pronouns only when their referent is unambiguous. Do not repeat names unnecessarily.",
     "Do not invent names, positions, entrances, exits, movements, or speaker switches to resolve uncertainty.",
     "Honor the user's established dialogue, movements, NPC entrances and chronology.",
-    "If attribution is uncertain, rewrite the sentence to establish the speaker explicitly without changing established facts."
+    "If attribution is uncertain, rewrite the sentence to establish the speaker explicitly without changing established facts.",
+    "For Chase and Adrian in one scene: after Adrian enters, do not write a bare he says; identify Chase or Adrian explicitly.",
+    "Keep every established character physically present until an explicit exit; do not infer exits from silence.",
+    "Before sending each reply, check every quotation and action against the current speaker and scene participants."
   ].join("\n");
 }
 export function validateSpeakerPresence(text, ledger) {
