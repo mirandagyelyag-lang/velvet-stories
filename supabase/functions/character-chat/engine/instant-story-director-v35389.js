@@ -29,10 +29,10 @@ function clipboardEscapePattern(v=""){
 }
 function genericApproachLoop(v=""){
  const t=n(v);
- const thirdParty=/\\b(?:student|volunteer|committee|petition|clipboard|forms|roster|sign|wristband|raffle|passes|flyer|clipboard|tablet|guest|lecturer)\\b/.test(t);
- const interruption=/\\b(?:path|stopped|blocked|approached|demand|insist|held out|intercept|confront|stepped directly)\\b/.test(t);
- const ignores=/\\b(?:didn t look|did not look|ignored|brushed past|without a backward glance|turned his back|eyes slid past|gaze flicked past)\\b/.test(t);
- const userFocus=/\\b(?:you|your)\\b/.test(t)&&/\\b(?:eyes|gaze|look|toward|approached|stopped a few feet|fixed on)\\b/.test(t);
+ const thirdParty=/\b(?:student|senior|debate|volunteer|committee|petition|clipboard|forms|roster|sign|wristband|raffle|passes|flyer|tablet|guest|lecturer|sponsor|resolution|audit|budget|meeting|bill|paper)\b/.test(t);
+ const interruption=/\b(?:path|steps|stopped|blocked|blocking|approached|demand|insist|held out|intercept|confront|planted|stepped directly)\b/.test(t);
+ const ignores=/\b(?:didn t look|did not look|ignored|brushed past|without a backward glance|turned his back|eyes slid past|gaze (?:flicked|cut) (?:straight )?past|stepped (?:right )?around)\b/.test(t);
+ const userFocus=/\b(?:you|your)\b/.test(t)&&/\b(?:eyes|gaze|look|toward|approached|stopped a few feet|fixed on|locking onto)\b/.test(t);
  return thirdParty&&interruption&&ignores&&userFocus;
 }
 export function buildInstantStoryDirectorV35389({character={},idea="",recentOpenings=[]}={}){
