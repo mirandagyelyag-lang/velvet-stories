@@ -811,24 +811,36 @@ export function ChatsProvider({
       }
     }
 
-    // Build a conservative speaker ledger from explicit dialogue tags only.
-    // Never assume a newly mentioned character is speaking.
-    const speakerLedger = createSceneLedger();
+    // Rebuild scene facts from the canonical history on every turn, including user actions.
+    // A newly mentioned NPC does not automatically leave when the model changes focus.
+    const speakerLedger = createSceneLedger(conversation.sceneState?.speakerLedger || {});
     const characterName = String(conversation.character?.name || conversation.characterName || "").trim();
-    if (characterName) {
-      Object.assign(speakerLedger, applySceneEvent(speakerLedger, { type: "enter", name: characterName }));
-    }
-    for (const message of anchorSearchSpace.slice(-16)) {
+    if (characterName) Object.assign(speakerLedger, applySceneEvent(speakerLedger, { type: "enter", name: characterName }));
+    const history = anchorSearchSpace.slice(-40);
+    for (const message of history) {
       const content = String(message.content || "");
-      for (const match of content.matchAll(/\\b([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)\\s+(?:says|said|asks|asked|replies|replied)\\b/g)) {
+      for (const match of content.matchAll(/\\b([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)\\s+(?:says|said|asks|asked|replies|replied|pushes|walks|enters|arrives|approaches)\\b/g)) {
         const name = match[1];
         if (name && name !== "You") {
           Object.assign(speakerLedger, applySceneEvent(speakerLedger, { type: "enter", name }));
-          Object.assign(speakerLedger, applySceneEvent(speakerLedger, { type: "speech", name }));
+          if (/^(says|said|asks|asked|replies|replied)$/i.test(match[0].split(/\\s+/).at(-1))) Object.assign(speakerLedger, applySceneEvent(speakerLedger, { type: "speech", name }));
         }
       }
     }
-    const speakerLockInstruction = speakerPresenceInstructions(speakerLedger);
+    const latestUserAction = [...history].reverse().find((item) => item.sender === "user");
+    const lastUserText = String(latestUserAction?.content || "");
+    const departure = /\\b(?:I (?:left|leave|walk away|walked away|head(?:ed)? (?:inside|out|away))|I(?:'m| am) (?:leaving|going)|leaving (?:you|him|her|them) with)\\b/i.test(lastUserText);
+    const speakerLockInstruction = [
+      speakerPresenceInstructions(speakerLedger),
+      "SCENE CAUSALITY — enforce on every response:",
+      "The most recent user action is canonical and already happened; never negate it, undo it, or move the user back without consent.",
+      "NPCs have independent goals and can speak to each other while the user is absent. Keep established NPCs active and named; do not invent a replacement NPC.",
+      "Maintain location, relative positions, objects, unfinished conversations, emotional consequences and who knows what.",
+      "Do not automatically chase, touch, restrain or follow the user after the user explicitly leaves; continue with those who remain.",
+      "Never rewrite the user's dialogue, intentions, decisions or movements.",
+      departure ? "CRITICAL: The user has explicitly departed in the latest turn. Continue the scene with remaining characters at their established location. Do not have the lead follow or intercept the user in this response." : "",
+      "Latest user message (authoritative): " + lastUserText.slice(0, 800),
+    ].filter(Boolean).join("\\n");
     const withSpeakerLock = (instruction) => [String(instruction || "").trim(), speakerLockInstruction].filter(Boolean).join("\\n\\n");
 
     const requestController = new AbortController();
