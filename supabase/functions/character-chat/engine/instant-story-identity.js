@@ -49,6 +49,13 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
   if (dna.official_engine !== 'chase_electricity_v1') return [];
   const text = String(opening);
   const issues = [];
+  // Hard-gated by character-chat through chaseOpeningIssues, unlike advisory director flags.
+  const normalized = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ");
+  const bureaucracy = /\b(?:student|senior|debate|committee|petition|clipboard|resolution|audit|budget|meeting|sponsor|paper|forms|roster|sign|wristband|raffle|flyer|tablet|guest|lecturer)\b/.test(normalized);
+  const blocks = /\b(?:path|steps|stopped|blocked|blocking|demand|held out|intercept|confront|planted|stepped directly)\b/.test(normalized);
+  const dismisses = /\b(?:didn t look|did not look|ignored|brushed past|turned his back|gaze cut straight past|eyes slid past|stepped right around|without a backward glance)\b/.test(normalized);
+  const pivots = /\b(?:you|your)\b/.test(normalized) && /\b(?:gaze|eyes|locking onto|fixed on|stopped a few feet|approached)\b/.test(normalized);
+  if (bureaucracy && blocks && dismisses && pivots) issues.push("chase_recycled_bureaucracy_approach");
   if (/\b(?:dreadfully monotonous|care for a reprieve|i was hoping you(?:'|’)d show up|you(?:'|’)re enjoying this)\b/i.test(text)) issues.push('chase_stock_flirt_or_explanatory_close');
   if (/\b(?:bored|boring|monotonous|better distraction)\b/i.test(text) && /\b(?:balcony|escape|reprieve|exit|get out of here)\b/i.test(text)) issues.push('chase_bored_crowd_escape_template');
   if (/\b(?:spotted|noticed|saw) you\b.{0,100}\b(?:leaning|standing|sitting|across the room)\b/i.test(text)) issues.push('chase_invented_user_placement');
