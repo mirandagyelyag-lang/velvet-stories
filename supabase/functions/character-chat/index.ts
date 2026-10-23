@@ -2511,10 +2511,10 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       // The repeated pattern is an NPC obligation/flirt, Chase noticing the creator,
       // abandoning that NPC and delivering a content-free closer.
       const chaseRecycledStructure = chaseEngineActive &&
-        /\\b(?:student|junior|senior|volunteer|director|coordinator|briefing|flyers|meeting|committee|roster|installation|she|her)\\b/i.test(prose.opening) &&
-        /\\b(?:eyes|gaze|sight|look|glanc(?:e|ed)|flicked|catching sight)\\b/i.test(prose.opening) &&
-        /\\b(?:stepped away|moved toward|walked toward|crossed|stopped just|a few feet away|didn.t look back|without a backward glance)\\b/i.test(prose.opening) &&
-        /\\b(?:don't|don.t|check with someone else|find someone else|let her|not going)\\b/i.test(prose.opening);
+        /\b(?:student|junior|senior|volunteer|director|coordinator|briefing|flyers|meeting|committee|roster|installation|she|her)\b/i.test(prose.opening) &&
+        /\b(?:eyes|gaze|sight|look|glanc(?:e|ed)|flicked|catching sight)\b/i.test(prose.opening) &&
+        /\b(?:stepped away|moved toward|walked toward|crossed|stopped just|a few feet away|didn.t look back|without a backward glance)\b/i.test(prose.opening) &&
+        /\b(?:don't|don.t|check with someone else|find someone else|let her|not going)\b/i.test(prose.opening);
       const deliveryHardBlocks = [
         ...(chaseRecycledStructure ? ["chase_recycled_npc_abandonment"] : []),
         ...(chaseEngineActive && /\b(?:junior|senior|student|volunteer|committee|board|pass|programs|ledger|tickets|raffle|shift|audit|sponsor|clipboard|meeting|proofing|roster|remarks)\b/i.test(prose.opening) && /\b(?:blocked|blocking|planted|cornered|intercepted|path)\b/i.test(prose.opening) && /\b(?:gaze|eyes|sight|look)\b/i.test(prose.opening) && /\b(?:stepped|walked|stopped|moved|shifted)\b/i.test(prose.opening) ? ["chase_recycled_institutional_escape"] : []),
