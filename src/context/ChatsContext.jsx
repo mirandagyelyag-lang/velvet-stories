@@ -1,3 +1,4 @@
+import { createSceneLedger, applySceneEvent, speakerPresenceInstructions } from "../lib/velvetSpeakerPresenceLock";
 import { insertMessageOnce, queuedMessageId } from "../utils/chatReliability";
 import {
   createContext,
@@ -810,6 +811,26 @@ export function ChatsProvider({
       }
     }
 
+    // Build a conservative speaker ledger from explicit dialogue tags only.
+    // Never assume a newly mentioned character is speaking.
+    const speakerLedger = createSceneLedger();
+    const characterName = String(conversation.character?.name || conversation.characterName || "").trim();
+    if (characterName) {
+      Object.assign(speakerLedger, applySceneEvent(speakerLedger, { type: "enter", name: characterName }));
+    }
+    for (const message of anchorSearchSpace.slice(-16)) {
+      const content = String(message.content || "");
+      for (const match of content.matchAll(/\\b([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)\\s+(?:says|said|asks|asked|replies|replied)\\b/g)) {
+        const name = match[1];
+        if (name && name !== "You") {
+          Object.assign(speakerLedger, applySceneEvent(speakerLedger, { type: "enter", name }));
+          Object.assign(speakerLedger, applySceneEvent(speakerLedger, { type: "speech", name }));
+        }
+      }
+    }
+    const speakerLockInstruction = speakerPresenceInstructions(speakerLedger);
+    const withSpeakerLock = (instruction) => [String(instruction || "").trim(), speakerLockInstruction].filter(Boolean).join("\\n\\n");
+
     const requestController = new AbortController();
     const requestId = crypto.randomUUID();
     const generationId = crypto.randomUUID();
@@ -1113,7 +1134,7 @@ export function ChatsProvider({
             conversationId: conversation.conversationId,
             regenerateMessageId: options.regenerateMessageId || null,
             expectedUserMessageId,
-            regenerationInstruction: options.instruction?.trim() || "",
+            regenerationInstruction: withSpeakerLock(options.instruction),
             regenerationFeedback: Array.isArray(options.feedbackCodes) ? options.feedbackCodes : [],
             directorInstruction: options.directorInstruction?.trim() || "",
             storyPreferences: buildStoryPreferencesPayload(settings, characterId),
@@ -1250,7 +1271,7 @@ export function ChatsProvider({
           conversationId: conversation.conversationId,
           regenerateMessageId: options.regenerateMessageId || null,
           expectedUserMessageId,
-          regenerationInstruction: options.instruction?.trim() || "",
+          regenerationInstruction: withSpeakerLock(options.instruction),
           regenerationFeedback: Array.isArray(options.feedbackCodes) ? options.feedbackCodes : [],
           directorInstruction: options.directorInstruction?.trim() || "",
           storyPreferences: buildStoryPreferencesPayload(settings, characterId),
