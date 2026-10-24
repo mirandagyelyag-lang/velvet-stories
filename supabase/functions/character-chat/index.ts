@@ -586,19 +586,35 @@ Deno.serve(async (request) => {
       recentCharacterReplies: messages.filter((m) => m?.sender === "character").slice(-8).map((m) => m?.content || ""),
       character: configuredCharacter,
     });
-    // Keep a concrete wager active across turns instead of repeating intentions.
-    const recentSceneTranscript = messages.slice(-14).map((m) => String(m?.content || "")).join("\n");
+    // Track outstanding character-owned promises as live story obligations.
+    // Ground only in the actual transcript; never invent an unmentioned task.
+    const recentSceneMessages = messages.slice(-18);
+    const recentSceneTranscript = recentSceneMessages.map((m) => String(m?.content || "")).join("\n");
+    const latestCharacterTurns = recentSceneMessages.filter((m) => m?.sender === "character").slice(-6)
+      .map((m) => String(m?.content || ""));
+    const commitmentCue = /\b(?:i(?:'ll| will| am going to)|i bet|i promise|i can get|watch me|give me (?:ten|five|\d+) minutes|before (?:the|next)|we(?:'ll| will)|let me)\b/i;
+    const concreteGoalCue = /\b(?:sign[\s-]?ups?|register|registrations?|recruit|collect|deliver|bring|find|fix|repair|call|ask|convince|prove|win|finish|pay|return|meet|show|tell|take|make|prepare|buy|retrieve|help|solve|send|invite|organize|book)\b/i;
+    const outstandingCharacterCommitment = latestCharacterTurns.findLast((turn) =>
+      commitmentCue.test(turn) && concreteGoalCue.test(turn)
+    ) || "";
+    const activeCommitmentPromptV2 = outstandingCharacterCommitment ? [
+      "LIVE CHARACTER COMMITMENT / CAUSAL FOLLOW-THROUGH — HIGH PRIORITY:",
+      "The character made a concrete promise, wager, plan or offer in the visible conversation. Keep the actual goal, deadline, location, people and progress consistent.",
+      "Relevant character turn (source of truth, not a new event): " + outstandingCharacterCommitment.slice(0, 900),
+      "If the goal is not yet visibly completed, the NEXT reply must SHOW an observable step toward it: a conversation, attempt, physical action, result, obstacle or measurable progress. Do not merely restate intent, tease, look, move closer, check a watch, or ask the user to take over.",
+      "When an NPC is involved, let them respond meaningfully, including refusal or negotiation. Preserve already achieved progress and consequences; do not reset the counter or claim instant completion.",
+      "If the goal was already fulfilled, failed, abandoned with consequences or renegotiated in later turns, continue from that outcome rather than repeating the task.",
+      "The user controls their own actions: never invent their movement, agreement, signature or dialogue. The character may act independently when the user watches or waits."
+    ].join("\n") : "";
     const chaseSignupWagerActive = /^chase\b/i.test(String(configuredCharacter.name || "")) &&
       /\b(?:sign[\s-]?ups?|sign up|register|registrations?)\b/i.test(recentSceneTranscript) &&
       /\b(?:bet|wager|hundred|100|before the next bell|ten minutes)\b/i.test(recentSceneTranscript);
-    const activeCommitmentPromptV1 = chaseSignupWagerActive ? [
-      "ACTIVE SCENE COMMITMENT — CHASE SIGN-UP WAGER (HIGH PRIORITY):",
-      "Chase wagered he can recruit 100 talent-show sign-ups before the next bell. This is an unfinished action with a deadline.",
-      "On the NEXT reply show Chase ACTUALLY recruiting: he speaks to at least one specific student/group, pitches the event, gets a concrete acceptance/refusal, and tracks resulting registrations.",
-      "Do not replace progress with 'watch', 'follow me', 'don't blink', 'try to keep up', walking toward a group, checking a watch, or another boast.",
-      "Keep the 100 target and bell deadline. Keep the user in their established location unless they move; never invent their agreement or signature.",
-      "Allow realistic refusal and setbacks; do not jump to 100 without earned progress. If the user watches or doubts him, he proceeds independently."
+    const chaseSignupCommitmentPrompt = chaseSignupWagerActive ? [
+      "CHASE SIGN-UP WAGER CONTINUITY: The 100 registrations before the bell remain the stated wager, unless later turns explicitly resolve or change it.",
+      "If still pending, Chase must ACTUALLY pitch the show to students and receive responses, with grounded incremental progress or setbacks. Walking toward a group or saying 'watch' does not count.",
+      "Do not invent the user's participation or move them from the kiosk."
     ].join("\n") : "";
+    const activeCommitmentPromptV1 = [activeCommitmentPromptV2, chaseSignupCommitmentPrompt].filter(Boolean).join("\n\n");
     const continuityLockedPromptV35254 = `${prompt}\n\n${immutableEventTruthV35254}\n\n${motivationPersistenceV35255}\n\n${activeCommitmentPromptV1}`;
 
     const rawIsCancelled = () => generationId
