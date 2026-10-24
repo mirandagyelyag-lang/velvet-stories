@@ -1608,6 +1608,28 @@ export function ChatsProvider({
         throw new Error("The response ended before it could be saved.");
       }
 
+      // VELVET_OBJECT_PAYOFF_GATE_V1: one bounded automatic rewrite for evasive document replies.
+      // Never rewrite a known document's contents locally: the regeneration model receives full history.
+      const objectInRecentContext = [...history].slice(-8).some((entry) =>
+        /\\b(?:clipboard|paper|letter|note|handwriting|document|written|read it|flip(?:ped)? (?:the )?paper)\\b/i.test(String(entry.content || ""))
+      );
+      const answerText = String(finalMessage?.content || "");
+      const evasiveObjectReply = objectInRecentContext &&
+        /\\b(?:handwriting|words|what (?:i|he) wrote|read it|just read|on (?:the|that) (?:paper|note|page)|letter|note)\\b/i.test(answerText) &&
+        !/(?:[“"][^”"]{18,}[”"]|(?:the (?:paper|letter|note|page) (?:reads|says)|written (?:on|across)|the first line|the words (?:read|say))\\s*[:—-]\\s*[^.]{12,})/i.test(answerText) &&
+        /\\b(?:watch(?:es|ing)?|wait(?:s|ing)?|reaction|liked the handwriting|just read it|eyes flick|words (?:actually )?reach)\\b/i.test(answerText);
+      if (evasiveObjectReply && !options.objectPayoffRetry && finalMessage?.id) {
+        const badReplyId = finalMessage.id;
+        setTimeout(() => {
+          if (activeRequests.current[characterId]) return;
+          void generateCharacterReply(characterId, {
+            regenerateMessageId: badReplyId,
+            objectPayoffRetry: true,
+            instruction: "OBJECT PAYOFF REPAIR: Your previous answer evaded the content of the document. The user has already examined it. Explicitly reveal the actual legible words or at least one specific consequential written detail, respecting all established facts. Do not merely discuss handwriting, look for a reaction, or say read it. Continue the action. Do not invent contradictions.",
+          }).catch((error) => console.warn("Object payoff rewrite could not complete:", error));
+        }, 0);
+      }
+
       const finalDurationMs = Date.now() - requestStartedAt;
       recordAiSession({ success: 1, lastSuccessAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: finalDurationMs, lastError: "" });
       recordGenerationMetric({
