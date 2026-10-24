@@ -834,7 +834,9 @@ export function ChatsProvider({
       speakerPresenceInstructions(speakerLedger),
       "NARRATIVE MOMENTUM & OBJECT PAYOFF — enforce on every response:",
       "When a character presents a letter, note, clipboard, screen, contract or other readable object, preserve any established contents exactly. If contents are not yet established, reveal at least one specific meaningful detail as soon as the user reads or examines it; never indefinitely hide it behind reactions.",
-      "If the user flips, opens, reads, or inspects an object, the next reply must provide concrete observable information from it, not merely say 'read it', 'look at it', or wait for the user's reaction.",
+      "DOCUMENT CANON LOCK: Do not assign new contents to a previously introduced document unless its contents were already explicitly established in the conversation. Do not turn a note into an address, invitation, secret meeting, threat, confession, or new location merely to satisfy a reveal requirement.",
+      "If the user reads a document and its text is not established, avoid claiming it contains specific canonical facts. Let the scene progress through the character's independent actions or honest clarification without moving the setting or imposing a new plot.",
+      "If the user flips, opens, reads, or inspects an object, show only details supported by established history; never pretend an invented detail was written earlier. Do not merely say 'read it' or wait passively for a reaction.",
       "Every reply must produce at least one meaningful change: a new fact, decisive action, credible complication, consequential NPC initiative, or emotional revelation. Avoid repeated idle observation, circular reassurance and passive waiting.",
       "Never fabricate a supposedly pre-existing fact that contradicts the conversation. When content truly cannot be known, explicitly distinguish what is visible from what remains unknown and progress through a plausible action.",
       "Keep Chase active, unpredictable for coherent reasons, and distinctive; do not flatten him into endless soft, low-voiced instructions or force the user to invent his next move.",
@@ -1606,28 +1608,6 @@ export function ChatsProvider({
         const recovered = await recoverPersistedReplyForThisTurn("sse-close-recovery");
         if (recovered) return recovered;
         throw new Error("The response ended before it could be saved.");
-      }
-
-      // VELVET_OBJECT_PAYOFF_GATE_V1: one bounded automatic rewrite for evasive document replies.
-      // Never rewrite a known document's contents locally: the regeneration model receives full history.
-      const objectInRecentContext = [...history].slice(-8).some((entry) =>
-        /\\b(?:clipboard|paper|letter|note|handwriting|document|written|read it|flip(?:ped)? (?:the )?paper)\\b/i.test(String(entry.content || ""))
-      );
-      const answerText = String(finalMessage?.content || "");
-      const evasiveObjectReply = objectInRecentContext &&
-        /\\b(?:handwriting|words|what (?:i|he) wrote|read it|just read|on (?:the|that) (?:paper|note|page)|letter|note)\\b/i.test(answerText) &&
-        !/(?:[“"][^”"]{18,}[”"]|(?:the (?:paper|letter|note|page) (?:reads|says)|written (?:on|across)|the first line|the words (?:read|say))\\s*[:—-]\\s*[^.]{12,})/i.test(answerText) &&
-        /\\b(?:watch(?:es|ing)?|wait(?:s|ing)?|reaction|liked the handwriting|just read it|eyes flick|words (?:actually )?reach)\\b/i.test(answerText);
-      if (evasiveObjectReply && !options.objectPayoffRetry && finalMessage?.id) {
-        const badReplyId = finalMessage.id;
-        setTimeout(() => {
-          if (activeRequests.current[characterId]) return;
-          void generateCharacterReply(characterId, {
-            regenerateMessageId: badReplyId,
-            objectPayoffRetry: true,
-            instruction: "OBJECT PAYOFF REPAIR: Your previous answer evaded the content of the document. The user has already examined it. Explicitly reveal the actual legible words or at least one specific consequential written detail, respecting all established facts. Do not merely discuss handwriting, look for a reaction, or say read it. Continue the action. Do not invent contradictions.",
-          }).catch((error) => console.warn("Object payoff rewrite could not complete:", error));
-        }, 0);
       }
 
       const finalDurationMs = Date.now() - requestStartedAt;
