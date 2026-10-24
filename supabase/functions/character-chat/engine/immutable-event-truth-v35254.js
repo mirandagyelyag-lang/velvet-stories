@@ -17,6 +17,7 @@ Track who arrived, who invited whom, who brought whom, who knows what, who is pr
 - SPACE AND AGENCY: When USER explicitly needs space or walks away, do not corner, restrain, demand explanations, or treat a mental-health disclosure as a countdown. Character can express care and offer to reconnect later while respecting the user's stated boundary.
 - Emotional scenes must develop from the previous exchange: if CHARACTER pursued USER to repair a conflict, their next reply should attempt repair, not revert to generic banter, blame, or a different topic. Preserve tension without coercion or instant personality replacement.
 - If USER mentions being bipolar or another personal condition, do not reduce it to a punchline, prediction, timer, or clinical lecture. Respond to their actual request (e.g. space) without diagnosing them.
+- READABLE OBJECT OUTPUT FORMAT: On a read action, start the reply with an explicit inscription, e.g. 'The note reads: “...”' or 'Written on the paper: “...”'. Include at least one complete meaningful sentence of written content. Spoken dialogue, reaction, silence, and vague summaries do NOT count. Show the inscription FIRST; character reaction can follow. Never claim reading was interrupted unless the USER explicitly interrupted it.
 - READABLE OBJECT PAYOFF: When USER explicitly reads, opens, unfolds or looks at a note, letter, paper, message, screen or document already in their possession, the NEXT CHARACTER response MUST disclose its actual readable contents in narration or as quoted text. Never stall with "read it and find out", "something I wrote earlier", "you look at the paper", or other withholding. If contents were not previously established, invent specific, context-consistent contents now and keep them canonical. A character's reluctance may be shown AFTER the words are revealed, not instead of them.
 - CONTRACT LEDGER: Record each wager, promise, debt, quantity, owner, beneficiary, condition, outcome and whether it has been fulfilled. Completing the wager's task does not erase its reward or reverse who owes whom.
 - A week of free lattes means a full week, not one coffee. If the character accepted owing the USER a week of lattes, they cannot later claim the USER owes coffee, shorten the debt to one drink, or renegotiate without the USER's explicit agreement.
@@ -108,6 +109,12 @@ export function immutableEventTruthV35254Issues({ reply = "", recentUserMessages
   const userReadsObject = /(?:\bi read (?:the|his|her|my|that) (?:paper|note|letter|message|text|document)\b|\bi (?:open|unfold|look at|check) (?:the|his|her|my|that) (?:note|letter|paper|message|text|document)\b|\bleo (?:la|el) (?:nota|carta|papel|mensaje)\b)/i.test(String(recentUserMessages.at(-1) || ""));
   const withholdingReadableObject = /(?:read it and find out|just something i wrote|something i wrote down earlier|didn't think i'd actually have to hand it|you (?:read|unfold|look at) (?:the|his|her) (?:paper|note|letter)|(?:he|she) watches you (?:read|unfold))/i.test(String(reply));
   if (userReadsObject && withholdingReadableObject) issues.push("immutable_event_readable_object_withheld");
+  // Require an actual visible inscription, not merely an absence of stock evasive phrases.
+  // Dialogue from the character alone (e.g. "It's not a test") cannot satisfy a read action.
+  const readingReply = String(reply || "");
+  const writtenContent = /(?:the (?:note|paper|letter|message|text|document) (?:reads|says|contains)|written (?:on|across|inside) (?:the|it)|(?:on the (?:note|paper|page|screen))\s*[:—-]|(?:you (?:read|see) (?:the words|the message|the line))|(?:in (?:his|her) handwriting)\s*[:—-])/i.test(readingReply);
+  if (userReadsObject && !writtenContent) issues.push("immutable_event_readable_object_content_missing");
+
   const latest = String(recentUserMessages[recentUserMessages.length - 1] || "").replace(/\*[^*]*\*/g, " ").trim();
   if (/^(?:who|who\?|who is it|who was it)\??$/i.test(latest)) {
     const bare = String(reply || "").trim().replace(/^["“]|["”]$/g, "");
