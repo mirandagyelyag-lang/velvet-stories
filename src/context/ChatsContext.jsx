@@ -1611,6 +1611,23 @@ export function ChatsProvider({
         throw new Error("The response ended before it could be saved.");
       }
 
+      // VELVET_EVASIVE_NOTE_REPAIR_V2: repair an empty deferral only once, without inventing plot facts.
+      const recentUserRead = /\\b(?:read|look at|open|unfold|flip|what(?:'s| is) (?:this|on it)|show me)\\b/i.test(lastUserText);
+      const noteContext = history.slice(-8).some((entry) => /\\b(?:note|paper|letter|wrote|written|clipboard)\\b/i.test(String(entry.content || "")));
+      const replyBody = String(finalMessage?.content || "");
+      const noteDeferral = /\\b(?:just (?:look|read)|read it and find out|look at it|wait(?:s|ing)? to see if (?:she|you)|see if (?:she|you)(?:'ll| will) (?:actually )?read|what he wrote)\\b/i.test(replyBody);
+      if (recentUserRead && noteContext && noteDeferral && finalMessage?.id && !options.evasiveNoteRepairRetry) {
+        const failedId = finalMessage.id;
+        setTimeout(() => {
+          if (activeRequests.current[characterId]) return;
+          void generateCharacterReply(characterId, {
+            regenerateMessageId: failedId,
+            evasiveNoteRepairRetry: true,
+            instruction: "REPAIR EVASIVE NOTE RESPONSE: The user already read or requested to see the note. Do not ask them to look again or wait for a reaction. Reveal a modest, concrete note detail that directly fits the established immediate emotional conversation, without inventing an address, rendezvous, secret place, new event or location. Respond to the user's actual concern; maintain second-person narration and Chase's distinct voice. Do not change any previously established contents.",
+          }).catch((error) => console.warn("Note repair could not complete:", error));
+        }, 0);
+      }
+
       const finalDurationMs = Date.now() - requestStartedAt;
       recordAiSession({ success: 1, lastSuccessAt: new Date().toISOString(), lastModel: diagnosticModel, lastDurationMs: finalDurationMs, lastError: "" });
       recordGenerationMetric({
