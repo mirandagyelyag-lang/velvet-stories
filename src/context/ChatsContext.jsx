@@ -830,7 +830,13 @@ export function ChatsProvider({
     const latestUserAction = [...history].reverse().find((item) => item.sender === "user");
     const lastUserText = String(latestUserAction?.content || "");
     const departure = /\\b(?:I (?:left|leave|walk away|walked away|head(?:ed)? (?:inside|out|away))|I(?:'m| am) (?:leaving|going)|leaving (?:you|him|her|them) with)\\b/i.test(lastUserText);
+    const userIsReadingDocument = /\\b(?:read|reading|look(?:ed)? at|open(?:ed)?|unfold(?:ed)?|flip(?:ped)?)\\b/i.test(lastUserText)
+      && /\\b(?:paper|note|letter|page|document|clipboard)\\b/i.test(lastUserText);
+    const precedingDocument = history.slice(-12).some((item) => /\\b(?:paper|note|letter|page|document|clipboard|folded)\\b/i.test(String(item.content || "")));
     const speakerLockInstruction = [
+      userIsReadingDocument && precedingDocument
+        ? "TOP PRIORITY — DOCUMENT ALREADY READ: Narrate the legible written text NOW, in this reply, before any character speech. Format: You read the note. In [character]'s handwriting, it says: “...” Then the character responds. The written words must fit the preceding exchange. Never say read it, whatever is on there, or wait for the user to read again. A response with no explicitly transcribed written words is INVALID."
+        : "",
       speakerPresenceInstructions(speakerLedger),
       "NARRATIVE CAUSALITY & PROP CONTINUITY — enforce on every response:",
       "A new prop, folded note, clipboard, letter, or secret must serve a concrete motive grounded in the immediately preceding conversation. Do not introduce mystery props to evade direct emotional questions or manufacture suspense.",
