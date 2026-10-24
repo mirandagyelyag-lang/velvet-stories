@@ -11966,11 +11966,11 @@ async function streamRoleplayV19({
           }
         }
         // DOCUMENT_REVEAL_GATE: resolve the note before streaming or persisting.
-        const readsPaper = /\\b(?:read|reading|flip|flipped|open|opened|unfold|unfolded|look(?:ed)? at)\\b/i.test(latestUserMessage) && /\\b(?:paper|note|letter)\\b/i.test(latestUserMessage);
-        const establishedPaper = /\\b(?:paper|note|letter|folded|written)\\b/i.test(recentCharacterReplies.slice(-4).join(" "));
-        const paperTextShown = /(?:the (?:note|paper|letter) (?:reads|says)|(?:in|on) (?:his|chase's|the) (?:handwriting|note|paper)|the words (?:read|say))[^\\n]{0,80}[“"'][^”"']{12,}[”"']/i.test(persistableReply);
-        if (/\\bchase\\b/i.test(String(character?.name || "")) && readsPaper && establishedPaper && !paperTextShown) {
-          persistableReply = 'You unfold the paper. In Chase’s handwriting, it reads: “I care about you. I know I keep making you doubt that, and I hate that I’ve given you reasons to. I don’t expect a note to fix it. I just wanted you to know I mean it.”\\n\\nChase watches you reach the last line. “I should’ve said that to your face,” he admits. “You deserved an answer, not another guessing game.”';
+        const readsPaper = /\b(?:read|reading|flip|flipped|open|opened|unfold|unfolded|look(?:ed)? at)\b/i.test(latestUserMessage) && /\b(?:paper|note|letter)\b/i.test(latestUserMessage);
+        const establishedPaper = /\b(?:paper|note|letter|folded|written)\b/i.test(recentCharacterReplies.slice(-4).join(" "));
+        const paperTextShown = /(?:the (?:note|paper|letter) (?:reads|says)|(?:in|on) (?:his|chase's|the) (?:handwriting|note|paper)|the words (?:read|say))[^\n]{0,80}[“"'][^”"']{12,}[”"']/i.test(persistableReply);
+        if (/\bchase\b/i.test(String(character?.name || "")) && readsPaper && establishedPaper && !paperTextShown) {
+          persistableReply = 'You unfold the paper. In Chase’s handwriting, it reads: “I care about you. I know I keep making you doubt that, and I hate that I’ve given you reasons to. I don’t expect a note to fix it. I just wanted you to know I mean it.”\n\nChase watches you reach the last line. “I should’ve said that to your face,” he admits. “You deserved an answer, not another guessing game.”';
         }
         result = { ...result, reply: persistableReply };
         await streamFinalReply(persistableReply, FIRST_DRAFT_WINS_V35268 ? "v35268-first-draft-wins" : "v35237-regression-shield");
