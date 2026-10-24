@@ -1617,9 +1617,10 @@ export function ChatsProvider({
       const recentPaperContext = history.slice(-12).some((entry) => /\\b(?:note|paper|letter|wrote|written|clipboard|folded)\\b/i.test(String(entry.content || "")));
       const responseText = String(finalMessage?.content || "");
       const quotedSpeechRemoved = responseText.replace(/[“"][^”"]*[”"]/g, " ");
-      const concreteWrittenDetail = /(?:the (?:note|paper|letter|page) (?:reads|says|contains)|written (?:on|across)|the (?:first|second|last) line|(?:you|she) (?:read|see|notice) (?:the words|a line|a sentence)|(?:in|on) (?:his )?handwriting)\\s*[:—,-]?\\s*[^.!?\\n]{12,}/i.test(responseText) || /(?:^|\\n)\\s*(?:[“"][^”"]{12,}[”"]|[-*] [^\\n]{12,})/m.test(responseText);
+      // Dialogue quotes are NOT note contents. Require narrator attribution to the page.
+      const concreteWrittenDetail = /(?:the (?:note|paper|letter|page) (?:reads|says|contains)|written (?:on|across)|the (?:first|second|last) line|(?:you|she) (?:read|see|notice) (?:the words|a line|a sentence)|(?:in|on) (?:his )?handwriting|(?:words|sentence|message) (?:on|in) the (?:note|paper|letter))\\s*[:—,-]?\\s*[^.!?\\n]{12,}/i.test(responseText);
       const stillEvasive = /\\b(?:just (?:look|read)|read it and find out|look at it|what he wrote|anything else you want to say|wait(?:s|ing)? (?:to see|for (?:your|her) reaction)|eyes? (?:snagging|flick(?:ing)?) (?:the|to) note)\\b/i.test(responseText);
-      const unresolvedNote = recentReadAction && recentPaperContext && !concreteWrittenDetail && (stillEvasive || /\\b(?:note|paper|letter|wrote|written|whatever you find|words will finally)\\b/i.test(responseText));
+      const unresolvedNote = recentReadAction && recentPaperContext && !concreteWrittenDetail;
       if (unresolvedNote && finalMessage?.id && !options.noteResolutionRetry) {
         const rejectedId = finalMessage.id;
         setTimeout(() => {
