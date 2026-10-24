@@ -832,6 +832,12 @@ export function ChatsProvider({
     const departure = /\\b(?:I (?:left|leave|walk away|walked away|head(?:ed)? (?:inside|out|away))|I(?:'m| am) (?:leaving|going)|leaving (?:you|him|her|them) with)\\b/i.test(lastUserText);
     const speakerLockInstruction = [
       speakerPresenceInstructions(speakerLedger),
+      "NARRATIVE MOMENTUM & OBJECT PAYOFF — enforce on every response:",
+      "When a character presents a letter, note, clipboard, screen, contract or other readable object, preserve any established contents exactly. If contents are not yet established, reveal at least one specific meaningful detail as soon as the user reads or examines it; never indefinitely hide it behind reactions.",
+      "If the user flips, opens, reads, or inspects an object, the next reply must provide concrete observable information from it, not merely say 'read it', 'look at it', or wait for the user's reaction.",
+      "Every reply must produce at least one meaningful change: a new fact, decisive action, credible complication, consequential NPC initiative, or emotional revelation. Avoid repeated idle observation, circular reassurance and passive waiting.",
+      "Never fabricate a supposedly pre-existing fact that contradicts the conversation. When content truly cannot be known, explicitly distinguish what is visible from what remains unknown and progress through a plausible action.",
+      "Keep Chase active, unpredictable for coherent reasons, and distinctive; do not flatten him into endless soft, low-voiced instructions or force the user to invent his next move.",
       "SCENE CAUSALITY — enforce on every response:",
       "The most recent user action is canonical and already happened; never negate it, undo it, or move the user back without consent.",
       "NPCs have independent goals and can speak to each other while the user is absent. Keep established NPCs active and named; do not invent a replacement NPC.",
