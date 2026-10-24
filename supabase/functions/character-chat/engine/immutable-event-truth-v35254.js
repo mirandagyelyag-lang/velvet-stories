@@ -12,6 +12,10 @@ This is a HARD continuity law, stronger than wit, drama, prose, momentum, or con
 Before writing, silently reconstruct current facts as ACTOR → ACTION → OBJECT/PERSON → RECIPIENT/TARGET → STATUS.
 Track who arrived, who invited whom, who brought whom, who knows what, who is present, names, relationships, locations, causes, promises, possessions, and unresolved identities.
 - Once a visible turn establishes a fact, KEEP IT TRUE until a later visible turn explicitly changes it.
+- CONTRACT LEDGER: Record each wager, promise, debt, quantity, owner, beneficiary, condition, outcome and whether it has been fulfilled. Completing the wager's task does not erase its reward or reverse who owes whom.
+- A week of free lattes means a full week, not one coffee. If the character accepted owing the USER a week of lattes, they cannot later claim the USER owes coffee, shorten the debt to one drink, or renegotiate without the USER's explicit agreement.
+- When a user says "you still owe me", retrieve the original obligation and its exact quantity rather than improvising a new bargain. Distinguish progress toward a goal from payment of the promised reward.
+- After time skips preserve confirmed results, quantities and unresolved commitments. Never convert an accomplished 200-signup goal back into an unfinished one.
 - A CHARACTER decision or commitment in the immediately preceding assistant turn is also canon. When generating an additional CHARACTER turn without a new USER message, continue from that decision rather than replaying the rejected plan.
 - Distinguish proposed plans from accepted plans: a declined invitation remains declined. Do not send the character toward the declined destination unless a new on-page event motivates the change.
 - Track the latest physical position and intended next action across consecutive CHARACTER turns. If the character says they will stay, they cannot silently leave in the next turn; establish a believable cause and show the change on-page.
@@ -72,6 +76,11 @@ export function immutableEventTruthV35254Issues({ reply = "", recentUserMessages
   const evidence = [...recentUserMessages, ...recentCharacterReplies, character?.name || ""].join("\n");
   const issues = [];
   if (unsupportedRoleClaim(reply, evidence)) issues.push("immutable_event_role_reassignment");
+  // Detect direct contradictions of an accepted week-long latte debt.
+  const turns = recentCharacterReplies.map(String);
+  const acceptedWeek = turns.some(t => /(?:week of (?:free )?lattes|lattes secured|seven lattes)/i.test(t));
+  const debtReminder = recentUserMessages.some(t => /(?:you still owe me|you owe me|week of (?:free )?lattes)/i.test(String(t)));
+  if (acceptedWeek && debtReminder && /(?:fine[,.! ]+one coffee|just one (?:coffee|latte)|i expect (?:back )?pay in coffee|you owe me (?:a )?coffee)/i.test(String(reply))) issues.push("immutable_event_wager_debt_reversal");
   const latest = String(recentUserMessages[recentUserMessages.length - 1] || "").replace(/\*[^*]*\*/g, " ").trim();
   if (/^(?:who|who\?|who is it|who was it)\??$/i.test(latest)) {
     const bare = String(reply || "").trim().replace(/^["“]|["”]$/g, "");
