@@ -586,7 +586,20 @@ Deno.serve(async (request) => {
       recentCharacterReplies: messages.filter((m) => m?.sender === "character").slice(-8).map((m) => m?.content || ""),
       character: configuredCharacter,
     });
-    const continuityLockedPromptV35254 = `${prompt}\n\n${immutableEventTruthV35254}\n\n${motivationPersistenceV35255}`;
+    // Keep a concrete wager active across turns instead of repeating intentions.
+    const recentSceneTranscript = messages.slice(-14).map((m) => String(m?.content || "")).join("\n");
+    const chaseSignupWagerActive = /^chase\b/i.test(String(configuredCharacter.name || "")) &&
+      /\b(?:sign[\s-]?ups?|sign up|register|registrations?)\b/i.test(recentSceneTranscript) &&
+      /\b(?:bet|wager|hundred|100|before the next bell|ten minutes)\b/i.test(recentSceneTranscript);
+    const activeCommitmentPromptV1 = chaseSignupWagerActive ? [
+      "ACTIVE SCENE COMMITMENT — CHASE SIGN-UP WAGER (HIGH PRIORITY):",
+      "Chase wagered he can recruit 100 talent-show sign-ups before the next bell. This is an unfinished action with a deadline.",
+      "On the NEXT reply show Chase ACTUALLY recruiting: he speaks to at least one specific student/group, pitches the event, gets a concrete acceptance/refusal, and tracks resulting registrations.",
+      "Do not replace progress with 'watch', 'follow me', 'don't blink', 'try to keep up', walking toward a group, checking a watch, or another boast.",
+      "Keep the 100 target and bell deadline. Keep the user in their established location unless they move; never invent their agreement or signature.",
+      "Allow realistic refusal and setbacks; do not jump to 100 without earned progress. If the user watches or doubts him, he proceeds independently."
+    ].join("\n") : "";
+    const continuityLockedPromptV35254 = `${prompt}\n\n${immutableEventTruthV35254}\n\n${motivationPersistenceV35255}\n\n${activeCommitmentPromptV1}`;
 
     const rawIsCancelled = () => generationId
       ? isGenerationCancelled(cancellationAdmin, generationId, userData.user.id)
