@@ -1618,17 +1618,17 @@ export function ChatsProvider({
       const quotedSpeechRemoved = responseText.replace(/[“"][^”"]*[”"]/g, " ");
       const concreteWrittenDetail = /(?:the (?:note|paper|letter|page) (?:reads|says|contains)|written (?:on|across)|the (?:first|second|last) line|(?:you|she) (?:read|see|notice) (?:the words|a line|a sentence)|(?:in|on) (?:his )?handwriting)\\s*[:—,-]?\\s*[^.!?\\n]{12,}/i.test(responseText) || /(?:^|\\n)\\s*(?:[“"][^”"]{12,}[”"]|[-*] [^\\n]{12,})/m.test(responseText);
       const stillEvasive = /\\b(?:just (?:look|read)|read it and find out|look at it|what he wrote|anything else you want to say|wait(?:s|ing)? (?:to see|for (?:your|her) reaction)|eyes? (?:snagging|flick(?:ing)?) (?:the|to) note)\\b/i.test(responseText);
-      const unresolvedNote = recentReadAction && recentPaperContext && !concreteWrittenDetail && (stillEvasive || /\\b(?:note|paper|letter|wrote|written)\\b/i.test(quotedSpeechRemoved));
+      const unresolvedNote = recentReadAction && recentPaperContext && !concreteWrittenDetail && (stillEvasive || /\\b(?:note|paper|letter|wrote|written|whatever you find|words will finally)\\b/i.test(responseText));
       if (unresolvedNote && finalMessage?.id && !options.noteResolutionRetry) {
         const rejectedId = finalMessage.id;
         setTimeout(() => {
-          if (activeRequests.current[characterId]) return;
+          // Allow the prior request to finish its finally cleanup before starting the replacement.
           void generateCharacterReply(characterId, {
             regenerateMessageId: rejectedId,
             noteResolutionRetry: true,
             instruction: "MANDATORY NOTE RESOLUTION: The user's most recent action already read the note. Your last answer failed because it did not actually show the text. Start with the visible writing itself, quoted explicitly as legible text on the note. Keep it short and directly motivated by the immediately preceding emotional exchange; do not invent an address, rendezvous, new place, threat, or unrelated secret. Then let Chase respond specifically to what the user said. Never ask the user to read again, wait for a reaction, or change the scene. Maintain second-person POV.",
           }).catch((error) => console.warn("Note resolution retry failed:", error));
-        }, 0);
+        }, 750);
       }
 
       const finalDurationMs = Date.now() - requestStartedAt;
