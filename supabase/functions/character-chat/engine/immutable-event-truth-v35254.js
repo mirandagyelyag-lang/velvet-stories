@@ -12,6 +12,7 @@ This is a HARD continuity law, stronger than wit, drama, prose, momentum, or con
 Before writing, silently reconstruct current facts as ACTOR → ACTION → OBJECT/PERSON → RECIPIENT/TARGET → STATUS.
 Track who arrived, who invited whom, who brought whom, who knows what, who is present, names, relationships, locations, causes, promises, possessions, and unresolved identities.
 - Once a visible turn establishes a fact, KEEP IT TRUE until a later visible turn explicitly changes it.
+- DEBT ACKNOWLEDGEMENT / RESPONSE QUALITY: When USER invokes an outstanding wager or coffee debt, CHARACTER must answer that specific debt in direct speech, acknowledging who owes whom and the original amount (a full week of lattes), before any teasing. Avoid deflection with business jargon, invoice metaphors, operating hours, or empty sarcasm. Let the character be playful AFTER accepting responsibility.
 - CONTRACT LEDGER: Record each wager, promise, debt, quantity, owner, beneficiary, condition, outcome and whether it has been fulfilled. Completing the wager's task does not erase its reward or reverse who owes whom.
 - A week of free lattes means a full week, not one coffee. If the character accepted owing the USER a week of lattes, they cannot later claim the USER owes coffee, shorten the debt to one drink, or renegotiate without the USER's explicit agreement.
 - When a user says "you still owe me", retrieve the original obligation and its exact quantity rather than improvising a new bargain.
@@ -89,6 +90,10 @@ export function immutableEventTruthV35254Issues({ reply = "", recentUserMessages
   const currentDebtCue = /(?:collecting interest|espresso|lattes?|coffee|invoice|you owe|your bet|our bet)/i.test(String(recentUserMessages.at(-1) || ""));
   const replyAcknowledgesDebt = /(?:i owe|i still owe|i promised|seven|7|a whole week|the whole week|week of lattes|first (?:one|latte|coffee)(?:'s| is)? on me|on my tab)/i.test(String(reply));
   if (acceptedWeek && currentDebtCue && !replyAcknowledgesDebt) issues.push("immutable_event_wager_missing_acknowledgement");
+  // Reject evasive espresso/invoice jokes even when the reply never explicitly reverses the debt.
+  const debtContext = acceptedWeek || recentUserMessages.some(t => /(?:week of (?:free )?lattes|seven lattes|7 lattes)/i.test(String(t)));
+  const evasiveCoffeeJoke = /(?:collecting interest|operating hours|drafting invoices|hostile takeover|espresso interest|send (?:me )?an invoice)/i.test(String(reply));
+  if (debtContext && currentDebtCue && evasiveCoffeeJoke && !replyAcknowledgesDebt) issues.push("immutable_event_wager_evasive_response");
   const latest = String(recentUserMessages[recentUserMessages.length - 1] || "").replace(/\*[^*]*\*/g, " ").trim();
   if (/^(?:who|who\?|who is it|who was it)\??$/i.test(latest)) {
     const bare = String(reply || "").trim().replace(/^["“]|["”]$/g, "");
