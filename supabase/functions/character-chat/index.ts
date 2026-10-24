@@ -3366,6 +3366,14 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
     });
   }
 
+  // FINAL CHASE FALLBACK: do not leave the user waiting through repeated model
+  // timeouts only to receive a 503. This authored, playable scene is a last
+  // resort, used only when no usable model draft exists.
+  if (chaseEngineActive) {
+    const chaseFallback = "A girl beside Chase slides a party wristband across the table. \\"You said you'd come with me,\\" she reminds him. Chase picks it up, turns it over once, then places it beside your drink instead. \\"I said I'd think about it.\\" He looks at you, his expression turning mischievous. \\"She's been telling everyone I'm going. Want to make this interesting?\\" The girl reaches for the wristband before he can move it again. \\"Chase, seriously?\\" He catches the band with two fingers and waits for your answer.";
+    return instantStoryResponse({ opening: chaseFallback, source: "chase_timeout_fallback", model: "authored_fallback", sceneSeed, openingFamily, softWarnings: rejectionSummary });
+  }
+
   return instantStoryResponse({
     error: "Velvet couldn't create an Instant Story this time. Try again.",
     retryable: true,
