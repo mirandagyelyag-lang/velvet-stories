@@ -1611,20 +1611,23 @@ export function ChatsProvider({
         throw new Error("The response ended before it could be saved.");
       }
 
-      // VELVET_EVASIVE_NOTE_REPAIR_V2: repair an empty deferral only once, without inventing plot facts.
-      const recentUserRead = /\\b(?:read|look at|open|unfold|flip|what(?:'s| is) (?:this|on it)|show me)\\b/i.test(lastUserText);
-      const noteContext = history.slice(-8).some((entry) => /\\b(?:note|paper|letter|wrote|written|clipboard)\\b/i.test(String(entry.content || "")));
-      const replyBody = String(finalMessage?.content || "");
-      const noteDeferral = /\\b(?:just (?:look|read)|read it and find out|look at it|wait(?:s|ing)? to see if (?:she|you)|see if (?:she|you)(?:'ll| will) (?:actually )?read|what he wrote)\\b/i.test(replyBody);
-      if (recentUserRead && noteContext && noteDeferral && finalMessage?.id && !options.evasiveNoteRepairRetry) {
-        const failedId = finalMessage.id;
+      // VELVET_NOTE_RESOLUTION_GATE_V3: detect unresolved read actions, not only canned evasions.
+      const recentReadAction = /\\b(?:read|reading|look(?:ed)? at|open(?:ed)?|unfold(?:ed)?|flip(?:ped)?|what(?:'s| is) (?:this|on it)|show me)\\b/i.test(lastUserText);
+      const recentPaperContext = history.slice(-12).some((entry) => /\\b(?:note|paper|letter|wrote|written|clipboard|folded)\\b/i.test(String(entry.content || "")));
+      const responseText = String(finalMessage?.content || "");
+      const quotedSpeechRemoved = responseText.replace(/[“"][^”"]*[”"]/g, " ");
+      const concreteWrittenDetail = /(?:the (?:note|paper|letter|page) (?:reads|says|contains)|written (?:on|across)|the (?:first|second|last) line|(?:you|she) (?:read|see|notice) (?:the words|a line|a sentence)|(?:in|on) (?:his )?handwriting)\\s*[:—,-]?\\s*[^.!?\\n]{12,}/i.test(responseText) || /(?:^|\\n)\\s*(?:[“"][^”"]{12,}[”"]|[-*] [^\\n]{12,})/m.test(responseText);
+      const stillEvasive = /\\b(?:just (?:look|read)|read it and find out|look at it|what he wrote|anything else you want to say|wait(?:s|ing)? (?:to see|for (?:your|her) reaction)|eyes? (?:snagging|flick(?:ing)?) (?:the|to) note)\\b/i.test(responseText);
+      const unresolvedNote = recentReadAction && recentPaperContext && !concreteWrittenDetail && (stillEvasive || /\\b(?:note|paper|letter|wrote|written)\\b/i.test(quotedSpeechRemoved));
+      if (unresolvedNote && finalMessage?.id && !options.noteResolutionRetry) {
+        const rejectedId = finalMessage.id;
         setTimeout(() => {
           if (activeRequests.current[characterId]) return;
           void generateCharacterReply(characterId, {
-            regenerateMessageId: failedId,
-            evasiveNoteRepairRetry: true,
-            instruction: "REPAIR EVASIVE NOTE RESPONSE: The user already read or requested to see the note. Do not ask them to look again or wait for a reaction. Reveal a modest, concrete note detail that directly fits the established immediate emotional conversation, without inventing an address, rendezvous, secret place, new event or location. Respond to the user's actual concern; maintain second-person narration and Chase's distinct voice. Do not change any previously established contents.",
-          }).catch((error) => console.warn("Note repair could not complete:", error));
+            regenerateMessageId: rejectedId,
+            noteResolutionRetry: true,
+            instruction: "MANDATORY NOTE RESOLUTION: The user's most recent action already read the note. Your last answer failed because it did not actually show the text. Start with the visible writing itself, quoted explicitly as legible text on the note. Keep it short and directly motivated by the immediately preceding emotional exchange; do not invent an address, rendezvous, new place, threat, or unrelated secret. Then let Chase respond specifically to what the user said. Never ask the user to read again, wait for a reaction, or change the scene. Maintain second-person POV.",
+          }).catch((error) => console.warn("Note resolution retry failed:", error));
         }, 0);
       }
 
