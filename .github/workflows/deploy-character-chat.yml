@@ -8,7 +8,7 @@ on:
       - ".github/workflows/deploy-character-chat.yml"
   workflow_dispatch:
 
-# Re-trigger production deploy after server-side document reveal regex correction.
+# Trigger deployment of Chase Instant Story timeout fallback (fcd27ce).
 
 permissions:
   contents: read
