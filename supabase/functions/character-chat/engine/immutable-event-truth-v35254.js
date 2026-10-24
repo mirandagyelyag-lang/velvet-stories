@@ -13,6 +13,10 @@ Before writing, silently reconstruct current facts as ACTOR → ACTION → OBJEC
 Track who arrived, who invited whom, who brought whom, who knows what, who is present, names, relationships, locations, causes, promises, possessions, and unresolved identities.
 - Once a visible turn establishes a fact, KEEP IT TRUE until a later visible turn explicitly changes it.
 - DEBT ACKNOWLEDGEMENT / RESPONSE QUALITY: When USER invokes an outstanding wager or coffee debt, CHARACTER must answer that specific debt in direct speech, acknowledging who owes whom and the original amount (a full week of lattes), before any teasing. Avoid deflection with business jargon, invoice metaphors, operating hours, or empty sarcasm. Let the character be playful AFTER accepting responsibility.
+- EMOTIONAL CAUSAL CONTINUITY: When USER says the character's teasing or distancing hurt them, acknowledge that specific behavior instead of arguing that the feeling is wrong. Character can remain defensive or sarcastic, but must not erase what just happened or shift all blame onto USER.
+- SPACE AND AGENCY: When USER explicitly needs space or walks away, do not corner, restrain, demand explanations, or treat a mental-health disclosure as a countdown. Character can express care and offer to reconnect later while respecting the user's stated boundary.
+- Emotional scenes must develop from the previous exchange: if CHARACTER pursued USER to repair a conflict, their next reply should attempt repair, not revert to generic banter, blame, or a different topic. Preserve tension without coercion or instant personality replacement.
+- If USER mentions being bipolar or another personal condition, do not reduce it to a punchline, prediction, timer, or clinical lecture. Respond to their actual request (e.g. space) without diagnosing them.
 - CONTRACT LEDGER: Record each wager, promise, debt, quantity, owner, beneficiary, condition, outcome and whether it has been fulfilled. Completing the wager's task does not erase its reward or reverse who owes whom.
 - A week of free lattes means a full week, not one coffee. If the character accepted owing the USER a week of lattes, they cannot later claim the USER owes coffee, shorten the debt to one drink, or renegotiate without the USER's explicit agreement.
 - When a user says "you still owe me", retrieve the original obligation and its exact quantity rather than improvising a new bargain.
@@ -94,6 +98,12 @@ export function immutableEventTruthV35254Issues({ reply = "", recentUserMessages
   const debtContext = acceptedWeek || recentUserMessages.some(t => /(?:week of (?:free )?lattes|seven lattes|7 lattes)/i.test(String(t)));
   const evasiveCoffeeJoke = /(?:collecting interest|operating hours|drafting invoices|hostile takeover|espresso interest|send (?:me )?an invoice)/i.test(String(reply));
   if (debtContext && currentDebtCue && evasiveCoffeeJoke && !replyAcknowledgesDebt) issues.push("immutable_event_wager_evasive_response");
+  const lastUserTurn = String(recentUserMessages[recentUserMessages.length - 1] || "");
+  const userNeedsSpace = /(?:need (?:my|some|a little) space|need to be alone|leave me alone|give me (?:a moment|some time)|necesito (?:mi )?espacio|déjame sola)/i.test(lastUserTurn);
+  if (userNeedsSpace && /(?:stop walking away|stop acting like you're leaving|you(?:'re| are) giving me the silent treatment|don't walk away|you can't leave)/i.test(String(reply))) issues.push("emotional_continuity_space_boundary_violation");
+  const userDescribesHurt = /(?:treat me like (?:i'm|i am) nothing|push me away|feel (?:that way|unwanted)|me haces sentir|me alejas)/i.test(lastUserTurn);
+  if (userDescribesHurt && /(?:when have i ever pushed you away|you're the one inventing|stop walking away every time)/i.test(String(reply))) issues.push("emotional_continuity_invalidating_response");
+  if (/\b(?:bipolar|bipolaridad)\b/i.test(lastUserTurn) && /(?:take your five minutes|see you in five minutes|five minutes then)/i.test(String(reply))) issues.push("emotional_continuity_disclosure_countdown");
   const latest = String(recentUserMessages[recentUserMessages.length - 1] || "").replace(/\*[^*]*\*/g, " ").trim();
   if (/^(?:who|who\?|who is it|who was it)\??$/i.test(latest)) {
     const bare = String(reply || "").trim().replace(/^["“]|["”]$/g, "");
