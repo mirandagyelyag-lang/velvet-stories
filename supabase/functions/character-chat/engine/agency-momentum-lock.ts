@@ -85,21 +85,11 @@ export function hasGratuitousExternalHook(reply = "", latestUserMessage = "", re
 }
 
 export function hasInitiativeBudgetOverflow(reply = "", latestUserMessage = "") {
-  const words = latestWordCount(latestUserMessage);
-  if (words > 14) return false;
-  const raw = String(reply || "");
-  if (!raw.trim()) return false;
-
-  const actionPatterns = [
-    /\b(?:i|he|she) (?:stood|got up|walked|crossed|left|followed|turned|moved|sat|grabbed|picked up|put down|opened|closed|checked|pulled out|called|texted|headed|started|stopped|drove|returned|came back)\b/i,
-    /\b(?:phone|door|notification|knock|someone|somebody)\b/i,
-    /\b(?:minutes later|a moment later|later that|the next|afterward|after that)\b/i,
-  ];
-  const sentences = raw.split(/(?<=[.!?]["”']?)\s+|\n+/).map((x) => x.trim()).filter(Boolean);
-  const actionCount = sentences.filter((sentence) => actionPatterns.some((pattern) => pattern.test(sentence))).length;
-  const sceneChangeCount = sentences.filter((sentence) => /\b(?:left the|walked out|headed to|arrived at|returned to|came back to|drove to|outside|hallway|parking lot|car|home|apartment|dorm)\b/i.test(sentence)).length;
-  return actionCount >= 4 || sceneChangeCount >= 2;
+ if (latestWordCount(latestUserMessage) > 14) return false;
+ const jumps = [...String(reply || "").matchAll(/\b(?:minutes later|hours later|the next morning|the next day|afterward|later that night|arrived at|drove to|returned to|came back to|headed to|walked out of|left the)\b/gi)].length;
+ return jumps >= 3;
 }
+
 
 export function hasForcedContinuationHook(reply = "", latestUserMessage = "") {
   const text = String(reply || "").trim();
@@ -121,34 +111,24 @@ export function hasForcedContinuationHook(reply = "", latestUserMessage = "") {
   return bait.some((pattern) => pattern.test(tail));
 }
 
+const USER_ACTION_FAMILIES = [
+ { name:"leave", pattern:/\b(?:turn(?:ed|ing)? to (?:leave|go)|walk(?:ed|ing)? (?:away|out)|leave|left|head(?:ed|ing)? (?:out|away)|step(?:ped|ping)? away|move(?:d|ing)? away)\b/i },
+ { name:"stand", pattern:/\b(?:stand|stood|standing|get up|got up)\b/i },
+ { name:"sit", pattern:/\b(?:sit|sat|sitting|sit down)\b/i },
+ { name:"approach", pattern:/\b(?:approach(?:ed|ing)?|come closer|step(?:ped)? closer)\b/i },
+ { name:"follow", pattern:/\b(?:follow(?:ed|ing)?)\b/i },
+ { name:"reach", pattern:/\b(?:reach(?:ed|ing)?)\b/i },
+ { name:"grab", pattern:/\b(?:grab(?:bed|bing)?|pick(?:ed|ing)? up|take|took)\b/i },
+];
+function userActionFamilies(value = "") { return USER_ACTION_FAMILIES.filter(item => item.pattern.test(value)).map(item => item.name); }
 export function hasInventedUserPhysicalAction(reply = "", latestUserMessage = "") {
-  const rawReply = String(reply || "");
-  const rawUser = String(latestUserMessage || "");
-  if (!rawReply.trim()) return false;
-
-  // User physical actions are canon only when the user actually writes them as actions.
-  // Dialogue, refusal, tone, implication, hesitation, or phrases such as "I'll pass"
-  // must NEVER be converted into movement by the narrator.
-  const explicitUserActions = (rawUser.match(/\*[^*]*\*/gs) || []).join(" ");
-  const actionEvidence = normalized(explicitUserActions);
-
-  const inventedActionPatterns = [
-    /\b(?:watch(?:es|ed|ing)?|see(?:s|ing)?|as) you (?:turn(?:ed|ing)? (?:to )?(?:leave|go)|walk(?:ed|ing)? away|walk(?:ed|ing)? out|leave|left|head(?:ed|ing)? (?:out|away)|step(?:ped|ping)? away|move(?:d|ing)? away|stand|stood|get up|got up|sit|sat|approach(?:ed|ing)?|come closer|follow(?:ed|ing)?|reach(?:ed|ing)?|grab(?:bed|bing)?|pick(?:ed|ing)? up)\b/i,
-    /\byou (?:turn(?:ed|ing)? (?:to )?(?:leave|go)|walk(?:ed|ing)? away|walk(?:ed|ing)? out|leave|left|head(?:ed|ing)? (?:out|away)|step(?:ped|ping)? away|move(?:d|ing)? away|stand|stood|get up|got up|sit|sat|approach(?:ed|ing)?|come closer|follow(?:ed|ing)?|reach(?:ed|ing)?|grab(?:bed|bing)?|pick(?:ed|ing)? up)\b/i,
-  ];
-
-  const matched = inventedActionPatterns.some((pattern) => pattern.test(rawReply));
-  if (!matched) return false;
-
-  const matchingEvidence = [
-    /\b(?:turn|leave|left|go|walk|walked|away|out)\b/,
-    /\b(?:head|headed|step|stepped|move|moved)\b/,
-    /\b(?:stand|stood|get up|got up|sit|sat)\b/,
-    /\b(?:approach|approached|closer|follow|followed)\b/,
-    /\b(?:reach|reached|grab|grabbed|pick|picked)\b/,
-  ];
-  return !matchingEvidence.some((pattern) => pattern.test(actionEvidence));
+ const assertions = [...String(reply || "").matchAll(/\byou\s+((?:turn(?:ed|ing)? to (?:leave|go)|walk(?:ed|ing)? (?:away|out)|leave|left|head(?:ed|ing)? (?:out|away)|step(?:ped|ping)? away|move(?:d|ing)? away|stand|stood|standing|get up|got up|sit|sat|sitting|approach(?:ed|ing)?|come closer|follow(?:ed|ing)?|reach(?:ed|ing)?|grab(?:bed|bing)?|pick(?:ed|ing)? up|take|took))\b/gi)];
+ if (!assertions.length) return false;
+ const actionEvidence = normalized((String(latestUserMessage || "").match(/\*[^*]*\*/gs) || []).join(" "));
+ const authorized = new Set(userActionFamilies(actionEvidence));
+ return assertions.some(match => userActionFamilies(match[1]).some(family => !authorized.has(family)));
 }
+
 
 export function hasAgencyContradiction(reply = "", latestUserMessage = "", recentCharacterReplies = []) {
   const text = normalized(reply);
@@ -174,26 +154,16 @@ export function agencyMomentumIssues({ reply = "", latestUserMessage = "", recen
 }
 
 export function sanitizeAgencyMomentumReply(reply = "", issues = []) {
-  const active = new Set(Array.isArray(issues) ? issues : []);
-  let pieces = String(reply || "")
-    .split(/(?<=[.!?]["”']?)\s+|\n{2,}/)
-    .map((piece) => piece.trim())
-    .filter(Boolean);
-
-  if (active.has("gratuitous_external_hook") || active.has("forced_scene_continuation_hook")) {
-    pieces = pieces.filter((piece) => !/\b(?:phone (?:buzzed|rang|lit up|vibrated)|notification|someone (?:knocked|appeared|walked in|came over)|somebody (?:knocked|appeared|walked in|came over)|door (?:opened|swung open)|just then|little did .* know|neither of us knew|what happened next)\b/i.test(piece));
-  }
-  if (active.has("invented_user_physical_action")) {
-    pieces = pieces.filter((piece) => !hasInventedUserPhysicalAction(piece, ""));
-  }
-  if (active.has("agency_commitment_inertia_break")) {
-    pieces = pieces.filter((piece) => !/\b(?:followed you|went after you|chased after you|caught up with you|right behind you|headed out|walked away|left)\b/i.test(piece));
-  }
-  if (active.has("initiative_budget_overflow") && pieces.length > 3) {
-    const dialogueFirst = pieces.filter((piece) => /["“”']/.test(piece));
-    const decisive = pieces.filter((piece) => /\b(?:said|asked|answered|stayed|waited|sat|looked|nodded|shrugged)\b/i.test(piece));
-    const keep = [...dialogueFirst.slice(0,2), ...decisive.slice(0,1)];
-    pieces = keep.length ? [...new Set(keep)] : pieces.slice(0,3);
-  }
-  return pieces.join(" ").replace(/\s+/g, " ").trim();
+ const original = String(reply || "").trim();
+ const active = new Set(Array.isArray(issues) ? issues : []);
+ if (!original || !active.size) return original;
+ if (active.has("invented_user_physical_action") || active.has("agency_commitment_inertia_break") || active.has("initiative_budget_overflow")) return original;
+ if (!active.has("gratuitous_external_hook") && !active.has("forced_scene_continuation_hook")) return original;
+ const paragraphs = original.split(/(\n\s*\n)/);
+ if (paragraphs.length < 3) return original;
+ const last = paragraphs[paragraphs.length-1].trim();
+ const teaser = /^(?:just then|little did (?:i|he|she|we) know|neither of us knew|what happened next|then (?:my|his|her|their|the) phone (?:buzzed|rang|lit up)|(?:my|his|her|their|the) phone (?:buzzed|rang|lit up|vibrated)|(?:someone|somebody) (?:knocked|appeared|walked in|came over)|(?:the|a) door (?:opened|swung open))\b/i.test(last);
+ if (!teaser || /[“"]/u.test(last) || last.length > 180) return original;
+ return paragraphs.slice(0,-2).join("").trim() || original;
 }
+

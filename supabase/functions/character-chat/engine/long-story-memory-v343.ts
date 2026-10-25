@@ -42,8 +42,8 @@ function importance(m:AnyRow){return Math.max(1,Math.min(5,Number(m?.importance)
 function ageDays(m:AnyRow,now=Date.now()){const raw=Date.parse(String(m?.updated_at||m?.created_at||""));return Number.isFinite(raw)?Math.max(0,(now-raw)/86400000):0;}
 function authority(m:AnyRow){if(m?.is_canon)return "canon";if(m?.is_pinned||m?.source==="manual")return "creator";return "learned";}
 function importantCategory(m:AnyRow){return ["boundary","promise","conflict","relationship","event"].includes(clean(m?.category,40));}
-function isOpenStatus(v:any){const s=norm(v);return !/(resolved|complete|completed|cancelled|canceled|closed|ended|done|abandoned|superseded)/.test(s);}
-function isResolvedStatus(v:any){return /(resolved|complete|completed|cancelled|canceled|closed|ended|done|abandoned|superseded)/.test(norm(v));}
+function isOpenStatus(v:any){const s=norm(v);return !/^(?:resolved|complete|completed|cancelled|canceled|closed|ended|done|abandoned|superseded)$/.test(s);}
+function isResolvedStatus(v:any){return /^(?:resolved|complete|completed|cancelled|canceled|closed|ended|done|abandoned|superseded)$/.test(norm(v));}
 function memoryLabel(m:AnyRow){return clean(m?.content||m?.summary||m?.title||m?.effect||m?.cause,500);}
 function participantsOf(v:AnyRow){return uniq((Array.isArray(v?.participants)?v.participants:[]).map((x:any)=>clean(x,100)));}
 function recentLine(m:AnyRow){const sender=clean(m?.sender,30);const content=clean(m?.content,420);return content?`${sender||"turn"}: ${content}`:"";}
@@ -53,7 +53,7 @@ export function selectLongStoryMemories(memories:AnyRow[]=[],context:AnyRow={}):
   const character=clean(context?.characterName||"",120);
   const user=clean(context?.userName||"",120);
   const now=Date.now();
-  const scored=arr(memories).map((m)=>{
+  const scored=arr(memories).filter(m=>!m?.superseded_at).map((m)=>{
     const content=memoryLabel(m); const imp=importance(m); const auth=authority(m); const age=ageDays(m,now);
     let score=imp*8;
     if(auth==="canon")score+=60;
@@ -109,7 +109,7 @@ function perspectiveMemory(args:AnyRow,memories:AnyRow[]){
     ...arr(args.storyBible).filter(x=>/canon|hard|creator/i.test(clean(x?.authority,80))).map(x=>clean(x?.content||x?.title,300))
   ]).filter(Boolean).slice(0,12);
   const characterKnown=uniq(arr(args.knowledgeLedger).filter(k=>norm(k?.character_name)===char&&!k?.secret).map(k=>clean(k?.knowledge||k?.subject,300))).slice(0,10);
-  const publicKnown=uniq(arr(args.knowledgeLedger).filter(k=>!k?.secret&&/(public|known|rumor|shared)/i.test(clean(k?.status,80))).map(k=>clean(k?.knowledge||k?.subject,300))).slice(0,8);
+  const publicKnown=uniq(arr(args.knowledgeLedger).filter(k=>!k?.secret&&/^(?:public|publicly known|public knowledge)$/i.test(clean(k?.status,80))).map(k=>clean(k?.knowledge||k?.subject,300))).slice(0,8);
   const privateOrScoped=uniq(arr(args.knowledgeLedger).filter(k=>Boolean(k?.secret)||(!char||norm(k?.character_name)!==char)).map(k=>clean(k?.knowledge||k?.subject,300))).slice(0,8);
   return {objective,characterKnown,publicKnown,privateOrScoped};
 }
@@ -204,6 +204,7 @@ export function longStoryMemoryV343Issues({reply="",engine={} as Partial<LongSto
 
 function removeSentences(text:string,predicate:(s:string)=>boolean){return String(text||"").split(/(?<=[.!?])\s+|\n{2,}/).filter(s=>s.trim()&&!predicate(s)).join(" ").replace(/\s{2,}/g," ").trim();}
 export function sanitizeLongStoryMemoryV343Reply(reply="",issues:string[]=[],engine:Partial<LongStoryMemory343>={}){
+  if(!issues.length)return String(reply||"");
   let out=String(reply||"").trim();
   if(issues.includes("false_memory_claim"))out=removeSentences(out,s=>historicalClaimSentences(s).length>0&&!claimSupported(s,engine.falseMemoryAnchors||[]));
   if(issues.includes("resolved_thread_reactivated"))out=removeSentences(out,s=>(engine.resolvedThreads||[]).some(t=>tokenHits(s,t)>=2)&&/\b(?:still need|still have to|has to|need to|upcoming|tomorrow|not over|still active)\b/i.test(s));

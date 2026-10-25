@@ -39,7 +39,7 @@ function domain(key:string,label:string,recognition:SocialIdentityDomain["recogn
 }
 
 export function deriveSocialWorldIdentity(character: Record<string, unknown> = {}): SocialWorldIdentity {
-  const p=socialIdentityProfileText(character);
+  const p=socialIdentityProfileText(character).replace(/\b(?:not|never|isn't|is not)\s+(?:famous|popular|feared|respected|a celebrity|a public figure|a womanizer|a playboy)\b/g, "");
   const domains:SocialIdentityDomain[]=[];
   const reputation:string[]=[];
   const approachTypes:string[]=[];

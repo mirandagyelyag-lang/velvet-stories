@@ -10,6 +10,7 @@ const words=(v="")=>norm(v).split(/\s+/).filter(Boolean);
 function observableUserFunction(value=""){
   const t=norm(value);
   if(!t) return "neutral";
+  if(/\b(?:do not|don't|dont|no|stop|never)\s+(?:kiss|hug|touch|hold|follow|come closer|acerc|bes|toqu)\w*\b|\b(?:leave me alone|give me space|back off)\b/.test(t)) return "boundary";
   if(/\b(?:kiss|hug|hold(?:ing)? your hand|held your hand|link(?:ed)? arms?|cross(?:ed)? my arm with yours|lean(?:ed)? (?:on|against|into) you|touch(?:ed)? your (?:arm|hand|face|cheek)|move(?:d)? closer)\b/.test(t)) return "approach";
   if(/\b(?:let go|pull(?:ed)? away|unlink(?:ed)?|move(?:d)? away|step(?:ped)? back|stop(?:ped)? holding|drop(?:ped)? your hand|leave me alone|back off|not now)\b/.test(t)) return "withdraw";
   if(/\b(?:i trust you|you choose|surprise me|up to you|you decide)\b/.test(t)) return "delegation";
@@ -152,7 +153,7 @@ export function relationshipInterpretationIssuesV35343({
   const fn=observableUserFunction(latestUserMessage);
   const flat=flatRecentScene(recentCharacterReplies);
 
-  if(polishedEmotionDump(text)) issues.push("character_became_emotionally_perfect");
+  if(polishedEmotionDump(text) && words(text).length>45) issues.push("character_became_emotionally_perfect");
   if(omniscientInterpretation(text)) issues.push("relationship_interpretation_mindread_user");
   if(immediateOverResolution(text)) issues.push("relationship_pressure_resolved_too_fast");
 

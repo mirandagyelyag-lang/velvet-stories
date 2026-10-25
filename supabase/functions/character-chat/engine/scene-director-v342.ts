@@ -184,12 +184,12 @@ export function deriveSceneDirectorV342(args:Args={}):SceneDirectorV342 {
   const recurrence=arr(args.npcEcosystem?.recurringCandidates).map((x:any)=>clean(typeof x==="string"?x:(x?.name||""),100)).filter(Boolean);
   const npcNodes=arr(args.npcEcosystem?.nodes);
   const busyNames=new Set(npcNodes.filter((n:any)=>/(?:class|work|busy|training|practice|travel|away|unavailable)/i.test(String(n?.availability||""))).map((n:any)=>norm(n?.name)).filter(Boolean));
-  const availableNodes=npcNodes.filter((n:any)=>!busyNames.has(norm(n?.name))).map((n:any)=>clean(n?.name,100)).filter(Boolean);
+  const availableNodes=npcNodes.filter((n:any)=>!busyNames.has(norm(n?.name)) && !/unknown|do not summon|unavailable/i.test(String(n?.availability||""))).map((n:any)=>clean(n?.name,100)).filter(Boolean);
   const allowedEntrants=uniq([...recurrence.filter(n=>!busyNames.has(norm(n))),...availableNodes]).filter(n=>!present.some(p=>norm(p)===norm(n))).slice(0,8);
 
   const presentActors=present.length?present:uniq([user,lead]);
   const maxFromGraph=Math.max(2,Math.min(3,Number(args.npcEcosystem?.groupTraffic?.maxActiveSpeakers||3)));
-  const foregroundActors=uniq([lead,user,...presentActors.slice(0,Math.max(0,maxFromGraph-2))]).slice(0,maxFromGraph);
+  const foregroundActors=uniq([...([lead,user].filter(n=>presentActors.some(p=>norm(p)===norm(n)))),...presentActors]).slice(0,maxFromGraph);
   const backgroundActors=presentActors.filter(p=>!foregroundActors.some(f=>norm(f)===norm(p))).slice(0,10);
 
   const hotCount=recentIntensity(args.recentMessages||[]);
@@ -335,5 +335,5 @@ export function sanitizeSceneDirectorV342Reply(reply="",issues:string[]=[],engin
     const dialogue=out.match(/["“][^"”]{1,260}["”]/g)?.slice(0,2).join(" ");
     if(dialogue) out=dialogue;
   }
-  return out.replace(/\s{2,}/g," ").replace(/\n{3,}/g,"\n\n").trim();
+  return out.replace(/[^\S\n]{2,}/g," ").replace(/\n{3,}/g,"\n\n").trim();
 }

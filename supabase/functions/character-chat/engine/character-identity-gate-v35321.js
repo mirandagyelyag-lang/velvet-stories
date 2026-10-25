@@ -4,9 +4,21 @@ const norm=(v="")=>clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u03
 function wordCount(v=""){return norm(v).split(/\s+/).filter(Boolean).length;}
 function dialogue(v=""){return [...String(v||"").matchAll(/[“"]([^”"]+)[”"]/g)].map(m=>m[1]).join(" ");}
 
+// Resolve configured short names without applying known-cast rules to strangers.
+function identityName(character={}){
+  const name=norm(character?.name).trim();
+  const aliases={chase:"chase beaumont",theo:"theo calloway",mateo:"mateo silva",nathan:"nathan foster",rowan:"rowan hayes",alexander:"alexander bennett",damon:"damon blackwood",roman:"roman knox",adrian:"adrian cross"};
+  return aliases[name]||name;
+}
+function affirmativeNarration(value=""){
+  return String(value??"").split(/(?<=[.!?])\s+/).filter(part=>
+    !/\b(?:didnt|didn't|did not|never|not a|wasnt|wasn't|was not|wouldnt|wouldn't|would not)\b/.test(norm(part))
+  ).join(" ");
+}
+
 export function characterIdentityGateIssuesV35321({reply="",character={},recentCharacterReplies=[],opening=false}={}){
   const issues=[];
-  const name=norm(character?.name);
+  const name=identityName(character);
   const t=norm(reply);
   const spoken=norm(dialogue(reply));
   const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-5):[]).map(norm).join(" | ");
@@ -15,7 +27,7 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
   // Chase's swagger is his fingerprint, not Velvet's default male personality.
   // For every other lead, reject the recurring Chase bundle rather than teaching
   // the whole cast the same territorial/confident choreography.
-  if(name!=="chase beaumont"){
+  if(name && name!=="chase beaumont"){
     const chaseSignals=[
       /\b(?:were leaving|we are leaving|youre coming with me|you are coming with me|come with me|outside now)\b/.test(spoken),
       /\b(?:im stealing you|i am stealing you|keep talking to him if you want|keep talking to her if you want|im staying|i am staying)\b/.test(spoken),
@@ -29,7 +41,7 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
   }
 
   if(name==="theo calloway"){
-    const activeWomanizer=/\b(?:flirted back|flirting back|winked at (?:her|the girl)|gave (?:her|the girl) his number|asked (?:her|the girl) for (?:her )?number|pulled (?:her|the girl) closer|kissed another|kissed the girl)\b/.test(t);
+    const activeWomanizer=/\b(?:flirted back|flirting back|winked at (?:her|the girl)|gave (?:her|the girl) his number|asked (?:her|the girl) for (?:her )?number|pulled (?:her|the girl) closer|kissed another|kissed the girl)\b/.test(norm(affirmativeNarration(reply)));
     if(activeWomanizer)issues.push("theo_womanizer_drift");
 
     const theoJealousApproach=/\b(?:crossed|crossing|came over|approached|walked over|moved away from the group|doesnt mean i have to like him|does not mean i have to like him)\b/.test(recent);
@@ -95,18 +107,21 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
     "nathan foster":"nathan","rowan hayes":"rowan","alexander bennett":"alexander",
     "damon blackwood":"damon","roman knox":"roman","adrian cross":"adrian"
   }[name]||"";
-  const collision=Object.entries(sig).filter(([k,v])=>k!==ownSignature&&v>=2).map(([k])=>k);
+  // Warmth, silence, reliability and familiarity belong to many people.
+  // Only a full three-part choreography is evidence of cross-cast leakage;
+  // never reject a reply for two ordinary traits or an unknown character.
+  const collision=ownSignature && opening ? Object.entries(sig).filter(([k,v])=>k!==ownSignature&&v>=3&&sig[ownSignature]===0).map(([k])=>k) : [];
   if(collision.length)issues.push("foreign_character_signature_"+collision.join("_"));
 
   if(name==="mateo silva"){
-    const distress=/\b(?:llor|ansiedad|depres|triste|crisis|familia|panic|cry|depress|sad)\b/.test(recent);
+    const distress=/\b(?:llor\w*|ansiedad|depres\w*|triste\w*|crisis|familia|panic\w*|cry\w*|depress\w*|sad)\b/.test(recent);
     const cold=/\b(?:whatever|deal with it|not my problem|figure it out|da igual|arreglatelas|arréglatelas)\b/.test(t);
     if(distress&&cold)issues.push("mateo_refuge_identity_broken");
   }
 
   if(name==="chase beaumont"){
     const inert=/\b(?:small nod|gave a nod|fair enough|all right|alright|okay then|whatever you want)\b/.test(t);
-    if(inert&&wordCount(reply)<70)issues.push("chase_electricity_flattened");
+    if(inert&&wordCount(reply)<18&&!/\b(?:asks?|offers?|invites?|decides?|hands?|opens?|takes?|takes?|starts?|chooses?|admits?|promises?)\b/.test(t))issues.push("chase_electricity_flattened");
 
     // Chase's creator canon is structural world truth, not optional flavor.
     // He is a millionaire with his own high-end car, campus-famous, and routinely
@@ -158,14 +173,14 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
       // messages, errands, possessions or past events must come from supplied canon.
       const inventedFamilyFact=/\b(?:your (?:mom|mother|dad|father|parents?|sister|brother))\s+(?:sent|told|asked|called|texted|packed|made|gave|left|warned|said|claims?|always|usually)\b/.test(t);
       const inventedHabit=/\b(?:you (?:always|usually|never|constantly|keep|tend to|forget to)|your usual|your favorite|statistically speaking|\d+ (?:days?|times?) out of \d+)\b/.test(t);
-      if(familyPremise&&(inventedFamilyFact||inventedHabit))issues.push("rowan_invented_family_history_or_user_habit");
+      if(familyPremise&&(inventedFamilyFact||inventedHabit)&&!source.includes(t))issues.push("rowan_invented_family_history_or_user_habit");
     }
   }
 
   if(name==="alexander bennett"){
     const retreat=/\b(?:walked away|left her alone|left you alone|went back to his friends|not my problem)\b/.test(t);
     const rupture=/\b(?:fight|argument|hurt|sorry|leave|upset|angry|cried|crying)\b/.test(recent);
-    if(rupture&&retreat)issues.push("alexander_devotion_abandoned");
+    if(rupture&&retreat&&!/\b(?:leave me alone|give me space|go away|asked him to leave|asked for space|dejame sola|dame espacio|vete)\b/.test(recent+" "+t))issues.push("alexander_devotion_abandoned");
   }
 
   if(name==="damon blackwood"){
@@ -183,7 +198,7 @@ export function characterIdentityGateIssuesV35321({reply="",character={},recentC
 
 export function buildCharacterIdentityGateV35321({character={}}={}){
   const d=character?.emotional_dna&&typeof character.emotional_dna==="object"?character.emotional_dna:{};
-  const name=norm(character?.name);
+  const name=identityName(character);
   const theoCanon=name==="theo calloway"
     ? [
         "THEO WORLD CANON — HARD, NON-NEGOTIABLE:",
@@ -202,7 +217,7 @@ export function buildCharacterIdentityGateV35321({character={}}={}){
       "- Mateo's core effect is emotional safety and grounded presence. He supports without taking over.",
       "- His warmth is steady, familiar and sincere, not swagger, mystery, dominance or danger.",
       "- Under jealousy he does not become territorial. He grows quieter/more attentive or creates honest emotional gravity rather than competing theatrically.",
-      "- He must never sound like Chase's cocky confidence, Theo's social-prince charm, Nathan's forbidden restraint, Rowan's intimate pattern-reading, Alexander's devotion, Damon's silent severity, Roman's danger, or Adrian's reality-TV rivalry."
+      "- He must never sound like Chase's cocky confidence, Theo's social-prince charm, Nathan's forbidden restraint, Rowan's intimate pattern-reading, Alexander's devotion, Damon's silent severity, Roman's danger, or Adrian's guarded rivalry."
     ],
     "nathan foster":[
       "NATHAN IDENTITY — FORBIDDEN RESTRAINT:",
@@ -213,7 +228,7 @@ export function buildCharacterIdentityGateV35321({character={}}={}){
     ],
     "rowan hayes":[
       "ROWAN IDENTITY — FAMILIARITY / BEING SEEN:",
-      "- Rowan is near-family, almost a brother, and knows the protagonist's family. His intimacy comes from earned familiarity.",
+      "- Rowan makes the protagonist feel seen through selective attention and earned understanding. Shared childhood or family intimacy exists only if the configured profile or live canon establishes it.",
       "- He notices patterns and small changes without becoming a therapist, mind-reader or generic caretaker.",
       "- His social reputation can be popular/heartbreaker, but around the protagonist his distinction is recognition and history, not territorial swagger.",
       "- Jealousy must remain Rowan-shaped: familiarity suddenly carrying weight, not direct interrogation, commands or performative dominance."
@@ -240,10 +255,10 @@ export function buildCharacterIdentityGateV35321({character={}}={}){
       "- His softer side matters because it contrasts with a genuinely risky life and hard reputation, not because he turns into a generic possessive man."
     ],
     "adrian cross":[
-      "ADRIAN IDENTITY — FORCED-PROXIMITY REALITY RIVAL:",
-      "- Adrian belongs to the reality/relationship-competition premise. He and the protagonist do not naturally get along, but audience/production pressure repeatedly pairs them.",
-      "- Adrian does NOT personally force proximity. The SHOW does. He can be equally annoyed by a pairing, resist production, cooperate strategically, or unexpectedly enjoy it.",
-      "- His chemistry comes from public pressure, competitive friction, being watched, reluctant teamwork and the gap between camera narrative and private reactions.",
+      "ADRIAN IDENTITY — SARCASM / RIVALRY / GUARDED ATTACHMENT:",
+      "- Follow Adrian's configured premise. Do not invent a reality show, production team, audience or competition. His initial friction and sarcasm do not imply immediate mutual affection.",
+      "- Proximity must follow established circumstances and respect the protagonist's choices. Any reluctant teamwork needs a grounded reason.",
+      "- His chemistry comes from character-specific friction, guarded choices and earned changes in attachment.",
       "- He must not become Chase with cameras: no default territorial swagger, possessive extraction, command-and-follow behavior or campus-heartthrob choreography."
     ]
   };
@@ -279,3 +294,5 @@ export function buildCharacterIdentityGateV35321({character={}}={}){
     "SILENT SELF-CHECK: before finalizing, answer internally: Why would THIS character choose THIS exact action instead of each other lead? If the answer is only 'because he likes her/is jealous/is confident', rewrite."
   ].filter(Boolean).join("\n");
 }
+
+export const __testIdentityGateV35321 = { identityName, affirmativeNarration };

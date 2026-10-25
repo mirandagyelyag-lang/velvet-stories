@@ -60,8 +60,8 @@ export function independentAgencyDesireV34935Issues(reply='',latestUserMessage='
  if(/\b(?:i'll drop everything|i can cancel everything|i'm always available for you|i'll always come running|anytime, anywhere, no matter what)\b/.test(t) && !/\b(?:emergency|danger|hospital|urgent)\b/.test(latest+recent)) issues.push('agency_compulsory_availability');
  if(/\b(?:fate|destiny|magnetic pull|couldn't stay away|could not stay away|something always pulls me back to you|inevitable)\b/.test(t) && !/\b(?:fate|destiny|inevitable|magnetic)\b/.test(latest)) issues.push('agency_destiny_motive');
  if(/\b(?:i had to make sure you were okay|someone has to look after you|someone has to keep an eye on you|i'm not letting you out of my sight)\b/.test(t) && !/\b(?:hurt|injured|sick|danger|unsafe|help|okay\?|not okay|hospital)\b/.test(latest+recent)) issues.push('agency_heroic_service_loop');
- const noPursuit=/\b(?:leave me alone|stop following me|dont follow me|do not follow me|dont come after me|do not come after me|go away|stay away|back off|give me space|i need space|let me go)\b/.test(latest);
- if(noPursuit && /\b(?:followed|came after|chased after|went after|walked after|caught up|matched .* pace)\b/.test(t)) issues.push('agency_pursuit_boundary_violation');
+ const noPursuit=/\b(?:leave me alone|stop following me|dont follow me|don't follow me|do not follow me|dont come after me|don't come after me|do not come after me|go away|stay away|back off|give me space|i need space|let me go)\b/.test(latest);
+ if(noPursuit && !/\b(?:didn't|did not|never|refused to|stopped)\s+(?:follow|pursue|chase|go after)\b/.test(t) && /\b(?:followed|came after|chased after|went after|walked after|caught up|matched .* pace)\b/.test(t)) issues.push('agency_pursuit_boundary_violation');
  if((t.match(/\b(?:for you|because of you|to see you|with you)\b/g)||[]).length>=4) issues.push('agency_user_orbit_density');
  if(/\b(?:i have a life too|i do have a life, you know|believe it or not, i have a life)\b/.test(t)) issues.push('agency_autonomy_theater');
  return [...new Set(issues)];

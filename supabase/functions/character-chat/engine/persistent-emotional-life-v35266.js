@@ -21,7 +21,7 @@ function baseline(character={},relationship={}){
   if(/\b(?:friend|friends|friendly|know each other|classmates|coworkers|teammates)\b/.test(p)){attachment=18;trust=18;}
   if(/\b(?:close friend|close friends|best friend|best friends|childhood friend|longtime friend|long term friend)\b/.test(p)){attachment=38;trust=45;}
   if(/\b(?:crush|attracted|attraction|romantic tension|enemies to lovers|friends to lovers|likes you|likes the user|into you)\b/.test(p)){attraction=Math.max(attraction,28);awareness=Math.max(awareness,12);}
-  if(/\b(?:dating|boyfriend|girlfriend|partner|relationship|together|seeing each other)\b/.test(p)){attachment=Math.max(attachment,58);trust=Math.max(trust,48);attraction=Math.max(attraction,62);awareness=Math.max(awareness,55);protectiveness=Math.max(protectiveness,24);}
+  if(/\b(?:dating|boyfriend|girlfriend|romantic partner|in a relationship|seeing each other)\b/.test(p)){attachment=Math.max(attachment,58);trust=Math.max(trust,48);attraction=Math.max(attraction,62);awareness=Math.max(awareness,55);protectiveness=Math.max(protectiveness,24);}
   if(/\b(?:in love|loves you|deeply in love|fiance|fiancee|husband|wife|married)\b/.test(p)){attachment=Math.max(attachment,78);trust=Math.max(trust,62);attraction=Math.max(attraction,75);awareness=Math.max(awareness,78);protectiveness=Math.max(protectiveness,36);}
   if(/\b(?:guarded|distrustful|doesnt trust|does not trust|enemies|rivals|hostile)\b/.test(p) && !/enemies to lovers|rivals to lovers/.test(p)) trust=Math.min(trust,10);
   if(/\b(?:protective|looks out for|takes care of|cares deeply)\b/.test(p)) protectiveness=Math.max(protectiveness,28);
@@ -95,7 +95,8 @@ export function updateRelationshipEmotionCoreV35266({
   const carried=isSilentMarker(latestUserMessage)&&effective!==String(latestUserMessage||"");
   const signature=beatSignature(effective);
   const carriedAlreadyProcessed=carried&&signature&&signature===state.last_user_beat_signature;
-  const u=norm(effective),r=norm(reply),p=profileText(character,relationship);
+  const affirmed=(value)=>norm(value).replace(/\b(?:i |we )?(?:dont|do not|didnt|did not|never|not)\s+(?:love|care about|miss|trust|kiss|hug|flirt with)\b[^.!?]*/g, "");
+  const u=affirmed(effective),r=norm(reply),p=profileText(character,relationship);
   const romanticSeed=state.attraction>=20 || /\b(?:romance|romantic|crush|attract|enemies to lovers|friends to lovers|dating|in love|likes you|into you)\b/.test(p);
   const userLeaves=hasAny(u,[/\b(?:i storm off|i stormed off|i walk away|i walked away|i leave|i left|i walk out|i walked out|i run off|i ran off|me voy|me fui|me largo|me alejo|salgo)\b/]);
   const noPursuit=hasAny(u,[/\b(?:leave me alone|dont follow me|do not follow me|go away|stay away|back off|give me space|i need space|no me sigas|dejame sola|dejame solo|vete|alejate)\b/]);

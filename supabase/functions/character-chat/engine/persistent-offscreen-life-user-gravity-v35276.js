@@ -52,7 +52,7 @@ function scenePresence(scene={},userName=""){
   const present=Array.isArray(scene?.present)?scene.present.map(norm).filter(Boolean):[];
   const user=norm(userName);
   if(!present.length || !user) return "unknown";
-  return present.some((name)=>name===user || name.includes(user) || user.includes(name)) ? "present" : "absent";
+  return present.some((name)=>name===user || (name.split(" ").length===1 && user.split(" ")[0]===name) || (user.split(" ").length===1 && name.split(" ")[0]===user)) ? "present" : "absent";
 }
 
 function explicitNoContact(latestUserMessage="",recentUserMessages=[]){

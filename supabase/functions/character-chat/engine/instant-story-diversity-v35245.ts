@@ -16,6 +16,7 @@ const clean = (value: unknown, limit = 240) => String(value || "").replace(/[<>]
 
 export function instantStorySceneFamily(value = "") {
   const seed = String(value || "").toLowerCase();
+  if (/parking garage|curbside pickup/.test(seed)) return "parking_pickup";
   if (/garage|workshop|roadside|gas station|car meet|race-adjacent/.test(seed)) return "motors";
   if (/training|stadium|equipment|post-practice/.test(seed)) return "training";
   if (/office|hotel lobby|private event|work-adjacent/.test(seed)) return "work_event";
@@ -41,15 +42,15 @@ export function instantStorySceneSeed(draft: Record<string, unknown> = {}, idea 
   if (cleanIdea) return `USER-SPECIFIED DIRECTION: ${cleanIdea}`;
   const profile = `${draft?.role || ""} ${draft?.description || ""} ${draft?.personality || ""} ${draft?.relationship || ""} ${draft?.world || ""} ${draft?.scenario || ""}`.toLowerCase();
   const specialized: string[] = [];
-  if (/race|racing|racer|garage|car|track|circuit|street race/.test(profile)) specialized.push("garage, workshop, roadside stop, gas station, car meet, or race-adjacent place");
-  if (/athlete|captain|team|practice|training|football|soccer|basketball|polo|sport/.test(profile)) specialized.push("training facility, stadium exterior, equipment pickup, recovery stop, or post-practice food run");
+  if (/\b(?:race|racing|racer|garage|car|track|circuit|street race)\b/.test(profile)) specialized.push("garage, workshop, roadside stop, gas station, car meet, or race-adjacent place");
+  if (/\b(?:athlete|captain|team|practice|training|football|soccer|basketball|polo|sport)\b/.test(profile)) specialized.push("training facility, stadium exterior, equipment pickup, recovery stop, or post-practice food run");
   if (/business|ceo|company|wealth|millionaire|billionaire|family empire|executive/.test(profile)) specialized.push("office after hours, hotel lobby, private event, restaurant, car ride, building entrance, or work-adjacent errand");
   const pool = specialized.length ? [...specialized, ...INSTANT_STORY_NON_ACADEMIC_SCENES] : INSTANT_STORY_NON_ACADEMIC_SCENES;
   const recent = new Set((Array.isArray(recentSceneSeeds) ? recentSceneSeeds : []).map((item) => clean(item, 240)).filter(Boolean));
   const recentFamilies = new Set([...recent].map(instantStorySceneFamily));
   const available = pool.filter((seed) => !recent.has(seed) && !recentFamilies.has(instantStorySceneFamily(seed)));
   const candidates = available.length ? available : pool;
-  const entropy = `${variationKey}|${Date.now()}|${Math.random()}|${draft?.name || ""}`;
+  const entropy = variationKey ? `${variationKey}|${draft?.name||""}` : `${Date.now()}|${Math.random()}|${draft?.name||""}`;
   return candidates[instantStoryHash(entropy) % candidates.length];
 }
 
@@ -59,7 +60,7 @@ function academicUniverse(value = "") {
 }
 
 function chaseProfile(draft: Record<string, unknown> = {}) {
-  return /\bchase\s+beaumont\b/i.test(String(draft?.name || ""));
+  return /^chase(?:\s+beaumont)?$/i.test(String(draft?.name || ""));
 }
 
 export function instantStoryUniverseIssues(

@@ -44,14 +44,14 @@ function circleFor(npc:Record<string,any>={}){
   if(/team|captain|athlete|practice|coach|football|soccer|basketball|hockey|tennis|polo|sport/.test(blob)) return {name:"athletics",domain:"sport / team"};
   if(/class|campus|university|college|student|professor|seminar|lab/.test(blob)) return {name:"campus",domain:"university"};
   if(/family|sister|brother|mother|father|cousin|heir|staff|assistant|business|company|board/.test(blob)) return {name:"family-status",domain:"family / status / business"};
-  if(/ex|dated|flirt|crush|hookup|romantic/.test(blob)) return {name:"dating-history",domain:"dating / romantic history"};
+  if(/\b(?:ex|dated|flirt|crush|hookup|romantic)\b/.test(blob)) return {name:"dating-history",domain:"dating / romantic history"};
   if(/friend|roommate|best friend|crew/.test(blob)) return {name:"friends",domain:"friend group"};
   return {name:"general",domain:"general social world"};
 }
 
 function availabilityFor(npc:Record<string,any>={}){
   const blob=norm([npc.presence,npc.status,npc.offscreen_motion,npc.next_intention,npc.current_dynamic].join(" | "));
-  if(/left|away|travel|work|class|practice|race|meeting|busy|offscreen|gone/.test(blob)) return "occupied/off-screen unless a grounded reason brings them in";
+  if(/\b(?:left|away|travel|work|class|practice|race|meeting|busy|offscreen|gone)\b/.test(blob)) return "occupied/off-screen unless a grounded reason brings them in";
   if(/present|here|with them|at the table|in the room/.test(blob)) return "present in the live scene";
   return "unknown; do not summon automatically";
 }
@@ -103,7 +103,7 @@ export function deriveNpcEcosystemSocialNetworkV3(args:Args={}):NpcEcosystemSoci
     text(npc.offscreen_motion)?`${text(npc.name)} off-screen: ${text(npc.offscreen_motion)}`:"",
   ])).slice(0,10);
   const informationRoutes=uniq(list(args.knowledgeLedger)
-    .filter((k:any)=>!Boolean(k?.secret) || norm(k?.character_name||k?.who)===lead)
+    .filter((k:any)=>![true,1,"true"].includes(k?.secret) || norm(k?.character_name||k?.who)===lead)
     .map((k:any)=>knownRoute(k)).filter(Boolean)).slice(0,10);
   const present=list(args.sceneState?.present).map(text).filter(Boolean);
   const presentNpcCount=present.filter((name)=>![lead,user].includes(norm(name))).length;
@@ -125,7 +125,7 @@ function sentenceSplit(reply:string){return text(reply).match(/[^.!?]+[.!?]+(?:[
 function hasAnyName(value:string,names:string[]){const n=norm(value);return names.some((name)=>n.includes(norm(name)));}
 
 export function npcEcosystemIssues(args:IssueArgs={}):string[]{
-  const reply=text(args.reply), engine=args.engine||{}; if(!reply) return [];
+  const reply=String(args.reply??"").trim(), engine=args.engine||{}; if(!reply) return [];
   const issues:string[]=[];
   const nodes=list(engine.nodes) as Array<any>;
   const names=nodes.map((n)=>text(n.name)).filter(Boolean);
@@ -182,7 +182,7 @@ export function npcEcosystemIssues(args:IssueArgs={}):string[]{
 }
 
 export function sanitizeNpcEcosystemReply(reply:string,issues:string[]=[]):string{
-  let out=text(reply); if(!out) return out;
+  let out=String(reply??"").trim(); if(!out || !issues.length) return out;
   const drop=(re:RegExp)=>{ out=(out.match(/[^.!?]+[.!?]+(?:["”']+)?|[^.!?]+$/g)||[out]).filter((s)=>!re.test(s)).join(" ").replace(/\s+/g," ").trim(); };
   if(issues.includes("telepathic_social_spread")) drop(/everyone already knew|whole campus knew|word had spread to everyone|somehow everyone knew|everybody had heard/i);
   if(issues.includes("npc_protagonist_orbit_collapse")) drop(/everyone|everybody|whole group|all of them/i);

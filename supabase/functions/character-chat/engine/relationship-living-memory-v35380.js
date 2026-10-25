@@ -5,6 +5,8 @@ const uniq=(items,max=12)=>{const out=[];for(const item of items){const value=te
 const low=(v)=>text(v,5000).toLowerCase();
 
 function chemistrySignature(character={}){
+  const named={"chase beaumont":"electric, playful, socially confident; choices remain character-specific", "damon blackwood":"silent intensity; precise, selective action and guarded attention", "mateo silva":"warm refuge; concrete support and natural Spanish", "rowan hayes":"selective, cerebral attention; earned trust and slow recognition"};
+  if(named[low(character?.name)])return named[low(character.name)];
   const dna=character?.emotional_dna||{};
   if(dna.emotional_promise)return text(dna.emotional_promise,420);
   const source=low([character?.name,character?.role,character?.personality,character?.relationship,character?.speech_style,character?.affection_style].join(" "));
@@ -75,6 +77,7 @@ function deltaScores(previous={},user="",reply="",milestone="",behavior={},mind=
 
 export function deriveRelationshipLivingMemoryV35380({previous={},character={},latestUserMessage="",reply="",mindUpdate={},behaviorUpdate={},relationship={},scene={},recentUserMessages=[],recentCharacterReplies=[],messageId="",isRegeneration=false}={}){
   const base=previous&&typeof previous==="object"?previous:{};
+  if(messageId&&base.last_message_id===messageId&&!isRegeneration)return {...base};
   const milestone=detectMilestone(latestUserMessage,reply);
   const previousScores=base?.scores||{};
   const repeatedMessage=messageId && arr(base?.milestones).some(x=>x?.message_id===messageId);
@@ -101,7 +104,7 @@ export function deriveRelationshipLivingMemoryV35380({previous={},character={},l
   const delayed_payoffs=arr(base?.delayed_payoffs).map(x=>({...x,age:Math.min(99,Number(x?.age||0)+1),readiness:Number(x?.age||0)>=6?"available":(x?.readiness||"growing")})).slice(-8);
   const newHook=text(behaviorUpdate?.conversation_thread_return||mindUpdate?.anticipated_next||behaviorUpdate?.intent_resume_trigger,320);
   if(newHook&&!delayed_payoffs.some(x=>low(x?.hook)===low(newHook)))delayed_payoffs.push({hook:newHook,age:0,readiness:"growing"});
-  return {version:"3.53.80",private_thoughts,unfinished_desires,initiative,scores,chemistry_signature:chemistrySignature(character),proximity:{level:proximity,note:"Distance constrains natural physical action."},milestones:milestones.slice(-14),salient_memories:salient_memories.slice(0,12),delayed_payoffs:delayed_payoffs.slice(-10),noticed_cues,timeline_stage:scores.stage,timeline_rule:"Evidence-based and non-linear; advance, pause or regress only when earned.",last_visible_beat:text(latestUserMessage,360),last_character_beat:text(reply,360)};
+  return {version:"3.53.80",last_message_id:text(messageId,100),private_thoughts,unfinished_desires,initiative,scores,chemistry_signature:chemistrySignature(character),proximity:{level:proximity,note:"Distance constrains natural physical action."},milestones:milestones.slice(-14),salient_memories:salient_memories.slice(0,12),delayed_payoffs:delayed_payoffs.slice(-10),noticed_cues,timeline_stage:scores.stage,timeline_rule:"Evidence-based and non-linear; advance, pause or regress only when earned.",last_visible_beat:text(latestUserMessage,360),last_character_beat:text(reply,360)};
 }
 
 export function buildRelationshipLivingMemoryV35380({character={},latestUserMessage="",relationshipState={},intelligenceState={},scene={},recentUserMessages=[],recentCharacterReplies=[]}={}){
@@ -131,6 +134,6 @@ export function relationshipLivingMemoryIssuesV35380({reply="",latestUserMessage
   if(charged&&/\b(so what now|what now\?|i don't know yet|not sure yet|we'll see|anyway)\b/.test(r))issues.push("v35380-post-milestone-reset");
   if(state?.initiative?.character_should_take_next_major_move&&/\b(what do you want to do|up to you|your call|you decide)\b/.test(r))issues.push("v35380-initiative-handed-back");
   if(/\b(i don't know yet|i'm not sure yet|we'll see|who knows)\b/.test(r)&&r.split(/\s+/).length<55)issues.push("v35380-indecisive-stall");
-  if(/\b(kiss me|bésame|besame)\b/.test(u)&&!/\b(kiss|kissed|kissing|lips|mouth|bes|labios|boca)\b/.test(r))issues.push("v35380-direct-romantic-action-dodged");
+  if(/\b(kiss me|bésame|besame)\b/.test(u)&&!/\b(?:don't|do not|dont|never|no)\b/.test(u)&&!/\b(?:no|not now|stop|wait|can't|cannot|won't|refus\w*|declin\w*|steps? back|stepped back)\b/.test(r)&&!/\b(kiss|kissed|kissing|lips|mouth|bes|labios|boca)\b/.test(r))issues.push("v35380-direct-romantic-action-dodged");
   return issues;
 }

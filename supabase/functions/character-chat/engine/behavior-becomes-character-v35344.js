@@ -7,11 +7,21 @@ const norm=(v="")=>clean(v).toLowerCase().normalize("NFD").replace(/[\u0300-\u03
 const arr=(v)=>Array.isArray(v)?v:[];
 const words=(v="")=>norm(v).split(/\s+/).filter(Boolean);
 
+// Signals describe observed events, not negated actions, wishes or proposals.
+function observedText(value="") {
+  return norm(value).split(/(?<=[.!?])\s+|[;\n]+/).filter(part =>
+    !/\b(?:don't|dont|do not|didn't|didnt|did not|never|won't|wont|wouldn't|wouldnt|can't|cant|cannot|not now|wish|imagine|if only)\b/.test(part) &&
+    !/\?\s*$/.test(part)
+  ).join(" ");
+}
+
 function userEventKind(v=""){
-  const t=norm(v);
-  if(/\b(?:kiss|hug|hold(?:ing)? your hand|held your hand|link(?:ed)? arms?|cross(?:ed)? my arm with yours|lean(?:ed)? (?:on|against|into) you|touch(?:ed)? your (?:arm|hand|face|cheek))\b/.test(t)) return "closeness";
+  const original=norm(v);
+  if(/\b(?:don't (?:touch|kiss|hug) me|dont (?:touch|kiss|hug) me|do not (?:touch|kiss|hug) me|stop|back off|leave me alone|go away|not now)\b/.test(original)) return "boundary";
+  const t=observedText(v);
+  if(/\b(?:kiss(?:ed|es|ing)?|hug(?:ged|s|ging)?|hold(?:ing)? your hand|held your hand|link(?:ed)? arms?|cross(?:ed)? my arm with yours|lean(?:ed)? (?:on|against|into) you|touch(?:ed)? your (?:arm|hand|face|cheek))\b/.test(t)) return "closeness";
   if(/\b(?:let go|pull(?:ed)? away|unlink(?:ed)?|step(?:ped)? back|move(?:d)? away|leave me alone|back off|not now)\b/.test(t)) return "distance";
-  if(/\b(?:sorry|apolog|forgive me|i was wrong)\b/.test(t)) return "repair";
+  if(/\b(?:sorry|apolog\w*|forgive me|i was wrong)\b/.test(t)) return "repair";
   if(/\b(?:i trust you|you choose|you decide|up to you|surprise me)\b/.test(t)) return "trust_or_delegation";
   if(/\b(?:i love you|i like you|i want you|i miss you|i need you)\b/.test(t)) return "explicit_feeling";
   if(/\b(?:no|stop|don't|dont|can't|cant|won't|wont|go away|not happening)\b/.test(t)) return "boundary";
@@ -19,13 +29,13 @@ function userEventKind(v=""){
 }
 
 function characterEventKind(v=""){
-  const t=norm(v);
+  const t=observedText(v);
   if(/\b(?:kiss(?:ed|es|ing)?|hug(?:ged|s|ging)?|held your hand|took your hand|linked arms?)\b/.test(t)) return "closeness";
-  if(/\b(?:apolog|owned the mistake|took responsibility|made amends|repair)\b/.test(t)) return "repair";
-  if(/\b(?:defend|protected|stood up for|chose your side|backed you up)\b/.test(t)) return "public_support";
-  if(/\b(?:refus|set a boundary|said no|turned .* down|gave you space|stepped back)\b/.test(t)) return "boundary_or_space";
-  if(/\b(?:admit|confess|told you the truth|revealed|opened up)\b/.test(t)) return "disclosure";
-  if(/\b(?:invite|asked you to|made a plan|changed the plan|stayed|left|waited)\b/.test(t)) return "choice";
+  if(/\b(?:apolog\w*|owned the mistake|took responsibility|made amends|repair)\b/.test(t)) return "repair";
+  if(/\b(?:defend\w*|protected|stood up for|chose your side|backed you up)\b/.test(t)) return "public_support";
+  if(/\b(?:refus\w*|set a boundary|said no|turned .* down|gave you space|stepped back)\b/.test(t)) return "boundary_or_space";
+  if(/\b(?:admit\w*|confess\w*|told you the truth|revealed|opened up)\b/.test(t)) return "disclosure";
+  if(/\b(?:invit\w*|asked you to|made a plan|changed the plan|stayed|left|waited)\b/.test(t)) return "choice";
   return "ordinary";
 }
 
@@ -45,14 +55,16 @@ function localBehaviorPattern(recentUserMessages=[],recentCharacterReplies=[]){
 
 function milestoneCandidates(latestUserMessage="",recentUserMessages=[],recentCharacterReplies=[]){
   const all=[...arr(recentUserMessages).slice(-12),latestUserMessage,...arr(recentCharacterReplies).slice(-12)];
-  const t=norm(all.join(" | "));
+  const t=all.map(observedText).join(" | ");
+  const rawEvents=all.map(norm).join(" | ");
   const candidates=[];
   const once=(label,re)=>{if(re.test(t)) candidates.push(label);};
-  once("first_or_rare_handholding",/\b(?:hold(?:ing)? (?:your|his|her) hand|held (?:your|his|her) hand|took (?:your|his|her) hand)\b/);
-  once("first_or_rare_linked_arms",/\b(?:link(?:ed)? arms?|cross(?:ed)? my arm with yours|hook(?:ed)? .* arm)\b/);
+  once("handholding_observed",/\b(?:hold(?:ing)? (?:your|his|her) hand|held (?:your|his|her) hand|took (?:your|his|her) hand)\b/);
+  once("linked_arms_observed",/\b(?:link(?:ed)? arms?|cross(?:ed)? my arm with yours|hook(?:ed)? .* arm)\b/);
   once("kiss",/\bkiss(?:ed|es|ing)?\b/);
   once("public_defense",/\b(?:defend|stood up for|backed you up|chose your side)\b/);
   once("partial_confession",/\b(?:i like you|i miss you|i want you|feelings for you|admit(?:ted)? .* feel)\b/);
+  if(/\b(?:leave me alone|go away|don't touch me|dont touch me)\b/.test(rawEvents)) candidates.push("serious_conflict");
   once("serious_conflict",/\b(?:we're done|were done|leave me alone|go away|betray|lied to me|fight|argument|don't touch me|dont touch me)\b/);
   once("repair",/\b(?:forgive me|i was wrong|i'm sorry|im sorry|made amends|took responsibility)\b/);
   return [...new Set(candidates)].slice(0,6);
@@ -79,7 +91,7 @@ function identityAnchor(character={}){
 }
 
 function attachmentWithoutOrbit(reply=""){
-  const t=norm(reply);
+  const t=observedText(reply);
   const obsession=/\b(?:nothing else mattered|forgot all about work|ditched everything|cancelled everything for you|canceled everything for you|you were all he cared about|you were all she cared about|his entire world was you|her entire world was you|could think of nothing else|only thing that mattered was you)\b/.test(t);
   return obsession;
 }
@@ -88,16 +100,16 @@ function personalityReplacement(reply="",character={}){
   const t=norm(reply);
   const anchor=norm(identityAnchor(character));
   if(!anchor) return false;
-  const therapy=/\b(?:your feelings are valid|i hear you|thank you for sharing|i respect whatever you decide|you deserve better|safe space)\b/.test(t);
-  const pacifist=/\b(?:i never want conflict|i would never argue|i dont get angry|i don't get angry|i never get jealous)\b/.test(t);
-  const coreConflict=/\b(?:sarcast|provoc|pride|guarded|intense|rival|blunt|competitive|stubborn|teas|impulsive)\b/.test(anchor);
-  return coreConflict && (therapy||pacifist);
+  const pacifist=/\b(?:i never get angry|i never want conflict|i would never argue|i dont get angry|i don't get angry|i never get jealous)\b/.test(t);
+  const coreConflict=/\b(?:sarcast\w*|provoc\w*|pride|guarded|intense|rival\w*|blunt|competitive|stubborn|teas\w*|impulsive)\b/.test(anchor);
+  // A sincere acknowledgment alone does not erase a guarded personality.
+  return coreConflict && pacifist;
 }
 
 function trustRepairShortcut(reply="",behavior={}){
-  const prior=norm([behavior?.conflict_scar,behavior?.trust_repair_evidence,behavior?.repair_debt,behavior?.forgiveness_gate].join(" | "));
+  const prior=norm([behavior?.conflict_scar,behavior?.repair_debt,behavior?.forgiveness_gate].filter(Boolean).join(" | "));
   if(!prior) return false;
-  const instant=/\b(?:everything was fine|all forgiven|trust was fully restored|back to normal|nothing between them had changed|that fixed everything|problem solved)\b/.test(norm(reply));
+  const instant=/\b(?:everything was fine|all forgiven|trust was fully restored|back to normal|nothing between them had changed|that fixed everything|problem solved)\b/.test(observedText(reply));
   return instant;
 }
 
@@ -112,7 +124,7 @@ function regenerationAmnesia(reply="",isRegeneration=false,behavior={}){
     behavior?.milestone_summary,
   ].filter(Boolean).join(" | "),1800);
   if(!prior) return false;
-  const reset=/\b(?:as if they had just met|like strangers again|nothing had changed between them|back to square one|starting over|felt completely new|no history between them)\b/.test(norm(reply));
+  const reset=/\b(?:as if they had just met|like strangers again|nothing had changed between them|back to square one|starting over|felt completely new|no history between them)\b/.test(observedText(reply));
   return reset;
 }
 
@@ -126,7 +138,7 @@ function timeSkipReset(reply="",timeSkip="none",behavior={}){
     behavior?.milestone_summary,
   ].filter(Boolean).join(" | "),1200));
   if(!hasResidue) return false;
-  return /\b(?:everything was normal again|all tension was gone|nothing from before mattered|they were back to exactly how they used to be|the weeks erased everything|time had fixed everything)\b/.test(norm(reply));
+  return /\b(?:everything was normal again|all tension was gone|nothing from before mattered|they were back to exactly how they used to be|the weeks erased everything|time had fixed everything)\b/.test(observedText(reply));
 }
 
 function habitDirective(pattern){
@@ -200,7 +212,7 @@ export function buildBehaviorBecomesCharacterV35344({
     "11) EXPECTATIONS ARE NOT USER FACTS: a character may learn 'pushing after a no damages access' or 'she has delegated choices several times in this chat.' They may NOT store 'she secretly wants me to chase her' or any hidden personality diagnosis.",
     "12) HABITS CAN RELAPSE: learned behavior is probabilistic, not robotic. Under pressure the character may fall back into an old defense, but the relapse should be recognizable against prior growth and can create new consequence.",
     "13) MILESTONES CHANGE BASELINE, NOT EVERY TURN: after a milestone, future behavior may become more familiar, cautious, open or charged. Do not constantly mention the milestone or replay its emotional peak.",
-    "14) MEMORY PRIORITY: identity anchor > explicit canon > visible milestones > durable consequences > repeated patterns > inferred expectations > transient mood. Never let a weak inference overwrite stronger canon.",
+    "14) MEMORY PRIORITY: explicit canon and current boundaries > identity anchor > visible milestones > durable consequences > repeated patterns > inferred expectations > transient mood. Never let a weak inference overwrite stronger canon.",
     "15) PERSISTENCE OUTPUT: human_behavior_update may update relationship_history_compression, earned_behavior_habits, trait_drift_summary, conflict_scar, relationship_expectations, trust_repair_evidence, milestone_summary, time_skip_carryover and regeneration_continuity_anchor. Keep each compact, character-side, and grounded in visible canon.",
     "16) MILESTONE OUTPUT: when this turn visibly earns a new milestone, presence_update.relationship_milestone or continuity_update.timeline_event may record it once. Do not duplicate an existing milestone under new wording.",
     `PRIOR COMPRESSED HISTORY: ${history||"none"}. PRIOR HABITS: ${habits||"none"}. PRIOR TRAIT DRIFT: ${traitDrift||"none"}.`,

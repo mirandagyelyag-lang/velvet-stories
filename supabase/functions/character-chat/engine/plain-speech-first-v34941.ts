@@ -16,7 +16,7 @@ export function buildPlainSpeechFirstV34941({latestUserMessage='',recentCharacte
   'DELETE THE WRITER: no “dry slide of his gaze”, “slow unbothered nod”, “practiced mask”, “casual indifference”, or narration that labels how cool/guarded the character appears.',
   'ORDINARY IS A SUCCESS STATE. “Wanted a drink.” / “I don’t know.” / “Because I felt like it.” / “No.” can be better characterization than a polished line.',
   'FINAL PRIVATE CHECK: if the reply sounds written to make the character look cool, witty, dangerous, detached, flirty or quotable, strip it back one more time.',
-  `CHARACTER: ${String(character?.name||'').slice(0,80)}. LIVE USER: ${String(latestUserMessage||'').slice(0,700)}. RECENT: ${(recentCharacterReplies||[]).slice(-5).join(' | ').slice(0,1200)}.`
+  `CHARACTER: ${String(character?.name||'').slice(0,80)}. LIVE USER: ${String(latestUserMessage||'').slice(0,700)}. RECENT: ${(Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-5).join(' | ').slice(0,1200)}.`
  ].join('\n');
 }
 
@@ -42,7 +42,7 @@ export function plainSpeechFirstV34941Issues(reply:any, latest:any='', recent:an
  const clauses=s.split(/[.!?]+/).map(x=>x.trim()).filter(Boolean);
  if(clauses.length>=2 && clauses.length<=3 && s.split(/\s+/).length<=18 && /\b(?:take your pick|your choice|obviously|apparently|simple as that)\b/.test(s)) issues.push('plain_speech_quotable_construction');
  // Recent repetition of detached/cool framing is a structural loop.
- const r=(recent||[]).slice(-5).map(norm).join(' ');
+ const r=(Array.isArray(recent)?recent:[]).slice(-5).map(norm).join(' ');
  if(/\b(?:unbothered|indifferent|dry)\b/.test(n) && /\b(?:unbothered|indifferent|dry)\b/.test(r)) issues.push('plain_speech_detachment_performance_loop');
  return [...new Set(issues)];
 }

@@ -4,8 +4,9 @@ const norm = (v:any) => clean(v,4000).toLowerCase().replace(/[’]/g,"'");
 export function buildHumanCognitionBriefV34930({ latestUserMessage='', recentUserMessages=[], recentCharacterReplies=[], character={}, mind={}, behavior={}, scene={}, relationship={} }:any={}) {
   const latest=clean(latestUserMessage,700);
   const prior=clean((recentCharacterReplies||[]).at(-1),420);
-  const previousUser=clean((recentUserMessages||[]).at(-2),320);
-  const directQuestion=/\b(?:why|what|who|where|when|how|did|do|are|were|is|was|can|could|would|will)\b[^.!]*\??$/i.test(latest);
+  const userTurns=Array.isArray(recentUserMessages)?recentUserMessages:[];
+  const previousUser=clean(userTurns.at(-1)===latestUserMessage?userTurns.at(-2):userTurns.at(-1),320);
+  const directQuestion=/\?/.test(latest)||/^(?:why|what|who|where|when|how|did|do|are|were|is|was|can|could|would|will)\b/i.test(latest);
   const topicShift=/\b(?:anyway|anyways|moving on|whatever,? so|back to|so,? why|so,? what)\b/i.test(latest);
   const uncertainty=/\b(?:maybe|i guess|i think|not sure|don't know|dont know|probably|apparently)\b/i.test(latest);
   const shortTurn=latest.split(/\s+/).filter(Boolean).length <= 12;
@@ -37,6 +38,6 @@ export function humanCognitionV34930Issues(reply='', latestUserMessage='', recen
   if(/\b(?:i know you(?:'re| are)|you clearly|you obviously|deep down you|i can tell you(?:'re| are))\b/.test(t) && !/\b(?:you said|you told|you just said)\b/.test(t)) issues.push('human_cognition_mindread');
   const recent=norm((recentCharacterReplies||[]).slice(-3).join(' '));
   const maneuvers=[['curious',/\b(?:curious|wanted to see|wanted to know|wondered)\b/],['deflect',/\b(?:does it matter|do i need a reason|why do you care)\b/],['quip',/\b(?:someone has to|where's the fun|careful what you wish|keep you on your toes)\b/]] as const;
-  for(const [,p] of maneuvers){ if(p.test(t) && (recent.match(p)||[]).length>=2) issues.push('human_cognition_semantic_repetition'); }
+  for(const [,p] of maneuvers){ if(p.test(t) && (recent.match(new RegExp(p.source,"g"))||[]).length>=2) issues.push('human_cognition_semantic_repetition'); }
   return [...new Set(issues)];
 }

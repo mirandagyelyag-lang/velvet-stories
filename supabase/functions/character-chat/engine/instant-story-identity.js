@@ -24,6 +24,8 @@ export function buildInstantStoryIdentity(draft = {}, variationKey = '', recentS
   if (dna.official_engine === 'chase_electricity_v1') {
     return `FOCUS=chase_electricity\nCREATOR-APPROVED CHASE ENGINE — OVERRIDES GENERIC FACET/PACING SUGGESTIONS\n${CHASE_ELECTRICITY_ENGINE}\n${CHASE_OPENING_VARIETY_RULE}\nUse the current setting and relationship history. Let ongoing relationships evolve. The sample is a voice/dynamics reference, not canon or a plot to copy. Vary setting, trigger, other people's attention, his provocation and the involuntary emotional turn. Never author the user's action or feelings.\nAPPROVED RHYTHM REFERENCE\n${CHASE_APPROVED_OPENING}`;
   }
+  draft={...draft};
+  for(const key of FACETS){const snake=key.replace(/[A-Z]/g,ch=>'_'+ch.toLowerCase());if(!draft[key]&&draft[snake])draft[key]=draft[snake];}
   const facets = FACETS.filter((key) => String(draft[key] || '').trim());
   if (!facets.length) return '';
   const history = Array.isArray(recentSeeds) ? recentSeeds.map(String) : [];
@@ -46,7 +48,7 @@ Creator-authored focal trait: ${source}
 
 export function chaseOpeningIssues(opening = '', draft = {}) {
   const dna = draft.emotional_dna || draft.emotionalDna || {};
-  if (dna.official_engine !== 'chase_electricity_v1' && !/^chase(?:\s|$)/i.test(String(draft.name || ''))) return [];
+  if (dna.official_engine !== 'chase_electricity_v1') return [];
   const text = String(opening);
   const issues = [];
   // Hard-gated by character-chat through chaseOpeningIssues, unlike advisory director flags.
@@ -61,14 +63,6 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
   const diversion = /\b(?:caught sight of you|gaze|eyes|looked toward you|spotted you|fixed on you|locking onto you)\b/.test(normalized);
   const exitToUser = /\b(?:stepped away|walked over|toward you|stopped just a few feet from you|stopped a few feet from you|approached you|made his way to you)\b/.test(normalized);
   if (solicitation && diversion && exitToUser) issues.push("chase_recycled_solicitation_to_user");
-  // Reject the recurrent flirt -> glance at user -> abandon NPC -> empty closer structure.
-  // Evaluate the sequence, not the location or a specific prop.
-  const admirer = /\b(?:student|girl|woman|friend|she|her|someone|admirer)\b/i.test(text);
-  const flirt = /\b(?:laugh(?:ed|ing)?|teas(?:ed|ing)?|flirt(?:ed|ing)?|brush(?:ed|ing)?|lean(?:ed|ing)?|touch(?:ed|ing)?|personal space)\b/i.test(text);
-  const noticesUser = /\b(?:eyes|gaze|sight|look|spott?ed|catching sight)\b/i.test(text) && /\byou\b/i.test(text);
-  const leavesNPC = /\b(?:stepped away|walked away|didn.t look back|closing the distance|stopped (?:just )?a few feet|walked (?:over|toward)|turned (?:away|his back))\b/i.test(text);
-  if (admirer && flirt && noticesUser && leavesNPC) issues.push('chase_recycled_flirt_glance_abandon');
-  if (admirer && flirt && noticesUser && /\b(?:find someone else|i.m not going|i am not going|not going over there)\b/i.test(text)) issues.push('chase_empty_social_rejection');
   const emptyExit = /\b(?:i m done with|i am done with|i m starting to think|i don t care about|i m done funding)\b/.test(normalized);
   if (solicitation && exitToUser && emptyExit) issues.push("chase_empty_bureaucratic_closer");
   if (/\b(?:dreadfully monotonous|care for a reprieve|i was hoping you(?:'|’)d show up|you(?:'|’)re enjoying this)\b/i.test(text)) issues.push('chase_stock_flirt_or_explanatory_close');
@@ -93,24 +87,19 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
 }
 
 export function buildChaseInstantPrompt(draft = {}, idea = '', recentOpenings = []) {
-  const profile = { name: draft.name, role: draft.role, description: draft.description, personality: draft.personality, habits: draft.habits, values: draft.values, coreMotivation: draft.coreMotivation, emotionalDefense: draft.emotionalDefense, contradictions: draft.contradictions, speechStyle: draft.speechStyle, voiceVocabulary: draft.voiceVocabulary, world: draft.world, relationship: draft.relationship, boundaries: draft.boundaries };
-  // A single scene director: vary the causal engine, not just the location or prop.
-  // The edge function may provide a separate premise; these are complementary
-  // creative priorities, never another mandatory opening sequence.
-  const sceneEngines = [
-    "A public gamble Chase initiates creates an immediate, tangible consequence.",
-    "An established rivalry changes direction when the other person makes a smart move.",
-    "A playful exchange escalates because Chase makes an unexpected but understandable choice.",
-    "A shared practical problem forces Chase to reveal a surprising competence or weakness.",
-    "An interrupted celebration becomes complicated by a genuine competing desire.",
-    "A social misunderstanding has consequences that cannot be resolved by walking away.",
-    "Chase risks something personal in front of other people without making a speech.",
-    "A third party changes the balance of an ongoing interaction and stays consequential."
+  const profile = { name: draft.name, role: draft.role, description: draft.description, personality: draft.personality, habits: draft.habits, values: draft.values, coreMotivation: draft.coreMotivation, emotionalDefense: draft.emotionalDefense, contradictions: draft.contradictions, speechStyle: draft.speechStyle||draft.speech_style, voiceVocabulary: draft.voiceVocabulary, world: draft.world, relationship: draft.relationship, boundaries: draft.boundaries };
+  const narrativeModes = [
+    "LIVE RIVALRY: a rival challenges Chase over an established personal or social conflict, never a sport, team, lineup, fraternity roster or scrimmage; Chase answers the rival directly, and the rival remains active.",
+    "SOCIAL FLIRTATION: someone openly flirts with Chase while another person reacts; he responds in his own voice and the interaction remains unresolved without leaving.",
+    "UNEXPECTED CONSEQUENCE: a public misunderstanding or previous commitment catches up to Chase; he acts to address it instead of recruiting the creator.",
+    "FRIEND-GROUP PRESSURE: two other people want different things from Chase; he takes a side and the disagreement continues on-page.",
+    "IMPULSIVE PROVOCATION: Chase initiates a risky but plausible remark or action toward another person; their response immediately complicates matters.",
+    "SHARED PUBLIC MOMENT: an event interrupts the group; Chase acts first and makes the situation more charged while respecting the creator's agency."
   ];
   const fingerprint = JSON.stringify(recentOpenings || []) + String(idea || "") + String(draft?.name || "");
-  const modeIndex = [...fingerprint].reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) >>> 0, 17) % sceneEngines.length;
-  const narrativeMode = sceneEngines[modeIndex];
-  return `Write one new playable opening for Chase. About 80-150 words, no more than 190. Only the scene.\nSINGLE CHASE SCENE DIRECTOR: ${narrativeMode}\nThe premise is a creative direction, NEVER a required sequence of admirer, interruption, glance, abandonment, approach and one-line closer. If an upstream CHASE PREMISE COMPILER suggests that sequence, reinterpret it as a different causal event; do not follow its choreography. No mandatory third-party opener: the scene may begin with Chase's own action, an unfolding group conflict, or a concrete shared event. Vary the opening's first actor, social stakes, location and ending mechanism. A supporting person should matter when present, not appear merely as a disposable admirer. A supporting person should act visibly, Chase should respond, and the consequence should remain live. Use anonymous supporting people, not invented names. Attribute dialogue clearly to Chase. Do not invent the creator's actions, academic background or location. Never write a group-abandonment/complaint/invitation plot.\nThe creator-approved engine and sample take precedence over generic profile adjectives and stock habits. Read the approved sample for its easy spoken rhythm and the moment his reaction escapes him. Chase enjoys being wanted. He also gravitates toward you without knowing exactly what that means. He can be bold and sarcastic, but his lines should sound like something he says on impulse, not jokes an author prepared.
+  const modeIndex = [...fingerprint].reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) >>> 0, 17) % narrativeModes.length;
+  const narrativeMode = narrativeModes[modeIndex];
+  return `Write one new playable opening for Chase. About 80-150 words, no more than 190. Only the scene.\nMANDATORY NARRATIVE PREMISE: ${narrativeMode}\nThis is a structural requirement, not a prop or synonym swap. A supporting person should act visibly, Chase should respond, and the consequence should remain live. Use anonymous supporting people, not invented names. Attribute dialogue clearly to Chase. Do not invent the creator's actions, academic background or location. Never write a group-abandonment/complaint/invitation plot.\nThe creator-approved engine and sample take precedence over generic profile adjectives and stock habits. Read the approved sample for its easy spoken rhythm and the moment his reaction escapes him. Chase enjoys being wanted. He also gravitates toward you without knowing exactly what that means. He can be bold and sarcastic, but his lines should sound like something he says on impulse, not jokes an author prepared.
 Build one plausible moment, not a demonstration of those traits. Never recycle the plot where Chase walks away from friends, complains about a seminar, politics, classwork or boring people, then invites the creator to leave or come inside. Changing the destination, topic or objects does not make this a new plot. Begin with an unfolding third-party interaction that continues on page, and let Chase make a consequential decision without relocating the creator. HARD BAN on the semantic plot of Chase being annoyed by people or campus obligations, walking away from them toward the creator, mentioning his car or a parking lot, and hinting they should leave. Swapping election talk for flyers, keys for a jacket, or a command for a hint is STILL the same rejected plot. Start with an active third-party interaction that stays alive on-page, and have Chase make a meaningful choice inside the current setting. Begin close to the interaction. Choose details because they matter now. A supporting person can remain involved, have their own purpose or be absent; do not insert a disposable girl who interrupts merely to prove Chase is popular. Do not follow a mandatory admirer/approach/quip/interruption sequence. Not every line is a provocation, and the emotional change can be small but must affect the interaction.
 Give Chase a specific personal impulse toward the user in this moment, something he actually wants to say, offer, risk or do. Let the pressure come from that impulse and something in the live situation that catches him off guard. His change of feeling must change a spoken line, priority or decision; a stopped key ring or a smile that does not reach his eyes is not that change. He enjoys other people and their attention; do not make him an aloof bored charmer who pretends to care about everyone until the user rescues him. The charged beat must be concrete enough for the user to engage with, rather than a generic greeting. Don't explain it, announce chemistry, perform hand/eye choreography or end by waiting for an answer. Leave a live moment for the user's next turn.
 The user has not acted yet. Write only Chase/world, addressing the user as you. Do not invent their gaze, jealousy, posture, silence, possessions, actions, history or feelings, including inside dialogue. "Don't look at me like that" assumes a user action. Prefer a consequential action involving the current people or situation, not an invitation to escape. Clear speaker attribution; only configured names.
@@ -142,7 +131,7 @@ ${String(opening).slice(0, 2400)}`;
 
 
 export function buildNathanInstantPrompt(draft = {}, idea = '', recentOpenings = []) {
-  const profile = { name: draft.name, role: draft.role, personality: draft.personality, description: draft.description, relationship: draft.relationship, world: draft.world, speechStyle: draft.speechStyle, boundaries: draft.boundaries };
+  const profile = { name: draft.name, role: draft.role, personality: draft.personality, description: draft.description, relationship: draft.relationship, world: draft.world, speechStyle: draft.speechStyle||draft.speech_style, boundaries: draft.boundaries };
   return `Write one fresh playable opening for Nathan Foster, about 90-160 words, no more than 190. Output only finished scene prose.
 CREATOR-APPROVED ENGINE AND SAMPLE — OVERRIDE GENERIC PROFILE HABITS AND FORMAL PROSE
 ${NATHAN_EXCEPTION_ENGINE}
@@ -187,7 +176,7 @@ export function nathanOpeningIssues(opening = '', draft = {}, idea = '') {
 
 
 export function buildAlexanderInstantPrompt(draft = {}, idea = '', recentOpenings = []) {
-  const profile = { name: draft.name, role: draft.role, personality: draft.personality, relationship: draft.relationship, world: draft.world, affectionStyle: draft.affectionStyle, boundaries: draft.boundaries };
+  const profile = { name: draft.name, role: draft.role, personality: draft.personality, relationship: draft.relationship, world: draft.world, affectionStyle: draft.affectionStyle||draft.affection_style, boundaries: draft.boundaries };
   return `Write one fresh playable opening for Alexander Bennett (Alex), about 90-160 words, no more than 190. Only finished prose.
 CREATOR-APPROVED ENGINE — PRIORITY OVER GENERIC STYLE
 ${ALEXANDER_DEVOTION_ENGINE}

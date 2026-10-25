@@ -341,7 +341,7 @@ export function narrativeDirectorIssuesV35334({
   const changed=storyChange(t);
   const moved=locationChange(t);
 
-  if(moved && !changed) issues.push("location_change_without_story_change");
+  if(moved && !changed && !/\b(?:go|walk|drive|head|leave|enter|arrive|vamos|vayamos|entremos|salgamos)\b/i.test(String(latestUserMessage))) issues.push("location_change_without_story_change");
   if(state.overripe && !changed) issues.push("scene_lifecycle_overstayed");
   if(state.needsEvent && conversationHeavy(t) && !eventSignal(t)) issues.push("conversation_not_converted_to_event");
   if(arr(unresolvedThreads).length && freshConvenientHook(t) && !replyTouchesThread(t,unresolvedThreads)) {
@@ -362,7 +362,7 @@ export function narrativeDirectorIssuesV35334({
     issues.push("decorative_callback_without_payoff");
     issues.push("fresh_hook_ignored_unresolved_thread");
   }
-  if(/\b(?:kept walking|kept driving|kept going|gave a small nod|gave a short nod|said nothing|let the silence|waited|watched)\b/.test(norm(t)) && !storyChange(t)) {
+  if(/\b(?:kept walking|kept driving|kept going|gave a small nod|gave a short nod|said nothing|let the silence|waited|watched)\b/.test(norm(t)) && !storyChange(t) && state.needsEvent) {
     issues.push("turn_without_clear_purpose");
     issues.push("scene_lifecycle_overstayed");
   }
@@ -376,7 +376,7 @@ export function narrativeDirectorIssuesV35334({
   }
   // A direct user question can legitimately keep the current scene in place.
   // Only the pacing finding is waived; agency, scope and continuity still apply.
-  const directQuestion = /[?¿]|\\b(?:what time|que hora|qué hora)\\b/i.test(String(latestUserMessage));
+  const directQuestion = /[?¿]|\b(?:what time|que hora|qué hora)\b/i.test(String(latestUserMessage));
   return [...new Set(issues)].filter(issue => !(directQuestion && issue === "scene_lifecycle_overstayed"));
 }
 

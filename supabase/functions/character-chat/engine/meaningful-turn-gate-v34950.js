@@ -62,8 +62,9 @@ export function meaningfulTurnGateV34950Issues(reply='', latestUserMessage='', r
   if (!text) return [];
   const issues=[];
   if (hasMetaInstructionLeak(text)) issues.push('meaningful_turn_meta_instruction_leak');
-  if (isBareAcknowledgementTurn(text)) issues.push('meaningful_turn_bare_acknowledgement');
-  if (isTemporalAtmosphereOnly(text) || isDecorativeStillnessOnly(text)) issues.push('meaningful_turn_no_move');
+  const consentOrBoundary=/\b(?:leave me alone|give me space|stop|wait|no|do not|don't)\b/i.test(latestUserMessage);
+  if (!consentOrBoundary && isBareAcknowledgementTurn(text) && !hasPurposefulAction(text.replace(/["“][^"”]*["”]/g," "))) issues.push('meaningful_turn_bare_acknowledgement');
+  if (!consentOrBoundary && (isTemporalAtmosphereOnly(text) || isDecorativeStillnessOnly(text))) issues.push('meaningful_turn_no_move');
   const recent=(recentCharacterReplies||[]).slice(-3).map(norm);
   if (issues.length && recent.some(r=>r===norm(text))) issues.push('meaningful_turn_stalled_regeneration');
   return [...new Set(issues)];

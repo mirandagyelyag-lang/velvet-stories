@@ -6,7 +6,7 @@ export function evaluateLiveStoryV35388({reply="",character={},latestUserMessage
  const profile=[character?.name,character?.role,character?.personality,character?.relationship,character?.values,character?.fears,character?.habits,character?.contradictions,character?.coreMotivation,character?.emotionalDefense,character?.speechStyle].filter(Boolean).join(" ");
  const profileTokens=[...new Set(norm(profile).split(" ").filter(x=>x.length>=5))];
  const specificHits=profileTokens.filter(t=>n.includes(t)).length;
- const action=hasAny(text,[/\b(?:walk|step|move|reach|take|grab|open|close|leave|stay|turn|pull|push|send|call|text|drive|sit|stand|touch|kiss|hug|hand|pocket|follow|wait|choose|decide|offer|refuse|tell|ask|answer|interrupt|arrive|enter|exit)s?\b/i]);
+ const action=hasAny(text,[/\b(?:walk\w*|step\w*|move\w*|reach\w*|take|took|grab\w*|open\w*|close\w*|leave|left|stay\w*|turn\w*|pull\w*|push\w*|send|sent|call\w*|text\w*|drive|drove|sit|sat|stand|stood|touch\w*|kiss\w*|hug\w*|hand\w*|pocket\w*|follow\w*|wait\w*|choose|chose|decid\w*|offer\w*|refus\w*|tell|told|ask\w*|answer\w*|interrupt\w*|arriv\w*|enter\w*|exit\w*)s?\b/i]);
  const world=hasAny(text,[/\b(?:phone|message|door|elevator|car|class|campus|friend|room|street|music|rain|teacher|professor|party|hall|building|table|window|deadline|call)\b/i]);
  const direct=hasAny(text,[/["“][^"”]{3,}["”]/,/\b(?:yes|no|because|i want|i need|i'm|i am|i will|i won't|like you|don't want)\b/i]);
  const dead=hasAny(n,[/^\s*(?:okay|ok|sure|fine|fair enough|we'll see|i don't know yet)[.! ]*$/i,/\bi don't know yet\b/i,/\bwhat do you do\??$/i,/\bwhat happens next\??$/i]);
@@ -20,7 +20,8 @@ export function evaluateLiveStoryV35388({reply="",character={},latestUserMessage
  const objectOnlyMotion=missedCommunication&&/\b(?:lean(?:s|ed)? back|against the (?:cabinet|wall|table|counter)|tap(?:s|ped)? (?:a finger|the|his|her) .*?(?:controller|phone|table|counter)|fold(?:s|ed)? (?:his|her|their) arms|drop(?:s|ped)? (?:his|her|their) arms|shrug(?:s|ged)?|look(?:s|ed)? (?:at|back at) (?:the )?(?:controller|screen|game|cabinet))\b/i.test(n);
  const abandonsExistingBeat=missedCommunication&&/\b(?:forget the|forget about the|skip the|never mind the|screw the|ditch the|drop the)\b/i.test(n);
  const attentionInterrogation=missedCommunication&&/\b(?:where(?:'d| did) you (?:go|just go)|where were you|what were you thinking|what had your attention|what were you staring at|what were you looking at|who(?:'d| did) you (?:manage to )?tune out|who were you tuning out|what did you tune out|who else did you miss)\b/i.test(n);
- const missedNoConsequence=missedCommunication&&!physicalReengagement;
+ const acknowledgment= /\b(?:i said|i meant|repeat|repeated|paused|stopped|wait|take your time|no rush)\b/i.test(n);
+ const missedNoConsequence=missedCommunication&&!physicalReengagement&&!acknowledgment;
  const redundantMissedAttentionSpeech=missedCommunication&&/["“][^"”]*(?:not listening|weren'?t listening|wasn'?t listening|didn'?t hear|did not hear|zoning out|zoned out|miles away|tune(?:d|ing)? out|missed (?:all|that|a word)|hear (?:me|a word))[^"”]*["”]/i.test(text);
  const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-4).map(norm).filter(Boolean);
  const repeated=recent.some(r=>r.length>20&&(n===r||n.includes(r.slice(0,Math.min(90,r.length)))));
@@ -54,10 +55,10 @@ export function evaluateLiveStoryV35388({reply="",character={},latestUserMessage
  if(attentionInterrogation)issues.push("attention_interrogation_after_missed_communication");
  if(missedNoConsequence)issues.push("missed_communication_without_character_consequence");
  if(redundantMissedAttentionSpeech)issues.push("verbalizes_obvious_missed_attention");
- if(objectOnlyMotion&&!physicalReengagement)issues.push("object_motion_is_not_reengagement");
+ if(objectOnlyMotion&&!physicalReengagement&&!acknowledgment)issues.push("object_motion_is_not_reengagement");
  if(scores.storyMovement<=2&&scores.replyValue<=3)issues.push("no_story_movement");
  if(scores.initiative<=2&&text.length<180)issues.push("no_character_initiative");
- const blocking=issues.filter(x=>["dead_safe_reply","user_paraphrase_only","near_duplicate_reply","continuity_break","invented_attention_cause","verbalizes_obvious_missed_attention","scene_swap_after_missed_communication","missed_communication_without_character_consequence","abandons_existing_beat_after_missed_communication","attention_interrogation_after_missed_communication","object_motion_is_not_reengagement","verbalizes_obvious_missed_attention"].includes(x));
+ const blocking=issues.filter(x=>["dead_safe_reply","user_paraphrase_only","near_duplicate_reply","continuity_break","invented_attention_cause","scene_swap_after_missed_communication","missed_communication_without_character_consequence","abandons_existing_beat_after_missed_communication","attention_interrogation_after_missed_communication","object_motion_is_not_reengagement","verbalizes_obvious_missed_attention"].includes(x));
  return {scores,issues,blocking,collisionRisk,pass:blocking.length===0&&scores.replyValue>=3};
 }
 

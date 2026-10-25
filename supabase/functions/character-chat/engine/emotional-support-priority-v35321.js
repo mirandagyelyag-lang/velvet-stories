@@ -7,12 +7,13 @@ export function deriveEmotionalSupportPriorityV35321(latestUserMessage="",recent
   const latest=norm(latestUserMessage);
   const recent=(Array.isArray(recentUserMessages)?recentUserMessages.slice(-4):[]).map(norm).join(" | ");
   const all=(latest+" | "+recent).trim();
-  const safety=/\b(?:kill myself|suicide|suicidal|end my life|dont want to live|do not want to live|hurt myself|self harm|self-harm|matarme|suicid|no quiero vivir|hacerme dano|hacerme daño|autolesion)\b/.test(latest);
+  const safety=/\b(?:kill myself|suicide|suicidal|end my life|dont want to live|do not want to live|hurt myself|self harm|self-harm|matarme|suicid\w*|no quiero vivir|hacerme dano|hacerme daño|autolesion\w*)\b/.test(latest);
   const high=/\b(?:panic attack|cant breathe|cannot breathe|breaking down|sobbing|cant stop crying|cannot stop crying|i cant anymore|i can t anymore|i cant do this|i can t do this|desbordad|crisis|ataque de panico|ataque de pánico|no puedo mas|no puedo más|no paro de llorar|estoy destruida|estoy destruido)\b/.test(all);
   const clear=/\b(?:crying|cried|cry|tears|anxiety|anxious|depressed|depression|very sad|so sad|horrible day|awful day|family fight|fought with my family|lonely|overwhelmed|llorando|llore|lloré|ansiedad|depresion|depresión|muy triste|pelee con mi familia|peleé con mi familia|me siento sola|me siento solo|abrumad)\b/.test(all);
   const mild=/\b(?:bad day|rough day|sad|upset|stressed|stress|not okay|not fine|malo dia|mal dia|mal día|triste|molesta|molesto|estres|estrés|no estoy bien)\b/.test(latest);
   const physical=/\b(?:my chest hurts|chest pain|chest hurts|passed out|pass out|fainted|fainting|lost consciousness|unconscious|bleeding|sliced into (?:my|her|your) (?:arm|forearm)|me desmaye|me desmayo|dolor de pecho|me duele el pecho|sangrando)\b/.test(all);
-  const level=safety?3:physical?2:high?2:clear?2:mild?1:0;
+  const recovered=/\b(?:im okay now|i am okay now|i feel better|feeling better|ya estoy bien|me siento mejor|estoy mejor)\b/.test(latest);
+  const level=safety?3:recovered?0:physical?2:high?2:clear?2:mild?1:0;
   return {
     active:level>0,
     level,
@@ -40,7 +41,7 @@ export function buildEmotionalSupportPriorityV35321({character={},latestUserMess
     "CARE OVERRIDES PERFORMANCE: defensive sarcasm, rivalry, aloofness and social charm must not make credible distress into mockery, abandonment threats, coercion or proof of romantic ownership.",
     "CHARACTER-SPECIFIC CARE="+style,
   ];
-  if(norm(character?.name)==="chase beaumont"&&s.level>=2&&!s.safety){
+  if(/^chase(?: beaumont)?$/.test(norm(character?.name))&&s.level>=2&&!s.safety){
     common.push(
       "CHASE — FEAR BREAKS THE PERFORMANCE: credible distress can interrupt his swagger. Let the scene show an involuntary, specific failure of his usual defense: an abandoned joke, an unexpectedly plain question, a repeated name, a disrupted sentence, or a choice to stay that costs him something. Choose what fits this beat; do not repeat a checklist.",
       "Practical help alone, clenched jaws, hard voices and orders do not express the emotional stakes. Let his next words or choice reveal what this particular moment did to him. Do not explain every gesture.",
@@ -60,7 +61,7 @@ function careSignal(reply=""){
 }
 function deflectionSignal(reply=""){
   const t=norm(reply);
-  return /\b(?:anyway|speaking of|party|bartender|champagne|who was that guy|who is that guy|jealous|kissed|kiss you|flirt|afterparty|game|bet|anyway nate|anyway .*friend)\b/.test(t);
+  return /\b(?:lets party|lets get drunk|who was that guy|who is that guy|kiss you|lets hook up|anyway .*friend)\b/.test(t);
 }
 export function emotionalSupportPriorityIssuesV35321({reply="",latestUserMessage="",recentUserMessages=[]}={}){
   const s=deriveEmotionalSupportPriorityV35321(latestUserMessage,recentUserMessages);

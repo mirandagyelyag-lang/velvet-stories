@@ -30,12 +30,12 @@ function actualDeparture(value=""){
   const raw=String(value||"");
   const t=norm(raw);
   const staged=[...raw.matchAll(/\*([^*]+)\*/gs)].map(m=>norm(m[1])).join(" ");
-  const all=`${t} ${staged}`;
+  const all=`${t} ${staged}`.replace(/\b(?:if|when) i (?:leave|walk away|go home)\b/g, "").replace(/\bi (?:leave|left) (?:my|the|a|an|your) (?:bag|book|phone|keys|note|message|coat)\b/g, "");
   return /\b(?:i storm off|i stormed off|i walk away|i walked away|i leave|i left|i walk out|i walked out|i head out|i headed out|i go home|i went home|i run off|i ran off|i turn and leave|i turned and left|i push past .* and leave|i brush past .* and leave|i get out of there|i got out of there|me voy|me fui|me largo|me largue|me largué|me alejo|me alej[eé]|salgo de ahi|salgo de aquí|me voy de ahi|me voy de aquí)\b/.test(all);
 }
 
 function activePursuit(reply=""){
-  const t=norm(reply);
+  const t=norm(reply).replace(/\b(?:didnt|did not|never|not|no longer)\s+(?:follow\w*|go(?:es)? after|went after|walk\w* after|pursu\w*)\b/g, "");
   return /\b(?:went after|goes after|go after|followed|follows|follow after|walked after|walks after|moved after|moves after|stepped after|steps after|jogged after|jogs after|hurried after|hurries after|caught up|catches up|matched .* pace|matches .* pace|fell into step|falls into step|came after|comes after|headed after|heads after|pushed through .* after|slipped past .* after|started after|starts after|crossed .* after|crosses .* after)\b/.test(t);
 }
 
@@ -86,11 +86,11 @@ export function pursuitEmotionPriorityV35265Issues({
 }={}){
   const context=[...(Array.isArray(recentUserMessages)?recentUserMessages.slice(-3):[]),latestUserMessage].join(" | ");
   const effective=effectiveUserBeat(latestUserMessage,recentUserMessages);
-  if(!actualDeparture(effective)) return [];
   if(explicitNoPursuit(context)) {
     return activePursuit(reply) ? ["pursuit_boundary_violated"] : [];
   }
 
+  if(!actualDeparture(effective)) return [];
   const issues=[];
   if(!activePursuit(reply)) issues.push("required_pursuit_missing");
   if(staticOrRelease(reply)) issues.push("departure_passively_released");

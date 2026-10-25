@@ -23,7 +23,7 @@ export function immediateTurnContinuityIssues(reply = "", latestUserMessage = ""
       if (p.length < 140) return false;
       const previousWords = words(p);
       const shared = [...currentWords].filter(w => previousWords.has(w)).length;
-      return shared / Math.max(1, Math.min(currentWords.size, previousWords.size)) > 0.92
+      return shared / Math.max(1, currentWords.size + previousWords.size - shared) > 0.92
         && Math.abs(p.length - text.length) / Math.max(p.length, text.length) < 0.18;
     });
     if (overlap) issues.push("near_duplicate_character_reply");
@@ -55,7 +55,7 @@ export function immediateTurnContinuityIssues(reply = "", latestUserMessage = ""
 
   const firstConcreteSeat = text.search(/\b(?:couch|sofa|chair|seat|stool|bench|bed|floor)\b/);
   const danglingSeat = text.search(/\b(?:drop(?:s|ped|ping)?|sit(?:s|ting)?|sat|settle(?:s|d|ing)?|collapse(?:s|d|ing)?)\s+(?:down\s+)?(?:on|onto|into)\s+it\b/);
-  if (danglingSeat >= 0 && (firstConcreteSeat < 0 || danglingSeat < firstConcreteSeat)) issues.push("dangling_scene_reference");
+  if (!/\b(?:couch|sofa|chair|seat|stool|bench|bed|floor)\b/.test(previous) && danglingSeat >= 0 && (firstConcreteSeat < 0 || danglingSeat < firstConcreteSeat)) issues.push("dangling_scene_reference");
 
   const userCarriesFood = /\b(?:i|we)\s+(?:took|take|carried|carry|brought|bring|picked up|held|have|had)\b.{0,55}\b(?:my|our)\s+(?:food|meal|order|container|plate|drink)\b/.test(latest);
   const replyHandsBackFood = /\b(?:pass(?:es|ed|ing)?|hand(?:s|ed|ing)?|give(?:s|gave|giving)|slide(?:s|d|ing)?)\s+(?:you|her|him|them)\b.{0,35}\b(?:your|her|his|their)\s+(?:food|meal|order|container|plate|drink)\b/.test(text);
@@ -86,12 +86,12 @@ export function immediateTurnContinuityIssues(reply = "", latestUserMessage = ""
 
   // An accepted invitation keeps its named destination. A preference for quiet
   // changes the atmosphere, not the destination or the character's prior plan.
-  const userAccepts = /\\b(?:yeah|yes|sure|okay|ok|sounds good|let'?s go|i'?m in|dale|si|vamos)\\b/.test(latest);
-  const userCancels = /\\b(?:instead|rather go|not going|don'?t want to go|change of plans|otro lugar|mejor no)\\b/.test(latest);
-  const rooftopPlan = /\\b(?:rooftop|roof terrace|azotea|terraza)\\b/.test(previous)
-    && /\\b(?:head|go|going|up|drink|sunset|meet|come|join|about to)\\b/.test(previous);
-  const replyRedirects = /\\b(?:back way out of here|let'?s get out of here|somewhere else|different place|my car'?s parked|come to my car|head to the parking lot)\\b/.test(text);
-  if (rooftopPlan && userAccepts && !userCancels && replyRedirects && !/\\b(?:rooftop|roof terrace|azotea|terraza)\\b/.test(text)) {
+  const userAccepts = /\b(?:yeah|yes|sure|okay|ok|sounds good|lets go|i'?m in|dale|si|vamos)\b/.test(latest);
+  const userCancels = /\b(?:instead|rather go|not going|dont want to go|change of plans|otro lugar|mejor no)\b/.test(latest);
+  const rooftopPlan = /\b(?:rooftop|roof terrace|azotea|terraza)\b/.test(previous)
+    && /\b(?:head|go|going|up|drink|sunset|meet|come|join|about to)\b/.test(previous);
+  const replyRedirects = /\b(?:back way out of here|let'?s get out of here|somewhere else|different place|my cars parked|come to my car|head to the parking lot)\b/.test(text);
+  if (rooftopPlan && userAccepts && !userCancels && replyRedirects && !/\b(?:rooftop|roof terrace|azotea|terraza)\b/.test(text)) {
     issues.push("accepted_destination_plan_dropped");
   }
 

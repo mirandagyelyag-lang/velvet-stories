@@ -47,12 +47,12 @@ export function buildHumanMemoryPersonalHistoryV34933({character={},mind={},beha
 export function humanMemoryPersonalHistoryV34933Issues(reply='',latestUserMessage='',recentCharacterReplies:any[]=[]){
   const t=norm(reply), latest=norm(latestUserMessage), recent=norm((recentCharacterReplies||[]).slice(-5).join(' '));
   const issues:string[]=[]; if(!t)return issues;
-  if(/\bremember when\b/.test(t) && !/\bremember when\b/.test(latest) && recent.length<40) issues.push('human_memory_fake_shared_nostalgia');
+  if(!/\?/.test(String(reply||'')) && /\bremember when\b/.test(t) && !/\bremember when\b/.test(latest) && recent.length<40) issues.push('human_memory_fake_shared_nostalgia');
   if(/\b(?:like you always do|you always do this|every single time|like always|as usual)\b/.test(t) && !/\b(?:always|every time|as usual)\b/.test(latest+recent)) issues.push('human_memory_unsupported_frequency');
   if(/\b(?:last week|last month|last year|two years ago|three years ago|for years|since freshman year|since high school)\b/.test(t) && !/\b(?:last week|last month|last year|years ago|for years|freshman|high school)\b/.test(latest+recent)) issues.push('human_memory_invented_timestamp');
-  if(/\b(?:you said|you told me|you promised|we agreed|you swore)\b/.test(t) && recent.length<20 && !/\b(?:said|told|promised|agreed|swore)\b/.test(latest)) issues.push('human_memory_unsupported_commitment');
+  if(!/\?/.test(String(reply||'')) && /\b(?:you said|you told me|you promised|we agreed|you swore)\b/.test(t) && recent.length<20 && !/\b(?:said|told|promised|agreed|swore)\b/.test(latest)) issues.push('human_memory_unsupported_commitment');
   if(/\b(?:i remember every word|word for word|exactly what you said)\b/.test(t) && !/\b(?:remember|exactly|word for word)\b/.test(latest)) issues.push('human_memory_transcript_perfection');
-  if((t.match(/\bremember\b/g)||[]).length>=2 || (t.match(/\b(?:back then|that time|before|used to)\b/g)||[]).length>=3) issues.push('human_memory_recap_dump');
+  if((t.split(/\s+/).length>65 && (t.match(/\bremember\b/g)||[]).length>=3) || (t.match(/\b(?:back then|that time|before|used to)\b/g)||[]).length>=3) issues.push('human_memory_recap_dump');
   if(/\b(?:i knew you were|i always knew you were|i knew all along)\b/.test(t) && !/\b(?:you told me|you said|i saw|i heard)\b/.test(t)) issues.push('human_memory_hindsight_omniscience');
   return [...new Set(issues)];
 }

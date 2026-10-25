@@ -5,11 +5,22 @@ const norm = (value = "") => String(value || "")
 
 const list = (value) => Array.isArray(value) ? value : [];
 
+// Keep complete quoted spans together so deleting a command cannot leave
+// half a quotation or turn its remainder into unattributed narration.
 function sentences(value = "") {
-  return String(value || "")
-    .split(/(?<=[.!?][\"”']?)\s+|\n{2,}/)
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const text = typeof value === "string" ? value : "";
+  const parts = [];
+  let start = 0, quote = "";
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (!quote && (c === '"' || c === '“')) quote = c === '“' ? '”' : '"';
+    else if (quote && c === quote) quote = "";
+    if (!quote && ((/[.!?]/.test(c) && /\s|$/.test(text[i + 1] || "")) || ((c === '"' || c === '”') && /[.!?]/.test(text[i - 1] || "") && /^\s+[A-Z]/.test(text.slice(i + 1))))) {
+      parts.push(text.slice(start, i + 1).trim()); start = i + 1;
+    }
+  }
+  parts.push(text.slice(start).trim());
+  return parts.filter(Boolean);
 }
 
 const CARE_DIRECTIVE_PATTERNS = [
@@ -21,12 +32,22 @@ const CARE_DIRECTIVE_PATTERNS = [
 
 function directiveCount(value = "") {
   let text = norm(value);
-  // Permission/choice language is not an order even when it contains an
-  // imperative-shaped phrase. Preserve gentle autonomy-preserving care.
+  const action = "(?:get in|sit down|lie down|stay here|wait here|close your eyes|open your eyes|drink this|eat this|take this)";
   text = text
-    .replace(/\b(?:close your eyes|lie down|sit down|stay here|wait here) if you want\b/g, "")
-    .replace(/\byou can (?:close your eyes|lie down|sit down|stay here|wait here) if you want\b/g, "");
-  return CARE_DIRECTIVE_PATTERNS.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
+    .replace(new RegExp("\\b(?:you can|you could|you may|would you like to|do you want to) " + action + "\\b", "g"), "")
+    .replace(new RegExp("\\b" + action + " if you (?:want|wish|like)(?: to)?\\b", "g"), "")
+    .replace(new RegExp("\\b(?:i|he|she|they) (?:said|asked|told me) to " + action + "\\b", "g"), "");
+  // Count actual occurrences, not pattern categories. Overlapping patterns
+  // such as "don't move" must still count as just one order.
+  const spans = CARE_DIRECTIVE_PATTERNS.flatMap(pattern =>
+    [...text.matchAll(new RegExp(pattern.source, "g"))].map(m => [m.index, m.index + m[0].length])
+  ).sort((a, b) => a[0] - b[0]);
+  let end = -1, count = 0;
+  for (const [start, stop] of spans) {
+    if (start >= end) count++;
+    end = Math.max(end, stop);
+  }
+  return count;
 }
 
 function embodiedCareContext(latestUserMessage = "", recentUserMessages = []) {
@@ -35,16 +56,24 @@ function embodiedCareContext(latestUserMessage = "", recentUserMessages = []) {
 }
 
 function priorTransitAlreadyActive(recentCharacterReplies = []) {
-  const text = norm(list(recentCharacterReplies).slice(-4).join(" "));
-  return /\b(?:navigat(?:e|ed|ing)|drov(?:e|ing)|driving|kept (?:his|her|their) eyes on the road|eyes on the road|pulled onto|turned onto|merged onto|as (?:he|she|they) drove|behind the wheel)\b/.test(text);
+  let active = false;
+  for (const reply of list(recentCharacterReplies).slice(-4)) {
+    for (const part of sentences(reply)) {
+      const text = norm(part);
+      if (/\b(?:driving|drove|eyes on the road|pulled onto|turned onto|merged onto|as (?:he|she|they) drove)\b/.test(text)) active = true;
+      if (/\b(?:parked|switched off the engine|turned off the engine|cut the engine|got out of the car|stepped out of the car)\b/.test(text)) active = false;
+    }
+  }
+  return active;
 }
 
 function restartsVehicleSequence(reply = "") {
   const text = norm(reply);
+  if (/\b(?:didn't|did not|never)\s+(?:start|open|close|shut|turn)\b/.test(text)) return false;
   return /\bdriver'?s side\b.{0,80}\b(?:open|opened|clicked open)\b/.test(text)
     || /\b(?:slid|got|climbed) in\b.{0,80}\b(?:start(?:ed|ing)? the engine|engine)\b/.test(text)
     || /\b(?:start(?:ed|ing)?|turn(?:ed|ing) on) the engine\b/.test(text)
-    || /\b(?:shut|shutting|closed|closing) the (?:passenger )?door\b/.test(text);
+;
 }
 
 function repeatedDirectiveLoop(reply = "", recentCharacterReplies = [], latestUserMessage = "", recentUserMessages = []) {
@@ -83,6 +112,7 @@ export function behavioralTurnIntegrityIssues({
 
 export function sanitizeBehavioralTurnIntegrity(reply = "", issues = [], { recentCharacterReplies = [] } = {}) {
   const active = new Set(list(issues));
+  if (!active.size) return typeof reply === "string" ? reply : "";
   let parts = sentences(reply);
 
   if (active.has("transit_state_rewind_after_departure") && priorTransitAlreadyActive(recentCharacterReplies)) {
@@ -106,3 +136,5 @@ export function sanitizeBehavioralTurnIntegrity(reply = "", issues = [], { recen
 
   return parts.join(" ").replace(/\s+/g, " ").trim();
 }
+
+export const BEHAVIORAL_TURN_INTEGRITY_TESTS = { directiveCount, sentences, priorTransitAlreadyActive };

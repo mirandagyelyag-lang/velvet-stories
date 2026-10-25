@@ -68,7 +68,7 @@ function explicitCanonFloor(character={},relationship={}){
   const t=relationshipText(character,relationship);
   if(/\b(?:married|husband|wife|fiance|fiancee|engaged|exclusive|boyfriend|girlfriend|officially together|committed relationship)\b/.test(t)) return 7;
   if(/\b(?:in love|loves you|deeply in love)\b/.test(t)) return 6;
-  if(/\b(?:dating|seeing each other|relationship|together)\b/.test(t)) return 6;
+  if(/\b(?:dating|seeing each other|in a romantic relationship)\b/.test(t)) return 6;
   if(/\b(?:crush|likes you|likes the user|into you|romantic tension)\b/.test(t)) return 2;
   return 0;
 }
@@ -88,7 +88,7 @@ function stageIndexFromState({emotionState={},chemistry={},character={},relation
   if(attraction>=28||attachment>=28||comfort>=30) idx=2;
   if(attraction>=40&&attachment>=28) idx=3;
   if((awareness>=35&&attraction>=40)||(attraction>=55&&attachment>=40)) idx=4;
-  if(trust>=45&&attachment>=45&&(vulnerability>=28||awareness>=48||comfort>=50)) idx=5;
+  if(attraction>=40&&trust>=45&&attachment>=45&&(vulnerability>=28||awareness>=48||comfort>=50)) idx=5;
   if((awareness>=60&&attachment>=58&&trust>=48)||(commitment>=48&&attachment>=55)) idx=6;
   if(commitment>=70) idx=7;
 
@@ -146,7 +146,7 @@ export function deriveRelationshipArcStateV35278({
     ? Math.max(explicitFloor,prev,Math.min(earned,prev+1))
     : Math.max(explicitFloor,derived);
   const stage=STAGES[Math.min(idx,STAGES.length-1)];
-  const mode=conflictMode(chemistry,emotionState);
+  const mode=narrativeArc?.relationshipPace?.gate==="repair_first"?"repair":conflictMode(chemistry,emotionState);
   const routeStep=route.steps[Math.min(idx,route.steps.length-1)]||route.steps.at(-1);
   const next=allowedNext(idx,mode);
 
@@ -220,7 +220,7 @@ export function relationshipArcDirectorV35278Issues({
   if(idx<=2 && /\b(?:i love you|im in love with you|i am in love with you|youre mine|you are mine|my girlfriend|my boyfriend|we re together|we are together)\b/.test(t)){
     issues.push("relationship_arc_major_leap");
   }
-  if(idx<=4 && /\b(?:we both know|you feel it too|you love me too|you want me too|youre in love with me|you are in love with me)\b/.test(t)
+  if(/\b(?:we both know|you feel it too|you love me too|you want me too|youre in love with me|you are in love with me)\b/.test(t)
     && !/\b(?:i love you too|i want you too|i feel it too|im in love with you too|i am in love with you too)\b/.test(norm(latestUserMessage))){
     issues.push("relationship_arc_user_reciprocity_invented");
   }

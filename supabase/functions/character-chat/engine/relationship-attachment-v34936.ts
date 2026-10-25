@@ -14,6 +14,6 @@ export function buildRelationshipAttachmentV34936({character={},relationship={},
 'REPAIR IS BEHAVIORAL: trust changes through apologies, follow-through, changed behavior and time, not one perfect speech.',
 'NO MIND-READING: infer only from observable behavior and shared history. The character may suspect and be wrong.',
 'NO RELATIONSHIP ANNOUNCER: never narrate stage changes, chemistry scores, attachment labels or “this changed everything.” Let behavior carry it.',
-`CURRENT RELATIONSHIP DATA: ${c(JSON.stringify(relationship),1200)||'none grounded'}. CHARACTER: ${c(character?.name,80)} ${c(character?.personality,300)}. LIVE USER: ${c(latestUserMessage,500)}. RECENT CHARACTER: ${c((recentCharacterReplies||[]).slice(-4).join(' | '),700)}`
+`CURRENT RELATIONSHIP DATA: ${c(JSON.stringify(relationship),1200)||'none grounded'}. CHARACTER: ${c(character?.name,80)} ${c(character?.personality,300)}. LIVE USER: ${c(latestUserMessage,500)}. RECENT CHARACTER: ${c((Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-4).join(' | '),700)}`
 ].join('\n');}
 export function relationshipAttachmentV34936Issues(reply:any,latest:any='',recent:any[]=[]){const t=c(reply,5000).toLowerCase();const issues:string[]=[]; if(/you('re| are) mine|you belong to me/.test(t))issues.push('relationship_entitlement'); if(/this changes everything|we both know (you|we)|you know you love me/.test(t))issues.push('relationship_mindread'); if(/attachment style|avoidant attachment|anxious attachment/.test(t))issues.push('attachment_label_leak'); return issues;}

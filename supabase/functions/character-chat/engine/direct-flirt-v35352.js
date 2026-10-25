@@ -12,7 +12,7 @@ function romanticContext({character={},relationshipState={},behavior={},recentUs
     JSON.stringify(relationshipState||{}),JSON.stringify(behavior||{}),
     ...list(recentUserMessages).slice(-4),...list(recentCharacterReplies).slice(-4)
   ].join(" | "));
-  return /\b(?:flirt|flirting|romantic|attract|chemistry|crush|kiss|jealous|jealousy|date|tension|yearning|pull|preference|into you|likes you|celos|coquet|romant|atracci|beso|cita|tension|tensión|gustas|le gustas)\b/.test(t);
+  return /\b(?:flirt|flirting|romantic|attract\w*|chemistry|crush|kiss|jealous|jealousy|date|tension|yearning|pull|preference|into you|likes you|celos|coquet|romant|atracci|beso|cita|tension|tensión|gustas|le gustas)\b/.test(t);
 }
 
 function directFlirtSetup(message=""){
@@ -24,14 +24,16 @@ function directFlirtSetup(message=""){
 
 function evasiveFlirt(reply=""){
   const t=norm(reply);
-  const abstract=/\b(?:the ones worth|some things|some people|certain people|you know what i mean|wouldnt you like to know|that's for me to know|depends who asks|worth having|worth noticing|volumes|frequency|gravity|dangerous question|better left unsaid|ciertas personas|algunas personas|ya sabes|depende de quien pregunte|mejor no decirlo|vale la pena)\b/.test(t);
+  const abstract=/\b(?:the ones worth|some things|some people|certain people|you know what i mean|wouldnt you like to know|thats for me to know|depends who asks|worth having|worth noticing|volumes|frequency|gravity|dangerous question|better left unsaid|ciertas personas|algunas personas|ya sabes|depende de quien pregunte|mejor no decirlo|vale la pena)\b/.test(t);
   const writerly=/\b(?:quiet intensity|the teasing edge|mockery sliding|held her gaze|slow unbothered grin|corner of his mouth|voz bajo|intensidad silenciosa|la burla desaparecio|la burla desapareció)\b/.test(t);
   return abstract||writerly;
 }
 
 function directAnswerSignal(reply=""){
-  const t=norm(reply);
-  return /\b(?:like you|you|because its you|because you're you|because you are you|because i wanted to see you|i was talking about you|i meant you|youre the example|you're the example|tu|tú|como tu|como tú|porque eres tu|porque eres tú|hablaba de ti|me referia a ti|me refería a ti|queria verte|quería verte)\b/.test(t);
+  const quoted=[...String(reply??"").matchAll(/["“]([^"”]+)["”]/g)].map(m=>m[1]);
+  const t=norm(quoted.length?quoted[0]:reply).replace(/[.!?]+$/g,"").trim();
+  if(/^(?:you|tu)$/.test(t))return true;
+  return /\b(?:like you|because its you|because you're you|because you are you|because i wanted to see you|i was talking about you|i meant you|youre the example|you're the example|tu|tú|como tu|como tú|porque eres tu|porque eres tú|hablaba de ti|me referia a ti|me refería a ti|queria verte|quería verte)\b/.test(t);
 }
 
 function characterFlavor(character={}){

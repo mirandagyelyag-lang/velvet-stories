@@ -112,11 +112,11 @@ const corsHeaders = {
 };
 
 const encoder = new TextEncoder();
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
-const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-2.5-flash-lite";
-const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini-2.5-flash-lite";
-const GEMINI_RECOVERY_MODEL = Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-2.5-flash";
-const GEMINI_INSTANT_RECOVERY_MODEL = Deno.env.get("GEMINI_INSTANT_RECOVERY_MODEL") || "gemini-2.5-flash";
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-3.8-flash";
+const GEMINI_FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") || "gemini-3.5-flash-lite";
+const GEMINI_EMERGENCY_MODEL = Deno.env.get("GEMINI_EMERGENCY_MODEL") || "gemini-3.5-flash-lite";
+const GEMINI_RECOVERY_MODEL = Deno.env.get("GEMINI_RECOVERY_MODEL") || "gemini-3.8-flash";
+const GEMINI_INSTANT_RECOVERY_MODEL = Deno.env.get("GEMINI_INSTANT_RECOVERY_MODEL") || "gemini-3.8-flash";
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models";
 const VELVET_OWNER_EMAIL = "mirandagyelyag@gmail.com";
 const FIRST_DRAFT_WINS_V35268 = false;
@@ -2516,7 +2516,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
 
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
-  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL, "gemini-2.5-flash", "gemini-2.5-flash-lite"].filter(Boolean))];
+  const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL, "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter(Boolean))];
   const globalDeadlineMs = 20000;
   const attemptTimeoutMs = 14000;
   const controllers = new Set<AbortController>();
@@ -2672,7 +2672,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         const response = await providerFetch(modelEndpoint(model), {
           method: "POST", headers: geminiHeaders(apiKey), signal: controller.signal,
           body: JSON.stringify({ contents, ...(!bare ? { generationConfig: {
-            maxOutputTokens, temperature, thinkingConfig: { thinkingLevel: "MINIMAL" },
+            maxOutputTokens, temperature, ...(model === "gemini-3.8-flash" ? { thinkingConfig: { thinkingLevel: "LOW" } } : { thinkingConfig: { thinkingLevel: "MINIMAL" } }),
           } } : {}) }),
         });
         // Keep the timeout active until the provider body has finished arriving.
@@ -3338,7 +3338,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
       ],
       similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
     }))
-    .filter((item)=>item.finalHardBlocks.every((issue)=>!["lead_self_address_by_own_name","dialogue_speaker_perspective_switch"].includes(issue)))
+    .filter((item)=>item.finalHardBlocks.length === 0)
     .filter((item)=>{
       const text = String(item.opening || "").trim();
       const words = text.split(/\s+/).filter(Boolean).length;
@@ -3364,14 +3364,6 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
       openingFamily,
       softWarnings: finalDeliverable.rejectionReasons || [],
     });
-  }
-
-  // FINAL CHASE FALLBACK: do not leave the user waiting through repeated model
-  // timeouts only to receive a 503. This authored, playable scene is a last
-  // resort, used only when no usable model draft exists.
-  if (chaseEngineActive) {
-    const chaseFallback = "A girl beside Chase slides a party wristband across the table. \\"You said you'd come with me,\\" she reminds him. Chase picks it up, turns it over once, then places it beside your drink instead. \\"I said I'd think about it.\\" He looks at you, his expression turning mischievous. \\"She's been telling everyone I'm going. Want to make this interesting?\\" The girl reaches for the wristband before he can move it again. \\"Chase, seriously?\\" He catches the band with two fingers and waits for your answer.";
-    return instantStoryResponse({ opening: chaseFallback, source: "chase_timeout_fallback", model: "authored_fallback", sceneSeed, openingFamily, softWarnings: rejectionSummary });
   }
 
   return instantStoryResponse({

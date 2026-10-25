@@ -4,7 +4,7 @@ export function deriveGenerationOrchestratorV346(input:Record<string,unknown>={}
   const director=(input.sceneDirector||{}) as Record<string,unknown>; const memory=(input.longStoryMemory||{}) as Record<string,unknown>;
   const npc=(input.npcEcosystem||{}) as Record<string,unknown>; const cal=(input.calendarLifeSimulation||{}) as Record<string,unknown>;
   const causal=(input.causalTimeline||{}) as Record<string,unknown>; const chemistry=(input.relationshipChemistry||{}) as Record<string,unknown>;
-  const group=Number((npc.groupTraffic as Record<string,unknown>)?.presentCount||director.maxActiveSpeakers||0)>3;
+  const group=Number((npc.groupTraffic as Record<string,unknown>)?.presentCount||0)>3; // A speaker cap is not actual presence.
   const deep=user.length>260 || /\b(explain|why|remember|what happened|tell me everything)\b/i.test(user);
   const micro=user.length<45 && !deep; const mode=group?"group":deep?"deep":micro?"micro":"standard";
   const cfg:Record<string,any>={
@@ -35,6 +35,7 @@ export function generationOrchestratorV346Issues(input:Record<string,unknown>={}
   return [...new Set(issues)];
 }
 export function sanitizeGenerationOrchestratorV346Reply(reply:string,issues:string[]=[]){
+  if(!issues.length)return String(reply??"");
   let out=tx(reply); if(!out) return out;
   if(issues.includes("orchestrator_system_exposure")) out=out.split(/(?<=[.!?])\s+/).filter(s=>!/\b(?:turn contract|validator|orchestrator|context budget|token budget|hidden prompt|system prompt|engine score|repair budget|active modules|sleeping modules)\b/i.test(s)).join(" ");
   return out.trim();

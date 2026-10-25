@@ -15,20 +15,20 @@ function clean(value: unknown, limit = 360) {
 
 function profileText(character: Record<string, any> = {}) {
   return clean([
-    character.speech_style,
-    character.voice_vocabulary,
-    character.humor_style,
-    character.conflict_style,
-    character.affection_style,
+    character.speech_style || character.speechStyle,
+    character.voice_vocabulary || character.voiceVocabulary,
+    character.humor_style || character.humorStyle,
+    character.conflict_style || character.conflictStyle,
+    character.affection_style || character.affectionStyle,
     character.verbal_tells,
     character.voice_avoidances,
     character.personality,
-  ].filter(Boolean).join(" "), 2200).toLowerCase();
+  ].filter(Boolean).join(" "), 2200).toLowerCase().replace(/[’‘]/g,"'");
 }
 
 function dialogueText(reply = "") {
   const quotes = [...String(reply).matchAll(/["“]([^"”]{1,900})["”]/g)].map((m) => m[1].trim()).filter(Boolean);
-  return quotes.length ? quotes.join(" ") : String(reply || "");
+  return quotes.length ? quotes.join(" ") : "";
 }
 
 function wordCount(value = "") {
@@ -36,11 +36,11 @@ function wordCount(value = "") {
 }
 
 function questionCount(value = "") {
-  return (dialogueText(value).match(/\?/g) || []).length;
+  return (value.match(/\?/g) || []).length;
 }
 
 function contractionRate(value = "") {
-  const text = dialogueText(value);
+  const text = value.replace(/[’‘]/g,"'");
   const words = Math.max(1, wordCount(text));
   const contractions = (text.match(/\b\w+'(?:t|re|ve|ll|d|m|s)\b/gi) || []).length;
   return contractions / words;
@@ -49,13 +49,13 @@ function contractionRate(value = "") {
 export function voiceFingerprintV34911(character: Record<string, any> = {}) {
   const p = profileText(character);
   const terse = /\b(?:terse|laconic|brief|few words|quiet|blunt|concise)\b/.test(p);
-  const expansive = /\b(?:talkative|chatty|rambl|verbose|overshar|storyteller)\b/.test(p);
+  const expansive = /\b(?:talkative|chatty|rambl\w*|verbose|overshar\w*|storyteller)\b/.test(p);
   const dry = /\b(?:dry|deadpan|understatement|wry)\b/.test(p);
-  const sarcastic = /\b(?:sarcastic|teas|banter|snark)\b/.test(p);
+  const sarcastic = /\b(?:sarcastic|teas\w*|banter|snark\w*)\b/.test(p);
   const direct = /\b(?:direct|blunt|straightforward|plainspoken)\b/.test(p);
-  const evasive = /\b(?:avoid|deflect|guarded|private|withdraw|dodg)\b/.test(p);
+  const evasive = /\b(?:avoid\w*|deflect\w*|guarded|private|withdraw\w*|dodg\w*)\b/.test(p);
   const formal = /\b(?:formal|precise|measured|polished|proper)\b/.test(p);
-  const fragments = /\b(?:fragment|false start|unfinished|trails off|interrupt)\b/.test(p);
+  const fragments = /\b(?:fragment\w*|false starts?|unfinished|trails off|interrupt\w*)\b/.test(p);
   const questionLow = /\b(?:rarely asks|few questions|does not ask|doesn't ask)\b/.test(p);
   const questionHigh = /\b(?:curious|inquisitive|asks questions)\b/.test(p);
   return {
@@ -84,8 +84,8 @@ export function buildVoiceAuditDirectiveV34911({
   const fp = voiceFingerprintV34911(character);
   const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5);
   const avg = recent.length ? Math.round(recent.reduce((sum, item) => sum + wordCount(dialogueText(item)), 0) / recent.length) : 0;
-  const questions = recent.reduce((sum, item) => sum + questionCount(item), 0);
-  const siblingNames = (Array.isArray(cast) ? cast : []).filter((x) => x?.id !== character?.id).map((x) => clean(x?.name, 50)).filter(Boolean).slice(0, 5);
+  const questions = recent.reduce((sum, item) => sum + questionCount(dialogueText(item)), 0);
+  const siblingNames = (Array.isArray(cast) ? cast : []).filter((x) => x && (x.id && character?.id ? x.id !== character.id : clean(x.name).toLowerCase() !== clean(character?.name).toLowerCase())).map((x) => clean(x?.name, 50)).filter(Boolean).slice(0, 5);
   return [
     `VOICE AUDIT 2.0 — identity must survive name removal.`,
     `Fingerprint: length=${fp.length}; directness=${fp.directness}; humor=${fp.humor}; register=${fp.register}; fragments=${fp.fragments}; questions=${fp.questions}.`,
@@ -110,29 +110,32 @@ export function voiceAuditV34911Issues({
   const text = String(reply || "").trim();
   if (!text) return issues;
   const fp = voiceFingerprintV34911(character);
-  const spoken = dialogueText(text);
+  const spoken = dialogueText(text).replace(/[’‘]/g,"'");
+  if (!spoken) return issues; // Narration-only turns have no spoken voice to audit.
   const words = wordCount(spoken);
   const qs = questionCount(spoken);
   const recent = (Array.isArray(recentReplies) ? recentReplies : []).slice(-5);
   const p = profileText(character);
 
-  if (GENERIC_CLONE_PATTERNS.some((pattern) => pattern.test(spoken)) && !GENERIC_CLONE_PATTERNS.some((pattern) => pattern.test(clean(character.example_dialogue || "", 3000)))) {
+  if (GENERIC_CLONE_PATTERNS.filter((pattern) => pattern.test(spoken) && !pattern.test(clean(character.example_dialogue || character.exampleDialogue || "", 3000))).length >= 2) {
     issues.push("voice_clone_generic_cadence_v34911");
   }
   if (fp.length === "compact" && words > 85) issues.push("voice_length_identity_drift_v34911");
   if (fp.questions === "low" && qs >= 2) issues.push("voice_question_identity_drift_v34911");
-  if (fp.directness === "guarded" && /\b(?:i feel|i'm feeling|what i need emotionally|let me be vulnerable|here's what i'm afraid of)\b/i.test(spoken) && !/\b(?:open|emotionally fluent|direct about feelings)\b/.test(p)) {
+  if (fp.directness === "guarded" && /\b(?:what i need emotionally|let me be vulnerable|here's what i'm afraid of)\b/i.test(spoken) && !/\b(?:open|emotionally fluent|direct about feelings)\b/.test(p)) {
     issues.push("voice_emotional_fluency_drift_v34911");
   }
   if (recent.length >= 2) {
-    const openings = recent.map((item) => clean(dialogueText(item), 90).toLowerCase().split(/\s+/).slice(0, 4).join(" ")).filter(Boolean);
-    const currentOpening = clean(spoken, 90).toLowerCase().split(/\s+/).slice(0, 4).join(" ");
-    if (currentOpening && openings.filter((x) => x === currentOpening).length >= 1) issues.push("voice_opening_shape_repeat_v34911");
+    const openings = recent.map((item) => clean(dialogueText(item), 90).toLowerCase().replace(/[’‘]/g,"'").replace(/[^a-z0-9\s]/g," ").split(/\s+/).slice(0, 4).join(" ")).filter(Boolean);
+    const currentOpening = clean(spoken, 90).toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).slice(0, 4).join(" ");
+    if (currentOpening.split(/\s+/).length >= 4 && openings.filter((x) => x === currentOpening).length >= 2) issues.push("voice_opening_shape_repeat_v34911");
   }
-  const recentContraction = recent.length ? recent.reduce((sum, item) => sum + contractionRate(item), 0) / recent.length : 0;
+  const recentContraction = recent.length ? recent.reduce((sum, item) => sum + contractionRate(dialogueText(item)), 0) / recent.length : 0;
   const currentContraction = contractionRate(spoken);
-  if (recent.length >= 3 && recentContraction > 0.035 && currentContraction === 0 && words > 25 && fp.register !== "measured") {
+  if (recent.length >= 3 && recentContraction > 0.08 && currentContraction === 0 && words > 60 && fp.register !== "measured") {
     issues.push("voice_register_drift_v34911");
   }
   return [...new Set(issues)];
 }
+
+export const __testVoiceAuditV34911 = { dialogueText, contractionRate };

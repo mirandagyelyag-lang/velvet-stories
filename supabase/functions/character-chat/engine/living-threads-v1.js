@@ -25,7 +25,7 @@ export function normalizeLivingThreads(value = []) {
     const old = typeof raw === "string" ? { title: raw } : object(raw);
     const summary = text(old.summary || old.title || old.detail || old.label);
     if (!summary) return null;
-    const status = old.status === "progressing" ? "developing" : old.status;
+    const status = ["closed","completed","done","cancelled","canceled","resolved"].includes(old.status)?"resolved":old.status === "progressing" ? "developing" : old.status;
     return {
       ...old,
       id: text(old.id, 100) || `thread-${hash(summary)}`,
@@ -117,7 +117,7 @@ function groundedEvidence(change, { reply, latestUserMessage, userMessageId, mes
     const message = list(messages).find(m => m.id === change.source_message_id);
     source = message?.content || ""; id = message?.id || "";
   }
-  if (!id || !norm(source).includes(norm(evidence))) return null;
+  if (!id || !String(source??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[’‘]/g,"'").replace(/\s+/g," ").includes(norm(evidence))) return null;
   return { quote: evidence, source_message_id: id, source: change.evidence_source };
 }
 
@@ -125,7 +125,7 @@ function groundedEvidence(change, { reply, latestUserMessage, userMessageId, mes
 export function reduceLivingThreads({ previous = [], state = {}, changes = [], messageId = "", userMessageId = "", latestUserMessage = "", reply = "", messages = [], now = new Date().toISOString(), focusIds = [] } = {}) {
   const prior = normalizeLivingThreads(previous), metadata = object(state);
   if (!messageId) return { threads: prior, state: copy(metadata), stats: { applied: 0, rejected: 0 } };
-  if (metadata.last_message_id === messageId && metadata.last_reply_hash === hash(reply)) {
+  if (metadata.last_message_id === messageId && metadata.last_reply_hash === hash(String(reply).slice(-4000)+String(reply).length) ) {
     return { threads: prior, state: copy(metadata), stats: { applied: 0, rejected: 0, duplicate: true } };
   }
   const next = copy(prior);
@@ -170,7 +170,7 @@ export function reduceLivingThreads({ previous = [], state = {}, changes = [], m
   const priorState = copy(metadata); delete priorState.undo_snapshot;
   return {
     threads: [...active, ...archived],
-    state: { schema: 1, turn_index: turn, last_message_id: messageId, last_reply_hash: hash(reply), focus_ids: list(focusIds).slice(0, 3), last_changes: stats, undo_snapshot: { message_id: messageId, threads: prior, state: priorState } },
+    state: { schema: 1, turn_index: turn, last_message_id: messageId, last_reply_hash: hash(String(reply).slice(-4000)+String(reply).length), focus_ids: list(focusIds).slice(0, 3), last_changes: stats, undo_snapshot: { message_id: messageId, threads: prior, state: priorState } },
     stats,
   };
 }

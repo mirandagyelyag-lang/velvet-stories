@@ -1,5 +1,5 @@
 const tx=(v:unknown)=>String(v??"").trim();
-export function fnv1a(value:unknown){let h=0x811c9dc5; for(const c of tx(value)){h^=c.charCodeAt(0); h=Math.imul(h,0x01000193);} return (h>>>0).toString(16).padStart(8,"0");}
+export function fnv1a(value:unknown){let h=0x811c9dc5; const s=tx(value); for(let i=0;i<s.length;i++){h^=s.charCodeAt(i); h=Math.imul(h,0x01000193);} return (h>>>0).toString(16).padStart(8,"0");}
 function stable(v:unknown):unknown{if(Array.isArray(v))return v.map(stable); if(v&&typeof v==="object"){const o=v as Record<string,unknown>;return Object.keys(o).sort().reduce((a,k)=>{a[k]=stable(o[k]);return a;},{} as Record<string,unknown>);} return v;}
 export function buildRecoveryCheckpointV347(input:Record<string,unknown>={}){
   const protectedState={scene:input.sceneState||{},relationship:input.relationshipState||{},development:input.developmentState||{},intelligence:input.intelligenceState||{},threads:input.unresolvedThreads||[],recap:tx(input.storyRecap).slice(-1600)};

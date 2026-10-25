@@ -1,10 +1,11 @@
 // Exhausting an optional correction budget is a normal state, never a chat error.
 export function createCorrectionBudget(limit = 1) {
+  limit = Number.isFinite(Number(limit)) ? Math.max(0, Math.floor(Number(limit))) : 1;
   let used = 0;
   return {
     get available() { return used < limit; },
     async run(generate) {
-      if (used >= limit) return null;
+      if (used >= limit || typeof generate !== "function") return null;
       used += 1; // Reserve before awaiting, including failed provider attempts.
       return await generate();
     },

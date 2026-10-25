@@ -2,8 +2,8 @@
 // Shared hard gate for Instant Story + live chat.
 // Motion, props and banter are blocking. Momentum means the situation changes.
 
-const clean=(v="",n=16000)=>String(v??"").replace(/s+/g," ").trim().slice(0,n);
-const norm=(v="")=>clean(v).normalize("NFD").replace(/[u0300-u036f]/g,"").toLowerCase().replace(/[’‘]/g,"'");
+const clean=(v="",n=16000)=>String(v??"").replace(/\s+/g," ").trim().slice(0,n);
+const norm=(v="")=>clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[’‘]/g,"'");
 
 function profileText(character={}){
   return norm([
@@ -20,16 +20,16 @@ function dialogueOnly(value=""){
 
 function hasMeaningfulStateChange(value=""){
   const t=norm(value);
-  return /b(?:decid(?:e|es|ed|ing)|refus(?:e|es|ed|ing)|admit(?:s|ted|ting)?|reveal(?:s|ed|ing)?|confess(?:es|ed|ing)?|confront(?:s|ed|ing)?|challenge(?:s|d|ing)?|invite(?:s|d|ing)?|cancel(?:s|led|ing)?|choose|chooses|chose|choosing|commit(?:s|ted|ting)?|promise(?:s|d|ing)?|apolog(?:y|ize|izes|ized|izing)|asks? (?:him|her|them|you) (?:about|whether|why|what happened)|tell(?:s|ing)? (?:him|her|them|you) (?:that|about)|changes? the plan|changed the plan|new plan|instead we|instead im|instead i m|not going to|im going to|i m going to|i wont|i won't|i will|illb|i'llb)b/.test(t);
+  return /\b(?:decid(?:e|es|ed|ing)|refus(?:e|es|ed|ing)|admit(?:s|ted|ting)?|reveal(?:s|ed|ing)?|confess(?:es|ed|ing)?|confront(?:s|ed|ing)?|challenge(?:s|d|ing)?|invite(?:s|d|ing)?|cancel(?:s|led|ing)?|choose|chooses|chose|choosing|commit(?:s|ted|ting)?|promise(?:s|d|ing)?|apolog(?:y|ize|izes|ized|izing)|asks? (?:him|her|them|you) (?:about|whether|why|what happened)|tell(?:s|ing)? (?:him|her|them|you) (?:that|about)|changes? the plan|changed the plan|new plan|instead we|instead im|instead i m|not going to|im going to|i m going to|i wont|i won't|i will|ill\b|i'll\b)\b/.test(t);
 }
 
 function blockingActionCount(value=""){
   const t=norm(value);
   const patterns=[
-    /b(?:look(?:s|ed|ing)?|glanc(?:e|es|ed|ing)|grin(?:s|ned|ning)?|smil(?:e|es|ed|ing)|shrug(?:s|ged|ging)?|sigh(?:s|ed|ing)?)b/g,
-    /b(?:open(?:s|ed|ing)?|clos(?:e|es|ed|ing)|hold(?:s|ing)? (?:the )?door|pocket(?:s|ed|ing)?|pull(?:s|ed|ing)? out (?:his|her|their) phone|check(?:s|ed|ing)? (?:his|her|their) phone)b/g,
-    /b(?:walk(?:s|ed|ing)?|stand(?:s|ing)?|stood|sit(?:s|ting)?|sat|turn(?:s|ed|ing)?|step(?:s|ped|ping)?|head(?:s|ed|ing)?|move(?:s|d|ing)?)b/g,
-    /b(?:keys?|phone|door|bag|backpack|cup|coffee|drink|bottle)b/g,
+    /\b(?:look(?:s|ed|ing)?|glanc(?:e|es|ed|ing)|grin(?:s|ned|ning)?|smil(?:e|es|ed|ing)|shrug(?:s|ged|ging)?|sigh(?:s|ed|ing)?)\b/g,
+    /\b(?:open(?:s|ed|ing)?|clos(?:e|es|ed|ing)|hold(?:s|ing)? (?:the )?door|pocket(?:s|ed|ing)?|pull(?:s|ed|ing)? out (?:his|her|their) phone|check(?:s|ed|ing)? (?:his|her|their) phone)\b/g,
+    /\b(?:walk(?:s|ed|ing)?|stand(?:s|ing)?|stood|sit(?:s|ting)?|sat|turn(?:s|ed|ing)?|step(?:s|ped|ping)?|head(?:s|ed|ing)?|move(?:s|d|ing)?)\b/g,
+    /\b(?:keys?|phone|door|bag|backpack|cup|coffee|drink|bottle)\b/g,
   ];
   return patterns.reduce((sum,p)=>sum+((t.match(p)||[]).length),0);
 }
@@ -37,7 +37,7 @@ function blockingActionCount(value=""){
 function explicitUserMovementAssumption(reply="", latestUserMessage=""){
   const raw=String(reply||"");
   const latest=norm(latestUserMessage);
-  const declarative=[...raw.matchAll(/byou(?:'re| are)s+(walking|coming|going|sitting|staying|riding|joining|following|waiting|getting in|getting into|taking|bringing)b/gi)];
+  const declarative=[...raw.matchAll(/\byou(?:'re| are)\s+(walking|coming|going|sitting|staying|riding|joining|following|waiting|getting in|getting into|taking|bringing)\b/gi)];
   if(!declarative.length) return false;
   return declarative.some((m)=>{
     const at=m.index??0;
@@ -58,14 +58,14 @@ function unsupportedUserPreference(reply="", latestUserMessage="", recentUserMes
     ...(Array.isArray(recentUserMessages)?recentUserMessages.slice(-8):[]),
     profileText(character),
   ].join(" | "));
-  if(/byour (?:usual|favorite|favourite)b/.test(t) && !/b(?:my usual|my favorite|my favourite|usual|favorite|favourite)b/.test(evidence)) return true;
+  if(/\byour (?:usual|favorite|favourite)\b/.test(t) && !/\b(?:my usual|my favorite|my favourite|usual|favorite|favourite)\b/.test(evidence)) return true;
 
-  const drinkMatch=t.match(/byou (?:get|want|take|always get|usually get)s+(?:the |a |an )?(mocha|latte|americano|cappuccino|macchiato|frappuccino|espresso|cold brew|iced coffee|tea)b/);
+  const drinkMatch=t.match(/\byou (?:get|want|take|always get|usually get)\s+(?:the |a |an )?(mocha|latte|americano|cappuccino|macchiato|frappuccino|espresso|cold brew|iced coffee|tea)\b/);
   if(drinkMatch && !evidence.includes(drinkMatch[1])) return true;
 
-  const preferenceClaim=t.match(/byou (?:like|love|hate|prefer|always order|usually order)s+([^.!?]{2,70})/);
+  const preferenceClaim=t.match(/\byou (?:like|love|hate|prefer|always order|usually order)\s+([^.!?]{2,70})/);
   if(preferenceClaim){
-    const meaningful=norm(preferenceClaim[1]).split(/s+/).filter((w)=>w.length>=4).slice(0,4);
+    const meaningful=norm(preferenceClaim[1]).split(/\s+/).filter((w)=>w.length>=4).slice(0,4);
     if(meaningful.length && !meaningful.some((w)=>evidence.includes(w))) return true;
   }
   return false;
@@ -74,29 +74,29 @@ function unsupportedUserPreference(reply="", latestUserMessage="", recentUserMes
 function campusCoffeeStudyFallback(reply="", opening=false){
   if(!opening) return false;
   const t=norm(reply);
-  const campus=/b(?:campus|quad|student union|lecture|class|study hours?|study session|library|dorm|professor|freshmen|freshman)b/.test(t);
-  const coffee=/b(?:coffee|iced coffee|mocha|latte|americano|cafe|café|snack|takeout|food court|cafeteria)b/.test(t);
-  const logistics=/b(?:drive|driving|keys?|line|order|ordering|grab|grabbing|pack it up|pick up|walking)b/.test(t);
+  const campus=/\b(?:campus|quad|student union|lecture|class|study hours?|study session|library|dorm|professor|freshmen|freshman)\b/.test(t);
+  const coffee=/\b(?:coffee|iced coffee|mocha|latte|americano|cafe|café|snack|takeout|food court|cafeteria)\b/.test(t);
+  const logistics=/\b(?:drive|driving|keys?|line|order|ordering|grab|grabbing|pack it up|pick up|walking)\b/.test(t);
   return campus && coffee && logistics && !hasMeaningfulStateChange(t);
 }
 
 function prematureSceneEscape(reply="", latestUserMessage="", recentCharacterReplies=[]){
   const t=norm(reply);
   const context=norm([...(Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-3):[]),latestUserMessage].join(" | "));
-  const escape=/b(?:my car(?:'s| is)? (?:out back|outside)|car(?:'s| is)? (?:out back|outside)|side exit|front exit|back exit|lets get out of here|let's get out of here|come on lets go|come on let's go|anywhere else|leave this place|heading toward (?:the )?(?:side|front|back)? ?exit|headed toward (?:the )?(?:side|front|back)? ?exit|turned toward (?:the )?(?:side|front|back)? ?exit|headed for (?:the )?(?:side|front|back)? ?exit)b/.test(t);
+  const escape=/\b(?:my car(?:'s| is)? (?:out back|outside)|car(?:'s| is)? (?:out back|outside)|side exit|front exit|back exit|lets get out of here|let's get out of here|come on lets go|come on let's go|anywhere else|leave this place|heading toward (?:the )?(?:side|front|back)? ?exit|headed toward (?:the )?(?:side|front|back)? ?exit|turned toward (?:the )?(?:side|front|back)? ?exit|headed for (?:the )?(?:side|front|back)? ?exit)\b/.test(t);
   if(!escape) return false;
-  const liveSocial=/b(?:guy|girl|friend|someone|somebody|him|her|jealous|flirt|talking to|beside you|next to you|interrupted|competition|attention|mock sympathy|tragic)b/.test(t+" "+context);
-  const earnedReason=/b(?:fire|danger|unsafe|closing|closed|kicked out|asked (?:us|them|you) to leave|police|emergency|ambulance|evacuat|appointment|reservation|late for|miss the train|miss the bus|flight)b/.test(t+" "+context);
+  const liveSocial=/\b(?:guy|girl|friend|someone|somebody|him|her|jealous|flirt|talking to|beside you|next to you|interrupted|competition|attention|mock sympathy|tragic)\b/.test(t+" "+context);
+  const earnedReason=/\b(?:fire|danger|unsafe|closing|closed|kicked out|asked (?:us|them|you) to leave|police|emergency|ambulance|evacuat|appointment|reservation|late for|miss the train|miss the bus|flight)\b/.test(t+" "+context);
   return liveSocial&&!earnedReason;
 }
 
 function blockingBanterStall(reply=""){
   const t=norm(reply);
-  const words=t.split(/s+/).filter(Boolean).length;
+  const words=t.split(/\s+/).filter(Boolean).length;
   if(!words || words>120) return false;
   const blocking=blockingActionCount(reply);
   const spoken=norm(dialogueOnly(reply));
-  const banter=spoken && /b(?:come on|keep that energy|deal|seriously|before the line|freshmen|freshman|stupid|obviously|apparently|good luck|dont start|don't start|youre impossible|you're impossible)b/.test(spoken);
+  const banter=spoken && /\b(?:come on|keep that energy|deal|seriously|before the line|freshmen|freshman|stupid|obviously|apparently|good luck|dont start|don't start|youre impossible|you're impossible)\b/.test(spoken);
   const questionOnly=spoken && /\?$/.test(spoken.trim()) && !hasMeaningfulStateChange(spoken);
   return blocking>=2 && !hasMeaningfulStateChange(reply) && Boolean(banter||questionOnly||words<=55);
 }
@@ -104,82 +104,82 @@ function blockingBanterStall(reply=""){
 function reactionWithoutContentLayer(reply="",latestUserMessage=""){
   const user=norm(latestUserMessage), t=norm(reply);
   if(!user||!t) return false;
-  const words=t.split(/s+/).filter(Boolean).length;
+  const words=t.split(/\s+/).filter(Boolean).length;
   if(words>115) return false;
-  const reaction=/b(?:teas(?:e|es|ed|ing)?|jok(?:e|es|ed|ing)?|sarcas(?:m|tic)|mock(?:s|ed|ing)?|smirk(?:s|ed|ing)?|grin(?:s|ned|ning)?|laugh(?:s|ed|ing)?|watch(?:es|ed|ing)? you|look(?:s|ed|ing)? (?:at|right at) you|lean(?:s|ed|ing)?|raise(?:s|d|ing)? (?:an? )?eyebrow|bold|impressive|brilliant|tragic|captivating|head start|apparently|of course)b/.test(t);
+  const reaction=/\b(?:teas(?:e|es|ed|ing)?|jok(?:e|es|ed|ing)?|sarcas(?:m|tic)|mock(?:s|ed|ing)?|smirk(?:s|ed|ing)?|grin(?:s|ned|ning)?|laugh(?:s|ed|ing)?|watch(?:es|ed|ing)? you|look(?:s|ed|ing)? (?:at|right at) you|lean(?:s|ed|ing)?|raise(?:s|d|ing)? (?:an? )?eyebrow|bold|impressive|brilliant|tragic|captivating|head start|apparently|of course)\b/.test(t);
   if(!reaction) return false;
   // Content must alter knowledge, intention, relationship, practical state, or the
   // next live beat. Styling the reaction more richly does not count.
-  const content=/b(?:asks? you (?:why|what|whether|about)|what happened|are you okay|you good|did you hear|want me to repeat|i said|never mind|forget it|scratch that|instead|actually|decid(?:e|es|ed)|refus(?:e|es|ed)|admit(?:s|ted)?|reveal(?:s|ed)?|tell(?:s)? you|offer(?:s|ed)?|invite(?:s|d)?|change(?:s|d)? (?:the|his|her|their) (?:plan|approach|mind)|drop(?:s|ped)? (?:it|the bet|the joke|the challenge)|stop(?:s|ped)? (?:teasing|joking)|repeat(?:s|ed)?|move(?:s|d)? (?:the|his|her|their) attention|turn(?:s|ed)? back to|return(?:s|ed)? to|pick(?:s|ed)? up the controller|resume(?:s|d)? the game|give(?:s)? you (?:space|a moment))b/.test(t);
+  const content=/\b(?:asks? you (?:why|what|whether|about)|what happened|are you okay|you good|did you hear|want me to repeat|i said|never mind|forget it|scratch that|instead|actually|decid(?:e|es|ed)|refus(?:e|es|ed)|admit(?:s|ted)?|reveal(?:s|ed)?|tell(?:s)? you|offer(?:s|ed)?|invite(?:s|d)?|change(?:s|d)? (?:the|his|her|their) (?:plan|approach|mind)|drop(?:s|ped)? (?:it|the bet|the joke|the challenge)|stop(?:s|ped)? (?:teasing|joking)|repeat(?:s|ed)?|move(?:s|d)? (?:the|his|her|their) attention|turn(?:s|ed)? back to|return(?:s|ed)? to|pick(?:s|ed)? up the controller|resume(?:s|d)? the game|give(?:s)? you (?:space|a moment))\b/.test(t);
   return !content;
 }
 
 function inventedAttentionExplanation(reply="",latestUserMessage=""){
   const u=norm(latestUserMessage), t=norm(reply);
-  const missed=/b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention)b/.test(u);
+  const missed=/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention)\b/.test(u);
   if(!missed) return false;
-  return /b(?:you(?:'re| were| are)? (?:off |busy )?(?:counting|reviewing|studying|watching|thinking about|daydreaming about|staring at|admiring|planning|imagining)|ceiling tiles?|the ceiling|somewhere else mentally|in another world|lost in thought about)b/.test(t);
+  return /\b(?:you(?:'re| were| are)? (?:off |busy )?(?:counting|reviewing|studying|watching|thinking about|daydreaming about|staring at|admiring|planning|imagining)|ceiling tiles?|the ceiling|somewhere else mentally|in another world|lost in thought about)\b/.test(t);
 }
 
 function missedCommunicationNoDevelopment(reply="",latestUserMessage=""){
   const user=norm(latestUserMessage);
-  if(!/b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|didn'?t understand|did not understand)b/.test(user)) return false;
+  if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|didn'?t understand|did not understand)\b/.test(user)) return false;
   const t=norm(reply);
   if(!t) return false;
   // Positive contract: a missed-communication revelation must cause a new beat,
   // not merely sarcasm/acknowledgement. Require evidence that the character
   // recalculates, investigates, abandons the missed premise, or changes
   // what they do next.
-  const development=/b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|are you okay|were you okay|what had your attention|what were you thinking|what happened|everything okay|you good|abandons?|drops? (?:the )?(?:bet|joke|challenge|offer|idea)|changes? (?:his|her|their|the) (?:tone|approach|plan)|stops? teasing|lets? (?:the )?(?:bet|joke|challenge) go|gives? (?:you|her|him|them) (?:a )?moment)b/.test(t);
+  const development=/\b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|are you okay|were you okay|what had your attention|what were you thinking|what happened|everything okay|you good|abandons?|drops? (?:the )?(?:bet|joke|challenge|offer|idea)|changes? (?:his|her|their|the) (?:tone|approach|plan)|stops? teasing|lets? (?:the )?(?:bet|joke|challenge) go|gives? (?:you|her|him|them) (?:a )?moment)\b/.test(t);
   if(development) return false;
-  const words=t.split(/s+/).filter(Boolean).length;
-  const sarcasm=/b(?:brilliant|captivating|impressive|tragic|cute|adorable|empty room|good to know|noted|figures|of course|wow|rude|psychological warfare|masterpiece)b/.test(t);
-  const onlySpeech=words<=55 && !/b(?:asks?|checks?|repeats?|changes?|stops?|drops?|abandons?|waits?|offers?|decides?|moves? closer|sits? beside|turns? down|lowers?)b/.test(t);
+  const words=t.split(/\s+/).filter(Boolean).length;
+  const sarcasm=/\b(?:brilliant|captivating|impressive|tragic|cute|adorable|empty room|good to know|noted|figures|of course|wow|rude|psychological warfare|masterpiece)\b/.test(t);
+  const onlySpeech=words<=55 && !/\b(?:asks?|checks?|repeats?|changes?|stops?|drops?|abandons?|waits?|offers?|decides?|moves? closer|sits? beside|turns? down|lowers?)\b/.test(t);
   return sarcasm||onlySpeech;
 }
 
 function missedCommunicationCarryOn(reply="",latestUserMessage="",recentCharacterReplies=[]){
   const user=norm(latestUserMessage);
-  if(!/b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|didn'?t understand|did not understand)b/.test(user)) return false;
+  if(!/\b(?:zoning out|zoned out|wasn'?t listening|was not listening|didn'?t (?:hear|notice|catch)|did not (?:hear|notice|catch)|wasn'?t paying attention|was not paying attention|didn'?t understand|did not understand)\b/.test(user)) return false;
   const t=norm(reply);
-  const prior=norm((recentCharacterReplies||[]).slice(-1)[0]||"");
-  const priorProposal=/b(?:coffee|deal|double or nothing|bet|come with me|lets go|let's go|want to|how about|we should|ill buy|i'll buy|you buy|youre buying|you're buying)b/.test(prior);
-  const carries=/b(?:coffee(?:'s| is)? on me|you(?:'re| are) (?:buying|carrying|paying)|deal|double or nothing|next round|lets go|let's go|come on|then we|so we)b/.test(t);
-  const recalculates=/b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|were you okay|are you okay|what had your attention|what were you thinking about)b/.test(t);
+  const prior=norm((Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-1)[0]||"");
+  const priorProposal=/\b(?:coffee|deal|double or nothing|bet|come with me|lets go|let's go|want to|how about|we should|ill buy|i'll buy|you buy|youre buying|you're buying)\b/.test(prior);
+  const carries=/\b(?:coffee(?:'s| is)? on me|you(?:'re| are) (?:buying|carrying|paying)|deal|double or nothing|next round|lets go|let's go|come on|then we|so we)\b/.test(t);
+  const recalculates=/\b(?:did you hear|want me to repeat|i said|never mind|forget it|scratch that|actually|instead|wait|hold on|were you okay|are you okay|what had your attention|what were you thinking about)\b/.test(t);
   return priorProposal&&carries&&!recalculates;
 }
 
 function inventedUserVisibleReaction(reply="",latestUserMessage=""){
   const t=norm(reply), u=norm(latestUserMessage);
-  const claims=/byour (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|red|pale|wide-eyed|wide eyed|vacant|distant) (?:expression|face|look|stare|eyes?)b/.test(t)
-    || /byou (?:looked|seemed|appeared) (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|pale|distant)b/.test(t);
+  const claims=/\byour (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|red|pale|wide-eyed|wide eyed|vacant|distant) (?:expression|face|look|stare|eyes?)\b/.test(t)
+    || /\byou (?:looked|seemed|appeared) (?:blank|confused|dazed|startled|annoyed|amused|embarrassed|flushed|pale|distant)\b/.test(t);
   if(!claims) return false;
-  return !/b(?:i (?:look|looked|stare|stared|smile|smiled|grin|grinned)|my (?:face|expression|look|eyes))b/.test(u);
+  return !/\b(?:i (?:look|looked|stare|stared|smile|smiled|grin|grinned)|my (?:face|expression|look|eyes))\b/.test(u);
 }
 
 function echoQuipStall(reply="",latestUserMessage=""){
   const user=norm(latestUserMessage);
   const text=norm(reply);
   if(!user||!text) return false;
-  const words=text.split(/s+/).filter(Boolean).length;
+  const words=text.split(/\s+/).filter(Boolean).length;
   if(words>95||hasMeaningfulStateChange(reply)) return false;
   const userContent=user.split(/[^a-z0-9']+/).filter(w=>w.length>=4&&!["that","this","with","have","were","was","just","really","didnt","don't","your","youre"].includes(w));
   const replyContent=text.split(/[^a-z0-9']+/).filter(w=>w.length>=4);
   const overlap=[...new Set(userContent)].filter(w=>replyContent.includes(w)).length;
   const echoRatio=userContent.length?overlap/Math.min(userContent.length,6):0;
-  const quip=/b(?:impressive|tragic|cute|adorable|seriously|apparently|good to know|noted|of course|figures|wow|brutal|rude|psychological warfare|masterpiece|counting ceiling tiles)b/.test(text);
-  const reactionOnly=/b(?:said|replied|asked|tone|smirk|grin|laugh|mock|teas|jok)b/.test(text)&&!hasMeaningfulStateChange(text);
+  const quip=/\b(?:impressive|tragic|cute|adorable|seriously|apparently|good to know|noted|of course|figures|wow|brutal|rude|psychological warfare|masterpiece|counting ceiling tiles)\b/.test(text);
+  const reactionOnly=/\b(?:said|replied|asked|tone|smirk|grin|laugh|mock|teas|jok)\b/.test(text)&&!hasMeaningfulStateChange(text);
   return echoRatio>=0.34 && words<=70 && (quip||reactionOnly);
 }
 
 function isAcceptanceHandoff(latestUserMessage=""){
   const raw=String(latestUserMessage||"").trim();
   const t=norm(raw);
-  if(!t) return false;
+  if(!t || /\b(?:don't|dont|do not|never|not going to)\s+(?:follow|join|come|go|walk|get in)\b/.test(t)) return false;
   const compact=t.replace(/[.!?]+$/g,"").trim();
   const explicitAgreement=/^(?:ok|okay|yes|yeah|yep|sure|fine|alright|all right|deal|lets go|let's go|im coming|i'm coming|ill come|i'll come|im in|i'm in|i will|ill do it|i'll do it)$/i.test(compact);
   const followAction = raw.length <= 245 && /(?:follow|followed|come with|go with|walk with|leave with|head with|join|joined|get in|got in|climb in|climbed in)/i.test(raw);
-  const spokenFollow=/b(?:i(?:'m| am)? coming with you|i(?:'ll| will) come with you|i(?:'ll| will) go with you|i follow you|i followed you|lets go|let's go)b/i.test(raw);
+  const spokenFollow=/\b(?:i(?:'m| am)? coming with you|i(?:'ll| will) come with you|i(?:'ll| will) go with you|i follow you|i followed you|lets go|let's go)\b/i.test(raw);
   return explicitAgreement||followAction||spokenFollow;
 }
 
@@ -188,8 +188,8 @@ function acceptanceFollowThroughStall(reply="",latestUserMessage=""){
   const t=norm(reply);
   if(!t) return false;
   if(hasMeaningfulStateChange(reply)) return false;
-  const words=t.split(/s+/).filter(Boolean).length;
-  const mereConfirmation=/b(?:good|okay|ok|come on|then lets go|then let's go|before (?:he|she|they) sees|wasn'?t listening|not listening|anyway|told you|knew you would|knew you'?d)b/.test(t);
+  const words=t.split(/\s+/).filter(Boolean).length;
+  const mereConfirmation=/\b(?:good|okay|ok|come on|then lets go|then let's go|before (?:he|she|they) sees|wasn'?t listening|not listening|anyway|told you|knew you would|knew you'?d)\b/.test(t);
   const blocking=blockingActionCount(reply);
   return words<=110 && (mereConfirmation||blocking>=1);
 }
@@ -197,17 +197,17 @@ function acceptanceFollowThroughStall(reply="",latestUserMessage=""){
 function convenientPlotTrigger(reply="", recentCharacterReplies=[]){
   const t=norm(reply);
   const recent=norm((Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-6):[]).join(" | "));
-  const miracle=/b(?:someone (?:tossed|threw|handed|offered)|an? (?:invitation|ticket|set of keys|opportunity) (?:appeared|landed|showed up)|perfect timing|just then|right then|suddenly someone|a message came in|the phone buzzed with|someone called with)b/.test(t);
-  const triggerNouns=(t.match(/b(?:keys?|tickets?|invite|invitation|reservation|ride|car|party|afterparty|table|booking|event|passes)b/g)||[]);
+  const miracle=/\b(?:someone (?:tossed|threw|handed|offered)|an? (?:invitation|ticket|set of keys|opportunity) (?:appeared|landed|showed up)|perfect timing|just then|right then|suddenly someone|a message came in|the phone buzzed with|someone called with)\b/.test(t);
+  const triggerNouns=(t.match(/\b(?:keys?|tickets?|invite|invitation|reservation|ride|car|party|afterparty|table|booking|event|passes)\b/g)||[]);
   if(!miracle || !triggerNouns.length) return false;
   return !triggerNouns.some((noun)=>recent.includes(noun.replace(/s$/,"")));
 }
 function repeatedMannerism(reply="", recentCharacterReplies=[]){
   const t=norm(reply);
-  const current=/b(?:grin|grinned|grinning|smile|smiled|smiling)b/.test(t);
+  const current=/\b(?:grin|grinned|grinning|smile|smiled|smiling)\b/.test(t);
   if(!current) return false;
   const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-3):[]).map(norm);
-  return recent.filter((r)=>/b(?:grin|grinned|grinning|smile|smiled|smiling)b/.test(r)).length>=2;
+  return recent.filter((r)=>/\b(?:grin|grinned|grinning|smile|smiled|smiling)\b/.test(r)).length>=2;
 }
 
 export function buildSemanticStoryMomentumV35310({
@@ -244,9 +244,9 @@ export function buildSemanticStoryMomentumV35310({
     "ACCEPTANCE HANDOFF: when the user says yes/okay/let's go, follows, joins, gets in, or otherwise accepts the character's proposal, DO NOT spend the next turn confirming the same proposal. The acceptance closes that beat. Immediately create the NEXT earned story beat.",
     "After an acceptance handoff, physical transit may continue, but movement alone is never enough. Add one grounded development owned by the character/world: a destination choice already compatible with canon, a meaningful question, a reveal, a refusal, a changed plan, a social consequence, a new obligation, or action driven by jealousy/care/pride. Do not fabricate user choices or miraculous interruptions.",
     "Before finalizing, ask silently: if I remove the walking, grin, keys, door, phone and food/drink props, did anything meaningful remain? If not, rewrite the beat.",
-    "Latest user: "+(clean(latestUserMessage,320)||"none")+". Recent character pattern: "+(clean((recentCharacterReplies||[]).slice(-3).join(" | "),650)||"none")+".",
+    "Latest user: "+(clean(latestUserMessage,320)||"none")+". Recent character pattern: "+(clean((Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-3).join(" | "),650)||"none")+".",
     "Character: "+clean(character?.name||"character",90)+".",
-  ].join("n");
+  ].join("\n");
 }
 
 export function semanticStoryMomentumIssues({

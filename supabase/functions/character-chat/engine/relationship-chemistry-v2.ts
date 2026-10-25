@@ -21,7 +21,7 @@ export type RelationshipChemistryV2 = {
 const norm=(v:any)=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[’']/g,"'").replace(/[^a-z0-9\s'-]/g," ").replace(/\s+/g," ").trim();
 const text=(v:any)=>String(v??"").trim();
 const uniq=(xs:string[])=>[...new Set(xs.map(text).filter(Boolean))];
-const clamp=(n:any,f=0)=>{const x=Number(n);return Math.max(0,Math.min(100,Number.isFinite(x)?x:f));};
+const clamp=(n:any,f=0)=>{const x=n===null||n===undefined||n===""?NaN:Number(n);return Math.max(0,Math.min(100,Number.isFinite(x)?x:f));};
 
 function profileText(character:Record<string,unknown>={}) {
   return norm([character.personality,character.relationship,character.description,character.role,character.conflict_style,character.humor_style,character.habits,character.contradictions,character.core_motivation,character.character_values,character.notes].filter(Boolean).join(" | "));
@@ -112,14 +112,15 @@ function oneOnOneWindow(recentMessages:any[]=[], latestUserMessage=""){
 
 export function deriveRelationshipChemistryV2({character={},userName="",latestUserMessage="",recentMessages=[],developmentState={},intelligenceState={},chemistryProfile={},activeConflicts=[],memories=[],milestones=[],baseRelationship={}}:any={}):RelationshipChemistryV2 {
   const p=profileText(character);
+  activeConflicts=(Array.isArray(activeConflicts)?activeConflicts:[]).filter((x:any)=>!/^(?:resolved|closed|complete|completed|done|cancelled|canceled|superseded)$/i.test(text(x?.status)));
   const behavior=(intelligenceState?.human_behavior_state&&typeof intelligenceState.human_behavior_state==="object")?intelligenceState.human_behavior_state:{};
   const mind=(intelligenceState?.character_mind&&typeof intelligenceState.character_mind==="object")?intelligenceState.character_mind:{};
   const phase=norm(developmentState?.relationship_phase||character?.relationship||"");
-  const phaseBase=/committed|partner|dating/.test(phase)?78:/mutual|charged|crush|romance/.test(phase)?55:/friend/.test(phase)?36:/acquaint/.test(phase)?18:20;
+  const phaseBase=/\b(?:committed|romantic partner|dating)\b/.test(phase)?78:/mutual|charged|crush|romance/.test(phase)?55:/friend/.test(phase)?36:/acquaint/.test(phase)?18:20;
   const attraction=clamp(chemistryProfile?.tension_score,clamp(behavior?.relationship_attraction,/crush|attract|charged|flirt|romance/.test(`${p} ${phase}`)?Math.max(45,phaseBase):Math.max(8,phaseBase-10)));
   const trust=clamp(chemistryProfile?.trust_score,clamp(behavior?.relationship_trust,phaseBase));
   const comfort=clamp(behavior?.relationship_comfort,Math.max(8,phaseBase+(developmentState?.shared_ritual||developmentState?.private_pattern?14:0)-(activeConflicts?.length?16:0)));
-  const commitment=clamp(behavior?.relationship_commitment,/committed|partner|dating/.test(phase)?Math.max(72,phaseBase):Math.max(5,phaseBase-5));
+  const commitment=clamp(behavior?.relationship_commitment,/\b(?:committed|romantic partner|dating)\b/.test(phase)?Math.max(72,phaseBase):Math.max(5,phaseBase-5));
   const attachment=clamp(behavior?.relationship_attachment,Math.round((trust+comfort+commitment)/3));
 
   const recent=(Array.isArray(recentMessages)?recentMessages:[]).slice(-16);
@@ -161,7 +162,7 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
 
   let paceStatus:RelationshipChemistryV2["paceGate"]["status"]="hold";
   if(conflictActive&&conflictLevel>=45) paceStatus="repair_first";
-  else if(commitment>=70||(/dating|partner|committed/.test(phase))) paceStatus="allow_progress";
+  else if(commitment>=70||(/\b(?:dating|romantic partner|committed)\b/.test(phase))) paceStatus="allow_progress";
   else if(attraction>=55&&trust>=50&&comfort>=45&&(historyAnchors.length>=2||commitment>=45)) paceStatus="allow_progress";
   if(attraction>=65&&trust>=60&&comfort>=55&&commitment<70&&historyAnchors.length>=3&&!conflictActive) paceStatus="progress_due";
   const allowed=paceStatus==="repair_first"?["repair attempt","honest clarification","ordinary coexistence with residue"]:paceStatus==="hold"?["small bid","specific invitation","private joke","earned proximity","partial honesty"]:["clearer prioritization","specific vulnerability","earned physical closeness","explicit plan","relationship-defining conversation when the beat supports it"];
@@ -170,7 +171,7 @@ export function deriveRelationshipChemistryV2({character={},userName="",latestUs
   const affection=affectionLanguageFor(character);
   const personalityManifestation=personalityManifestationFor(character);
   const recentSignalCount=recentChar.slice(-4).filter(looksLikeAttractionSignal).length;
-  const latestBoundary=/\b(?:leave me alone|dont flirt|do not flirt|stop flirting|not interested|i need space|give me space|no me coquetees|dejame sola|dejame solo|necesito espacio)\b/.test(latest);
+  const latestBoundary=/\b(?:leave me alone|don'?t flirt|do not flirt|stop flirting|not interested|i need space|give me space|no me coquetees|dejame sola|dejame solo|necesito espacio)\b/.test(latest);
   let attractionExpression:RelationshipChemistryV2["attractionExpression"]={
     status:"not_required",
     recentSignalCount,
@@ -261,5 +262,5 @@ export function sanitizeRelationshipChemistryReply(reply="",issues:string[]=[]){
       .replace(/\b(?:almost|nearly) kissed[^.?!]*[.?!]?/gi,"")
       .replace(/["“']?I love you[.!?"”']?/gi,"");
   }
-  return out.replace(/\n{3,}/g,"\n\n").replace(/\s{2,}/g," ").trim();
+  return out.replace(/\n{3,}/g,"\n\n").replace(/[^\S\n]{2,}/g," ").trim();
 }

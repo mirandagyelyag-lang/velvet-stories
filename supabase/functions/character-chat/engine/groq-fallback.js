@@ -8,6 +8,7 @@ export function buildGroqLivePrompt({
  relationship = {}, memories = [], lore = [], recap = "", threads = [],
  direction = "", regeneration = "", rejected = [], care = "", npcCanon = "",
 } = {}) {
+ transcript=Array.isArray(transcript)?transcript.filter(m=>m&&typeof m==="object"):[];
  const clean = (v, n) => String(v ?? "").slice(0, n);
  const profileFields = ["name","role","description","personality","relationship","world","speech_style","humor_style","affection_style","emotional_defense","boundaries"];
  const profile = profileFields.map(k => k + ": " + clean(character[k], k === "boundaries" ? 700 : 350)).join("\n");
@@ -57,7 +58,7 @@ export async function callGroqProse({
  // Fail rather than silently amputating the scene to fit a provider budget.
  if (String(prompt).length + String(systemInstruction).length > 30000) throw new Error("Groq fallback context exceeds its compact budget");
  const models = [...new Set([model,fallbackModel].filter(Boolean))];
- const deadline = Date.now() + timeoutMs;
+ const deadline = Date.now() + Math.max(800, Math.min(60000, Number(timeoutMs)||16000));
  let lastError = "Groq could not produce a reply";
  for (const candidate of models) {
   if (await isCancelled()) throw new DOMException("Generation cancelled","AbortError");
@@ -69,7 +70,7 @@ export async function callGroqProse({
    const body = {
     model:candidate, stream:false,
     messages:[{role:"system",content:systemInstruction || "Write one grounded character roleplay turn. Return only visible prose."},{role:"user",content:prompt}],
-    max_completion_tokens:Math.max(128,Math.min(2000,Number(maxOutputTokens)||1000)),
+    max_completion_tokens:Math.max(128,Math.floor(Math.min(2000,Number(maxOutputTokens)||1000))),
     ...(candidate.startsWith("openai/gpt-oss-") ? {reasoning_effort:"low"} : {}),
    };
    const response = await fetchImpl("https://api.groq.com/openai/v1/chat/completions",{
@@ -92,6 +93,10 @@ export async function callGroqProse({
    }
    return {reply,model:"groq/"+candidate,finishReason:String(choice?.finish_reason||"stop"),
     promptTokens:Number(data?.usage?.prompt_tokens||0),outputTokens:Number(data?.usage?.completion_tokens||0)};
+  } catch(error) {
+   if(await isCancelled()) throw new DOMException("Generation cancelled","AbortError");
+   if(controller.signal.aborted || error instanceof TypeError){ lastError=controller.signal.aborted?"Groq generation timed out":"Groq network request failed"; continue; }
+   throw error;
   } finally {clearTimeout(timer);}
  }
  throw new Error(lastError);

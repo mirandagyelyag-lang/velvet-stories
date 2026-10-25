@@ -2,9 +2,9 @@ const clean=(v:any,n=500)=>String(v??'').replace(/\s+/g,' ').trim().slice(0,n);
 const norm=(v:any)=>clean(v,7000).toLowerCase().replace(/[’]/g,"'");
 
 export function buildHumanSocialIntelligenceV34932({character={},latestUserMessage='',recentUserMessages=[],recentCharacterReplies=[],scene={},relationship={},mind={},behavior={}}:any={}){
-  const profile=norm([character?.personality,character?.speechStyle,character?.description,character?.role].join(' '));
+  const profile=norm([character?.personality,character?.speech_style||character?.speechStyle,character?.description,character?.role].join(' '));
   const latest=clean(latestUserMessage,700);
-  const publicSetting=/party|class|campus|hall|restaurant|bar|club|crowd|friends|team|office|meeting|public/.test(norm([scene?.location,scene?.setting,latest,...recentUserMessages].join(' ')));
+  const publicSetting=/\b(?:party|class|campus|hall|restaurant|bar|club|crowd|friends|team|office|meeting|public)\b/.test(norm([scene?.location,scene?.setting].join(' ')));
   const guarded=/guarded|private|reserved|proud|cold|stoic|avoidant/.test(profile);
   const sociallyBold=/popular|social|charismatic|outgoing|bold|confident|heartthrob|campus prince/.test(profile);
   return [
@@ -35,10 +35,10 @@ export function buildHumanSocialIntelligenceV34932({character={},latestUserMessa
 export function humanSocialIntelligenceV34932Issues(reply='',latestUserMessage='',recentCharacterReplies:any[]=[]){
   const t=norm(reply), u=norm(latestUserMessage), recent=norm((recentCharacterReplies||[]).slice(-5).join(' '));
   const issues:string[]=[]; if(!t)return issues;
-  if(/\b(?:everyone|the whole room|the entire room|all eyes|everyone in the room)\b/.test(t) && !/\b(?:everyone|crowd|whole room|entire room|all eyes)\b/.test(u)) issues.push('social_intelligence_invented_audience');
-  if(/\b(?:you'?re jealous|you are jealous|you want me|you'?re into me|you are into me|you like me)\b/.test(t) && !/\b(?:jealous|want you|like you|into you|i want you|i like you)\b/.test(u)) issues.push('social_intelligence_mindread_attraction');
+  if(/\b(?:everyone|the whole room|the entire room|all eyes|everyone in the room)\b/.test(t) && !/\b(?:everyone|crowd|whole room|entire room|all eyes)\b/.test(u+' '+recent)) issues.push('social_intelligence_invented_audience');
+  if(!/\?/.test(String(reply||'')) && /\b(?:you'?re jealous|you are jealous|you want me|you'?re into me|you are into me|you like me)\b/.test(t) && !/\b(?:jealous|want you|like you|into you|i want you|i like you)\b/.test(u)) issues.push('social_intelligence_mindread_attraction');
   if(/\b(?:he(?:'s| is) jealous|she(?:'s| is) jealous|they(?:'re| are) jealous|he wants you|she wants you|they want you)\b/.test(t) && !/\b(?:jealous|wants? you)\b/.test(u)) issues.push('social_intelligence_third_party_certainty');
-  if(/\b(?:everyone knows|everybody knows|obviously everyone|the whole campus knows|word gets around)\b/.test(t) && !/\b(?:everyone knows|everybody knows|whole campus|word got around|public knowledge)\b/.test(u)) issues.push('social_intelligence_unrouted_information');
+  if(/\b(?:everyone knows|everybody knows|obviously everyone|the whole campus knows|word gets around)\b/.test(t) && !/\b(?:everyone knows|everybody knows|whole campus|word got around|public knowledge)\b/.test(u+' '+recent)) issues.push('social_intelligence_unrouted_information');
   if(/\b(?:make me|admit it|say it|tell me now|you know you want to)\b/.test(t) && /\b(?:no|stop|anyway|leave it|drop it|forget it|doesn'?t matter)\b/.test(u)) issues.push('social_intelligence_pressure_after_boundary');
   if(/\b(?:electricity|sparks? (?:between|through)|charged air|tension crackles)\b/.test(t) && !/\b(?:kiss|flirt|date|attraction|romantic|love|sexual)\b/.test(u+recent)) issues.push('social_intelligence_romance_projection');
   if(/\b(?:the room (?:goes|falls) silent|everyone (?:stares|turns|looks)|heads turn)\b/.test(t) && !/\b(?:shout|yell|scream|announcement|stage|microphone|fight)\b/.test(u)) issues.push('social_intelligence_crowd_theater');

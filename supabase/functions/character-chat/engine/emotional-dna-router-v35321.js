@@ -12,14 +12,14 @@ export function buildEmotionalDnaRouterV35321({character={},supportState={}}={})
     "EMOTIONAL DNA 3.53.21 · CHARACTER PROMISE:",
     "CORE_FANTASY="+core,
     "EMOTIONAL_PROMISE="+(clean(d.emotional_promise,1300)||"Preserve the creator-defined emotional experience."),
-    d.user_misbelief?"USER_MISBELIEF="+clean(d.user_misbelief,500):"",
-    d.hidden_truth?"HIDDEN_TRUTH="+clean(d.hidden_truth,500):"",
+    d.user_misbelief?"CHARACTER_BELIEF_ABOUT_USER (fallible, never a user fact)="+clean(d.user_misbelief,500):"",
+    d.hidden_truth?"PRIVATE_CHARACTER_CANON (not automatically known to others)="+clean(d.hidden_truth,500):"",
     d.relationship_trope?"RELATIONSHIP_TROPE="+clean(d.relationship_trope,180):"",
     "SIGNATURE_SIGNALS="+(signals.join(" | ")||"derive from profile"),
     "SUPPORT_STYLE="+(clean(d.support_style,700)||"Care must remain character-specific."),
     "MUST_NOT="+(mustNot.join(" | ")||"do not collapse into a generic romance archetype"),
     "IDENTITY RULE: the reply must feel recognizably like this character even with the name removed. Preserve the emotional promise through choices and priorities, not by mechanically mentioning the trope.",
-    supportState?.active?"SUPPORT OVERRIDE IS ACTIVE: preserve this DNA while letting care outrank entertainment, romance escalation, banter and side plot.":"",
+    (supportState?.active||supportState?.safety||Number(supportState?.level)>=2)?"SUPPORT OVERRIDE IS ACTIVE: preserve this DNA while letting care outrank entertainment, romance escalation, banter and side plot.":"",
   ].filter(Boolean).join("\n");
 }
 

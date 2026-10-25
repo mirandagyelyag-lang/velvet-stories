@@ -6,8 +6,8 @@ const clean=(v="",n=1400)=>String(v??"").replace(/\s+/g," ").trim().slice(0,n);
 const norm=(v="")=>clean(v,9000).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’']/g,"");
 
 function userSignal(latest=""){
-  const t=norm(latest);
-  const highDistress=/\b(?:tired of everything|so tired of everything|tired of this|cant do this|cannot do this|cant take this|cannot take this|i cant anymore|i cannot anymore|overwhelmed|miserable|i feel awful|i feel terrible|i feel like shit|i hate everything|want to cry|crying|im done|i am done|no energy|dont have the energy|do not have the energy)\b/.test(t);
+  const t=norm(latest).split(/(?<=[.!?])\s+/).filter(part=>!/\b(?:not sad|not upset|not angry|not hurt|not exhausted|not crying|no longer upset)\b/.test(part)).join(" ");
+  const highDistress=/\b(?:tired of everything|so tired of everything|tired of this|cant do this|cannot do this|cant take this|cannot take this|i cant anymore|i cannot anymore|overwhelmed|miserable|i feel awful|i feel terrible|i feel like shit|i hate everything|want to cry|crying|no energy|dont have the energy|do not have the energy)\b/.test(t);
   const hurt=/\b(?:hurt|hurting|upset|sad|angry|mad|frustrated|fed up|exhausted|drained|awful|terrible)\b/.test(t);
   const rupture=/\b(?:stop\s+(?:fucking\s+)?ruining|ruining everything|ruined everything|you always|you never|because of you|you make everything worse|why do you always|why cant you|why can t you|leave me alone|stop it|stop doing that)\b/.test(t);
   return {highDistress,hurt,rupture,serious:highDistress||hurt||rupture};
@@ -108,8 +108,8 @@ export function emotionalRelationshipCoreV35263Issues({
   if(signal.highDistress && practicalPivot(reply) && !registered) issues.push("emotional_bid_practical_escape");
   if(signal.rupture && defensiveDeflection(reply) && !registered) issues.push("relational_hurt_deflected");
   if(cannedDistressCheckin(reply)) issues.push("canned_distress_checkin");
-  if(therapistVoice(reply)) issues.push("emotional_care_therapized");
-  if(signal.highDistress && forcedConfession(reply) && !/\b(?:love you too|im in love with you too|i am in love with you too)\b/.test(norm(latestUserMessage))) issues.push("distress_forced_romance_confession");
+  if(therapistVoice(reply)&&String(reply||"").split(/\s+/).length<35) issues.push("emotional_care_therapized");
+  if(signal.highDistress && forcedConfession(reply) && !/\b(?:love|committed|married|dating)\b/.test(norm(relationship?.stage||relationship?.status||"")) && !/\b(?:love you too|im in love with you too|i am in love with you too)\b/.test(norm(latestUserMessage))) issues.push("distress_forced_romance_confession");
 
   // When attachment is already established, a serious beat cannot be treated as
   // interchangeable small talk. A fully generic check-in is allowed, but a pure

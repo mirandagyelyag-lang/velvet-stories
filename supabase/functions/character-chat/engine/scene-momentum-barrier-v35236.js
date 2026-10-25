@@ -89,7 +89,7 @@ function characterOverridesDestination(reply = "", latestUserMessage = "") {
 
 function groundedTimeAdvance(latestUserMessage = "") {
   const text = norm(latestUserMessage);
-  return /\b(?:minutes?|hours?) later\b|\b(?:after a while|eventually|later on|by the time)\b/.test(text);
+  return /\b(?:time\s*skip|skip ahead|fast forward|salto temporal)\b|\b(?:minutes?|hours?) later\b|\b(?:after a while|eventually|later on|by the time)\b/.test(text);
 }
 
 export function buildSceneMomentumBarrierV35236({ latestUserMessage = "", recentCharacterReplies = [], recentUserMessages = [], character = {} } = {}) {
@@ -130,6 +130,7 @@ export function sceneMomentumBarrierV35236Issues({ reply = "", latestUserMessage
 
 export function sanitizeSceneMomentumBarrierV35236(reply = "", issues = [], context = {}) {
   const active = new Set(list(issues));
+  if(!active.size) return String(reply||"").trim();
   let parts = sentences(reply);
   if (active.has("live_scene_vehicle_rewind")) parts = parts.filter((part) => !restartsVehicle(part));
   if (active.has("live_scene_premature_arrival")) parts = parts.filter((part) => !arrivalBeat(part));

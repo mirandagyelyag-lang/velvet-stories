@@ -3,7 +3,7 @@ const norm=(v:any)=>clean(v,5000).toLowerCase().replace(/[’]/g,"'");
 function has(src:string,re:RegExp){return re.test(src)}
 
 export function buildIndividualHumanPsycheV34931({character={},mind={},behavior={},relationship={},recentCharacterReplies=[],latestUserMessage=''}:any={}){
-  const profile=norm([character?.name,character?.personality,character?.speechStyle,character?.description,character?.role,character?.background,character?.traits].flat().join(' '));
+  const profile=norm([character?.name,character?.personality,character?.speech_style||character?.speechStyle,character?.description,character?.role,character?.background,character?.traits].flat().join(' '));
   const guarded=has(profile,/guarded|private|cold|reserved|avoidant|distant|stoic|hard to read/);
   const direct=has(profile,/direct|blunt|straightforward|honest|frank|bold/);
   const dry=has(profile,/dry|sarcastic|snark|wry|deadpan/);
@@ -48,7 +48,7 @@ export function individualHumanPsycheV34931Issues(reply='',latestUserMessage='',
   if(/\b(?:someone has to|where'?s the fun in that|keep(?:ing)? (?:you|things) interesting|keep you on your toes|wouldn'?t you like to know|careful what you wish for)\b/.test(t)) issues.push('individual_psyche_generic_archetype_line');
   if(/\b(?:smirk(?:s|ed|ing)?|grin(?:s|ned|ning)?)\b/.test(t)&&/\b(?:smirk(?:s|ed|ing)?|grin(?:s|ned|ning)?)\b/.test(recent)) issues.push('individual_psyche_repeated_mannerism');
   const opening=t.split(/[.!?\n]/)[0].trim();
-  if(opening.length>4 && recent.includes(opening) && opening.split(/\s+/).length>=3) issues.push('individual_psyche_repeated_opening');
+  if(opening.length>4 && (Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).filter(row=>norm(row).split(/[.!?\n]/)[0].trim()===opening).length>=2 && opening.split(/\s+/).length>=5) issues.push('individual_psyche_repeated_opening');
   if(/\b(?:obviously|clearly)\b/.test(t)&&/\b(?:i don'?t know|not sure|maybe|i guess)\b/.test(latest)) issues.push('individual_psyche_overconfident_inference');
   if(/\b(?:you know me|that'?s just who i am|what can i say\??|you know how i am)\b/.test(t) && latest.split(/\s+/).length<16) issues.push('individual_psyche_self_branding');
   return [...new Set(issues)];

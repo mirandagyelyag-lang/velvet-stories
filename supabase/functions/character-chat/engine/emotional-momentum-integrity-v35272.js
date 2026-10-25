@@ -22,7 +22,7 @@ function latestMeaningfulUserBeat(latestUserMessage="",recentUserMessages=[]){
 
 function exactBoundary(value=""){
   const t=norm(value);
-  if(/\b(?:leave me alone|go away|stay away|dont talk to me|do not talk to me|leave|vete|dejame sola|dejame solo|no me hables|alejate)\b/.test(t)) return "disengage";
+  if(/\b(?:leave me alone|go away|stay away|dont talk to me|do not talk to me|please leave|you need to leave|vete|dejame sola|dejame solo|no me hables|alejate)\b/.test(t)) return "disengage";
   if(/\b(?:stop following me|dont follow me|do not follow me|dont come after me|do not come after me|no me sigas|no vengas detras|no vengas detrás)\b/.test(t)) return "stop_following";
   if(/\b(?:give me space|i need space|back off|dame espacio)\b/.test(t)) return "space";
   return "none";
@@ -96,11 +96,11 @@ export function emotionalMomentumIntegrityV35272Issues({
   const boundary=exactBoundary(effective);
   const t=norm(reply);
 
-  if(hasChargedStance(recentText) && boundary!=="disengage" && passiveChoiceHandoff(reply)){
+  if(hasChargedStance(recentText) && boundary==="none" && passiveChoiceHandoff(reply)){
     issues.push("emotional_stance_self_cancelled");
   }
 
-  if(boundary==="stop_following" && emotionalRetreat(reply)){
+  if(boundary==="stop_following" && emotionalRetreat(reply) && /\b(?:never cared|nothing mattered|felt nothing|no longer cared)\b/.test(t)){
     issues.push("stop_following_overread_as_full_disengagement");
   }
 

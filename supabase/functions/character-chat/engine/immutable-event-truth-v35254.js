@@ -4,29 +4,14 @@ const norm = (v = "") => clean(v, 12000).toLowerCase().replace(/[’]/g, "'").re
 
 export function buildImmutableEventTruthV35254({ recentMessages = [], character = {} } = {}) {
   const transcript = (Array.isArray(recentMessages) ? recentMessages : []).slice(-24).map((m) => {
-    const speaker = m?.sender === "user" ? "USER" : (m?.sender === "character" ? "CHARACTER" : clean(m?.sender || "OTHER", 40).toUpperCase());
-    return `${speaker}: ${clean(m?.content, 1100)}`;
+    const speaker = (m?.sender||m?.role) === "user" ? "USER" : (/^(?:character|assistant|ai)$/.test(m?.sender||m?.role||"") ? "CHARACTER" : clean(m?.sender || "OTHER", 40).toUpperCase());
+    return `${speaker}: ${clean(m?.content??m?.text??m?.message, 1100)}`;
   }).join("\n");
   return `IMMUTABLE EVENT TRUTH LOCK 3.52.54 · FACTS CANNOT MUTATE
 This is a HARD continuity law, stronger than wit, drama, prose, momentum, or convenience.
 Before writing, silently reconstruct current facts as ACTOR → ACTION → OBJECT/PERSON → RECIPIENT/TARGET → STATUS.
 Track who arrived, who invited whom, who brought whom, who knows what, who is present, names, relationships, locations, causes, promises, possessions, and unresolved identities.
 - Once a visible turn establishes a fact, KEEP IT TRUE until a later visible turn explicitly changes it.
-- DEBT ACKNOWLEDGEMENT / RESPONSE QUALITY: When USER invokes an outstanding wager or coffee debt, CHARACTER must answer that specific debt in direct speech, acknowledging who owes whom and the original amount (a full week of lattes), before any teasing. Avoid deflection with business jargon, invoice metaphors, operating hours, or empty sarcasm. Let the character be playful AFTER accepting responsibility.
-- EMOTIONAL CAUSAL CONTINUITY: When USER says the character's teasing or distancing hurt them, acknowledge that specific behavior instead of arguing that the feeling is wrong. Character can remain defensive or sarcastic, but must not erase what just happened or shift all blame onto USER.
-- SPACE AND AGENCY: When USER explicitly needs space or walks away, do not corner, restrain, demand explanations, or treat a mental-health disclosure as a countdown. Character can express care and offer to reconnect later while respecting the user's stated boundary.
-- Emotional scenes must develop from the previous exchange: if CHARACTER pursued USER to repair a conflict, their next reply should attempt repair, not revert to generic banter, blame, or a different topic. Preserve tension without coercion or instant personality replacement.
-- If USER mentions being bipolar or another personal condition, do not reduce it to a punchline, prediction, timer, or clinical lecture. Respond to their actual request (e.g. space) without diagnosing them.
-- READABLE OBJECT OUTPUT FORMAT: On a read action, start the reply with an explicit inscription, e.g. 'The note reads: “...”' or 'Written on the paper: “...”'. Include at least one complete meaningful sentence of written content. Spoken dialogue, reaction, silence, and vague summaries do NOT count. Show the inscription FIRST; character reaction can follow. Never claim reading was interrupted unless the USER explicitly interrupted it.
-- READABLE OBJECT PAYOFF: When USER explicitly reads, opens, unfolds or looks at a note, letter, paper, message, screen or document already in their possession, the NEXT CHARACTER response MUST disclose its actual readable contents in narration or as quoted text. Never stall with "read it and find out", "something I wrote earlier", "you look at the paper", or other withholding. If contents were not previously established, invent specific, context-consistent contents now and keep them canonical. A character's reluctance may be shown AFTER the words are revealed, not instead of them.
-- CONTRACT LEDGER: Record each wager, promise, debt, quantity, owner, beneficiary, condition, outcome and whether it has been fulfilled. Completing the wager's task does not erase its reward or reverse who owes whom.
-- A week of free lattes means a full week, not one coffee. If the character accepted owing the USER a week of lattes, they cannot later claim the USER owes coffee, shorten the debt to one drink, or renegotiate without the USER's explicit agreement.
-- When a user says "you still owe me", retrieve the original obligation and its exact quantity rather than improvising a new bargain.
-- PAYOFF ACKNOWLEDGEMENT GATE: When USER mentions collecting, interest, espresso, coffee, lattes, invoices, a bet, or the outstanding reward, CHARACTER must answer the actual debt explicitly in natural dialogue. Never replace an answer with a metaphor about billing, opening hours, or accounting.
-- In the seven-latte wager scene, Chase must plainly acknowledge owing USER the entire week, then take initiative toward paying it. Example intent (do not copy verbatim): "Seven lattes. I remember. First one's on me." His sarcasm should sharpen the exchange, not obscure the facts.
-- CHARACTER VOICE: Chase is impulsive, playful and direct, not a corporate lawyer. Avoid consecutive business metaphors (hostile takeover, operating hours, drafting invoices) when the scene is personal. Make each reply advance an action or interpersonal beat rather than restate a clever analogy.
-- Never force the USER to request acknowledgement twice. A promise recalled by the USER receives an actual answer in this turn. Distinguish progress toward a goal from payment of the promised reward.
-- After time skips preserve confirmed results, quantities and unresolved commitments. Never convert an accomplished 200-signup goal back into an unfinished one.
 - A CHARACTER decision or commitment in the immediately preceding assistant turn is also canon. When generating an additional CHARACTER turn without a new USER message, continue from that decision rather than replaying the rejected plan.
 - Distinguish proposed plans from accepted plans: a declined invitation remains declined. Do not send the character toward the declined destination unless a new on-page event motivates the change.
 - Track the latest physical position and intended next action across consecutive CHARACTER turns. If the character says they will stay, they cannot silently leave in the next turn; establish a believable cause and show the change on-page.
@@ -84,42 +69,16 @@ function unsupportedRoleClaim(reply = "", evidence = "") {
 }
 
 export function immutableEventTruthV35254Issues({ reply = "", recentUserMessages = [], recentCharacterReplies = [], character = {} } = {}) {
+  recentUserMessages=Array.isArray(recentUserMessages)?recentUserMessages:[];
+  recentCharacterReplies=Array.isArray(recentCharacterReplies)?recentCharacterReplies:[];
   const evidence = [...recentUserMessages, ...recentCharacterReplies, character?.name || ""].join("\n");
   const issues = [];
   if (unsupportedRoleClaim(reply, evidence)) issues.push("immutable_event_role_reassignment");
-  // Detect direct contradictions of an accepted week-long latte debt.
-  const turns = recentCharacterReplies.map(String);
-  const acceptedWeek = turns.some(t => /(?:week of (?:free )?lattes|lattes secured|seven lattes)/i.test(t));
-  const debtReminder = recentUserMessages.some(t => /(?:you still owe me|you owe me|week of (?:free )?lattes)/i.test(String(t)));
-  if (acceptedWeek && debtReminder && /(?:fine[,.! ]+one coffee|just one (?:coffee|latte)|i expect (?:back )?pay in coffee|you owe me (?:a )?coffee)/i.test(String(reply))) issues.push("immutable_event_wager_debt_reversal");
-  // Acknowledgement is required when the debt is being discussed, not just absence of contradiction.
-  const currentDebtCue = /(?:collecting interest|espresso|lattes?|coffee|invoice|you owe|your bet|our bet)/i.test(String(recentUserMessages.at(-1) || ""));
-  const replyAcknowledgesDebt = /(?:i owe|i still owe|i promised|seven|7|a whole week|the whole week|week of lattes|first (?:one|latte|coffee)(?:'s| is)? on me|on my tab)/i.test(String(reply));
-  if (acceptedWeek && currentDebtCue && !replyAcknowledgesDebt) issues.push("immutable_event_wager_missing_acknowledgement");
-  // Reject evasive espresso/invoice jokes even when the reply never explicitly reverses the debt.
-  const debtContext = acceptedWeek || recentUserMessages.some(t => /(?:week of (?:free )?lattes|seven lattes|7 lattes)/i.test(String(t)));
-  const evasiveCoffeeJoke = /(?:collecting interest|operating hours|drafting invoices|hostile takeover|espresso interest|send (?:me )?an invoice)/i.test(String(reply));
-  if (debtContext && currentDebtCue && evasiveCoffeeJoke && !replyAcknowledgesDebt) issues.push("immutable_event_wager_evasive_response");
-  const lastUserTurn = String(recentUserMessages[recentUserMessages.length - 1] || "");
-  const userNeedsSpace = /(?:need (?:my|some|a little) space|need to be alone|leave me alone|give me (?:a moment|some time)|necesito (?:mi )?espacio|déjame sola)/i.test(lastUserTurn);
-  if (userNeedsSpace && /(?:stop walking away|stop acting like you're leaving|you(?:'re| are) giving me the silent treatment|don't walk away|you can't leave)/i.test(String(reply))) issues.push("emotional_continuity_space_boundary_violation");
-  const userDescribesHurt = /(?:treat me like (?:i'm|i am) nothing|push me away|feel (?:that way|unwanted)|me haces sentir|me alejas)/i.test(lastUserTurn);
-  if (userDescribesHurt && /(?:when have i ever pushed you away|you're the one inventing|stop walking away every time)/i.test(String(reply))) issues.push("emotional_continuity_invalidating_response");
-  if (/\b(?:bipolar|bipolaridad)\b/i.test(lastUserTurn) && /(?:take your five minutes|see you in five minutes|five minutes then)/i.test(String(reply))) issues.push("emotional_continuity_disclosure_countdown");
-  const userReadsObject = /(?:\bi read (?:the|his|her|my|that) (?:paper|note|letter|message|text|document)\b|\bi (?:open|unfold|look at|check) (?:the|his|her|my|that) (?:note|letter|paper|message|text|document)\b|\bleo (?:la|el) (?:nota|carta|papel|mensaje)\b)/i.test(String(recentUserMessages.at(-1) || ""));
-  const withholdingReadableObject = /(?:read it and find out|just something i wrote|something i wrote down earlier|didn't think i'd actually have to hand it|you (?:read|unfold|look at) (?:the|his|her) (?:paper|note|letter)|(?:he|she) watches you (?:read|unfold))/i.test(String(reply));
-  if (userReadsObject && withholdingReadableObject) issues.push("immutable_event_readable_object_withheld");
-  // Require an actual visible inscription, not merely an absence of stock evasive phrases.
-  // Dialogue from the character alone (e.g. "It's not a test") cannot satisfy a read action.
-  const readingReply = String(reply || "");
-  const writtenContent = /(?:the (?:note|paper|letter|message|text|document) (?:reads|says|contains)|written (?:on|across|inside) (?:the|it)|(?:on the (?:note|paper|page|screen))\s*[:—-]|(?:you (?:read|see) (?:the words|the message|the line))|(?:in (?:his|her) handwriting)\s*[:—-])/i.test(readingReply);
-  if (userReadsObject && !writtenContent) issues.push("immutable_event_readable_object_content_missing");
-
   const latest = String(recentUserMessages[recentUserMessages.length - 1] || "").replace(/\*[^*]*\*/g, " ").trim();
   if (/^(?:who|who\?|who is it|who was it)\??$/i.test(latest)) {
     const bare = String(reply || "").trim().replace(/^["“]|["”]$/g, "");
     const m = bare.match(/^([A-Z][a-z]{2,})[.!?]?$/);
-    if (m && !norm(evidence).includes(norm(m[1]))) issues.push("immutable_event_unlicensed_identity");
+    if (m && !(" "+norm(evidence)+" ").includes(" "+norm(m[1])+" ")) issues.push("immutable_event_unlicensed_identity");
   }
   return [...new Set(issues)];
 }

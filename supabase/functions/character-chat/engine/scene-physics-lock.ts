@@ -66,7 +66,7 @@ function visibilityEntry(scene = {}, a = "", b = "") {
   const ak = normalized(a), bk = normalized(b);
   return list(scene?.visibility).find((item) => {
     const from = normalized(item?.from), to = normalized(item?.to);
-    return (from === ak && to === bk) || (from === bk && to === ak);
+    return from === ak && to === bk;
   }) || null;
 }
 
@@ -164,7 +164,7 @@ function farGeometry(latestUserMessage = "", previousScene = {}, userName = "", 
 function blockedVisibility(latestUserMessage = "", previousScene = {}, userName = "", characterName = "") {
   const latest = normalized(latestUserMessage);
   if (/\b(?:leave|left|walked out|exit(?:ed)?).{0,55}\b(?:close|closed|shut) (?:the )?door\b/.test(latest)) return true;
-  const visible = visibilityEntry(previousScene, userName, characterName);
+  const visible = visibilityEntry(previousScene, characterName, userName);
   if (visible && visible.can_see === false) return true;
   const relation = relationEntry(previousScene, userName, characterName);
   return /\b(?:different room|closed door|offscreen|out of sight|no line of sight)\b/.test(normalized(relation?.state || relation?.note || relation?.distance || ""));
@@ -308,7 +308,7 @@ export function sanitizeScenePhysicsReply(reply = "", issues = []) {
     parts = parts.filter((piece) => {
       const p = normalized(piece);
       if (active.has("completed_user_vehicle_exit_ignored") && asksUserToExit(piece)) return false;
-      if (active.has("vehicle_engine_state_rewind") && /\\bengine\\b.{0,30}\\b(?:running|idling|still on)\\b|\\b(?:leaving|left|keeping|kept) (?:the )?engine running\\b/.test(p)) return false;
+      if (active.has("vehicle_engine_state_rewind") && /\bengine\b.{0,30}\b(?:running|idling|still on)\b|\b(?:leaving|left|keeping|kept) (?:the )?engine running\b/.test(p)) return false;
       if (active.has("body_state_redundant_transition") && /\b(?:stood|stand|got up|gets up|out of the chair)\b/.test(p)) return false;
       if (active.has("spatial_anchor_teleport") && /\b(?:wall|doorway|counter|window|table|couch|car)\b/.test(p) && !hasLocomotionBridge(piece)) return false;
       if ((active.has("object_possession_break") || active.has("object_state_rewind")) && /\b(?:cup|coffee|mug|phone|bag|backpack|purse|keys?|jacket|coat|book|umbrella|laptop)\b/.test(p) && /\b(?:take|took|grab|held|hold|sip|drink|slide|slid|use|open|lift|in my hand)\b/.test(p)) return false;
@@ -394,8 +394,9 @@ function parseElapsedMinutes(value = "") {
 
 export function deriveScenePhysicsState({ previousScene = {}, latestUserMessage = "", reply = "", userName = "User", characterName = "Character" } = {}) {
   let bodyStates = list(previousScene?.body_states).map((item) => ({ ...item }));
-  const userState = bodyStateFromText(latestUserMessage);
-  const userAnchor = anchorFromText(latestUserMessage);
+  const userNarration=String(latestUserMessage).replace(/[“"][^”"]*[”"]/g,"").replace(/\b(?:he|she|they)\b[^.!?]*/gi,"");
+  const userState = bodyStateFromText(userNarration);
+  const userAnchor = anchorFromText(userNarration);
   if (userState || userAnchor) bodyStates = upsertByName(bodyStates, { name: userName, ...(userState ? { state:userState } : {}), ...(userAnchor ? { anchor:userAnchor } : {}) });
   const charState = bodyStateFromText(reply);
   const charAnchor = anchorFromText(reply);
@@ -409,17 +410,18 @@ export function deriveScenePhysicsState({ previousScene = {}, latestUserMessage 
   let visibility = list(previousScene?.visibility).map((item) => ({ ...item }));
   const latest = normalized(latestUserMessage);
   const far = farGeometry(latestUserMessage, previousScene, userName, characterName);
-  const explicitExit = /\b(?:leave|left|walked out|exit(?:ed)?|went outside|go outside)\b/.test(latest);
+  const explicitExit = /\bi (?:leave|left|walked out|exit(?:ed)?|went outside|go outside)\b/.test(latest) && !/\bi (?:leave|left) (?:my|your|the|a) (?:bag|book|phone|keys|coat|note|message)\b/.test(latest);
   const closesDoor = /\b(?:close|closed|shut) (?:the )?door\b/.test(latest);
   if (far) {
     spatialRelations = [{ from:userName, to:characterName, distance:"far", can_touch:false, can_whisper:false, micro_expression_visible:false, note:"user-authored distance" }, ...spatialRelations.filter((item) => !relationEntry({spatial_relations:[item]}, userName, characterName))].slice(0,8);
   }
-  if (explicitExit || closesDoor) {
+  if (explicitExit) {
     spatialRelations = [{ from:userName, to:characterName, distance: closesDoor ? "different room / closed door" : "offscreen", can_touch:false, can_whisper:false, micro_expression_visible:false, note: closesDoor ? "closed door blocks direct perception" : "user left current visual space" }, ...spatialRelations.filter((item) => !relationEntry({spatial_relations:[item]}, userName, characterName))].slice(0,8);
-    visibility = [{ from:characterName, to:userName, can_see:false, can_hear:!closesDoor, reason:closesDoor ? "closed door" : "user exited" }, ...visibility.filter((item) => !visibilityEntry({visibility:[item]}, userName, characterName))].slice(0,8);
+    visibility = [{ from:characterName, to:userName, can_see:false, can_hear:!closesDoor, reason:closesDoor ? "closed door" : "user exited" }, ...visibility.filter((item) => !visibilityEntry({visibility:[item]}, characterName, userName))].slice(0,8);
   }
   if (/\b(?:return|returned|come back|came back|enter|entered|walked in|step(?:ped)? in)\b/.test(latest)) {
-    visibility = [{ from:characterName, to:userName, can_see:true, can_hear:true, reason:"user re-entered" }, ...visibility.filter((item) => !visibilityEntry({visibility:[item]}, userName, characterName))].slice(0,8);
+    spatialRelations = spatialRelations.filter(item=>!relationEntry({spatial_relations:[item]},userName,characterName));
+    visibility = [{ from:characterName, to:userName, can_see:true, can_hear:true, reason:"user re-entered" }, ...visibility.filter((item) => !visibilityEntry({visibility:[item]}, characterName, userName))].slice(0,8);
   }
   const elapsedDelta = parseElapsedMinutes(latestUserMessage);
   const elapsedMinutes = Math.max(0, Number(previousScene?.elapsed_minutes || 0) + elapsedDelta);

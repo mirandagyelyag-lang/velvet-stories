@@ -27,7 +27,7 @@ function romanticInterferenceContext(ctx="") {
   const t=norm(ctx);
   const thirdParty=/\b(?:guy|girl|date|talking to|flirting|making friends|conversation|left|walked away|excused himself|excused herself|someone else)\b/.test(t);
   const interference=/\b(?:appeared at your side|came over|walked over|at your side|interrupted|scared him off|scared her off|making friends already|that was quick|looking at|glancing toward|glanced toward|empty space beside you|left pretty easily)\b/.test(t);
-  return thirdParty && interference;
+  return thirdParty && interference && !/\b(?:did not|didn't|never) (?:interrupt|approach|come over|walk over)\b/.test(t);
 }
 
 function motiveVacuum(reply="") {
@@ -52,7 +52,7 @@ export function buildMotivationPersistenceV35255({
   const ctx=contextText(latestUserMessage,recentUserMessages,recentCharacterReplies);
   const active=confrontation(latestUserMessage) && romanticInterferenceContext(ctx);
   return `MOTIVATION PERSISTENCE LOCK 3.52.55 · ACTIONS KEEP THEIR CAUSES
-ACTIVE CHARGED CONFRONTATION=${active ? "YES" : "not detected"}.
+ACTIVE CHARGED CONFRONTATION=${active ? "YES" : "not detected"}.\nApply the charged-motive rules only when active and supported by established behavior. Respect requests for space; continuity never requires pursuit or continued contact.
 - A character's immediately demonstrated motive survives into the next turn.
 - If CHARACTER noticed USER with another person, approached, interrupted, lingered, competed, teased, displaced attention, or behaved possessively/jealously, a direct "What do you want?", "Why are you here?", "Really?", or jealousy confrontation MUST answer from that same charged motive.
 - CHARACTER may deny jealousy out loud. The denial must not erase the behavioral truth. Body language, staying, territorial attention, irritation, attraction, competitiveness, or a pointed answer can preserve it.

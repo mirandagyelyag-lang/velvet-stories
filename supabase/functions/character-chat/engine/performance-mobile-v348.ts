@@ -1,6 +1,6 @@
 const tx=(v:unknown)=>String(v??"").trim();
 export function derivePerformanceMobileV348(input:Record<string,unknown>={}){
-  const orch=(input.orchestrator||{}) as Record<string,unknown>; const mode=tx(orch.mode)||"standard";
+  const orch=(input.orchestrator||{}) as Record<string,unknown>; const requestedMode=tx(orch.mode).toLowerCase(); const mode=["micro","standard","deep","group"].includes(requestedMode)?requestedMode:"standard";
   const table:Record<string,any>={micro:{firstTokenTargetMs:420,overallDeadlineMs:6200,hedgeDelaysMs:[0,90,210,390],streamChunkChars:24},standard:{firstTokenTargetMs:550,overallDeadlineMs:7200,hedgeDelaysMs:[0,110,250,460],streamChunkChars:28},deep:{firstTokenTargetMs:800,overallDeadlineMs:8600,hedgeDelaysMs:[0,150,330,590],streamChunkChars:36},group:{firstTokenTargetMs:700,overallDeadlineMs:8200,hedgeDelaysMs:[0,130,290,520],streamChunkChars:32}};
   const cfg=table[mode]||table.standard; const recent=Number(input.recentMessageCount||0); const mem=Number(input.memoryRetrievalCount||0);
   const promptRisk=(recent>35||mem>12)?"high":(recent>18||mem>7)?"medium":"low";

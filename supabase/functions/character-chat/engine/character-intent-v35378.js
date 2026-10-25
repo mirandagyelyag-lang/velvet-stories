@@ -25,7 +25,7 @@ export function buildCharacterIntentV35378({
   "8 · PENDING INTENTIONS SEEK PAYOFF. An established intention, promised action, withheld sentence, prepared gift, planned question, almost-kiss, unresolved task or earlier decision can return when a plausible opening appears. Payoff must come from prior setup, not a fabricated retrospective setup.",
   "CHASE BEAUMONT · FLIRTATION AND EMOTIONAL PACING: Chase is impulsive, magnetic and deliberately provocative, not a nonstop sarcastic debate partner. Tease with variety; when the user asks him to stop being sarcastic, stop immediately and answer the actual question plainly. Never turn a new attraction into an established couple's repetitive trust negotiation. Serious conversations must reveal one specific truth or change one concrete action, then move forward. He can be wrong, admit it briefly, and act on it without demanding the user soothe him.",
   "CHARACTER VOICE FIREWALL: Never recycle another character's signature lines or mannerisms. In particular, do not give Chase Theo's 'You fading on me?'. Avoid repeated phone-pocket-jaw-desk microgestures, arbitrary metaphors, and repetitive dry comebacks. Every character has their own distinct cadence, motives and behavioral repertoire.",
-  "LIVE SCENE GEOGRAPHY: Track each participant's last established location, movement, vehicle status, held objects and immediate destination. Do not put a phone back on a desk after it was pocketed without an intervening action, restart an engine that was switched off without showing it, or teleport between café, parking lot and street. User movement overrides any assumed staging; never block the user's path or force closeness.",
+  "LIVE SCENE GEOGRAPHY: Track each participant's last established location, movement, vehicle status, held objects and immediate destination. Do not put a phone back on a desk after it was pocketed without an intervening action, restart an engine already running or change an engine's state without showing it, or teleport between café, parking lot and street. User movement overrides any assumed staging; never block the user's path or force closeness.",
   "ROMANTIC SCENE MOMENTUM: Attraction should progress through character-owned choices, interruption, vulnerability, grounded physical actions and natural third-party attention, not endless banter or circular relationship arguments. NPCs may flirt with the love interest when context permits, but never fabricate an NPC or make the love interest forget the user. Inner thoughts in italics should disclose private conflict or intention rather than restating visible behavior.",
   "NO WAITING ROOM · HARD QUALITY LAW. After drafting, ask: did I leave the character merely watching, waiting, hovering, handing the choice back, or asking the user to create momentum? If YES and there is no real reason to wait, rewrite with one concrete character-owned move.",
   "BANNED PASSIVE HANDOFFS when avoidable: 'he waited to see what you'd do', 'the choice was yours', 'he left the decision to you', 'your call', 'up to you', 'what now?', or ending on passive watching solely to make the user drive.",
@@ -50,19 +50,26 @@ export function characterIntentIssuesV35378({
  if(!t)return [];
  const issues=[];
  const passive=/\b(?:wait(?:ed|s)? to see what you(?:'d| would) do|the choice was yours|left the decision (?:to|with) you|your call|up to you|what now\??|watched you(?:,|\s)+(?:waiting|to see)|looked at you(?:,|\s)+(?:waiting|to see))\b/.test(t);
- const consentNeeded=/\b(?:kiss|touch|sex|sleep with|come with me|date|relationship|can i|may i|do you want|will you)\b/.test(latest+" "+t);
- const directQuestion=/\?\s*$/.test(String(reply||"").trim());
- const boundary=/\b(?:leave me alone|give me space|wait|stop|not now|dont|do not|no)\b/.test(latest);
+ const consentNeeded=/\b(?:can i|may i|do you want|would you like|will you let me)\b/.test(t) || /\b(?:wait for my answer|ask me first|need my permission|espera mi respuesta)\b/.test(latest);
+ const spoken=[...String(reply||"").matchAll(/[“"]([^”"]+)[”"]/g)].map(m=>m[1]);
+ const directQuestion=spoken.some(line=>/\?\s*$/.test(line.trim())) || /\?[”"]?\s*$/.test(String(reply||"").trim());
+ const boundary=/\b(?:leave me alone|give me space|wait|stop|not now|don't|dont|do not|no)\b/.test(latest);
  if(passive&&!consentNeeded&&!directQuestion&&!boundary)issues.push("no_waiting_room_passive_handoff");
  // Respect a refusal and distinguish a caring boundary from a confrontation.
  const refusal=/\b(?:i(?:'ll| will) be fine|no thanks|no thank you|i(?:'m| am) okay|i don't want|i do not want|i can buy (?:one|my own)|no necesito|estare bien|no gracias)\b/.test(latest);
  const recentContext=norm(list(recentCharacterReplies).slice(-3).join(" "));
  const activeOffer=/\b(?:umbrella|paraguas|jacket|coat|ride|coffee|drink)\b/.test(recentContext) || (/\b(?:coughing|getting sick)\b/.test(latest) && /\b(?:take it|take the|umbrella|bag|jacket)\b/.test(t));
- const pushesOffer=/\b(?:take it|take the (?:bag|umbrella|jacket|coat)|just take|you have to take|i(?:'ll| will) walk you|i(?:'m| am) walking you|or i'm|or i am|insist|won't take no|will not take no)\b/.test(t);
+ const offerSpeech=norm((spoken.length?spoken.join(" "):String(reply||"")).split(/(?<=[.!?])\s+/).filter(part=>
+   !/\b(?:won't|will not|wouldn't|would not|don't|do not|not going to)\s+(?:insist|make you|force|push)\b/.test(norm(part))
+ ).join(" "));
+ const pushesOffer=/\b(?:take it|take the (?:bag|umbrella|jacket|coat)|just take|you have to take|i(?:'ll| will) walk you|i(?:'m| am) walking you|or i'm|or i am|insist|won't take no|will not take no)\b/.test(offerSpeech);
  if(refusal&&activeOffer&&pushesOffer)issues.push("rejected_offer_pushed_again");
  const previous=norm(list(recentCharacterReplies).slice(-1)[0]||"");
- const questions=[...String(reply||"").matchAll(/(?:[“"])?([^.!?\n]{2,90}\?)/g)].map(m=>norm(m[1]).replace(/^[^a-z]+/,"").trim());
- if(questions.some(q=>q.length>=5&&previous.includes(q)))issues.push("repeated_question_without_development");
+ const questionKey=(v)=>norm(v).replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim();
+ const questionList=(v)=>[...String(v||"").matchAll(/([^.!?\n“”"]{2,90})\?/g)].map(m=>questionKey(m[1]));
+ const questions=questionList(reply);
+ const oldQuestions=questionList(list(recentCharacterReplies).slice(-1)[0]||"");
+ if(questions.some(q=>q.length>=5&&oldQuestions.includes(q)))issues.push("repeated_question_without_development");
  const concern=/\b(?:don't want (?:to hear )?you coughing|don't want you (?:getting|to get) sick|worried about you|no quiero que te enfermes)\b/.test(latest);
  if(concern&&activeOffer&&pushesOffer)issues.push("user_concern_ignored_for_offer");
  if(concern&&/\b(?:i(?:\x27m| am) not coughing|not coughing|not sick)\b/.test(t))issues.push("care_reduced_to_literal_symptom");
@@ -70,6 +77,6 @@ export function characterIntentIssuesV35378({
  if(concern&&activeOffer&&hostile)issues.push("care_misread_as_hostility");
  if(concern&&/\byou okay\?/.test(t)&&!/\b(?:you're worried about me|youre worried about me|you care about me)\b/.test(t))issues.push("caring_refusal_generic_checkin");
  const recent=list(recentCharacterReplies).slice(-2).map(norm);
- if(recent.length&&passive&&recent.some(x=>/\b(?:wait(?:ed|s)?|watched|your call|up to you)\b/.test(x)))issues.push("repeated_passive_handoff");
+ if(recent.length&&passive&&!consentNeeded&&!directQuestion&&!boundary&&recent.some(x=>/\b(?:wait(?:ed|s)?|watched|your call|up to you)\b/.test(x)))issues.push("repeated_passive_handoff");
  return [...new Set(issues)];
 }

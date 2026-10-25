@@ -38,7 +38,7 @@ export function hasActiveDeclaredStateLock(recentUserMessages = [], latestUserMe
   for (const raw of turns) {
     const value = normalized(spokenUserText(raw));
     if (!value) continue;
-    if (/\b(?:actually|okay i admit|fine i am|i'm upset|i am upset|i'm angry|i am angry|i'm sad|i am sad|something is wrong|i lied|i wasn't fine|i was not fine)\b/.test(value)) return false;
+    if (/\b(?:okay i admit|fine i am|i'm upset|i am upset|i'm angry|i am angry|i'm sad|i am sad|something is wrong|i lied|i wasn't fine|i was not fine)\b/.test(value)) return false;
     if (/\b(?:i'm|im|i am) (?:fine|okay|ok)\b|\bnothing(?: is|'s) wrong\b|\bi don'?t know what you'?re talking about\b/.test(value)) return true;
   }
   return false;
@@ -145,6 +145,7 @@ export function hasUserAuthoredSceneBeatIgnored(reply = "", latestUserMessage = 
   const latest = normalized(latestUserMessage);
   const text = normalized(reply);
   if (!latest || !text) return false;
+  if(/\b(?:didn't|did not|doesn't|does not|never|might|could|would)\b/.test(latest)) return false;
   const introducedActor = /\b(?:cashier|clerk|waiter|waitress|server|barista|girl|woman|guy|man|student|teammate|coach|professor|stranger|cajera|cajero|mesera|mesero|chica|mujer|tipo|hombre|estudiante|entrenador|entrenadora|profesor|profesora|desconocido|desconocida)\b/.test(latest);
   const authoredAction = /\b(?:flirt|flirting|flirts|approach|approaches|walks? over|comes? over|waves?|smiles? at|asks?|says?|tells?|hands?|gives?|touches?|calls?|interrupts?|coquetea|coqueteando|se acerca|saluda|sonrie|sonríe|pregunta|dice|entrega|toca|llama|interrumpe)\b/.test(latest);
   if (!introducedActor || !authoredAction) return false;
@@ -192,6 +193,7 @@ export function groundedRealityIssues({ reply = "", latestUserMessage = "", rece
 
 export function sanitizeGroundedRealityReply(reply = "", issues = []) {
   const hard = new Set(Array.isArray(issues) ? issues : []);
+  if (!hard.size) return String(reply || "");
   const mustStrip = hard.has("declared_state_disbelief") || hard.has("semantic_scope_overreach") || hard.has("inference_distance_exceeded") || hard.has("specificity_escalation") || hard.has("invisible_history_claim") || hard.has("unsupported_sarcastic_activity_claim");
   if (!mustStrip && !hard.has("narrative_naturalism_overwrite")) return String(reply || "").trim();
   const bad = [

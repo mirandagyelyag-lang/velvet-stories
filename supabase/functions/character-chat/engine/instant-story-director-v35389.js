@@ -7,9 +7,9 @@ function relationshipStage(character={}){
  const r=n(character.relationship||character.relationshipToMe||character.relationship_to_me||"");
  if(/stranger|never met|don t know/.test(r))return "strangers";
  if(/enemy|rival|hate|don t get along/.test(r))return "rivals";
- if(/ex\b|ex boyfriend|ex girlfriend/.test(r))return "exes";
- if(/best friend|friend/.test(r))return "friends";
- if(/boyfriend|girlfriend|dating|relationship|partner/.test(r))return "together";
+ if(/\bex(?: boyfriend| girlfriend| partner)?\b/.test(r))return "exes";
+ if(/best friend|friend/.test(r) && !/boyfriend|girlfriend/.test(r))return "friends";
+ if(/\b(?:boyfriend|girlfriend|dating|romantic partner|married|engaged)\b/.test(r) && !/\b(?:not|never)\b/.test(r))return "together";
  if(/crush|like her|likes her|like you|attract/.test(r))return "attraction";
  return "configured";
 }
@@ -22,9 +22,9 @@ function staleSetup(v="",recent=[]){const t=n(v);const fam=(x)=>[/\bparty\b|\bcl
 
 function clipboardEscapePattern(v=""){
  const t=n(v);
- const pressure=/\\b(?:student|students|committee|volunteer|petition|clipboard|raffle|wristband|signup|sign up|shift|roster|passes|flyer|forms|paperwork|mixer|gala)\\b/.test(t);
- const interception=/\\b(?:path|blocked|intercept|stepped into|approached|stopped|cornered)\\b/.test(t);
- const escape=/\\b(?:ignore|ignored|brushed past|turned his back|walked away|toward you|towards you|near you|over to you|busy|instead|get out of)\\b/.test(t);
+ const pressure=/\b(?:student|students|committee|volunteer|petition|clipboard|raffle|wristband|signup|sign up|shift|roster|passes|flyer|forms|paperwork|mixer|gala)\b/.test(t);
+ const interception=/\b(?:path|blocked|intercept|stepped into|approached|stopped|cornered)\b/.test(t);
+ const escape=/\b(?:ignore|ignored|brushed past|turned his back|walked away|toward you|towards you|near you|over to you|busy|instead|get out of)\b/.test(t);
  return pressure&&interception&&escape;
 }
 function genericApproachLoop(v=""){
@@ -74,7 +74,7 @@ export function instantStoryDirectorIssuesV35389(opening="",{character={},recent
  if(staleSetup(opening,recentOpenings))issues.push("instant_story_recycled_setup");
  const t=n(opening);
  if(t.length<120)issues.push("instant_story_underdeveloped");
- if(!/\b(?:said|asked|told|turned|chose|decided|left|stayed|sent|called|refused|offered|changed|started|stopped|walked|moved|took|gave|opened|closed|arrived|interrupted|answered)\b/.test(t))issues.push("instant_story_low_initiative");
+ if(!/\b(?:says?|asks?|tells?|turns?|chooses?|decides?|offers?|starts?|stops?|said|asked|told|turned|chose|decided|left|stayed|sent|called|refused|offered|changed|started|stopped|walked|moved|took|gave|opened|closed|arrived|interrupted|answered)\b/.test(t))issues.push("instant_story_low_initiative");
  return [...new Set(issues)];
 }
 export const __testV35389={relationshipStage,rescuePattern,objectUser,fakeChoice,floatingDialogue,userChoreography,staleSetup,clipboardEscapePattern,genericApproachLoop};

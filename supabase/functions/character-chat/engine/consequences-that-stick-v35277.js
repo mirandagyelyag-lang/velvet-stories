@@ -73,7 +73,7 @@ function resolvedLanguage(reply=""){
 }
 
 function visibleDurableEvent(reply=""){
-  const t=norm(reply);
+  const t=norm(String(reply??"").split(/(?<=[.!?])\s+/).filter(part=>!/\b(?:didnt|did not|never|would|could|might|almost|wanted to|going to)\b/.test(norm(part))).join(" "));
   if(/\b(?:kissed|made out|hooked up|slept with|went home with|asked .* out|went on a date)\b/.test(t)) return "romantic";
   if(/\b(?:promised|swore to|gave .* word|i promise)\b/.test(t)) return "promise";
   if(/\b(?:lied to|lied about|kept .* secret|hid .* from)\b/.test(t)) return "secret";
@@ -140,7 +140,7 @@ export function consequencesThatStickV35277Issues({
     issues.push("knowledge_propagated_without_route");
   }
 
-  if(list(worldConsequences?.activeChains).length && resolvedLanguage(reply)){
+  if(list(worldConsequences?.activeChains).some(row=>!/^(?:resolved|completed|cancelled|canceled|inactive)$/i.test(String(row?.status||""))) && resolvedLanguage(reply)){
     issues.push("active_consequence_prematurely_reset");
   }
 

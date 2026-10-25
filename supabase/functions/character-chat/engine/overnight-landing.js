@@ -38,7 +38,7 @@ export function overnightLanding(userTurns = [], latestUserMessage = '') {
   // Explicit user-authored landing or a later clock outranks the ambiguous default.
   if(/\b(?:until|till|by|at) (?:the )?(?:dawn|sunrise|morning)\b|\b(?:next|following) (?:morning|day)\b|hasta (?:el )?amanecer|a la ma[nñ]ana siguiente/i.test(suffix)) return null;
   if(/\b(?:\d+|one|two|three|four|five|six|seven|eight|several) (?:minutes?|hours?|days?) later\b/i.test(suffix)) return null;
-  if(/\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(?:a\.?m\.?|p\.?m\.?)\b/i.test(turns.join('\n'))) return null;
+  if(/\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(?:a\.?m\.?|p\.?m\.?)\b/i.test(suffix)) return null;
   return {
     timeLabel:'late night / early hours, approximately 2–3 a.m.',
     instruction:'OVERNIGHT LANDING — ALL CHARACTERS: The user skipped through late-night work without authorizing dawn. Keep it nighttime / the early hours, approximately 2–3 a.m. as the creator-preferred ambiguous landing, rather than jumping automatically to sunrise, six in the morning, breakfast, lectures or campus opening. Keep the agreed place and task. Do not invent a morning appointment or declare the whole task completed. If asked the time, give a brief approximate late-night answer (e.g. "It is after two"), without inventing exact minutes. A prior model-generated morning/six-o-clock line is not user authorization and must not override this user-directed landing. A later explicit user time, dawn instruction or elapsed duration always wins; never rewind a user-established clock.',

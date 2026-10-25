@@ -2,7 +2,7 @@ export function buildLeanDialogueCoreV34942({ latestUserMessage = "", character 
   const latest = String(latestUserMessage || "").trim();
   const directWhy = /\bwhy\b|\bwhat (?:made|brought) you\b|\bwhy did you\b/i.test(latest);
   const socialChallenge = /what[’\']?s your deal|what is your deal|what[’\']?s (?:wrong|up) with you|what is wrong with you|qué te pasa|cuál es tu problema|qué problema tienes/i.test(latest);
-  const directQuestion = /\?|\b(?:why|what|where|when|who|how|did|do|does|are|is|can|could|would|will)\b/i.test(latest);
+  const directQuestion = /\?/.test(latest)||/^(?:why|what|where|when|who|how|did|do|does|are|is|can|could|would|will)\b/i.test(latest);
   return `LEAN DIALOGUE CORE 3.49.42 · THIS OVERRIDES ALL STYLE/HUMANIZATION DIRECTIVES\n- Respond like this specific person in this exact situation. Sarcasm, charm, formality or reserve may be authentic character traits; do not force or erase them to meet a universal style.\n- COMPLETE REACTION: brevity never excuses an unfinished beat. Show what the character actually says or does in response. "He doesn't hesitate", "she offers no quip", "his performance drops", "he doesn't answer", or a sentence promising a reaction is NOT the reaction. If they leave, show the departure; if they stay, show the choice; if they go quiet, make the consequential change clear.
 - PRAGMATICS BEFORE LITERAL ANSWERS: read a challenge, dismissal, joke, boundary, invitation or genuine question in context. "What's your deal?" can challenge someone's behavior; it is not an invitation to neatly confess attraction. "Then leave" changes the interaction; do not merely describe their lack of hesitation.
 - CHARACTER CONTINUITY: one sharp user line does not erase the character's personality or clarify previously unresolved feelings. Allow a fitting deflection, disagreement, clarification, humor, partial answer or refusal to disclose; do not force any one tactic. Keep established facts and earlier actions connected.
@@ -20,7 +20,7 @@ export function leanDialogueCoreV34942Issues(reply = "", latestUserMessage = "")
   const issues = [];
   const why = /\bwhy\b|\bwhat (?:made|brought) you\b|\bwhy did you\b/i.test(latest);
   const lower = text.toLowerCase();
-  if (why) {
+  if (why && !/\b(?:because|i wanted|i needed|the reason|i thought)\b/.test(lower)) {
     if (/\bi didn['’]?t (?:come|go|walk|approach)|\bi was already here\b|\byou (?:came|walked) (?:to|into)\b/.test(lower)) issues.push("lean_core_causal_nonanswer");
     if (/\b(?:check(?:ing)? if [^\n.]{0,80}surviv\w*|survival instinct|self[- ]preservation|your radius|perimeter check)\b/.test(lower)) issues.push("lean_core_causal_quip_substitution");
   }

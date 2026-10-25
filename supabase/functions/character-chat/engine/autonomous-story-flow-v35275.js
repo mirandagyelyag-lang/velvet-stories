@@ -25,13 +25,16 @@ function silentStreak(latestUserMessage="",recentUserMessages=[]){
 }
 
 function classifyLane(value=""){
-  const t=norm(value);
-  if(/\b(?:follow|caught up|wait|stay with|dont leave|do not leave|jealous|kiss|flirt|because its you|because it is you|care about you|looked at you|watched you|texted you|called you)\b/.test(t)) return "relationship";
-  if(/\b(?:friend|friends|teammate|roommate|party|bar|club|marcus|jules|classmate|group|team|crowd|someone called|someone asked)\b/.test(t)) return "social";
-  if(/\b(?:practice|training|class|lecture|work|shift|study|studying|gym|game|match|drive home|went home|sleep|shower|cook|ate|errand|project|assignment|meeting)\b/.test(t)) return "self-life";
-  if(/\b(?:problem|argument|fight|late|missed|forgot|broke|broken|consequence|deadline|warning|called out|confronted|mess|mistake|regret|apologized)\b/.test(t)) return "consequence";
-  if(/\b(?:left|walked away|headed out|went back|refused|declined|not now|later|turned down|ended the call|hung up)\b/.test(t)) return "exit";
-  return "other";
+ const t=norm(value);
+ const signals={
+ relationship:[/\b(?:kiss(?:ed|ing)?|flirt(?:ed|ing)?|jealous|dont leave|do not leave|care about you|held your hand|touched your face)\b/g],
+ social:[/\b(?:friends?|teammates?|roommates?|party|classmates?|crowd|group|someone (?:called|asked))\b/g],
+ "self-life":[/\b(?:practice|training|lecture|shift|studying|study|project|assignment|work(?:ed|ing)?|cooking|sleep(?:ing)?)\b/g],
+ consequence:[/\b(?:argument|fight|deadline|mistake|apologiz(?:ed|ing)|confront(?:ed|ing)|consequence|regret)\b/g],
+ exit:[/\b(?:walked away|headed out|went back|refused|declined|ended the call|hung up|left the room)\b/g]
+ };
+ const scores=Object.entries(signals).map(([lane,patterns])=>[lane,patterns.reduce((n,p)=>n+[...t.matchAll(p)].length,0)]).sort((a,b)=>b[1]-a[1]);
+ return scores[0]?.[1]>0 && scores[0][1]>scores[1]?.[1] ? scores[0][0] : "other";
 }
 
 function laneSummary(recentCharacterReplies=[]){
@@ -52,14 +55,14 @@ export function buildAutonomousStoryFlowV35275({
   let authority="normal";
   if(streak===1) authority="scene";
   else if(streak===2) authority="scene";
-  else if(streak>=3) authority="story";
+  else if(streak>=3) authority="scene";
 
   const authorityRule = streak===1
-    ? "HANDOFF LEVEL 1 · CONTINUE THE LIVING SCENE: make meaningful forward progress. If the character has already left, follow their independent life, NPC encounter or established destination rather than resetting the user-facing scene. If the beat is naturally complete, a causal time skip is allowed immediately. Never just wait or ask the user what happens next."
+    ? "HANDOFF LEVEL 1 · CONTINUE THE LIVING SCENE: make meaningful forward progress. If the character has already left, follow their independent life, NPC encounter or established destination rather than resetting the user-facing scene. Keep the same time and location unless the character has already established a departure or an explicit time skip. Never just wait or ask the user what happens next."
     : streak===2
-      ? "HANDOFF LEVEL 2 · ADVANCE THE SCENE: the user is intentionally observing. Resolve or alter one character-owned action, shift focus to the character's own life / NPCs / consequence, or let the character leave. A modest time or location transition is allowed when it follows from already-established motion and does NOT invent the user's action."
+      ? "HANDOFF LEVEL 2 · ADVANCE THE SCENE: the user is intentionally observing. Resolve or alter one character-owned action, shift focus to the character's own life / NPCs / consequence, or let the character leave. Preserve the location and active interaction unless a transition was already established; never invent the user's action."
       : streak>=3
-        ? "HANDOFF LEVEL 3+ · ADVANCE THE STORY: the user has repeatedly handed over narrative control. You may close the current character-side scene, pass grounded time, follow the character elsewhere, begin a later character-owned situation, create a consequence from existing causes, or contact the user later. Do not remain trapped in the same room/argument merely because the user is silent."
+        ? "HANDOFF LEVEL 3+ · ADVANCE THE STORY: the user has repeatedly handed over narrative control. Keep the established location, cast, ongoing task, and timeline. Advance the character-owned situation with a meaningful action or consequence. Only follow the character elsewhere if their departure was already established; never relocate the user. Do not invent a new encounter or skip hours/days merely because the user sent dots."
         : "NORMAL TURN: keep initiative with the character whenever the scene would otherwise stall.";
 
   return [
@@ -67,19 +70,19 @@ export function buildAutonomousStoryFlowV35275({
     `SILENT STREAK=${streak}. NARRATIVE AUTHORITY=${authority}.`,
     authorityRule,
     "USER AGENCY FIREWALL: narrative authority applies to the CHARACTER and the world, never to the user's unspoken choices. Do not write the user's dialogue, thoughts, consent, decisions, voluntary movement, romantic response, or agreement.",
-    "SCENE-EXIT PRIORITY: when the last character turn establishes an exit, departure, closed conversation, or separate locations, do not snap back to the user, repeat the farewell, or reopen the same exchange. Follow the character to their next plausible action, obligation, private reflection, or NPC interaction. A time skip is allowed when no meaningful beat remains.",
+    "SCENE-EXIT PRIORITY: when the last character turn establishes an exit, departure, closed conversation, or separate locations, do not snap back to the user, repeat the farewell, or reopen the same exchange. Follow the character to their next plausible action, obligation, private reflection, or NPC interaction. Do not manufacture a new location or time skip solely because the user is silent.",
     "OFFSCREEN POV: follow only what the viewpoint character can know, observe, remember, or privately think. NPCs have independent motives and dialogue; they must not exist solely to discuss or praise the user.",
-    "TIME-SKIP DISCIPLINE: when advancing hours or days, preserve established chronology and relationships; do not silently move, speak for, or decide on behalf of the user. Establish the new time/place through action, not an exposition dump.",
-    "CHARACTER-OWNED TRANSITIONS ARE ALLOWED: the character can leave, go to practice/work/home, meet friends, make a call, flirt elsewhere, start a task, sleep, wake later, deal with a problem, or begin another scene from their own side when causally grounded.",
+    "TIME-SKIP DISCIPLINE: only when a time skip was already established or explicitly requested, preserve established chronology and relationships; do not silently move, speak for, or decide on behalf of the user. Establish the new time/place through action, not an exposition dump.",
+    "CHARACTER-OWNED TRANSITIONS ARE ALLOWED: the character may take plausible actions within the active scene; a departure or new location must follow an established intention, obligation, or completed scene, not repeated dots alone.",
     "ALREADY-COMMITTED MOTION MAY COMPLETE: if both are already traveling toward an explicitly established destination, repeated handoff may allow arrival because the transit was already chosen. Do not replace the destination or invent a new one.",
     "DO NOT TELEPORT THE USER: if the character changes location independently, do not silently place the user there too. Reconnect later through a message/call/new encounter only when grounded.",
-    "ROTATE INITIATIVE LANES. Recent turns should not all use the same source of momentum. Prefer a grounded lane different from the recent dominant lane when possible: relationship / self-life / social-NPC / consequence-problem / exit-refusal.",
+    "INITIATIVE VARIETY IS OPTIONAL: keep developing the active emotional or practical thread while it remains alive. Do not force a lane change or an exit to create variety.",
     `RECENT INITIATIVE LANES: ${lanes.length?lanes.join(" → "):"none"}. DOMINANT=${dominant}.`,
     dominant==="relationship"
-      ? "ANTI-CLINGING CORRECTION: recent momentum already leaned relationship/user-facing. Prefer the character's own life, social world, consequence, or exit next unless the live conflict truly requires direct follow-through."
+      ? "RELATIONSHIP CONTINUITY: previous romantic turns do not require disengagement. Continue the live interaction with fresh action, dialogue, or consequences rather than repeating the same beat."
       : "Do not force romance into the foreground merely to prove initiative.",
     "ESCALATION MUST BE CAUSAL, NOT RANDOM. New developments grow from established people, plans, obligations, tensions, locations, prior mistakes, or plausible social opportunity. Do not spawn a crisis just because several dots were sent.",
-    "REPEATED DOTS ARE NOT A REQUEST FOR REPETITION. Each additional handoff should widen or evolve the story, not produce another version of the same posture, pursuit, silence, or line.",
+    "REPEATED DOTS ARE NOT A REQUEST FOR REPETITION. Each additional handoff should move the current scene forward without resetting its location, characters, task, or dialogue.",
     "KEEP IT PLAYABLE: even when advancing time or changing the character's situation, end on a concrete state/consequence the user can react to whenever they feel like participating again.",
     `CHARACTER: ${clean(character?.name,100)} | personality=${clean(character?.personality,520)} | relationship=${clean(character?.relationship||relationship?.status||relationship?.stage,520)}.`,
     `SELF-OWNED GOAL: ${clean(mind?.current_goal||mind?.active_goal||mind?.private_intention||"none established",420)}. SCENE: ${clean(scene?.activity||scene?.location||"unknown",360)}.`,
@@ -93,17 +96,11 @@ export function autonomousStoryFlowV35275Issues({
   const streak=silentStreak(latestUserMessage,recentUserMessages);
   if(streak<1 || !String(reply||"").trim()) return issues;
 
-  const lane=classifyLane(reply);
-  const {dominant}=laneSummary(recentCharacterReplies);
   const t=norm(reply);
 
   if(streak>=2 && /\b(?:waited|watched|stood there|sat there|stayed there|remained there|kept quiet|said nothing|didnt say anything|did not say anything)\b/.test(t)
     && !/\b(?:left|went|called|texted|joined|started|finished|decided|refused|headed|returned|confronted|flirted|kissed|argued|worked|studied|drove|ordered|planned)\b/.test(t)){
     issues.push("repeated_handoff_stalled");
-  }
-
-  if(streak>=3 && lane==="relationship" && dominant==="relationship"){
-    issues.push("repeated_handoff_user_orbit");
   }
 
   if(streak>=2 && /\b(?:what do you want to do|your call|you decide|up to you|what now)\b/.test(t)){

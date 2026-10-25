@@ -5,12 +5,12 @@ const norm=(v="")=>clean(v,12000).toLowerCase().normalize("NFD").replace(/[\u030
 const words=(v="")=>norm(v).split(/\s+/).filter(Boolean);
 const field=(c,...ks)=>ks.map(k=>clean(c?.[k],900)).find(Boolean)||"";
 
-function isCharged(v=""){const t=norm(v);return /\b(?:jealous|hurt|angry|tension|admit|leave|apolog|argument|care about|celos|herid|enojad|tension|admit|irse|disculp|discusi[oó]n|importas)\b/.test(t);}
+function isCharged(v=""){const t=norm(v);return /\b(?:jealous|hurt|angry|tension|admit\w*|leav\w*|apolog\w*|argument|care about|celos|herid\w*|enojad\w*|tension|admit|irse|disculp|discusi[oó]n|importas)\b/.test(t);}
 function isConflict(v=""){return /\b(?:fight|argument|angry|accuse|hurt me|leave me alone|go away|sorry|pelea|discusi[oó]n|enojad|acus|me heriste|dejame|déjame|vete|perdon|perd[oó]n)\b/i.test(String(v||""));}
 function resolutionVector(v=""){return /\b(?:apolog|admit|explain|clarif|promise|agree|decid|give space|stop|repair|change|choose|refus|accept|disculp|admit|explic|aclar|promet|decid|espacio|parar|repar|cambiar|eleg|rechaz|acept)\w*\b/.test(norm(v));}
 function logisticsDeflation(v=""){const t=norm(v);return /\b(?:water|drink|food|coffee|drive you home|ride home|sit down|breathe|rest|sleep|agua|bebida|comida|caf[eé]|llevarte a casa|sentarte|respira|descansa|dormir)\b/.test(t)&&!/\b(?:because|care|matter|hurt|jealous|sorry|stay|leave|want|admit|refuse|choose|promise|porque|import|herid|celos|perdon|qued|irte|quiero|admit|rechaz|eleg|promet)\w*\b/.test(t);}
 function genericJealousy(v=""){return /\b(?:who was that guy|who is that guy|who was he|who is he|is that your boyfriend|are you dating him|do you like him|quien era ese tipo|quien es ese tipo|es tu novio|estas saliendo con el|te gusta el)\b/.test(norm(v));}
-function payoffSignal(v=""){return /\b(?:admit|choose|chose|refuse|left|leave|stay|stayed|tell the truth|apolog|promise|step back|give space|invite|cancelled|admite|elige|rechaza|se fue|irse|queda|dice la verdad|disculpa|promete|se aleja|da espacio|invita|cancela)\b/.test(norm(v));}
+function payoffSignal(v=""){return /\b(?:admit\w*|choos\w*|chose|refus\w*|left|leav\w*|stay\w*|tell the truth|apolog\w*|promis\w*|step back|give space|invit\w*|cancelled|admite|elige|rechaza|se fue|irse|queda|dice la verdad|disculpa|promete|se aleja|da espacio|invita|cancela)\b/.test(norm(v));}
 
 function chargedApproachPending(recent=[]){
   const rs=list(recent).slice(-3);
@@ -33,7 +33,7 @@ function npcDeflectionAfterApproach(reply="",recent=[],persistentCast=[]){
   const t=norm(reply);
   if(arrivalPayoffSignal(reply))return false;
   const names=list(persistentCast).map(x=>norm(x?.name||"")).filter(Boolean);
-  const namedNpc=names.some(n=>n&&t.split(/\s+/).includes(n));
+  const namedNpc=names.some(n=>(` ${t} `).includes(` ${n} `));
   const genericNpc=/\b(?:my friend|his friend|her friend|one of his friends|one of her friends|the bartender|someone else|somebody else|another guy|another girl|another friend)\b/.test(t);
   const sideBusiness=/\b(?:bartender|champagne|hydration|drink|drinks|bar|kitchen|music|playlist|game|bet|parking|keys|phone|texted|called)\b/.test(t);
   return (namedNpc||genericNpc)&&sideBusiness;
@@ -44,7 +44,7 @@ function tensionAccumulated(recent=[],emotion={},relationship={}){
   return count>=3||numeric>=45;
 }
 function skeleton(v=""){return words(v).filter(w=>w.length>=4);}
-function similarity(a="",b=""){const A=new Set(skeleton(a)),B=new Set(skeleton(b));if(!A.size||!B.size)return 0;let h=0;for(const w of A)if(B.has(w))h++;return h/Math.min(A.size,B.size);}
+function similarity(a="",b=""){const A=new Set(skeleton(a)),B=new Set(skeleton(b));if(!A.size||!B.size)return 0;let h=0;for(const w of A)if(B.has(w))h++;return h/(A.size+B.size-h);}
 function fingerprint(character={},behavior={}){
   return [
     ["personality",field(character,"personality")],
@@ -90,7 +90,7 @@ export function buildCharacterFingerprintPayoffV35313({
     "15) INITIATIVE OWNERSHIP: if the lead initiated, interrupted, pulled the user aside, invited them away, or otherwise created the private interaction, do not immediately rewrite history by teasing or accusing the user as though they chased him, missed him, wanted his attention, or could not stand competition. The lead owns the move he just made.",
     "16) STYLE ECHO FIREWALL: do not recycle the same delivery choreography across nearby turns. Especially avoid repeated voice/tone dropping, gaze holding/staying locked, stepping closer, easy/steady cadence, or equivalent cosmetic rewrites. Change the conversational tactic, not the adjective.",
     "DIFFERENTIATION TEST: if another lead character's name could replace this one with almost no change, rewrite the decision/disclosure style.",
-    "CAST NON-MERGE RULE: never borrow another named lead's emotional tactic just because it worked romantically before. Theo=misread warmth/longing; Mateo=refuge/grounded presence; Chase=electricity/cocky social magnetism; Nathan=forbidden restraint/guarded prioritization; Rowan=earned familiarity/being seen; Alexander=devotion through action and repair; Damon=silent controlled intensity; Roman=danger/direct stakes/adrenaline; Adrian=reality-show rivalry/public pressure/reluctant teamwork. These are separate engines, not interchangeable flavors.",
+    "CAST NON-MERGE RULE: never borrow another named lead's emotional tactic just because it worked romantically before. Theo=misread warmth/longing; Mateo=refuge/grounded presence; Chase=electricity/cocky social magnetism; Nathan=forbidden restraint/guarded prioritization; Rowan=earned familiarity/being seen; Alexander=devotion through action and repair; Damon=silent controlled intensity; Roman=danger/direct stakes/adrenaline; Adrian=configured sarcasm, rivalry and guarded attachment; do not invent a reality-show premise. These are separate engines, not interchangeable flavors.",
     "CROSS-CHARACTER TEST: before sending, identify the lead's specific engine above. If the same beat would preserve its emotional meaning unchanged under a different lead, change the tactic, decision, dialogue rhythm or consequence.",
     "FIVE-LAYER IDENTITY LOCK: preserve five independent dimensions for the current lead: (A) what they NOTICE first, (B) what they WANT from the beat, (C) what they REFUSE/FEAR, (D) how they ACT under attraction/jealousy/conflict, and (E) how they SPEAK. Do not let all men converge on confidence + jealousy + proximity.",
     "ANTI-ARCHETYPE SHORTCUT: wealth, popularity, attractiveness, masculinity, jealousy and confidence are context traits, not personalities. Never infer possessiveness, dominance, smirking, teasing, emotional avoidance or command behavior merely because a male lead has one of those traits.",
@@ -107,18 +107,22 @@ function directClarityDemand(value=""){
   return /\b(?:what (?:do|did) you want|what you want|what does (?:that|this) (?:even )?mean|what are you (?:trying to )?say|drop (?:the|your) (?:game|act)|stop (?:playing|dodging|deflecting)|be serious|say it (?:plainly|straight)|just say it|answer me)\b/.test(norm(value));
 }
 function evasiveAfterClarity(value=""){
-  const t=norm(value);
-  return /\b(?:i dont know(?: yet)?|not sure(?: yet)?|nothing|never mind|forget it|does it matter|why do you care|you tell me|figure it out)\b/.test(t)
+  // Judge the spoken answer, not an unrelated "nothing" in narration.
+  const quoted=[...String(value??"").matchAll(/["“]([^"”]+)["”]/g)].map(m=>m[1]);
+  const answer=quoted.length?quoted[0]:String(value??"");
+  const t=norm(answer.split(/[.!?]/)[0]);
+  if(/\b(?:nothing except|nothing but|not sure how to say|don t know how to say)\b/.test(t)) return false;
+  return /\b(?:i (?:dont|don t) know(?: yet)?|not sure(?: yet)?|nothing|never mind|forget it|does it matter|why do you care|you tell me|figure it out)\b/.test(t)
     || /\b(?:only one keeping score|if you have to ask|you know what i mean|you know exactly what i mean)\b/.test(t);
 }
 function initiatedChargedBeat(recent=[]){
   const t=norm(list(recent).slice(-3).join(" "));
-  return /\b(?:outside\. now|come with me|we need to talk|going somewhere|stepped (?:directly )?into (?:your|the) path|blocked (?:your|the) path|followed (?:you|after)|caught up|pulled .* aside|stopped you)\b/.test(t);
+  return /\b(?:outside now|come with me|we need to talk|going somewhere|stepped (?:directly )?into (?:your|the) path|blocked (?:your|the) path|followed (?:you|after)|caught up|pulled .* aside|stopped you)\b/.test(t);
 }
 function initiativeReversalBlame(reply="",recent=[]){
   const prior=norm(list(recent).slice(-2).join(" "));
   const leadInitiated=/\b(?:come with me|coming outside with me|outside with me|follow me|we need to talk|pulled .* aside|caught .* sleeve|stepped .* into your space|interrupted|abandoning whatever conversation)\b/.test(prior);
-  const blamesUser=/\b(?:couldn'?t stand the competition|miss my company|you followed me|you came after me|you wanted my attention|jealous|trying to get my attention)\b/.test(norm(reply));
+  const blamesUser=/\b(?:you couldn t stand the competition|you missed my company|you followed me|you came after me|you wanted my attention|you re jealous|you are jealous|you were jealous|you re trying to get my attention)\b/.test(norm(reply));
   return leadInitiated&&blamesUser;
 }
 function repeatedDeliveryChoreography(reply="",recent=[]){
@@ -133,7 +137,7 @@ function repeatedDeliveryChoreography(reply="",recent=[]){
   const now=family(reply);
   if(!now.length)return false;
   const old=list(recent).slice(-5).flatMap(family);
-  return now.some((x)=>old.filter((y)=>y===x).length>=1);
+  return now.some((x)=>old.filter((y)=>y===x).length>=2);
 }
 
 export function characterFingerprintPayoffIssuesV35313({
@@ -165,10 +169,10 @@ export function characterFingerprintPayoffIssuesV35313({
   if(chargedApproachPending(recentCharacterReplies)&&!arrivalPayoffSignal(reply))issues.push("charged_arrival_payoff_evaded");
   if(npcDeflectionAfterApproach(reply,recentCharacterReplies,persistentCast))issues.push("charged_beat_deflected_to_npc");
   const fp=fingerprint(character,behavior);
-  if(fp.length>80&&/\b(?:all right im listening|okay im listening|fair enough|your choice|whatever you want)\b/.test(norm(reply)))issues.push("fingerprint_collapsed_to_generic_line");
+  if(words(reply).length<=20&&fp.length>80&&/\b(?:all right im listening|okay im listening|fair enough|your choice|whatever you want)\b/.test(norm(reply)))issues.push("fingerprint_collapsed_to_generic_line");
   if(isRegeneration||list(rejectedResponses).length){
     const max=Math.max(0,...list(rejectedResponses).slice(-5).map(x=>similarity(reply,x)));
-    if(max>=0.52)issues.push("regeneration_same_structure");
+    if(words(reply).length>=12&&max>=0.72)issues.push("regeneration_same_structure");
   }
   return [...new Set(issues)];
 }
@@ -178,7 +182,7 @@ export function instantStoryCharacterFingerprintV35313(character={}){
     "CHARACTER FINGERPRINT 3.53.13:",
     clean(fingerprint(character,{}),1500)||clean(character?.personality,900)||"Use the configured profile.",
     "Reveal personality through a specific choice, priority, social tactic or line of dialogue, not generic swagger or stock flirt behavior.",
-    norm(character?.name)!=="chase beaumont" ? "ANTI-CHASE BLEED: do not use Chase Beaumont as the hidden default template for confidence, jealousy, initiative or romance. Avoid territorial interruption, cocky extraction, command-and-follow choreography, possessive social dominance and smirk-based swagger unless this character's own configured fields independently demand that exact behavior." : "CHASE OWNERSHIP: Chase may retain his own high-confidence social and romantic tactics; do not export them to other characters.",
+    !/^chase(?: beaumont)?$/.test(norm(character?.name)) ? "ANTI-CHASE BLEED: do not use Chase Beaumont as the hidden default template for confidence, jealousy, initiative or romance. Avoid territorial interruption, cocky extraction, command-and-follow choreography, possessive social dominance and smirk-based swagger unless this character's own configured fields independently demand that exact behavior." : "CHASE OWNERSHIP: Chase may retain his own high-confidence social and romantic tactics; do not export them to other characters.",
     "If jealousy or attraction appears, express it through this character's own behavior and current relationship stage.",
     "Supporting people need a story reason beyond provoking jealousy.",
     "INSTANT-STORY CAST TEST: design the premise from this character's specific contradiction before choosing romance beats. Do not choose a generic romantic premise first and repaint it with the character's name.",
@@ -186,4 +190,4 @@ export function instantStoryCharacterFingerprintV35313(character={}){
   ].join("\n");
 }
 
-export const __testV35313={isCharged,isConflict,logisticsDeflation,genericJealousy,resolutionVector,tensionAccumulated,similarity,fingerprint};
+export const __testV35313={isCharged,isConflict,logisticsDeflation,genericJealousy,resolutionVector,tensionAccumulated,similarity,fingerprint,evasiveAfterClarity,initiativeReversalBlame,repeatedDeliveryChoreography,npcDeflectionAfterApproach,payoffSignal};

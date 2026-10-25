@@ -108,8 +108,8 @@ function milestoneRows(development:Record<string,any>={},memories:Array<Record<s
   return uniq([...stored,...fromMilestones,...fromMemory]).slice(-8);
 }
 function recentEvidenceCount(recentMessages:Array<Record<string,any>>=[]){
-  const rows=list(recentMessages).slice(-18).map((m:any)=>norm(m?.content||m?.text||m?.message));
-  return rows.filter((x)=>/\b(?:stayed|didn t leave|did not leave|apolog|came back|asked for help|admit|told you|trusted|let you|opened up|kept his word|kept her word|respected|backed off|gave space|checked in)\b/.test(x)).length;
+  const rows=[...new Set(list(recentMessages).slice(-18).map((m:any)=>norm(m?.content||m?.text||m?.message)))];
+  return rows.filter((x)=>/\b(?:stayed|didn't leave|did not leave|apolog\w*|came back|asked for help|admit|told you|trusted|let you|opened up|kept his word|kept her word|respected|backed off|gave space|checked in)\b/.test(x)).length;
 }
 function pressureSources(activeArcs:Array<Record<string,any>>=[],development:Record<string,any>={}){
   return uniq([
@@ -216,6 +216,7 @@ function stripGrowthAnnouncements(reply:string){
     .replace(/\s+/g," ").trim();
 }
 export function sanitizeLongTermCharacterEvolutionReply(reply:string,issues:string[]=[]){
+  if(!issues.length)return String(reply||"");
   const active=new Set(issues||[]); let out=String(reply||"").trim();
   if(["instant_personality_rewrite","relationship_personality_replacement","growth_exposition_without_behavior","growth_regression_reset","unearned_offscreen_transformation","relationship_growth_globalized"].some((x)=>active.has(x))) out=stripGrowthAnnouncements(out);
   return out.trim();

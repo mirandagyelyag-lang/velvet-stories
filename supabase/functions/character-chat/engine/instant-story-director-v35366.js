@@ -34,11 +34,11 @@ function jaccard(a=[],b=[]){
   return h/(A.size+B.size-h);
 }
 function patternRepeat(opening="",recent=[]){
-  const s=skeleton(opening); if(s.length<2)return false;
-  return list(recent).slice(-8).some(r=>jaccard(s,skeleton(r))>=0.6);
+  const s=skeleton(opening); if(s.length<3)return false;
+  return list(recent).slice(-8).some(r=>jaccard(s,skeleton(r))>=0.8 && s.some(tag=>["interruption_extraction","approach_user","jealousy_triangle"].includes(tag)));
 }
 function omniscientLanguage(v=""){
-  return /\b(?:he knew you|she knew you|they knew you|knew exactly what you|could tell you wanted|could tell you felt|knew you wanted|knew you liked|knew you hated|knew you were jealous|obviously you wanted|clearly you wanted|he somehow knew|she somehow knew)\b/i.test(String(v||""));
+  return /\b(?:knew exactly what you|could tell you wanted|could tell you felt|knew you wanted|knew you liked|knew you hated|knew you were jealous|obviously you wanted|clearly you wanted|he somehow knew|she somehow knew)\b/i.test(String(v||""));
 }
 function beliefAsFact(v=""){
   return /\b(?:he knew for a fact|she knew for a fact|there was no doubt you|it was obvious you were|he was certain you|she was certain you)\b/i.test(String(v||""));

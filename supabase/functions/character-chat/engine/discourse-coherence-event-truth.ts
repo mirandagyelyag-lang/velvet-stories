@@ -74,7 +74,7 @@ function explicitEventsFrom(rows: Array<{sender:string;text:string}>) {
   return rows.filter((row) => event.test(row.text)).map((row) => clean(row.text, 320)).slice(-10);
 }
 function previousCharacterLine(rows: Array<{sender:string;text:string}>) {
-  return [...rows].reverse().find((row) => /character|assistant|ai/i.test(row.sender))?.text || "";
+  return [...rows].reverse().find((row) => /^(?:character|assistant|ai)$/i.test(row.sender))?.text || "";
 }
 function latestTopicFrom(text = "") {
   const tokens = words(outsideAsterisks(text));
@@ -88,7 +88,7 @@ export function deriveDiscourseCoherenceEventTruth(args: Args = {}): DiscourseCo
   })).filter((row) => row.text.trim());
   const clarification = isClarification(args.latestUserMessage || "");
   const previousLine = previousCharacterLine(rows);
-  const recentCharacterLines = rows.filter((row) => /character|assistant|ai/i.test(row.sender)).slice(-4).map((row) => clean(row.text, 520));
+  const recentCharacterLines = rows.filter((row) => /^(?:character|assistant|ai)$/i.test(row.sender)).slice(-4).map((row) => clean(row.text, 520));
   const conflictEvidence = conflictEvidenceFrom(rows);
   const explicitEventEvidence = explicitEventsFrom(rows);
   const previousNorm = norm(previousLine);
@@ -170,6 +170,7 @@ function optionalSocialIntrusion(reply = "", engine: Partial<DiscourseCoherenceE
 
 function userIntroducedArrival(value = "") {
   const t = norm(value);
+  if(/\b(?:doesn't|does not|didn't|did not|never|will|might|could|would)\b/.test(t)||/\?\s*$/.test(t))return "";
   const actor = t.match(/\b(?:a|an|the)\s+(waiter|waitress|server|mesero|mesera|friend|stranger|customer|professor|teacher|doctor|nurse|bartender|manager)\s+(?:arrives?|approaches?|enters?|comes? (?:over|up|in)|walks? (?:over|up|in)|llega|se acerca|entra)\b/);
   return actor?.[1] || "";
 }
@@ -239,11 +240,12 @@ function stripUnsupportedReferenceSentence(reply = "") {
 
 export function sanitizeDiscourseCoherenceReply(reply = "", issues: string[] = [], engine: Partial<DiscourseCoherenceEventTruth> = {}, recentCharacterReplies: string[] = [], latestUserMessage = "") {
   const active = new Set(Array.isArray(issues) ? issues : []);
+  if (!active.size) return String(reply || "");
   let out = String(reply || "").trim();
   if (active.has("recent_line_echo") || active.has("clarification_echo_before_answer")) out = removeRecentEchoes(out, recentCharacterReplies);
   if (active.has("social_gravity_priority_intrusion")) out = stripOptionalSocialBeat(out);
   if (active.has("phantom_event_claim") || active.has("unresolved_reference_claim") || active.has("clarification_reference_unresolved")) {
-    if (engine.clarificationDue) return '"Nothing specific. I worded that badly."';
+    if (engine.clarificationDue) return ""; // Request grounded regeneration; never fabricate an admission.
     out = stripUnsupportedReferenceSentence(out);
   }
   if (active.has("user_introduced_arrival_ignored")) {
@@ -256,6 +258,6 @@ export function sanitizeDiscourseCoherenceReply(reply = "", issues: string[] = [
     }
   }
   out = out.replace(/\s+([,.!?])/g, "$1").replace(/\s+/g, " ").trim();
-  if (!out && engine.clarificationDue) return '"Nothing specific. I worded that badly."';
+  if (!out && engine.clarificationDue) return "";
   return out;
 }

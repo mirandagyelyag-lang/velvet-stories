@@ -5,7 +5,14 @@ export async function callOpenAIProse({apiKey, prompt='', systemInstruction='', 
  if(String(prompt).length+String(systemInstruction).length>30000) throw Error('OpenAI context exceeds the economical budget; no paid request was sent.');
  if(await isCancelled()) throw new DOMException('Generation cancelled','AbortError');
  const controller=new AbortController();
- const timer=setTimeout(()=>controller.abort(),Math.max(1000,Math.min(25000,timeoutMs)));
+ const timer=setTimeout(()=>controller.abort(),Math.max(1000,Math.min(25000,Number(timeoutMs)||20000)));
+ let checkingCancellation=false;
+ const cancellationPoll=setInterval(async()=>{
+  if(checkingCancellation || controller.signal.aborted) return;
+  checkingCancellation=true;
+  try { if(await isCancelled()) controller.abort(); } catch { /* Post-request check remains authoritative. */ }
+  finally { checkingCancellation=false; }
+ },250);
  try {
   const response=await fetchImpl('https://api.openai.com/v1/responses',{
    method:'POST',signal:controller.signal,
@@ -27,7 +34,7 @@ export async function callOpenAIProse({apiKey, prompt='', systemInstruction='', 
   const reply=(data.output||[]).filter(item=>item.type==='message'&&item.role==='assistant').flatMap(item=>item.content||[]).filter(part=>part.type==='output_text').map(part=>part.text||'').join('\n').trim();
   if(data.status==='incomplete' || !reply) throw Error('OpenAI could not produce a complete reply within the token limit. No automatic paid retry was made.');
   return {reply,model:'openai/gpt-5-mini',finishReason:'STOP',promptTokens:Number(data.usage?.input_tokens||0),outputTokens:Number(data.usage?.output_tokens||0),estimatedCostUsd:(Number(data.usage?.input_tokens||0)*0.25+Number(data.usage?.output_tokens||0)*2)/1000000};
- } finally {clearTimeout(timer);}
+ } finally {clearTimeout(timer);clearInterval(cancellationPoll);}
 }
 export async function callEconomicalBackup({groqApiKey='',openaiApiKey='',preferOpenAI=false,paidBudget=null,groqCall,openaiCall=callOpenAIProse,...options}={}) {
  if(await (options.isCancelled || (async()=>false))()) throw new DOMException('Generation cancelled','AbortError');

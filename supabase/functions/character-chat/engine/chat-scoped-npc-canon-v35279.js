@@ -8,6 +8,15 @@ const norm=(v="")=>clean(v,12000).toLowerCase().normalize("NFD").replace(/[\u030
 const list=(v)=>Array.isArray(v)?v:[];
 const uniq=(xs)=>[...new Set(xs.map((x)=>clean(x,120)).filter(Boolean))];
 
+function mentions(value,name){
+  const escape=(s)=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  return Boolean(name)&&new RegExp("(?:^|[^a-z0-9])"+escape(norm(name))+"(?=$|[^a-z0-9])").test(norm(value));
+}
+function authorizedVisibleName(name,allowed){
+  const key=norm(name); if(allowed.has(key)) return true;
+  // First names are legitimate prose aliases only when unambiguous.
+  return key && !key.includes(" ") && [...allowed].filter(n=>n.split(" ")[0]===key).length===1;
+}
 export function allowedNamedPeopleV35279({
   userName="",character={},groupCharacters=[],userCreatedNpcs=[]
 }={}){
@@ -89,9 +98,18 @@ export function filterAuthorizedCastUpdatesV35279(castUpdates=[],userCreatedNpcs
       .filter((item)=>item?.is_user_created!==false && clean(item?.name,100))
       .map((item)=>[norm(item.name),clean(item.name,100)])
   );
+  const profiles=new Map(list(userCreatedNpcs).filter(item=>item?.is_user_created!==false&&clean(item?.name,100)).map(item=>[norm(item.name),item]));
   return list(castUpdates)
     .filter((item)=>byName.has(norm(item?.name)))
-    .map((item)=>({...item,name:byName.get(norm(item?.name))}));
+    .map((item)=>{
+      const profile=profiles.get(norm(item?.name));
+      const update={...item,name:byName.get(norm(item?.name))};
+      // Generated live-state changes cannot reassign creator-owned identity.
+      for(const key of ["role","relationship","personality_note","npc_scope","character_id","chat_id","conversation_id","is_user_created","id"]){
+        if(key in update){ if(profile && key in profile) update[key]=profile[key]; else delete update[key]; }
+      }
+      return update;
+    });
 }
 
 export function filterAuthorizedConnectionUpdatesV35279(connectionUpdates=[],{
@@ -127,7 +145,7 @@ export function chatScopedNpcCanonV35279Issues({
   }
   for(const item of list(connectionUpdates)){
     const from=clean(item?.from_name,100),to=clean(item?.to_name,100);
-    if((from&&!allowed.has(norm(from)))||(to&&!allowed.has(norm(to)))){
+    if(!from||!to||norm(from)===norm(to)||(from&&!allowed.has(norm(from)))||(to&&!allowed.has(norm(to)))){
       issues.push("unapproved_named_npc_connection");
       break;
     }
@@ -137,8 +155,8 @@ export function chatScopedNpcCanonV35279Issues({
   const introduced=[...raw.matchAll(/\b(?:named|called)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})?)/g)].map((m)=>m[1]);
   const speakerLabels=[...raw.matchAll(/(?:^|\n)\s*([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})?)\s*:/g)].map((m)=>m[1]);
   const socialNames=[...raw.matchAll(/\b(?:meet(?:ing)?(?:\s+up)?\s+with|supposed\s+to\s+(?:meet|see)|going\s+to\s+(?:meet|see)|my\s+(?:friend|roommate|classmate|date)\s+(?:is|named))\s+([A-Z][a-z]{2,})\b/g)].map(m=>m[1]);
-  if(socialNames.some(name=>!allowed.has(norm(name))))issues.push("unapproved_named_npc_visible");
-  if([...introduced,...speakerLabels].some((name)=>!allowed.has(norm(name)))){
+  if(socialNames.some(name=>!authorizedVisibleName(name,allowed)))issues.push("unapproved_named_npc_visible");
+  if([...introduced,...speakerLabels.filter(name=>!/^(?:Narrator|Scene|Location|Time|Note|Meanwhile)$/.test(name))].some((name)=>!authorizedVisibleName(name,allowed))){
     issues.push("unapproved_named_npc_visible");
   }
 
@@ -147,8 +165,10 @@ export function chatScopedNpcCanonV35279Issues({
   // phantom person whose identity can be rewritten on the following turn.
   const startsWithBareNpcSpeaker=/^\s*["“][^"”]{1,180}["”][,\s]*(?:he|she|they)\s+(?:said|called|asked|added|cut in|replied)\b/i.test(raw);
   const anchoredAnonymous=/\b(?:a|an|one of|the)\s+(?:girl|guy|boy|woman|man|friend|classmate|teammate|coworker|bartender|server|student|guest|host|roommate|professor|neighbor|neighbour|someone|person)\b/i.test(raw);
-  const approvedNamedVisible=[...allowed].some((name)=>name&&norm(raw).includes(name));
-  if(startsWithBareNpcSpeaker&&!anchoredAnonymous&&!approvedNamedVisible){
+  const approvedNamedVisible=[...allowed].some((name)=>name&&mentions(raw,name));
+  const priorContext=list(recentCharacterReplies).slice(-1).join(" ");
+  const priorLead=Boolean(leadName&&mentions(priorContext,leadName));
+  if(startsWithBareNpcSpeaker&&!anchoredAnonymous&&!approvedNamedVisible&&!priorLead){
     issues.push("npc_disembodied_speaker");
   }
 
@@ -162,11 +182,11 @@ export function chatScopedNpcCanonV35279Issues({
     const before=raw.slice(Math.max(0,(match.index||0)-220),match.index||0);
     const beforeNorm=norm(before);
     const localAnonymous=/\b(?:a|an|one of|the)\s+(?:girl|guy|boy|woman|man|friend|classmate|teammate|coworker|bartender|server|student|guest|host|roommate|professor|neighbor|neighbour|someone|person)\b/i.test(before);
-    const localApproved=[...allowed].some((name)=>name&&beforeNorm.includes(name));
-    const localLead=Boolean(leadKey&&beforeNorm.includes(leadKey));
+    const localApproved=[...allowed].some((name)=>name&&mentions(beforeNorm,name));
+    const localLead=Boolean(leadKey&&mentions(beforeNorm,leadKey));
     // If the lead was just explicitly named, a following pronoun attribution
     // can safely refer back to them. Otherwise the speaker must be anchored.
-    if(!localAnonymous&&!localApproved&&!localLead){
+    if(!localAnonymous&&!localApproved&&!localLead&&!priorLead){
       issues.push("npc_disembodied_speaker");
       break;
     }
@@ -177,10 +197,12 @@ export function chatScopedNpcCanonV35279Issues({
   const recent=list(recentCharacterReplies).slice(-1).join(" ");
   const priorBare=/["”][,\s]*(?:he|she|they)\s+(?:said|called|asked|added|cut in|replied)\b/i.test(recent)
     && !/\b(?:a|an|one of|the)\s+(?:girl|guy|boy|woman|man|friend|classmate|teammate|coworker|bartender|server|student|guest|host|roommate|professor|neighbor|neighbour|someone|person)\b/i.test(recent);
-  const namedNow=[...allowed].filter((name)=>name&&norm(raw).includes(name));
-  if(priorBare&&namedNow.length&&/\b(?:he|she|they|her|him|their)\b/i.test(raw)){
+  const namedNow=[...allowed].filter((name)=>name&&mentions(raw,name));
+  if(priorBare&&namedNow.length&&/\b(?:the (?:unnamed|anonymous) (?:girl|guy|friend|woman|man) (?:was|is|turned out to be)|(?:she|he|they) (?:was|is|were) actually)\b/i.test(raw)){
     issues.push("npc_retroactive_identity_assignment");
   }
 
   return [...new Set(issues)];
 }
+
+export const __testNpcCanonV35279={mentions,authorizedVisibleName};

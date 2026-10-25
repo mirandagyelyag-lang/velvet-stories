@@ -15,6 +15,7 @@ function normalized(value = "") {
 function stripQuotedDialogue(value = "") {
   return String(value || "")
     .replace(/[“\"][^”\"]*[”\"]/gs, " ")
+    .replace(/\*[^*]*\*/gs," ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -233,7 +234,7 @@ export function hasIntentThreadAbandonment(reply = "", latestUserMessage = "", i
   const replyText = normalized(reply);
   const unrelatedFiller = /\b(?:waiter|server|tray|glassware|phone buzzed|door opened|someone walked over|somebody walked over|couple at the next table)\b/.test(replyText);
   const noDialogue = dialogueOnly(reply).length === 0;
-  return unrelatedFiller || noDialogue;
+  return unrelatedFiller && noDialogue; // Silence or practical business alone is not abandonment.
 }
 
 
@@ -408,6 +409,7 @@ function splitPieces(value = "") {
 
 export function sanitizeIntentSubtextReply(reply = "", issues = []) {
   const active = new Set(Array.isArray(issues) ? issues : []);
+  if (!active.size) return String(reply || "");
   let text = String(reply || "").trim();
   if (!text) return text;
 
@@ -442,7 +444,8 @@ export function sanitizeIntentSubtextReply(reply = "", issues = []) {
   if (active.has("gesture_budget_overflow")) {
     const dialoguePieces = pieces.filter((piece) => /[“\"][^”\"]+[”\"]/.test(piece));
     const narrationPieces = pieces.filter((piece) => !/[“\"][^”\"]+[”\"]/.test(piece));
-    pieces = [...narrationPieces.slice(0, 1), ...dialoguePieces.slice(0, 3)];
+    let narrationKept=false;
+    pieces=pieces.filter(piece=>{if(/[“\"][^”\"]+[”\"]/.test(piece))return true;if(narrationKept)return false;narrationKept=true;return true;}); // Preserve causal order.
   }
 
   return pieces.join(" ").replace(/\s+/g, " ").trim();

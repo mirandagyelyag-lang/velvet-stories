@@ -48,7 +48,7 @@ function recentUserAndAi(messages:Array<Record<string,any>>=[]){
 }
 function explicitReentry(text=""){
   const t=norm(text);
-  return /\b(?:the next day|next day|the next morning|next morning|later that day|later that week|days? later|weeks? later|three days later|a few days later|the following day|after class|after work|later that night|new scene|at the (?:party|cafe|caf[eé]|library|campus|gym|restaurant|bar|club|house|apartment|dorm|parking lot))\b/.test(t);
+  return /^(?:\*\s*)?(?:i am |i'm |we are |we're )?at the (?:party|cafe|caf[eé]|library|campus|gym|restaurant|bar|club|house|apartment|dorm|parking lot)\b/.test(t) || /\b(?:the next day|next day|the next morning|next morning|later that day|later that week|days? later|weeks? later|three days later|a few days later|the following day|after class|after work|later that night|new scene)\b/.test(t);
 }
 function leavingOrClosure(text=""){
   const t=norm(text);
@@ -76,8 +76,8 @@ function inferPurpose(args:Args){
 }
 function inferPhase(args:Args, reentry:boolean, close:boolean, stagnation:number):ScenePhase337{
   const prior=norm(args.intelligenceState?.presence_engine_state?.scene_phase||args.intelligenceState?.human_behavior_state?.scene_phase_337||"");
-  if (reentry) return "arrival";
   if (close) return "close";
+  if (reentry) return "arrival";
   if (args.embodied?.recognitionDue) return "change";
   if (stagnation>=6) return "change";
   if (["arrival","settle","develop","change","land","close"].includes(prior)) return prior as ScenePhase337;
@@ -125,7 +125,7 @@ export function deriveSceneIntelligenceDynamicWorld(args:Args={}):SceneIntellige
   if (args.agency?.closureAllowed && phase==="land") closureReasons.push("the current beat can land without another hook");
   if (stagnation>=7 && !stillness) closureReasons.push("the current shape has repeated enough that a natural landing or small earned action is preferable to more filler");
   const closureAllowed=closureSignal || Boolean(args.agency?.closureAllowed) || phase==="land" || phase==="close";
-  const closureDue=closureSignal || (stagnation>=8 && !directQuestion(latest));
+  const closureDue=closureSignal || (stagnation>=8 && !stillness && !directQuestion(latest));
   const previousPurpose=clean(args.intelligenceState?.human_behavior_state?.scene_purpose_337||"",520);
   const purposeStatus:SceneIntelligenceDynamicWorld["purposeStatus"] = closureDue ? "fulfilled" : previousPurpose && norm(previousPurpose)!==norm(purpose) && !reentry ? "abandoned" : purpose ? "active" : "unclear";
   const loc=clean(args.sceneState?.location||args.intelligenceState?.scene_memory?.location||"current location",160);
@@ -137,7 +137,7 @@ export function deriveSceneIntelligenceDynamicWorld(args:Args={}):SceneIntellige
   const unfinished=uniq(((args.intelligenceState?.unfinished_business||[]) as unknown[]).map(x=>clean(x,260))).slice(-6);
   return {
     purpose,purposeStatus,phase,location:loc,activity,reentryDetected:reentry,
-    reentryPolicy: reentry ? "This is a new scene boundary. Reset transient posture/prop choreography unless explicitly carried across; preserve only durable canon, relationship residue, obligations and memories." : "Stay in the current scene unless the user or a grounded event explicitly changes it.",
+    reentryPolicy: reentry ? "This is a new scene boundary. Preserve established people, possessions, location and activity across a time skip unless explicit evidence changes them. Reset transient posture only when the new scene actually invalidates it." : "Stay in the current scene unless the user or a grounded event explicitly changes it.",
     meaningfulSilenceAllowed: actionOnly(latest) && !directQuestion(latest),
     closureAllowed,closureDue,closureReasons,stagnationScore:stagnation,stagnationNatural:stillness,progressionNeed,
     environmentPolicy:"Environment exists to constrain or change interaction, not to decorate silence. A waiter, tray crash, phone buzz, door opening, stranger, weather beat or ambient noise needs an established causal reason or a concrete consequence for the live interaction.",
@@ -196,5 +196,5 @@ export function sanitizeSceneIntelligenceReply(reply="",issues:string[]=[],engin
     const dialogue=out.match(/["“][^"”]{1,180}["”]/)?.[0]||"";
     out=dialogue || out.split(/(?<=[.!?])\s+/).slice(0,1).join(" ");
   }
-  return out.replace(/\s{2,}/g," ").replace(/\n{3,}/g,"\n\n").trim();
+  return out.replace(/[^\S\n]{2,}/g," ").replace(/\n{3,}/g,"\n\n").trim();
 }

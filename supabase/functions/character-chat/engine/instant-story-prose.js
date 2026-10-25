@@ -10,6 +10,7 @@ export function normalizeInstantStoryProse(value = "") {
 export function instantStoryProseValidation(value = "") {
   const opening = normalizeInstantStoryProse(value);
   const wordCount = opening.split(/\s+/).filter(Boolean).length;
-  const complete = /[.!?…]["'”’)]?$/.test(opening) && !/[’'][A-Za-z]{0,2}$/.test(opening);
-  return { opening, wordCount, complete, valid: wordCount >= 55 && complete };
+  const balanced=(opening.match(/"/g)||[]).length%2===0 && (opening.match(/“/g)||[]).length===(opening.match(/”/g)||[]).length;
+  const complete = balanced && /[.!?…]["'”’)*_]*$/.test(opening) && !/[’'][A-Za-z]{0,2}$/.test(opening);
+  return { opening, wordCount, complete, valid: wordCount >= 55 && wordCount <= 220 && complete };
 }

@@ -1,5 +1,5 @@
 export function buildMicroContinuityV34945({ latestUserMessage = "", recentTurns = [], character = {} } = {}) {
-  const turns = Array.isArray(recentTurns) ? recentTurns.slice(-20).map((t) => String(t || "").slice(0, 1600)).join("\n") : String(recentTurns || "").slice(-24000);
+  const turns = Array.isArray(recentTurns) ? recentTurns.slice(-20).map((t) => (typeof t === "string"?t:String(t?.content??t?.text??t?.message??"")).slice(0, 1600)).join("\n") : String(recentTurns || "").slice(-24000);
   return `MICRO-CONTINUITY 3.49.45 · WHO OWES WHAT TO WHOM
 - LIVE TRANSCRIPT AUTHORITY: the chronological turns below are the current saved versions. [EDITED CURRENT CANON] replaces that message's previous wording completely. Never blend its previous version into current physical state, even if an older recap, automatic memory, possession, activity or scene field still says otherwise.
 - USER-AUTHORED REALITY: a user's explicit order, action, location, recipient, and correction outrank conflicting character narration. If the user addresses a worker, that worker receives the order; do not silently restore an earlier self-service scene.
@@ -25,7 +25,7 @@ CHARACTER: ${String(character?.name || "character").slice(0,120)}`;
 export function microContinuityV34945Issues(reply = "", latestUserMessage = "", recentCharacterReplies = []) {
   const text = String(reply || "").trim();
   const latest = String(latestUserMessage || "").trim();
-  const recent = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).join(" \n ");
+  const recent = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-3).join(" \n ");
   const issues = [];
   if (/\bi(?:'|’)ll\s+wait\s+for\s+it\b/i.test(latest) && /\b(?:your|you(?:'|’)re)\s+(?:progress|draft|application|paperwork|request)\b/i.test(text)) {
     issues.push("micro_continuity_role_reversal");

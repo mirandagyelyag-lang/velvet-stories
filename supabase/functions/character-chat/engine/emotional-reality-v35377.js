@@ -44,11 +44,11 @@ export function emotionalRealityIssuesV35377({
  const text=String(reply||"").trim();
  const issues=[];
  if(!text)return issues;
- if(/\b(?:that|it) (?:really )?(?:landed|hit)\b/i.test(text)||/\bi (?:heard|hear) (?:you|what you said)\b/i.test(text)) issues.push("meta_acknowledgement_instead_of_reaction");
+ if(text.split(/\s+/).length<18 && (/\b(?:that|it) (?:really )?(?:landed|hit)\b/i.test(text)||/\bi (?:heard|hear) (?:you|what you said)\b/i.test(text))) issues.push("meta_acknowledgement_instead_of_reaction");
  const latest=String(latestUserMessage||"").toLowerCase();
  const salient=/\b(kiss|kissed|beso|bésame|leave|left|walk away|cry|cried|sorry|jealous|fight|argue|love you|like you|hate you|goodbye|bye)\b/i.test(latest);
  if(salient&&/\b(?:back to normal|as if nothing happened|nothing had changed|forget about it)\b/i.test(text)) issues.push("salient_event_reset_to_baseline");
- const recent=list(recentCharacterReplies).slice(-3).join(" ");
- if(text.length>40&&recent&&clean(text,180)===clean(recent,180)) issues.push("turn_repeats_previous_reality");
+ const recent=String(list(recentCharacterReplies).at(-1)||"");
+ if(text.length>40&&recent&&clean(text,12000)===clean(recent,12000)) issues.push("turn_repeats_previous_reality");
  return [...new Set(issues)];
 }

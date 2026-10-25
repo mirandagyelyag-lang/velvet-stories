@@ -20,13 +20,13 @@ export function buildHumanKnowledgeUncertaintyV34938({latestUserMessage='',recen
  ].join('\n');
 }
 export function humanKnowledgeUncertaintyV34938Issues(reply:any,latest:any='',recent:any[]=[]){
- const t=c(reply,7000).toLowerCase(), u=c(latest,1800).toLowerCase(), issues:string[]=[];
+ const t=c(reply,7000).toLowerCase(), u=c(latest,1800).toLowerCase(), context=u+' '+(Array.isArray(recent)?recent:[]).map(x=>c(x,1800).toLowerCase()).join(' '), issues:string[]=[];
  if(/\b(?:obviously|clearly|definitely|without a doubt)\b/.test(t) && /\b(?:maybe|perhaps|i think|i guess|not sure|don['’]t know|might|could)\b/.test(u)) issues.push('knowledge_uncertainty_overconfident_inference');
  if(/\b(?:i know exactly how you feel|i know what you['’]re thinking|i know why you did (?:that|it)|you['’]re only saying that because|you did (?:that|it) because)\b/.test(t)) issues.push('knowledge_uncertainty_private_mind_claim');
- if(/\b(?:everyone knows|the whole campus knows|everybody knows)\b/.test(t) && !/\b(?:everyone|everybody|whole campus|campus knows)\b/.test(u)) issues.push('knowledge_uncertainty_unrouted_public_knowledge');
+ if(/\b(?:everyone knows|the whole campus knows|everybody knows)\b/.test(t) && !/\b(?:everyone|everybody|whole campus|campus knows)\b/.test(context)) issues.push('knowledge_uncertainty_unrouted_public_knowledge');
  if(/\b(?:i saw|i watched|i heard)\b/.test(t) && /\b(?:you weren['’]t there|you weren['’]t even there|you didn['’]t see|you couldn['’]t see|you didn['’]t hear)\b/.test(u)) issues.push('knowledge_uncertainty_perception_override');
  if(/\b(?:as you know|you know that)\b/.test(t) && /\b(?:i didn['’]t know|i don['’]t know|never told you|didn['’]t tell you)\b/.test(u)) issues.push('knowledge_uncertainty_assumed_shared_knowledge');
- if(/\b(?:i remember exactly|word for word|your exact words were)\b/.test(t) && !/\b(?:exactly|word for word|exact words)\b/.test(u)) issues.push('knowledge_uncertainty_perfect_recall_performance');
+ if((Array.isArray(recent)?recent:[]).length===0 && /\b(?:i remember exactly|word for word|your exact words were)\b/.test(t) && !/\b(?:exactly|word for word|exact words)\b/.test(u)) issues.push('knowledge_uncertainty_perfect_recall_performance');
  if(/\b(?:i knew it all along|i always knew)\b/.test(t) && /\b(?:actually|turns out|i was wrong|correction|no,? )\b/.test(u)) issues.push('knowledge_uncertainty_hindsight_certainty');
  return [...new Set(issues)];
 }

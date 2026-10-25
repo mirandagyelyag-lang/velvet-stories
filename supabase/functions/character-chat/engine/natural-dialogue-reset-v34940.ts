@@ -13,7 +13,7 @@ export function buildNaturalDialogueResetV34940({latestUserMessage='',recentChar
  'DIALOGUE SHOULD SURVIVE THE TEXT-MESSAGE TEST: remove narration and ask whether a real person could casually send/say the line without sounding scripted. If not, rewrite simpler.',
  'ONE BEAT MAX: default to one conversational move. Do not stack observation + attitude + body move + witty line + hook.',
  'PERSONALITY THROUGH CHOICE: personality decides what they answer, omit, admit or avoid. It does not require decorative attitude markers.',
- `CHARACTER: ${String(character?.name||'').slice(0,80)}. LIVE USER: ${String(latestUserMessage||'').slice(0,700)}. RECENT CHARACTER: ${(recentCharacterReplies||[]).slice(-6).join(' | ').slice(0,1500)}.`
+ `CHARACTER: ${String(character?.name||'').slice(0,80)}. LIVE USER: ${String(latestUserMessage||'').slice(0,700)}. RECENT CHARACTER: ${(Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-6).join(' | ').slice(0,1500)}.`
  ].join('\n');
 }
 export function naturalDialogueResetV34940Issues(reply:any,latest:any='',recent:any[]=[]){
@@ -25,7 +25,7 @@ export function naturalDialogueResetV34940Issues(reply:any,latest:any='',recent:
  if(/\blet(?:ting|s)? (?:the )?silence hang\b|\brather than rushing to fill (?:it|the silence)\b/.test(t)) issues.push('natural_dialogue_meta_silence');
  if(/\b(?:takes?|took) (?:a )?(?:slow|measured) breath\b|\blean(?:s|ed|ing)? back slightly\b/.test(t)) issues.push('natural_dialogue_choreographed_coolness');
  if(/\b(?:takes?|took) (?:a )?(?:casual )?step closer\b|\b(?:lean(?:s|ed|ing)?|step(?:s|ped|ping)?)\b.{0,35}\bpersonal space\b/.test(t)) issues.push('natural_dialogue_unearned_proximity');
- const recentText=(recent||[]).slice(-5).map(norm).join(' ');
+ const recentText=(Array.isArray(recent)?recent:[]).slice(-5).map(norm).join(' ');
  for(const motif of ['constitution','perimeter','survivors','pulse']) if(s.includes(motif)&&recentText.includes(motif)&&!norm(latest).includes(motif)){issues.push('natural_dialogue_callback_loop');break;}
  return [...new Set(issues)];
 }

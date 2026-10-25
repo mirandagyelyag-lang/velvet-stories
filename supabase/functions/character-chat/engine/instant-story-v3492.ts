@@ -26,7 +26,8 @@ export function instantStoryQualityIssues(opening:unknown,draft:Record<string,un
     /\b(?:the|a|your)\s+(?:skeptical|annoyed|confused|surprised|hurt|angry|nervous|shy|embarrassed|amused|worried|blank|sharp|cold|warm|soft)\s+(?:look|glance|stare|expression|smile|grin)\s+(?:you|on your face|you gave|you threw)\b/.test(t);
   const authoredUserInterior=/\byou\s+(?:felt|feel|thought|think|wondered|wonder|wanted|want|needed|need|realized|realize|knew|know|hoped|hope|wished|wish|hated|hate|loved|love|liked|like|feared|fear|remembered|remember)\b/.test(t);
   const inventedUserBodyFact=/\b(?:we both know|you know how you get|how you get when|you get when|you tend to get|your)\b.{0,55}\b(?:blood sugar|blood pressure|glucose|migraine|headache|dizzy|dizziness|faint|fainting|shaky|nauseous|panic attack|anxiety attack|allergic|allergy|medication|meds)\b/.test(t);
-  if(authoredUserAction) issues.push("user_action_or_reaction_puppeteered");
+  const narration=t.replace(/["“][^"”]*["”]/g," ");
+  if(authoredUserAction && /\byou\b/.test(narration)) issues.push("user_action_or_reaction_puppeteered");
   if(authoredUserInterior) issues.push("user_inner_state_puppeteered");
   if(inventedUserBodyFact) issues.push("invented_user_health_or_body_fact");
 
@@ -51,7 +52,7 @@ export function instantStoryQualityIssues(opening:unknown,draft:Record<string,un
   const unknownNpcNames=[...new Set(npcMatches.filter((name)=>!common.has(name)&&!profile.includes(name.toLowerCase())))];
   const socialBasis=/\b(?:friend group|group of|same group|friends|team|teammates|roommates|siblings|family|coworkers|colleagues|crew|club|social circle|popular|campus king|campus prince)\b/.test(profile);
   const genericNpcProp=/\b(?:energy drinks?|beef jerky|sour gummies|spicy chips|junk food|road trip|aux cord|snack run)\b/.test(t);
-  if(unknownNpcNames.length&&(!socialBasis||genericNpcProp)) issues.push("invented_named_npc");
+  if(unknownNpcNames.length) issues.push("invented_named_npc");
   if(unknownNpcNames.length>3) issues.push("npc_name_overload");
 
   const explicitAttraction=/\b(?:already likes|likes you|likes the user|has feelings for you|attracted to you|into you|flirts openly|never hidden how much|goes out of (?:his|her|their) way|le gustas|siente algo por ti)\b/.test(profile);
@@ -114,7 +115,7 @@ export function instantStoryLooksComplete(opening: unknown, finishReason: unknow
   const finish = String(finishReason || "").toUpperCase();
 
   if (!text || words.length < 55 || words.length > 220) return false;
-  if (["MAX_TOKENS", "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "MALFORMED_FUNCTION_CALL"].includes(finish)) return false;
+  if (["LENGTH", "CONTENT_FILTER", "MAX_TOKENS", "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "MALFORMED_FUNCTION_CALL"].includes(finish)) return false;
   if (/[’'][A-Za-z]{0,2}$/.test(text)) return false;
   if (/[,:;\-–—]$/.test(text)) return false;
   if (!/[.!?…][\"'”’)]?$/.test(text)) return false;

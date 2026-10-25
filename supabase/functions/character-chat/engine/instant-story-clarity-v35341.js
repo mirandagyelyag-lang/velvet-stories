@@ -3,14 +3,15 @@ const jargon = /\b(?:treasury|seating committee|quorum|endowment funds|fiscal qu
 const filler = /\b(?:unshielded focus|usual armor|effortless certainty|sharp intensity|practiced disarming grin)\b/gi;
 const generic = /\b(?:you're coming with me|i didn't plan on coming up here|you okay\??)\b/i;
 export function instantStoryClarityIssuesV35341(opening = "") {
-  const text = String(opening || "");
+  const text = String(opening || "").replace(/[’‘]/g,"'");
   const jargonHits = [...text.matchAll(jargon)].length;
   const fillerHits = [...text.matchAll(filler)].length;
   const issues = [];
   if (jargonHits >= 2) issues.push("instant_story_unexplained_jargon");
   if (fillerHits >= 2) issues.push("instant_story_abstract_filler");
   if (generic.test(text)) issues.push("instant_story_generic_hook");
-  if (/\byou (?:say|reply|decide|think|feel|follow|nod|smile|agree)\b/i.test(text)) issues.push("instant_story_user_action");
+  const narration=text.replace(/["“][^"”]*["”]/g," ");
+  if (/\byou (?:say|reply|decide|think|feel|follow|nod|smile|agree)\b/i.test(narration)) issues.push("instant_story_user_action");
   return issues;
 }
 export function instantStoryClarityPromptV35341() {

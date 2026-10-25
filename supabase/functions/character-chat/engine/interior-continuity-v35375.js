@@ -35,8 +35,8 @@ export function interiorContinuityIssuesV35375(reply="",context={}){
   const issues=[];
   const latest=clean(context?.latestUserMessage||"",800).toLowerCase();
   const romanticCue=/\b(kiss|kissed|kissing|beso|bésame|kiss me|hug|hold me|cuddle|date|jealous|celos|like you|love you)\b/i.test(latest);
-  const established=Boolean(context?.establishedAttraction||context?.relationshipState?.attraction||context?.relationshipState?.romantic_interest);
-  if(romanticCue&&established&&text.length<90) issues.push("salient-romantic-beat-underwritten");
+  const established=context?.establishedAttraction===true||Number(context?.relationshipState?.attraction)>0||context?.relationshipState?.romantic_interest===true;
+  if(romanticCue&&established&&text.length<25&&!/["“][^"”]+["”]/.test(text)) issues.push("salient-romantic-beat-underwritten");
   if(romanticCue&&/\b(he|she) kissed you\b\.?$/i.test(text)) issues.push("romantic-action-executed-without-experience");
   return issues;
 }

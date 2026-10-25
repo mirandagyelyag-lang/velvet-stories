@@ -25,15 +25,17 @@ export function enforceFinalDelegatedChoiceBarrier({ reply = "", latestUserMessa
   // (e.g. "the diner or the vending machine"). Include it as the newest grounded
   // character utterance so the deterministic rescue can COMMIT to one of those
   // options rather than inventing a destination or handing the choice back again.
-  const groundedReplies = [...(Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []), originalReply].filter(Boolean);
+  const groundedReplies = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).filter(Boolean); // Rejected prose is not canon.
   const rescuedReply = buildGroundedLastResortReply({
     character,
     latestUserMessage,
+    recentUserMessages,
     recentCharacterReplies: groundedReplies,
     issues,
   });
   const rescueIssues = relevantIssues({ reply: rescuedReply, latestUserMessage, recentUserMessages, recentCharacterReplies, character });
 
+  if (!String(rescuedReply||"").trim() || rescueIssues.length) return {reply:"",replaced:false,issues:issues,originalIssues:issues};
   return {
     reply: String(rescuedReply || "").trim(),
     replaced: true,

@@ -66,7 +66,7 @@ function chooseFreshFallback(candidates = [], recentCharacterReplies = []) {
     for (const word of a) if (b.has(word)) overlap += 1;
     return overlap / Math.min(a.size, b.size) >= 0.72;
   }));
-  return fresh || pool[pool.length - 1];
+  return fresh || "";
 }
 
 function followThroughFallback({ name, recentCharacterReplies = [] }) {
@@ -124,6 +124,7 @@ function emotionalFallback({ name, character, latestUserMessage = "", recentChar
 
 function hasExplicitAttraction(character = {}) {
   const profile = profileText(character);
+  if(/\b(?:not attracted|does not like|doesn t like|no romantic feelings)\b/.test(profile)) return false;
   return /\b(?:already likes|likes you|likes the user|has (?:a )?(?:crush|thing|feelings) for you|has feelings for the user|attracted to you|into you|secretly likes you|romantic feelings for you|flirts openly|never hidden how much he likes you|never hidden how much she likes you|le gustas|gusta de ti|siente algo por ti|enamorado de ti|enamorada de ti)\b/.test(profile);
 }
 
@@ -197,7 +198,10 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
 
   // Rescue a declined practical offer without another provider call. The
   // character respects the refusal and responds to care instead of insisting.
-  const declinedOffer = /\b(?:i(?:'ll| will) be fine|no thanks|no thank you|i(?:'m| am) okay|i can buy one|i don't want to hear you coughing|i do not want you getting sick)\b/.test(normalizedTurn);
+  // A refusal outranks every deterministic pursuit or movement rescue.
+  if (/\b(?:stop following me|don t follow me|do not follow me|leave me alone|give me space|no me sigas|dejame sola|dame espacio)\b/.test(normalizedTurn)) return "";
+  if (/\b(?:pill|pills|medication|medicine|dose|prescription)\b/.test(normalizedTurn)) return ""; // No invented missed-dose scenario.
+  const declinedOffer = /\b(?:i(?: ll| will) be fine|no thanks|no thank you|i(?: m| am) okay|i can buy one|i don t want to hear you coughing|i do not want you getting sick)\b/.test(normalizedTurn);
   const offerFailures = ["rejected_offer_pushed_again", "user_concern_ignored_for_offer", "repeated_question_without_development", "care_reduced_to_literal_symptom", "caring_refusal_generic_checkin"];
   const recentOffer = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-3).join(" "));
   if (declinedOffer && (offerFailures.some(issue => failures.has(issue)) || /\b(?:umbrella|paraguas|jacket|coat)\b/.test(recentOffer))) {

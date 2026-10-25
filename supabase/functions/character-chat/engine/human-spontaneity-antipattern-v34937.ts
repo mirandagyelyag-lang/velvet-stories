@@ -39,16 +39,16 @@ function responseShape(v:any=''){
 function repeatedResponseShape(reply:any,recent:any[]=[]){
  const sig=responseShape(reply);
  const rs=(recent||[]).slice(-4).map(responseShape).filter(x=>x!=='empty');
- if(rs.length<2) return false;
+ if(rs.length<3 || String(reply??"").split(/\s+/).length<18) return false;
  const last2=rs.slice(-2).every(x=>x===sig);
  const threeOfFour=rs.filter(x=>x===sig).length>=3;
  return last2 || threeOfFour;
 }
 export function humanSpontaneityAntiPatternV34937Issues(reply:any,latest:any='',recent:any[]=[]){
  const t=c(reply,6000).toLowerCase(), issues:string[]=[]; const rs=(recent||[]).slice(-6).map((x:any)=>c(x,500).toLowerCase());
- const op=opening(t); if(op && rs.some((r:string)=>opening(r)===op)) issues.push('spontaneity_repeated_opening');
+ const op=opening(t); if(op.split(/\s+/).filter(Boolean).length>=5 && rs.filter((r:string)=>opening(r)===op).length>=2) issues.push('spontaneity_repeated_opening');
  const moves=[['smirk',/\bsmirk(?:s|ed|ing)?\b/],['grin',/\bgrin(?:s|ned|ning)?\b/],['eyebrow',/\braise(?:s|d|ing)? (?:an |one )?eyebrow\b/],['shrug',/\bshrug(?:s|ged|ging)?\b/]] as const;
- for(const [name,re] of moves) if(re.test(t) && rs.slice(-3).filter((r:string)=>re.test(r)).length>=1){issues.push(`spontaneity_repeated_gesture_${name}`);break;}
+ for(const [name,re] of moves) if(re.test(t) && rs.slice(-3).filter((r:string)=>re.test(r)).length>=2){issues.push(`spontaneity_repeated_gesture_${name}`);break;}
  if(/wouldn['’]t you like to know|where['’]s the fun in that|you wish\.?$|careful what you wish for/.test(t) && rs.some((r:string)=>/wouldn['’]t you like to know|where['’]s the fun in that|you wish|careful what you wish for/.test(r))) issues.push('spontaneity_recycled_banter_move');
  if(/\b(?:anyway|so),? what about you\??$/.test(t) && !/\?/.test(c(latest,500))) issues.push('spontaneity_compulsory_hook');
  if((t.match(/\.{3}|…/g)||[]).length>=3) issues.push('spontaneity_performed_hesitation');

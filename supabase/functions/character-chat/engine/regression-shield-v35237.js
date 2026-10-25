@@ -54,8 +54,11 @@ export function finalizeRegressionSafeTurnV35237({
   const sceneIssues = sceneMomentumBarrierV35236Issues({
     reply: candidate, latestUserMessage, recentCharacterReplies,
   });
+  const finalChoice = enforceFinalDelegatedChoiceBarrier({
+    reply: candidate, latestUserMessage, recentUserMessages, recentCharacterReplies, character,
+  });
   const remaining = unique([
-    ...delegatedIssues(choice2),
+    ...unique(finalChoice.replaced ? finalChoice.originalIssues : delegatedIssues(finalChoice)),
     ...delegatedIssues(scene2),
     ...sceneIssues,
   ]);

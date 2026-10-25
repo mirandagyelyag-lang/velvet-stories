@@ -80,13 +80,22 @@ function extractTimeAnchor(value:string){
 function inferClock(scene:Record<string,any>={}, messages:Array<Record<string,any>>=[]){
   const raw=text(scene.time_label||scene.time||scene.story_time||"");
   const recent=list(messages).slice(-24).map((m:any)=>text(m?.content||m?.text||"")).filter(Boolean);
-  const combined=[raw,...recent.slice().reverse()].join(" | ");
+  // Resolve one current anchor, rather than mixing old weekdays and times
+  // into the clock. Historical messages remain separate temporal anchors.
+  const current = raw || recent.slice().reverse().find(x => extractTimeAnchor(x) || /\b(?:[01]?\d|2[0-3]):[0-5]\d\b/.test(x)) || "";
+  const combined=current;
   const lower=norm(combined);
-  const weekday=WEEKDAYS.find((d)=>new RegExp(`\\b${d}\\b`,`i`).test(combined))||"";
+  const weekday=combined.match(/\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i)?.[0]?.toLowerCase()||"";
   const month=MONTHS.find((m)=>new RegExp(`\\b${m}\\b`,`i`).test(combined))||"";
   const dateMatch=combined.match(/\b(?:20\d{2}[-\/]\d{1,2}[-\/]\d{1,2}|\d{1,2}[-\/]\d{1,2}[-\/]20\d{2}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:,\s*20\d{2})?)\b/i);
   const timeMatch=combined.match(/\b(?:1[0-2]|[1-9])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b/i);
-  let daypart=""; for(const [p,label] of DAYPARTS){ if(p.test(combined)){daypart=label;break;} }
+  let daypart=""; for(const [p,label] of DAYPARTS){ if(p.test(norm(combined))){daypart=label;break;} }
+  if(timeMatch){
+    const tm=norm(timeMatch[0]).match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])?/);
+    if(tm){ let h=Number(tm[1]); if(tm[3]) h=h%12+(tm[3]==="p"?12:0);
+      daypart=h<6?"night":h<12?"morning":h<14?"midday":h<18?"afternoon":h<22?"evening":"night";
+    }
+  }
   let season="";
   if(/\b(?:summer|verano)\b/i.test(combined)) season="summer";
   else if(/\b(?:winter|invierno)\b/i.test(combined)) season="winter";
@@ -100,7 +109,7 @@ function participants(v:any){return list(v).map(text).filter(Boolean).slice(0,12
 function eventDueState(storyTime:string, clock:CalendarLifeSimulation["storyClock"]){
   const s=norm(storyTime); if(!s) return "unscheduled";
   const now=norm([clock.raw,clock.weekday,clock.daypart,clock.date,clock.time].filter(Boolean).join(" "));
-  if(now && (s.includes(now)||now.includes(s))) return "due/now";
+  if(clock.raw!=="unknown" && s===norm(clock.raw)) return "due/now";
   if(/\b(?:today|tonight|this afternoon|this evening|this morning)\b/.test(s)) return "due/today";
   if(/\b(?:tomorrow|next|upcoming|later)\b/.test(s)) return "upcoming";
   if(/\b(?:yesterday|last night|last week|ago)\b/.test(s)) return "past";
@@ -132,7 +141,7 @@ function lifeDomains(character:Record<string,any>={}){
 }
 
 function planRows(plans:Array<Record<string,any>>=[]){
-  return list(plans).filter((p:any)=>!/^cancel/i.test(text(p.status))).map((p:any)=>{
+  return list(plans).filter((p:any)=>! /^(?:cancel(?:led|ed)?|completed?|done|expired|rejected|declined)$/i.test(text(p?.status))).map((p:any)=>{
     const title=text(p.title||p.activity||p.plan||p.summary||"");
     const when=text(p.story_time||p.when||p.time||"");
     const status=text(p.status||"active");
@@ -173,12 +182,12 @@ function temporalAnchors(args:Args){
 
 function inferActiveTransit(messages:Array<Record<string,any>>=[]){
   const recent=list(messages).slice(-16).map((m:any)=>text(m?.content||m?.text||"")).filter(Boolean);
-  const transitions=/\b(?:we arrived|when we arrived|pulled up at|reached the|got to the|back at the cabin|arrived at the cabin|trip was over|drive was over|cancel(?:led)? the trip|not going anymore)\b/i;
-  const plan=/\b(?:road trip|drive back|driving back|back to the car|get back to the car|hit the highway|on the highway|riding shotgun|ride shotgun|you'?re driving|you are driving|cabin)\b/i;
+  const transitions=/\b(?:we arrived|when we arrived|pulled up at|reached the|got to the|back at the cabin|arrived at the cabin|trip was over|drive was over|cancel(?:led|ed)? the trip|not going anymore)\b/i;
+  const plan=/\b(?:road trip|drive back|driving back|back to the car|get back to the car|hit the highway|on the highway|riding shotgun|ride shotgun|you'?re driving|you are driving)\b/i;
   let anchor="";
   for(let i=recent.length-1;i>=0;i--){
     if(transitions.test(recent[i])) return {active:false,anchor:"",destination:"",policy:"No unresolved transit plan detected."};
-    if(plan.test(recent[i])) { anchor=recent[i]; break; }
+    if(plan.test(recent[i]) && !/\b(?:not going|won't|will not|don't|do not|didn't|did not|wish|imagine)\b/i.test(recent[i])) { anchor=recent[i]; break; }
   }
   const destination=/\bcabin\b/i.test(anchor)?"cabin":/\b(?:car|shotgun|driv|highway|road trip)\b/i.test(anchor)?"car/highway destination":"";
   return anchor
@@ -188,7 +197,7 @@ function inferActiveTransit(messages:Array<Record<string,any>>=[]){
 
 export function deriveCalendarLifeSimulation(args:Args={}):CalendarLifeSimulation{
   const clock=inferClock(args.sceneState||{},args.recentMessages||[]);
-  const events=list(args.calendarEvents).filter((e:any)=>!/^cancel/i.test(text(e?.status))).map((e:any)=>normalizeEvent(e,clock)).slice(0,14);
+  const events=list(args.calendarEvents).filter((e:any)=>! /^(?:cancel(?:led|ed)?|completed?|done|expired|rejected|declined)$/i.test(text(e?.status))).map((e:any)=>normalizeEvent(e,clock)).slice(0,14);
   const routines=routineAnchors(args.character||{},args.intelligenceState||{});
   const plans=planRows(args.storyPlans||[]);
   const dueCommitments=uniq([
@@ -226,11 +235,14 @@ export function deriveCalendarLifeSimulation(args:Args={}):CalendarLifeSimulatio
 
 function hasSupport(needle:string, engine:Partial<CalendarLifeSimulation>={}, latest=""){
   const n=norm(needle); if(!n) return false;
-  const hay=norm([latest,...list(engine.temporalAnchors),...list(engine.upcomingEvents).flatMap((e:any)=>[e?.title,e?.storyTime,e?.details]),...list(engine.activePlans),...list(engine.recurringRoutines)].join(" | "));
+  const hay=norm([latest,engine.storyClock?.raw,engine.storyClock?.time,engine.storyClock?.date,...list(engine.temporalAnchors),...list(engine.upcomingEvents).flatMap((e:any)=>[e?.title,e?.storyTime,e?.details]),...list(engine.activePlans),...list(engine.recurringRoutines)].join(" | "));
   if(!hay) return false;
-  return hay.includes(n) || n.includes(hay);
+  return (` ${hay} `).includes(` ${n} `) || hay.split(" | ").some(anchor=>anchor===n);
 }
-function userTransition(latest:string){return /\b(?:later|after(?:ward|wards)?|the next day|next morning|that night|hours? later|days? later|weeks? later|tomorrow|the following|time skip|fast forward|when we arrived|when i got|when we got|i leave|i left|we leave|we left)\b/i.test(latest);}
+function userTransition(latest:string){
+  if(/\?\s*$/.test(text(latest))) return false;
+  return /\b(?:the next day|next morning|hours? later|days? later|weeks? later|time skip|fast forward|when we arrived|when i got|when we got|i leave|i left|we leave|we left)\b/i.test(latest);
+}
 
 export function calendarLifeSimulationIssues(args:IssueArgs={}):string[]{
   const reply=text(args.reply), engine=args.engine||{}, latest=text(args.latestUserMessage); if(!reply) return [];
@@ -272,6 +284,7 @@ export function calendarLifeSimulationIssues(args:IssueArgs={}):string[]{
 }
 
 export function sanitizeCalendarLifeSimulationReply(reply:string, issues:string[], engine:Partial<CalendarLifeSimulation>={}):string{
+  if(!issues.length) return reply;
   let out=text(reply);
   if(!out) return out;
   const has=(x:string)=>issues.includes(x);
@@ -293,3 +306,5 @@ export function sanitizeCalendarLifeSimulationReply(reply:string, issues:string[
   if(has("travel_time_broken")) out=out.replace(/\b(?:instantly arrived|teleported)\b/gi,"arrived");
   return text(out);
 }
+
+export const __testCalendarLifeSimulation = { inferClock, eventDueState, inferActiveTransit, hasSupport, userTransition };

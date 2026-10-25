@@ -35,7 +35,7 @@ function characterRecoveryStyle(character={}){
 }
 
 export function deriveEmotionalAftercareV35322({latestUserMessage="",recentUserMessages=[],character={}}={}){
-  const current=deriveEmotionalSupportPriorityV35321(latestUserMessage,recentUserMessages);
+  const current=deriveEmotionalSupportPriorityV35321(latestUserMessage,[]);
   const latest=norm(latestUserMessage);
   if(current.safety||current.level>=2){
     return {active:true,stage:"acute",turnsSinceDistress:0,sourceLevel:current.level,reason:"current_distress"};
@@ -52,7 +52,8 @@ export function deriveEmotionalAftercareV35322({latestUserMessage="",recentUserM
   for(let i=prior.length-1;i>=0;i--){
     const distance=prior.length-i;
     if(distance>window)break;
-    const slice=prior.slice(0,i+1);
+    if(RECOVERY.test(norm(prior[i]))||DELIBERATE_REDIRECT.test(norm(prior[i]))) break;
+    const slice=[];
     const state=deriveEmotionalSupportPriorityV35321(prior[i],slice);
     if(state.safety||state.level>=2){
       const stage=distance===1?"close":distance===2?"transition":"lingering";
@@ -89,7 +90,7 @@ export function buildEmotionalAftercareV35322({character={},latestUserMessage=""
 
 function abruptMoodWhiplash(reply=""){
   const t=norm(reply);
-  return /\b(?:anyway|party|afterparty|bartender|champagne|jealous|who was that guy|who is that guy|kiss you|kissed you|flirt|hook up|fight me|lets get drunk|let s get drunk|club tonight|dance floor)\b/.test(t);
+  return /\b(?:lets get drunk|let s get drunk|who was that guy|who is that guy|fight me|lets hook up|let s hook up|lets party|let s party)\b/.test(t);
 }
 function continuityCare(reply=""){
   const t=norm(reply);

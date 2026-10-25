@@ -23,8 +23,8 @@ function relationshipCanon(character={},relationship={}){
 
 function explicitlyExclusive(character={},relationship={}){
   const t=relationshipCanon(character,relationship);
-  return /\b(?:exclusive|officially together|boyfriend|girlfriend|partners?|engaged|fiance|fiancee|married|husband|wife|monogamous|committed relationship)\b/.test(t)
-    && !/\b(?:not exclusive|nonexclusive|non-exclusive|open relationship|casual|friends with benefits)\b/.test(t);
+  return /\b(?:exclusive|officially together|boyfriend|girlfriend|romantic partners?|engaged|fiance|fiancee|married|husband|wife|monogamous|committed relationship)\b/.test(t)
+    && !/\b(?:not exclusive|not officially together|not (?:my |your |his |her )?(?:boyfriend|girlfriend|partners?|engaged|married)|nonexclusive|non-exclusive|open relationship|casual|friends with benefits)\b/.test(t);
 }
 
 function passiveDeadEnd(reply=""){
@@ -58,16 +58,16 @@ function emotionallyPassiveReply(reply=""){
   const t=norm(reply);
   const questions=(String(reply||"").match(/\?/g)||[]).length;
   const passive=/\b(?:im listening|i m listening|go on|tell me|what happened|are you okay|okay|alright|all right|i hear you|im here|i m here)\b/.test(t);
-  const ownedMove=/\b(?:apolog(?:ize|ized|izes)|admit(?:s|ted)?|decid(?:e|es|ed)|refus(?:e|es|ed)|stay(?:s|ed)?|leave(?:s|ft)?|call(?:s|ed)?|text(?:s|ed)?|put(?:s)? away|stop(?:s|ped)?|drop(?:s|ped)? the joke|cuts? off|turns? down|changes? the plan|takes? responsibility|owns? it|sets? .* aside)\b/.test(t);
+  const ownedMove=/\b(?:apolog(?:ize|ized|izes)|admit(?:s|ted)?|decid(?:e|es|ed)|refus(?:e|es|ed)|stay(?:s|ed)?|(?:leave|leaves|left)|call(?:s|ed)?|text(?:s|ed)?|put(?:s)? away|stop(?:s|ped)?|drop(?:s|ped)? the joke|cuts? off|turns? down|changes? the plan|takes? responsibility|owns? it|sets? .* aside)\b/.test(t);
   return passive && questions>=1 && !ownedMove;
 }
 
 function priorTurnStartedPlan(recentCharacterReplies=[]){
   const last=norm((Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).at(-1)||"");
   if(!last) return false;
-  const invitation=/\b(?:come on|lets go|let s go|we can|i ll take|i will take|i m taking|i am taking|follow me|this way|your choice)\b/.test(last);
-  const motion=/\b(?:headed|heading|started toward|started towards|turned toward|turned towards|pushed .* door open|opened .* door|led the way|walked toward|walked towards|went toward|went towards|side exit|stairs|roof|patio|outside|car|parking lot|diner|drive thru|drive through)\b/.test(last);
-  return invitation||motion;
+  const invitation=/\b(?:come on|lets go|let s go|we can|ill take|i ll take|i will take|im taking|i m taking|i am taking|follow me|this way|your choice)\b/.test(last);
+  const motion=/\b(?:headed|heading|started toward|started towards|turned toward|turned towards|pushed .* door open|opened .* door|led the way|walked toward|walked towards|went toward|went towards)\b/.test(last);
+  return (invitation||motion)&&!/\b(?:wont|will not|didnt|did not|not going|cancelled|canceled)\b/.test(last);
 }
 
 function userCancelledPriorPlan(latestUserMessage=""){
@@ -80,6 +80,12 @@ function passiveFollowThroughDrop(reply=""){
   const passive=/\b(?:im listening|i m listening|go on|tell me|tell me more|what happened|say it|your choice|up to you|you decide|i hear you)\b/.test(t);
   const continuation=/\b(?:keeps? (?:walking|moving|going)|continues?|heads?|headed|leads?|led|steps? (?:outside|through|onto|into|toward|towards)|takes? the stairs|starts? up|opens? .* door|closes? .* door|reaches? the|gets? outside|moves? toward|moves? towards|keeps? the door|holds? the door)\b/.test(t);
   return passive&&!continuation;
+}
+// Waiting for consent or an actual answer is not a narrative dead end.
+function meaningfulWait(reply="", latest=""){
+  const spoken=[...String(reply??"").matchAll(/["“]([^"”]+)["”]/g)].map(m=>m[1]);
+  return userCancelledPriorPlan(latest) || spoken.some(line=>/\?\s*$/.test(line.trim())) ||
+    /\b(?:waiting for (?:permission|consent|an answer|your answer)|waits for (?:permission|consent|your answer))\b/.test(norm(reply));
 }
 export function buildCharacterLedStoryV35274({
   character={},relationship={},scene={},mind={},latestUserMessage="",recentUserMessages=[],recentCharacterReplies=[]
@@ -100,7 +106,7 @@ export function buildCharacterLedStoryV35274({
     "NO USER-ORBIT STORY ENGINE. Attraction, attachment or jealousy changes priorities, but does not erase friends, ambition, boredom, sex/romance outside the central pairing, pride, hobbies, obligations, curiosity or bad decisions.",
     exclusive
       ? "ROMANTIC STATUS: canon currently reads as EXCLUSIVE/COMMITTED. Do not introduce cheating or outside romantic/sexual involvement unless existing creator canon explicitly establishes non-monogamy or infidelity for this character/story."
-      : "ROMANTIC STATUS: no explicit exclusivity is established. Liking the user does NOT equal exclusivity, celibacy or automatic loyalty. If personality, opportunity and story causality support it, the character may flirt with, date, kiss, hook up with, pursue, reject, or be pursued by other adults. Prefer recurring/grounded NPCs over spawning a random jealousy prop.",
+      : "ROMANTIC STATUS: no explicit exclusivity is established. This is unknown status, not evidence of outside involvement. Preserve configured loyalty, attachment and current canon; never invent another romance to satisfy initiative. If personality, opportunity and story causality support it, the character may flirt with, date, kiss, hook up with, pursue, reject, or be pursued by other adults. Prefer recurring/grounded NPCs over spawning a random jealousy prop.",
     "OTHER PEOPLE ARE NOT JEALOUSY MACHINES. A third person may genuinely interest the character, be fun, attractive, useful, irritating, complicated, or become a real relationship thread. Do not make every outside interaction secretly designed to provoke the user.",
     "FEELINGS CAN BE MESSY. The character may like the user and still choose someone else tonight, avoid commitment, enjoy attention, make a selfish choice, regret something later, or compartmentalize. Preserve personality and consequences instead of protecting the central romance from friction.",
     "INITIATIVE WITHOUT COERCION: never write the user's thoughts, speech, consent, movement or decision. The character can choose their own action and create a playable consequence while leaving the user's response genuinely open.",
@@ -122,19 +128,22 @@ export function characterLedStoryV35274Issues({
   const issues=[];
   if(!String(reply||"").trim()) return issues;
 
-  if(isSilent(latestUserMessage) && passiveDeadEnd(reply)) issues.push("silent_handoff_dead_end");
-  if(isSilent(latestUserMessage) && handsBackDecision(reply)) issues.push("silent_handoff_returned_to_user");
+  const mayWait=meaningfulWait(reply,latestUserMessage);
+  if(!mayWait && isSilent(latestUserMessage) && passiveDeadEnd(reply)) issues.push("silent_handoff_dead_end");
+  if(!mayWait && isSilent(latestUserMessage) && handsBackDecision(reply)) issues.push("silent_handoff_returned_to_user");
   if(userOrbiting(reply)) issues.push("character_led_story_user_orbit_density");
-  if(seriousUserBeat(latestUserMessage) && emotionallyPassiveReply(reply)) issues.push("serious_turn_passive_response");
-  if(priorTurnStartedPlan(recentCharacterReplies) && !userCancelledPriorPlan(latestUserMessage) && passiveFollowThroughDrop(reply)) {
+  if(!mayWait && seriousUserBeat(latestUserMessage) && emotionallyPassiveReply(reply)) issues.push("serious_turn_passive_response");
+  if(!mayWait && priorTurnStartedPlan(recentCharacterReplies) && !userCancelledPriorPlan(latestUserMessage) && passiveFollowThroughDrop(reply)) {
     issues.push("active_plan_followthrough_dropped");
   }
 
   const recent=(Array.isArray(recentCharacterReplies)?recentCharacterReplies.slice(-3):[]).map(norm).join(" | ");
-  if(/\b(?:what do you want to do|your call|you decide|up to you)\b/.test(norm(reply))
+  if(!mayWait && /\b(?:what do you want to do|your call|you decide|up to you)\b/.test(norm(reply))
     && /\b(?:what do you want to do|your call|you decide|up to you)\b/.test(recent)){
     issues.push("repeated_user_decision_handoff");
   }
 
   return [...new Set(issues)];
 }
+
+export const __testCharacterLedV35274={explicitlyExclusive,priorTurnStartedPlan,meaningfulWait,emotionallyPassiveReply};

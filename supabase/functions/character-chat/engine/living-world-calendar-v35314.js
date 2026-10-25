@@ -15,7 +15,7 @@ function status(v){
   return clean(v?.status||v?.state||v?.stage||v?.resolution_status||"",80).toLowerCase();
 }
 function activeRows(rows=[],limit=8){
-  return list(rows).filter(x=>!/(?:done|complete|completed|resolved|cancelled|canceled|closed|expired)/.test(status(x))).slice(0,limit);
+  return list(rows).filter(x=>!/^(?:done|complete|completed|resolved|cancelled|canceled|closed|expired)$/.test(status(x))).slice(0,limit);
 }
 function namedCast(cast=[]){
   return activeRows(cast,20).map(x=>clean(x?.name,90)).filter(Boolean);
@@ -38,6 +38,8 @@ function romanceDensity(recent=[]){
 }
 function inventedKnowledge(reply="",knownNames=[]){
   const allowed=new Set(knownNames.map(norm));
+  for(const name of knownNames){const first=norm(name).split(" ")[0];if(knownNames.filter(n=>norm(n).split(" ")[0]===first).length===1)allowed.add(first);}
+  ["narrator","scene","time","location"].forEach(x=>allowed.add(x));
   const speakers=[...String(reply||"").matchAll(/(?:^|\n)\s*([A-Z][a-z]{2,})\s*:/g)].map(m=>m[1]);
   return speakers.some(n=>!allowed.has(norm(n)));
 }
@@ -124,8 +126,8 @@ export function livingWorldCalendarIssuesV35314({
   const presupposedPlan=/\b(?:are we still|weren['’]?t we|we were supposed to|we['’]?re supposed to|did you forget|you forgot|still meeting|still going to|still headed to)\b/i.test(reply);
   if(presupposedPlan){
     const groundedBlob=norm([
-      ...compactRows(calendarEvents,20).map(itemText),
-      ...compactRows(storyPlans,20).map(itemText),
+      ...compactRows(calendarEvents,20),
+      ...compactRows(storyPlans,20),
       ...list(recentCharacterReplies).slice(-8),
       ...list(recentUserMessages).slice(-8),
       latestUserMessage,

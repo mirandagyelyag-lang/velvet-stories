@@ -5,6 +5,7 @@ const norm=(v="")=>clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLo
 
 function userExplicitlySendsCharacterAway(value=""){
   const t=norm(value);
+  if(/\b(?:dont go|don't go|do not go|no te vayas)\b/.test(t))return false;
   return /\b(?:you guys go|you all go|you go without me|go without me|just go|no,? you go|no,? go|please go|go on without me|go ahead without me|go with them|go with the others|you should go|ustedes vayan|vayan sin mi|vayan nomas|vayan no mas|anda nomas|anda no mas|vete nomas|vete no mas|solo vete|me quedo,? ustedes vayan)\b/.test(t);
 }
 
@@ -88,7 +89,7 @@ function neutralCompanionJealousized(reply="", latestUserMessage=""){
     n+" yeah right"
   ].some((phrase)=>r.includes(phrase));
   const jealousy=/\b(?:jealous|jealousy|competition|rival|rather be with|picked .* over me|choose .* over me)\b/.test(r);
-  return suspicious || jealousy;
+  return suspicious && jealousy;
 }
 
 function repeatedPlanProp(reply="", recentCharacterReplies=[]){
@@ -132,7 +133,7 @@ export function independentAgencyBoundaryV35311Issues({
   const hasPlan=recentOwnPlan(recentCharacterReplies);
   const askedHelp=userAskedForHelp(latestUserMessage);
   const resisted=userResistsCurrentAdvance(latestUserMessage);
-  const serious=seriousReason([latestUserMessage,...(Array.isArray(recentUserMessages)?recentUserMessages.slice(-3):[])].join(" | "));
+  const serious=seriousReason(latestUserMessage);
 
   if(sentAway && replyIgnoresDismissal(text)) issues.push("explicit_go_boundary_ignored");
   if(declined && hasPlan && !askedHelp && !serious && replyCancelsOwnPlanForUser(text)) {
@@ -147,7 +148,7 @@ export function independentAgencyBoundaryV35311Issues({
   if(declined && !askedHelp && !serious && /\b(?:i'll help|ill help|i can help|let me help|help you|stay and help)\b/.test(norm(text)) && replyCancelsOwnPlanForUser(text)) {
     issues.push("unsolicited_rescue_reprioritization");
   }
-  if(resisted && boundaryRespectBecomesPersonalityShutdown(text)) issues.push("boundary_respect_personality_shutdown");
+  if(resisted && !/\b(?:leave me alone|back off|stop pushing|give me a minute|not now)\b/.test(norm(latestUserMessage)) && boundaryRespectBecomesPersonalityShutdown(text)) issues.push("boundary_respect_personality_shutdown");
   if(neutralCompanionJealousized(text,latestUserMessage)) issues.push("neutral_npc_mention_jealousized");
   if(repeatedPlanProp(text,recentCharacterReplies)) issues.push("repeated_plan_prop_loop");
 

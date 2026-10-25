@@ -55,7 +55,8 @@ function plainOutsideAsterisks(text = "") {
 
 function stateFromText(text = "") {
   const normalized = normalize(text);
-  return stateMatchers.find((entry) => entry.re.test(normalized)) || null;
+  const observed=normalized.split(/(?<=[.!?])\s+/).filter(part=>!/\b(?:not|isn't|is not|wasn't|was not|don't|do not|didn't|did not|never)\b/.test(part)).join(" ");
+  return stateMatchers.find((entry) => entry.re.test(observed)) || null;
 }
 
 function observableFromText(text = "") {
@@ -94,6 +95,7 @@ export function deriveEmbodiedAwarenessSalience({ latestUserMessage = "", recent
     .filter((m) => String(m?.sender || m?.role || "") === "user")
     .slice(-6)
     .map((m) => String(m?.content || m?.message || m?.text || ""));
+  if(recentUserTurns.length && normalize(recentUserTurns.at(-1))===normalize(latestUserMessage)) recentUserTurns.pop();
   const turns = [...recentUserTurns, latestUserMessage].filter(Boolean).slice(-7);
   const latest = String(latestUserMessage || "");
   const latestPlain = plainOutsideAsterisks(latest);
@@ -167,7 +169,7 @@ export function embodiedAwarenessIssues({ reply = "", engine = {} as Partial<Emb
   const flirt = /\b(?:prefer (?:your )?company|only one i'?m paying attention to|worth remembering|could get used to this|like having you here|wanted to see you|you look cute|adorable|beautiful|pretty when)\b/i.test(text);
   const careHijack = /\b(?:i (?:pick|picked) you up|i (?:carry|carried) you|i (?:drag|dragged) you|i(?:'m| am) taking you home|i ordered for you|i (?:make|made) you eat|i (?:force|forced) you|without waiting for (?:an answer|permission))\b/i.test(text);
   if (engine.state === "distracted" && engine.recognitionDue && /\b(?:dominic|pastr(?:y|ies)|latte|seasonal special|menu board|officially ignored|ignore them)\b/i.test(text) && !/\b(?:you (?:seem|look)|your attention|you weren't listening|you were distracted|you had drifted)\b/i.test(text)) issues.push("distracted_turn_ignored");
-  if (engine.state === "distracted" && engine.recognitionDue && !/\\b(?:attention (?:drifted|wandered)|zoned out|spacing out|distracted|not (?:listening|paying attention)|lost (?:you|your attention)|you (?:weren't|were not) (?:listening|following)|noticed (?:you|your) (?:weren't|were not|attention)|caught (?:you|your) (?:staring|drifting)|stopped mid-(?:sentence|thought)|fell silent (?:when|as) you)\\b/i.test(text)) issues.push("distracted_turn_ignored");
+  if (engine.state === "distracted" && engine.recognitionDue && !/\b(?:attention (?:drifted|wandered)|zoned out|spacing out|distracted|not (?:listening|paying attention)|lost (?:you|your attention)|you (?:weren't|were not) (?:listening|following)|noticed (?:you|your) (?:weren't|were not|attention)|caught (?:you|your) (?:staring|drifting)|stopped mid-(?:sentence|thought)|fell silent (?:when|as) you)\b/i.test(text)) issues.push("distracted_turn_ignored");
   if (engine.recognitionDue && !ack) issues.push("embodied_state_ignored");
   if (engine.state === "distracted" && engine.recognitionDue && !ack) issues.push("distracted_turn_ignored");
   if ((engine.intensity || 0) >= 2 && banter && !ack) issues.push("banter_overrides_embodied_state");
@@ -186,6 +188,7 @@ export function embodiedAwarenessIssues({ reply = "", engine = {} as Partial<Emb
 }
 
 export function sanitizeEmbodiedAwarenessReply(reply = "", issues: string[] = [], engine: Partial<EmbodiedAwarenessSalience> = {}) {
+  if (!issues.length) return String(reply || "");
   let out = String(reply || "");
   if (issues.includes("care_hijacks_user_agency")) {
     out = out
@@ -205,7 +208,7 @@ export function sanitizeEmbodiedAwarenessReply(reply = "", issues: string[] = []
   }
   const ack = engine?.state ? (acknowledgmentPattern(engine.state).test(out) || (engine.state === "distracted" && /\b(?:paused|stopped|waited|fell silent|went quiet|looked back|glanced back|turned toward you|watched you)\b/i.test(out))) : true;
   if ((engine?.recognitionDue && !ack) || issues.includes("distracted_turn_ignored")) {
-    const fallback = engine.state === "low_energy" ? '"You fading on me?"'
+    const fallback = engine.state === "low_energy" ? '"Would you like a break?"'
       : engine.state === "cold" ? '"You cold?"'
       : engine.state === "distracted" ? '"You somewhere else?"'
       : '"You okay?"';

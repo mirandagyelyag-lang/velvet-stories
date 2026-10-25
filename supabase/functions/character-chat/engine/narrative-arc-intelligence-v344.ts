@@ -53,7 +53,7 @@ const norm=(v:any)=>clean(v,5000).toLowerCase().normalize("NFD").replace(/[\u030
 const arr=(v:any):AnyRow[]=>Array.isArray(v)?v.filter(Boolean):[];
 const uniq=<T>(xs:T[])=>[...new Set(xs.filter(Boolean) as T[])];
 const clamp=(n:any,min=0,max=100)=>Math.max(min,Math.min(max,Number.isFinite(Number(n))?Number(n):0));
-const isResolved=(v:any)=>/\b(?:resolved|complete|completed|closed|ended|done|cancelled|canceled|superseded)\b/.test(norm(v));
+const isResolved=(v:any)=>/^(?:resolved|complete|completed|closed|ended|done|cancelled|canceled|superseded)$/.test(norm(v));
 const isDormant=(v:any)=>/\b(?:dormant|paused|inactive|shelved|waiting|on hold)\b/.test(norm(v));
 const label=(r:AnyRow)=>clean(r?.title||r?.label||r?.name||r?.summary||r?.effect||r?.cause||r?.arc,320);
 
@@ -207,7 +207,7 @@ export function deriveNarrativeArcIntelligenceV344(args:AnyRow={}):NarrativeArcI
     const title=label(row)||`Arc ${index+1}`; const domain=domainOf(row); const evidence=arcEvidenceCount(row,recent,memories,milestones);
     const titleTokens=norm(title).split(/\s+/).filter(x=>x.length>=4); const relevantSigs=[...loops.counts.entries()].filter(([sig])=>titleTokens.some(t=>sig.includes(t))||sig.includes(domain));
     const repetition=Math.max(Number(row?.repetition_count||row?.repetitionCount||0)||0,...relevantSigs.map(([,n])=>n),0);
-    const payoffSeed=Boolean(row?.payoff_ready||row?.payoffReady)||titleTokens.some(t=>milestoneBlob.includes(t))&&evidence>=3;
+    const payoffSeed=[true,1,"true"].includes(row?.payoff_ready??row?.payoffReady)||titleTokens.some(t=>milestoneBlob.includes(t))&&evidence>=3;
     const stage=arcStage(row,evidence,repetition,payoffSeed);
     const blockers=uniq([
       ...(Array.isArray(row?.blockers)?row.blockers.map((x:any)=>clean(x,180)):[]),
@@ -277,7 +277,7 @@ function resolvedConflictReopened(reply:string,engine:Partial<NarrativeArcIntell
   if(!locks.length)return false;
   const activeLanguage=/\b(?:still fighting about|still unresolved|we never fixed|nothing was resolved|the same fight was back|the issue between them was still open|still needed to settle)\b/.test(t);
   if(!activeLanguage)return false;
-  return locks.some(x=>norm(x).split(/\s+/).filter(w=>w.length>=4).some(w=>t.includes(w)))||locks.length===1;
+  return locks.some(x=>norm(x).split(/\s+/).filter(w=>w.length>=4).some(w=>t.includes(w)));
 }
 function totalGrowthReset(reply:string,engine:Partial<NarrativeArcIntelligenceV344>){
   const retained=norm(engine.behaviorProgression?.retainedGrowth||""); if(!retained||/no durable/.test(retained))return false;

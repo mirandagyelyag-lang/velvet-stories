@@ -7,8 +7,9 @@ const norm=(v="")=>clean(v,18000).toLowerCase().normalize("NFD").replace(/[\u030
 const list=(v)=>Array.isArray(v)?v:[];
 
 function relationshipStage({relationshipState={},behavior={},intelligenceState={}}={}){
-  const blob=norm(JSON.stringify({relationshipState,behavior,intelligenceState}));
-  if(/\b(?:committed|official|boyfriend|girlfriend|relationship|novi[oa]|pareja)\b/.test(blob))return 5;
+  const values=(v)=>Array.isArray(v)?v.flatMap(values):v&&typeof v==="object"?Object.values(v).flatMap(values):typeof v==="string"?[v]:[];
+  const blob=norm(values({relationshipState,behavior,intelligenceState}).join(" | "));
+  if(/\b(?:committed|official|boyfriend|girlfriend|committed relationship|novi[oa]|pareja)\b/.test(blob))return 5;
   if(/\b(?:kiss|made out|beso|date|cita|recognized feelings|awareness|vulnerable trust)\b/.test(blob))return 4;
   if(/\b(?:pull|attraction|chemistry|jealous|celos|prefer|preference)\b/.test(blob))return 3;
   if(/\b(?:attention|selective attention|close|trust|cercan|confianza)\b/.test(blob))return 2;

@@ -3,13 +3,13 @@ export function retryAfterMs(headers, data, now = Date.now()) {
   const waits = [];
   const header = headers?.get?.('retry-after');
   if (header) waits.push(/^\d+(?:\.\d+)?$/.test(header) ? Number(header)*1000 : Date.parse(header)-now);
-  for (const item of data?.error?.details || []) {
+  for (const item of (Array.isArray(data?.error?.details)?data.error.details:[])) {
     const duration = item?.retryDelay;
     if (typeof duration === 'string' && /^\d+(?:\.\d+)?s$/.test(duration)) waits.push(parseFloat(duration)*1000);
     if (duration && typeof duration === 'object') waits.push(Number(duration.seconds || 0)*1000 + Number(duration.nanos || 0)/1e6);
   }
   const message = String(data?.error?.message || '');
-  const match = message.match(/(?:retry|try again)\s+(?:in|after)\s+((?:\d+(?:\.\d+)?\s*(?:ms|h|m|s|hours?|minutes?|seconds?)\s*)+)/i);
+  const match = message.match(/(?:retry|try again)\s+(?:in|after)\s+((?:\d+(?:\.\d+)?\s*(?:ms|hours?|minutes?|seconds?|h|m|s)\s*)+)/i);
   if (match) {
     let ms = 0;
     for (const part of match[1].matchAll(/(\d+(?:\.\d+)?)\s*(ms|hours?|minutes?|seconds?|h|m|s)/gi)) {
@@ -18,12 +18,14 @@ export function retryAfterMs(headers, data, now = Date.now()) {
     }
     waits.push(ms);
   }
-  return Math.min(7*86400000, Math.max(1000, ...waits.filter(n=>Number.isFinite(n)&&n>0), waits.some(n=>n>0)?0:60000));
+  const valid=waits.filter(n=>Number.isFinite(n)&&n>=0);
+  return Math.min(7*86400000, Math.max(1000, ...(valid.length?valid:[60000])));
 }
 
 export function createQuotaFetch({ fetchImpl = globalThis.fetch, readCooldown = async()=>null, writeCooldown = async()=>{}, now = Date.now, log = ()=>{} } = {}) {
   const cache = new Map();
   return async function quotaFetch(url, options = {}, explicit = {}) {
+    if(options.signal?.aborted) throw new DOMException('Generation cancelled','AbortError');
     const endpoint=String(url);
     const provider=explicit.provider || (endpoint.includes('generativelanguage.googleapis.com')?'gemini':endpoint.includes('api.groq.com')?'groq':endpoint.includes('api.openai.com')?'openai':'');
     if (!provider) return fetchImpl(url,options);
@@ -32,6 +34,7 @@ export function createQuotaFetch({ fetchImpl = globalThis.fetch, readCooldown = 
       if(provider==='gemini') model=decodeURIComponent(endpoint.match(/\/models\/([^:]+):/)?.[1] || 'unknown');
       else { try {model=JSON.parse(options.body || '{}').model;} catch {} }
     }
+    model=String(model||'unknown');
     const key=provider+':'+model;
     let record=cache.get(key);
     // Read on every request so cold workers and other isolates share cooldowns.

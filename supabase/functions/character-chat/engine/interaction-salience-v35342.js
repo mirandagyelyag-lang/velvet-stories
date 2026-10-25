@@ -8,7 +8,9 @@ const arr=(v)=>Array.isArray(v)?v:[];
 function classifyObservableIntent(value=""){
   const t=norm(value);
   if(!t) return "neutral";
-  if(/\b(?:kiss|hug|hold(?:ing)? your hand|held your hand|take your hand|took your hand|link(?:ed)? arms?|cross(?:ed)? my arm with yours|lean(?:ed)? (?:on|against|into) you|touch(?:ed)? your (?:arm|hand|face|cheek)|move(?:d)? closer)\b/.test(t)) return "approach_closeness";
+  if(/\b(?:don't|dont|do not|stop)\s+(?:kiss|touch|hug|hold|follow)|\b(?:leave me alone|back off|not now)\b/.test(t)) return "boundary_or_refusal";
+  if(/\b(?:didn't|did not|never|would|could|might)\b/.test(t))return "neutral";
+  if(/\b(?:kiss\w*|hug\w*|hold(?:ing)? your hand|held your hand|take your hand|took your hand|link(?:ed)? arms?|cross(?:ed)? my arm with yours|lean(?:ed)? (?:on|against|into) you|touch(?:ed)? your (?:arm|hand|face|cheek)|move(?:d)? closer)\b/.test(t)) return "approach_closeness";
   if(/\b(?:let go|pull(?:ed)? away|unlink(?:ed)?|move(?:d)? away|step(?:ped)? back|stop(?:ped)? holding|drop(?:ped)? your hand|leave me alone|back off|not now)\b/.test(t)) return "withdraw_closeness";
   if(/\b(?:i trust you|you choose|surprise me|up to you|you decide)\b/.test(t)) return "delegation";
   if(/\b(?:i'm kidding|im kidding|just kidding|jk|teasing|messing with you|shut up|idiot|stupid)\b/.test(t)) return "playful";
@@ -44,7 +46,7 @@ function intimacyHistory(recentUserMessages=[]){
 
 function hasVisibleReaction(reply=""){
   const t=norm(reply);
-  return /\b(?:pause|paused|hesitat|caught off guard|surpris|soften|stiffen|went quiet|quieted|looked down|glanced down|looked back|glanced back|attention|tone changed|voice changed|stayed beside|kept pace|squeez|held|didn't joke|did not joke|stopped joking|waited|gave you room|stepped back|didn't move away|did not move away|answered more quietly|answered quietly|looked at you)\b/.test(t);
+  return /\b(?:pause|paused|hesitat\w*|caught off guard|surpris\w*|soften\w*|stiffen\w*|went quiet|quieted|looked down|glanced down|looked back|glanced back|attention|tone changed|voice changed|stayed beside|kept pace|squeez\w*|held|didn't joke|did not joke|stopped joking|waited|gave you room|stepped back|didn't move away|did not move away|answered more quietly|answered quietly|looked at you)\b/.test(t);
 }
 function logisticsDrift(reply=""){
   const t=norm(reply);

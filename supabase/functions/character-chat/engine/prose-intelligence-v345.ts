@@ -71,17 +71,17 @@ export function proseIntelligenceV345Issues(input:Record<string,unknown>={}){
 export function sanitizeProseIntelligenceV345Reply(reply:string, issues:string[]=[]){
   let out=tx(reply); if(!out) return out;
   if(issues.includes("ai_prose_stack_v345")||issues.includes("gesture_choreography_overbudget_v345")){
-    const kept=sentences(out).filter(s=>!AI_STOCK.some(r=>r.test(s)) && !(GESTURES.filter(r=>r.test(s)).length>=2));
+    const kept=sentences(out).filter(s=>(/[“"]/.test(s) || (!AI_STOCK.some(r=>r.test(s)) && !(GESTURES.filter(r=>r.test(s)).length>=2))));
     if(kept.length) out=kept.join(" ");
   }
   if(issues.includes("subtext_explained_after_showing_v345")){
-    const kept=sentences(out).filter(s=>!EXPLAIN_AFTER_SHOW.some(r=>r.test(s))); if(kept.length) out=kept.join(" ");
+    const kept=sentences(out).filter(s=>/[“"]/.test(s) || !EXPLAIN_AFTER_SHOW.some(r=>r.test(s))); if(kept.length) out=kept.join(" ");
   }
   if(issues.includes("micro_narration_lead_v3497")){
     const parts=sentences(out); if(parts.length>1 && !/[“"]/.test(parts[0]) && parts.slice(1).some(s=>/[“"]/.test(s))) out=parts.slice(1).join(" ");
   }
   if(issues.includes("repeated_named_action_opening_v3497")){
-    const parts=sentences(out); if(parts.length>1 && /^[A-Z][a-z]+\s+(?:lets out|shifts|keeps|turns|looks|glances|reaches|drops|moves|leans)\b/i.test(parts[0])) out=parts.slice(1).join(" ");
+    const parts=sentences(out); if(parts.length>1 && !/[“"]/.test(parts[0]) && /^[A-Z][a-z]+\s+(?:lets out|shifts|keeps|turns|looks|glances|reaches|drops|moves|leans)\b/i.test(parts[0])) out=parts.slice(1).join(" ");
   }
   return out.trim();
 }
