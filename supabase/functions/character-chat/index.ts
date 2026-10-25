@@ -6,7 +6,7 @@ import { overnightLanding, overnightLandingIssues } from "./engine/overnight-lan
 import { createCorrectionBudget, isEditorialAdvisory } from "./engine/correction-budget.js";
 import { createQuotaFetch } from "./engine/provider-quota.js";
 import { buildGroqLivePrompt, callGroqProse } from "./engine/groq-fallback.js";
-import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt, nathanOpeningIssues, buildAlexanderInstantPrompt, buildAlexanderRevisionPrompt, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT, repairOpeningAgency } from "./engine/instant-story-identity.js";
+import { buildInstantStoryIdentity, buildChaseInstantPrompt, chaseEventHostIssues, chaseOpeningIssues, buildChaseRevisionPrompt, buildNathanInstantPrompt, buildNathanRevisionPrompt, nathanOpeningIssues, buildAlexanderInstantPrompt, buildAlexanderRevisionPrompt, SCENE_PRESENCE_CONTRACT, SHARED_YEARNING_CONTRACT, repairOpeningAgency } from "./engine/instant-story-identity.js";
 import { activeLivingThreads, buildLivingThreadPrompt, livingThreadResponseSchema, prepareLivingThreadBranch, reduceLivingThreads, selectLivingThreads } from "./engine/living-threads-v1.js";
 import { createClient } from "npm:@supabase/supabase-js@2.112.0";
 import { compileStoryContract, deriveUserSelfReportLock, extractStickyBehaviorBoundaries, sanitizeUserTurnForPerception, storyContractPrompt } from "./engine/story-contract.ts";
@@ -2550,6 +2550,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     if (status < 400) {
       const prose = instantStoryProseValidation(body.opening);
       const deliveryHardBlocks = [
+        ...chaseEventHostIssues(prose.opening, safeDraft),
         ...(chaseRecycledStructure(prose.opening) ? ["chase_recycled_npc_abandonment"] : []),
         ...(chaseEngineActive && /\b(?:junior|senior|student|volunteer|committee|board|pass|programs|ledger|tickets|raffle|shift|audit|sponsor|clipboard|meeting|proofing|roster|remarks)\b/i.test(prose.opening) && /\b(?:blocked|blocking|planted|cornered|intercepted|path)\b/i.test(prose.opening) && /\b(?:gaze|eyes|sight|look)\b/i.test(prose.opening) && /\b(?:stepped|walked|stopped|moved|shifted)\b/i.test(prose.opening) ? ["chase_recycled_institutional_escape"] : []),
         ...nathanOpeningIssues(prose.opening, safeDraft, cleanIdea),
@@ -2910,6 +2911,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     .map((item)=>({
       ...item,
       hardBlocks: [
+        ...chaseEventHostIssues(item.opening, safeDraft),
         ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
         ...speakerOwnershipIssuesV35367(item.opening, safeDraft),
       ],
@@ -3064,7 +3066,7 @@ RULES
     .filter((item)=>instantStoryCandidateUsableV35290(item.opening, item.finishReason, safeDraft))
     .map((item)=>({
       ...item,
-      hardBlocks: [...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea), ...instantStoryPremiseGateIssues(item.opening, safeDraft), ...speakerOwnershipIssuesV35367(item.opening, safeDraft), ...instantStoryDirectorIssuesV35366(item.opening, recentOpenings).filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue))],
+      hardBlocks: [...chaseEventHostIssues(item.opening, safeDraft), ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea), ...instantStoryPremiseGateIssues(item.opening, safeDraft), ...speakerOwnershipIssuesV35367(item.opening, safeDraft), ...instantStoryDirectorIssuesV35366(item.opening, recentOpenings).filter((issue)=>["instant_story_omniscient_lead_knowledge","instant_story_belief_promoted_to_fact"].includes(issue))],
       similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
     }))
     .filter((item)=>item.hardBlocks.length === 0)
@@ -3333,6 +3335,7 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
     .map((item)=>({
       ...item,
       finalHardBlocks: [
+        ...chaseEventHostIssues(item.opening, safeDraft),
         ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
         ...speakerOwnershipIssuesV35367(item.opening, safeDraft),
       ],
