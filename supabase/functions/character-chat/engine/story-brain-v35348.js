@@ -31,7 +31,7 @@ function moveFamily(v=""){
 function lowChange(v=""){
   const t=norm(v);
   if(!t)return true;
-  return !/\b(?:decid|choose|chose|leave|left|stay|stayed|invite|refuse|tell|reveal|admit|ask .* out|kiss|call|text|promise|cancel|arrive|follow|stop|pay|order|elige|eligio|irse|queda|invita|rechaza|revela|admite|besa|llama|mensaje|promete|cancela|llega|sigue|detiene|paga|ordena)\b/.test(t);
+  return !/\b(?:decid\w*|choos\w*|chose|leav\w*|left|stay\w*|invit\w*|refus\w*|tell\w*|told|reveal\w*|admit\w*|ask .* out|kiss\w*|call\w*|text\w*|promis\w*|cancel\w*|arriv\w*|follow\w*|stop\w*|pay\w*|paid|order\w*|elige|eligio|irse|queda|invita|rechaza|revela|admite|besa|llama|mensaje|promete|cancela|llega|sigue|detiene|paga|ordena)\b/.test(t);
 }
 function sceneSnapshot(scene={},behavior={}){
   const memory=behavior?.scene_memory||{};
@@ -54,7 +54,7 @@ function characterObjective(character={},behavior={}){
     [/mateo silva/,"Stay concretely supportive and familiar without turning care into therapy language, commands, or romance; make one useful human choice and remain emotionally present."],
     [/chase beaumont/,"Make one unpredictable but causally grounded choice that changes the social or romantic pressure; create a real decision, complication, or temptation without coercing the user."],
     [/nathan foster/,"Keep his guarded, popular, difficult-to-read identity while letting outside attention or envy alter one concrete choice; never make him suddenly emotionally fluent."],
-    [/rowan hayes/,"Protect the long-standing family-bond familiarity and create one grounded problem, choice, or consequence; do not manufacture romance or fake shared biography."],
+    [/rowan hayes/,"Preserve selective, cerebral attention and earned familiarity from the actual profile; create one grounded choice or consequence without inventing family ties or shared biography."],
     [/alexander bennett/,"Show loyalty through a costly or concrete choice when relevant; defend or choose behaviorally rather than giving speeches about devotion."],
     [/damon blackwood/,"Let intensity stay quiet and specific: act, withhold, redirect, or choose before explaining emotion; avoid generic dark-romance choreography."],
     [/roman knox/,"Preserve adversarial danger, rivalry, and high-stakes attraction through a concrete strategic choice or consequence; never replace tension with coercion or instant softness."],
@@ -63,14 +63,15 @@ function characterObjective(character={},behavior={}){
   return `Choose one concrete next move driven by this character's profile: ${clean(character?.personality||character?.role||"independent motive",500)}. React to the latest beat without making the user carry the scene.`;
 }
 function intensityStage({relationshipState={},intelligenceState={},recentCharacterReplies=[]}={}){
-  const blob=norm(JSON.stringify({relationship:relationshipState,emotion:intelligenceState?.relationship_emotion_core||{},recent:list(recentCharacterReplies).slice(-3)}));
+  const values=(v)=>Array.isArray(v)?v.flatMap(values):v&&typeof v==="object"?Object.values(v).flatMap(values):typeof v==="string"?[v]:[];
+  const blob=norm(values({relationship:relationshipState,emotion:intelligenceState?.relationship_emotion_core||{},recent:list(recentCharacterReplies).slice(-3)}).join(" | "));
   if(/\b(?:official|relationship|dating|girlfriend|boyfriend|love you|te amo|pareja|novi[oa])\b/.test(blob))return "bonded";
   if(/\b(?:kiss|beso|jealous|celos|attraction|atraccion|atracción|want you|te quiero|date)\b/.test(blob))return "charged";
   if(/\b(?:trust|close|comfort|flirt|confianza|cercan|coquete)\b/.test(blob))return "warming";
   return "baseline";
 }
 function activeThreads(storyConsequences=[],behavior={}){
-  const fromRows=list(storyConsequences).filter((x)=>!["resolved","cancelled","closed"].includes(String(x?.status||"").toLowerCase())).slice(-5).map((x)=>clean(x?.effect||x?.title||x?.cause,300));
+  const fromRows=list(storyConsequences).filter((x)=>!["resolved","complete","completed","done","cancelled","canceled","closed","superseded"].includes(String(x?.status||"").toLowerCase())).slice(-5).map((x)=>clean(x?.effect||x?.title||x?.cause,300));
   const fromBehavior=[clean(behavior?.consequence_foreground_thread,320),...list(behavior?.unfinished_business).slice(-4).map((x)=>clean(x,300)),clean(behavior?.relationship_expectation_shift,280)];
   return uniq([...fromRows,...fromBehavior]).filter(Boolean).slice(0,7);
 }

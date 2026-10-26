@@ -2,15 +2,15 @@
 // This module is intentionally character-neutral; voice belongs to each character.
 export function classifyUserIntent(message = "") {
   const text = String(message).trim();
-  const lower = text.toLowerCase();
-  const negatedInvitation = /(?:then |well |fine,? )?(?:don't|do not) (?:go|come|bother|join)/i.test(text);
+  const lower = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’‘]/g,"'");
+  const negatedInvitation = /(?:then |well |fine,? )?(?:don't|dont|do not) (?:go|come|bother|join)/i.test(lower);
   const explicitPlan = /\b(?:we could|let's|lets|how about we|i want to|we should|vamos|podríamos|quiero que)\b/i.test(text);
   const playful = /\b(?:dramatic|kidding|joking|teasing|bromeando|exagerad[oa])\b/i.test(text);
-  const boundary = /\b(?:stop|leave me alone|no means no|don't touch|déjame en paz|para|basta)\b/i.test(text);
+  const boundary = /\b(?:leave me alone|give me space|no means no|dejame en paz|dejame sola|dejame solo|basta|no me (?:toques|beses|sigas|abraces)|(?:don't|dont|do not) (?:touch|kiss|hug|follow|contact)|stop (?:it|that|touching|kissing|following|flirting))\b/i.test(lower) || /^(?:no|stop|para)[.!?]*$/.test(lower);
   return {
     kind: boundary ? "boundary" : negatedInvitation ? "possible-frustration" : explicitPlan ? "proposal" : playful ? "banter" : "conversation",
     needsClarification: negatedInvitation && !boundary,
-    plan: explicitPlan ? text : null,
+    plan: explicitPlan && !boundary ? text : null,
   };
 }
 export function buildUserAgencyContract({ latestUserMessage = "", activePlan = "", location = "", characterName = "" } = {}) {

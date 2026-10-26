@@ -56,7 +56,8 @@ const norm=(v:any)=>text(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLo
 const list=(v:any)=>Array.isArray(v)?v:[];
 const uniq=(xs:string[])=>[...new Set(xs.map(text).filter(Boolean))];
 const clamp=(n:number,min=0,max=5)=>Math.max(min,Math.min(max,Number.isFinite(n)?n:0));
-const participants=(v:any)=>list(v).map(text).filter(Boolean).slice(0,8);
+const terminal=(v:any)=>/^(?:resolved|closed|complete|completed|done|cancelled|canceled|abandoned|superseded|failed)$/.test(norm(v));
+const participants=(v:any)=>list(v).map((x:any)=>text(typeof x==="string"?x:x?.name)).filter(Boolean).slice(0,8);
 
 function permanenceFor(weight:number,effect:string,status:string):WorldConsequencesCausalTimeline["activeChains"][number]["permanence"]{
   const e=norm(effect),s=norm(status);
@@ -118,7 +119,7 @@ function parallelWindows(args:Args){
   const cal=args.calendarLifeSimulation||{};
   for(const row of list(cal.upcomingEvents).slice(0,8)){
     const p=participants(row.participants);
-    if(p.length && norm(row.status)!=="cancelled") out.push(`${text(row.title)} · ${text(row.storyTime)} · participants ${p.join(", ")}`);
+    if(p.length && !terminal(row.status)) out.push(`${text(row.title)} · ${text(row.storyTime)} · participants ${p.join(", ")}`);
   }
   for(const n of list(args.npcEcosystem?.nodes).slice(0,10)){
     const name=text(n.name),goal=text(n.currentGoal),availability=text(n.availability);
@@ -128,16 +129,16 @@ function parallelWindows(args:Args){
 }
 
 export function deriveWorldConsequencesCausalTimeline(args:Args={}):WorldConsequencesCausalTimeline{
-  const activeChains=consequenceRows(args.storyConsequences).filter((c)=>!/\b(?:resolved|cancelled|completed)\b/i.test(c.status));
-  const inactive=consequenceRows(args.storyConsequences).filter((c)=>/\b(?:resolved|cancelled|completed)\b/i.test(c.status)).map((c)=>`${c.title}: ${c.status}`);
-  const cancelledCalendar=list(args.calendarEvents).filter((e:any)=>/cancel|completed|resolved/i.test(text(e.status))).map(statusRow);
-  const cancelledPlans=list(args.storyPlans).filter((e:any)=>/cancel|completed|resolved/i.test(text(e.status))).map(statusRow);
+  const activeChains=consequenceRows(args.storyConsequences).filter((c)=>!terminal(c.status));
+  const inactive=consequenceRows(args.storyConsequences).filter((c)=>terminal(c.status)).map((c)=>`${c.title}: ${c.status}`);
+  const cancelledCalendar=list(args.calendarEvents).filter((e:any)=>terminal(e.status)).map(statusRow);
+  const cancelledPlans=list(args.storyPlans).filter((e:any)=>terminal(e.status)).map(statusRow);
   const causalLedger=activeChains.map((c)=>`${c.title}: ${c.cause||"unknown cause"} → ${c.effect||"pending effect"}`).slice(0,12);
   const importance=eventImportance(args),budget=budgetFor(importance);
   const liveCommitmentEffects=uniq([
     ...list(args.calendarLifeSimulation?.dueCommitments).map(text),
     ...list(args.calendarLifeSimulation?.scheduleConflicts).map(text),
-    ...list(args.storyPlans).filter((p:any)=>!/cancel|completed|resolved/i.test(text(p.status))).map(statusRow),
+    ...list(args.storyPlans).filter((p:any)=>!terminal(p.status)).map(statusRow),
   ]).slice(0,10);
   const characterName=text(args.character?.name||"character");
   return {
@@ -170,7 +171,7 @@ function supports(fragment:string,engine:Partial<WorldConsequencesCausalTimeline
     ...list(engine.institutionalMemory).flatMap((x:any)=>[x.memory,x.evidence,x.domain]),
     ...list(engine.parallelLifeWindows),
   ].join(" | "));
-  return hay.includes(f)||f.split(/\s+/).filter((x)=>x.length>4).some((x)=>hay.includes(x));
+  return hay.includes(f)||f.split(/\s+/).filter((x)=>x.length>4).filter((x)=>hay.includes(x)).length>=2;
 }
 
 export function worldConsequencesCausalTimelineIssues(args:IssueArgs={}):string[]{
@@ -202,7 +203,7 @@ export function worldConsequencesCausalTimelineIssues(args:IssueArgs={}):string[
 
   // Cancelled/completed events cannot keep acting as upcoming obligations.
   if(inactive && list(engine.cancelledOrResolved).some((row:any)=>{
-    const words=norm(row).split(/\s+/).filter((x)=>x.length>4).slice(0,3); return words.length&&words.some((x)=>norm(reply).includes(x));
+    const title=norm(String(row).split(/[:·]/)[0]); const words=title.split(/\s+/).filter((x)=>x.length>3); return words.length&&words.every((x)=>norm(reply).includes(x));
   }) && /\b(?:have to|need to|still have|heading to|going to|due|tonight|tomorrow|later)\b/i.test(reply)) issues.push("resolved_or_cancelled_event_reactivated");
 
   // Huge off-screen milestone needs an established window/cause.
@@ -218,7 +219,7 @@ export function worldConsequencesCausalTimelineIssues(args:IssueArgs={}):string[
 }
 
 export function sanitizeWorldConsequencesCausalTimelineReply(reply:string,issues:string[],engine:Partial<WorldConsequencesCausalTimeline>={}):string{
-  let out=text(reply); if(!out)return out;
+  let out=String(reply??"").trim(); if(!out||!issues?.length)return out;
   const has=(x:string)=>issues.includes(x);
   if(has("unsupported_consequence_without_cause")){
     out=out.replace(/[^.!?]*(?:in the shop|at the mechanic|being repaired|suspended|benched|on probation|expelled|fired|the rematch|disciplinary hearing|make-up exam|repair bill)[^.!?]*[.!?]?/gi,"").trim();
@@ -232,5 +233,5 @@ export function sanitizeWorldConsequencesCausalTimelineReply(reply:string,issues
   if(has("consequence_budget_overflow")){
     const sentences=out.match(/[^.!?]+[.!?]?/g)||[out]; out=text(sentences.slice(0,3).join(" "));
   }
-  return out||"He let the moment stand without inventing a consequence that hadn't happened.";
+  return out;
 }

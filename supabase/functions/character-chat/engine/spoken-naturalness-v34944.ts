@@ -22,9 +22,10 @@ LATEST USER TURN: ${latest.slice(0,900) || "none"}\nCHARACTER: ${String(characte
 export function spokenNaturalnessV34944Issues(reply = "", latestUserMessage = "") {
   const text = String(reply || "").trim();
   const issues = [];
-  const dialogue = text.replace(/^[\s“”"']+|[\s“”"']+$/g, "");
+  const quotes=[...text.matchAll(/[“"]([^”"]+)[”"]/g)].map(m=>m[1]);
+  const dialogue = quotes.length?quotes.join(" "):text;
   const formal = dialogue.match(/\b(?:significantly|considerably|nevertheless|therefore|regarding|circumstances)\b/gi) || [];
-  if (formal.length >= 1 && dialogue.split(/\s+/).length <= 55) issues.push("spoken_naturalness_formal_register");
+  if (formal.length >= 2 && dialogue.split(/\s+/).length <= 55) issues.push("spoken_naturalness_formal_register");
   if (/\bi enjoy the spectacle\b/i.test(dialogue) && /\b(?:besides|however)\b/i.test(dialogue)) issues.push("spoken_naturalness_composed_thesis");
   if (/\bcompany here is significantly more tolerable\b/i.test(dialogue)) issues.push("spoken_naturalness_overwritten_comparison");
   if (/\bi enjoy the spectacle\.\s*besides,?\s*i was thirsty\b/i.test(dialogue)) issues.push("spoken_naturalness_answer_overcompletion");

@@ -16,18 +16,23 @@ function sourceText({latestUserMessage="",directorInstruction=""}={}){const d=cl
 export function compileStoryAuthorityV35390({latestUserMessage="",directorInstruction="",previous={}}={}){
  const selectedPath=String(directorInstruction||"").includes(PATH_MARKER);
  const src=sourceText({latestUserMessage,directorInstruction});
- const action=ACTIONS.find(x=>x.intent.test(src));
- const imperative=selectedPath||/^(?:kiss|hug|leave|stay|tell|confess|interrupt|go|come|bes|abraz|vete|dile|confiesa)\b/i.test(norm(src));
+ const negative=/\b(?:don't|dont|do not|never|no)\s+(?:kiss|hug|touch|bes\w*|abraz\w*)\b/i.test(src);
+ const stayRequest=/\b(?:don't|dont|do not) leave\b|\bno te vayas\b/i.test(src);
+ const action=negative?undefined:stayRequest?ACTIONS.find(x=>x.id==="stay"):ACTIONS.find(x=>x.intent.test(src));
+ const imperative=selectedPath||stayRequest||/^(?:kiss|hug|leave|stay|tell|confess|interrupt|go|come|bes|abraz|vete|dile|confiesa)\b/i.test(norm(src));
  const strength=selectedPath?100:imperative?90:action?72:0;
  const previousActive=previous&&previous.status==="active"?previous:null;
  const explicitOverride=/\b(?:instead|actually|wait|no,?|rather|mejor|espera|no,?|en vez|cambio)\b/i.test(src);
- const chosen=(explicitOverride||action||!previousActive)?action?.id:(previousActive?.action||"");
+ const question=/[?¿]|^(?:why|what|when|where|how|did|do|can|could|would|will)\b/i.test(src);
+ const chosen=negative?"":(explicitOverride||action||!previousActive)?((selectedPath||imperative)&&!(!selectedPath&&question)?action?.id:""):(previousActive?.action||"");
  return {schema:"v3.53.90",source:selectedPath?"story_path":imperative?"direct_command":"user_turn",strength,action:chosen||"",status:chosen?"active":"none",instruction:clean(src,600),overrides_previous:Boolean(explicitOverride&&previousActive),multi_turn:Boolean(selectedPath&&/\b(?:eventually|over time|later|after|then|eventualmente|despu[eé]s|luego)\b/i.test(src))};
 }
 export function evaluateStoryAuthorityV35390({contract={},reply=""}={}){
  if(!contract?.action||contract?.status!=="active")return {required:false,fulfilled:true,issues:[]};
  const def=ACTIONS.find(x=>x.id===contract.action);if(!def)return {required:true,fulfilled:true,issues:[]};
- const done=def.done.test(String(reply||""));const almost=def.almost?.test(String(reply||""))||false;
+ const enacted=String(reply||"").split(/(?<=[.!?])\s+|\n+/).filter(s=>!/\b(?:did not|didn't|does not|doesn't|never|would|could|might|want to|wanted to|do not|don't)\b/i.test(s)&&!s.includes("?")).join(" ");
+ const visible=["kiss","hug","leave","interrupt"].includes(contract.action)?enacted.replace(/[“"][^”"]*[”"]/g,""):enacted;
+ const done=def.done.test(visible);const almost=def.almost?.test(String(reply||""))||false;
  const fulfilled=done&&!almost;const issues=[];
  if(almost)issues.push("authority_fake_fulfillment");
  if(!done)issues.push("authority_required_action_missing");

@@ -13,7 +13,7 @@ export function buildUserReferencePovV35369({userName="Antonia"}={}){
     "DIRECT REFERENCE TO THE USER = SECOND PERSON ONLY: you / your / yours / yourself.",
     "Examples: 'He looked at you.' 'He walked toward you.' 'His attention returned to you.' 'He handed the note to you.' NEVER 'He looked at her' when 'her' means the user.",
     "THIRD-PARTY REFERENCE ABOUT THE USER = "+name+" / she / her / hers / herself. Use this only when the lead or an NPC is speaking ABOUT the user to somebody else, introducing her, referring to her in a genuine third-person conversation, or when a quoted speaker is not addressing her.",
-    "Example with NPC: He nodded toward you, then told Elliot, '"+name+" already said no. Leave her out of it.' Here 'you' is narration directed at the user; '"+name+"'/'her' are words ABOUT her to Elliot.",
+    "Example with NPC: He nodded toward you, then told an established NPC, '"+name+" already said no. Leave her out of it.' Here 'you' is narration directed at the user; '"+name+"'/'her' are words ABOUT her to that NPC.",
     "NARRATION remains reader-facing second person whenever it points directly to the user's body, location, actions, possessions, gaze, presence, or relationship to the lead.",
     "Never alternate you ↔ she/her merely for prose variety. Pronoun variety is not a style goal.",
     "If 'her' could mean either the user or a female NPC, prefer "+name+" for third-party reference or rewrite the sentence so the referent is unmistakable.",
@@ -21,7 +21,7 @@ export function buildUserReferencePovV35369({userName="Antonia"}={}){
   ].join("\n");
 }
 
-export function userReferencePovIssuesV35369(reply="",userName="Antonia"){
+export function userReferencePovIssuesV35369(reply="",userName="Antonia",context={}){
   const issues=[];
   const raw=String(reply||"");
   const name=clean(userName,80)||"Antonia";
@@ -34,12 +34,14 @@ export function userReferencePovIssuesV35369(reply="",userName="Antonia"){
     /\b(?:held|handed|gave|offered|showed|passed|sent|tossed)\s+(?:it|the\s+\w+|a\s+\w+)\s+to\s+her\b/i,
     /\b(?:stood|sat|stayed|waited|paused)\s+(?:beside|near|next to|in front of|behind)\s+her\b/i
   ];
-  if(directHer.some(re=>re.test(narration)))issues.push("direct_user_referred_to_as_her");
+  const namedNpcs=(Array.isArray(context?.femaleNpcNames)?context.femaleNpcNames:[]).filter(n=>String(n).toLowerCase()!==name.toLowerCase());
+  const femaleContext=/\b(?:a|the|another|his|their)\s+(?:girl|woman|waitress|sister|mother)\b/i.test(narration)||namedNpcs.some(n=>new RegExp("\\b"+esc(n)+"\\b","i").test(narration));
+  if(!femaleContext&&directHer.some(re=>re.test(narration)))issues.push("direct_user_referred_to_as_her");
   // If narration already uses YOU and then switches to a bare female pronoun in
   // another direct spatial/action reference without introducing a female NPC,
   // treat it as POV drift.
   const hasYou=/\b(?:you|your)\b/i.test(narration);
-  const femaleNpcIntroduced=new RegExp("\\b(?:a|the|another|his|their)\\s+(?:girl|woman|friend|teammate|roommate|contestant|classmate)\\b|\\b(?:Sienna|Maya|Sophie|Isla|Claire)\\b","i").test(raw);
+  const femaleNpcIntroduced=femaleContext;
   if(hasYou&&!femaleNpcIntroduced&&/\b(?:at|toward|towards|beside|near|behind|in front of)\s+her\b/i.test(narration))issues.push("you_to_her_pov_drift");
   return [...new Set(issues)];
 }

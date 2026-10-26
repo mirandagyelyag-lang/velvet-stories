@@ -1,9 +1,10 @@
-function flat(value) { return (Array.isArray(value) ? value : []).map((x) => String(x || "")).join(" \n "); }
+const sourceText=x=>typeof x==="string"?x:String(x?.content??x?.text??x?.message??"");
+function flat(value) { return (Array.isArray(value) ? value : []).map((x) => sourceText(x)).join(" \n "); }
 
 export function buildTurnStateLedgerV34946({ latestUserMessage = "", recentUserMessages = [], recentCharacterReplies = [], recentTurns = [], character = {} } = {}) {
-  const turns = (Array.isArray(recentTurns) ? recentTurns : []).slice(-10).map((x) => String(x || "").slice(0, 650)).join("\n");
-  const userSources = (Array.isArray(recentUserMessages) ? recentUserMessages : []).slice(-8).map(value => String(value || "").slice(0, 900));
-  const characterSources = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-5).map(value => String(value || "").slice(0, 1200));
+  const turns = (Array.isArray(recentTurns) ? recentTurns : []).slice(-10).map((x) => sourceText(x).slice(0, 650)).join("\n");
+  const userSources = (Array.isArray(recentUserMessages) ? recentUserMessages : []).slice(-8).map(value => sourceText(value).slice(0, 900));
+  const characterSources = (Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).slice(-5).map(value => sourceText(value).slice(0, 1200));
   return `TURN-STATE LEDGER 3.49.46 · KEEP THE LAST EXCHANGE LOGICALLY OWNED
 - This is a continuity gate, not a style layer. Preserve Target-Aware 3.49.43 and Spoken Naturalness 3.49.44.
 - SPEECH OWNERSHIP IS IMMUTABLE: USER words remain USER words. CHARACTER words remain CHARACTER words. Quoting the user does not make the character their original speaker. Never say "I said", "I told you", "I asked you", or "he repeats" about words only the user said. Use an accurately attributed reference if needed, or respond without quoting.\n- SEQUENTIAL ACTIONS: begin from the last visible action and position. "He does not follow and turns back to the court" means he remained at the court. A later decision to follow requires a NEW visible cause, a reversal made now and a plausible route/time; do not silently rewrite the earlier turn or teleport beside the user.\n- CONTINUE DOES NOT RESET: another character-only turn advances from the end of the preceding turn; it does not replay the latest user line as a new event. Preserve who said what even when there is no new user speech.\n- REPORTED VS ACTUAL: a character may deliberately lie or accuse, but do not use this as an excuse for accidental attribution errors. Any deliberate false claim requires an established motive and must not be narrated as true memory.\n- Before speaking, silently reconstruct the last live exchange as a tiny ledger: OBJECT / ACTOR / ACTION / RECIPIENT / STATUS.
@@ -28,7 +29,7 @@ export function turnStateLedgerV34946Issues(reply = "", latestUserMessage = "", 
   const text = String(reply || "").trim();
   const latest = String(latestUserMessage || "").trim();
   const chars = flat(recentCharacterReplies);
-  const users = flat(recentUserMessages);
+  const users = flat([...(Array.isArray(recentUserMessages)?recentUserMessages:[]), latest]);
   const issues = [];
   const characterOwnsPaperwork = /\bi(?:'|’)ll\b[^.\n]{0,140}\b(?:find|bring|write|draft|send|make|prepare)\b[^.\n]{0,140}\b(?:cardstock|draft|request|paperwork|application)\b/i.test(chars);
   const userWaited = /\bi(?:'|’)ll\s+wait\s+for\s+it\b/i.test(users) || /\bi(?:'|’)ll\s+wait\b/i.test(users);

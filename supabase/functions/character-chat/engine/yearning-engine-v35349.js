@@ -62,12 +62,13 @@ function attractionEvidence({character={},relationshipState={},intelligenceState
     character?.relationship,
     character?.personality,
     character?.affection_style,
-    JSON.stringify(relationshipState||{}),
-    JSON.stringify(intelligenceState?.relationship_emotion_core||{}),
+    JSON.stringify(Object.values(relationshipState||{}).filter(v=>typeof v==="string")),
+    JSON.stringify(Object.values(intelligenceState?.relationship_emotion_core||{}).filter(v=>typeof v==="string")),
     ...list(recentCharacterReplies).slice(-6),
-    ...list(recentUserMessages).slice(-4),
+    
   ].join(" | "));
-  const explicit=/\b(?:attract|crush|chemistry|flirt|kiss|date|jealous|want her|want him|want you|feelings|in love|falling|romantic|celos|atra|coquet|beso|cita|gust|enamora)\b/.test(source);
+  const affirmed=source.replace(/\b(?:not|never|no|doesnt|does not|didnt|did not|dont|do not)\s+(?:romantic|attracted|attraction|in love|flirt\w*|kiss\w*|jealous|have feelings)\b[^.!?|]*/g,"");
+  const explicit=Number(intelligenceState?.relationship_emotion_core?.attraction)>=28||Number(relationshipState?.attraction)>=28||/\b(?:attract\w*|crush|chemistry|flirt\w*|kiss\w*|dating|jealous\w*|want her|want him|want you|feelings|in love|falling|romantic|celos|atraccion|coquet\w*|beso|cita|enamora\w*)\b/.test(affirmed);
   const close=/\b(?:close|trust|attachment|affection|comfort|cercan|confianza|carino|cariño|apego)\b/.test(source);
   return explicit?"established":close?"emerging":"latent";
 }
@@ -140,7 +141,7 @@ export function yearningEngineV35349Issues({
   if(!t)return issues;
   const evidence=attractionEvidence({character,relationshipState,intelligenceState,recentCharacterReplies,recentUserMessages});
   const highOpportunity=absenceCue(latestUserMessage,recentUserMessages)||outsideAttentionCue(latestUserMessage,recentCharacterReplies);
-  if(evidence!=="latent"&&highOpportunity&&!yearningSignal(t)&&t.split(/\s+/).length>=28){
+  if(evidence==="established"&&!/\b(?:leave me alone|give me space|dont follow|do not follow|no me sigas|dejame sola|dejame solo)\b/.test(norm(latestUserMessage))&&highOpportunity&&!yearningSignal(t)&&t.split(/\s+/).length>=28){
     issues.push("yearning_opportunity_flattened");
   }
   if(declarationHeavy(t))issues.push("yearning_declared_as_dependency");

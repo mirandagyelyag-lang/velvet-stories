@@ -30,7 +30,8 @@ function directActionIntent(value="") {
 }
 
 function actionFulfilled(action="", reply="") {
-  const r = norm(reply);
+  const enacted=String(reply||"").split(/(?<=[.!?])\s+|\n+/).filter(s=>!/\b(?:did not|didn't|does not|doesn't|never|would|could|might|wanted to|want to|almost|nearly|casi|no lo|no la)\b/i.test(s)&&!s.includes("?"));
+  const r = norm(enacted.map(s=>["kiss","hug","hold_hand","approach"].includes(action)?s.replace(/[“"][^”"]*[”"]/g,""):s).join(" "));
   if (!action) return true;
   const patterns = {
     kiss: /\b(?:kiss(?:es|ed|ing)?|bes[ao](?:s|ndo)?|beso|mouth (?:meets|finds|presses)|lips? (?:meet|press|brush|find))\b/,
@@ -44,8 +45,9 @@ function actionFulfilled(action="", reply="") {
 }
 
 function romanceStage({relationshipState={}, intelligenceState={}, recentCharacterReplies=[]}={}) {
-  const state = norm(JSON.stringify({relationshipState,intelligenceState}));
-  const recent = norm(recentCharacterReplies.slice(-5).join(" "));
+  const values=(v)=>Array.isArray(v)?v.flatMap(values):v&&typeof v==="object"?Object.values(v).flatMap(values):typeof v==="string"?[v]:[];
+  const state = norm(values({relationshipState,intelligenceState}).join(" | "));
+  const recent = norm((Array.isArray(recentCharacterReplies)?recentCharacterReplies:[]).slice(-5).join(" "));
   const combined = state+" "+recent;
   if (/\b(?:kiss|kissed|kissing|beso|besaron|make out|slept together|sex|lover|dating|girlfriend|boyfriend|couple)\b/.test(combined)) return "contact";
   if (/\b(?:yearn|want her|want you|attraction|jealous|crush|tension|almost kiss|almost kissed|flirt)\b/.test(combined)) return "tension";
@@ -113,7 +115,7 @@ export function buildVelvetNarrativeUpgradeV35379({
     ...(Array.isArray(intelligenceState?.unfinished_business) ? intelligenceState.unfinished_business : []),
     ...(Array.isArray(intelligenceState?.commitments) ? intelligenceState.commitments : []),
     ...(Array.isArray(behavior?.unfinished_business) ? behavior.unfinished_business : []),
-  ].slice(-10);
+  ].filter(x=>typeof x==="string"||!/^(?:resolved|closed|complete|completed|done|cancelled|canceled|abandoned|superseded)$/i.test(String(x?.status||""))).slice(-10);
   const physical = {
     location: scene?.location || behavior?.scene_memory?.location || "",
     present: scene?.present || behavior?.scene_memory?.present || [],
@@ -302,7 +304,7 @@ export function velvetNarrativeUpgradeIssuesV35379({
     issues.push("v35379_emotional_aftermath_erased");
   }
 
-  if (/\b(?:i don't know yet|i dont know yet|not sure yet|we'll see|we will see)\b/.test(n) && norm(latestUserMessage).split(/\s+/).length <= 10) {
+  if (/^(?:["“])?(?:i don't know yet|i dont know yet|not sure yet|we'll see|we will see)[.!?"”\s]*$/.test(n) && directAction) {
     issues.push("v35379_indecisive_stall");
   }
 

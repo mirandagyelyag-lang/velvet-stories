@@ -5,7 +5,7 @@ const clean=(v="",n=12000)=>String(v??"").replace(/\r/g,"").trim().slice(0,n);
 const norm=(v="")=>clean(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[’‘]/g,"'");
 
 function userLeaves(v=""){
-  const t=norm(v);
+  const t=norm(v).replace(/\bi (?:leave|left) (?:my|your|the|a) (?:bag|book|phone|keys|coat|message|note)\b/g, "");
   return /\b(?:i leave|i left|i walk outside|i walked outside|i go outside|i went outside|i walk away|i walked away|i head out|i headed out|i quickly leave|i leave there|i go find|i'm going to find|im going to find|see ya|see you around|bye|goodbye|me voy|salgo|me fui|voy a buscar|me retiro)\b/.test(t);
 }
 function userNamesDestinationOrPerson(v=""){
@@ -18,7 +18,7 @@ function urgentReason(v=""){
   return /\b(?:danger|unsafe|hurt|injured|hospital|emergency|terrified|scared|bleeding|attack|following me|someone followed|peligro|emergencia|herid|hospital)\b/i.test(norm(v));
 }
 function followsImmediately(reply=""){
-  const t=norm(reply);
+  const t=norm(reply).replace(/\b(?:did not|didn't|never|does not|doesn't)\s+(?:follow\w*|block\w*|step\w* out|come\w* after|go\w* outside)\b/g, "");
   return /\b(?:follows? (?:you|after you)|followed (?:you|after you)|steps? out (?:after|behind) you|stepped out (?:after|behind) you|comes? after you|came after you|catches? up (?:to|with) you|caught up (?:to|with) you|falls? into step (?:beside|with) you|fell into step (?:beside|with) you|matches? your (?:stride|pace)|matched your (?:stride|pace)|blocks? (?:the )?(?:door|doorway|threshold|exit)|blocked (?:the )?(?:door|doorway|threshold|exit)|stops? you from leaving|stopped you from leaving|cuts? you off|cut you off|goes? outside after you|went outside after you)\b/.test(t);
 }
 function preventsExit(reply=""){
@@ -55,7 +55,7 @@ export function userGravityIssuesV35370({reply="",latestUserMessage="",recentUse
   const invited=explicitInvitation(latestUserMessage);
   const urgent=urgentReason([latestUserMessage,...(Array.isArray(recentUserMessages)?recentUserMessages.slice(-2):[])].join(" | "));
   if(leaves&&!invited&&!urgent&&followsImmediately(reply))issues.push("user_exit_triggered_unearned_follow");
-  if(leaves&&!invited&&!urgent&&preventsExit(reply))issues.push("user_exit_physically_blocked_for_romance");
+  if(leaves&&preventsExit(reply))issues.push("user_exit_physically_blocked_for_romance");
   if(leaves&&!urgent&&impossibleDestinationKnowledge(reply,latestUserMessage))issues.push("invented_offscreen_destination_knowledge");
   return [...new Set(issues)];
 }

@@ -178,9 +178,9 @@ export function unifiedNarrativeStateIssuesV35312({
   const silent=isSilentContinue(latestUserMessage);
   if((silent||low) && !meaningfulBeat(t) && words(t).length>=18) issues.push(silent?"dot_continuation_no_state_change":"low_bandwidth_stalled");
   if(genericVoice(t) && text(character?.personality||character?.speech_style||character?.voice_vocabulary).length>20) issues.push("character_voice_reset_generic");
-  if(repeatedFamilyRecent(t,recentCharacterReplies) && !opening) issues.push("recent_scene_skeleton_repeated");
+  if(repeatedFamilyRecent(t,recentCharacterReplies) && !opening && !meaningfulBeat(t)) issues.push("recent_scene_skeleton_repeated");
   const recent=arr(recentCharacterReplies).slice(-4);
-  if(recent.some(r=>phraseOverlap(t,r)>=0.58)) issues.push("structural_reply_repetition");
+  if(words(t).length>=12 && recent.some(r=>words(r).length>=12 && phraseOverlap(t,r)>=0.58)) issues.push("structural_reply_repetition");
   const active=arr(worldConsequences?.activeChains);
   if(active.length && /\b(?:back to normal|as if nothing happened|everything was normal|nothing had happened|como si nada|todo volvio a la normalidad|todo volvió a la normalidad)\b/i.test(t)) issues.push("consequence_reset_without_resolution");
   return [...new Set(issues)];

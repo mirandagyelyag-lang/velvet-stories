@@ -1246,7 +1246,7 @@ function buildSceneVarietyEngine(scene: Record<string, unknown>, recentCharacter
 function knowledgeVisibleToLead(item: Record<string, unknown>, leadName: string) {
   const owner = normalized(item?.character_name);
   const lead = normalized(leadName);
-  const isSecret = Boolean(item?.secret);
+  const isSecret = [true,1,"true"].includes(item?.secret as any);
   if (!isSecret) return true;
   return Boolean(owner && lead && owner === lead);
 }
@@ -1264,7 +1264,7 @@ function buildPerceptionRealismEngine(input: StoryContractInput, actions: string
   const leadRows = ledger.filter((item)=>normalized(item?.character_name)===leadKey && knowledgeVisibleToLead(item, leadName));
   const known = leadRows.filter((item)=>normalized(item?.status||"known")==="known").map((item)=>`${text(item?.subject)}: ${text(item?.knowledge)}`).filter((item)=>item!==": ").slice(0,6);
   const uncertain = leadRows.filter((item)=>/suspect|rumor/i.test(text(item?.status))).map((item)=>`${text(item?.status)} · ${text(item?.subject)}: ${text(item?.knowledge)}`).filter((item)=>item!==": ").slice(0,6);
-  const blockedSecretCount = ledger.filter((item)=>Boolean(item?.secret) && !knowledgeVisibleToLead(item, leadName)).length;
+  const blockedSecretCount = ledger.filter((item)=>[true,1,"true"].includes(item?.secret as any) && !knowledgeVisibleToLead(item, leadName)).length;
   return {
     observableUserActions: (actions||[]).slice(0,8),
     privateNarrationCount,
@@ -1487,7 +1487,7 @@ export function deriveUserSelfReportLock(recentMessages: Array<Record<string, un
 function inferUserPresence(scene: Record<string, unknown>, userName: string, perceptibleUserTurn: string) {
   const actions = extractUserActions(perceptibleUserTurn).map(normalized).join(" ");
   const userKey = normalized(userName);
-  const present = list(scene.present).map(normalized);
+  const present = list((Array.isArray(scene.present)?scene.present:[]).map(x=>typeof x==="string"?x:(x as any)?.name)).map(x=>normalized(typeof x==="string"?x:(x as any)?.name));
   const explicitExit = /\b(?:leave|left|walk away|walked away|head out|headed out|exit|exited|go home|went home|walk out|walked out)\b/.test(actions);
   const explicitEntry = /\b(?:enter|entered|come back|came back|return|returned|walk in|walked in|come in|came in|join|joined|sit back down|sat back down)\b/.test(actions);
   if (explicitExit) return "leaving" as const;
@@ -1656,7 +1656,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const perceptibleRecentMessages = (input.recentMessages || []).map((message) => message?.sender === "user" ? { ...message, content: sanitizeUserTurnForPerception(text(message?.content)) } : message);
   const actions = extractUserActions(perceptibleUserTurn);
   const movementIsExplicit = actions.some((action) => /\b(?:walk|step|move|leave|exit|turn|run|drive|pass|cross|enter|sit|stand|approach)/i.test(action));
-  const present = list(scene.present);
+  const present = list((Array.isArray(scene.present)?scene.present:[]).map(x=>typeof x==="string"?x:(x as any)?.name));
   const persistent = (input.persistentCast || []).filter((member) => member && member.name);
   const castByName = new Map<string, Record<string, unknown>>();
   for (const member of persistent) castByName.set(normalized(member.name), member);
@@ -1693,7 +1693,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   const drama = Number(input.character.drama || 45);
   const flirting = Number(input.character.flirting || 30);
   const activeArcs = (input.storyArcs || []).filter((arc) => ["active", "planned"].includes(text(arc?.status))).slice(0, 12);
-  const activeConsequences = (input.storyConsequences || []).filter((item) => text(item?.status) !== "resolved").slice(0, 12);
+  const activeConsequences = (input.storyConsequences || []).filter((item) => !/^(?:resolved|closed|complete|completed|done|cancelled|canceled|superseded)$/i.test(text(item?.status))).slice(0, 12);
   const dueCalendarEvents = (input.calendarEvents || []).filter((event) => ["active", "upcoming"].includes(text(event?.status))).slice(0, 8);
   const availablePressure: string[] = [];
   if (romance >= 35 || flirting >= 40) availablePressure.push("romantic initiative: create a specific invitation, shared task, private opening, earned closeness, playful challenge, or honest reveal now");
@@ -1707,12 +1707,12 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
   if (drama >= 55 && riskLicensed) availablePressure.push("external complication: police, campus security, venue staff, rivals, traffic or authority may intervene only from a visible cause in this scene");
   const initiativeRequired = !boundaries.length && (initiative >= 55 || talkOnlyDrought || activeArcs.length > 0 || activeConsequences.length > 0);
   const chemistry = (input.chemistryProfiles || []).find((item) => normalized(item?.character_name) === normalized(input.character.name)) || {};
-  const activePlans = (input.storyPlans || []).filter((item) => !["completed","cancelled","failed"].includes(text(item?.status))).slice(0, 10);
-  const activeConflicts = (input.storyConflicts || []).filter((item) => text(item?.status) !== "resolved").slice(0, 8);
+  const activePlans = (input.storyPlans || []).filter((item) => !/^(?:resolved|closed|complete|completed|done|cancelled|canceled|failed|superseded)$/i.test(text(item?.status))).slice(0, 10);
+  const activeConflicts = (input.storyConflicts || []).filter((item) => !/^(?:resolved|closed|complete|completed|done|cancelled|canceled|superseded)$/i.test(text(item?.status))).slice(0, 8);
   const milestones = (input.storyMilestones || []).slice(0, 24);
   const socialEvidence = [
     ...(input.castConnections || []).filter((item) => /date|flirt|crush|ex|attract|interest|rival|jealous/i.test(text(item?.relationship))),
-    ...(input.knowledgeLedger || []).filter((item) => /date|flirt|kiss|crush|interest|invite|ex\b/i.test(`${text(item?.subject)} ${text(item?.knowledge)}`)),
+    ...(input.knowledgeLedger || []).filter(item=>knowledgeVisibleToLead(item,text(input.character.name))).filter((item) => /date|flirt|kiss|crush|interest|invite|ex\b/i.test(`${text(item?.subject)} ${text(item?.knowledge)}`)),
   ].slice(0, 8);
   const jealousyStage = !socialEvidence.length ? "none" : drama >= 70 ? "visible pressure" : drama >= 45 ? "contained reaction" : "noticed privately";
   const sceneActivity = text(scene.activity || scene.current_activity || "conversation");
@@ -2045,7 +2045,7 @@ export function compileStoryContract(input: StoryContractInput): StoryContract {
     },
     storyDynamics: {
       activeArcs,
-      knowledgeLedger: (input.knowledgeLedger || []).slice(0, 30),
+      knowledgeLedger: (input.knowledgeLedger || []).filter(item=>knowledgeVisibleToLead(item,text(input.character.name))).slice(0, 30),
       activeConsequences,
       dueCalendarEvents,
     },

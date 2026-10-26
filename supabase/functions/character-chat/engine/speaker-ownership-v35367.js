@@ -18,6 +18,10 @@ function esc(s=""){return String(s).replace(/[.*+?^()|[\]\\]/g,"\\$&");}
 // already establishes one. Do not misclassify an NPC's call as lead dialogue.
 function establishedNpcCall(raw,index,text,character={}){
   const p=leadParts(character), before=raw.slice(0,index);
+  const prefix=before.match(/(?:^|\n)\s*([A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+)?)\s*:\s*$/);
+  const suffix=raw.slice(index+text.length+2,index+text.length+110).match(/^\s*[,—-]?\s*([A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+)?)\s+(?:said|says|asked|asks|called|calls|replied|replies)\b/);
+  const named=(prefix?.[1]||suffix?.[1]||"");
+  if(named && ![p.first,p.last,p.full].map(norm).includes(norm(named)))return true;
   const vocative=[p.first,p.last,p.full].filter(Boolean).some(name=>new RegExp("^\\s*(?:hey\\s+)?"+esc(name)+"(?:[!?,.]|$)","i").test(text));
   if(!vocative)return false;
   const close=before.slice(-140);
@@ -37,7 +41,7 @@ function colonSpeakerHijack(reply="",character={}){
   const allowed=new Set([norm(p.full),norm(p.first),norm(p.last)].filter(Boolean));
   return String(reply||"").split(/\n/).some(line=>{
     const m=line.match(/^\s*([A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+)?)\s*:\s*[“"]?/);
-    return Boolean(m&&!allowed.has(norm(m[1])));
+    return Boolean(m&&["you","user"].includes(norm(m[1])));
   });
 }
 function introducedNpcBefore(raw="",idx=0){
@@ -50,7 +54,7 @@ function npcLookingLineInsideLeadChannel(reply="",character={}){
   const raw=String(reply||"");
   return quoteSegments(raw).some(({text,index})=>{
     const callsLead=new RegExp("\\b"+esc(p.last)+"\\b[,.!?]?\\s*$","i").test(text.trim());
-    return callsLead&&!introducedNpcBefore(raw,index);
+    return callsLead&&!establishedNpcCall(raw,index,text,character)&&!introducedNpcBefore(raw,index);
   });
 }
 function unexplainedPerspectiveSwitch(reply="",character={}){
@@ -98,7 +102,7 @@ export function buildSpeakerOwnershipV35367({character={},persistentCast=[]}={})
     "4) When dialogue changes lead → NPC or NPC → lead, anchor the new speaker once. Pronouns are allowed only when the antecedent is unmistakable.",
     "5) If the user leaves or ends the exchange, the lead may let them go, react, resume their activity, or talk with NPCs. Never answer the goodbye with an unattributed NPC line.",
     "6) NPCs may initiate and continue their own conversations, but their words remain explicitly theirs.",
-    "7) Do not output another character's Name: label inside this lead response.",
+    "7) Explicit NPC Name: labels are allowed when they identify a grounded supporting speaker. Never write user dialogue or label the user as a generated speaker.",
     "8) PRE-SEND AUDIT: for every quote ask internally who physically said it. If the answer is not immediate from the text, anchor it.",
     "AUTHORIZED NPCS="+(cast.join(" | ")||"none supplied; generic descriptors allowed")
   ].join("\n");
