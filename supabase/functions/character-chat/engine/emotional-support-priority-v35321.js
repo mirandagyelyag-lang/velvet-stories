@@ -1,3 +1,4 @@
+import { deriveCrisisResponse } from "./crisis-response.js";
 // Velvet Stories v3.53.21 · Emotional Support Priority
 const clean=(v="",n=2400)=>String(v??"").replace(/\s+/g," ").trim().slice(0,n);
 const norm=(v="")=>clean(v,9000).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[’']/g,"");
@@ -7,7 +8,7 @@ export function deriveEmotionalSupportPriorityV35321(latestUserMessage="",recent
   const latest=norm(latestUserMessage);
   const recent=(Array.isArray(recentUserMessages)?recentUserMessages.slice(-4):[]).map(norm).join(" | ");
   const all=(latest+" | "+recent).trim();
-  const safety=/\b(?:kill myself|suicide|suicidal|end my life|dont want to live|do not want to live|hurt myself|self harm|self-harm|matarme|suicid\w*|no quiero vivir|hacerme dano|hacerme daño|autolesion\w*)\b/.test(latest);
+  const safety=deriveCrisisResponse({latestUserMessage,recentUserMessages}).active;
   const high=/\b(?:panic attack|cant breathe|cannot breathe|breaking down|sobbing|cant stop crying|cannot stop crying|i cant anymore|i can t anymore|i cant do this|i can t do this|desbordad|crisis|ataque de panico|ataque de pánico|no puedo mas|no puedo más|no paro de llorar|estoy destruida|estoy destruido)\b/.test(all);
   const clear=/\b(?:crying|cried|cry|tears|anxiety|anxious|depressed|depression|very sad|so sad|horrible day|awful day|family fight|fought with my family|lonely|overwhelmed|llorando|llore|lloré|ansiedad|depresion|depresión|muy triste|pelee con mi familia|peleé con mi familia|me siento sola|me siento solo|abrumad)\b/.test(all);
   const mild=/\b(?:bad day|rough day|sad|upset|stressed|stress|not okay|not fine|malo dia|mal dia|mal día|triste|molesta|molesto|estres|estrés|no estoy bien)\b/.test(latest);

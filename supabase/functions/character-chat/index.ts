@@ -1,3 +1,4 @@
+import { deriveCrisisResponse, buildCrisisResponse } from "./engine/crisis-response.js";
 import { buildThirdPartySocialMomentumV1 } from "./engine/third-party-social-momentum-v1.js";
 import { ADJACENT_DIALOGUE_RULE, buildCharacterInitiativeContext, removeReplayedOpening } from "./engine/adjacent-dialogue.js";
 import { withoutRepeatedLatest } from "./engine/economical-context.js";
@@ -11240,6 +11241,10 @@ async function streamRoleplayV19({
   openingRegeneration = false,
   isCancelled,
 }) {
+
+  const crisisReply = buildCrisisResponse({ latestUserMessage, recentUserMessages: messages.filter(m=>m.sender==="user").map(m=>String(m.content||"")), spanish: /^mateo(?:\\s+silva)?$/i.test(String(character?.name||"")) || /espa[nñ]ol|spanish/i.test(String(responseLanguage)) });
+  if(crisisReply) return streamCrisisSupport({ supabase, conversationId, userId, storyRevision, replacementMessage, latestUserMessageId, reply:crisisReply, isCancelled });
+
   // v3.53.90 HOTFIX: streamRoleplayV19 is a top-level function, so it cannot
   // see the Story Authority contract created while building the prompt.
   // Rebuild the same contract from the stream's explicit inputs instead of
@@ -13518,4 +13523,25 @@ function json(body, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+
+async function streamCrisisSupport({supabase,conversationId,userId,storyRevision,replacementMessage,latestUserMessageId,reply,isCancelled}) {
+  const stream=new ReadableStream({
+    async start(controller){
+      let savedMessage=null;
+      try {
+        if(await isCancelled() || !await isStoryRevisionCurrent(supabase,conversationId,userId,storyRevision))return;
+        savedMessage=replacementMessage
+          ? await replaceCharacterReply({supabase,conversationId,userId,message:replacementMessage,reply})
+          : await saveCharacterReply({supabase,conversationId,userId,reply,latestUserMessageId});
+        sendEvent(controller,{type:"start",model:"support-response",liveStreaming:true,repairUsed:false,memoryCount:0,loreCount:0});
+        for(const chunk of splitForStreaming(reply))sendEvent(controller,{type:"chunk",content:chunk});
+        sendEvent(controller,{type:"done",message:savedMessage,model:"support-response",learnedMemoryCount:0,repairUsed:false,liveStreaming:true});
+      } catch(error) {
+        if(getErrorName(error)!=="AbortError")sendEvent(controller,{type:"error",error:"Your reply could not be saved. If you are in danger, contact local emergency services or someone nearby now."});
+      } finally {try{controller.close();}catch{}}
+    }
+  });
+  return new Response(stream,{headers:{...corsHeaders,"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform",Connection:"keep-alive","X-Accel-Buffering":"no"}});
 }
