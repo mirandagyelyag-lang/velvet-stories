@@ -196,6 +196,10 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
   const normalizedTurn = normalize(effectiveTurn);
   const failures = new Set(Array.isArray(issues) ? issues : []);
 
+  // 'No, but you should study' corrects a suspicion and continues the interaction.
+  // Never replace the full turn with a deterministic refusal/pursuit response.
+  if (/\b(?:no|not really|nah|nope)\b[\s\S]{0,45}\b(?:but|pero|though|tho)\b/.test(normalizedTurn)) return "";
+
   // Rescue a declined practical offer without another provider call. The
   // character respects the refusal and responds to care instead of insisting.
   // A refusal outranks every deterministic pursuit or movement rescue.
@@ -255,13 +259,8 @@ export function buildGroundedLastResortReply({ character = {}, latestUserMessage
   const emotionalFailures = ["emotional_bid_practical_escape","relational_hurt_deflected","canned_distress_checkin","emotional_care_therapized","attachment_failed_to_affect_behavior","therapist_service_voice","perfect_empathy_package","therapeutic_deescalation_pivot"];
   if (emotionalFailures.some((issue) => failures.has(issue))) return emotionalFallback({ name, character, latestUserMessage: effectiveTurn, recentCharacterReplies });
 
-  if (/\b(?:dont|do not|no|stop|leave it|never mind|won t|wont|can t|cant)\b/.test(normalizedTurn)) {
-    const recent = normalize((Array.isArray(recentCharacterReplies) ? recentCharacterReplies : []).at(-1) || "");
-    if (/\b(?:exit|outside|roof|patio|party|friends|team|bar|basement)\b/.test(recent)) {
-      return name + ' gives the point up without crowding you further, then turns back toward the room and their own night. “Fine.”';
-    }
-    return name + ' backs off the point without disappearing from the scene. “Fine.”';
-  }
+  // A negation token alone cannot determine the speech act or a character reply.
+  // Let the existing fresh-continuation path handle refusals and contrastive turns.
   if (/\b(?:talking weird|talk weird|talking strange|talk strange|speaking weird|speak weird|speaking strange|sound weird|sounding weird|sound strange|why are you talking like that|why do you sound like that)\b/.test(normalizedTurn)) {
     const temperament = fallbackTemperament(character);
     if (temperament === "proud") return name + ' grimaces at his own wording. “Because I was laying it on way too thick. That sounded ridiculous.”';

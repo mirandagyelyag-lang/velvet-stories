@@ -323,6 +323,9 @@ export function instantStoryIdentityDeliveryIssues(opening='',draft={},idea='') 
   if(dna.official_engine!=='chase_electricity_v1')return issues;
   const officeShift=/\b(?:shift|records office|registrar|filing|paperwork)\b/i.test(t)&&/\b(?:for me|my shift|cover my|take my)\b/i.test(t);
   const roleSource=[draft.role,draft.description,draft.scenario,draft.notes,idea].filter(Boolean).join(' ');
+  const athleticSelfClaim=/\b(?:skip|miss|get out of|late for|go to|going to|have|got) (?:my |our )?practice\b|\b(?:my coach|our coach|my team|our team)\b/i.test(t);
+  const athleteCanon=/\b(?:athlete|athletic team|team captain|plays? (?:football|soccer|basketball|tennis|hockey|rugby)|(?:football|soccer|basketball|tennis|hockey|rugby) player|deportista|entrenamiento)\b/i.test(roleSource);
+  if(athleticSelfClaim&&!athleteCanon)issues.push('chase_invented_athlete_biography');
   if(officeShift&&!/\b(?:works? at|employed|employee|clerk|shift worker|records office|registrar|administrative assistant)\b/i.test(roleSource))issues.push('chase_invented_clerical_role');
   const transportPremise=/\b(?:parking (?:garage|lot)|locked out of (?:my|his|the) (?:own )?car|maintenance trucks?|blocked (?:the )?(?:lane|entrance)|south entrance|route to (?:the )?(?:car|garage))\b/i;
   // The user's explicit scenario can authorize transport; character profile mentions cannot.
