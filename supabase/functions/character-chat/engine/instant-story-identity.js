@@ -106,36 +106,31 @@ export function chaseOpeningIssues(opening = '', draft = {}) {
 }
 
 export function buildChaseInstantPrompt(draft = {}, idea = '', recentOpenings = []) {
-  const profile = { name: draft.name, role: draft.role, description: draft.description, personality: draft.personality, habits: draft.habits, values: draft.values, coreMotivation: draft.coreMotivation, emotionalDefense: draft.emotionalDefense, contradictions: draft.contradictions, speechStyle: draft.speechStyle||draft.speech_style, voiceVocabulary: draft.voiceVocabulary, world: draft.world, relationship: draft.relationship, boundaries: draft.boundaries };
-  const narrativeModes = [
-    "LIVE RIVALRY: a rival challenges Chase over an established personal or social conflict, never a sport, team, lineup, fraternity roster or scrimmage; Chase answers the rival directly, and the rival remains active.",
-    "SOCIAL FLIRTATION: someone openly flirts with Chase while another person reacts; he responds in his own voice and the interaction remains unresolved without leaving.",
-    "UNEXPECTED CONSEQUENCE: a public misunderstanding or previous commitment catches up to Chase; he acts to address it instead of recruiting the creator.",
-    "FRIEND-GROUP PRESSURE: two other people want different things from Chase; he takes a side and the disagreement continues on-page.",
-    "IMPULSIVE PROVOCATION: Chase initiates a risky but plausible remark or action toward another person; their response immediately complicates matters.",
-    "PERSONAL INITIATIVE: Chase wants something specific from the user and acts on it within the current setting; another person may complicate the exchange. No campus-event mission or crowd performance."
-  ];
-  const fingerprint = JSON.stringify(recentOpenings || []) + String(idea || "") + String(draft?.name || "");
-  const modeIndex = [...fingerprint].reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) >>> 0, 17) % narrativeModes.length;
-  const narrativeMode = narrativeModes[modeIndex];
-  return `Write one new playable opening for Chase. About 80-150 words, no more than 190. Only the scene.\nPERSONALITY BOUNDARY — APPLIES TO EVERY PASS:\n${CHASE_PERSONALITY_BOUNDARY}\nOPTIONAL VARIATION, subordinate to identity and user premise: ${narrativeMode}\nUse this variation only when it fits Chase's own motivation; do not force an external crisis. When a supporting person belongs to the chosen premise, let them act with a purpose and keep their consequence live. A third party is optional, not a required opening device. Use anonymous supporting people, not invented names. Attribute dialogue clearly to Chase. Establish only the creator's static starting location as allowed by SCENE PRESENCE; do not invent their actions, academic background or arrival. Never write a group-abandonment/complaint/invitation plot.\nThe approved dynamic guides voice and behavior; explicit current canon and the user idea determine the situation. The sample is never an inventory of required props, people, feelings or past events. Read the approved sample for its easy spoken rhythm and the moment his reaction escapes him. Chase enjoys being wanted. He also gravitates toward you without knowing exactly what that means. He can be bold and sarcastic, but his lines should sound like something he says on impulse, not jokes an author prepared.
-Build one plausible moment, not a demonstration of those traits. Never recycle the plot where Chase walks away from friends, complains about a seminar, politics, classwork or boring people, then invites the creator to leave or come inside. Changing the destination, topic or objects does not make this a new plot. Begin with the chosen live situation, which may involve an established third party or a direct personal initiative; let Chase make a consequential decision without relocating the creator. HARD BAN on the semantic plot of Chase being annoyed by people or campus obligations, walking away from them toward the creator, mentioning his car or a parking lot, and hinting they should leave. Swapping election talk for flyers, keys for a jacket, or a command for a hint is STILL the same rejected plot. Keep the chosen interaction alive on-page and have Chase make a meaningful choice inside the current setting. Do not add an NPC merely to satisfy a formula. Begin close to the interaction. Choose details because they matter now. A supporting person can remain involved, have their own purpose or be absent; do not insert a disposable girl who interrupts merely to prove Chase is popular. Do not follow a mandatory admirer/approach/quip/interruption sequence. Not every line is a provocation, and the emotional change can be small but must affect the interaction.
-Give Chase a specific personal impulse toward the user in this moment, something he actually wants to say, offer, risk or do. Let the pressure come from that impulse and something in the live situation that catches him off guard. His change of feeling must change a spoken line, priority or decision; a stopped key ring or a smile that does not reach his eyes is not that change. He enjoys other people and their attention; do not make him an aloof bored charmer who pretends to care about everyone until the user rescues him. The charged beat must be concrete enough for the user to engage with, rather than a generic greeting. Don't explain it, announce chemistry, perform hand/eye choreography or end by waiting for an answer. Leave a live moment for the user's next turn.
-The user has not acted yet. Write only Chase/world, addressing the user as you. Do not invent their gaze, jealousy, posture, silence, possessions, actions, history or feelings, including inside dialogue. "Don't look at me like that" assumes a user action. Prefer a consequential action involving the current people or situation, not an invitation to escape. Clear speaker attribution; only configured names.
-IDENTITY: world activities describe the campus, not Chase\'s biography. Sports games do not make him a team player or athlete. Establish his role and activities from the personal profile; never invent a sport, team, coach, scholarship or athletic equipment for him.\nPROFILE\n${JSON.stringify(profile)}
-CREATOR-APPROVED SAMPLE — USE ITS RHYTHM, NOT ITS WORDS OR EVENTS
-${CHASE_APPROVED_OPENING}
-REJECTED EXAMPLE — DO NOT IMITATE
-A girl laughs beside him. He gives her an easy grin, turns to you, brushes a leaf away and says "Someone has to keep campus morale from flatlining." He taps a textbook, jokes about study habits and drums his fingers waiting for your answer.
-Another rejected opening: Chase sits outside the library tossing keys, reacts to the user stopping, says “Decided to join the living, then?” and “I was running out of things to pretend to care about.”
-Why rejected: the user has not stopped or arrived; Chase is merely waiting and devaluing everyone else. Neither a key gesture nor a grin supplies the personal impulse or emotional turn.
-Why rejected: generic props and rehearsed wit; attention and tension staged as a checklist; no personal impulse. Replacing the props or synonyms does not fix it.
-RECENT OPENINGS — VARY THE SITUATION, NOT JUST ITS NOUNS
-${JSON.stringify((Array.isArray(recentOpenings) ? recentOpenings : []).slice(-4).map(item => String(item).slice(0,1400)))}
+  const profile = {name:draft.name,role:draft.role,personality:draft.personality,description:draft.description,relationship:draft.relationship,world:draft.world,values:draft.values,habits:draft.habits,coreMotivation:draft.coreMotivation,contradictions:draft.contradictions,speechStyle:draft.speechStyle||draft.speech_style,boundaries:draft.boundaries};
+  return `Write one fresh playable Chase Beaumont opening, about 80–150 words, maximum 190. Return finished scene prose only.
+CANON AND AGENCY
+${SCENE_PRESENCE_CONTRACT}
+Use the configured profile and explicit idea as facts. Establish the user's static starting presence without authoring arrival, posture, silence, reactions or possessions. Narration addresses you. Identify each speaker and addressee. Use only approved names; otherwise use a role.
+CHASE'S MOTOR
+He enjoys attention and has a life he is actually enjoying. He is bold, impulsive, socially assured and personally provocative. He can start an interaction because he wants something specific now, without having settled romantic feelings. A concrete personal choice creates the tension; a narrator explaining how much he cares does not.
+${CHASE_PERSONALITY_BOUNDARY}
+OPENING CAUSALITY
+Choose the situation from the profile and idea before choosing props or NPCs. Begin close to the live interaction. Let Chase originate one consequential action, offer, admission, refusal or provocation with a visible reason. Another person is optional; when present they retain their own purpose and can answer or refuse. The user can respond in several natural ways without being given a menu.
+A private moment can start directly with his initiative. A social moment can remain social while he initiates. Nobody must interrupt, disappear, summon him, demand a task or leave merely to make this opening function.
+REJECTED CAUSAL SKELETON
+Do not stage: Chase enjoying somebody else's company -> catches sight of user -> abruptly drops companion/activity -> crosses to user -> denies interest in the other person or explains himself before being asked. This remains the same rejected plot with pastries, drinks, books, friends or admirers. Do not imply the user is jealous, suspicious, silent or waiting for justification. No defensive opening such as "Don't start", "It's not what it looks like", "They intercepted me" or "I didn't invite myself" without an explicitly authored reason in the idea. He does not need to prove innocence to the user.
+Do not substitute the crowd-escape/car/keys invitation, institutional interception, threatened campus-event rescue or volunteer-host plot.
+SPEECH AND ENDING
+Use short, ordinary spoken rhythm with specific personal sarcasm where it fits. He need not be cruel, annoyed, apologetic or defensive to sound like Chase. Avoid writerly punchlines and repeated commands. Stop on a concrete unresolved interaction, not an explanation of chemistry, a gaze awaiting approval or a statement that he cares too much. No assumed mutual attraction, automatic touching, kiss or devotion.
+PERSONALITY FACTS
+Campus scenery does not give him a team, coach, athletic biography or technical job. Do not invent shared history, user tastes or new emotional facts.
+PROFILE
+${JSON.stringify(profile)}
+RECENT OPENINGS: change their causal structure, not merely wording or props.
+${JSON.stringify((Array.isArray(recentOpenings)?recentOpenings:[]).slice(-4).map(x=>String(x).slice(0,1400)))}
 USER IDEA
-${idea || 'No additional premise.'}`;
+${idea||'No additional premise.'}`;
 }
-
 
 export function buildChaseRevisionPrompt(draft = {}, opening = '', idea = '', recentOpenings = []) {
   return `${buildChaseInstantPrompt(draft, idea, recentOpenings)}
@@ -266,5 +261,14 @@ export function instantStoryIdentityDeliveryIssues(opening='',draft={}) {
   const issues=[...chaseEventHostIssues(t,draft),...chaseActivityRescueIssues(t,draft)];
   const speech=[...t.matchAll(/[“"]([^”"]+)[”"]/g)].map(m=>m[1]).join(' ');
   if(/\b(?:find someone else to keep me entertained|you(?:'re| are) (?:only|just) (?:here )?to entertain me|a better stage for (?:your )?drama|your only use is|you(?:'re| are) nothing but entertainment)\b/i.test(speech))issues.push('chase_user_reduced_to_entertainment');
+  const story=t.replace(/\s+/g," ").toLowerCase();
+  const social=/\b(?:talking|laughing|sharing|splitting|chatting|flirting|conversation|with (?:a|another|some|two|his|her))\b/.test(story);
+  const sees=/\b(?:catch(?:es)? sight of you|caught sight of you|notic(?:e|es|ed) you|spot(?:s|ted)? you|sees? you|saw you)\b/.test(story);
+  const abandons=/\b(?:without (?:a )?backward glance|leav(?:e|es|ing)|left|abandon(?:s|ed)?|drop(?:s|ped)?|stepp(?:ing|ed) around|steps? around|turn(?:s|ed)? (?:away|his back))\b/.test(story);
+  const approaches=/\b(?:clos(?:es|ed|ing) the distance|at your side|right (?:at|beside) you|walk(?:s|ed|ing)? (?:over|toward|towards)|approach(?:es|ed)? you|cross(?:es|ed)? (?:over|the))\b/.test(story);
+  if(social&&sees&&abandons&&approaches)issues.push('chase_recycled_social_abandonment_approach');
+  if(/\b(?:don'?t start|it'?s not what it looks like|they intercepted me|i didn'?t invite myself)\b/i.test(speech))issues.push('chase_unprompted_defensive_justification');
+  if(/\byou (?:haven'?t|hadn'?t|have not|had not) (?:said|spoken)|\bthough you (?:said|did) nothing\b/i.test(t))issues.push('chase_invented_user_silence');
   return [...new Set(issues)];
 }
+
