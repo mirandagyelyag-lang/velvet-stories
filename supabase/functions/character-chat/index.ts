@@ -2059,7 +2059,7 @@ function instantStoryHardBlockIssuesV35298(opening = "", draft = {}, idea = "") 
     .filter((issue)=>INSTANT_STORY_HARD_NATURALISM_ISSUES_V35298.has(issue))
     .filter((issue)=>!(issue === "assumed_user_physical_placement" && initialPresence && !bodyOrPropPlacement));
   const resourceIssues = resourceContinuityIssuesV35358(opening, draft, "");
-  return [...new Set([...instantStoryIdentityDeliveryIssues(opening, draft), ...grounding, ...naturalism, ...resourceIssues, ...instantStoryCanonClaims(opening, draft, idea)])];
+  return [...new Set([...instantStoryIdentityDeliveryIssues(opening, draft, idea), ...grounding, ...naturalism, ...resourceIssues, ...instantStoryCanonClaims(opening, draft, idea)])];
 }
 
 // OPENING DNA 3.52.89

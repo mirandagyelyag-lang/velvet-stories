@@ -118,7 +118,7 @@ OPENING CAUSALITY
 Choose the situation from the profile and idea before choosing props or NPCs. Begin close to the live interaction. Let Chase originate one consequential action, offer, admission, refusal or provocation with a visible reason. Another person is optional; when present they retain their own purpose and can answer or refuse. The user can respond in several natural ways without being given a menu.
 A private moment can start directly with his initiative. A social moment can remain social while he initiates. Nobody must interrupt, disappear, summon him, demand a task or leave merely to make this opening function.
 REJECTED CAUSAL SKELETON
-Do not stage: Chase enjoying somebody else's company -> catches sight of user -> abruptly drops companion/activity -> crosses to user -> denies interest in the other person or explains himself before being asked. This remains the same rejected plot with pastries, drinks, books, friends or admirers. Do not imply the user is jealous, suspicious, silent or waiting for justification. No defensive opening such as "Don't start", "It's not what it looks like", "They intercepted me" or "I didn't invite myself" without an explicitly authored reason in the idea. He does not need to prove innocence to the user.
+Do not stage: Chase enjoying somebody else's company -> catches sight of user -> abruptly drops companion/activity -> crosses to user -> denies interest in the other person or explains himself before being asked. This remains the same rejected plot with pastries, drinks, books, friends or admirers. Do not imply the user is jealous, suspicious, silent or waiting for justification. No defensive opening such as "Don't start", "It's not what it looks like", "They intercepted me" or "I didn't invite myself" without an explicitly authored reason in the idea. He does not need to prove innocence to the user. A new opening cannot assign the user a past bet, debt, promise, favor, agreement or unpaid obligation that the profile or explicit idea never established. Chase may propose a new wager now and leave participation open; he cannot collect payment for his own wager with someone else. Avoid idle key-tossing and dangling-key choreography as an opening beat.
 Do not substitute the crowd-escape/car/keys invitation, institutional interception, threatened campus-event rescue or volunteer-host plot.
 SPEECH AND ENDING
 Use short, ordinary spoken rhythm with specific personal sarcasm where it fits. He need not be cruel, annoyed, apologetic or defensive to sound like Chase. Avoid writerly punchlines and repeated commands. Stop on a concrete unresolved interaction, not an explanation of chemistry, a gaze awaiting approval or a statement that he cares too much. No assumed mutual attraction, automatic touching, kiss or devotion.
@@ -236,6 +236,11 @@ export function repairOpeningAgency(opening = '', idea = '') {
     const ungroundedPreference = /\bthe (bakery|restaurant|caf[eé]|shop) (?:that )?you (?:like|love|prefer)\b/gi;
     if (ungroundedPreference.test(text)) text = text.replace(ungroundedPreference, 'a $1');
   }
+  // Static presence is not permission to invent a pose after a comma.
+  const suppliedPose=/\b(?:resting|leaning|sitting|seated|standing|kneeling|waiting|watching)\b/i.test(explicitIdea);
+  if(!suppliedPose){
+    text=text.replace(/^(You (?:are|were)(?: already)? (?:on|at|in|near|beside|outside|inside) [^.!?\n,]+),\s*(?:resting|leaning|sitting|seated|standing|kneeling|waiting|watching)\b[^.!?\n]*([.!?])/i, '$1$2');
+  }
   return text;
 }
 
@@ -254,11 +259,18 @@ export function chaseActivityRescueIssues(opening = '', draft = {}) {
 
 // Shared by primary, repair and fallback delivery. Keep identity constraints
 // distinct from optional freshness/style findings.
-export function instantStoryIdentityDeliveryIssues(opening='',draft={}) {
+export function instantStoryIdentityDeliveryIssues(opening='',draft={},idea='') {
   const dna=draft.emotional_dna||draft.emotionalDna||{};
-  if(dna.official_engine!=='chase_electricity_v1')return [];
   const t=String(opening).replace(/[’‘]/g,"'");
-  const issues=[...chaseEventHostIssues(t,draft),...chaseActivityRescueIssues(t,draft)];
+  const context=String(idea)+" "+[draft.relationship,draft.scenario,draft.notes].filter(Boolean).join(" ");
+  const issues=[];
+  const moneyDemand=/\byou owe me\b[^.!?\n]{0,65}\b(?:bucks?|dollars?|euros?|pesos?|money|cash|twenty|ten|fifty|hundred|\d+)\b|\bpay up\b/i.test(t);
+  const debtCanon=/\b(?:i|you|user|we|us|yo|usuaria|nosotros)\b[^.!?]{0,80}\b(?:owe|owes|owed|lost a bet|made a bet|bet with|wagered|borrowed|debo|deuda|apuesta)\b|\b(?:bet|wager|loan|debt|apuesta|deuda)\b[^.!?]{0,80}\b(?:with me|with you|with the user|between us|conmigo|contigo)\b/i.test(context);
+  if(moneyDemand&&!debtCanon)issues.push('instant_story_invented_user_financial_obligation');
+  const narration=t.replace(/[“"][^”"]*[”"]/g,"");
+  if(/^You (?:are|were)(?: already)?[^.!?\n]*,\s*(?:resting|leaning|sitting|seated|standing|kneeling|waiting|watching)\b/i.test(narration)&&!/\b(?:resting|leaning|sitting|seated|standing|kneeling|waiting|watching)\b/i.test(String(idea)))issues.push('instant_story_invented_user_starting_pose');
+  if(dna.official_engine!=='chase_electricity_v1')return issues;
+  issues.push(...chaseEventHostIssues(t,draft),...chaseActivityRescueIssues(t,draft));
   const speech=[...t.matchAll(/[“"]([^”"]+)[”"]/g)].map(m=>m[1]).join(' ');
   if(/\b(?:find someone else to keep me entertained|you(?:'re| are) (?:only|just) (?:here )?to entertain me|a better stage for (?:your )?drama|your only use is|you(?:'re| are) nothing but entertainment)\b/i.test(speech))issues.push('chase_user_reduced_to_entertainment');
   const story=t.replace(/\s+/g," ").toLowerCase();
@@ -271,4 +283,5 @@ export function instantStoryIdentityDeliveryIssues(opening='',draft={}) {
   if(/\byou (?:haven'?t|hadn'?t|have not|had not) (?:said|spoken)|\bthough you (?:said|did) nothing\b/i.test(t))issues.push('chase_invented_user_silence');
   return [...new Set(issues)];
 }
+
 
