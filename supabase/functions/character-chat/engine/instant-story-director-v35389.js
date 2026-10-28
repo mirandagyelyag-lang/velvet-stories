@@ -44,7 +44,7 @@ export function buildInstantStoryDirectorV35389({character={},idea="",recentOpen
  "PREMISE DIVERSITY FIREWALL: never use the campus clipboard escape structure (student/committee intercepts lead with a sheet, shift, wristband, obligation or demand; lead ignores them, walks to user and asks to look busy). This is ONE repeated causal skeleton even if names, props and setting change. Start from a genuinely different causal event instead.",
  "OPENING ANTI-REPETITION v3: Never use an administrative campus demand (petitions, clipboards, sign-offs, parking, rosters, committees, obligations) followed by Chase ignoring it, fixing his gaze on the user and approaching with a vague confession. This entire sequence is prohibited even if every noun changes.",
  "NEW SOCIAL CAUSALITY: choose a distinctive concrete event whose consequence is visible NOW: a friend reveals a secret to the wrong person; someone openly flirts with Chase and expects an answer; Chase makes a surprising but motivated decision in front of his peers; an ongoing disagreement changes alliances; a prank rebounds on its instigator; two NPCs disagree with each other; a promise is called in. Only use events consistent with character canon. Make NPCs speak and act rather than functioning as disposable obstacles.",
- "CHASE OPENING RHYTHM: Chase may be occupied with others and NOT immediately approach the user. Show an NPC's agency and Chase's response, including attraction from third parties. No repetitive gaze-lock, sudden unreadable intensity, empty serious monologue or obligatory final approach. Give the player a live social situation rather than a generic invitation.",
+ ...(/^chase(?:\s+beaumont)?$/i.test(String(character.name||"")) ? ["CHASE OPENING RHYTHM: Chase may be occupied with others and NOT immediately approach the user. Show an NPC's agency and Chase's response, including attraction from third parties. No repetitive gaze-lock, sudden unreadable intensity, empty serious monologue or obligatory final approach. Give the player a live social situation rather than a generic invitation."] : []),
  "PRE-WRITING CAUSALITY: select a concrete goal for the lead and a distinct motive for every NPC. Establish why each action follows the previous action. No ambiguous pronoun referents, disproportionate emotional distress over trivial logistics, or invented pressure without a reason.",
  "DIVERSE ACTION FAMILIES: rotate between character-initiated plans, social rivalries, surprising choices with grounded motives, third-party flirtation, mistakes with consequences, genuine intimacy, public conflict, and quiet tension. Do not make the user a perpetual escape hatch. A character can stay with other people while initiating a scene.",
  "3) IMMEDIATE PLAYABLE PROBLEM: create one ordinary but consequential pressure, opportunity, obligation, mistake, rumor, favor, changed plan, social complication or decision. It must be capable of evolving beyond the opening.",
@@ -70,7 +70,7 @@ export function instantStoryDirectorIssuesV35389(opening="",{character={},recent
  if(objectUser(opening))issues.push("instant_story_user_as_object");
  if(fakeChoice(opening))issues.push("instant_story_fake_choice");
  if(floatingDialogue(opening))issues.push("instant_story_floating_dialogue");
- if(userChoreography(opening))issues.push("instant_story_user_choreography");
+ if(userChoreography(String(opening).replace(/[“"][^”"]*[”"]/g,"")))issues.push("instant_story_user_choreography");
  if(staleSetup(opening,recentOpenings))issues.push("instant_story_recycled_setup");
  const t=n(opening);
  if(t.length<120)issues.push("instant_story_underdeveloped");
@@ -78,3 +78,4 @@ export function instantStoryDirectorIssuesV35389(opening="",{character={},recent
  return [...new Set(issues)];
 }
 export const __testV35389={relationshipStage,rescuePattern,objectUser,fakeChoice,floatingDialogue,userChoreography,staleSetup,clipboardEscapePattern,genericApproachLoop};
+
