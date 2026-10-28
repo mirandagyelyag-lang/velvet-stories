@@ -2625,7 +2625,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
           + "\nFAILURES TO REPAIR\n" + rejectedInstantCandidates.slice(-2).map(x=>(x.rejectionReasons||[]).join(", ")).join("\n");
         const providerPrompt = effectivePrompt.length < 23000
           ? effectivePrompt + "\nReturn only the visible opening as prose. Address the reader as you; no authored user actions or private thoughts."
-          : compactOpening;
+          : compactOpening + "\nAUTHORITATIVE OPENING CONSTRAINTS\n" + (chaseEngineActive ? buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings) : String(effectivePrompt).slice(-10000));
         console.log("[character-chat] Instant Story trying Groq", { phase, promptChars: providerPrompt.length });
         const result = await callEconomicalBackup({
               paidBudget: paidOpeningBudget,
@@ -2663,13 +2663,17 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const available = (candidate) => ! /^(?:groq|openai)\//.test(String(candidate)) && !quotaUnavailableModels.has(candidate) && !overloadedModels.has(candidate);
     model = alternatives.find(available) || model;
     try {
-      const effectivePrompt = ["chase_edit", "nathan_edit", "alexander_edit"].includes(phase) ? requestPrompt : alexanderEngineActive
+      const characterPrompt = ["chase_edit", "nathan_edit", "alexander_edit"].includes(phase) ? requestPrompt : alexanderEngineActive
         ? `${buildAlexanderInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT PASS: ${phase}\n${phase === "primary" ? "" : rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}`
         : nathanEngineActive
         ? `${buildNathanInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT PASS: ${phase}\n${phase === "primary" ? "" : rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}`
         : chaseEngineActive
         ? `${buildChaseInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT GENERATION PASS: ${phase}\n${phase === "primary" ? "" : "REPAIR THE OBSERVED DRAFT, preserving its useful situation while restoring the approved dynamic; do not simply change synonyms.\n" + rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}\nAvoid these observed failures: ${JSON.stringify([...new Set(rejectedInstantCandidates.flatMap(item => item.rejectionReasons || []))].slice(0,10))}`
         : requestPrompt;
+      // Canon and observed repair requirements survive every provider and fallback.
+      const openingCanonFloor = "OPENING FACT AUTHORITY: only PROFILE, explicit USER IDEA and supplied conversation canon establish the user's past actions, secrets, promises, obligations or relationships. Invent new CHARACTER/world actions in the present; leave the user's participation open. Do not manufacture a secret from yesterday, a debt, a job, a shift or an agreement to create leverage. Campus locations do not assign the lead a clerical/administrative role. A new favor can be asked without assumed consent, threats or invented shared history. Repair drafts by discarding unsupported premises, not preserving them as canon.";
+      const repairRequirements = phase === "primary" ? "" : String(requestPrompt || "").slice(-10000);
+      const effectivePrompt = characterPrompt + "\n\n" + openingCanonFloor + (repairRequirements && repairRequirements !== characterPrompt ? "\nREPAIR REQUIREMENTS FOR THIS PASS (subordinate to canon and identity):\n" + repairRequirements : "");
       const contents = [{ role: "user", parts: [{ text: `${SCENE_PRESENCE_CONTRACT}\n\n${SHARED_YEARNING_CONTRACT}\n\n${effectivePrompt}` }] }];
       const run = async (bare = false) => {
         const response = await providerFetch(modelEndpoint(model), {
@@ -13546,3 +13550,4 @@ async function streamCrisisSupport({supabase,conversationId,userId,storyRevision
   });
   return new Response(stream,{headers:{...corsHeaders,"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform",Connection:"keep-alive","X-Accel-Buffering":"no"}});
 }
+

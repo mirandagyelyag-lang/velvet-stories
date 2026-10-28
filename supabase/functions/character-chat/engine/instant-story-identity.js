@@ -118,11 +118,12 @@ OPENING CAUSALITY
 Choose the situation from the profile and idea before choosing props or NPCs. Begin close to the live interaction. Let Chase originate one consequential action, offer, admission, refusal or provocation with a visible reason. Another person is optional; when present they retain their own purpose and can answer or refuse. The user can respond in several natural ways without being given a menu.
 A private moment can start directly with his initiative. A social moment can remain social while he initiates. Nobody must interrupt, disappear, summon him, demand a task or leave merely to make this opening function.
 REJECTED CAUSAL SKELETON
-Do not stage: Chase enjoying somebody else's company -> catches sight of user -> abruptly drops companion/activity -> crosses to user -> denies interest in the other person or explains himself before being asked. This remains the same rejected plot with pastries, drinks, books, friends or admirers. Do not imply the user is jealous, suspicious, silent or waiting for justification. No defensive opening such as "Don't start", "It's not what it looks like", "They intercepted me" or "I didn't invite myself" without an explicitly authored reason in the idea. He does not need to prove innocence to the user. A new opening cannot assign the user a past bet, debt, promise, favor, agreement or unpaid obligation that the profile or explicit idea never established. Chase may propose a new wager now and leave participation open; he cannot collect payment for his own wager with someone else. Avoid idle key-tossing and dangling-key choreography as an opening beat.
+Do not stage: Chase enjoying somebody else's company -> catches sight of user -> abruptly drops companion/activity -> crosses to user -> denies interest in the other person or explains himself before being asked. This remains the same rejected plot with pastries, drinks, books, friends or admirers. Do not imply the user is jealous, suspicious, silent or waiting for justification. No defensive opening such as "Don't start", "It's not what it looks like", "They intercepted me" or "I didn't invite myself" without an explicitly authored reason in the idea. He does not need to prove innocence to the user. Before writing, separate established facts from things the character may initiate NOW. The user starts with no invented past conduct, secret, agreement, obligation or shared incident. An opening may offer a new interaction and leave the response open; it cannot backfill a hidden incident to make that interaction interesting. A new opening cannot assign the user a past bet, debt, promise, favor, agreement or unpaid obligation that the profile or explicit idea never established. Chase may propose a new wager now and leave participation open; he cannot collect payment for his own wager with someone else. Avoid idle key-tossing and dangling-key choreography as an opening beat.
 Do not substitute the crowd-escape/car/keys invitation, institutional interception, threatened campus-event rescue or volunteer-host plot.
 SPEECH AND ENDING
 Use short, ordinary spoken rhythm with specific personal sarcasm where it fits. He need not be cruel, annoyed, apologetic or defensive to sound like Chase. Avoid writerly punchlines and repeated commands. Stop on a concrete unresolved interaction, not an explanation of chemistry, a gaze awaiting approval or a statement that he cares too much. No assumed mutual attraction, automatic touching, kiss or devotion.
 PERSONALITY FACTS
+Chase is not a clerk, shift worker, administrator, office assistant or student organizer unless his own configured profile explicitly establishes that job. A campus records office, budget debate or nearby student task does not give him duties there. Do not make his personal initiative a demand that the user do his work, a threat to expose the user, or a bargain for silence about invented user conduct.
 Campus scenery does not give him a team, coach, athletic biography or technical job. Do not invent shared history, user tastes or new emotional facts.
 PROFILE
 ${JSON.stringify(profile)}
@@ -269,7 +270,20 @@ export function instantStoryIdentityDeliveryIssues(opening='',draft={},idea='') 
   if(moneyDemand&&!debtCanon)issues.push('instant_story_invented_user_financial_obligation');
   const narration=t.replace(/[“"][^”"]*[”"]/g,"");
   if(/^You (?:are|were)(?: already)?[^.!?\n]*,\s*(?:resting|leaning|sitting|seated|standing|kneeling|waiting|watching)\b/i.test(narration)&&!/\b(?:resting|leaning|sitting|seated|standing|kneeling|waiting|watching)\b/i.test(String(idea)))issues.push('instant_story_invented_user_starting_pose');
+  const concealment=/\b(?:won't tell|will not tell|keep (?:it|this|your secret) (?:quiet|secret)|not tell anyone|won't mention|will not mention)\b/i.test(t);
+  const demandedWork=/\byou (?:take|cover|do|work|handle|finish)\b[^.!?\n]{0,100}\b(?:for me|my|shift|office|assignment|homework|work)\b|\b(?:cover|take|do|work) (?:my|the) (?:shift|work|assignment)\b/i.test(t);
+  const explicitBlackmail=/\b(?:blackmail|blackmails|blackmailing|bargain for silence|chantaje|chantajear)\b/i.test(String(idea));
+  if(concealment&&demandedWork&&!explicitBlackmail)issues.push('instant_story_invented_coercive_labor_bargain');
+  const fabricatedPast=/\b(?:why you were hiding|you were hiding|you hid|you sneaked|you snuck|you cheated|you stole)\b/i.exec(t);
+  if(fabricatedPast){
+    const action=fabricatedPast[0].replace(/^why /i,'').replace(/^you /i,'');
+    const userSource=String(idea).replace(/\bi was\b/gi,'you were').replace(/\bi\b/gi,'you');
+    if(!userSource.toLowerCase().includes('you '+action.toLowerCase())&&!String(draft.notes||draft.scenario||'').toLowerCase().includes('you '+action.toLowerCase()))issues.push('instant_story_invented_user_past_conduct');
+  }
   if(dna.official_engine!=='chase_electricity_v1')return issues;
+  const officeShift=/\b(?:shift|records office|registrar|filing|paperwork)\b/i.test(t)&&/\b(?:for me|my shift|cover my|take my)\b/i.test(t);
+  const roleSource=[draft.role,draft.description,draft.scenario,draft.notes,idea].filter(Boolean).join(' ');
+  if(officeShift&&!/\b(?:works? at|employed|employee|clerk|shift worker|records office|registrar|administrative assistant)\b/i.test(roleSource))issues.push('chase_invented_clerical_role');
   issues.push(...chaseEventHostIssues(t,draft),...chaseActivityRescueIssues(t,draft));
   const speech=[...t.matchAll(/[“"]([^”"]+)[”"]/g)].map(m=>m[1]).join(' ');
   if(/\b(?:find someone else to keep me entertained|you(?:'re| are) (?:only|just) (?:here )?to entertain me|a better stage for (?:your )?drama|your only use is|you(?:'re| are) nothing but entertainment)\b/i.test(speech))issues.push('chase_user_reduced_to_entertainment');
@@ -283,5 +297,6 @@ export function instantStoryIdentityDeliveryIssues(opening='',draft={},idea='') 
   if(/\byou (?:haven'?t|hadn'?t|have not|had not) (?:said|spoken)|\bthough you (?:said|did) nothing\b/i.test(t))issues.push('chase_invented_user_silence');
   return [...new Set(issues)];
 }
+
 
 
