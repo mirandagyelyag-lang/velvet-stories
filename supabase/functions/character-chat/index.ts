@@ -1,3 +1,5 @@
+import {createSession,runTurn} from "./experimental/core.mjs";
+import {transport as previewTransport} from "./experimental/transport.mjs";
 import { instantStoryIdentityDeliveryIssues } from "./engine/instant-story-identity.js";
 import { deriveCrisisResponse, buildCrisisResponse } from "./engine/crisis-response.js";
 import { buildThirdPartySocialMomentumV1 } from "./engine/third-party-social-momentum-v1.js";
@@ -11273,7 +11275,9 @@ async function streamRoleplayV19({
       // successful. Secondary timeline/memory/social persistence may degrade, but
       // it can never retroactively turn a visible saved reply into a Retry error.
       let committedReplyMessage: any = null;
+      let previewValidated=false;
       const streamFinalReply = async (reply = "", reason = "finalize") => {
+        if(!previewValidated)return;
         const clean = String(reply || "");
         if (!clean || streamedReply === clean) return;
         if (streamedReply) sendEvent(controller, { type: "reset", reason });
@@ -11985,8 +11989,21 @@ async function streamRoleplayV19({
         if (/\bchase\b/i.test(String(character?.name || "")) && readsPaper && establishedPaper && !paperTextShown) {
           persistableReply = 'You unfold the paper. In Chase’s handwriting, it reads: “I care about you. I know I keep making you doubt that, and I hate that I’ve given you reasons to. I don’t expect a note to fix it. I just wanted you to know I mean it.”\n\nChase watches you reach the last line. “I should’ve said that to your face,” he admits. “You deserved an answer, not another guessing game.”';
         }
+        // Orvayne source and progression gate. Authentication, history and persistence use the existing route.
+        const previewSession=createSession({profile:{...character,id:character.id||"lead",language:/spanish|español/i.test(responseLanguage)?"es":"en"},scene:{location:existingSceneState?.location||"unspecified",present:[userId,character.id],positions:{},objects:[]}});
+        previewSession.history=messages.map((m,i)=>({id:String(m.id||i),role:m.sender==="user"?"user":"assistant",content:String(m.content||"")}));
+        previewSession.history=previewSession.history.filter(m=>m.id!==String(latestUserMessageId));
+        const previewAdapter=await previewTransport();
+        let previewFirst=true;
+        const checkedPreview=await runTurn({session:previewSession,message:{id:String(latestUserMessageId||crypto.randomUUID()),content:latestUserMessage},...previewAdapter,author:async args=>{if(previewFirst){previewFirst=false;return {prose:persistableReply,scenePatch:{}};}return previewAdapter.author(args);},signal:AbortSignal.timeout(90000)});
+        if(!checkedPreview.reply)throw new Error("Orvayne could not validate this continuation; no character reply was saved. Please try again.");
+        // A repaired reply must never retain state claims from the rejected draft.
+        if(checkedPreview.reply !== persistableReply){
+          result = {reply:checkedPreview.reply,scene_update:{},cast_updates:[],continuity_update:{},mind_update:{},story_drive:{},post_turn_reflection:{},human_behavior_update:{},presence_update:{},development_update:{},thread_updates:[]};
+        }
+        persistableReply=checkedPreview.reply;
+        previewValidated=true;
         result = { ...result, reply: persistableReply };
-        await streamFinalReply(persistableReply, FIRST_DRAFT_WINS_V35268 ? "v35268-first-draft-wins" : "v35237-regression-shield");
 
         if (await isCancelled() || !await isStoryRevisionCurrent(supabase, conversationId, userId, storyRevision)) {
           throw new DOMException("Story changed before commit", "AbortError");
@@ -11995,6 +12012,7 @@ async function streamRoleplayV19({
           ? await replaceCharacterReply({ supabase, conversationId, userId, message: replacementMessage, reply: persistableReply })
           : await saveCharacterReply({ supabase, conversationId, userId, reply: persistableReply, latestUserMessageId });
         committedReplyMessage = savedMessage;
+        await streamFinalReply(savedMessage.content || persistableReply, "orvayne-validated-commit");
 
         const update = { updated_at: new Date().toISOString() } as Record<string, any>;
         update.character_development = applyCharacterDevelopment({
@@ -13550,4 +13568,5 @@ async function streamCrisisSupport({supabase,conversationId,userId,storyRevision
   });
   return new Response(stream,{headers:{...corsHeaders,"Content-Type":"text/event-stream; charset=utf-8","Cache-Control":"no-cache, no-transform",Connection:"keep-alive","X-Accel-Buffering":"no"}});
 }
+
 
