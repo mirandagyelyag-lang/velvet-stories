@@ -2,6 +2,8 @@
 
 This is a branch-only prototype, not a replacement for `character-chat`.
 
+The subsequent response-meaning revision is documented in `SEMANTIC-REVIEW-EVALUATION.md`, with raw results in `semantic-review-results.json`. It adds mandatory semantic dimensions and structured response intent; it remains blocked for release by newly invented history. Its alternate-model harness deliberately requires the explicitly selected model rather than silently falling back to a smaller one.
+
 The core has one ordered path: safety → authoritative user events → bounded turn contract → author → reviewer → at most one repair → atomic commit adapter → delivery. Rejected drafts cannot be revived. No deterministic fiction or post-review substitutions exist. Profile identity and user evidence remain separate from assistant dialogue. The scene reducer retains completed transitions across turns.
 
 Run the deterministic, multi-turn acceptance suite with `node --test experiment/core.test.mjs` from this directory's parent. These tests use scripted authors/reviewers: they verify orchestration, isolation, and scene/evidence handling, **not model quality**.

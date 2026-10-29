@@ -159,3 +159,17 @@ test('model failures and malformed JSON propagate without stock fiction', async 
   const malformed = modelAdapter({endpoint: 'https://example.invalid/chat', model: 'test', apiKey: 'test-only', fetchImpl: async () => ({ok: true, json: async () => ({choices: [{message: {content: 'Not JSON'}}]})})});
   await assert.rejects(runTurn({session: fresh(), message: message('x', 'Hi.'), ...malformed}), SyntaxError);
 });
+
+test('semantic review derives rejection from failed dimensions instead of an accepted label', async () => {
+  const checks=Object.fromEntries(['responsiveness','care','identity','agency','continuity','canon','presentation'].map(name=>[name,{passed:true,evidence:'No violation in this fixture.'}]));
+  checks.care={passed:false,evidence:'The reply reproaches the user after medical care.'};
+  const adapter=modelAdapter({endpoint:'https://example.invalid/chat',model:'test',apiKey:'test-only',fetchImpl:async()=>({ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({accepted:true,checks})}}]})})});
+  const verdict=await adapter.reviewer({contract:{},draft:{prose:'test'},nextScene:{}});
+  assert.equal(verdict.accepted,false);
+  assert.equal(verdict.issues[0].code,'semantic_care');
+});
+
+test('semantic review cannot silently omit responsiveness or care', async () => {
+  const adapter=modelAdapter({endpoint:'https://example.invalid/chat',model:'test',apiKey:'test-only',fetchImpl:async()=>({ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({accepted:true,issues:[]})}}]})})});
+  await assert.rejects(adapter.reviewer({contract:{},draft:{prose:'test'},nextScene:{}}),/Incomplete semantic review/);
+});

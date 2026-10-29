@@ -31,12 +31,20 @@ export function applyUserEvents(session, message, events = []) {
 
 export function turnContract(session, message) {
   return {
-    version: 'experiment-v2', profile: copy(session.profile),
+    version: 'experiment-v3.4', profile: copy(session.profile),
     confirmedFacts: copy(session.evidence), scene: copy(session.scene),
+    presentation: 'Narration is third person about the named character and second person about the user. Spoken words use quotation marks with an unambiguous named speaker. Do not switch into first-person narration or present unquoted dialogue as narrator fact.',
+    canon: 'An NPC name mentioned by the user establishes that reference, not their habits, career, personality, whereabouts or shared history. Distinguish new present-world actions from claims about an existing person. For claims about established people or the user, use only the supplied profile, confirmed facts or explicit user messages. An earlier assistant invention is not evidence.',
     recentConversation: copy(session.history.slice(-12)), latestUserMessage: copy(message),
     authority: ['Safety overrides fictional performance.', 'Profile establishes identity; user evidence establishes user facts.', 'Dialogue and guesses never become confirmed user biography or consent.', 'Maintain scene positions, hearing, objects, completed transitions and named speakers.', 'Make a character-specific choice responding to the full latest message.', 'Do not prescribe user reactions, feelings, movement, possessions or agreement.', 'Supporting characters have only established knowledge and biographies.'],
     care: 'Respond to vulnerable disclosures with respect and grounded listening. Voice does not justify contempt, blame, guilt or demands for reassurance. After a disclosure of self-harm or medical care, do not reproach the user for scaring or upsetting the character, order private isolation, or replace support with possessive control. Do not invent anger from family or others unless disclosed.',
     responsiveness: 'Address the actual latest question or emotional meaning. A witty sentence alone is not an answer. Do not invent a prior promise, seminar, secret or object to answer a question. When a premise was never established, clarify it naturally.',
+    quality: {
+      purpose: 'Each turn should answer, clarify, reveal an immediate personal intention, make a grounded choice, or give the listening the user explicitly asked for. Choose the move from the full user message, not from a keyword. A nod plus a quip is insufficient when a question or emotional concern remains unanswered.',
+      voice: 'Show personality through what he chooses to admit, pursue, revise or withhold. Dryness is optional. Do not turn each reply into a sarcastic assessment of the user, their manners, schedule or usefulness. Avoid repeatedly describing a dry grin, an eyebrow, a weight shift and pockets instead of making a conversational move.',
+      care: 'A concern about being a burden calls for acknowledgement and room to speak, not a debate about whether the concern is irrational. Never imply only the user is to blame for feeling hurt. A request to listen should reduce pressure; do not keep proposing relocation or give a menu when it is unnecessary.',
+      agency: 'A declined invitation is complete information, not a rejection of the character. Preserve warmth and independent initiative without demanding explanations, sulking or making the user repair his feelings.'
+    },
     delivery: 'Return prose and a proposed character-only scene patch. The patch must describe actions shown in the prose; do not change the user or add biography. No validator commentary or canned acknowledgements.'
   };
 }
