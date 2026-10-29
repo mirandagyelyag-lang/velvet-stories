@@ -25,7 +25,7 @@ This is an executable orchestration prototype, not a completed migration. The au
 
 - `node --test experiment/core.test.mjs`: 20 tests passed, including four multi-turn sequences and five reported failure categories.
 - Tests use scripted authors and reviewers. They establish pipeline behavior, not the accuracy of a language-model reviewer or Chase's generated voice.
-- Actual provider credentials were unavailable in this workspace. No live model-quality comparison was performed or claimed.
+- Initial audit: provider credentials were unavailable in this workspace. A later controlled Supabase evaluation used credentials inside the server; see `experiment/LIVE-EVALUATION.md`. The full production engine has still not been compared end to end.
 - `experiment/run-live.mjs` is ready to produce model transcripts with explicit endpoint/model/server-side key, per-turn latency, repair verdicts and human-review criteria. It has no production database client.
 - Before replacement, replay the same synthetic scenarios through the current production route and this experiment, compare the resulting transcripts with human review, then assess naturalness, identity, continuity, agency, safety, latency and cost. Do not substitute a scripted pass count for that comparison.
 

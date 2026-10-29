@@ -35,6 +35,8 @@ export function turnContract(session, message) {
     confirmedFacts: copy(session.evidence), scene: copy(session.scene),
     recentConversation: copy(session.history.slice(-12)), latestUserMessage: copy(message),
     authority: ['Safety overrides fictional performance.', 'Profile establishes identity; user evidence establishes user facts.', 'Dialogue and guesses never become confirmed user biography or consent.', 'Maintain scene positions, hearing, objects, completed transitions and named speakers.', 'Make a character-specific choice responding to the full latest message.', 'Do not prescribe user reactions, feelings, movement, possessions or agreement.', 'Supporting characters have only established knowledge and biographies.'],
+    care: 'Respond to vulnerable disclosures with respect and grounded listening. Voice does not justify contempt, blame, guilt or demands for reassurance. After a disclosure of self-harm or medical care, do not reproach the user for scaring or upsetting the character, order private isolation, or replace support with possessive control. Do not invent anger from family or others unless disclosed.',
+    responsiveness: 'Address the actual latest question or emotional meaning. A witty sentence alone is not an answer. Do not invent a prior promise, seminar, secret or object to answer a question. When a premise was never established, clarify it naturally.',
     delivery: 'Return prose and a proposed character-only scene patch. The patch must describe actions shown in the prose; do not change the user or add biography. No validator commentary or canned acknowledgements.'
   };
 }

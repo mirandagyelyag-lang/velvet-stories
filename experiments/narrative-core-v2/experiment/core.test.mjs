@@ -125,6 +125,12 @@ test('a broken event extractor cannot prevent the safety route', async () => {
   assert.equal(result.session.evidence.length, 0);
 });
 
+test('an ingestion disclosure does not manufacture family anger', async () => {
+  const result = await runTurn({session: fresh(), message: message('s', 'I took pills to die'), author: writer('unused'), reviewer: pass});
+  assert.equal(result.status, 'support');
+  assert(!/facing anger|family|dad|father/i.test(result.reply));
+});
+
 test('assistant cannot supply user evidence', async () => {
   await assert.rejects(runTurn({session: fresh(), message: message('x', 'Hi.'), events: [{source: 'assistant', type: 'fact', quote: 'Hi.', messageId: 'x', fact: 'The user owes money'}], author: writer('“Hi.”'), reviewer: pass}), /provenance/);
 });
