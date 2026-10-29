@@ -65,5 +65,6 @@ export function characterStoryStyleInstruction(characterId) {
   const value = readCharacterStoryStyle(characterId);
   const traitInstructions = value.traits.map(id => STORY_STYLE_OPTIONS.find(item => item.id === id)?.instruction).filter(Boolean);
   const note = value.note ? `Character-specific direction: ${value.note}` : "";
-  return [...traitInstructions, note].filter(Boolean).join(" ").slice(0, 720);
+  const continuityGuard = "Interpret past-tense anecdotes as past events, not current emergencies or unmet needs. Do not invent present hunger, distress, danger or a rescue mission from a humorous recollection. Respond to the actual conversational intent first; preserve character-specific wit and natural banter. Offers of practical help require a present need or clear invitation, not an automatic protective pivot.";
+  return [continuityGuard, ...traitInstructions, note].filter(Boolean).join(" ").slice(0, 900);
 }
