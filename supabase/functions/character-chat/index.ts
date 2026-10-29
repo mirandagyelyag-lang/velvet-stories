@@ -1,3 +1,4 @@
+import {buildInstantEncounterContract} from "./engine/instant-encounter-contract.mjs";
 import {createSession,runTurn} from "./experimental/core.mjs";
 import {transport as previewTransport} from "./experimental/transport.mjs";
 import { instantStoryIdentityDeliveryIssues } from "./engine/instant-story-identity.js";
@@ -2465,6 +2466,7 @@ async function handleInstantStory({ apiKey, draft, idea, variationKey = "", rece
   // Keep its distilled Opening DNA, but do not feed its raw user choreography back to the model.
   const promptDraft = { ...safeDraft, firstMessage: "" };
   const cleanIdea = cleanPromptValue(idea || "", 420);
+  const encounterContract = buildInstantEncounterContract({variationKey,recentOpenings,idea:cleanIdea});
   const identityDirection = buildInstantStoryIdentity(safeDraft, variationKey, recentSceneSeeds);
   const chaseEngineActive = safeDraft.emotional_dna?.official_engine === "chase_electricity_v1";
   const nathanEngineActive = safeDraft.emotional_dna?.official_engine === "nathan_exception_v1";
@@ -2555,6 +2557,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       const prose = instantStoryProseValidation(body.opening);
       const deliveryHardBlocks = [
         ...chaseEventHostIssues(prose.opening, safeDraft),
+        ...(instantStoryTooSimilarV3539(prose.opening, recentOpenings) ? ["recent_opening_similarity"] : []),
         ...(chaseRecycledStructure(prose.opening) ? ["chase_recycled_npc_abandonment"] : []),
         ...(chaseEngineActive && /\b(?:junior|senior|student|volunteer|committee|board|pass|programs|ledger|tickets|raffle|shift|audit|sponsor|clipboard|meeting|proofing|roster|remarks)\b/i.test(prose.opening) && /\b(?:blocked|blocking|planted|cornered|intercepted|path)\b/i.test(prose.opening) && /\b(?:gaze|eyes|sight|look)\b/i.test(prose.opening) && /\b(?:stepped|walked|stopped|moved|shifted)\b/i.test(prose.opening) ? ["chase_recycled_institutional_escape"] : []),
         ...nathanOpeningIssues(prose.opening, safeDraft, cleanIdea),
@@ -2578,7 +2581,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       const saved = String(safeDraft.emotional_dna?.creator_approved_opening || "").trim();
       const key = value => String(value).replace(/\s+/g, " ").trim();
       const alreadyShown = recentOpenings.some(item => key(item) === key(saved));
-      if (saved && !alreadyShown && instantStoryProseValidation(saved).valid &&
+      if (saved && !alreadyShown && !instantStoryTooSimilarV3539(saved, recentOpenings) && instantStoryProseValidation(saved).valid &&
           !instantStoryHardBlockIssuesV35298(saved, safeDraft, "").length &&
           !speakerOwnershipIssuesV35367(saved, safeDraft).length) {
         body = { opening: saved, source: "creator_approved_fallback", sceneSeed, openingFamily,
@@ -2675,7 +2678,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       // Canon and observed repair requirements survive every provider and fallback.
       const openingCanonFloor = "OPENING FACT AUTHORITY: only PROFILE, explicit USER IDEA and supplied conversation canon establish the user's past actions, secrets, promises, obligations or relationships. Invent new CHARACTER/world actions in the present; leave the user's participation open. Do not manufacture a secret from yesterday, a debt, a job, a shift or an agreement to create leverage. Campus locations do not assign the lead a clerical/administrative role. A new favor can be asked without assumed consent, threats or invented shared history. Repair drafts by discarding unsupported premises, not preserving them as canon.";
       const repairRequirements = phase === "primary" ? "" : String(requestPrompt || "").slice(-10000);
-      const effectivePrompt = characterPrompt + "\n\n" + openingCanonFloor + (repairRequirements && repairRequirements !== characterPrompt ? "\nREPAIR REQUIREMENTS FOR THIS PASS (subordinate to canon and identity):\n" + repairRequirements : "");
+      const effectivePrompt = characterPrompt + "\n\n" + encounterContract + "\n\n" + instantStoryClarityPromptV35341() + "\n\n" + openingCanonFloor + (repairRequirements && repairRequirements !== characterPrompt ? "\nREPAIR REQUIREMENTS FOR THIS PASS (subordinate to canon and identity):\n" + repairRequirements : "");
       const contents = [{ role: "user", parts: [{ text: `${SCENE_PRESENCE_CONTRACT}\n\n${SHARED_YEARNING_CONTRACT}\n\n${effectivePrompt}` }] }];
       const run = async (bare = false) => {
         const response = await providerFetch(modelEndpoint(model), {
@@ -2819,7 +2822,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     // The same factual/agency/completeness contract applies on every delivery path.
     // Editorial heuristics are advisory; they must not reject a primary draft that
     // the deadline path would immediately deliver unchanged.
-    if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || deliveryHardIssues.length || chaseIssues.length || chaseRecycledStructure(opening)) {
+    if (!instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) || fatalQualityIssues.length || deliveryHardIssues.length || chaseIssues.length || similarityIssue.length || chaseRecycledStructure(opening)) {
       const rejectionReasons = [...(chaseRecycledStructure(opening) ? ["chase_recycled_npc_abandonment"] : []), ...chaseIssues, ...deliveryHardIssues, ...fatalQualityIssues, ...premiseIssues, ...anchorIssues, ...groundingIssues, ...naturalismIssues, ...identityIssuesV35321, ...semanticIssues, ...similarityIssue, ...unifiedOpeningIssues, ...directorIssuesV35366, ...directorIssuesV35389, ...liveOpeningHardIssuesV35388];
       rejectedInstantCandidates.push({
         opening,
@@ -2898,7 +2901,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         ...speakerOwnershipIssuesV35367(opening, safeDraft),
       ];
       const issues = [...chaseOpeningIssues(opening, safeDraft), ...nathanOpeningIssues(opening, safeDraft, cleanIdea)];
-      if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !issues.length) {
+      if (instantStoryCandidateUsableV35290(opening, finishReason, safeDraft) && !hardBlocks.length && !issues.length && !instantStoryTooSimilarV3539(opening,recentOpenings)) {
         return instantStoryResponse({ opening, source: `ai_${approvedEngineKey}_repair`, model: actualModel,
           sceneSeed, openingFamily });
       }
@@ -2924,7 +2927,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
         ...speakerOwnershipIssuesV35367(item.opening, safeDraft),
       ],
     }))
-    .filter((item)=>item.hardBlocks.length === 0)
+    .filter((item)=>item.hardBlocks.length === 0 && !instantStoryTooSimilarV3539(item.opening,recentOpenings))
     .filter((item)=>{
       const text = String(item.opening || "").trim();
       const words = text.split(/\s+/).filter(Boolean).length;
