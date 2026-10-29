@@ -3333,7 +3333,7 @@ function getCharacterChatUrl() {
 
   return (
     `${supabaseUrl}` +
-    "/functions/v1/character-chat"
+    ("/functions/v1/" + (import.meta.env.VITE_CHARACTER_CHAT_FUNCTION || "character-chat-preview"))
   );
 }
 
