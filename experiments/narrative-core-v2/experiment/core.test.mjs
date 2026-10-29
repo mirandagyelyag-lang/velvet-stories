@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createSession, runTurn} from './core.mjs';
+import {createSession, runTurn as runCheckedTurn} from './core.mjs';
 import {modelAdapter} from './model-adapter.mjs';
 
 const profile = {id: 'chase', name: 'Chase Beaumont', language: 'en', role: 'Campus Heartthrob', voice: 'Casual, dry, playful; confident without deciding for the user', facts: ['Owns a car'], unknown: ['Academic major', 'Sports team', 'NPC private routines']};
 const fresh = () => createSession({profile, scene: {location: 'campus patio', present: ['user', 'chase'], positions: {user: 'beside the wall', chase: 'three paces away'}, objects: []}});
 const pass = async () => ({accepted: true, issues: []});
+// Scripted provenance only for orchestration tests; real adapters always audit.
+const runTurn = options => runCheckedTurn({provenance:pass,...options});
 const reject = reason => ({accepted: false, issues: [{code: 'fixture-failure', reason}]});
 const message = (id, content) => ({id, content});
 const writer = prose => async () => ({prose, scenePatch: {}});
@@ -172,4 +174,55 @@ test('semantic review derives rejection from failed dimensions instead of an acc
 test('semantic review cannot silently omit responsiveness or care', async () => {
   const adapter=modelAdapter({endpoint:'https://example.invalid/chat',model:'test',apiKey:'test-only',fetchImpl:async()=>({ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({accepted:true,issues:[]})}}]})})});
   await assert.rejects(adapter.reviewer({contract:{},draft:{prose:'test'},nextScene:{}}),/Incomplete semantic review/);
+});
+
+test('ordinary generation cannot omit the source-audit gate', async () => {
+  await assert.rejects(runCheckedTurn({session:fresh(),message:message('x','Hi.'),author:writer('“Hi.”'),reviewer:pass}),/provenance auditor required/);
+});
+
+test('unsupported history is repaired before semantic approval and never saved', async () => {
+  let authors=0,reviews=0;
+  const result=await runTurn({session:fresh(),message:message('x','What did you want to show me?'),author:async({repair})=>{
+    if(!authors++)return {prose:'“The notebook you left yesterday.”',scenePatch:{}};
+    assert.equal(repair.verdict.issues[0].code,'provenance_missing_source');
+    return {prose:'Chase says, “I had no grand reveal planned. I just wanted to talk.”',scenePatch:{}};
+  },provenance:async({draft})=>draft.prose.includes('notebook')?{accepted:false,issues:[{code:'provenance_missing_source',reason:'No user source establishes a notebook left yesterday.'}]}:{accepted:true,issues:[]},reviewer:async()=>{reviews++;return {accepted:true,issues:[]};}});
+  assert.equal(reviews,1);
+  assert.equal(result.attempts.length,2);
+  assert(!result.session.history.some(row=>row.content.includes('notebook')));
+});
+
+test('both factual passes request a strict output schema', async () => {
+  const requests=[];
+  const adapter=modelAdapter({endpoint:'https://example.invalid/chat',model:'test',apiKey:'test-only',fetchImpl:async(_url,options)=>{
+    requests.push(JSON.parse(options.body));
+    return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify(requests.length===1?{claims:[]}:{results:[],missingClaims:[]})}}]})};
+  }});
+  const result=await adapter.provenance({contract:{sources:[],profile:{name:'Chase'}},draft:{prose:'Chase waits.'}});
+  assert.equal(result.accepted,true);
+  assert.equal(requests.length,2);
+  assert(requests.every(row=>row.response_format.type==='json_schema'&&row.response_format.json_schema.strict));
+});
+
+test('structured author output preserves an unchanged scene without a null-position patch', async () => {
+  let request;
+  const adapter=modelAdapter({endpoint:'https://example.invalid/chat',model:'test',apiKey:'test-only',fetchImpl:async(_url,options)=>{
+    request=JSON.parse(options.body);
+    return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({move:{kind:'listen',focus:'user'},prose:'Chase says, “I’m listening.”',scenePatch:{characterPosition:null}})}}]})};
+  }});
+  const draft=await adapter.author({contract:{},repair:null});
+  assert.equal(request.response_format.type,'json_schema');
+  assert.deepEqual(draft.scenePatch,{});
+});
+
+test('a factual repair drops the rejected draft instead of preserving its invented setup',async()=>{
+  let payload;
+  const adapter=modelAdapter({endpoint:'https://example.invalid/chat',model:'test',apiKey:'test-only',fetchImpl:async(_url,options)=>{
+    payload=JSON.parse(JSON.parse(options.body).messages[1].content);
+    return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({move:{kind:'answer',focus:'present intention'},prose:'Chase says, “I wanted to talk.”',scenePatch:{characterPosition:null}})}}]})};
+  }});
+  await adapter.author({contract:{},repair:{draft:{prose:'The notebook you left yesterday.'},verdict:{accepted:false,issues:[{code:'provenance_missing_source',reason:'No prior user source.'}]},provenance:{claims:[]}}});
+  assert.equal(payload.repair.strategy,'RESET_UNSUPPORTED_PREMISE');
+  assert(!('draft' in payload.repair));
+  assert(payload.repair.requirements.includes('Absence of evidence is not evidence of the opposite'));
 });

@@ -5,9 +5,10 @@ No provider credential is accepted, read or printed.
 """
 import json,pathlib,sys,time,urllib.request,urllib.error
 
-endpoint,token_path,prefix=sys.argv[1:]
+endpoint,token_path,prefix=sys.argv[1:4]
 token=pathlib.Path(token_path).read_text()
-jobs=[('quality','reviewer'),('correction','experiment'),('interior','experiment'),('care','experiment'),('invitation','experiment'),('safety','experiment')]
+jobs=[('facts','provenance'),('correction','experiment'),('interior','experiment'),('care','experiment'),('invitation','experiment'),('safety','experiment')]
+if len(sys.argv)>4:jobs=[job for job in jobs if job[0] in sys.argv[4:]]
 for scenario,mode in jobs:
     request=urllib.request.Request(endpoint,data=json.dumps({'scenario':scenario,'mode':mode}).encode(),headers={'Content-Type':'application/json','x-evaluation-token':token},method='POST')
     began=time.time()

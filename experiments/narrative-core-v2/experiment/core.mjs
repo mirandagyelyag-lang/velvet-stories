@@ -1,5 +1,6 @@
 // Isolated experiment. No imports from the production orchestration pipeline.
 import { buildCrisisResponse } from './crisis-response.js';
+import {sourceCatalog} from './provenance.mjs';
 
 const copy = value => structuredClone(value);
 const check = (condition, message) => { if (!condition) throw new Error(message); };
@@ -31,7 +32,8 @@ export function applyUserEvents(session, message, events = []) {
 
 export function turnContract(session, message) {
   return {
-    version: 'experiment-v3.4', profile: copy(session.profile),
+    version: 'experiment-v4.3', profile: copy(session.profile),
+    sources: sourceCatalog(session,message),
     confirmedFacts: copy(session.evidence), scene: copy(session.scene),
     presentation: 'Narration is third person about the named character and second person about the user. Spoken words use quotation marks with an unambiguous named speaker. Do not switch into first-person narration or present unquoted dialogue as narrator fact.',
     canon: 'An NPC name mentioned by the user establishes that reference, not their habits, career, personality, whereabouts or shared history. Distinguish new present-world actions from claims about an existing person. For claims about established people or the user, use only the supplied profile, confirmed facts or explicit user messages. An earlier assistant invention is not evidence.',
@@ -67,7 +69,7 @@ function proposedScene(scene, patch, characterId) {
   return next;
 }
 
-export async function runTurn({session, message, events = [], author, reviewer, signal, commit}) {
+export async function runTurn({session, message, events = [], author, reviewer, provenance, signal, commit}) {
   check(message?.id && typeof message.content === 'string', 'Message identity required');
   check(!session.history.some(row => row.id === message.id), 'Duplicate user turn');
   signal?.throwIfAborted();
@@ -78,13 +80,15 @@ export async function runTurn({session, message, events = [], author, reviewer, 
   const attempts = [];
   let accepted = crisis ? {prose: crisis, scenePatch: {}} : null;
   if (!accepted) {
+    check(typeof provenance==='function','Factual provenance auditor required');
     for (let attempt = 0; attempt < 2; attempt++) {
       signal?.throwIfAborted();
       const draft = await author({contract: copy(contract), repair: copy(attempts.at(-1) || null), signal});
       check(typeof draft?.prose === 'string' && draft.prose.trim() && draft.prose.length <= 8000, 'Invalid author prose');
       const nextScene = proposedScene(prepared.scene, draft.scenePatch || {}, prepared.profile.id);
-      const verdict = reviewResult(await reviewer({contract: copy(contract), draft: copy(draft), nextScene, signal}));
-      attempts.push({draft: copy(draft), verdict});
+      const factual = reviewResult(await provenance({contract:copy(contract),draft:copy(draft),signal}));
+      const verdict = !factual.accepted ? factual : reviewResult(await reviewer({contract: copy(contract), draft: copy(draft), nextScene, signal}));
+      attempts.push({draft: copy(draft), verdict, provenance:copy(factual)});
       if (verdict.accepted) { accepted = draft; break; }
     }
   }
