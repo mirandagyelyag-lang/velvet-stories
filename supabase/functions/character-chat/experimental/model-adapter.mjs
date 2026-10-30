@@ -10,7 +10,7 @@ const authorSchema=obj({move:obj({kind:text,focus:text}),prose:text,scenePatch:o
 export function authorContract(contract) {
   // Keep actual identity and literal conversation, not the accumulated private
   // orchestration modules embedded in emotional_dna or other engine fields.
-  const keys=['id','name','role','description','personality','relationship','world','speech_style','speechStyle','humor_style','humorStyle','boundaries','language'];
+  const keys=['id','name','role','description','personality','relationship','world','speech_style','speechStyle','humor_style','humorStyle','boundaries','language','canonical_age','user_persona_age'];
   const profile=Object.fromEntries(keys.filter(k=>contract.profile?.[k]!=null).map(k=>[k,contract.profile[k]]));
   return {...contract,characterVoice:contract.characterVoice||characterVoiceBrief(contract.profile),profile,sources:(contract.sources||[]).filter(s=>s.kind!=='profile'||keys.some(k=>s.id===`profile/${k}`))};
 }

@@ -8,8 +8,14 @@ const entailmentSchema=object({results:{type:'array',items:object({claimId:strin
 
 export function sourceCatalog(session, message) {
   const sources=[];
+  const performanceFields=new Set(['emotional_dna','creator_approved_opening','creator_approved_engine','voice_reference','voiceReference']);
   for (const [field,value] of Object.entries(session.profile)) {
+    if(performanceFields.has(field))continue;
     if(value!==undefined&&value!==null) sources.push({id:`profile/${field}`,kind:'profile',text:typeof value==='string'?value:JSON.stringify(value)});
+  }
+  for(const field of ['canonical_age','user_persona_age']){
+    const age=session.profile.emotional_dna?.[field];
+    if(Number.isInteger(age)&&age>0)sources.push({id:`profile/${field}`,kind:'profile',text:String(age)});
   }
   const users=new Map(session.history.filter(row=>row.role==='user').map(row=>[row.id,row.content]));
   for(const fact of session.evidence)if(!users.has(fact.messageId))users.set(fact.messageId,fact.quote);

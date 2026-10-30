@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {characterVoiceBrief,characterVoiceIssues} from './character-voice.mjs';
 import {authorContract} from './model-adapter.mjs';
-import {createSession,runTurn} from './core.mjs';
+import {createSession,runTurn,turnContract} from './core.mjs';
 const profile={id:'chase',name:'Chase Beaumont',role:'Campus Heartthrob',emotional_dna:{creator_approved_engine:'ELECTRICITY: socially desired, drawn back without settled feelings. No declarations.',internal_module:'unrelated orchestration'}};
 test('approved voice reaches compact author without treating an exemplar as history',()=>{
  const c=authorContract({profile,sources:[]});assert.match(c.characterVoice,/ELECTRICITY/);assert.match(c.characterVoice,/never evidence/);assert.equal(c.profile.emotional_dna,undefined);assert(!c.characterVoice.includes('unrelated orchestration'));
@@ -9,6 +9,11 @@ test('approved voice reaches compact author without treating an exemplar as hist
 test('approved prose calibrates voice but is not added to the factual source catalog',()=>{
  const c=authorContract({profile:{...profile,emotional_dna:{...profile.emotional_dna,creator_approved_opening:'A fictional sample with a mark on his cheek.'}},sources:[]});
  assert.match(c.characterVoice,/A fictional sample/);assert.match(c.characterVoice,/establishes NO facts/);assert.deepEqual(c.sources,[]);
+});
+test('the real turn catalog excludes illustrative events while preserving creator age corrections',()=>{
+ const c=turnContract(createSession({profile:{...profile,emotional_dna:{...profile.emotional_dna,creator_approved_opening:'The notebook you left yesterday is in his bag.',canonical_age:24,user_persona_age:21}}}),{id:'m',content:'Hello.'});
+ assert(!c.sources.some(s=>s.text.includes('notebook')));assert(c.sources.some(s=>s.id==='profile/canonical_age'&&s.text==='24'));assert(c.sources.some(s=>s.id==='profile/user_persona_age'&&s.text==='21'));
+ assert.match(c.characterVoice,/notebook/);assert.match(c.characterVoice,/establishes NO facts/);
 });
 test('unconfigured campaign is blocked, explicit user premise stays possible',()=>{
  const reply='Chase says, “I’m thinking of running for student‑government president.”';

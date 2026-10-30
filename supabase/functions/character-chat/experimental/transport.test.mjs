@@ -20,3 +20,17 @@ test('only the bounded author repair uses Groq; evidence reviewers retain their 
   assert.equal(routes.filter(x=>x.includes('api.groq.com')).length,1);assert.equal(routes.filter(x=>x.endsWith(':generateContent')).length,1);
  }finally{globalThis.fetch=before.fetch;globalThis.Deno=before.Deno;Date.now=before.now;}
 });
+test('an author rate limit falls back once and skips the cooling-down provider on the next call',async()=>{
+ const before={fetch:globalThis.fetch,Deno:globalThis.Deno,now:Date.now};let clock=0,secondary=0,primary=0;
+ globalThis.Deno={env:{get:name=>name==='GEMINI_API_KEY'?'test-primary':name==='GROQ_API_KEY'?'test-secondary':undefined}};Date.now=()=>clock+=6000;
+ globalThis.fetch=async(url)=>{
+  if(String(url).endsWith('/models'))return new Response(JSON.stringify({models:[{name:'models/gemini-3.5-flash-lite',supportedGenerationMethods:['generateContent']}]}));
+  if(String(url).includes('api.groq.com')){secondary++;return new Response('{}',{status:429,headers:{'retry-after':'60'}});}
+  primary++;return new Response(JSON.stringify({candidates:[{content:{parts:[{text:JSON.stringify({move:{kind:'answer',focus:'present preference'},prose:'Chase says, “I wanted you to stay.”',scenePatch:{characterPosition:null}})}]}}]}));
+ };
+ try{
+  const {transport:freshTransport}=await import('./transport.mjs?rate-limit-test');const adapter=await freshTransport();
+  assert.equal((await adapter.author({contract:{}})).prose,'Chase says, “I wanted you to stay.”');
+  assert.equal((await adapter.author({contract:{}})).prose,'Chase says, “I wanted you to stay.”');assert.equal(secondary,1);assert.equal(primary,2);
+ }finally{globalThis.fetch=before.fetch;globalThis.Deno=before.Deno;Date.now=before.now;}
+});
