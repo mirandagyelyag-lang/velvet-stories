@@ -1,4 +1,4 @@
-import {buildInstantEncounterContract} from "./engine/instant-encounter-contract.mjs";
+import {buildInstantEncounterContract,buildChaseOpeningBrief,chaseInstitutionalDutyIssues} from "./engine/instant-encounter-contract.mjs";
 import {createSession,runTurn} from "./experimental/core.mjs";
 import {transport as previewTransport} from "./experimental/transport.mjs";
 import { instantStoryIdentityDeliveryIssues } from "./engine/instant-story-identity.js";
@@ -2557,6 +2557,8 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       const prose = instantStoryProseValidation(body.opening);
       const deliveryHardBlocks = [
         ...chaseEventHostIssues(prose.opening, safeDraft),
+        ...chaseOpeningIssues(prose.opening,safeDraft),
+        ...chaseInstitutionalDutyIssues(prose.opening,safeDraft,cleanIdea),
         ...(instantStoryTooSimilarV3539(prose.opening, recentOpenings) ? ["recent_opening_similarity"] : []),
         ...(chaseRecycledStructure(prose.opening) ? ["chase_recycled_npc_abandonment"] : []),
         ...(chaseEngineActive && /\b(?:junior|senior|student|volunteer|committee|board|pass|programs|ledger|tickets|raffle|shift|audit|sponsor|clipboard|meeting|proofing|roster|remarks)\b/i.test(prose.opening) && /\b(?:blocked|blocking|planted|cornered|intercepted|path)\b/i.test(prose.opening) && /\b(?:gaze|eyes|sight|look)\b/i.test(prose.opening) && /\b(?:stepped|walked|stopped|moved|shifted)\b/i.test(prose.opening) ? ["chase_recycled_institutional_escape"] : []),
@@ -2581,7 +2583,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       const saved = String(safeDraft.emotional_dna?.creator_approved_opening || "").trim();
       const key = value => String(value).replace(/\s+/g, " ").trim();
       const alreadyShown = recentOpenings.some(item => key(item) === key(saved));
-      if (saved && !alreadyShown && !instantStoryTooSimilarV3539(saved, recentOpenings) && instantStoryProseValidation(saved).valid &&
+      if (saved && !alreadyShown && !chaseOpeningIssues(saved,safeDraft).length && !chaseInstitutionalDutyIssues(saved,safeDraft,cleanIdea).length && !instantStoryTooSimilarV3539(saved, recentOpenings) && instantStoryProseValidation(saved).valid &&
           !instantStoryHardBlockIssuesV35298(saved, safeDraft, "").length &&
           !speakerOwnershipIssuesV35367(saved, safeDraft).length) {
         body = { opening: saved, source: "creator_approved_fallback", sceneSeed, openingFamily,
@@ -2668,7 +2670,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     const available = (candidate) => ! /^(?:groq|openai)\//.test(String(candidate)) && !quotaUnavailableModels.has(candidate) && !overloadedModels.has(candidate);
     model = alternatives.find(available) || model;
     try {
-      const characterPrompt = ["chase_edit", "nathan_edit", "alexander_edit"].includes(phase) ? requestPrompt : alexanderEngineActive
+      const characterPrompt = chaseEngineActive ? buildChaseOpeningBrief(safeDraft,cleanIdea,recentOpenings,encounterContract,phase==="primary"?null:rejectedInstantCandidates.at(-1)) : ["chase_edit", "nathan_edit", "alexander_edit"].includes(phase) ? requestPrompt : alexanderEngineActive
         ? `${buildAlexanderInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT PASS: ${phase}\n${phase === "primary" ? "" : rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}`
         : nathanEngineActive
         ? `${buildNathanInstantPrompt(safeDraft, cleanIdea, recentOpenings)}\nCURRENT PASS: ${phase}\n${phase === "primary" ? "" : rejectedInstantCandidates.slice(-2).map(item => `DRAFT: ${item.opening}\nFAILURES: ${(item.rejectionReasons || []).join(", ")}`).join("\n\n")}`
@@ -2818,7 +2820,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
     // a party-world roof/driveway beat as "campus" or "home"). Keep anchorIssues for
     // diagnostics/repair context, but never reject an otherwise valid opening for it.
     const chaseIssues = [...chaseOpeningIssues(opening, safeDraft), ...nathanOpeningIssues(opening, safeDraft, cleanIdea)];
-    const deliveryHardIssues = [...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea), ...speakerOwnershipIssuesV35367(opening, safeDraft)];
+    const deliveryHardIssues = [...chaseInstitutionalDutyIssues(opening,safeDraft,cleanIdea), ...instantStoryHardBlockIssuesV35298(opening, safeDraft, cleanIdea), ...speakerOwnershipIssuesV35367(opening, safeDraft)];
     // The same factual/agency/completeness contract applies on every delivery path.
     // Editorial heuristics are advisory; they must not reject a primary draft that
     // the deadline path would immediately deliver unchanged.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {selectInstantMove,buildInstantEncounterContract} from './instant-encounter-contract.mjs';
+import {selectInstantMove,buildInstantEncounterContract,buildChaseOpeningBrief,chaseInstitutionalDutyIssues} from './instant-encounter-contract.mjs';
 
 test('the same request keeps its direction through generation and repair',()=>{
   assert.deepEqual(selectInstantMove('request-12'),selectInstantMove('request-12'));
@@ -20,4 +20,16 @@ test('all directions preserve a hearing bridge and open user agency',()=>{
     assert.match(prompt,/Before the FIRST line/);assert.match(prompt,/Stop before any user reaction/);
     assert.match(prompt,/do not open with the stock prefix/);assert.match(prompt,/actual profile voice/);
   }
+});
+
+test('the observed invented faculty duty cannot survive final delivery',()=>{
+ const opening='The philosophy department thinks I am spending Friday proofing faculty citation indexes.';
+ assert.deepEqual(chaseInstitutionalDutyIssues(opening,{name:'Chase Beaumont'}),['chase_invented_institutional_duty']);
+ assert.deepEqual(chaseInstitutionalDutyIssues(opening,{name:'Chase Beaumont'},'He is proofing faculty citation indexes.'),[]);
+ assert.deepEqual(chaseInstitutionalDutyIssues(opening,{name:'Other'}),[]);
+});
+test('Chase repair receives the actual draft and keeps the new encounter contract',()=>{
+ const prompt=buildChaseOpeningBrief({name:'Chase Beaumont'},'',[],'DISTANCE CONTRACT',{opening:'Rejected scene',rejectionReasons:['invented duty']});
+ assert.match(prompt,/DISTANCE CONTRACT/);assert.match(prompt,/DRAFT: Rejected scene/);assert.match(prompt,/invented duty/);
+ assert(!prompt.includes('APPROVED RHYTHM REFERENCE'));
 });
