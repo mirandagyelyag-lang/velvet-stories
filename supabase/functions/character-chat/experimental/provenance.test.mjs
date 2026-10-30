@@ -79,6 +79,11 @@ test('a colon in a claim ID cannot hide missing evidence behind a positive judgm
 test('an unknown scope cannot create a source exemption',()=>{
   assert.throws(()=>validateEntailment([claim],{results:[{claimId:'c1',subject:'lead',scope:'anything_is_allowed',supported:true,reason:'Invented exception.'}],missingClaims:[]},prose),/Invalid factual scope/);
 });
+test('a misclassified user action requires evidence rather than crashing the turn',async()=>{
+ const line='Chase says, “You walked across the kitchen.”';let calls=0;
+ const audit=provenanceAuditor(async()=>++calls===1?{claims:[{id:'c1',kind:'user_fact',excerpt:'You walked across the kitchen.',proposition:'The user crossed the kitchen.',citations:[]}]}:{results:[{claimId:'c1',subject:'user',scope:'new_present_action_or_speech',supported:true,reason:'This is visible user movement.'}],missingClaims:[]});
+ const result=await audit({contract:{sources:[],profile:session.profile},draft:{prose:line}});assert.equal(result.accepted,false);assert(result.issues.some(x=>x.code==='provenance_missing_source'));
+});
 
 test('open questions can have NPC subjects while presupposed history remains protected',()=>{
   const question='Chase asks, “Does Adrian want company?”';
