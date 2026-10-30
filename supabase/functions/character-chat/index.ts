@@ -1,3 +1,4 @@
+import {reviewScene} from "./experimental/review-scene.mjs";
 import {buildNarrativeRescuePrompt} from "./experimental/narrative-rescue.mjs";
 import {matchesRejectedAlternative,buildRegenerationRecoveryPrompt} from "./engine/regeneration-novelty.mjs";
 import {buildInstantEncounterContract,buildChaseOpeningBrief,chaseInstitutionalDutyIssues} from "./engine/instant-encounter-contract.mjs";
@@ -11990,7 +11991,7 @@ async function streamRoleplayV19({
           persistableReply = 'You unfold the paper. In Chase’s handwriting, it reads: “I care about you. I know I keep making you doubt that, and I hate that I’ve given you reasons to. I don’t expect a note to fix it. I just wanted you to know I mean it.”\n\nChase watches you reach the last line. “I should’ve said that to your face,” he admits. “You deserved an answer, not another guessing game.”';
         }
         // Orvayne source and progression gate. Authentication, history and persistence use the existing route.
-        const previewSession=createSession({profile:{...character,id:character.id||"lead",language:/spanish|español/i.test(responseLanguage)?"es":"en"},scene:{location:existingSceneState?.location||"unspecified",present:[userId,character.id],positions:{},objects:[]}});
+        const previewSession=createSession({profile:{...character,id:character.id||"lead",language:/spanish|español/i.test(responseLanguage)?"es":"en"},scene:reviewScene(existingSceneState||{},{id:character.id||"lead",name:character.name})});
         previewSession.history=messages.map((m,i)=>({id:String(m.id||i),role:m.sender==="user"?"user":"assistant",content:String(m.content||"")}));
         previewSession.history=previewSession.history.filter(m=>m.id!==String(latestUserMessageId));
         previewSession.regeneration=isRegeneration?{rejectedResponses:(rejectedResponses||[]).slice(-8).map(r=>String(r).slice(0,2000)),instruction:regenerationInstruction||""}:null;
