@@ -12005,7 +12005,7 @@ async function streamRoleplayV19({
           let previewFirst=true;
           checkedPreview=await runTurn({session:previewSession,message:{id:String(latestUserMessageId||crypto.randomUUID()),content:latestUserMessage},...previewAdapter,author:async args=>{if(previewFirst){previewFirst=false;return {prose:persistableReply,scenePatch:{}};}return previewAdapter.author(args);},signal:AbortSignal.timeout(90000)});
         } finally {clearInterval(validationHeartbeat);}
-        if(!checkedPreview.reply)throw new Error("Orvayne could not validate this continuation; no character reply was saved. Please try again.");
+        if(!checkedPreview.reply){console.warn("[character-chat] narrative gate rejected continuation",{attemptIssues:checkedPreview.attempts.map(attempt=>attempt.verdict.issues.map(issue=>issue.code))});throw new Error("Orvayne could not validate this continuation; no character reply was saved. Please try again.");}
         // A repaired reply must never retain state claims from the rejected draft.
         if(checkedPreview.reply !== persistableReply){
           result = {reply:checkedPreview.reply,scene_update:{},cast_updates:[],continuity_update:{},mind_update:{},story_drive:{},post_turn_reflection:{},human_behavior_update:{},presence_update:{},development_update:{},thread_updates:[]};
