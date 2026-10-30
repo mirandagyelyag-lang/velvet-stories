@@ -21,3 +21,17 @@ export function characterVoiceIssues(profile={},message={},history=[],prose='') 
  if(/\b(?:wait(?:s|ing)? for (?:a|your) reaction|as if waiting for a reaction)\b/i.test(narration))issues.push({code:'voice_passive_reaction_coda',reason:'Remove the narrator coda about waiting for the reader reaction. End on the actual spoken or consequential beat, without explaining the tension or prescribing audience attention.'});
  return issues;
 }
+
+export function trimChaseReactionCoda(profile={},prose='') {
+ if(typeof prose!=='string'||!/^chase(?:\s+beaumont)?$/i.test(String(profile.name||'')))return prose;
+ const end=Math.max(prose.lastIndexOf('”'),prose.lastIndexOf('"'));if(end<0)return prose;
+ const tail=prose.slice(end+1).trim();
+ if(tail.length>240||! /^(?:He|Chase(?: Beaumont)?|His (?:eyes|gaze)|The words)\b/.test(tail))return prose;
+ if(!/\bwait(?:s|ing)? for (?:a|your) reaction[.!]?\s*$/i.test(tail))return prose;
+ const plain=/^(?:He|Chase(?: Beaumont)?) (?:waits|is waiting) for (?:a|your) reaction[.!]?$/i;
+ const words=/^(?:He|Chase(?: Beaumont)?) lets (?:the|his) words hang(?:,\s*(?:his )?(?:eyes|gaze) (?:flicking|fixed|resting) (?:to|toward|towards|on) (?:the )?(?:doorway|door|room|floor|counter|entrance|you))?,? (?:as if )?waiting for (?:a|your) reaction[.!]?$/i;
+ if(!plain.test(tail)&&!words.test(tail))return prose;
+ // Keep speaker attribution and any physical, object, social or scene change.
+ if(/\b(?:says?|asks?|repl(?:y|ies)|adds?|murmurs?|walk\w*|cross\w*|step\w*|leav\w*|hand\w*|giv\w*|tak\w*|reach\w*|open\w*|clos\w*|touch\w*|kiss\w*|grip\w*|pull\w*|push\w*|send\w*|text\w*|call\w*|throw\w*|drop\w*|sets?|sit\w*|stand\w*|mov\w*|turn\w*|follow\w*)\b/i.test(tail))return prose;
+ return prose.slice(0,end+1).trimEnd();
+}

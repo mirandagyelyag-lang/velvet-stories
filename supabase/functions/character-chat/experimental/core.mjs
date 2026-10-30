@@ -3,7 +3,7 @@ import { buildCrisisResponse } from './crisis-response.js';
 import {sourceCatalog} from './provenance.mjs';
 import {turnObligations,contentAnswerIssues} from './turn-obligations.mjs';
 import {originPositionIssues} from './review-scene.mjs';
-import {characterVoiceBrief,characterVoiceIssues} from './character-voice.mjs';
+import {characterVoiceBrief,characterVoiceIssues,trimChaseReactionCoda} from './character-voice.mjs';
 
 const copy = value => structuredClone(value);
 const check = (condition, message) => { if (!condition) throw new Error(message); };
@@ -102,7 +102,8 @@ export async function runTurn({session, message, events = [], author, reviewer, 
     check(typeof provenance==='function','Factual provenance auditor required');
     for (let attempt = 0; attempt < 2; attempt++) {
       signal?.throwIfAborted();
-      const draft = await author({contract: copy(contract), repair: copy(attempts.at(-1) || null), signal});
+      const authored = await author({contract: copy(contract), repair: copy(attempts.at(-1) || null), signal});
+      const draft = {...authored,prose:trimChaseReactionCoda(prepared.profile,authored?.prose)};
       check(typeof draft?.prose === 'string' && draft.prose.trim() && draft.prose.length <= 8000, 'Invalid author prose');
       const nextScene = proposedScene(prepared.scene, draft.scenePatch || {}, prepared.profile.id);
       const repeated = [...repetitionIssues(prepared.history, draft.prose),...contentAnswerIssues(message.content,draft.prose),...originPositionIssues(prepared.scene,prepared.profile,draft.prose),...characterVoiceIssues(prepared.profile,message,prepared.history,draft.prose)];

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {characterVoiceBrief,characterVoiceIssues} from './character-voice.mjs';
+import {characterVoiceBrief,characterVoiceIssues,trimChaseReactionCoda} from './character-voice.mjs';
 import {authorContract} from './model-adapter.mjs';
 import {createSession,runTurn,turnContract} from './core.mjs';
 const profile={id:'chase',name:'Chase Beaumont',role:'Campus Heartthrob',emotional_dna:{creator_approved_engine:'ELECTRICITY: socially desired, drawn back without settled feelings. No declarations.',internal_module:'unrelated orchestration'}};
@@ -28,6 +28,17 @@ test('natural direct answers and optional playful speech do not need a stock ton
 test('the observed passive reaction coda is rejected without banning quiet actions',()=>{
  assert.equal(characterVoiceIssues(profile,{},[],'Chase lets the words hang, eyes flicking to the doorway as if waiting for a reaction.')[0]?.code,'voice_passive_reaction_coda');
  assert.equal(characterVoiceIssues(profile,{},[],'Chase waits beside the door. “Take your time.”').length,0);
+});
+test('only a disposable trailing reaction coda can be removed',()=>{
+ const line='Chase says, “I wanted you to stay.”';
+ assert.equal(trimChaseReactionCoda(profile,line+' He lets the words hang, eyes flicking to the doorway as if waiting for a reaction.'),line);
+ for(const tail of [' He hands you the note, waiting for your reaction.',' Chase says, waiting for your reaction.',' He walks to the sink, waiting for your reaction.',' He raises his glass, waiting for your reaction.',' He lets the words hang, then signals the bartender, waiting for your reaction.'])assert.equal(trimChaseReactionCoda(profile,line+tail),line+tail);
+ assert.equal(trimChaseReactionCoda(profile,'Chase says, “I am waiting for your reaction.”'),'Chase says, “I am waiting for your reaction.”');
+});
+test('copyediting a coda still requires the full source and semantic audits before acceptance',async()=>{
+ let factual=0,semantic=0;
+ const result=await runTurn({session:createSession({profile}),message:{id:'m',content:'Stay here.'},author:async()=>({prose:'Chase says, “I wanted you to stay.” He waits for your reaction.',scenePatch:{}}),provenance:async({draft})=>{factual++;assert(!draft.prose.includes('reaction'));return {accepted:true,issues:[]};},reviewer:async()=>{semantic++;return {accepted:true,issues:[]};}});
+ assert.equal(result.reply,'Chase says, “I wanted you to stay.”');assert.equal(factual,1);assert.equal(semantic,1);
 });
 test('invented campaign is repaired before factual or semantic approval and only the new words commit',async()=>{
  let calls=0;const good='Chase says, “I wanted you to stay. I was enjoying this.”';
