@@ -12003,7 +12003,7 @@ async function streamRoleplayV19({
         try {
           const previewAdapter=await previewTransport();
           let previewFirst=true;
-          checkedPreview=await runTurn({session:previewSession,message:{id:String(latestUserMessageId||crypto.randomUUID()),content:latestUserMessage},...previewAdapter,author:async args=>{if(previewFirst){previewFirst=false;if(["chase","chase beaumont"].includes(String(character.name||"").trim().toLowerCase()))return previewAdapter.author(args);return {prose:persistableReply,scenePatch:{}};}return previewAdapter.author(args);},signal:AbortSignal.timeout(90000)});
+          checkedPreview=await runTurn({session:previewSession,message:{id:String(latestUserMessageId||crypto.randomUUID()),content:latestUserMessage},...previewAdapter,author:async args=>{if(previewFirst){previewFirst=false;return {prose:persistableReply,scenePatch:{}};}return previewAdapter.author(args);},signal:AbortSignal.timeout(90000)});
         } finally {clearInterval(validationHeartbeat);}
         if(!checkedPreview.reply){console.warn("[character-chat] narrative gate rejected continuation",{attemptIssues:checkedPreview.attempts.map(attempt=>attempt.verdict.issues.map(issue=>issue.code))});throw new Error("Orvayne could not validate this continuation; no character reply was saved. Please try again.");}
         // A repaired reply must never retain state claims from the rejected draft.
