@@ -20,6 +20,9 @@ test('a correction is literal evidence, while private narration is not made audi
  assert(r.evidence.clarifications.some(x=>x.includes('not keeping score')));assert.equal(r.evidence.questions.length,0);
  assert.equal(interactionReading('*I wonder why he is here?*').evidence.questions.length,0);
 });
+test('a quoted NPC order is not automatically attributed to the user',()=>{
+ const r=interactionReading('Adrian says, “Stop following her.”');assert.match(r.evidence.speakerAttribution,/quotation marks alone do not establish/);assert.match(r.responseOrder,/quoted NPC speech to the NPC/);assert.equal(r.userConsent,undefined);
+});
 test('the observed scorekeeping claim cannot disappear into a lead-opinion exemption',async()=>{
  const prose='“You’re standing by the exit keeping score,” Chase says.';const required=requiredUserAssertions(prose);assert.equal(required.length,1);
  let calls=0;const audit=provenanceAuditor(async(_system,payload)=>++calls===1?{claims:[]}:{results:payload.claims.map(c=>({claimId:c.id,subject:'lead',scope:'current_offer_or_opinion',supported:true,reason:'This is just his teasing.'})),missingClaims:[]});
