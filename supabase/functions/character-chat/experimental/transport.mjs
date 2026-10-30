@@ -13,6 +13,15 @@ export async function transport(){
   const bridge=async(_url,options)=>{
    const pause=Math.max(0,5500-(Date.now()-lastRequest));if(pause)await new Promise(resolve=>setTimeout(resolve,pause));lastRequest=Date.now();
    const input=JSON.parse(options.body);
+   // The final repair is written by the independent free provider. Keep the
+   // evidence and semantic reviewers separate; no rejected prose bypasses them.
+   if(input.response_format?.json_schema?.schema?.properties?.prose && Deno.env.get('GROQ_API_KEY')){
+    return await fetch('https://api.groq.com/openai/v1/chat/completions',{
+     method:'POST',signal:options.signal,
+     headers:{'Content-Type':'application/json',Authorization:'Bearer '+Deno.env.get('GROQ_API_KEY')},
+     body:JSON.stringify({...input,model:'openai/gpt-oss-120b',max_completion_tokens:1800,reasoning_effort:'low'})
+    });
+   }
    let r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',signal:options.signal,headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:input.messages[0].content}]},contents:[{role:'user',parts:[{text:input.messages[1].content}]}],generationConfig:{maxOutputTokens:4096,...(input.response_format?.json_schema?{responseFormat:{text:{mimeType:'APPLICATION_JSON',schema:input.response_format.json_schema.schema}}}:{responseMimeType:'application/json'})}})});
    if(r.status===503){
     await r.arrayBuffer();await new Promise(resolve=>setTimeout(resolve,6000));options.signal?.throwIfAborted();
@@ -26,4 +35,5 @@ export async function transport(){
  })();
  return transportPromise;
 }
+
 

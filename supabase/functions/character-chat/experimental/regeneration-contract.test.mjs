@@ -8,7 +8,7 @@ test('regeneration alternatives reach the reviewers without becoming factual sou
  const result=await runTurn({session,message:{id:'turn',content:'What did you want to say?'},author:async({contract})=>{
   assert.equal(contract.regeneration.rejectedResponses[0],rejected);
   assert(!contract.sources.some(source=>source.text.includes('notebook')));
-  return {prose:'Chase sets down his keys. “I wanted to talk.”',scenePatch:{}};
+  return {prose:'Chase sets down his keys. “I wanted to ask what you thought of that song.”',scenePatch:{}};
  },provenance:async()=>({accepted:true,issues:[]}),reviewer:async({contract})=>{checked++;assert.equal(contract.regeneration.instruction,'Different tactic');return {accepted:true,issues:[]};}});
  assert.equal(result.status,'accepted');assert.equal(checked,1);
 });
