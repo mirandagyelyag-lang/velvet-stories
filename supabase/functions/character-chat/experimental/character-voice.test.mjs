@@ -6,6 +6,10 @@ const profile={id:'chase',name:'Chase Beaumont',role:'Campus Heartthrob',emotion
 test('approved voice reaches compact author without treating an exemplar as history',()=>{
  const c=authorContract({profile,sources:[]});assert.match(c.characterVoice,/ELECTRICITY/);assert.match(c.characterVoice,/never evidence/);assert.equal(c.profile.emotional_dna,undefined);assert(!c.characterVoice.includes('unrelated orchestration'));
 });
+test('approved prose calibrates voice but is not added to the factual source catalog',()=>{
+ const c=authorContract({profile:{...profile,emotional_dna:{...profile.emotional_dna,creator_approved_opening:'A fictional sample with a mark on his cheek.'}},sources:[]});
+ assert.match(c.characterVoice,/A fictional sample/);assert.match(c.characterVoice,/establishes NO facts/);assert.deepEqual(c.sources,[]);
+});
 test('unconfigured campaign is blocked, explicit user premise stays possible',()=>{
  const reply='Chase says, “I’m thinking of running for student‑government president.”';
  assert.equal(characterVoiceIssues(profile,{},[],reply)[0]?.code,'voice_invented_institutional_plot');
