@@ -32,7 +32,7 @@ export function applyUserEvents(session, message, events = []) {
 
 export function turnContract(session, message) {
   return {
-    version: 'orvayne-core-v4.4', profile: copy(session.profile),
+    version: 'orvayne-core-v4.5', regeneration: copy(session.regeneration || null), profile: copy(session.profile),
     sources: sourceCatalog(session,message),
     confirmedFacts: copy(session.evidence), scene: copy(session.scene),
     presentation: 'Narration is third person about the named character and second person about the user. Spoken words use quotation marks with an unambiguous named speaker. Do not switch into first-person narration or present unquoted dialogue as narrator fact.',

@@ -1,3 +1,4 @@
+import {matchesRejectedAlternative,buildRegenerationRecoveryPrompt} from "./engine/regeneration-novelty.mjs";
 import {buildInstantEncounterContract,buildChaseOpeningBrief,chaseInstitutionalDutyIssues} from "./engine/instant-encounter-contract.mjs";
 import {createSession,runTurn} from "./experimental/core.mjs";
 import {transport as previewTransport} from "./experimental/transport.mjs";
@@ -7677,20 +7678,7 @@ function sameRegenerationBeat(current = "", old = "") {
   return shared.filter((item) => highSignal.has(item)).length >= 3;
 }
 function matchesRejectedRegeneration(reply = "", rejectedResponses = []) {
-  const current = String(reply || "").trim();
-  if (!current) return false;
-  const normalizedCurrent = normalizeText(current);
-  return (Array.isArray(rejectedResponses) ? rejectedResponses : []).some((rejected) => {
-    const old = String(rejected || "").trim();
-    if (!old) return false;
-    const normalizedOld = normalizeText(old);
-    if (normalizedCurrent === normalizedOld) return true;
-    if (replySimilarity(current, old) >= 0.72) return true;
-    const currentDialogue = extractDialogueLines(current).join(" ");
-    const oldDialogue = extractDialogueLines(old).join(" ");
-    if (currentDialogue && oldDialogue && replySimilarity(currentDialogue, oldDialogue) >= 0.78) return true;
-    return sameRegenerationBeat(current, old);
-  });
+  return matchesRejectedAlternative(reply,rejectedResponses);
 }
 
 function developmentText(value = "", maximum = 600) {
@@ -11364,10 +11352,10 @@ async function streamRoleplayV19({
         const callCurrentProvider = async (options): Promise<ModelResult | null> => {
           // The final rescue must not silently return null after the repair budget
           // is spent. Reserve one free-only request; never add a paid retry.
-          if (!correctionBudget.available && options.freeFinalRescue && groqTurnPrompt) {
+          if (!correctionBudget.available && options.freeFinalRescue && Deno.env.get("GROQ_API_KEY")) {
             return await freeFinalRescueBudget.run(async () => {
               const requested = String(options.prompt || "");
-              const rescuePrompt = requested.startsWith(compactTurnPrompt)
+              const rescuePrompt = groqTurnPrompt && requested.startsWith(compactTurnPrompt)
                 ? groqTurnPrompt + requested.slice(compactTurnPrompt.length) : requested;
               const next = await callGroqProse({
                 apiKey: Deno.env.get("GROQ_API_KEY") || "",
@@ -11777,16 +11765,19 @@ async function streamRoleplayV19({
           console.warn("[character-chat] regeneration candidate matched rejected history; forcing fresh recovery", {
             rejectedCount: Array.isArray(rejectedResponses) ? rejectedResponses.length : 0,
           });
-          const rejectedHistory = (Array.isArray(rejectedResponses) ? rejectedResponses : []).slice(-12)
-            .map((item, index) => `REJECTED ${index + 1}: ${cleanPromptValue(item, 700)}`).join("\n");
           const noveltyRecovery = await callCurrentProvider({
             apiKey,
-            systemInstruction: "Write a genuinely different in-character continuation from the same literal canon. Plain prose only. Do not paraphrase, recycle, or cosmetically rewrite any rejected response.",
-            prompt: `${prompt}\n\nREGENERATION NOVELTY LOCK\nThe user explicitly rejected the responses below. None may be repeated or paraphrased. Change the character's tactic, wording, and immediate action while preserving canon and user agency.\n${rejectedHistory}`,
+            systemInstruction: "Write a different in-character continuation from the supplied literal canon. Never continue or paraphrase a rejected alternative.",
+            prompt: buildRegenerationRecoveryPrompt({character,messages,scene:existingSceneState,latestUserMessage,instruction:regenerationInstruction,rejectedResponses}),
             maxOutputTokens: getMaximumOutputTokens(character.response_length, turnContract?.generationOrchestratorV346?.responseTokenCeiling),
             isCancelled,
             interactionDeadlineMs: 18000,
+            freeFinalRescue: true,
           });
+          if (!noveltyRecovery) {
+            sendEvent(controller,{type:"diagnostic",phase:"regeneration-recovery-unavailable",reason:"bounded-recovery-budget-unavailable"});
+            throw new Error("Orvayne could not finish a new alternative this time. The previous response was kept.");
+          }
           const freshReply = String(noveltyRecovery?.reply || "").trim();
           if (freshReply && !matchesRejectedRegeneration(freshReply, rejectedResponses)) {
             persistableReply = freshReply;
@@ -12001,6 +11992,7 @@ async function streamRoleplayV19({
         const previewSession=createSession({profile:{...character,id:character.id||"lead",language:/spanish|español/i.test(responseLanguage)?"es":"en"},scene:{location:existingSceneState?.location||"unspecified",present:[userId,character.id],positions:{},objects:[]}});
         previewSession.history=messages.map((m,i)=>({id:String(m.id||i),role:m.sender==="user"?"user":"assistant",content:String(m.content||"")}));
         previewSession.history=previewSession.history.filter(m=>m.id!==String(latestUserMessageId));
+        previewSession.regeneration=isRegeneration?{rejectedResponses:(rejectedResponses||[]).slice(-8).map(r=>String(r).slice(0,2000)),instruction:regenerationInstruction||""}:null;
         const previewAdapter=await previewTransport();
         let previewFirst=true;
         const checkedPreview=await runTurn({session:previewSession,message:{id:String(latestUserMessageId||crypto.randomUUID()),content:latestUserMessage},...previewAdapter,author:async args=>{if(previewFirst){previewFirst=false;return {prose:persistableReply,scenePatch:{}};}return previewAdapter.author(args);},signal:AbortSignal.timeout(90000)});
@@ -12010,6 +12002,7 @@ async function streamRoleplayV19({
           result = {reply:checkedPreview.reply,scene_update:{},cast_updates:[],continuity_update:{},mind_update:{},story_drive:{},post_turn_reflection:{},human_behavior_update:{},presence_update:{},development_update:{},thread_updates:[]};
         }
         persistableReply=checkedPreview.reply;
+        if(isRegeneration && matchesRejectedRegeneration(persistableReply,rejectedResponses))throw new Error("Orvayne could not produce a different alternative. The previous response was kept.");
         previewValidated=true;
         result = { ...result, reply: persistableReply };
 
