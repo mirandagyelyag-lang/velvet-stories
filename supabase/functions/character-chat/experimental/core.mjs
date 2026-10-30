@@ -3,6 +3,7 @@ import { buildCrisisResponse } from './crisis-response.js';
 import {sourceCatalog} from './provenance.mjs';
 import {turnObligations,contentAnswerIssues} from './turn-obligations.mjs';
 import {originPositionIssues} from './review-scene.mjs';
+import {characterVoiceBrief,characterVoiceIssues} from './character-voice.mjs';
 
 const copy = value => structuredClone(value);
 const check = (condition, message) => { if (!condition) throw new Error(message); };
@@ -34,7 +35,7 @@ export function applyUserEvents(session, message, events = []) {
 
 export function turnContract(session, message) {
   return {
-    version: 'orvayne-core-v4.6', turnObligations: turnObligations(message.content), regeneration: copy(session.regeneration || null), profile: copy(session.profile),
+    version: 'orvayne-core-v4.7', characterVoice: characterVoiceBrief(session.profile), turnObligations: turnObligations(message.content), regeneration: copy(session.regeneration || null), profile: copy(session.profile),
     sources: sourceCatalog(session,message),
     confirmedFacts: copy(session.evidence), scene: copy(session.scene),
     presentation: 'Narration is third person about the named character and second person about the user. Spoken words use quotation marks with an unambiguous named speaker. Do not switch into first-person narration or present unquoted dialogue as narrator fact.',
@@ -104,7 +105,7 @@ export async function runTurn({session, message, events = [], author, reviewer, 
       const draft = await author({contract: copy(contract), repair: copy(attempts.at(-1) || null), signal});
       check(typeof draft?.prose === 'string' && draft.prose.trim() && draft.prose.length <= 8000, 'Invalid author prose');
       const nextScene = proposedScene(prepared.scene, draft.scenePatch || {}, prepared.profile.id);
-      const repeated = [...repetitionIssues(prepared.history, draft.prose),...contentAnswerIssues(message.content,draft.prose),...originPositionIssues(prepared.scene,prepared.profile,draft.prose)];
+      const repeated = [...repetitionIssues(prepared.history, draft.prose),...contentAnswerIssues(message.content,draft.prose),...originPositionIssues(prepared.scene,prepared.profile,draft.prose),...characterVoiceIssues(prepared.profile,message,prepared.history,draft.prose)];
       const factual = repeated.length ? {accepted:false,issues:repeated} : reviewResult(await provenance({contract:copy(contract),draft:copy(draft),signal}));
       const verdict = !factual.accepted ? factual : reviewResult(await reviewer({contract: copy(contract), draft: copy(draft), nextScene, signal}));
       attempts.push({draft: copy(draft), verdict, provenance:copy(factual)});

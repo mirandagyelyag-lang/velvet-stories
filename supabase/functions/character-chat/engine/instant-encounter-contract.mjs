@@ -1,3 +1,4 @@
+import {characterVoiceBrief,characterVoiceIssues} from "../experimental/character-voice.mjs";
 const moves = [
   {id:'new_offer', pattern:/\b(?:offer|wager|bet|propos|apuesta|propon)\w*/i, direction:'An optional new offer with something the lead personally risks. Nobody has accepted yet; no prior wager, debt or obligation.'},
   {id:'changed_mind', pattern:/\b(?:changed? (?:his|her) mind|decid|instead|cambi[oó]|decid[ií])\w*/i, direction:'A visible change in the lead’s own immediate plan, with a concrete personal reason. It changes no user plan.'},
@@ -36,6 +37,7 @@ Establish the user's static location and a credible speaking distance naturally,
 Only PROFILE and IDEA establish biography and prior events. Invent present character/world actions, not past user bets, favors or secrets. Do not assign Chase an academic major, job, office shift or faculty task. No institutional errand, event-rescue mission, escape-from-boring-people plot or forced outing. An invitation is optional and remains unanswered.
 Keep the scene personal and concrete. No formal monologue, elaborate prop business, repeated dry-tone labels, narrator explanation of chemistry or final gaze awaiting approval. End at an interaction the reader can redirect.
 ${encounter}
+${characterVoiceBrief(character)}
 PROFILE: ${JSON.stringify(profile)}
 IDEA: ${idea||'No extra premise.'}
 RECENT OPENINGS TO DIFFER FROM IN ACTION AND DIALOGUE: ${JSON.stringify(recentOpenings.slice(-3).map(x=>String(x).slice(0,1000)))}
@@ -46,5 +48,5 @@ export function chaseInstitutionalDutyIssues(opening='',character={},idea='') {
   if(!/^chase(?:\s+beaumont)?$/i.test(String(character.name||'')))return [];
   const task=/\b(?:proofing faculty|faculty citation indexes|clerical shift|records office shift|proofread(?:ing)? (?:the )?faculty)\b/i;
   const canon=[idea,character.description,character.role,character.habits].filter(Boolean).join(' ');
-  return task.test(opening)&&!task.test(canon)?['chase_invented_institutional_duty']:[];
+  return [...(task.test(opening)&&!task.test(canon)?['chase_invented_institutional_duty']:[]),...characterVoiceIssues(character,{content:idea},[],opening).map(issue=>issue.code)];
 }

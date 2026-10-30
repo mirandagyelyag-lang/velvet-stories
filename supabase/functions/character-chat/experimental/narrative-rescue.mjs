@@ -1,11 +1,12 @@
 import {turnObligations} from './turn-obligations.mjs';
+import {characterVoiceBrief} from './character-voice.mjs';
 // Purpose-built recovery context. Do not feed the full orchestration prompt to
 // a provider with a 30k character ceiling, or silently truncate the whole tail.
 export function buildNarrativeRescuePrompt({character={},messages=[],latestUserMessage='',scene={},userIdentity={},npcCanon='',memories=[],relationship={},threads=[],direction='',rejected='',issues=[]}={}) {
  const clean=(value,n)=>String(value??'').slice(0,n);
  const profile=Object.fromEntries(['name','role','description','personality','relationship','speech_style','humor_style','boundaries'].filter(k=>character[k]).map(k=>[k,clean(character[k],500)]));
  const payload={
-  profile,creatorDirection:clean(direction,1600),userIdentity:clean(JSON.stringify(userIdentity),500),scene:clean(JSON.stringify(scene),1600),
+  profile,characterVoice:clean(characterVoiceBrief(character),2600),creatorDirection:clean(direction,1600),userIdentity:clean(JSON.stringify(userIdentity),500),scene:clean(JSON.stringify(scene),1600),
   authorizedNpcCanon:clean(npcCanon,1000),relationship:clean(JSON.stringify(relationship),700),
   memories:memories.slice(0,5).map(m=>clean(m.content,220)),threads:clean(JSON.stringify(threads),700),
   recentCanon:messages.slice(-8).map(m=>({speaker:m.sender,content:clean(m.content,800)})),
