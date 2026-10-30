@@ -12,7 +12,7 @@ export function turnObligations(message='') {
 export function contentAnswerIssues(message='',prose='') {
  if(!turnObligations(message).some(x=>x.id==='say_the_content'))return [];
  const spoken=[...String(prose).matchAll(/[“"]([^”"]+)[”"]/g)].map(m=>m[1]).join(' ');
- const clauses=spoken.split(/[.!?]|\b(?:because|but)\b/i).map(x=>x.trim()).filter(Boolean);
+ const clauses=spoken.split(/[.!?]|\b(?:because|but)\b/i).map(x=>x.trim()).filter(x=>x&&!/^(?:honestly|well|look|listen|okay|ok|right|sure|actually|the truth is)[,:;—–\s]*$/i.test(x));
  const logistics=/\bI\s+(?:just\s+)?(?:want(?:ed)?|was (?:going|trying))\s+to\s+(?:talk\b|speak\b|get your attention\b|see (?:if|whether)\b[^.!?]{0,100}\b(?:attention|follow|outside|come|stay)\b)/i;
  if(clauses.length && clauses.every(clause=>logistics.test(clause)))return [{code:'unanswered_content_question',reason:'The user asked what the lead wanted to say. Every spoken clause only describes wanting attention, conversation, privacy or compliance. State the actual present thought or question; do not replace the evasion with an invented user habit or secret.'}];
  return [];

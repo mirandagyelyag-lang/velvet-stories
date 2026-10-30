@@ -16,6 +16,10 @@ test('natural direct answers and optional playful speech do not need a stock ton
  assert.equal(characterVoiceIssues(profile,{},[],'Chase says, “I wanted you to stay. There. Terrible sales pitch.”').length,0);
  assert.equal(characterVoiceIssues(profile,{},[],'Chase leans closer, his tone dropping from its usual teasing edge. “Stay.”')[0]?.code,'voice_label_instead_of_speech');
 });
+test('the observed passive reaction coda is rejected without banning quiet actions',()=>{
+ assert.equal(characterVoiceIssues(profile,{},[],'Chase lets the words hang, eyes flicking to the doorway as if waiting for a reaction.')[0]?.code,'voice_passive_reaction_coda');
+ assert.equal(characterVoiceIssues(profile,{},[],'Chase waits beside the door. “Take your time.”').length,0);
+});
 test('invented campaign is repaired before factual or semantic approval and only the new words commit',async()=>{
  let calls=0;const good='Chase says, “I wanted you to stay. I was enjoying this.”';
  const result=await runTurn({session:createSession({profile}),message:{id:'m',content:'What did you want to say? Stay here.'},author:async({contract})=>{assert.match(contract.characterVoice,/ELECTRICITY/);return {prose:++calls===1?'Chase says, “I need your support for student-government president.”':good,scenePatch:{}};},provenance:async()=>({accepted:true,issues:[]}),reviewer:async()=>({accepted:true,issues:[]})});

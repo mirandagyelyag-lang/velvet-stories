@@ -14,6 +14,10 @@ test('obligations reach the complete contract without becoming factual evidence'
 test('the observed privacy and attention evasions cannot pass a content question',()=>{
  for(const reply of ['Chase says, “I wanted to talk to you without half the room listening in.”','Chase says, “I wanted to see if you were actually going to pay attention to me tonight instead of standing by the door looking like you want to grade everyone’s clothes.”'])assert.equal(contentAnswerIssues('What did you want to say?',reply).length,1);
 });
+test('a discourse filler is not substantive content before an evasion',()=>{
+ assert.equal(contentAnswerIssues('What did you want to say?','Chase says, “Honestly? I wanted to see if you would actually stay.”').length,1);
+ assert.deepEqual(contentAnswerIssues('What did you want to say?','Chase says, “Honestly? I was enjoying this.”'),[]);
+});
 test('an actual thought, substantive question or a reason can answer',()=>{
  for(const reply of ['Chase says, “I wanted to ask what you thought of that last song.”','Chase says, “I wanted to talk because I was enjoying this.”','Chase says, “I think I would rather stay here.”']) assert.deepEqual(contentAnswerIssues('What did you want to say?',reply),[]);
  assert.deepEqual(contentAnswerIssues('Where did you want to talk?','Chase says, “I wanted to talk outside.”'),[]);

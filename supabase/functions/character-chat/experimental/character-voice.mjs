@@ -15,5 +15,6 @@ export function characterVoiceIssues(profile={},message={},history=[],prose='') 
  if(institutional.test(prose)&&!institutional.test(canon))issues.push({code:'voice_invented_institutional_plot',reason:'Chase has no established institutional position, campaign or duty here. Do not create one to supply dialogue. Respond from the actual present interaction and his creator-approved personality.'});
  const narration=String(prose).replace(/[“"][^”"]*[”"]/g,'');
  if(/\b(?:usual teasing edge|dry,? unbothered cadence|usual (?:smirk|teasing tone))\b/i.test(narration))issues.push({code:'voice_label_instead_of_speech',reason:'Remove the stock narrator label about his usual tone. Let the actual words and a relevant choice convey his voice; keep any action that matters to the scene.'});
+ if(/\b(?:wait(?:s|ing)? for (?:a|your) reaction|as if waiting for a reaction)\b/i.test(narration))issues.push({code:'voice_passive_reaction_coda',reason:'Remove the narrator coda about waiting for the reader reaction. End on the actual spoken or consequential beat, without explaining the tension or prescribing audience attention.'});
  return issues;
 }
