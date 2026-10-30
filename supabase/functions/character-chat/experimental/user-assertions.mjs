@@ -5,7 +5,7 @@ export function requiredUserAssertions(prose) {
   const patterns = [
     /\b(?:looking|look)\s+like\s+you\s+(?:want|need|intend|plan)\b[^.!?\n”"]*/giu,
     /\byou\s+(?:always|never|keep(?=\s+\w+ing\b)|kept(?=\s+\w+ing\b)|usually|constantly|tend to|have a habit of)\b[^.!?\n”"]*/giu,
-    /\b(?:watching|watched|seeing|seen)\s+you\s+(?:let|letting|do|doing|give|giving|waste|wasting|hide|hiding|avoid|avoiding)\b[^.!?\n”"]*/giu,
+    /\b(?:watching|watched|seeing|seen)\s+you\s+(?:let|letting|do|doing|give|giving|waste|wasting|hide|hiding|avoid|avoiding|walk|walking|leave|leaving|return|returning)\b[^.!?\n”"]*/giu,
     /\byou(?:'re|’re| are)\s+(?:hiding|avoiding|pretending|jealous|scared|afraid)\b[^.!?\n”"]*/giu,
     /\b(?:siempre|nunca)\s+(?:haces|dejas|te escondes|evitas|vuelves|terminas)\b[^.!?\n”"]*/giu,
     /\b(?:verte|vi que|he visto que)\s+(?:dejas|dejando|evitas|evitando|haces|haciendo)\b[^.!?\n”"]*/giu,
