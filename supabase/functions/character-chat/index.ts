@@ -2854,7 +2854,10 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   const attempts = [(async () => {
     for (const model of models) {
       if (closed || Date.now() >= deadlineAt) break;
-      try { return await attempt(model, 0); } catch { /* next available provider */ }
+      try { return await attempt(model, 0); } catch {
+        // A complete rejected draft needs the bounded editor, not another model hunt.
+        if (rejectedInstantCandidates.length) break;
+      }
     }
     throw new Error("No opening provider available");
   })()];
@@ -2891,7 +2894,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   if (approvedEngineActive && rejectedInstantCandidates.length && deadlineAt - Date.now() > 1200) {
     try {
       const { data, actualModel } = await requestOpening({
-        model: rejectedInstantCandidates.find(item => item.model && !quotaUnavailableModels.has(item.model) && !overloadedModels.has(item.model))?.model || GEMINI_MODEL, prompt, phase: `${approvedEngineKey}_repair`, timeoutMs: 9000,
+        model: rejectedInstantCandidates.find(item => item.model && !quotaUnavailableModels.has(item.model) && !overloadedModels.has(item.model))?.model || GEMINI_MODEL, prompt: approvedRevisionBuilder(safeDraft, rejectedInstantCandidates.at(-1)?.opening || "", cleanIdea, recentOpenings), phase: `${approvedEngineKey}_edit`, timeoutMs: 9000,
         maxOutputTokens: 1600, temperature: 0.85,
       });
       const opening = readOpening(data);

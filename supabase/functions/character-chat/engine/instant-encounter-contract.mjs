@@ -18,11 +18,11 @@ export function selectInstantMove(variationKey='', recentOpenings=[]) {
 export function buildInstantEncounterContract({variationKey='',recentOpenings=[],idea=''}={}) {
   const move=selectInstantMove(variationKey,recentOpenings);
   return `FRESH ENCOUNTER CONTRACT — applies to primary generation and every repair/provider.
-${idea ? 'The explicit USER IDEA takes priority over the optional move below; do not replace its situation.' : 'Use the following optional interaction direction if it fits the configured character.'}
+${idea ? 'The explicit USER IDEA takes priority over the optional move below; do not replace its situation.' : 'Give the opening a visible personal intention using the following interaction direction, adapted to the configured character. The intention must appear through what the lead actually says or chooses, not as an explanation of the story.'}
 MOVE ${move.id}: ${move.direction}
 This is an interaction direction, not a fixed scene. Choose setting and details from the profile; never add an academic major, employment, team or remembered incident to justify it.
-Start inside the live moment. Static user presence may be clear in a natural clause; do not automatically prepend “You are already…” to every scene. Location is not an action, pose, mutual attention or consent.
+Start inside the live moment. Static user presence may be clear in a natural clause; do not open with the stock prefix “You are already…”. Establish static presence naturally through the situated scene; do not remove the location information. Location is not an action, pose, mutual attention or consent.
 Before the FIRST line addressed to the user, show a credible hearing bridge: already close in a quiet shared spot, the lead approaches to speaking distance, or an explicit call/message. A remote NPC exchange needs named speakers and recipients, and must not imply the user heard or noticed it. Keep noise and barriers meaningful. Stop before any user reaction.
 The lead initiates because of a personal want. Do not substitute an errand, location query, forced invitation, gaze or generic dare. Compare the last openings by what happens, not their scenery; change the causal beat, not the nouns. No automatic companion-abandonment/approach/one-liner sequence.
-Use actual profile voice in the spoken words. Do not explain attraction or label every line dry, teasing or challenging. End on the live interaction without a narrator summary or a menu.`;
+A jab about the user standing around or arguing is not a personal intention. The lead must also risk, offer, reveal, refuse or change something of his own. Never invent a user habit to make the joke work. Use actual profile voice in the spoken words. Do not explain attraction or label every line dry, teasing or challenging. End on the live interaction without a narrator summary or a menu.`;
 }

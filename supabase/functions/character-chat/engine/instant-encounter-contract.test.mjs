@@ -18,6 +18,6 @@ test('all directions preserve a hearing bridge and open user agency',()=>{
   for(let i=0;i<20;i++){
     const prompt=buildInstantEncounterContract({variationKey:String(i)});
     assert.match(prompt,/Before the FIRST line/);assert.match(prompt,/Stop before any user reaction/);
-    assert.match(prompt,/not automatically prepend/);assert.match(prompt,/actual profile voice/);
+    assert.match(prompt,/do not open with the stock prefix/);assert.match(prompt,/actual profile voice/);
   }
 });
