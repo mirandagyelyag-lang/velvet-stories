@@ -2,8 +2,8 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 const source=readFileSync(new URL('../index.ts',import.meta.url),'utf8');
 const body=source.match(/author:async args=>(\{if\(previewFirst\)[^\n]+?\}),signal:AbortSignal.timeout\(90000\)/)?.[1];
 assert(body,'Production author routing must be present');
-const route=(name,author)=>new Function('previewAdapter','character','persistableReply',`let previewFirst=true; return async args=>${body}`)({author},{name},'Unvalidated legacy draft');
-test('the first Chase candidate stays in the review pipeline; focused authorship is bounded to repair',async()=>{
+const route=(name,author,qualityWriterAvailable=false)=>new Function('previewAdapter','character','persistableReply',`let previewFirst=true; return async args=>${body}`)({author,qualityWriterAvailable},{name},'Unvalidated legacy draft');
+test('when the quality writer is unavailable, the existing first-candidate route and bounded repairs remain available',async()=>{
  for(const name of ['Chase','Chase Beaumont','CHASE BEAUMONT']){
   let called=0;const writer=route(name,async args=>{called++;assert.equal(args.contract.latestUserMessage.content,'Stay here.');return {prose:'Fresh grounded words',scenePatch:{}};});
   const args={contract:{latestUserMessage:{content:'Stay here.'}}};assert.equal((await writer(args)).prose,'Unvalidated legacy draft');assert.equal(called,0);
@@ -16,4 +16,10 @@ test('another lead retains the existing first-draft route and still gets repairs
 });
 test('focused author failure cannot silently revive the legacy draft',async()=>{
  const writer=route('Chase Beaumont',async()=>{throw new Error('Author unavailable');});await writer({});await assert.rejects(()=>writer({repair:{}}),/Author unavailable/);
+});
+test('only Chase uses focused first authorship when the discovered quality writer is available',async()=>{
+ let called=0;const author=async()=>{called++;return {prose:'Focused words',scenePatch:{}};};
+ assert.equal((await route('Chase Beaumont',author,true)({})).prose,'Focused words');assert.equal(called,1);
+ assert.equal((await route('Nathan Foster',author,true)({})).prose,'Unvalidated legacy draft');assert.equal(called,1);
+ await assert.rejects(()=>route('Chase Beaumont',async()=>{throw new Error('Author unavailable');},true)({}),/Author unavailable/);
 });

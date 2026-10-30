@@ -15,6 +15,10 @@ test('the real turn catalog excludes illustrative events while preserving creato
  assert(!c.sources.some(s=>s.text.includes('notebook')));assert(c.sources.some(s=>s.id==='profile/canonical_age'&&s.text==='24'));assert(c.sources.some(s=>s.id==='profile/user_persona_age'&&s.text==='21'));
  assert.match(c.characterVoice,/notebook/);assert.match(c.characterVoice,/establishes NO facts/);
 });
+test('the focused author preserves story direction and requested length as instructions, not factual evidence',()=>{
+ const session=createSession({profile});session.creatorDirection='Keep the dialogue brief and in Spanish.';session.responseLength='short';
+ const c=authorContract(turnContract(session,{id:'m',content:'Hello.'}));assert.equal(c.creatorDirection,session.creatorDirection);assert.equal(c.requestedResponseLength,'short');assert(!c.sources.some(x=>x.text===session.creatorDirection));
+});
 test('unconfigured campaign is blocked, explicit user premise stays possible',()=>{
  const reply='Chase says, “I’m thinking of running for student‑government president.”';
  assert.equal(characterVoiceIssues(profile,{},[],reply)[0]?.code,'voice_invented_institutional_plot');

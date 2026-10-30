@@ -11995,15 +11995,17 @@ async function streamRoleplayV19({
         const previewSession=createSession({profile:{...character,id:character.id||"lead",language:/spanish|español/i.test(responseLanguage)?"es":"en"},scene:reviewScene(existingSceneState||{},{id:character.id||"lead",name:character.name})});
         previewSession.history=messages.map((m,i)=>({id:String(m.id||i),role:m.sender==="user"?"user":"assistant",content:String(m.content||"")}));
         previewSession.history=previewSession.history.filter(m=>m.id!==String(latestUserMessageId));
+        previewSession.creatorDirection=[storyPreferences?.custom_instructions||"",directorInstruction||""].filter(Boolean).join("\n");
+        previewSession.responseLength=character.response_length||"";
         previewSession.regeneration=isRegeneration?{rejectedResponses:(rejectedResponses||[]).slice(-8).map(r=>String(r).slice(0,2000)),instruction:regenerationInstruction||""}:null;
         // Keep the SSE connection alive while the source/review passes run.
         // No unvalidated prose is sent by this status-only heartbeat.
         const validationHeartbeat=setInterval(()=>sendEvent(controller,{type:"diagnostic",phase:"validating-continuation"}),5000);
         let checkedPreview;
         try {
-          const previewAdapter=await previewTransport();
+          const previewAdapter=await previewTransport({qualityWriter:["chase","chase beaumont"].includes(String(character.name||"").trim().toLowerCase())});
           let previewFirst=true;
-          checkedPreview=await runTurn({session:previewSession,message:{id:String(latestUserMessageId||crypto.randomUUID()),content:latestUserMessage},...previewAdapter,author:async args=>{if(previewFirst){previewFirst=false;return {prose:persistableReply,scenePatch:{}};}return previewAdapter.author(args);},signal:AbortSignal.timeout(90000)});
+          checkedPreview=await runTurn({session:previewSession,message:{id:String(latestUserMessageId||crypto.randomUUID()),content:latestUserMessage},...previewAdapter,author:async args=>{if(previewFirst){previewFirst=false;if(previewAdapter.qualityWriterAvailable&&["chase","chase beaumont"].includes(String(character.name||"").trim().toLowerCase()))return previewAdapter.author(args);return {prose:persistableReply,scenePatch:{}};}return previewAdapter.author(args);},signal:AbortSignal.timeout(90000)});
         } finally {clearInterval(validationHeartbeat);}
         if(!checkedPreview.reply){console.warn("[character-chat] narrative gate rejected continuation",{attemptIssues:checkedPreview.attempts.map(attempt=>attempt.verdict.issues.map(issue=>issue.code))});throw new Error("Orvayne could not validate this continuation; no character reply was saved. Please try again.");}
         // A repaired reply must never retain state claims from the rejected draft.

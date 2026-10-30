@@ -34,3 +34,34 @@ test('an author rate limit falls back once and skips the cooling-down provider o
   assert.equal((await adapter.author({contract:{}})).prose,'Chase says, “I wanted you to stay.”');assert.equal(secondary,1);assert.equal(primary,2);
  }finally{globalThis.fetch=before.fetch;globalThis.Deno=before.Deno;Date.now=before.now;}
 });
+test('an explicitly requested quality writer is selected from discovered models while reviewers stay on the primary model',async()=>{
+ const before={fetch:globalThis.fetch,Deno:globalThis.Deno,now:Date.now};let clock=0;const routes=[];
+ globalThis.Deno={env:{get:()=> 'test-key'}};Date.now=()=>clock+=6000;
+ const draft={move:{kind:'answer',focus:'present choice'},prose:'Chase says, “I wanted you to stay.”',scenePatch:{characterPosition:null}};
+ const checks=Object.fromEntries(['responsiveness','care','identity','agency','continuity','canon','presentation'].map(k=>[k,{passed:true,evidence:'The reply satisfies the supplied contract.'}]));
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).endsWith('/models'))return new Response(JSON.stringify({models:['gemini-3.5-flash-lite','gemini-3.5-flash'].map(name=>({name:'models/'+name,supportedGenerationMethods:['generateContent']}))}));
+  routes.push(String(url));const body=JSON.parse(options.body);const author=body.generationConfig.responseFormat.text.schema.properties.prose;
+  return new Response(JSON.stringify({candidates:[{content:{parts:[{text:JSON.stringify(author?draft:{checks})}]}}]}));
+ };
+ try{
+  const {transport:freshTransport}=await import('./transport.mjs?quality-writer-test');const adapter=await freshTransport({qualityWriter:true});assert.equal(adapter.qualityWriterAvailable,true);
+  await adapter.author({contract:{}});await adapter.reviewer({contract:{},draft,nextScene:{}});
+  assert(routes[0].endsWith('/gemini-3.5-flash:generateContent'));assert(routes[1].endsWith('/gemini-3.5-flash-lite:generateContent'));assert(!routes.some(x=>x.includes('api.groq.com')));
+ }finally{globalThis.fetch=before.fetch;globalThis.Deno=before.Deno;Date.now=before.now;}
+});
+test('a quality-writer rate limit uses the existing primary and cools down instead of failing every new turn',async()=>{
+ const before={fetch:globalThis.fetch,Deno:globalThis.Deno,now:Date.now};let clock=0;const routes=[];
+ globalThis.Deno={env:{get:()=> 'test-key'}};Date.now=()=>clock+=6000;
+ const draft={move:{kind:'answer',focus:'present choice'},prose:'Chase says, “I wanted you to stay.”',scenePatch:{characterPosition:null}};
+ globalThis.fetch=async(url)=>{
+  if(String(url).endsWith('/models'))return new Response(JSON.stringify({models:['gemini-3.5-flash-lite','gemini-3.5-flash'].map(name=>({name:'models/'+name,supportedGenerationMethods:['generateContent']}))}));
+  routes.push(String(url));if(String(url).endsWith('/gemini-3.5-flash:generateContent'))return new Response('{}',{status:429});
+  return new Response(JSON.stringify({candidates:[{content:{parts:[{text:JSON.stringify(draft)}]}}]}));
+ };
+ try{
+  const {transport:freshTransport}=await import('./transport.mjs?quality-fallback-test');const adapter=await freshTransport({qualityWriter:true});
+  assert.equal((await adapter.author({contract:{}})).prose,draft.prose);assert.equal((await adapter.author({contract:{}})).prose,draft.prose);
+  assert.equal(routes.length,3);assert(routes[0].endsWith('/gemini-3.5-flash:generateContent'));assert(routes.slice(1).every(x=>x.endsWith('/gemini-3.5-flash-lite:generateContent')));
+ }finally{globalThis.fetch=before.fetch;globalThis.Deno=before.Deno;Date.now=before.now;}
+});
