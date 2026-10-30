@@ -1,6 +1,7 @@
 // Isolated experiment. No imports from the production orchestration pipeline.
 import { buildCrisisResponse } from './crisis-response.js';
 import {sourceCatalog} from './provenance.mjs';
+import {turnObligations} from './turn-obligations.mjs';
 
 const copy = value => structuredClone(value);
 const check = (condition, message) => { if (!condition) throw new Error(message); };
@@ -32,7 +33,7 @@ export function applyUserEvents(session, message, events = []) {
 
 export function turnContract(session, message) {
   return {
-    version: 'orvayne-core-v4.5', regeneration: copy(session.regeneration || null), profile: copy(session.profile),
+    version: 'orvayne-core-v4.6', turnObligations: turnObligations(message.content), regeneration: copy(session.regeneration || null), profile: copy(session.profile),
     sources: sourceCatalog(session,message),
     confirmedFacts: copy(session.evidence), scene: copy(session.scene),
     presentation: 'Narration is third person about the named character and second person about the user. Spoken words use quotation marks with an unambiguous named speaker. Do not switch into first-person narration or present unquoted dialogue as narrator fact.',
@@ -120,3 +121,4 @@ export async function runTurn({session, message, events = [], author, reviewer, 
   if (commit) await commit({expectedRevision: session.revision, messageId: message.id, nextSession: copy(next), signal});
   return {status: crisis ? 'support' : 'accepted', reply: accepted.prose, revision: next.revision, attempts, session: next};
 }
+

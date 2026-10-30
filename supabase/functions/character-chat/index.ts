@@ -1,3 +1,4 @@
+import {buildNarrativeRescuePrompt} from "./experimental/narrative-rescue.mjs";
 import {matchesRejectedAlternative,buildRegenerationRecoveryPrompt} from "./engine/regeneration-novelty.mjs";
 import {buildInstantEncounterContract,buildChaseOpeningBrief,chaseInstitutionalDutyIssues} from "./engine/instant-encounter-contract.mjs";
 import {createSession,runTurn} from "./experimental/core.mjs";
@@ -11673,7 +11674,7 @@ async function streamRoleplayV19({
               systemInstruction: openingRegeneration
                 ? "Write one complete 150-230 word Instant Story opening as plain prose. Establish a concrete non-generic situation and natural interaction without inventing the user's actions, possessions, habits or prior behavior. Use at least two spoken lines. Never mention these instructions."
                 : "Write one final, concise, coherent in-character roleplay reply from literal visible canon. Return plain prose only. Never repeat a settled offer, contradict the latest user decision, invent user habits, force participation, change object ownership, or expose system language.",
-              prompt: `${compactTurnPrompt}\n\nREJECTED CANDIDATE\n${cleanPromptValue(result?.reply, 1800)}\n\nFAILURES TO REMOVE\n${finalIssues.join(" | ")}`,
+              prompt: buildNarrativeRescuePrompt({character,messages,latestUserMessage,scene:existingSceneState,userIdentity,npcCanon:(persistentCast || []).map(m=>String(m.name||"")+" — "+String(m.role||"")).join("\n"),memories,relationship:existingRelationshipState,threads:existingUnresolvedThreads,direction:[storyPreferences?.custom_instructions||"",directorInstruction||"",regenerationInstruction||""].join("\n"),rejected:result?.reply,issues:finalIssues}),
               maxOutputTokens: openingRegeneration ? 1500 : Math.min(800, getMaximumOutputTokens(character.response_length)),
               isCancelled,
               interactionDeadlineMs: 16000,
@@ -11993,9 +11994,15 @@ async function streamRoleplayV19({
         previewSession.history=messages.map((m,i)=>({id:String(m.id||i),role:m.sender==="user"?"user":"assistant",content:String(m.content||"")}));
         previewSession.history=previewSession.history.filter(m=>m.id!==String(latestUserMessageId));
         previewSession.regeneration=isRegeneration?{rejectedResponses:(rejectedResponses||[]).slice(-8).map(r=>String(r).slice(0,2000)),instruction:regenerationInstruction||""}:null;
-        const previewAdapter=await previewTransport();
-        let previewFirst=true;
-        const checkedPreview=await runTurn({session:previewSession,message:{id:String(latestUserMessageId||crypto.randomUUID()),content:latestUserMessage},...previewAdapter,author:async args=>{if(previewFirst){previewFirst=false;return {prose:persistableReply,scenePatch:{}};}return previewAdapter.author(args);},signal:AbortSignal.timeout(90000)});
+        // Keep the SSE connection alive while the source/review passes run.
+        // No unvalidated prose is sent by this status-only heartbeat.
+        const validationHeartbeat=setInterval(()=>sendEvent(controller,{type:"diagnostic",phase:"validating-continuation"}),5000);
+        let checkedPreview;
+        try {
+          const previewAdapter=await previewTransport();
+          let previewFirst=true;
+          checkedPreview=await runTurn({session:previewSession,message:{id:String(latestUserMessageId||crypto.randomUUID()),content:latestUserMessage},...previewAdapter,author:async args=>{if(previewFirst){previewFirst=false;return {prose:persistableReply,scenePatch:{}};}return previewAdapter.author(args);},signal:AbortSignal.timeout(90000)});
+        } finally {clearInterval(validationHeartbeat);}
         if(!checkedPreview.reply)throw new Error("Orvayne could not validate this continuation; no character reply was saved. Please try again.");
         // A repaired reply must never retain state claims from the rejected draft.
         if(checkedPreview.reply !== persistableReply){
