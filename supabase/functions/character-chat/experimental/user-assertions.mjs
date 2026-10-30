@@ -3,6 +3,7 @@
 // This is a coverage floor, not an exhaustive natural-language parser.
 export function requiredUserAssertions(prose) {
   const patterns = [
+    /\byou(?:'re|’re| are)\s+(?:\w+\s+){0,3}(?:bad|good|terrible)\s+at\b[^.!?\n”"]*/giu,
     /\b(?:looking|look)\s+like\s+you\s+(?:want|need|intend|plan)\b[^.!?\n”"]*/giu,
     /\byou\s+(?:always|never|keep(?=\s+\w+ing\b)|kept(?=\s+\w+ing\b)|usually|constantly|tend to|have a habit of)\b[^.!?\n”"]*/giu,
     /\b(?:watching|watched|seeing|seen)\s+you\s+(?:let|letting|do|doing|give|giving|waste|wasting|hide|hiding|avoid|avoiding|walk|walking|leave|leaving|return|returning)\b[^.!?\n”"]*/giu,

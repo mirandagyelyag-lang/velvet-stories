@@ -2,6 +2,7 @@
 import { buildCrisisResponse } from './crisis-response.js';
 import {sourceCatalog} from './provenance.mjs';
 import {turnObligations,contentAnswerIssues} from './turn-obligations.mjs';
+import {originPositionIssues} from './review-scene.mjs';
 
 const copy = value => structuredClone(value);
 const check = (condition, message) => { if (!condition) throw new Error(message); };
@@ -103,7 +104,7 @@ export async function runTurn({session, message, events = [], author, reviewer, 
       const draft = await author({contract: copy(contract), repair: copy(attempts.at(-1) || null), signal});
       check(typeof draft?.prose === 'string' && draft.prose.trim() && draft.prose.length <= 8000, 'Invalid author prose');
       const nextScene = proposedScene(prepared.scene, draft.scenePatch || {}, prepared.profile.id);
-      const repeated = [...repetitionIssues(prepared.history, draft.prose),...contentAnswerIssues(message.content,draft.prose)];
+      const repeated = [...repetitionIssues(prepared.history, draft.prose),...contentAnswerIssues(message.content,draft.prose),...originPositionIssues(prepared.scene,prepared.profile,draft.prose)];
       const factual = repeated.length ? {accepted:false,issues:repeated} : reviewResult(await provenance({contract:copy(contract),draft:copy(draft),signal}));
       const verdict = !factual.accepted ? factual : reviewResult(await reviewer({contract: copy(contract), draft: copy(draft), nextScene, signal}));
       attempts.push({draft: copy(draft), verdict, provenance:copy(factual)});
