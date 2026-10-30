@@ -1,0 +1,269 @@
+{
+  "clean-generation-results.json": {
+    "results": [
+      {
+        "status": 503,
+        "error": "Velvet couldn't create an Instant Story this time. Try again.",
+        "retryable": true,
+        "openingFamily": "campus",
+        "rejectionReasons": [
+          "invented_user_prop_state",
+          "assumed_user_physical_placement"
+        ],
+        "requestId": "05232eb3-b7f5-4455-a7f8-58bae0629fc1",
+        "engineVersion": "513",
+        "diagnostics": {
+          "attempts": [
+            {
+              "phase": "primary",
+              "model": "gemini-3.5-flash-lite",
+              "code": "quality_rejected",
+              "finishReason": "STOP",
+              "words": 89,
+              "reasons": [
+                "invented_user_prop_state",
+                "assumed_user_physical_placement",
+                "invented_user_prop_state",
+                "assumed_user_physical_placement"
+              ],
+              "durationMs": 1845,
+              "error": ""
+            },
+            {
+              "phase": "emergency",
+              "model": "gemini-3.1-flash-lite",
+              "status": 0,
+              "code": "provider_timeout",
+              "error": "The signal has been aborted",
+              "durationMs": 4507
+            }
+          ],
+          "durationMs": 9232
+        }
+      },
+      {
+        "status": 200,
+        "opening": "Chase pockets his phone as he stops beside the low brick wall outside the Westbridge student union, the evening air smelling faintly of rain and cedar. He tosses a heavy silver lighter from hand to hand, watching the metal turn. \"Actually, scratch that whole plan with the fraternity house,\" he says, leaning his hip against the stone. \"Let's take the coastal road instead. I want to see if you actually have the nerve to tell me how bad my taste in music is for forty straight miles.\"",
+        "source": "ai_rescue",
+        "model": "gemini-3.5-flash-lite",
+        "sceneSeed": "FOCUS=chase_electricity\nCREATOR-APPROVED CHASE ENGINE — OVERRIDES GENERIC FACET/PACING SUGGESTIONS\nELECTRICITY: Chase is socially desired, receptive to others, and still drawn back to the user without settled feelings. Direct, personal sarcasm creates an invitation with something left unresolved. An external pull or small live trigger reveals an emotion he did not plan; let it affect his response or decision. The user can accept, refuse or redirect. Stop on the charged beat. No explanatory last line, no 'You're enjoying this', no declarations, no tidy sincerity scene, no automatic touch/kiss. Tension may be sexual or nonsexual. Reproduce the approved example's dynamics and spoken rhythm, never its exact event sequence, lipstick, drink, girl calling, or catchphrases.\nCHASE PERSONALITY BOUNDARY: Popularity means people seek him out; it does not make him a campus entertainer, peacemaker, organizer or volunteer recruiter. Never invent a threatened event, participation quota or cancellation announcement to give him a mission. He does not rally strangers, settle a group's argument, lead a flash mob, teach dance moves or perform to save an activity. A campus event can be background; a personally motivated wager can fit him, but saving turnout or entertaining the crowd is not his objective. Start from his own specific social desire, friction or impulsive choice. His initiative must materially involve the user, not end with a look awaiting approval. A threatened campus activity is never his rescue mission. His decisions must follow his own motive, with sharp spontaneous sarcasm and attraction that develops rather than instant devotion. Do not replace this with another fixed admirer/approach sequence.\nCHASE INSTANT STORY ANTI-ABDUCTION / ANTI-INVITATION LOOP: Never default to Chase arriving with car keys, announcing his parked car, ordering the user to follow, saying 'You're coming with me', 'Come with me', 'Get in', or variations of an unexplained destination or forced outing. This is a repeatedly rejected premise, not a romantic signature. Chase must not dictate the user's movement or acceptance. Most openings should remain in their starting setting and create a playable immediate situation there: a surprising social interaction, an interruption, a meaningful choice he makes, a provocation about something actually happening, or a charged exchange with a third party. His desire to approach the user does NOT imply a car trip, secret location, party invitation or escort mission. Use varied physical business and grounded stakes, not a fixed key-toss/approach/command choreography. If an invitation is genuinely earned by specific context, phrase it as an option and leave the user free to refuse. Never use an ultimatum as a substitute for chemistry.\nUse the current setting and relationship history. Let ongoing relationships evolve. The sample is a voice/dynamics reference, not canon or a plot to copy. Vary setting, trigger, other people's attention, his provocation and the involuntary emotional turn. Never author the user's action or feelings.\nAPPROVED RHYTHM REFERENCE\nChase came looking for you with lipstick on his cheek and someone else’s drink in his hand.\n\n“Before you start, she was very nice.”\n\nHe took a sip, grimaced, and set the glass aside.\n\n“Terrible taste, apparently.”\n\nThe girl called him back. Chase glanced over.\n\n“In a minute.”\n\nThen he turned to you.\n\n“Go on. Say something mean. I’ve been getting far too much encouragement tonight.”\n\nHe rubbed at the lipstick with his thumb.\n\n“Did I get it?”\n\nA pause.\n\n“You could help.”\n\nHis grin arrived a little late.\n\n“Or leave it. Give yourself something to complain about.”\n\n“Chase!”\n\n“What?”\n\nHe sounded annoyed now. That seemed to catch him off guard.",
+        "openingFamily": "campus",
+        "softWarnings": [],
+        "requestId": "83f0de77-646e-4a32-b0ad-65d046cf674f",
+        "engineVersion": "513"
+      },
+      {
+        "status": 200,
+        "opening": "Chase steps off the wide stone steps of the Westbridge library, cutting right across the damp lawn as your path intersects. He snaps his car key ring around one finger, slowing to an easy halt five feet away while a few yards off, Maya calls out asking if he's still picking up the reservation. \"Tell them table for one, I'm busy,\" Chase tosses back over his shoulder without looking, his dark eyes shifting fully to you. \"Forget the steak house. Get in the passenger seat and I'll buy you terrible diner coffee instead. I'd rather listen to you complain about my driving than sit through another hour of fraternity small talk.\"",
+        "source": "ai",
+        "model": "gemini-3.5-flash-lite",
+        "sceneSeed": "FOCUS=chase_electricity\nCREATOR-APPROVED CHASE ENGINE — OVERRIDES GENERIC FACET/PACING SUGGESTIONS\nELECTRICITY: Chase is socially desired, receptive to others, and still drawn back to the user without settled feelings. Direct, personal sarcasm creates an invitation with something left unresolved. An external pull or small live trigger reveals an emotion he did not plan; let it affect his response or decision. The user can accept, refuse or redirect. Stop on the charged beat. No explanatory last line, no 'You're enjoying this', no declarations, no tidy sincerity scene, no automatic touch/kiss. Tension may be sexual or nonsexual. Reproduce the approved example's dynamics and spoken rhythm, never its exact event sequence, lipstick, drink, girl calling, or catchphrases.\nCHASE PERSONALITY BOUNDARY: Popularity means people seek him out; it does not make him a campus entertainer, peacemaker, organizer or volunteer recruiter. Never invent a threatened event, participation quota or cancellation announcement to give him a mission. He does not rally strangers, settle a group's argument, lead a flash mob, teach dance moves or perform to save an activity. A campus event can be background; a personally motivated wager can fit him, but saving turnout or entertaining the crowd is not his objective. Start from his own specific social desire, friction or impulsive choice. His initiative must materially involve the user, not end with a look awaiting approval. A threatened campus activity is never his rescue mission. His decisions must follow his own motive, with sharp spontaneous sarcasm and attraction that develops rather than instant devotion. Do not replace this with another fixed admirer/approach sequence.\nCHASE INSTANT STORY ANTI-ABDUCTION / ANTI-INVITATION LOOP: Never default to Chase arriving with car keys, announcing his parked car, ordering the user to follow, saying 'You're coming with me', 'Come with me', 'Get in', or variations of an unexplained destination or forced outing. This is a repeatedly rejected premise, not a romantic signature. Chase must not dictate the user's movement or acceptance. Most openings should remain in their starting setting and create a playable immediate situation there: a surprising social interaction, an interruption, a meaningful choice he makes, a provocation about something actually happening, or a charged exchange with a third party. His desire to approach the user does NOT imply a car trip, secret location, party invitation or escort mission. Use varied physical business and grounded stakes, not a fixed key-toss/approach/command choreography. If an invitation is genuinely earned by specific context, phrase it as an option and leave the user free to refuse. Never use an ultimatum as a substitute for chemistry.\nUse the current setting and relationship history. Let ongoing relationships evolve. The sample is a voice/dynamics reference, not canon or a plot to copy. Vary setting, trigger, other people's attention, his provocation and the involuntary emotional turn. Never author the user's action or feelings.\nAPPROVED RHYTHM REFERENCE\nChase came looking for you with lipstick on his cheek and someone else’s drink in his hand.\n\n“Before you start, she was very nice.”\n\nHe took a sip, grimaced, and set the glass aside.\n\n“Terrible taste, apparently.”\n\nThe girl called him back. Chase glanced over.\n\n“In a minute.”\n\nThen he turned to you.\n\n“Go on. Say something mean. I’ve been getting far too much encouragement tonight.”\n\nHe rubbed at the lipstick with his thumb.\n\n“Did I get it?”\n\nA pause.\n\n“You could help.”\n\nHis grin arrived a little late.\n\n“Or leave it. Give yourself something to complain about.”\n\n“Chase!”\n\n“What?”\n\nHe sounded annoyed now. That seemed to catch him off guard.",
+        "openingFamily": "campus",
+        "softWarnings": [],
+        "requestId": "e2fd381a-373a-49d6-b3f0-4c91dd6dbdeb",
+        "engineVersion": "513"
+      }
+    ]
+  },
+  "reviewed-generation-results.json": {
+    "results": [
+      {
+        "accepted": true,
+        "opening": "Chase Beaumont taps the glass front of the campus vending machine outside the student union, turning his head as you walk past within arm's reach. He steps directly into your line of sight, closing the short gap between you. \"Drop a dollar into this metal trap and punch button three before it eats my money again, because my card is still blocked,\" Chase says to you, a playful, expectant grin crossing his face as he gestures to the jammed machine.",
+        "attempts": [
+          {
+            "draft": {
+              "intent": "Initiate personal interaction for a specific immediate want",
+              "change": "Established real speaking distance in the courtyard before speaking directly to you",
+              "opening": "Chase Beaumont leans against the stone pillar outside the library entrance, watching you approach across the busy Westbridge University courtyard. The afternoon sun catches his watch as he pushes off the pillar to step directly into your path, closing the distance to just a few feet. \"I need your notes from Tuesday's lecture before the five o'clock review session, and since you actually bothered to show up, you're handing them over,\" Chase says to you, a confident smirk touching his mouth as he waits to see if you will comply."
+            },
+            "issues": [
+              {
+                "code": "grounding",
+                "reason": "A library does not give Chase a faculty job or class notes access, and the prompt invents a lecture and review session."
+              },
+              {
+                "code": "agency",
+                "reason": "Assumes user's approach across the courtyard and that the user attended a specific lecture."
+              }
+            ]
+          },
+          {
+            "draft": {
+              "intent": "Initiate personal interaction for a specific immediate want",
+              "change": "Removed invented lecture history and user approach, establishing Chase standing by a campus vending machine directly in your path at normal speaking range.",
+              "opening": "Chase Beaumont taps the glass front of the campus vending machine outside the student union, turning his head as you walk past within arm's reach. He steps directly into your line of sight, closing the short gap between you. \"Drop a dollar into this metal trap and punch button three before it eats my money again, because my card is still blocked,\" Chase says to you, a playful, expectant grin crossing his face as he gestures to the jammed machine."
+            },
+            "issues": []
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "opening": "Chase Beaumont leans against the stone pillar of the campus bookstore entrance, watching the line of students queue for textbook buybacks. He catches your eye as you pass the book return bins six feet away, pushing off the concrete to intercept your path with a slow, deliberate stride. \"Trade spots with me in this disaster zone for ten minutes before I lose my mind and burn a stack of calculus manuals, because my patience officially expired,\" Chase tells you, a sharp, confident smirk touching his mouth as he gestures to the sluggish line ahead.",
+        "attempts": [
+          {
+            "draft": {
+              "intent": "Persuade user",
+              "change": "Initiate exchange",
+              "opening": "Chase Beaumont leans against the stone pillar of the campus bookstore entrance, watching the line of students queue for textbook buybacks. He catches your eye as you pass the book return bins six feet away, pushing off the concrete to intercept your path with a slow, deliberate stride. \"Trade spots with me in this disaster zone for ten minutes before I lose my mind and burn a stack of calculus manuals, because my patience officially expired,\" Chase tells you, a sharp, confident smirk touching his mouth as he gestures to the sluggish line ahead."
+            },
+            "issues": []
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "opening": "Chase Beaumont sits on the low brick edge of the quad fountain, holding an unsharpened wood-cased pencil and a grease-stained paper bag while two students argue loudly about lecture notes six feet away. He watches you walk down the brick pathway twelve feet off, then stands up and crosses the intervening grass to stop right in front of you. \"Hand over whatever writing utensil is currently hiding at the bottom of your bag before this paper sack leaks grease all over my knees,\" Chase says to you, a knowing, amused grin on his face as he points down at the dripping bag.",
+        "attempts": [
+          {
+            "draft": {
+              "intent": "initiate-borrow",
+              "change": "introduce-new-interaction",
+              "opening": "Chase Beaumont sits on the low brick edge of the quad fountain, holding an unsharpened wood-cased pencil and a grease-stained paper bag while two students argue loudly about lecture notes six feet away. He watches you walk down the brick pathway twelve feet off, then stands up and crosses the intervening grass to stop right in front of you. \"Hand over whatever writing utensil is currently hiding at the bottom of your bag before this paper sack leaks grease all over my knees,\" Chase says to you, a knowing, amused grin on his face as he points down at the dripping bag."
+            },
+            "issues": []
+          }
+        ]
+      }
+    ]
+  },
+  "strong-generation-canary.json": {
+    "results": [
+      {
+        "accepted": true,
+        "opening": "You are sitting on the low brick ledge outside the Westbridge humanities hall. Chase Beaumont strolled past the nearby oak trees, holding a sweating plastic cup layered with dark syrup and thick foam. He walked over and stopped right in front of you, stepping close enough that the shadow of his shoulder fell across your lap.\n\n\"Hold this and take a sip,\" Chase said, extending the cup toward you. \"The barista swore lavender charcoal cold brew was a masterpiece, but I think I just spent nine dollars on sweet mud. I need an honest verdict before I go demand a refund.\"",
+        "attempts": [
+          {
+            "draft": {
+              "intent": "Initiate immediate interaction",
+              "change": "Focus on a tangible present request",
+              "opening": "You are sitting on the low brick ledge outside the Westbridge humanities hall. Chase Beaumont strolled past the nearby oak trees, holding a sweating plastic cup layered with dark syrup and thick foam. He walked over and stopped right in front of you, stepping close enough that the shadow of his shoulder fell across your lap.\n\n\"Hold this and take a sip,\" Chase said, extending the cup toward you. \"The barista swore lavender charcoal cold brew was a masterpiece, but I think I just spent nine dollars on sweet mud. I need an honest verdict before I go demand a refund.\""
+            },
+            "issues": []
+          }
+        ]
+      }
+    ]
+  },
+  "strong-generation-suite.json": {
+    "results": [
+      {
+        "error": "Opening provider failed (503)"
+      },
+      {
+        "error": "Opening provider failed (503)"
+      },
+      {
+        "error": "Unterminated string in JSON at position 360 (line 4 column 203)"
+      }
+    ]
+  },
+  "planned-generation-suite.json": {
+    "results": [
+      {
+        "accepted": false,
+        "attempts": [
+          {
+            "draft": {
+              "intent": "initiate conversation",
+              "change": "divert attention to user",
+              "opening": "Bass thumps through the floorboards of the packed student lounge, vibrating the edge of the laminate table where you stand near the vending machines. A stranger named Leo taps Chase Beaumont on the shoulder, holding out a red plastic cup. 'Next round's starting by the stairs, Chase. You in?' \n\nChase doesn't turn around, keeping his green gaze fixed squarely on you while he waves Leo off with a casual flick of his wrist. 'Pass, Leo. Found a better distraction.' He leans one hip against the counter, sliding a sealed bottle of soda across the surface toward you. 'Unless you're planning to help me survive this playlist.'"
+            },
+            "issues": [
+              {
+                "code": "agency",
+                "reason": "Unprovided user action: you stand"
+              }
+            ]
+          },
+          {
+            "draft": {
+              "intent": "initiate conversation",
+              "change": "divert attention to user",
+              "opening": "Bass thumps through the floorboards of the packed student lounge, vibrating the edge of the laminate table near the vending machines where you are positioned. A stranger named Leo taps Chase Beaumont on the shoulder, holding out a red plastic cup. 'Next round's starting by the stairs, Chase. You in?' \n\nChase doesn't turn around, keeping his green gaze fixed squarely on you while he waves Leo off with a casual flick of his wrist. 'Pass, Leo. Found a better distraction.' He leans one hip against the counter, sliding a sealed bottle of soda across the surface toward you. 'Unless you're planning to help me survive this playlist.'"
+            },
+            "issues": [
+              {
+                "code": "agency",
+                "reason": "Forces a physical item onto the user ('sliding a sealed bottle of soda across the surface toward you') and presumes the user's belongings/position at the table."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "opening": "Leaning against the stone railing of the Westbridge University library terrace at normal speaking distance from you, Chase Beaumont tapped his phone against his palm. He wanted to test his own impulse control for once, or at least see if he could entertain himself without resorting to his usual habits. \n\n\"Alright, listen,\" Chase said to you, flashing a quick, confident grin. \"I bet you fifty bucks I can go the next ten minutes without a single sarcastic remark about this place. Easy money, right? Though knowing my luck, I'll probably fail before—\" He paused, narrowing his eyes as he caught himself. \"Wait, does that sentence itself count as retroactive sarcasm?\"",
+        "attempts": [
+          {
+            "draft": {
+              "intent": "propose a new wager",
+              "change": "introduce a self-imposed challenge regarding sarcasm",
+              "opening": "Leaning against the stone railing of the Westbridge University library terrace at normal speaking distance from you, Chase Beaumont tapped his phone against his palm. He wanted to test his own impulse control for once, or at least see if he could entertain himself without resorting to his usual habits. \n\n\"Alright, listen,\" Chase said to you, flashing a quick, confident grin. \"I bet you fifty bucks I can go the next ten minutes without a single sarcastic remark about this place. Easy money, right? Though knowing my luck, I'll probably fail before—\" He paused, narrowing his eyes as he caught himself. \"Wait, does that sentence itself count as retroactive sarcasm?\""
+            },
+            "issues": []
+          }
+        ]
+      },
+      {
+        "accepted": true,
+        "opening": "Sprawled across a worn leather armchair in the crowded student lounge at Westbridge University, Chase Beaumont waved a hand dismissively at Leo standing nearby. \n\n\"Nah, count me out of the pool table, Leo, I'm good,\" Chase said, speaking toward the table before turning his head entirely.\n\nHe tossed his phone onto the cushion beside him, leveled a sharp, assessing look across the few feet of space separating him from the low bookshelf where you were positioned, and patted the empty leather seat next to him. \"Or you could prove you've got better form than Leo does and take his spot. What do you say?\"",
+        "attempts": [
+          {
+            "draft": {
+              "intent": "Initiate conversation",
+              "change": "Decline an invite to stay nearby",
+              "opening": "Sprawled across a worn leather armchair in the crowded student lounge at Westbridge University, Chase Beaumont waved a hand dismissively at Leo standing nearby. \n\n\"Nah, count me out of the pool table, Leo, I'm good,\" Chase said, not looking away from where you stood a few feet off by the bookshelf. \n\nHe tossed his phone onto the cushion beside him, leveled a sharp, assessing look at you, and patted the empty leather seat. \"Or you could prove you've got better form than Leo does and take his spot. What do you say?\""
+            },
+            "issues": [
+              {
+                "code": "agency",
+                "reason": "Unprovided user action: you stood"
+              }
+            ]
+          },
+          {
+            "draft": {
+              "intent": "Initiate conversation",
+              "change": "Decline an invite to stay nearby",
+              "opening": "Sprawled across a worn leather armchair in the crowded student lounge at Westbridge University, Chase Beaumont waved a hand dismissively at Leo standing nearby. \n\n\"Nah, count me out of the pool table, Leo, I'm good,\" Chase said, speaking toward the table before turning his head entirely.\n\nHe tossed his phone onto the cushion beside him, leveled a sharp, assessing look across the few feet of space separating him from the low bookshelf where you were positioned, and patted the empty leather seat next to him. \"Or you could prove you've got better form than Leo does and take his spot. What do you say?\""
+            },
+            "issues": []
+          }
+        ]
+      }
+    ]
+  },
+  "groq-generation-canary.json": {
+    "results": [
+      {
+        "accepted": true,
+        "opening": "Chase leans against the brick wall in the quiet corner of the gathering, the music a low thrum behind him. You are a few feet away by the punch bowl, close enough that your voice can carry without shouting. Jesse, an anonymous friend from the crowd, slides a soda toward Chase and says, “Hey Chase, you want a spot in the next round of Flip‑the‑Bottle?” Chase shrugs, flashing a grin, and replies, “Nah, I’m good.” He turns to you, smirking, “Looks like you could use a break from the noise. Want to grab a drink and play a quick round?”",
+        "attempts": [
+          {
+            "draft": {
+              "intent": "initiate_conversation",
+              "change": "added_dialogue",
+              "opening": "Chase leans against the brick wall of the quiet corner, the low hum of the party fading behind him. You stand a few feet away by the punch bowl, close enough to hear without shouting. Jesse, an anonymous friend from the crowd, slides a soda toward Chase and says, “Hey Chase, you in for the next round of Flip‑the‑Bottle?” Chase shrugs, flashing a grin, and replies, “Nah, I’m good. Actually I was hoping to chat with you instead.” He turns his gaze toward you, smirking, “You look like you could use a break from the crowd. Want to join me for a drink and a quick game?”"
+            },
+            "issues": [
+              {
+                "code": "agency",
+                "reason": "Unprovided user action: You stand"
+              }
+            ]
+          },
+          {
+            "draft": {
+              "intent": "initiate_conversation",
+              "change": "added_dialogue",
+              "opening": "Chase leans against the brick wall in the quiet corner of the gathering, the music a low thrum behind him. You are a few feet away by the punch bowl, close enough that your voice can carry without shouting. Jesse, an anonymous friend from the crowd, slides a soda toward Chase and says, “Hey Chase, you want a spot in the next round of Flip‑the‑Bottle?” Chase shrugs, flashing a grin, and replies, “Nah, I’m good.” He turns to you, smirking, “Looks like you could use a break from the noise. Want to grab a drink and play a quick round?”"
+            },
+            "issues": []
+          }
+        ]
+      }
+    ]
+  }
+}
