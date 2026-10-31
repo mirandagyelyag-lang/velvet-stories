@@ -578,3 +578,28 @@
     padding: 20px 16px calc(18px + env(safe-area-inset-bottom));
   }
 }
+
+/* Profile navigation: match the midnight-blue Characters palette, not legacy plum. */
+.profile-reference-page .profile-reference__menu {
+  background: #202832 !important;
+  border-color: #3b4b5b !important;
+  box-shadow: none !important;
+}
+.profile-reference-page .profile-reference__menu > button {
+  background: #202832 !important;
+  color: #e4e8ee !important;
+  border-color: #3b4b5b !important;
+}
+.profile-reference-page .profile-reference__menu > button:hover,
+.profile-reference-page .profile-reference__menu > button:focus-visible {
+  background: #2a3643 !important;
+}
+.profile-reference-page .profile-reference__menu-icon,
+.profile-reference-page .profile-reference__menu > button > svg,
+.profile-reference-page .profile-reference__menu small,
+.profile-reference-page .profile-reference__version {
+  color: #9cb8ca !important;
+}
+.profile-reference-page .profile-reference__menu .profile-reference__logout {
+  color: #c3d5e1 !important;
+}
