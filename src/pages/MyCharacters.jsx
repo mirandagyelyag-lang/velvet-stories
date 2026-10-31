@@ -258,13 +258,12 @@ function MyCharacters({ onCreateCharacter, onOpenCharacter, onOpenStory, onEditC
 function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, onBack }) {
   const inTrash = view === "trash";
   return (
-    <header className="characters-library__compact-hero characters-library__hero-simple">
+    <header className={`characters-library__compact-hero characters-library__hero-simple${inTrash ? "" : " characters-library__hero-ink"}`}>
       <div className="characters-library__compact-copy">
         {inTrash ? <h1>Trash</h1> : <>
-          <span className="characters-library__simple-eyebrow">YOUR PRIVATE CAST</span>
-          <h1>Your Characters</h1>
+          <h1 className="characters-library__ink-title"><img src="/images/orvayne-characters-ink.png" alt="Your Characters" /></h1>
         </>}
-        <p>{inTrash ? `${count} deleted ${count === 1 ? "character" : "characters"}` : `${count} characters · Your private cast`}</p>
+        {inTrash && <p>{count} deleted {count === 1 ? "character" : "characters"}</p>}
       </div>
       {inTrash ? <button className="characters-library__hero-back" type="button" onClick={onBack}>Back</button> : <button className="characters-library__hero-create" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={22}/></button>}
     </header>

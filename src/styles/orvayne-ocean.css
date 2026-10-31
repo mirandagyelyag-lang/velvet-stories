@@ -325,3 +325,30 @@ html:root body .chats-page--reference .orvayne-story-inbox-row .story-action-men
 html:root body .chats-page--reference .reference-story-list {gap:0!important}
 
 html:root[data-theme] body.velvet-burgundy-route .chats-page--reference .orvayne-story-inbox-row .story-action-menu__trigger {background:transparent!important;border:0!important;box-shadow:none!important}
+
+/* Match Characters to the centered brush heading used in Stories. */
+html:root body.velvet-discover-route .characters-library__compact-hero.characters-library__hero-simple.characters-library__hero-ink {
+ display:grid!important;grid-template-columns:48px minmax(0,560px) 48px!important;
+ justify-content:center!important;align-items:center!important;gap:28px!important;
+ padding:8px 0 12px!important;margin:0 0 16px!important;min-height:0!important;
+ background:transparent!important;border:0!important;box-shadow:none!important;
+}
+html:root body.velvet-discover-route .characters-library__hero-ink .characters-library__compact-copy {grid-column:2!important;min-width:0!important;width:100%!important}
+html:root body.velvet-discover-route .characters-library__hero-ink h1.characters-library__ink-title {
+ display:block!important;margin:0!important;padding:0!important;width:100%!important;
+ background:none!important;line-height:0!important;overflow:visible!important;
+}
+html:root body.velvet-discover-route .characters-library__ink-title img {
+ display:block;width:100%;height:auto;object-fit:contain;
+}
+html:root body.velvet-discover-route .characters-library__hero-ink .characters-library__hero-create {
+ grid-column:3!important;margin:0!important;width:48px!important;height:48px!important;min-height:48px!important;
+ background:var(--surface)!important;color:#b8c7d4!important;border:1px solid #7398af!important;box-shadow:none!important;
+}
+html:root body.velvet-discover-route .characters-library__hero-ink::after,
+html:root body.velvet-discover-route .characters-library__hero-ink::before {content:none!important}
+@media(max-width:600px){
+ html:root body.velvet-discover-route .characters-library__compact-hero.characters-library__hero-simple.characters-library__hero-ink {
+ grid-template-columns:48px minmax(0,1fr) 48px!important;gap:14px!important;
+ }
+}
