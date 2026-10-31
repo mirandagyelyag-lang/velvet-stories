@@ -1097,3 +1097,13 @@ html.velvet-discover-route, body.velvet-discover-route {
     transform: translateY(12px) !important;
   }
 }
+
+/* Ocean-blue title, overriding inherited white typography on all screen sizes. */
+.characters-library .characters-library__hero-ink .characters-library__ocean-title,
+.characters-library .characters-library__hero-ink .characters-library__ocean-title .characters-library__ocean-small,
+.characters-library .characters-library__hero-ink .characters-library__ocean-title .characters-library__ocean-large {
+  color: #83b8d0 !important;
+  -webkit-text-fill-color: #83b8d0 !important;
+  background-image: none !important;
+  text-shadow: 0 0 12px rgba(82,156,190,.16) !important;
+}
