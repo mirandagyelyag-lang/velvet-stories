@@ -263,3 +263,18 @@ html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-
  html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {gap:10px!important}
  html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-copy {width:calc(100% - 58px)!important}
 }
+
+/* Center the title itself; balance the action with an equal empty left track. */
+html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {
+ display:grid!important;grid-template-columns:48px minmax(0,560px) 48px!important;
+ justify-content:center!important;align-items:center!important;column-gap:28px!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-copy {
+ grid-column:2!important;width:100%!important;max-width:560px!important;min-width:0!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-new {grid-column:3!important}
+@media(max-width:600px){
+ html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {
+ grid-template-columns:48px minmax(0,1fr) 48px!important;column-gap:14px!important;
+ }
+}
