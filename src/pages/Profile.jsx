@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCharacters } from "../context/CharactersContext";
 import { useLorebooks } from "../context/LorebooksContext";
@@ -257,7 +258,7 @@ function Profile({
         </div>
       )}
 
-      {profileEditorOpen && (
+      {profileEditorOpen && createPortal(
         <div className="profile-editor-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !savingProfile && setProfileEditorOpen(false)}>
           <form className="profile-editor" onSubmit={saveProfile}>
             <header><div><p>YOUR PROFILE</p><h2>Make it yours</h2></div><button type="button" onClick={() => setProfileEditorOpen(false)} disabled={savingProfile} aria-label="Close"><X size={20}/></button></header>
@@ -270,7 +271,7 @@ function Profile({
             {profileError && <p className="profile-editor__error">{profileError}</p>}
             <footer><button type="button" onClick={() => setProfileEditorOpen(false)} disabled={savingProfile}>Cancel</button><button type="submit" disabled={savingProfile}>{savingProfile ? "Saving…" : "Save profile"}</button></footer>
           </form>
-        </div>
+        </div>, document.body
       )}
     </section>
   );
