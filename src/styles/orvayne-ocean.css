@@ -1,5 +1,5 @@
 /* Orvayne dark identity: ocean surfaces, lilac accents. Light and Comfort retain their palettes. */
-html[data-theme="dark"] {
+html:root[data-theme="dark"] {
  --background:#11151b; --surface:#202833; --surface-soft:#252d39; --surface-strong:#303747;
  --text-primary:#f0eef5; --text-secondary:#b1b8c8;
  --accent:#b6a0ed; --accent-dark:#7662a7; --gold:#c4b4e5;
@@ -9,55 +9,55 @@ html[data-theme="dark"] {
  --velvet-rose-dim:var(--text-secondary); --velvet-ink:var(--text-primary);
  --velvet-line:var(--border); --stories-muted:var(--text-secondary);
 }
-html[data-theme="dark"] body .sidebar {
+html:root[data-theme="dark"] body .sidebar {
  background:linear-gradient(180deg,#202833,#18212c 55%,#111923)!important;
  border-right-color:var(--border)!important;color:var(--text-primary)!important;
 }
-html[data-theme="dark"] body .sidebar__brand,
-html[data-theme="dark"] body .sidebar__brand span {color:var(--text-primary)!important}
-html[data-theme="dark"] body .sidebar__link {color:var(--text-secondary)!important}
-html[data-theme="dark"] body .sidebar__link svg {color:var(--accent)!important}
-html[data-theme="dark"] body .sidebar__link--active,
-html[data-theme="dark"] body .sidebar__link:hover {
+html:root[data-theme="dark"] body .sidebar__brand,
+html:root[data-theme="dark"] body .sidebar__brand span {color:var(--text-primary)!important}
+html:root[data-theme="dark"] body .sidebar__link {color:var(--text-secondary)!important}
+html:root[data-theme="dark"] body .sidebar__link svg {color:var(--accent)!important}
+html:root[data-theme="dark"] body .sidebar__link--active,
+html:root[data-theme="dark"] body .sidebar__link:hover {
  background:#303747!important;color:var(--text-primary)!important;border-color:var(--border)!important;
 }
-html[data-theme="dark"] body .sidebar__footer {border-top-color:var(--border)!important}
-html[data-theme="dark"] body .sidebar__footer .sidebar__theme,
-html[data-theme="dark"] body .sidebar__footer .sidebar__profile {
+html:root[data-theme="dark"] body .sidebar__footer {border-top-color:var(--border)!important}
+html:root[data-theme="dark"] body .sidebar__footer .sidebar__theme,
+html:root[data-theme="dark"] body .sidebar__footer .sidebar__profile {
  background:#252d39!important;color:var(--text-primary)!important;border-color:var(--border)!important;
 }
-html[data-theme="dark"] body .sidebar__footer .sidebar__theme:hover,
-html[data-theme="dark"] body .sidebar__footer .sidebar__profile:hover {background:#303747!important}
-html[data-theme="dark"] body .sidebar__profile-copy strong {color:var(--text-primary)!important}
-html[data-theme="dark"] body .sidebar__profile-copy small {color:var(--text-secondary)!important}
-html[data-theme="dark"] body .sidebar__avatar {background:#7662a7!important;border-color:var(--gold)!important}
-html[data-theme="dark"] body .mobile-nav.velvet-reference-nav {
+html:root[data-theme="dark"] body .sidebar__footer .sidebar__theme:hover,
+html:root[data-theme="dark"] body .sidebar__footer .sidebar__profile:hover {background:#303747!important}
+html:root[data-theme="dark"] body .sidebar__profile-copy strong {color:var(--text-primary)!important}
+html:root[data-theme="dark"] body .sidebar__profile-copy small {color:var(--text-secondary)!important}
+html:root[data-theme="dark"] body .sidebar__avatar {background:#7662a7!important;border-color:var(--gold)!important}
+html:root[data-theme="dark"] body .mobile-nav.velvet-reference-nav {
  background:rgba(24,33,44,.96)!important;border-color:var(--border)!important;
 }
-html[data-theme="dark"] body .chat {
+html:root[data-theme="dark"] body .chat {
  background:radial-gradient(ellipse at 50% 0%,#303747,transparent 65%),var(--background)!important;
 }
-html[data-theme="dark"] body :is(.reference-search-wrap,.reference-filter-menu,.chat__header,.chat__composer) {
+html:root[data-theme="dark"] body :is(.reference-search-wrap,.reference-filter-menu,.chat__header,.chat__composer) {
  background:var(--velvet-glass)!important;border-color:var(--border)!important;
 }
-html[data-theme="dark"] body :is(.reference-search input,.characters-page input,.studio-field input,.studio-field textarea,.studio-field select) {
+html:root[data-theme="dark"] body :is(.reference-search input,.characters-page input,.studio-field input,.studio-field textarea,.studio-field select) {
  color:var(--text-primary)!important;
 }
-html[data-theme="dark"] body .reference-search input::placeholder {color:var(--text-secondary)!important}
-html[data-theme="dark"] body .reference-story-row {
+html:root[data-theme="dark"] body .reference-search input::placeholder {color:var(--text-secondary)!important}
+html:root[data-theme="dark"] body .reference-story-row {
  background:linear-gradient(95deg,#303747,#202833)!important;border-color:var(--border)!important;
 }
 @media(max-width:760px) {
- html[data-theme="dark"][data-velvet-page="chats"].velvet-burgundy-route,
- html[data-theme="dark"] body[data-velvet-page="chats"].velvet-burgundy-route {
+ html:root[data-theme="dark"][data-velvet-page="chats"].velvet-burgundy-route,
+ html:root[data-theme="dark"] body[data-velvet-page="chats"].velvet-burgundy-route {
  background:var(--stories-canvas)!important;
  }
- html[data-theme="dark"] body[data-velvet-page="chats"].velvet-burgundy-route :is(#root,.app,.app__content,.velvet-route-stage,.chats-page.chats-page--reference) {
+ html:root[data-theme="dark"] body[data-velvet-page="chats"].velvet-burgundy-route :is(#root,.app,.app__content,.velvet-route-stage,.chats-page.chats-page--reference) {
  background:transparent!important;
  }
- html[data-theme="dark"] body .chats-page--reference :is(.orvayne-library-head__eyebrow,.orvayne-library-head__summary) {color:var(--text-secondary)!important}
- html[data-theme="dark"] body .chats-page--reference .orvayne-library-head h1 {color:var(--text-primary)!important}
- html[data-theme="dark"] body .chats-page--reference :is(.reference-search,.orvayne-library-head__editorial-new) {
+ html:root[data-theme="dark"] body .chats-page--reference :is(.orvayne-library-head__eyebrow,.orvayne-library-head__summary) {color:var(--text-secondary)!important}
+ html:root[data-theme="dark"] body .chats-page--reference .orvayne-library-head h1 {color:var(--text-primary)!important}
+ html:root[data-theme="dark"] body .chats-page--reference :is(.reference-search,.orvayne-library-head__editorial-new) {
  background:var(--surface-soft)!important;border-color:var(--border)!important;color:var(--accent)!important;
  }
 }
