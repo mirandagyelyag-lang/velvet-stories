@@ -630,3 +630,33 @@
   border-radius: 50%;
   border: 1px solid #6c8ca0;
 }
+
+/* Keep the profile editor's Save action visible above the mobile tab bar. */
+.profile-editor-backdrop {
+  z-index: 100000 !important;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+}
+.profile-editor {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px - env(safe-area-inset-bottom)) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.profile-editor footer {
+  position: sticky;
+  bottom: -22px;
+  z-index: 2;
+  flex-shrink: 0;
+  padding: 14px 0 calc(8px + env(safe-area-inset-bottom));
+  margin-top: 16px;
+  background: var(--stories-panel-strong, #202832);
+}
+.profile-editor footer button[type="submit"] {
+  min-width: 130px;
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  .profile-editor-backdrop { padding: 8px 8px calc(8px + env(safe-area-inset-bottom)) !important; }
+  .profile-editor { max-height: calc(100dvh - 16px - env(safe-area-inset-bottom)) !important; }
+}
