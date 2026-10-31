@@ -595,9 +595,9 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   function renderRecentStory(conversation) {
     const character = conversation.character;
     if (!character) return null;
-    const title = conversation.title || character.name;
-    const art = conversation.cover_url || character.coverUrl || character.imageUrl;
-    const preview = shelfPreview(conversation.latestMessage?.content || character.firstMessage || character.role || "Continue the story.");
+    const title = character.name;
+    const art = character.imageUrl || character.coverUrl || conversation.cover_url;
+    const preview = shelfPreview(conversation.latestMessage?.content || "");
     return (
       <SwipeToTrash
         key={conversation.id}
@@ -610,7 +610,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         showLabel
       >
       <article
-        className={`reference-story-row${conversation.is_pinned ? " reference-story-row--favorite" : ""}`}
+        className={`reference-story-row orvayne-story-inbox-row${conversation.is_pinned ? " reference-story-row--favorite" : ""}`}
         onClick={() => !conversation.trashed_at && !conversation.archived_at && onOpenCharacter(character, conversation.id)}
       >
         <div className="reference-story-row__art">{art ? <img src={art} alt=""/> : <span>{character.initials}</span>}</div>
@@ -623,8 +623,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
             </form>
           ) : <h3>{title}</h3>}
           <p>{preview}</p>
-          {(character.tags || []).length > 0 && <div className="velvet-identity-tags">{character.tags.slice(0, 2).map((tag) => <span key={tag}>{String(tag).toUpperCase()}</span>)}</div>}
-          <time>{formatShelfDate(conversation.updated_at)}</time>
+          <time dateTime={conversation.updated_at}>{new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(conversation.updated_at))}</time>
         </div>
         {renderStoryMenu(conversation, title, "reference")}
       </article>

@@ -129,3 +129,34 @@ html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference .
 html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference .velvet-identity-chips button.is-active {
  background:var(--accent)!important;color:#11151b!important;border-color:var(--accent)!important;
 }
+
+/* Recent stories: an inbox with circular portraits and three text lines. */
+html:root body .chats-page--reference .reference-story-row.orvayne-story-inbox-row {
+ display:grid!important;grid-template-columns:64px minmax(0,1fr) 44px!important;align-items:center!important;
+ gap:16px!important;padding:18px 0!important;min-height:104px!important;
+ background:transparent!important;background-image:none!important;
+ border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;box-shadow:none!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__art {
+ width:64px!important;height:64px!important;border-radius:50%!important;overflow:hidden!important;
+ border:1px solid var(--border)!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__art img {width:100%!important;height:100%!important;object-fit:cover!important}
+html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__copy h3 {
+ margin:0 0 5px!important;color:var(--text-primary)!important;font-size:clamp(1.15rem,2.5vw,1.55rem)!important;line-height:1.2!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__copy p {
+ display:block!important;margin:0 0 6px!important;color:var(--text-secondary)!important;
+ font-family:"Manrope",sans-serif!important;font-size:.8rem!important;font-style:normal!important;line-height:1.4!important;
+ overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__copy time {
+ display:block!important;color:var(--text-secondary)!important;font-size:.68rem!important;letter-spacing:.02em!important;text-transform:none!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .story-action-menu__trigger {
+ width:44px!important;height:44px!important;border:0!important;background:transparent!important;color:var(--accent)!important;box-shadow:none!important;
+}
+@media(max-width:420px){
+ html:root body .chats-page--reference .reference-story-row.orvayne-story-inbox-row {grid-template-columns:54px minmax(0,1fr) 40px!important;gap:11px!important}
+ html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__art {width:54px!important;height:54px!important}
+}
