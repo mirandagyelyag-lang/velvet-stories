@@ -113,7 +113,7 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
-    const colors = { light: "#f7eff2", comfort: "#eee4dc", dark: "#10090e" };
+    const colors = { light: "#f7eff2", comfort: "#eee4dc", dark: "#11151b" };
     meta?.setAttribute("content", colors[theme] || colors.dark);
   }, [theme]);
 
@@ -527,7 +527,7 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
     </section>;
   }
 
-  return <section className="chats-page chats-page--reference memories-reference-page memories-character-library memories-character-index">
+  return <section style={{ background: "#11151b", backgroundImage: "none", minHeight: "100dvh" }} className="chats-page chats-page--reference memories-reference-page memories-character-library memories-character-index">
     <header className="memories-reference__hero memories-reference__hero--compact">
       <div className="memories-reference__hero-copy">
         <span className="memories-reference__eyebrow">PRIVATE MEMORY BOOK</span>
