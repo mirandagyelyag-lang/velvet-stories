@@ -558,6 +558,39 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
   }
 
   return <section style={{ background: "#11151b", backgroundImage: "none", minHeight: "100dvh" }} className="chats-page chats-page--reference memories-reference-page memories-character-library memories-character-index">
+    <style>{`
+      .memories-character-index .memories-reference__hero.memories-reference__hero--compact {
+        display: flex !important; align-items: center !important; justify-content: space-between !important;
+        min-height: 112px !important; height: 112px !important; max-height: 112px !important;
+        padding: 8px 16px !important; margin: 0 0 12px !important; gap: 10px !important;
+      }
+      .memories-character-index .memories-reference__hero-copy {
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        flex: 1 1 auto !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important;
+      }
+      .memories-character-index .memories-reference__ocean-title {
+        display: flex !important; flex-direction: column !important; align-items: center !important;
+        justify-content: center !important; gap: 4px !important; min-width: 0 !important;
+        margin: 0 !important; padding: 0 !important; line-height: 1.05 !important;
+        color: #83b8d0 !important; -webkit-text-fill-color: #83b8d0 !important;
+        text-align: center !important; text-shadow: 0 0 12px rgba(83,156,191,.16) !important;
+      }
+      .memories-character-index .memories-reference__ocean-small {
+        font: 400 14px/1.1 Georgia,serif !important; letter-spacing: .32em !important;
+        padding-left: .32em !important;
+      }
+      .memories-character-index .memories-reference__ocean-large {
+        font: 400 clamp(27px, 7vw, 45px)/1.05 Georgia,serif !important;
+        letter-spacing: .10em !important; padding-left: .10em !important; white-space: nowrap !important;
+      }
+      .memories-character-index .memories-reference__new { flex: 0 0 auto !important; }
+      @media (max-width: 760px) {
+        .memories-character-index .memories-reference__hero.memories-reference__hero--compact {
+          min-height: 100px !important; height: 100px !important; max-height: 100px !important;
+          margin-bottom: 10px !important;
+        }
+      }
+    `}</style>
     <header className="memories-reference__hero memories-reference__hero--compact">
       <div className="memories-reference__hero-copy">
         <h1 className="memories-reference__ocean-title" aria-label="Your Memories"><span className="memories-reference__ocean-small">YOUR</span><span className="memories-reference__ocean-large">MEMORIES</span></h1>
