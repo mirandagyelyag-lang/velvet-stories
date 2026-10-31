@@ -711,7 +711,14 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
             </svg>
           </h1>
         </div>
-        <button className="orvayne-library-head__editorial-new" type="button" onClick={() => setPickerOpen(true)} aria-label="Create new story"><Plus size={22}/></button>
+        <button className="orvayne-library-head__editorial-new" type="button" onClick={() => setPickerOpen(true)} aria-label="Create new story" title="Create new story">
+          <svg className="orvayne-create-story-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+            <circle cx="24" cy="24" r="22.5" fill="var(--surface, #202833)" stroke="#87afc3" strokeWidth="1.2"/>
+            <path d="M25 14c6.4 0 11 4.1 11 9.5 0 2.5-1 4.7-2.8 6.4l1.6 4.4-5.4-2.1c-1.3.5-2.8.8-4.4.8-6.4 0-11-4.1-11-9.5S18.6 14 25 14Z" fill="#43647b"/>
+            <path d="M20.5 18c6 0 10.5 4 10.5 9.2s-4.5 9.3-10.5 9.3c-1.5 0-2.9-.2-4.2-.7l-5.1 2 1.5-4.4C11 31.8 10 29.6 10 27.2 10 22 14.5 18 20.5 18Z" fill="#87afc3" stroke="var(--surface, #202833)" strokeWidth="1"/>
+            <path d="M34.5 9.5c.8 3.2 1.8 4.2 5 5-3.2.8-4.2 1.8-5 5-.8-3.2-1.8-4.2-5-5 3.2-.8 4.2-1.8 5-5Z" fill="#b6a0ed"/>
+          </svg>
+        </button>
       </header>
 
       {!loading && featuredStory && view === "active" && !search.trim() && (() => {
