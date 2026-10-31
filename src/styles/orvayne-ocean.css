@@ -362,3 +362,14 @@ html:root body.velvet-discover-route .characters-library__hero-simple .character
 html:root body.velvet-discover-route .characters-library__hero-create svg.orvayne-create-character-icon {
  display:block!important;width:48px!important;height:48px!important;fill:none;
 }
+
+html:root body .character-studio .orvayne-creation-choice {display:block!important;margin:0 0 24px!important}
+html:root body .character-studio .orvayne-creation-choice>button {
+ display:flex!important;align-items:center!important;gap:13px!important;width:100%!important;
+ padding:16px!important;border:1px solid #7398af!important;border-radius:16px!important;
+ background:var(--surface,#202833)!important;color:var(--text-primary)!important;text-align:left!important;cursor:pointer;
+}
+html:root body .character-studio .orvayne-creation-choice>button>span {flex:1;display:grid;gap:5px}
+html:root body .character-studio .orvayne-creation-choice strong {font-size:1rem}
+html:root body .character-studio .orvayne-creation-choice small {font-size:.76rem;color:var(--text-secondary);line-height:1.4}
+html:root body .character-studio .orvayne-creation-choice>p {margin:16px 0 0;text-align:center;color:var(--text-secondary);font-size:.76rem}

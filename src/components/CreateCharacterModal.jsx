@@ -193,6 +193,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
         setCharacterConcept(saved.characterConcept || (remixSource ? buildRemixSeed(remixSource) : ""));
         setQuickName(saved.quickName || "");
         setQuickRelationship(saved.quickRelationship || "");
+        if (saved.creationMode === "manual") setAdvancedOpen(true);
         const recoveredReady = [saved.form.name, saved.form.role, saved.form.personality, saved.form.firstMessage].every((value) => String(value || "").trim());
         setCreatorStatus(recoveredReady ? "Complete draft created. Recovered from local autosave." : "Recovered your unfinished autosaved draft.");
         setRecoveredDraft(true);
@@ -207,14 +208,14 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
     autosaveTimerRef.current = window.setTimeout(() => {
       try {
         const safe = { ...form, imageFile: null, coverFile: null };
-        localStorage.setItem(draftStorageKey, JSON.stringify({ form: safe, characterConcept, quickName, quickRelationship, savedAt: Date.now(), characterId: character?.id || null, remixSourceId: remixSource?.id || null }));
+        localStorage.setItem(draftStorageKey, JSON.stringify({ form: safe, characterConcept, quickName, quickRelationship, creationMode: advancedOpen ? "manual" : "assisted", savedAt: Date.now(), characterId: character?.id || null, remixSourceId: remixSource?.id || null }));
         setAutosaveStatus("Saved locally");
       } catch {
         setAutosaveStatus("Autosave unavailable");
       }
     }, 180);
     return () => window.clearTimeout(autosaveTimerRef.current);
-  }, [form, characterConcept, quickName, quickRelationship, character?.id, remixSource?.id, draftStorageKey]);
+  }, [form, characterConcept, quickName, quickRelationship, advancedOpen, character?.id, remixSource?.id, draftStorageKey]);
 
   function discardAutosavedDraft() {
     localStorage.removeItem(draftStorageKey);
@@ -505,8 +506,8 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
         </button>
         <header className="character-studio__topbar">
           <div>
-            <p className="character-studio__eyebrow">{character ? "PRIVATE CHARACTER STUDIO" : advancedOpen ? "FINE-TUNE" : remixSource ? "DUPLICATE & REMIX" : "QUICK CREATE"}</p>
-            <h2 id="character-studio-title">{character ? `Shape ${form.name || "your character"}` : advancedOpen ? `Fine-tune ${form.name || "your character"}` : remixSource ? `Remix ${remixSource.name}` : "Make someone new"}</h2>
+            <p className="character-studio__eyebrow">{character ? "PRIVATE CHARACTER STUDIO" : advancedOpen ? "MANUAL CREATION" : remixSource ? "DUPLICATE & REMIX" : "QUICK CREATE"}</p>
+            <h2 id="character-studio-title">{character ? `Shape ${form.name || "your character"}` : advancedOpen ? (form.name || "Create from scratch") : remixSource ? `Remix ${remixSource.name}` : "Make someone new"}</h2>
           </div>
           <div className={`character-studio__autosave${autosaveStatus.includes("Saved") ? " is-saved" : ""}`}><Check size={13}/><span>{autosaveStatus}</span>{recoveredDraft && <button type="button" onClick={discardAutosavedDraft}>Discard recovery</button>}</div>
           <div className="character-studio__top-actions">
@@ -549,6 +550,12 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
             </div>}
 
             <div className="character-studio-lite__canvas">
+              <div className="orvayne-creation-choice" aria-label="Character creation method">
+                <button type="button" onClick={() => { setAdvancedOpen(true); setStudioStep("essence"); setError(""); }} disabled={saving || aiBusy}>
+                  <UserRound size={20}/><span><strong>Create from scratch</strong><small>Write every detail yourself. No AI generation required.</small></span><ChevronLeft size={18} style={{transform:"rotate(180deg)"}}/>
+                </button>
+                <p>Or create with AI below</p>
+              </div>
               {!quickDraftReady ? (
                 quickStep === 1 ? (
                   <section className="character-studio-lite__step character-studio-lite__step--idea">
