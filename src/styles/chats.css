@@ -1508,3 +1508,12 @@ html[data-theme='comfort'] .chats-page--reference .reference-collection-card__ic
   letter-spacing: .105em !important;
   padding-left: .105em !important;
 }
+
+/* Ocean blue editorial title: YOUR STORIES. */
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title,
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title .orvayne-library-head__classic-small,
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title .orvayne-library-head__classic-large {
+  color: #83b8d0 !important;
+  -webkit-text-fill-color: #83b8d0 !important;
+  text-shadow: 0 0 14px rgba(82, 156, 190, .16) !important;
+}
