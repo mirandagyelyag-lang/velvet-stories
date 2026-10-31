@@ -700,8 +700,11 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     <section className="chats-page chats-page--reference" >
       <header className="orvayne-library-head orvayne-library-head--editorial orvayne-library-head--ocean-ink">
         <div className="orvayne-library-head__editorial-copy">
-          <h1 className="orvayne-library-head__brush-title">Your Stories</h1>
-          <p className="orvayne-library-head__brush-tagline">Beyond the script</p>
+          <h1 className="orvayne-library-head__ink-art" aria-label="Your Stories — Beyond the script">
+            <svg viewBox="180 620 1250 300" role="img" aria-hidden="true" focusable="false">
+              <image href="/images/orvayne-ocean-ink-reference.png" width="1672" height="941" />
+            </svg>
+          </h1>
         </div>
         <button className="orvayne-library-head__editorial-new" type="button" onClick={() => setPickerOpen(true)} aria-label="Create new story"><Plus size={22}/></button>
       </header>

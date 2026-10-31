@@ -199,3 +199,17 @@ html:root:not([data-theme="dark"]) body .chats-page--reference .orvayne-library-
  html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__brush-title {font-size:clamp(32px,9vw,40px)!important}
  html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {gap:8px!important}
 }
+
+/* Display the selected brush artwork itself, rather than a substitute font. */
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-copy::before {content:none!important}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink h1.orvayne-library-head__ink-art {
+ display:block!important;width:100%!important;max-width:850px!important;min-width:0!important;
+ margin:0!important;padding:0!important;line-height:0!important;background:none!important;
+ overflow:visible!important;transform:none!important;
+}
+html:root body .chats-page--reference .orvayne-library-head__ink-art svg {
+ display:block;width:100%;height:auto;aspect-ratio:1250 / 300;overflow:hidden;
+}
+html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {
+ gap:10px!important;padding:12px 0 22px!important;
+}
