@@ -298,3 +298,28 @@ html:root[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-continu
 }
 html:root[data-theme="dark"] body.velvet-burgundy-route :is(.velvet-identity-continue__corner,.velvet-identity-continue__card) {border-color:rgba(184,199,212,.4)!important;box-shadow:none!important}
 html:root[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-continue__copy small {border-color:#7398af!important;background:rgba(32,40,51,.5)!important}
+
+/* Compact recent-story rows with quieter typography and actions. */
+html:root body .chats-page--reference .reference-story-row.orvayne-story-inbox-row {
+ grid-template-columns:46px minmax(0,1fr) 36px!important;gap:12px!important;
+ min-height:76px!important;padding:10px 2px!important;
+ border-bottom-color:rgba(184,199,212,.12)!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__art {
+ width:46px!important;height:46px!important;border-color:rgba(184,199,212,.25)!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__copy h3 {
+ font-size:1.12rem!important;line-height:1.15!important;margin:0 0 3px!important;font-weight:500!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__copy p {
+ margin:0 0 3px!important;font-size:.74rem!important;line-height:1.3!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__copy time {
+ font-size:.63rem!important;line-height:1.25!important;letter-spacing:0!important;opacity:.8;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .story-action-menu__trigger {
+ width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;
+ background:transparent!important;border:0!important;box-shadow:none!important;border-radius:50%!important;color:#b8c7d4!important;
+}
+html:root body .chats-page--reference .orvayne-story-inbox-row .story-action-menu__trigger:hover {background:rgba(184,199,212,.08)!important}
+html:root body .chats-page--reference .reference-story-list {gap:0!important}
