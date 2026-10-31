@@ -60,6 +60,8 @@ function Profile({
   const [signingOut, setSigningOut] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
   const [draft, setDraft] = useState({ displayName: "", tagline: "", quote: "", avatarUrl: "" });
 
   const metadata = user?.user_metadata || {};
@@ -119,7 +121,24 @@ function Profile({
       avatarUrl,
     });
     setProfileError("");
+    setAvatarFile(null);
+    setAvatarPreview("");
     setProfileEditorOpen(true);
+  }
+
+  function chooseAvatarFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setProfileError("Choose a JPG, PNG or WebP image under 5 MB.");
+      event.target.value = "";
+      return;
+    }
+    setProfileError("");
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setAvatarPreview(String(reader.result || ""));
+    reader.readAsDataURL(file);
   }
 
   async function saveProfile(event) {
@@ -132,13 +151,22 @@ function Profile({
     try {
       setSavingProfile(true);
       setProfileError("");
+      let nextAvatarUrl = draft.avatarUrl.trim();
+      if (avatarFile) {
+        if (!user?.id) throw new Error("Sign in to upload your profile image.");
+        const extension = avatarFile.type === "image/png" ? "png" : avatarFile.type === "image/webp" ? "webp" : "jpg";
+        const path = user.id + "/" + crypto.randomUUID() + "." + extension;
+        const { error: uploadError } = await supabase.storage.from("profile-avatars").upload(path, avatarFile, { contentType: avatarFile.type, upsert: false });
+        if (uploadError) throw uploadError;
+        nextAvatarUrl = supabase.storage.from("profile-avatars").getPublicUrl(path).data.publicUrl;
+      }
       const { error } = await supabase.auth.updateUser({
         data: {
           ...metadata,
           display_name: nextName,
           profile_tagline: draft.tagline.trim(),
           profile_quote: draft.quote.trim(),
-          avatar_url: draft.avatarUrl.trim(),
+          avatar_url: nextAvatarUrl,
         },
       });
       if (error) throw error;
@@ -236,7 +264,9 @@ function Profile({
             <label>Display name<input value={draft.displayName} onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))} maxLength={50} autoFocus/></label>
             <label>Tagline<input value={draft.tagline} onChange={(event) => setDraft((current) => ({ ...current, tagline: event.target.value }))} maxLength={80} placeholder="Dreamer. Writer. Story collector."/></label>
             <label>Profile line<input value={draft.quote} onChange={(event) => setDraft((current) => ({ ...current, quote: event.target.value }))} maxLength={120} placeholder="A little line that feels like you."/></label>
-            <label>Profile image URL<input type="url" value={draft.avatarUrl} onChange={(event) => setDraft((current) => ({ ...current, avatarUrl: event.target.value }))} placeholder="https://…"/></label>
+            <label>Profile photo from your device<input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseAvatarFile}/></label>
+            {avatarPreview && <img src={avatarPreview} alt="Selected profile photo preview" className="profile-editor__avatar-preview"/>}
+            <label>Or use an image URL<input type="url" value={draft.avatarUrl} onChange={(event) => { setDraft((current) => ({ ...current, avatarUrl: event.target.value })); setAvatarFile(null); setAvatarPreview(""); }} placeholder="https://…"/></label>
             {profileError && <p className="profile-editor__error">{profileError}</p>}
             <footer><button type="button" onClick={() => setProfileEditorOpen(false)} disabled={savingProfile}>Cancel</button><button type="submit" disabled={savingProfile}>{savingProfile ? "Saving…" : "Save profile"}</button></footer>
           </form>
