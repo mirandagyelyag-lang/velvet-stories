@@ -716,7 +716,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
             <circle cx="24" cy="24" r="22.5" fill="var(--surface, #202833)" stroke="#87afc3" strokeWidth="1.2"/>
             <path d="M27 13c6.1 0 10.5 4 10.5 9.2 0 2.4-1 4.5-2.7 6.2l1.4 4-5-1.9c-1.3.5-2.7.7-4.2.7-6.1 0-10.5-4-10.5-9S20.9 13 27 13Z" fill="#4f738b"/>
             <path d="M19 20c5.7 0 10 3.8 10 8.6s-4.3 8.7-10 8.7c-1.4 0-2.8-.2-4-.7l-4.8 1.9 1.4-4.1C9.9 32.8 9 30.8 9 28.6 9 23.8 13.3 20 19 20Z" fill="#87afc3" stroke="var(--surface, #202833)" strokeWidth="1"/>
-            <path d="M34.5 9.5c.8 3.2 1.8 4.2 5 5-3.2.8-4.2 1.8-5 5-.8-3.2-1.8-4.2-5-5 3.2-.8 4.2-1.8 5-5Z" fill="#b6a0ed"/>
+            <path d="M34.5 9.5c.8 3.2 1.8 4.2 5 5-3.2.8-4.2 1.8-5 5-.8-3.2-1.8-4.2-5-5 3.2-.8 4.2-1.8 5-5Z" fill="#b8c7d4"/>
           </svg>
         </button>
       </header>

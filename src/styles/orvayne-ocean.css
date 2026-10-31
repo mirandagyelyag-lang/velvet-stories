@@ -3,8 +3,8 @@
 html:root[data-theme="dark"] {
  --background:#11151b; --surface:#202833; --surface-soft:#252d39; --surface-strong:#303747;
  --text-primary:#f0eef5; --text-secondary:#b1b8c8;
- --accent:#b6a0ed; --accent-dark:#7662a7; --gold:#c4b4e5;
- --border:rgba(182,160,237,.22);
+ --accent:#b8c7d4; --accent-dark:#52758c; --gold:#b8c7d4;
+ --border:rgba(184, 199, 212,.22);
  --velvet-glass:rgba(32,40,51,.9); --velvet-veil:rgba(17,21,27,.94);
  --velvet-contrast:#f0eef5; --velvet-rose:var(--accent); --velvet-rose-soft:var(--gold);
  --velvet-rose-dim:var(--text-secondary); --velvet-ink:var(--text-primary);
@@ -31,7 +31,7 @@ html:root[data-theme="dark"] body .sidebar__footer .sidebar__theme:hover,
 html:root[data-theme="dark"] body .sidebar__footer .sidebar__profile:hover {background:#303747!important}
 html:root[data-theme="dark"] body .sidebar__profile-copy strong {color:var(--text-primary)!important}
 html:root[data-theme="dark"] body .sidebar__profile-copy small {color:var(--text-secondary)!important}
-html:root[data-theme="dark"] body .sidebar__avatar {background:#7662a7!important;border-color:var(--gold)!important}
+html:root[data-theme="dark"] body .sidebar__avatar {background:#52758c!important;border-color:var(--gold)!important}
 html:root[data-theme="dark"] body .mobile-nav.velvet-reference-nav {
  background:rgba(24,33,44,.96)!important;border-color:var(--border)!important;
 }
@@ -278,3 +278,17 @@ html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-
  grid-template-columns:48px minmax(0,1fr) 48px!important;column-gap:14px!important;
  }
 }
+
+/* Silver-blue details, ice-blue selected controls. */
+html:root[data-theme="dark"] {
+ --stories-accent:#91b8cc;--stories-accent-strong:#52758c;
+ --stories-line:rgba(184,199,212,.22);--stories-line-strong:rgba(184,199,212,.4);
+ --velvet-line-strong:rgba(184,199,212,.4);--char-rose:#91b8cc;--char-wine:#52758c;
+}
+html:root[data-theme="dark"] body .sidebar__link svg {color:#b8c7d4!important}
+html:root[data-theme="dark"] body .sidebar__link--active svg {color:#91b8cc!important;stroke:#91b8cc!important}
+html:root[data-theme="dark"] body .sidebar__link--active::after {background:#91b8cc!important;box-shadow:none!important}
+html:root[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__link--active::after {background:#91b8cc!important;box-shadow:none!important}
+html:root[data-theme="dark"] body {scrollbar-color:#52758c #11151b}
+html:root[data-theme="dark"] body ::-webkit-scrollbar-thumb {background:#52758c!important}
+html:root[data-theme="dark"] body .chat__send-button {background:#91b8cc!important;color:#11151b!important}
