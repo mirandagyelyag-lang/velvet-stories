@@ -168,9 +168,6 @@ function Profile({
     { icon: Activity, label: "AI Status", action: onOpenDiagnostics },
     { icon: LockKeyhole, label: "Profile & Access", action: () => setAccessOpen(true) },
     { icon: LogOut, label: signingOut ? "Logging out…" : "Log out", action: handleSignOut, isLogout: true },
-    { icon: Search, label: "Search Orvayne", action: onOpenSearch },
-    { icon: BookHeart, label: "Memories", value: stats.memories, action: onOpenMemories },
-    { icon: BookOpen, label: "Characters", value: characters.length, action: onManageCharacters },
   ];
 
   return (
