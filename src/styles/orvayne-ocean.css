@@ -61,3 +61,36 @@ html:root[data-theme="dark"] body .reference-story-row {
  background:var(--surface-soft)!important;border-color:var(--border)!important;color:var(--accent)!important;
  }
 }
+
+/* Characters had a separate mobile canvas and local wine controls. */
+html:root[data-theme="dark"].velvet-discover-route.velvet-burgundy-route,
+html:root[data-theme="dark"].velvet-discover-route.velvet-burgundy-route body {
+ --discover-bg:#11151b!important; --discover-panel:#202833!important;
+ --stories-canvas:#11151b!important; --stories-atmosphere:none!important;
+ background:#11151b!important;
+}
+html:root[data-theme="dark"].velvet-discover-route.velvet-burgundy-route body :is(#root,.app,.app__content,.velvet-route-stage,.chats-page.characters-library) {
+ --discover-bg:#11151b!important; --discover-panel:#202833!important;
+ --stories-canvas:#11151b!important; --stories-atmosphere:none!important;
+ background:transparent!important;
+}
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__hero-simple h1 {
+ color:var(--text-primary)!important;-webkit-text-fill-color:var(--text-primary)!important;
+}
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__simple-eyebrow,
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__hero-simple p {color:var(--text-secondary)!important}
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__hero-simple .characters-library__hero-create,
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__controls .discover-burgundy__search,
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__controls .discover-burgundy__chips button {
+ background:var(--surface)!important;border-color:var(--border)!important;color:var(--accent)!important;
+}
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__controls .discover-burgundy__search input {
+ background:transparent!important;color:var(--text-primary)!important;
+}
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__controls .discover-burgundy__search input::placeholder {color:var(--text-secondary)!important}
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__controls .discover-burgundy__chips :is(button.active,button.is-active,button[aria-selected="true"]) {
+ background:var(--accent)!important;color:#11151b!important;border-color:var(--accent)!important;
+}
+html:root[data-theme="dark"] body.velvet-discover-route .characters-library__card .discover-burgundy__feature-card-copy small {
+ color:var(--gold)!important;-webkit-text-fill-color:var(--gold)!important;
+}
