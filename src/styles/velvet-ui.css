@@ -55,7 +55,7 @@
   line-height: .9;
 }
 
-.sidebar__brand span::after {
+.sidebar__brand > .sidebar__brand-name::after {
   content: "PRIVATE STORIES";
   display: block;
   margin-top: 8px;

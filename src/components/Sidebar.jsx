@@ -34,8 +34,7 @@ function Sidebar({ activePage, onNavigate }) {
     <>
       <aside className="sidebar">
         <button className="sidebar__brand" onClick={() => onNavigate("chats")}>
-          <span className="sidebar__brand-mark" aria-hidden="true">V</span>
-          <span>ORVAYNE</span>
+          <span className="sidebar__brand-name">ORVAYNE</span>
         </button>
 
         <nav className="sidebar__navigation" aria-label="Main navigation">
