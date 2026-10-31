@@ -320,7 +320,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
       setError("");
       const suggestions = await organizeCharacterDraft(form);
       setForm((current) => mergeCharacterSuggestions(current, suggestions));
-      setToolNotice("Profile organized. Velvet distributed what you wrote into the matching sections.");
+      setToolNotice("Profile organized. Orvayne distributed what you wrote into the matching sections.");
     } catch (requestError) {
       console.error("Character profile organization failed:", requestError);
       setError(requestError.message || "Orvayne couldn't organize this profile.");
@@ -346,7 +346,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
         if (requestedRelationship) next.relationship = requestedRelationship;
         return next;
       });
-      setCreatorStatus("Complete draft created. Velvet filled the deep profile for you.");
+      setCreatorStatus("Complete draft created. Orvayne filled the deep profile for you.");
     } catch (requestError) {
       if (generationAbortRef.current?.signal.aborted) {
         setCreatorStatus("Generation stopped. Your previous draft was left untouched.");
@@ -445,10 +445,10 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
   }
 
   function validateCharacter() {
-    if (!form.name.trim()) return setError("Give your character a name."), false;
-    if (!form.role.trim()) return setError("Add a role or archetype."), false;
-    if (!form.personality.trim()) return setError("Describe your character's personality."), false;
-    if (!form.firstMessage.trim()) return setError("Write an opening scene or first message."), false;
+    if (!form.name.trim()) return setStudioStep("essence"), setError("Give your character a name."), false;
+    if (!form.role.trim()) return setStudioStep("essence"), setError("Add a role or archetype."), false;
+    if (!form.personality.trim()) return setStudioStep("essence"), setError("Describe your character's personality."), false;
+    if (!form.firstMessage.trim()) return setStudioStep("opening"), setError("Write an opening scene or first message."), false;
     return true;
   }
 
@@ -461,7 +461,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
         ? await updateCharacter(character.id, form)
         : await createCharacter(form);
       localStorage.removeItem(draftStorageKey);
-      setAutosaveStatus("Saved to Velvet");
+      setAutosaveStatus("Saved to Orvayne");
       await onCreated(saved, { startChat: !character && intent === "chat" });
     } catch (requestError) {
       console.error("Error saving character:", requestError);
@@ -482,7 +482,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
     requestAnimationFrame(() => {
       const layout = document.querySelector(".character-studio__layout");
       if (window.matchMedia?.("(max-width: 760px)")?.matches) layout?.scrollTo?.({ top: 0, behavior: "smooth" });
-      else document.querySelector(`[data-studio-step="${step}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      else layout?.scrollTo?.({ top: 0, behavior: "smooth" });
     });
   }
 
@@ -494,7 +494,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
 
   return (
     <div className="modal-backdrop character-studio-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && onClose()}>
-      <section className="character-studio" role="dialog" aria-modal="true" aria-labelledby="character-studio-title">
+      <section className={`character-studio${character || advancedOpen ? " orvayne-studio-simple" : ""}`} role="dialog" aria-modal="true" aria-labelledby="character-studio-title">
         <div className="character-studio__escape-row">
           <button type="button" className="character-studio__escape-button" onClick={onClose} disabled={saving} aria-label="Back to Characters">
             <ChevronLeft size={19} />
@@ -510,7 +510,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
             <h2 id="character-studio-title">{character ? `Shape ${form.name || "your character"}` : advancedOpen ? (form.name || "Create from scratch") : remixSource ? `Remix ${remixSource.name}` : "Make someone new"}</h2>
           </div>
           <div className={`character-studio__autosave${autosaveStatus.includes("Saved") ? " is-saved" : ""}`}><Check size={13}/><span>{autosaveStatus}</span>{recoveredDraft && <button type="button" onClick={discardAutosavedDraft}>Discard recovery</button>}</div>
-          <div className="character-studio__top-actions">
+          <details className="character-studio__top-actions"><summary>More options</summary>
             {!character && advancedOpen && <button type="button" className="character-studio__ai character-studio__ai--primary" onClick={()=>setAdvancedOpen(false)} disabled={saving || aiBusy}>
               <Sparkles size={16}/><span>Quick create</span>
             </button>}
@@ -524,7 +524,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
             <button type="button" className="character-studio__close" onClick={onClose} disabled={saving} aria-label="Close character studio">
               <X size={20} />
             </button>
-          </div>
+          </details>
         </header>
 
         {toolNotice && <div className="character-studio__tool-notice" role="status"><Sparkles size={15}/><span>{toolNotice}</span><button type="button" onClick={()=>setToolNotice("")} aria-label="Dismiss"><X size={15}/></button></div>}
@@ -564,7 +564,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                       <div>
                         <small>{remixSource ? "REMIX" : "START WITH A FEELING"}</small>
                         <h3>{remixSource ? `Reimagine ${remixSource.name}` : "Who do you want to meet?"}</h3>
-                        <p>{remixSource ? "Keep the depth, change the person. Tell Velvet what should feel different." : "One messy sentence is enough. Velvet can build the personality, voice, history and opening from it."}</p>
+                        <p>{remixSource ? "Keep the depth, change the person. Tell Orvayne what should feel different." : "One messy sentence is enough. Orvayne can build the personality, voice, history and opening from it."}</p>
                       </div>
                     </div>
 
@@ -597,7 +597,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                   <section className="character-studio-lite__step character-studio-lite__step--details">
                     <div className="character-studio-lite__details-head">
                       <button type="button" onClick={()=>setQuickStep(1)} disabled={saving || generating}><ChevronLeft size={18}/><span>Idea</span></button>
-                      <div><small>STEP 2 OF 2</small><h3>A few details.</h3><p>Everything here is optional. Leave it blank and Velvet will decide.</p></div>
+                      <div><small>STEP 2 OF 2</small><h3>A few details.</h3><p>Everything here is optional. Leave it blank and Orvayne will decide.</p></div>
                     </div>
 
                     <div className="character-studio-lite__identity-card">
@@ -605,7 +605,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                         {avatarPreview ? <img src={avatarPreview} alt="Character portrait preview"/> : <span>{createInitials(quickName)}</span>}
                       </div>
                       <div>
-                        <strong>{quickName.trim() || "Let Velvet choose"}</strong>
+                        <strong>{quickName.trim() || "Let Orvayne choose"}</strong>
                         <span>{quickRelationship.trim() || "Relationship can develop naturally"}</span>
                       </div>
                       <label className="character-studio-lite__photo-button" aria-label={avatarPreview ? "Change portrait" : "Add portrait"}>
@@ -614,7 +614,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                     </div>
 
                     <div className="character-studio-lite__optional character-studio-lite__optional--new">
-                      <label><span>Name <em>optional</em></span><input value={quickName} onChange={(event)=>setQuickName(event.target.value)} placeholder="Let Velvet choose" disabled={generating || saving}/></label>
+                      <label><span>Name <em>optional</em></span><input value={quickName} onChange={(event)=>setQuickName(event.target.value)} placeholder="Let Orvayne choose" disabled={generating || saving}/></label>
                       <label><span>Relationship <em>optional</em></span><input value={quickRelationship} onChange={(event)=>setQuickRelationship(event.target.value)} placeholder="Friends, rivals, stranger…" disabled={generating || saving}/></label>
                     </div>
 
@@ -626,7 +626,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
 
                     <div className="character-studio-lite__step-footer character-studio-lite__step-footer--generate">
                       <button type="submit" className="character-studio-lite__primary character-studio-lite__create" disabled={saving || generating}>
-                        {generating ? <><LoaderCircle className="character-modal__spinner" size={18}/> Creating…</> : <><Sparkles size={18}/> {characterConcept.trim() || remixSource ? "Create with Velvet" : "Surprise me"}</>}
+                        {generating ? <><LoaderCircle className="character-modal__spinner" size={18}/> Creating…</> : <><Sparkles size={18}/> {characterConcept.trim() || remixSource ? "Create with Orvayne" : "Surprise me"}</>}
                       </button>
                       {generating && <button type="button" className="character-studio-lite__stop" onClick={stopCharacterGeneration}>Stop generation</button>}
                     </div>
@@ -643,7 +643,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                       <small>{form.role}</small>
                       <h3>{form.name}</h3>
                       <p>{form.description || form.personality}</p>
-                      <div><Heart size={14}/><span>{form.relationship || "A relationship Velvet can develop naturally"}</span></div>
+                      <div><Heart size={14}/><span>{form.relationship || "A relationship Orvayne can develop naturally"}</span></div>
                     </div>
                   </article>
 
@@ -672,7 +672,8 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
           </form>
         ) : (
         <form className="character-studio__layout" onSubmit={handleSubmit} data-studio-current={studioStep}>
-          <aside className="character-studio__preview" style={{ "--preview-color": form.color }}>
+          <details className="character-studio__preview" style={{ "--preview-color": form.color }}>
+            <summary>Photo & appearance <span>optional</span></summary>
             <div className="character-preview-card">
               <div className="character-preview-card__cover">
                 {coverPreview ? <img src={coverPreview} alt="Character cover preview" decoding="async" /> : <div className="character-preview-card__cover-fallback"><ImagePlus size={28} /><span>Add a cover</span></div>}
@@ -716,13 +717,13 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                 ))}</div>
               </fieldset>
             </div>
-          </aside>
+          </details>
 
           <main className="character-studio__editor">
-            <nav className="character-studio__journey" aria-label="Character creation steps">
+            <details className="orvayne-step-picker"><summary>Step {STUDIO_STEPS.findIndex(([id]) => id === studioStep) + 1} of {STUDIO_STEPS.length} · {STUDIO_STEPS.find(([id]) => id === studioStep)?.[1]}</summary><nav className="character-studio__journey" aria-label="Character creation steps">
               {STUDIO_STEPS.map(([step, label], index) => <button type="button" key={step} className={studioStep === step ? "active" : ""} aria-current={studioStep === step ? "step" : undefined} onClick={()=>jumpStudio(step)}><small>{String(index + 1).padStart(2, "0")}</small><span>{label}</span></button>)}
-            </nav>
-            <StudioSection step="essence" active={studioStep === "essence"} icon={<UserRound size={18} />} kicker="ESSENCE" title="Who are they?" description="The few things Velvet should understand before anything else." onPolish={() => handlePolishFields(["description", "personality"], "essence")} polishing={fieldPolishing === "essence"}>
+            </nav></details>
+            <StudioSection step="essence" active={studioStep === "essence"} icon={<UserRound size={18} />} kicker="ESSENCE" title="Who are they?" description="The few things Orvayne should understand before anything else." onPolish={() => handlePolishFields(["description", "personality"], "essence")} polishing={fieldPolishing === "essence"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Name" required><input name="name" value={form.name} onChange={updateField} placeholder="Theo Calloway" disabled={saving} /></StudioField>
                 <StudioField label="Role / archetype" required><input name="role" value={form.role} onChange={updateField} placeholder="Campus prince, heartbreaker, best friend…" disabled={saving} /></StudioField>
@@ -730,7 +731,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
               <StudioField label="Introduction" hint="One clean snapshot. Who are they at first glance?">
                 <textarea name="description" value={form.description} onChange={updateField} placeholder="Confident without trying, adored by professors and grandmothers alike…" rows="3" disabled={saving} />
               </StudioField>
-              <StudioField label="Personality" required hint="Write naturally. Velvet can infer traits from prose better than a list of adjectives.">
+              <StudioField label="Personality" required hint="Write naturally. Orvayne can infer traits from prose better than a list of adjectives.">
                 <textarea name="personality" value={form.personality} onChange={updateField} placeholder="He is warm in public, impossible to embarrass, quietly competitive…" rows="6" disabled={saving} />
               </StudioField>
             </StudioSection>
@@ -751,7 +752,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
               </div>
             </StudioSection>
 
-            <StudioSection step="depth" active={studioStep === "depth"} icon={<Sparkles size={18} />} kicker="DEVELOPMENT" title="How can they change without losing themselves?" description="Optional anchors for gradual growth. Velvet will never treat these as an instant transformation." onPolish={() => handlePolishFields(["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"], "development")} polishing={fieldPolishing === "development"}>
+              <details className="orvayne-extra" hidden={studioStep !== "depth"}><summary>Development · optional</summary>            <StudioSection step="depth" active={studioStep === "depth"} icon={<Sparkles size={18} />} kicker="DEVELOPMENT" title="How can they change without losing themselves?" description="Optional anchors for gradual growth. Orvayne will never treat these as an instant transformation." onPolish={() => handlePolishFields(["coreMotivation", "emotionalDefense", "softeningTriggers", "growthDirection"], "development")} polishing={fieldPolishing === "development"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Core motivation" hint="What do they want beneath the surface?"><textarea name="coreMotivation" value={form.coreMotivation} onChange={updateField} placeholder="To be chosen without having to ask; to protect the life he built…" rows="4" disabled={saving} /></StudioField>
                 <StudioField label="Emotional defense" hint="How do they protect themselves when something matters?"><textarea name="emotionalDefense" value={form.emotionalDefense} onChange={updateField} placeholder="Turns tenderness into teasing, leaves when feelings become too visible…" rows="4" disabled={saving} /></StudioField>
@@ -760,15 +761,16 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
               </div>
             </StudioSection>
 
+</details>
             <StudioSection step="voice" active={studioStep === "voice"} icon={<MessageCircle size={18} />} kicker="VOICE & BEHAVIOR" title="How do they feel on the page?" description="The difference between knowing a character and actually hearing them." onPolish={() => handlePolishFields(["speechStyle", "boundaries", "exampleDialogue", "voiceVocabulary", "humorStyle", "conflictStyle", "affectionStyle", "voiceAvoidances"], "voice")} polishing={fieldPolishing === "voice"}>
               <div className="studio-grid studio-grid--two">
                 <StudioField label="Speech style"><textarea name="speechStyle" value={form.speechStyle} onChange={updateField} placeholder="Dry, concise, teasing without performing, rarely over-explains…" rows="4" disabled={saving} /></StudioField>
                 <StudioField label="Boundaries"><textarea name="boundaries" value={form.boundaries} onChange={updateField} placeholder="Things they should never do unless the story genuinely earns it." rows="4" disabled={saving} /></StudioField>
               </div>
-              <StudioField label="Voice examples" hint="Paste 3-10 lines that genuinely sound like them. Velvet learns mechanics, not future scripts.">
+              <StudioField label="Voice examples" hint="Paste 3-10 lines that genuinely sound like them. Orvayne learns mechanics, not future scripts.">
                 <textarea name="exampleDialogue" value={form.exampleDialogue} onChange={updateField} placeholder={'"You called me. I came. Don\'t make it weird."'} rows="4" disabled={saving} />
               </StudioField>
-              <div className="studio-voice-preview">
+              <details className="orvayne-extra"><summary>Voice tools · optional</summary>              <div className="studio-voice-preview">
                 <button type="button" onClick={handleVoiceTest} disabled={saving || aiBusy}>
                   {voiceTesting ? <LoaderCircle className="character-modal__spinner" size={16}/> : <MessageCircle size={16}/>}
                   <span>{voiceTesting ? "Listening to the profile…" : "Preview character voice"}</span>
@@ -782,7 +784,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                 {voiceLab && <div className="studio-voice-lab__result"><blockquote>{voiceLab.exampleDialogue}</blockquote><button type="button" onClick={applyVoiceLab}>Apply this fingerprint</button></div>}
               </div>
               <div className="studio-learning-room">
-                <div><strong>Voice Examples Learning</strong><small>Creates ten non-canonical auditions. Pick the ones that genuinely sound right and Velvet learns their sentence rhythm, question habits, explanation level, humor timing and avoidances.</small></div>
+                <div><strong>Voice Examples Learning</strong><small>Creates ten non-canonical auditions. Pick the ones that genuinely sound right and Orvayne learns their sentence rhythm, question habits, explanation level, humor timing and avoidances.</small></div>
                 <textarea rows="3" value={learningSituation} onChange={(event)=>setLearningSituation(event.target.value)} placeholder="Test situation"/>
                 <button type="button" onClick={runLearningRoom} disabled={saving||aiBusy}>{learningLoading?<LoaderCircle className="character-modal__spinner" size={16}/>:<MessageCircle size={16}/>}Generate 10 auditions</button>
                 {learningSamples.length>0&&<div className="studio-learning-room__samples">{learningSamples.map((sample,index)=><label key={index} className={learningSelected.includes(index)?"selected":""}><input type="checkbox" checked={learningSelected.includes(index)} onChange={()=>setLearningSelected((current)=>current.includes(index)?current.filter((item)=>item!==index):[...current,index])}/><span><small>OPTION {index+1}</small>{sample}</span></label>)}<button type="button" onClick={applyLearningRoom} disabled={!learningSelected.length||genomeLearning}>{genomeLearning?<><LoaderCircle className="character-modal__spinner" size={16}/>Learning Dialogue Genome…</>:"Learn from selected examples"}</button></div>}
@@ -801,15 +803,16 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
                   <StudioField label="Never let them sound like…"><textarea name="voiceAvoidances" value={form.voiceAvoidances} onChange={updateField} placeholder="A therapist, a romance-novel billionaire, a generic teasing heartbreaker, customer service…" rows="3" disabled={saving}/></StudioField>
                 </div>
               </details>
+</details>
             </StudioSection>
 
 
-            <StudioSection step="world" active={studioStep === "world"} icon={<BookOpen size={18} />} kicker="WORLD" title="Where does their life happen?" description="Give Velvet the recurring places, social rules and everyday context that should stay consistent." onPolish={() => handlePolishFields(["world", "scenario"], "world")} polishing={fieldPolishing === "world"}>
+            <StudioSection step="world" active={studioStep === "world"} icon={<BookOpen size={18} />} kicker="WORLD" title="Where does their life happen?" description="Give Orvayne the recurring places, social rules and everyday context that should stay consistent." onPolish={() => handlePolishFields(["world", "scenario"], "world")} polishing={fieldPolishing === "world"}>
               <StudioField label="World"><textarea name="world" value={form.world} onChange={updateField} placeholder="Private university, wealthy social circle, modern city…" rows="4" disabled={saving} /></StudioField>
               <StudioField label="Recurring setup" hint="Where do your stories with this character naturally happen?"><textarea name="scenario" value={form.scenario} onChange={updateField} placeholder="Campus events, the friend group's apartments, late drives after practice…" rows="4" disabled={saving} /></StudioField>
             </StudioSection>
 
-            <StudioSection step="opening" active={studioStep === "opening"} icon={<BookOpen size={18} />} kicker="STORY FEEL" title="How should stories with them read?" description="Velvet handles most pacing automatically. You only choose the broad feel." onPolish={() => handlePolishFields(["firstMessage"], "opening")} polishing={fieldPolishing === "opening"}>
+            <StudioSection step="opening" active={studioStep === "opening"} icon={<BookOpen size={18} />} kicker="STORY FEEL" title="How should stories with them read?" description="Orvayne handles most pacing automatically. You only choose the broad feel." onPolish={() => handlePolishFields(["firstMessage"], "opening")} polishing={fieldPolishing === "opening"}>
               <div className="studio-choice-row">
                 <ChoiceGroup label="Response length" name="responseLength" value={form.responseLength} onChange={updateField} options={[
                   ["short", "Short", "Quick beats"],
@@ -861,7 +864,7 @@ function CreateCharacterModal({ onClose, onCreated, character = null, remixSourc
 
 function StudioSection({ step = "", active = false, icon, kicker, title, description, children, onPolish = null, polishing = false }) {
   return (
-    <section className={`studio-section${active ? " is-wizard-active" : ""}`} data-studio-step={step || undefined}>
+    <section hidden={!active} className={`studio-section${active ? " is-wizard-active" : ""}`} data-studio-step={step || undefined}>
       <header className="studio-section__header">
         <span className="studio-section__icon">{icon}</span>
         <div>
@@ -869,10 +872,10 @@ function StudioSection({ step = "", active = false, icon, kicker, title, descrip
           <h3>{title}</h3>
           <span>{description}</span>
         </div>
-        {onPolish && <button type="button" className="studio-section__polish" onClick={onPolish} disabled={polishing}>
+        {onPolish && <details className="orvayne-section-tools"><summary>Writing help</summary><button type="button" className="studio-section__polish" onClick={onPolish} disabled={polishing}>
           {polishing ? <LoaderCircle className="character-modal__spinner" size={14}/> : <Sparkles size={14}/>}
           <span>{polishing ? "Polishing…" : "Polish section"}</span>
-        </button>}
+        </button></details>}
       </header>
       <div className="studio-section__body">{children}</div>
     </section>
@@ -960,9 +963,9 @@ function translateCharacterError(message = "") {
 function translateCharacterAIError(message = "") {
   const error = String(message || "").toLowerCase();
   if (error.includes("free ai limit") || error.includes("quota") || error.includes("429") || error.includes("rate limit")) return "Gemini is rate-limited right now. This may be a per-minute, token, or daily project limit. Wait a little and try again.";
-  if (error.includes("too long") || error.includes("timeout") || error.includes("timed out") || error.includes("aborted")) return "Character creation took too long and was stopped. Try again—Velvet kept your idea.";
+  if (error.includes("too long") || error.includes("timeout") || error.includes("timed out") || error.includes("aborted")) return "Character creation took too long and was stopped. Try again—Orvayne kept your idea.";
   if (error.includes("incomplete character draft") || error.includes("empty character draft")) return "Gemini sent an incomplete draft. Try once more; your idea is still here.";
-  if (error.includes("model") && (error.includes("not found") || error.includes("not supported"))) return "The configured Gemini model is unavailable. Velvet will need a valid fallback model.";
+  if (error.includes("model") && (error.includes("not found") || error.includes("not supported"))) return "The configured Gemini model is unavailable. Orvayne will need a valid fallback model.";
   if (/edge function returned a non-2xx/i.test(message)) return "The character generator failed before returning its reason. Redeploy the v1.3.1 Edge Function and try again.";
   return message || "Orvayne couldn't create this character. Try again.";
 }
