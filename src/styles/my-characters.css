@@ -1017,3 +1017,52 @@ html.velvet-discover-route, body.velvet-discover-route {
   white-space: nowrap !important;
   color: #83b8d0 !important;
 }
+
+/* Mobile Characters hero: compact height, visible ocean-blue type, no dead space. */
+@media (max-width: 760px) {
+  .characters-library .characters-library__compact-hero.characters-library__hero-ink,
+  .characters-library__compact-hero.characters-library__hero-simple.characters-library__hero-ink {
+    height: 168px !important;
+    min-height: 168px !important;
+    max-height: 168px !important;
+    padding: 14px 12px !important;
+    margin-bottom: 12px !important;
+    align-items: center !important;
+  }
+  .characters-library__hero-ink .characters-library__compact-copy {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .characters-library__hero-ink .characters-library__ocean-title {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 96px !important;
+    min-height: 96px !important;
+    max-height: 96px !important;
+    transform: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+    color: #83b8d0 !important;
+    -webkit-text-fill-color: #83b8d0 !important;
+  }
+  .characters-library__hero-ink .characters-library__ocean-title > span,
+  .characters-library__hero-ink .characters-library__ocean-title .characters-library__ocean-small,
+  .characters-library__hero-ink .characters-library__ocean-title .characters-library__ocean-large {
+    color: #83b8d0 !important;
+    -webkit-text-fill-color: #83b8d0 !important;
+    background: transparent !important;
+    opacity: 1 !important;
+    text-shadow: 0 0 12px rgba(83,156,191,.16) !important;
+  }
+  .characters-library__hero-ink .characters-library__ocean-title .characters-library__ocean-large {
+    font-size: clamp(23px, 5.6vw, 34px) !important;
+    letter-spacing: .055em !important;
+    padding-left: .055em !important;
+  }
+}
