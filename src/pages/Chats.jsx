@@ -700,16 +700,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     <section className="chats-page chats-page--reference" >
       <header className="orvayne-library-head orvayne-library-head--editorial orvayne-library-head--ocean-ink">
         <div className="orvayne-library-head__editorial-copy">
-          <h1 className="orvayne-library-head__ink-art" aria-label="Your Stories — Beyond the script">
-            <svg viewBox="180 620 1250 300" role="img" aria-hidden="true" focusable="false">
-              <defs>
-                <filter id="orvayne-ink-transparency" colorInterpolationFilters="sRGB">
-                  <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 3 0 -0.36" />
-                </filter>
-              </defs>
-              <image href="/images/orvayne-ocean-ink-reference.png" width="1672" height="941" filter="url(#orvayne-ink-transparency)" />
-            </svg>
-          </h1>
+          <h1 className="orvayne-library-head__ink-art" aria-label="Your Stories"><img src="/images/orvayne-stories-ink.png" alt="Your Stories" /></h1>
         </div>
         <button className="orvayne-library-head__editorial-new" type="button" onClick={() => setPickerOpen(true)} aria-label="Create new story" title="Create new story">
           <svg className="orvayne-create-story-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">

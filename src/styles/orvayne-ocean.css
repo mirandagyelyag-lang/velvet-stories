@@ -415,3 +415,6 @@ html:root body .orvayne-studio-simple .character-studio__wizard-controls {displa
 html:root body .orvayne-studio-simple .character-studio__wizard-controls button {font-size:.85rem!important;min-height:44px!important;padding:10px 18px!important;border-radius:12px!important}
 html:root body .orvayne-studio-simple .character-studio__wizard-controls span {font-size:.7rem!important}
 html:root body .orvayne-studio-simple .character-studio__wizard-controls .primary {flex:1!important}
+
+/* Matching painted titles for Stories and Characters. */
+html:root body .chats-page--reference .orvayne-library-head__ink-art img {display:block;width:100%;height:auto;object-fit:contain;filter:none!important}
