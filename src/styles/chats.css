@@ -1339,3 +1339,75 @@ html body .chats-page--reference .velvet-identity-continue__copy small{
 /* Softer icon discs for the sky-blue collection theme. */
 html[data-theme='comfort'] .chats-page--reference .reference-collection-card__icon{background:#477eaa!important;border-color:#87b2d0!important;box-shadow:none!important}
 html[data-theme='comfort'] .chats-page--reference .reference-collection-card__icon svg{color:#f5faff!important}
+
+/* YOUR / STORIES: classic branded editorial header, replacing brush artwork. */
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 150px !important;
+  margin: 0 !important;
+  padding: 20px 12px 24px !important;
+  background: none !important;
+  color: #d5d9f0 !important;
+  text-shadow: 0 0 18px rgba(151,174,216,.12) !important;
+  font-family: "Cormorant Garamond", Georgia, serif !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+  isolation: isolate;
+}
+.chats-page .orvayne-library-head__classic-title::before,
+.chats-page .orvayne-library-head__classic-title::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 20px !important;
+  width: 23% !important;
+  height: 86px !important;
+  border-top: 1.5px solid rgba(188,198,234,.68) !important;
+  pointer-events: none;
+}
+.chats-page .orvayne-library-head__classic-title::before {
+  left: 2% !important;
+  border-left: 1.5px solid rgba(188,198,234,.68) !important;
+  border-top-left-radius: 100% 100% !important;
+}
+.chats-page .orvayne-library-head__classic-title::after {
+  right: 2% !important;
+  border-right: 1.5px solid rgba(188,198,234,.68) !important;
+  border-top-right-radius: 100% 100% !important;
+}
+.chats-page .orvayne-library-head__classic-small {
+  display: block !important;
+  font-family: "Cormorant Garamond", Georgia, serif !important;
+  font-size: clamp(17px, 4.4vw, 25px) !important;
+  letter-spacing: .48em !important;
+  padding-left: .48em;
+  font-weight: 400 !important;
+}
+.chats-page .orvayne-library-head__classic-large {
+  display: block !important;
+  font-family: "Cormorant Garamond", Georgia, serif !important;
+  font-size: clamp(42px, 11vw, 76px) !important;
+  letter-spacing: .20em !important;
+  padding-left: .20em;
+  font-weight: 400 !important;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title {
+    min-height: 132px !important;
+    padding: 18px 8px 20px !important;
+  }
+  .chats-page .orvayne-library-head__classic-large {
+    font-size: clamp(36px, 10vw, 56px) !important;
+    letter-spacing: .16em !important;
+    padding-left: .16em;
+  }
+}
