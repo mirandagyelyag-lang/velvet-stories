@@ -583,6 +583,14 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
         font: 400 clamp(27px, 7vw, 45px)/1.05 Georgia,serif !important;
         letter-spacing: .10em !important; padding-left: .10em !important; white-space: nowrap !important;
       }
+      .memories-character-index .memories-reference__ocean-title,
+      .memories-character-index .memories-reference__ocean-title .memories-reference__ocean-small,
+      .memories-character-index .memories-reference__ocean-title .memories-reference__ocean-large {
+        color: #83b8d0 !important;
+        -webkit-text-fill-color: #83b8d0 !important;
+        background-image: none !important;
+        text-shadow: 0 0 12px rgba(82,156,190,.16) !important;
+      }
       .memories-character-index .memories-reference__new { flex: 0 0 auto !important; }
       @media (max-width: 760px) {
         .memories-character-index .memories-reference__hero.memories-reference__hero--compact {
