@@ -323,3 +323,5 @@ html:root body .chats-page--reference .orvayne-story-inbox-row .story-action-men
 }
 html:root body .chats-page--reference .orvayne-story-inbox-row .story-action-menu__trigger:hover {background:rgba(184,199,212,.08)!important}
 html:root body .chats-page--reference .reference-story-list {gap:0!important}
+
+html:root[data-theme] body.velvet-burgundy-route .chats-page--reference .orvayne-story-inbox-row .story-action-menu__trigger {background:transparent!important;border:0!important;box-shadow:none!important}
