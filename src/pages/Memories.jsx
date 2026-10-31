@@ -560,9 +560,7 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
   return <section style={{ background: "#11151b", backgroundImage: "none", minHeight: "100dvh" }} className="chats-page chats-page--reference memories-reference-page memories-character-library memories-character-index">
     <header className="memories-reference__hero memories-reference__hero--compact">
       <div className="memories-reference__hero-copy">
-        <span className="memories-reference__eyebrow">PRIVATE MEMORY BOOK</span>
-        <h1>Your Memories</h1>
-        <p>Moments worth remembering.</p>
+        <h1 className="memories-reference__ocean-title" aria-label="Your Memories"><span className="memories-reference__ocean-small">YOUR</span><span className="memories-reference__ocean-large">MEMORIES</span></h1>
       </div>
       <button className="memories-reference__new memories-reference__new--compact" type="button" onClick={openCreate} disabled={!characters.length} aria-label="Add new memory"><Sparkles size={23}/></button>
     </header>
