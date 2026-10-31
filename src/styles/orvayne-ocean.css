@@ -418,3 +418,26 @@ html:root body .orvayne-studio-simple .character-studio__wizard-controls .primar
 
 /* Matching painted titles for Stories and Characters. */
 html:root body .chats-page--reference .orvayne-library-head__ink-art img {display:block;width:100%;height:auto;object-fit:contain;filter:none!important}
+
+/* Keep the painted Stories title fully visible and compact. */
+html:root body .chats-page--reference header.orvayne-library-head.orvayne-library-head--ocean-ink {
+ grid-template-columns:48px minmax(0,400px) 48px!important;
+ height:auto!important;min-height:0!important;max-height:none!important;
+ padding:12px 0 18px!important;overflow:visible!important;align-items:center!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-copy {
+ width:100%!important;max-width:400px!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink h1.orvayne-library-head__ink-art {
+ width:100%!important;max-width:400px!important;height:auto!important;min-height:0!important;max-height:none!important;aspect-ratio:auto!important;overflow:visible!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink h1.orvayne-library-head__ink-art img {
+ display:block!important;position:static!important;width:100%!important;max-width:100%!important;
+ height:auto!important;min-height:0!important;max-height:none!important;aspect-ratio:auto!important;
+ object-fit:contain!important;object-position:center!important;transform:none!important;margin:0!important;clip-path:none!important;
+}
+@media(max-width:600px){
+ html:root body .chats-page--reference header.orvayne-library-head.orvayne-library-head--ocean-ink {
+ grid-template-columns:32px minmax(0,320px) 40px!important;column-gap:12px!important;
+ }
+}
