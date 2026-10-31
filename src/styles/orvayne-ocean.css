@@ -244,3 +244,22 @@ html:root body .chats-page--reference .orvayne-library-head__editorial-new svg.o
  display:block!important;width:48px!important;height:48px!important;fill:none;overflow:visible;
 }
 html:root body .chats-page--reference .orvayne-library-head__editorial-new:hover {filter:brightness(1.12)}
+
+/* Keep the heading artwork and create action together as one compact group. */
+html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {
+ justify-content:flex-start!important;gap:16px!important;
+ padding:8px 0 12px!important;margin:0 0 16px!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-copy {
+ flex:0 1 560px!important;width:calc(100% - 64px)!important;max-width:560px!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink h1.orvayne-library-head__ink-art {
+ width:100%!important;max-width:560px!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-new {
+ margin:0!important;align-self:center!important;
+}
+@media(max-width:420px){
+ html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {gap:10px!important}
+ html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-copy {width:calc(100% - 58px)!important}
+}
