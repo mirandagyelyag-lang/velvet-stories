@@ -266,7 +266,7 @@ function Profile({
             <label>Profile line<input value={draft.quote} onChange={(event) => setDraft((current) => ({ ...current, quote: event.target.value }))} maxLength={120} placeholder="A little line that feels like you."/></label>
             <label>Profile photo from your device<input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseAvatarFile}/></label>
             {avatarPreview && <img src={avatarPreview} alt="Selected profile photo preview" className="profile-editor__avatar-preview"/>}
-            <label>Or use an image URL<input type="url" value={draft.avatarUrl} onChange={(event) => { setDraft((current) => ({ ...current, avatarUrl: event.target.value })); setAvatarFile(null); setAvatarPreview(""); }} placeholder="https://…"/></label>
+
             {profileError && <p className="profile-editor__error">{profileError}</p>}
             <footer><button type="button" onClick={() => setProfileEditorOpen(false)} disabled={savingProfile}>Cancel</button><button type="submit" disabled={savingProfile}>{savingProfile ? "Saving…" : "Save profile"}</button></footer>
           </form>
