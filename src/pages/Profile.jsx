@@ -196,11 +196,7 @@ function Profile({
           {statsList.map((item) => <div key={item.label}><strong>{item.value}</strong><span>{item.label}</span></div>)}
         </div>
 
-        <div className="profile-reference__private-banner">
-          <span className="profile-reference__private-mark"><Crown size={20}/></span>
-          <div><strong>ORVAYNE PRIVATE</strong><p>Your stories, characters and memories stay inside your private account.</p></div>
-          <button type="button" onClick={() => setAccessOpen(true)}>Manage <ChevronRight size={17}/></button>
-        </div>
+
 
 
         <div className="profile-reference__menu">
