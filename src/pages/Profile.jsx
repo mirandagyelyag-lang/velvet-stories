@@ -173,17 +173,7 @@ function Profile({
 
   return (
     <section className="chats-page chats-page--reference profile-reference-page">
-      <header className="reference-stories-hero profile-reference__hero">
-        <div className="reference-stories-hero__private"><Crown size={19}/><span>PRIVATE LIBRARY</span></div>
-        <div className="reference-stories-title" aria-label="Your Profile">
-          <span className="reference-stories-title__script">your</span>
-          <span className="reference-stories-title__line reference-stories-title__line--left" />
-          <h1>PROFILE</h1>
-          <span className="reference-stories-title__spark">✦</span>
-          <span className="reference-stories-title__line reference-stories-title__line--right" />
-        </div>
-        <button className="reference-stories-new" type="button" onClick={openProfileEditor} aria-label="Edit profile"><Sparkles size={26}/></button>
-      </header>
+
 
       <section className="profile-reference__identity">
         <div className="profile-reference__identity-top">

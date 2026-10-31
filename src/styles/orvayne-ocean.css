@@ -470,3 +470,19 @@ html:root body .orvayne-character-hub .orvayne-hub-story strong {font-size:.95re
 html:root body .orvayne-character-hub .orvayne-hub-story span>span {font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary)}
 html:root body .orvayne-character-hub .orvayne-hub-story time {font-size:.68rem;color:var(--text-secondary)}
 html:root body .mobile-nav.velvet-reference-nav {grid-template-columns:repeat(4,minmax(0,1fr))!important}
+
+/* Profile starts directly with the account card, in the ocean palette. */
+html:root body .profile-reference-page .profile-reference__identity {
+ background:#202833!important;background-image:none!important;border-color:rgba(184,199,212,.22)!important;box-shadow:none!important;margin-top:0!important;
+ --accent:#91b8cc;--accent-soft:#b8c7d4;
+}
+html:root body .profile-reference-page :is(.profile-reference__avatar-edit,.profile-reference__edit,.profile-reference__menu-icon,.profile-reference__private-mark,.profile-reference__private-banner button) {
+ background:#19222c!important;background-image:none!important;color:#b8c7d4!important;border-color:rgba(184,199,212,.25)!important;box-shadow:none!important;
+}
+html:root body .profile-reference-page :is(.profile-reference__name-line svg,.profile-reference__tagline,.profile-reference__menu svg) {color:#91b8cc!important}
+html:root body .profile-reference-page :is(.profile-reference__quote,.profile-reference__stats span) {color:#b8c7d4!important}
+html:root body .profile-reference-page :is(.profile-reference__avatar,.profile-reference__private-banner,.profile-reference__stats,.profile-reference__menu>button) {border-color:rgba(184,199,212,.2)!important}
+html:root body .profile-reference-page .profile-reference__private-banner {background:#19222c!important;background-image:none!important}
+html:root body .profile-reference-page .profile-reference__menu>button {background:transparent!important;color:#e7edf2!important}
+html:root body .profile-reference-page .profile-reference__stats {display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}
+html:root body .profile-reference-page .profile-reference__stats>div {border:0!important;padding:16px 4px!important}
