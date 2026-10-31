@@ -1,5 +1,4 @@
 import {
-  Activity,
   BookOpen,
   BookMarked,
   Eye,
@@ -15,7 +14,6 @@ import "../styles/sidebar.css";
 const navigation = [
   { id: "chats", label: "Stories", icon: BookOpen },
   { id: "characters", label: "Characters", icon: UsersRound },
-  { id: "pulse", label: "Pulse", icon: Activity },
   { id: "memories", label: "Memories", icon: BookMarked },
   { id: "profile", label: "Profile", icon: UserRound },
 ];

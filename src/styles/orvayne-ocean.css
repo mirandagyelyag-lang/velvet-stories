@@ -441,3 +441,32 @@ html:root body .chats-page--reference .orvayne-library-head--ocean-ink h1.orvayn
  grid-template-columns:32px minmax(0,320px) 40px!important;column-gap:12px!important;
  }
 }
+
+/* Character home: one clear return point and a quiet story list. */
+html:root body .orvayne-character-hub {max-width:880px!important;margin:0 auto!important;padding:20px 24px 100px!important}
+html:root body .orvayne-character-hub .character-profile__topbar {display:flex!important;justify-content:space-between!important;align-items:center!important;margin-bottom:20px!important}
+html:root body .orvayne-character-hub .character-profile__hero {min-height:0!important;border:0!important;box-shadow:none!important;background:none!important;overflow:visible!important}
+html:root body .orvayne-character-hub .character-profile__cover {display:none!important}
+html:root body .orvayne-character-hub .character-profile__hero-content {display:grid!important;grid-template-columns:72px minmax(0,1fr)!important;gap:18px!important;padding:12px 0 24px!important;position:static!important;min-height:0!important}
+html:root body .orvayne-character-hub .character-profile__avatar {width:72px!important;height:72px!important;margin:0!important;border:1px solid #7398af!important}
+html:root body .orvayne-character-hub .character-profile__identity {align-self:center!important}
+html:root body .orvayne-character-hub .character-profile__identity h1 {font-size:clamp(1.6rem,4vw,2.3rem)!important;margin:0!important}
+html:root body .orvayne-character-hub :is(.character-profile__intro,.character-profile__story-signature,.character-profile__tags) {display:none!important}
+html:root body .orvayne-character-hub .character-profile__eyebrow {font-size:.65rem!important;margin:0 0 5px!important}
+html:root body .orvayne-character-hub .character-profile__hero-actions {grid-column:1/-1!important;display:flex!important;flex-wrap:wrap!important;gap:10px!important;margin:0!important}
+html:root body .orvayne-character-hub .character-profile__hero-actions button {min-height:42px!important;padding:10px 16px!important;font-size:.8rem!important;width:auto!important;border-radius:12px!important}
+html:root body .orvayne-character-hub .character-profile__continue {flex:1 0 100%!important;background:#91b8cc!important;color:#11151b!important;box-shadow:none!important}
+html:root body .orvayne-character-hub .orvayne-hub-menu {position:relative}
+html:root body .orvayne-character-hub .orvayne-hub-menu summary {list-style:none;cursor:pointer;padding:10px;color:#b8c7d4}
+html:root body .orvayne-character-hub .orvayne-hub-menu>div {position:absolute;right:0;top:100%;z-index:20;min-width:190px;background:var(--surface,#202833);border:1px solid #52758c;border-radius:12px;padding:6px}
+html:root body .orvayne-character-hub .orvayne-hub-menu:not([open])>div {display:none!important}
+html:root body .orvayne-character-hub .orvayne-hub-menu button {display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:10px;background:none;border:0;color:var(--text-primary);font-size:.8rem}
+html:root body .orvayne-character-hub .orvayne-hub-stories>header {display:flex;align-items:center;gap:10px;margin:12px 0}
+html:root body .orvayne-character-hub .orvayne-hub-stories h2 {font-size:1.1rem;margin:0}
+html:root body .orvayne-character-hub .orvayne-hub-stories p {font-size:.85rem;color:var(--text-secondary)}
+html:root body .orvayne-character-hub .orvayne-hub-story {display:flex!important;align-items:center!important;justify-content:space-between!important;gap:16px!important;width:100%!important;padding:14px 0!important;background:none!important;border:0!important;border-bottom:1px solid rgba(184,199,212,.15)!important;color:var(--text-primary)!important;text-align:left!important;border-radius:0!important}
+html:root body .orvayne-character-hub .orvayne-hub-story>span {display:grid;gap:5px;min-width:0}
+html:root body .orvayne-character-hub .orvayne-hub-story strong {font-size:.95rem;font-weight:500}
+html:root body .orvayne-character-hub .orvayne-hub-story span>span {font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-secondary)}
+html:root body .orvayne-character-hub .orvayne-hub-story time {font-size:.68rem;color:var(--text-secondary)}
+html:root body .mobile-nav.velvet-reference-nav {grid-template-columns:repeat(4,minmax(0,1fr))!important}

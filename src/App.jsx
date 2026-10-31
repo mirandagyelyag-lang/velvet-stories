@@ -652,12 +652,24 @@ function App() {
 
     if (activePage === "pulse") {
       return (
-        <Pulse
-          onOpenCharacter={openCharacter}
-          onBrowseStories={() => navigate("chats")}
-          onNewStory={startNewStoryFromProfile}
-          onOpenMemories={(characterId) => navigate("memories", { memoryCharacterId: characterId })}
-          onOpenProfile={openCharacterProfile}
+        <MyCharacters
+          onCreateCharacter={() => {
+            setEditingCharacter(null);
+            setRemixSource(null);
+            setCreatorOpen(true);
+          }}
+          onOpenCharacter={openCharacterProfile}
+          onOpenStory={openCharacter}
+          onEditCharacter={(character) => {
+            setEditingCharacter(character);
+            setRemixSource(null);
+            setCreatorOpen(true);
+          }}
+          onRemixCharacter={(character) => {
+            setEditingCharacter(null);
+            setRemixSource(character);
+            setCreatorOpen(true);
+          }}
         />
       );
     }

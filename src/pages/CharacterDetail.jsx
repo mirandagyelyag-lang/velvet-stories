@@ -52,6 +52,7 @@ export default function CharacterDetail({
   const [instantError, setInstantError] = useState("");
   const [storyNotice, setStoryNotice] = useState("");
   const [loading, setLoading] = useState(true);
+  const [storiesError, setStoriesError] = useState("");
   const [storySetupOpen, setStorySetupOpen] = useState(false);
   const [storyOpening, setStoryOpening] = useState("");
   const [storyPersonaId, setStoryPersonaId] = useState("");
@@ -86,13 +87,21 @@ export default function CharacterDetail({
     let alive = true;
 
     (async () => {
+      if (!user?.id) return;
       setLoading(true);
+      setStoriesError("");
       const [storiesResult, memoriesResult] = await Promise.all([
-        supabase.from("conversations").select("id, title, updated_at, branch_parent_id, cover_url, story_recap, relationship_state").eq("character_id", character.id).eq("group_mode", false).is("trashed_at", null).is("archived_at", null).order("updated_at", { ascending: false }).limit(8),
+        supabase.from("conversations").select("id, title, updated_at, branch_parent_id, cover_url, story_recap, relationship_state").eq("user_id", user.id).eq("character_id", character.id).eq("group_mode", false).is("trashed_at", null).is("archived_at", null).order("updated_at", { ascending: false }).limit(100),
         supabase.from("memories").select("id", { count: "exact", head: true }).eq("character_id", character.id).is("superseded_at", null),
       ]);
+      const rows = storiesResult.data || [];
+      const previews = await Promise.all(rows.map(async (story) => {
+        const { data } = await supabase.from("messages").select("content").eq("conversation_id", story.id).order("created_at", { ascending: false }).limit(1);
+        return { ...story, lastMessage: data?.[0]?.content || "" };
+      }));
       if (alive) {
-        setStories(storiesResult.data || []);
+        setStoriesError(storiesResult.error ? "Could not load stories. Please reopen this character to retry." : "");
+        setStories(previews);
         setMemoryCount(Number(memoriesResult.count || 0));
         setLoading(false);
       }
@@ -101,7 +110,7 @@ export default function CharacterDetail({
     return () => {
       alive = false;
     };
-  }, [character.id]);
+  }, [character.id, user?.id]);
 
   useEffect(() => {
     let alive = true;
@@ -331,19 +340,24 @@ export default function CharacterDetail({
   }
 
   return (
-    <section className="character-profile" style={{ "--character-color": character.color || "var(--accent)" }}>
+    <section className="character-profile orvayne-character-hub" style={{ "--character-color": character.color || "var(--accent)" }}>
       <header className="character-profile__topbar">
         <button className="character-profile__back" onClick={onBack}>
           <ArrowLeft size={18} />
           <span>Characters</span>
         </button>
 
-        {onEdit && (
-          <button className="character-profile__edit" onClick={() => onEdit(character)}>
-            <Pencil size={16} />
-            <span>Edit character</span>
-          </button>
-        )}
+        <details className="orvayne-hub-menu"><summary aria-label="Character options">•••</summary>
+          <div>
+            {onEdit && <button type="button" onClick={() => onEdit(character)}><Pencil size={16}/>Edit character</button>}
+            <button type="button" onClick={()=>setMemoryBookOpen(true)}><Brain size={16}/>Memories</button>
+            <button type="button" onClick={()=>setInfoPanel("about")}>About</button>
+            <button type="button" onClick={()=>setInfoPanel("relationship")}>Relationship</button>
+            <button type="button" onClick={()=>setInfoPanel("media")}>Photos</button>
+            <button type="button" onClick={()=>setStyleOpen(true)}>Story voice</button>
+            <button type="button" onClick={()=>setInfoPanel("stories")}>Manage stories</button>
+          </div>
+        </details>
       </header>
 
       <section className="character-profile__hero">
@@ -382,7 +396,7 @@ export default function CharacterDetail({
           </div>
 
           <div className="character-profile__hero-actions">
-            <button className="character-profile__continue" onClick={() => latestStory ? onOpenStory(character, latestStory.id) : onContinue(character)}>
+            <button disabled={loading || Boolean(storiesError)} className="character-profile__continue" onClick={() => latestStory ? onOpenStory(character, latestStory.id) : onContinue(character)}>
               <MessageCircle size={18} />
               <span>{latestStory ? "Continue latest story" : "Begin story"}</span>
             </button>
@@ -392,35 +406,18 @@ export default function CharacterDetail({
         </div>
       </section>
 
-      <nav className="character-profile__app-actions" aria-label={`${character.name} information`}>
-        <button type="button" onClick={()=>setInfoPanel("about")} aria-label="Open character details">
-          <Sparkles size={19}/>
-          <span>About</span>
-        </button>
-        <button type="button" onClick={()=>setInfoPanel("relationship")} aria-label="Open relationship">
-          <Heart size={19}/>
-          <span>Relationship</span>
-          <small>{humanRelationshipPhase(latestRelationship.relationship_phase)}</small>
-        </button>
-        <button type="button" onClick={()=>setMemoryBookOpen(true)} aria-label="Open memories">
-          <Brain size={19}/>
-          <span>Memories</span>
-          <small>{memoryCount}</small>
-        </button>
-        <button type="button" onClick={()=>setInfoPanel("stories")} aria-label="Open stories">
-          <MessageCircle size={19}/>
-          <span>Stories</span>
-          <small>{stories.length}</small>
-        </button>
-        <button type="button" onClick={()=>setInfoPanel("media")} aria-label="Open photos">
-          <Images size={19}/>
-          <span>Photos</span>
-        </button>
-        <button type="button" onClick={()=>setStyleOpen(true)} aria-label="Open story voice">
-          <SlidersHorizontal size={19}/>
-          <span>Voice</span>
-        </button>
-      </nav>
+      <section className="orvayne-hub-stories" aria-label="Stories with this character">
+        <header><h2>Your stories</h2><span>{loading ? "" : stories.length}</span></header>
+        {loading ? <p role="status">Loading stories…</p> : storiesError ? <p role="alert">{storiesError}</p> : stories.length ? stories.map((story) => (
+          <button type="button" className="orvayne-hub-story" key={story.id} onClick={() => onOpenStory(character, story.id)}>
+            <span>
+              <strong>{story.title && !/^new story\b/i.test(story.title) ? story.title : character.name}</strong>
+              <span>{String(story.lastMessage || "No messages yet.").replace(/[*_#]/g, "")}</span>
+              <time dateTime={story.updated_at}>{new Date(story.updated_at).toLocaleString([], {day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</time>
+            </span><ChevronRight size={17}/>
+          </button>
+        )) : <p>No stories yet. Start your first one above.</p>}
+      </section>
 
       <input ref={mediaInputRef} type="file" accept="image/*" multiple hidden onChange={uploadGalleryMedia}/>
       <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={(event)=>replaceCharacterMedia(event, "avatar")}/>
