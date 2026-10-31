@@ -112,6 +112,36 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
   }, []);
 
   useEffect(() => {
+    // Route-specific override inserted last so legacy burgundy CSS cannot win.
+    const style = document.createElement("style");
+    style.dataset.orvayneMemoriesCanvas = "true";
+    style.textContent = `
+      html.velvet-burgundy-route:has(.memories-character-index),
+      html.velvet-burgundy-route:has(.memories-character-index) body,
+      body.velvet-burgundy-route:has(.memories-character-index),
+      body.velvet-burgundy-route:has(.memories-character-index) #root,
+      body.velvet-burgundy-route:has(.memories-character-index) .app,
+      body.velvet-burgundy-route:has(.memories-character-index) .app__content,
+      body.velvet-burgundy-route:has(.memories-character-index) .velvet-route-stage,
+      body.velvet-burgundy-route:has(.memories-character-index) .chats-page,
+      body.velvet-burgundy-route:has(.memories-character-index) .memories-character-index {
+        --stories-canvas: #11151b !important;
+        --stories-atmosphere: none !important;
+        background: #11151b !important;
+        background-color: #11151b !important;
+        background-image: none !important;
+      }
+      body.velvet-burgundy-route:has(.memories-character-index) .velvet-route-stage::before,
+      body.velvet-burgundy-route:has(.memories-character-index) .velvet-route-stage::after {
+        background: none !important;
+        background-image: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
+
+  useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
     const colors = { light: "#f7eff2", comfort: "#eee4dc", dark: "#11151b" };
     meta?.setAttribute("content", colors[theme] || colors.dark);
