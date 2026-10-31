@@ -94,3 +94,38 @@ html:root[data-theme="dark"] body.velvet-discover-route .characters-library__con
 html:root[data-theme="dark"] body.velvet-discover-route .characters-library__card .discover-burgundy__feature-card-copy small {
  color:var(--gold)!important;-webkit-text-fill-color:var(--gold)!important;
 }
+
+/* Stories uses local mobile canvas variables as well as global theme tokens. */
+html:root[data-theme="dark"][data-velvet-page="chats"].velvet-burgundy-route,
+html:root[data-theme="dark"] body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route {
+ --stories-canvas:#11151b!important;
+ --stories-atmosphere:none!important;
+ background:#11151b!important;
+}
+html:root[data-theme="dark"] body[data-velvet-page="chats"]:not(.velvet-page--chat).velvet-burgundy-route :is(#root,.app,.app__content,.velvet-route-stage,.chats-page.chats-page--reference) {
+ background:transparent!important;
+}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference :is(.orvayne-library-head,.reference-stories-hero) {
+ background:transparent!important;border-color:var(--border)!important;
+}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference .reference-search-wrap {
+ background:transparent!important;
+}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference :is(.reference-search,.reference-filter,.orvayne-library-head__editorial-new,.story-action-menu__trigger) {
+ background:var(--surface)!important;color:var(--accent)!important;border-color:var(--border)!important;
+}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference .reference-collection-card {
+ background:linear-gradient(145deg,#303747,#202833)!important;border-color:var(--border)!important;
+}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference .reference-collection-card.is-active {
+ background:#303747!important;border-color:var(--accent)!important;
+}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference .reference-collection-card strong {color:var(--text-primary)!important}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference .reference-collection-card small {color:var(--text-secondary)!important}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference :is(.reference-collection-card__icon,.reference-section-heading button,.reference-search svg) {color:var(--accent)!important}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference .velvet-identity-chips button {
+ color:var(--text-secondary)!important;border-color:var(--border)!important;
+}
+html:root[data-theme="dark"] body.velvet-burgundy-route .chats-page--reference .velvet-identity-chips button.is-active {
+ background:var(--accent)!important;color:#11151b!important;border-color:var(--accent)!important;
+}
