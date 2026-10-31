@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap");
 /* Orvayne dark identity: ocean surfaces, lilac accents. Light and Comfort retain their palettes. */
 html:root[data-theme="dark"] {
  --background:#11151b; --surface:#202833; --surface-soft:#252d39; --surface-strong:#303747;
@@ -159,4 +160,42 @@ html:root body .chats-page--reference .orvayne-story-inbox-row .story-action-men
 @media(max-width:420px){
  html:root body .chats-page--reference .reference-story-row.orvayne-story-inbox-row {grid-template-columns:54px minmax(0,1fr) 40px!important;gap:11px!important}
  html:root body .chats-page--reference .orvayne-story-inbox-row .reference-story-row__art {width:54px!important;height:54px!important}
+}
+
+/* Ocean ink lettering: live text and a decorative painted swash. */
+html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ gap:16px!important;min-height:0!important;padding:24px 4px 28px!important;
+ background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-copy {position:relative;isolation:isolate;min-width:0;flex:1}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__brush-title {
+ position:relative!important;display:inline-block!important;width:auto!important;max-width:100%!important;
+ margin:0!important;padding:0 8px 10px 0!important;font-family:"Kaushan Script",cursive!important;
+ font-weight:400!important;font-size:clamp(38px,6vw,82px)!important;line-height:1.35!important;
+ letter-spacing:-.035em!important;color:#9ccdde!important;-webkit-text-fill-color:#9ccdde!important;
+ background:none!important;text-shadow:none!important;white-space:nowrap!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-copy::before {
+ content:"";position:absolute;z-index:-1;left:-5px;right:0;top:26%;height:52%;max-width:490px;
+ transform:rotate(-5deg);opacity:.46;pointer-events:none;
+ background:repeating-linear-gradient(177deg,transparent 0 3px,rgba(58,124,158,.55) 4px 6px,transparent 7px 9px);
+ clip-path:polygon(4% 24%,96% 0,87% 22%,100% 25%,93% 47%,97% 62%,9% 100%,15% 78%,0 83%,6% 58%,1% 51%);
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__brush-tagline {
+ display:block!important;margin:5px 0 0 5px!important;color:#9ccdde!important;
+ font-family:"Manrope",sans-serif!important;font-size:clamp(9px,1.1vw,12px)!important;font-style:normal!important;
+ letter-spacing:.3em!important;text-transform:uppercase!important;line-height:1.7!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-new {
+ flex:0 0 44px!important;width:44px!important;height:44px!important;min-height:44px!important;
+ background:transparent!important;border:1px solid #82b7cc!important;color:#9ccdde!important;border-radius:50%!important;
+}
+html:root[data-theme="light"] body .chats-page--reference .orvayne-library-head--ocean-ink,
+html:root[data-theme="comfort"] body .chats-page--reference .orvayne-library-head--ocean-ink {--ink-blue:#27647e}
+html:root:not([data-theme="dark"]) body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__brush-title {color:var(--ink-blue,#27647e)!important;-webkit-text-fill-color:var(--ink-blue,#27647e)!important}
+html:root:not([data-theme="dark"]) body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__brush-tagline {color:var(--ink-blue,#27647e)!important}
+@media(max-width:420px){
+ html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__brush-title {font-size:clamp(32px,9vw,40px)!important}
+ html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {gap:8px!important}
 }

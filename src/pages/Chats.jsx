@@ -698,11 +698,10 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
 
   return (
     <section className="chats-page chats-page--reference" >
-      <header className="orvayne-library-head orvayne-library-head--editorial">
+      <header className="orvayne-library-head orvayne-library-head--editorial orvayne-library-head--ocean-ink">
         <div className="orvayne-library-head__editorial-copy">
-          <span className="orvayne-library-head__eyebrow">YOUR PRIVATE LIBRARY</span>
-          <h1>Your Stories</h1>
-          {!loading && <p className="orvayne-library-head__summary">{identityStats.stories} {identityStats.stories === 1 ? "story" : "stories"} <span>·</span> {identityStats.characters} characters <span>·</span> {identityStats.favorites} favorites</p>}
+          <h1 className="orvayne-library-head__brush-title">Your Stories</h1>
+          <p className="orvayne-library-head__brush-tagline">Beyond the script</p>
         </div>
         <button className="orvayne-library-head__editorial-new" type="button" onClick={() => setPickerOpen(true)} aria-label="Create new story"><Plus size={22}/></button>
       </header>
