@@ -1086,3 +1086,15 @@ html.velvet-discover-route, body.velvet-discover-route {
     gap: 3px !important;
   }
 }
+
+/* Pull search directly under Characters heading; legacy hero reserves extra vertical space. */
+@media (max-width: 760px) {
+  .characters-library:not(.discover-burgundy--trash) > .characters-library__compact-hero.characters-library__hero-ink {
+    margin-bottom: 0 !important;
+  }
+  .characters-library:not(.discover-burgundy--trash) > .characters-library__controls {
+    position: relative !important;
+    z-index: 2 !important;
+    margin-top: -92px !important;
+  }
+}
