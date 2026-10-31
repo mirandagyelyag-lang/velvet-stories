@@ -1066,3 +1066,23 @@ html.velvet-discover-route, body.velvet-discover-route {
     padding-left: .055em !important;
   }
 }
+
+/* Compact Characters header: remove oversized reserved space above search. */
+@media (max-width: 760px) {
+  .characters-library__compact-hero.characters-library__hero-simple.characters-library__hero-ink,
+  .characters-library .characters-library__compact-hero.characters-library__hero-ink {
+    height: 96px !important;
+    min-height: 96px !important;
+    max-height: 96px !important;
+    padding: 4px 10px !important;
+    margin-top: 0 !important;
+    margin-bottom: 4px !important;
+  }
+  .characters-library__hero-ink .characters-library__ocean-title {
+    height: 76px !important;
+    min-height: 76px !important;
+    max-height: 76px !important;
+    padding: 3px 0 !important;
+    gap: 3px !important;
+  }
+}
