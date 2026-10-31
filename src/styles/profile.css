@@ -603,3 +603,30 @@
 .profile-reference-page .profile-reference__menu .profile-reference__logout {
   color: #c3d5e1 !important;
 }
+
+.profile-editor input[type="file"] {
+  width: 100%;
+  max-width: 100%;
+  color: #dce7f0;
+  background: #202832;
+  border: 1px solid #3b4b5b;
+  border-radius: 12px;
+  padding: 12px;
+}
+.profile-editor input[type="file"]::file-selector-button {
+  color: #e4e8ee;
+  background: #344454;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-right: 12px;
+  cursor: pointer;
+}
+.profile-editor__avatar-preview {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid #6c8ca0;
+}
