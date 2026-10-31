@@ -192,3 +192,63 @@
    border:1px solid #503353!important;border-radius:17px!important;box-shadow:none!important;
  }
 }
+
+/* ORVAYNE: Memories uses the same midnight-blue palette as Your Characters. */
+html:has(.memories-character-index),
+body:has(.memories-character-index),
+body:has(.memories-character-index) #root,
+body:has(.memories-character-index) .app,
+body:has(.memories-character-index) .app__content,
+body:has(.memories-character-index) .velvet-route-stage,
+body:has(.memories-character-index) .memories-reference-page,
+body:has(.memories-character-index) .memories-character-index {
+  --stories-canvas: #11151b !important;
+  --stories-panel: #202832 !important;
+  --stories-border: #3b4b5b !important;
+  --ref-ink: #e4e8ee !important;
+  --ref-muted: #a7b5c3 !important;
+  --ref-rose: #8caec3 !important;
+  --ref-rose-pale: #dce7f0 !important;
+  background: #11151b !important;
+  background-image: none !important;
+}
+body:has(.memories-character-index) .memories-reference__eyebrow,
+body:has(.memories-character-index) .memories-reference__hero--compact p,
+body:has(.memories-character-index) .memories-reference__section-heading small {
+  color: #a7b5c3 !important;
+}
+body:has(.memories-character-index) .memories-reference__hero--compact h1 {
+  color: #e4e8ee !important;
+  -webkit-text-fill-color: #e4e8ee !important;
+}
+body:has(.memories-character-index) .memories-reference__new--compact {
+  background: #202832 !important;
+  color: #a8c4d7 !important;
+  border-color: #779db5 !important;
+}
+body:has(.memories-character-index) .memories-character-index .reference-search,
+body:has(.memories-character-index) .memories-character-index__search {
+  background: #202832 !important;
+  border-color: #3b4b5b !important;
+  color: #dce7f0 !important;
+}
+body:has(.memories-character-index) .memories-character-index input {
+  color: #e4e8ee !important;
+}
+body:has(.memories-character-index) .memories-character-index input::placeholder {
+  color: #9baaba !important;
+}
+body:has(.memories-character-index) .memory-character-index-card__main {
+  border-color: #364452 !important;
+}
+@media (max-width: 760px) {
+  body.velvet-burgundy-route:has(.memories-character-index) .memories-character-index .reference-search {
+    background: #202832 !important;
+    border-color: #3b4b5b !important;
+  }
+  body.velvet-burgundy-route:has(.memories-character-index) .memories-character-index .memories-reference__new--compact {
+    background: #202832 !important;
+    color: #a8c4d7 !important;
+    border-color: #779db5 !important;
+  }
+}
