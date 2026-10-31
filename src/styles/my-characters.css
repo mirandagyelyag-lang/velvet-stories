@@ -974,3 +974,46 @@ html.velvet-discover-route, body.velvet-discover-route {
     font-size: 2.22rem !important;
   }
 }
+
+/* Match the ocean-blue editorial title used on Your Stories. */
+.characters-library__hero-ink .characters-library__ocean-title {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: 100% !important;
+  height: 104px !important;
+  min-height: 104px !important;
+  max-height: 104px !important;
+  margin: 0 !important;
+  padding: 8px 0 !important;
+  background: none !important;
+  overflow: visible !important;
+  color: #83b8d0 !important;
+  -webkit-text-fill-color: #83b8d0 !important;
+  text-shadow: 0 0 14px rgba(82,156,190,.16) !important;
+  text-align: center !important;
+  line-height: 1 !important;
+}
+.characters-library__hero-ink .characters-library__ocean-title::before,
+.characters-library__hero-ink .characters-library__ocean-title::after {
+  content: none !important;
+  display: none !important;
+}
+.characters-library__hero-ink .characters-library__ocean-small {
+  display: block !important;
+  font: 400 14px/1.1 Georgia, "Times New Roman", serif !important;
+  letter-spacing: .32em !important;
+  padding-left: .32em !important;
+  color: #83b8d0 !important;
+}
+.characters-library__hero-ink .characters-library__ocean-large {
+  display: block !important;
+  font: 400 clamp(23px, 5.8vw, 43px)/1.05 Georgia, "Times New Roman", serif !important;
+  letter-spacing: .075em !important;
+  padding-left: .075em !important;
+  white-space: nowrap !important;
+  color: #83b8d0 !important;
+}
