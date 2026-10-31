@@ -224,3 +224,12 @@ html:root[data-theme="dark"] body .chats-page--reference .orvayne-library-head__
 html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {
  padding:10px 0 16px!important;
 }
+
+/* Keep the artwork on the page canvas, with no rectangular backing. */
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink,
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__editorial-copy,
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink .orvayne-library-head__ink-art {
+ background:transparent!important;background-image:none!important;box-shadow:none!important;
+}
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink::before,
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink::after {content:none!important}

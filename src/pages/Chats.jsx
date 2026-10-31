@@ -702,7 +702,12 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         <div className="orvayne-library-head__editorial-copy">
           <h1 className="orvayne-library-head__ink-art" aria-label="Your Stories — Beyond the script">
             <svg viewBox="180 620 1250 300" role="img" aria-hidden="true" focusable="false">
-              <image href="/images/orvayne-ocean-ink-reference.png" width="1672" height="941" />
+              <defs>
+                <filter id="orvayne-ink-transparency" colorInterpolationFilters="sRGB">
+                  <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 3 0 -0.36" />
+                </filter>
+              </defs>
+              <image href="/images/orvayne-ocean-ink-reference.png" width="1672" height="941" filter="url(#orvayne-ink-transparency)" />
             </svg>
           </h1>
         </div>
