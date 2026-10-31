@@ -261,7 +261,7 @@ function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, o
     <header className={`characters-library__compact-hero characters-library__hero-simple${inTrash ? "" : " characters-library__hero-ink"}`}>
       <div className="characters-library__compact-copy">
         {inTrash ? <h1>Trash</h1> : <>
-          <h1 className="characters-library__ink-title"><img src="/images/orvayne-characters-ink.png" alt="Your Characters" /></h1>
+          <h1 className="characters-library__ink-title characters-library__ocean-title" aria-label="Your Characters"><span className="characters-library__ocean-small">YOUR</span><span className="characters-library__ocean-large">CHARACTERS</span></h1>
         </>}
         {inTrash && <p>{count} deleted {count === 1 ? "character" : "characters"}</p>}
       </div>
