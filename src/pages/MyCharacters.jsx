@@ -265,7 +265,14 @@ function CharacterLibraryHero({ view = "active", count = 0, onCreateCharacter, o
         </>}
         {inTrash && <p>{count} deleted {count === 1 ? "character" : "characters"}</p>}
       </div>
-      {inTrash ? <button className="characters-library__hero-back" type="button" onClick={onBack}>Back</button> : <button className="characters-library__hero-create" type="button" onClick={onCreateCharacter} aria-label="Create character"><Sparkles size={22}/></button>}
+      {inTrash ? <button className="characters-library__hero-back" type="button" onClick={onBack}>Back</button> : <button className="characters-library__hero-create" type="button" onClick={onCreateCharacter} aria-label="Create character" title="Create character">
+        <svg className="orvayne-create-character-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <circle cx="24" cy="24" r="22.5" fill="var(--surface, #202833)" stroke="#87afc3" strokeWidth="1.2"/>
+          <circle cx="22" cy="19" r="6" fill="#b8c7d4"/>
+          <path d="M11 35c0-6.2 4.9-10 11-10s11 3.8 11 10v1H11Z" fill="#91b8cc"/>
+          <path d="M34 10c.8 3 1.7 3.9 4.7 4.7-3 .8-3.9 1.7-4.7 4.7-.8-3-1.7-3.9-4.7-4.7 3-.8 3.9-1.7 4.7-4.7Z" fill="#b8c7d4"/>
+        </svg>
+      </button>}
     </header>
   );
 }

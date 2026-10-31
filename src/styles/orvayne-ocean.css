@@ -352,3 +352,13 @@ html:root body.velvet-discover-route .characters-library__hero-ink::before {cont
  grid-template-columns:48px minmax(0,1fr) 48px!important;gap:14px!important;
  }
 }
+
+/* Character creation: person and sparkle, matching the Stories action. */
+html:root body.velvet-discover-route .characters-library__hero-simple .characters-library__hero-create {
+ width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;
+ padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;
+ display:grid!important;place-items:center!important;
+}
+html:root body.velvet-discover-route .characters-library__hero-create svg.orvayne-create-character-icon {
+ display:block!important;width:48px!important;height:48px!important;fill:none;
+}
