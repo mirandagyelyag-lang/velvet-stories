@@ -1087,3 +1087,13 @@ html.velvet-discover-route, body.velvet-discover-route {
   }
 }
 
+
+/* Lower only the Characters title slightly; preserve header and search layout. */
+.characters-library__hero-ink .characters-library__ocean-title {
+  transform: translateY(12px) !important;
+}
+@media (max-width: 760px) {
+  .characters-library__hero-ink .characters-library__ocean-title {
+    transform: translateY(12px) !important;
+  }
+}
