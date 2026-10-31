@@ -292,3 +292,9 @@ html:root[data-theme="dark"] body .mobile-nav.velvet-reference-nav .sidebar__lin
 html:root[data-theme="dark"] body {scrollbar-color:#52758c #11151b}
 html:root[data-theme="dark"] body ::-webkit-scrollbar-thumb {background:#52758c!important}
 html:root[data-theme="dark"] body .chat__send-button {background:#91b8cc!important;color:#11151b!important}
+
+html:root[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-continue__play {
+ background:#91b8cc!important;color:#11151b!important;box-shadow:none!important;
+}
+html:root[data-theme="dark"] body.velvet-burgundy-route :is(.velvet-identity-continue__corner,.velvet-identity-continue__card) {border-color:rgba(184,199,212,.4)!important;box-shadow:none!important}
+html:root[data-theme="dark"] body.velvet-burgundy-route .velvet-identity-continue__copy small {border-color:#7398af!important;background:rgba(32,40,51,.5)!important}
