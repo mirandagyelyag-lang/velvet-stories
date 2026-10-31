@@ -162,13 +162,15 @@ function Profile({
   }
 
   const menuRows = [
-    { icon: BookOpen, label: "Characters", value: characters.length, action: onManageCharacters },
+    { icon: Settings2, label: "Settings", action: onOpenSettings },
     { icon: UsersRound, label: "Roleplay Personas", value: personas.length, action: onManagePersonas },
     { icon: Globe2, label: "World & Lorebooks", value: lorebooks.length, action: onManageLorebooks },
-    { icon: BookHeart, label: "Memories", value: stats.memories, action: onOpenMemories },
-    { icon: Search, label: "Search Orvayne", action: onOpenSearch },
-    { icon: Settings2, label: "Settings", action: onOpenSettings },
     { icon: Activity, label: "AI Status", action: onOpenDiagnostics },
+    { icon: LockKeyhole, label: "Profile & Access", action: () => setAccessOpen(true) },
+    { icon: LogOut, label: signingOut ? "Logging out…" : "Log out", action: handleSignOut, isLogout: true },
+    { icon: Search, label: "Search Orvayne", action: onOpenSearch },
+    { icon: BookHeart, label: "Memories", value: stats.memories, action: onOpenMemories },
+    { icon: BookOpen, label: "Characters", value: characters.length, action: onManageCharacters },
   ];
 
   return (
@@ -205,24 +207,14 @@ function Profile({
 
 
         <div className="profile-reference__menu">
-          {menuRows.map(({ icon: Icon, label, value, action }) => (
-            <button type="button" key={label} onClick={action}>
+          {menuRows.map(({ icon: Icon, label, value, action, isLogout }) => (
+            <button type="button" key={isLogout ? "logout" : label} className={isLogout ? "profile-reference__logout" : undefined} onClick={action} disabled={isLogout && signingOut}>
               <span className="profile-reference__menu-icon"><Icon size={22}/></span>
               <span>{label}</span>
               {Number.isFinite(value) && <small>{value}</small>}
               <ChevronRight size={18}/>
             </button>
           ))}
-          <button type="button" onClick={() => setAccessOpen(true)}>
-            <span className="profile-reference__menu-icon"><LockKeyhole size={22}/></span>
-            <span>Profile & Access</span>
-            <ChevronRight size={18}/>
-          </button>
-          <button type="button" className="profile-reference__logout" onClick={handleSignOut} disabled={signingOut}>
-            <span className="profile-reference__menu-icon"><LogOut size={22}/></span>
-            <span>{signingOut ? "Logging out…" : "Log out"}</span>
-            <ChevronRight size={18}/>
-          </button>
         </div>
 
         <div className="profile-reference__version"><span/>Version {VELVET_VERSION}<span/></div>
