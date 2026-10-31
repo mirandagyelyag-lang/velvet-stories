@@ -213,3 +213,14 @@ html:root body .chats-page--reference .orvayne-library-head__ink-art svg {
 html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {
  gap:10px!important;padding:12px 0 22px!important;
 }
+
+/* A quieter, smaller ocean-ink heading. */
+html:root body .chats-page--reference .orvayne-library-head--ocean-ink h1.orvayne-library-head__ink-art {
+ width:80%!important;max-width:660px!important;
+}
+html:root[data-theme="dark"] body .chats-page--reference .orvayne-library-head__ink-art svg {
+ filter:brightness(.76) saturate(.78);
+}
+html:root body .chats-page--reference .orvayne-library-head.orvayne-library-head--ocean-ink {
+ padding:10px 0 16px!important;
+}
