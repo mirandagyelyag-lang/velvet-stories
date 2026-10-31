@@ -1475,3 +1475,36 @@ html[data-theme='comfort'] .chats-page--reference .reference-collection-card__ic
   border-right: 1px solid rgba(188,198,234,.55) !important;
   border-top-right-radius: 100% 100% !important;
 }
+
+/* Final mobile header correction: no oversized arches; centered editorial lockup. */
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title::before,
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title::after {
+  content: none !important;
+  display: none !important;
+}
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__editorial-copy {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title {
+  min-height: 104px !important;
+  max-height: 104px !important;
+  height: 104px !important;
+  width: 100% !important;
+  padding: 8px 0 !important;
+  text-align: center !important;
+  gap: 5px !important;
+}
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title .orvayne-library-head__classic-small {
+  font-size: 14px !important;
+  letter-spacing: .32em !important;
+  padding-left: .32em !important;
+}
+.chats-page .orvayne-library-head--editorial .orvayne-library-head__classic-title .orvayne-library-head__classic-large {
+  font-size: clamp(30px, 7.3vw, 51px) !important;
+  letter-spacing: .105em !important;
+  padding-left: .105em !important;
+}
