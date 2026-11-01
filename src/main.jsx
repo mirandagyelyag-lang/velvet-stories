@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import { Capacitor } from "@capacitor/core";
 
 import App from "./App";
-import "./styles/light-coffee-fix.css";
 import SpotifyAuthBootstrap from "./components/SpotifyAuthBootstrap";
 import SpotifyHub from "./components/SpotifyHub";
 import VelvetErrorBoundary from "./components/VelvetErrorBoundary";
@@ -90,6 +89,7 @@ import "./styles/velvet-identity.css";
 import "./styles/orvayne-stories-mobile-fix.css";
 import "./styles/orvayne-editorial-library.css";
 import "./styles/orvayne-ocean.css";
+import "./styles/light-coffee-fix.css";
 
 
 installMobileViewportLock();
