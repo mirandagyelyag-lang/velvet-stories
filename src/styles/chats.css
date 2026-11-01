@@ -1563,3 +1563,40 @@ html[data-theme="comfort"] body .chats-page .orvayne-library-head__classic-title
 /* Light Stories: warm white and coffee. */
 html[data-theme="light"] body .app .chats-page.chats-page--reference,html[data-theme="light"] body .app .chats-page.chats-page--shelf{background:linear-gradient(180deg,#faf9f6,#f2eee8)!important;color:#423a33!important;--stories-ink:#423a33;--stories-muted:#827468;--stories-accent:#b29a80;--stories-panel-solid:#fffefa;--stories-panel-strong:#fffefa;--stories-search:#fffefa}
 html[data-theme="light"] body .chats-page .orvayne-library-head__classic-title,html[data-theme="light"] body .chats-page .orvayne-library-head__classic-title span{color:#b29a80!important;-webkit-text-fill-color:#b29a80!important}
+
+/* Light = warm white + coffee throughout Stories. No legacy pink surfaces. */
+html[data-theme="light"] body .app .chats-page.chats-page--reference {
+  --stories-ink:#423a33!important;
+  --stories-muted:#827468!important;
+  --stories-accent:#b29a80!important;
+  --stories-panel-solid:#fffefa!important;
+  --stories-panel-strong:#fffefa!important;
+  --stories-search:#fffefa!important;
+}
+html[data-theme="light"] body .chats-page--reference :is(.reference-search,.reference-filter,.reference-collection-card,.reference-story-row,.reference-story-card,.reference-continue-card) {
+  border-color:rgba(153,132,110,.28)!important;
+}
+html[data-theme="light"] body .chats-page--reference :is(.reference-search,.reference-filter) {
+  background:#fffefa!important;color:#423a33!important;
+}
+html[data-theme="light"] body .chats-page--reference :is(.reference-search,.reference-filter) :is(input,button,svg) {
+  color:#827468!important;
+}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card:not(:first-child) {
+  background:linear-gradient(155deg,#fffefa,#eee9e1)!important;
+}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card :is(strong,small,.reference-collection-card__icon) {
+  color:#423a33!important;
+}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card__icon {
+  background:rgba(178,154,128,.10)!important;
+  border-color:rgba(153,132,110,.24)!important;
+}
+html[data-theme="light"] body .chats-page--reference :is(.reference-story-row,.reference-story-card) {
+  background:linear-gradient(135deg,#fffefa,#f1ece5)!important;
+  color:#423a33!important;
+}
+html[data-theme="light"] body .chats-page--reference :is(.reference-collections,.reference-recent-stories) h2 {
+  color:#8c745d!important;
+  -webkit-text-fill-color:#8c745d!important;
+}
