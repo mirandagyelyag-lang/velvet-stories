@@ -285,3 +285,16 @@ html[data-theme="light"] .orv-cinema.orv-cinema--light,
     margin-top:24px!important;
   }
 }
+
+/* Give the caption breathing room beneath the final dialogue card. */
+@media (min-width:700px) and (max-width:1250px) {
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__theater--art {
+    height:315px!important;min-height:315px!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__art-caption {
+    bottom:-24px!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__stage {
+    padding-bottom:48px!important;
+  }
+}
