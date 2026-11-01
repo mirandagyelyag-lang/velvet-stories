@@ -1600,3 +1600,32 @@ html[data-theme="light"] body .chats-page--reference :is(.reference-collections,
   color:#8c745d!important;
   -webkit-text-fill-color:#8c745d!important;
 }
+
+/* Warm-white theme: featured Continue Reading card (retain the story artwork). */
+html[data-theme="light"] body .chats-page--reference .velvet-identity-heading,
+html[data-theme="light"] body .chats-page--reference .velvet-identity-heading :is(span,em) {
+  color:#827468!important;
+}
+html[data-theme="light"] body .chats-page--reference .velvet-identity-heading i {
+  background:rgba(153,132,110,.35)!important;
+}
+html[data-theme="light"] body .chats-page--reference .velvet-identity-continue__card {
+  border-color:rgba(153,132,110,.48)!important;
+  background:#eee9e1!important;
+}
+html[data-theme="light"] body .chats-page--reference .velvet-identity-continue__shade {
+  background:linear-gradient(90deg,rgba(40,30,24,.72),rgba(40,30,24,.35) 60%,rgba(40,30,24,.12))!important;
+}
+html[data-theme="light"] body .chats-page--reference .velvet-identity-continue__copy small {
+  color:#f8f2e9!important;
+  border-color:#cbb9a5!important;
+  background:rgba(68,54,42,.60)!important;
+}
+html[data-theme="light"] body .chats-page--reference .velvet-identity-continue__play {
+  background:#b29a80!important;
+  color:#fffefa!important;
+  border-color:#b29a80!important;
+}
+html[data-theme="light"] body .chats-page--reference .velvet-identity-continue__corner {
+  border-color:rgba(235,220,201,.72)!important;
+}
