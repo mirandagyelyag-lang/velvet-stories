@@ -717,12 +717,12 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
         </button>
       </header>
 
-      {!loading && featuredStory && view === "active" && !search.trim() && (() => {
+      {featuredStory && view === "active" && !search.trim() && (() => {
         const fc = featuredStory.character;
         const fart = featuredStory.cover_url || fc.coverUrl || fc.imageUrl;
         const fline = shelfPreview(featuredStory.latestMessage?.content || fc.firstMessage || fc.role || "Continue the story.");
         return (
-          <section className="velvet-identity-continue">
+          <section className="velvet-identity-continue" style={{ display: "block", visibility: "visible", opacity: 1, position: "relative", height: "auto", minHeight: "220px", marginBottom: "24px" }}>
             <header className="velvet-identity-heading"><span>CONTINUE READING</span><i /><em>{formatShelfDate(featuredStory.updated_at)}</em></header>
             <button type="button" className="velvet-identity-continue__card" onClick={() => onOpenCharacter(fc, featuredStory.id)}>
               <span className="velvet-identity-continue__art">{fart ? <img src={fart} alt="" /> : <span className="velvet-identity-continue__fallback">{fc.initials}</span>}</span>
