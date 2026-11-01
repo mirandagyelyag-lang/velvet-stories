@@ -174,3 +174,9 @@
 .orv-cinema--dark .orv-cinema__aura--two { background: rgba(91,137,164,.11); }
 .orv-cinema--dark .orv-cinema__enter,
 .orv-cinema--dark .orv-cinema__themes button.is-active { color: #11151b; }
+
+/* Light theme: warm white and pale coffee, not pink. */
+.orv-cinema--light{--ink:#423a33;--muted:#827468;--line:rgba(153,132,110,.22);--accent:#b29a80;--glass:rgba(255,254,250,.9);background:radial-gradient(ellipse at 55% 40%,#fffefa,#faf9f6 60%,#eee9e1)}
+.orv-cinema--light .orv-cinema__aura{background:rgba(178,154,128,.12)}
+.orv-cinema--light .orv-cinema__halo{background:radial-gradient(circle,rgba(178,154,128,.15),transparent 70%)}
+.orv-cinema--light .orv-cinema__themes button.is-active,.orv-cinema--light .orv-cinema__enter{color:#342c25}
