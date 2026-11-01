@@ -1559,3 +1559,7 @@ html[data-theme="comfort"] body .chats-page .orvayne-library-head__classic-title
   color: #3979b5 !important;
   -webkit-text-fill-color: #3979b5 !important;
 }
+
+/* Light Stories: warm white and coffee. */
+html[data-theme="light"] body .app .chats-page.chats-page--reference,html[data-theme="light"] body .app .chats-page.chats-page--shelf{background:linear-gradient(180deg,#faf9f6,#f2eee8)!important;color:#423a33!important;--stories-ink:#423a33;--stories-muted:#827468;--stories-accent:#b29a80;--stories-panel-solid:#fffefa;--stories-panel-strong:#fffefa;--stories-search:#fffefa}
+html[data-theme="light"] body .chats-page .orvayne-library-head__classic-title,html[data-theme="light"] body .chats-page .orvayne-library-head__classic-title span{color:#b29a80!important;-webkit-text-fill-color:#b29a80!important}
