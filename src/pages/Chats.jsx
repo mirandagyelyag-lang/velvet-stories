@@ -552,9 +552,14 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   }), [conversations, characters, pendingDeletionIds, collectionCounts.favorites]);
 
   const featuredStory = useMemo(() => {
-    const live = conversations.filter((item) => item.character && !item.trashed_at && !item.archived_at && !pendingDeletionIds.includes(item.id));
-    return live.reduce((best, item) => (!best || new Date(item.updated_at || 0) > new Date(best.updated_at || 0) ? item : best), null);
-  }, [conversations, pendingDeletionIds]);
+    // Character records may arrive after conversations; never hide Continue Reading
+    // just because the character catalog has not hydrated yet.
+    const live = conversations.filter((item) => !item.trashed_at && !item.archived_at && !pendingDeletionIds.includes(item.id));
+    const latest = live.reduce((best, item) => (!best || new Date(item.updated_at || 0) > new Date(best.updated_at || 0) ? item : best), null);
+    if (!latest) return null;
+    const character = latest.character || characters.find((item) => String(item.id) === String(latest.character_id));
+    return { ...latest, character: character || { id: latest.character_id, name: latest.title || "Your story", initials: "OS", role: "" } };
+  }, [conversations, characters, pendingDeletionIds]);
 
   const activeCustomCollection = useMemo(() => String(view).startsWith("collection:")
     ? collections.find((item) => item.id === String(view).slice("collection:".length)) || null
