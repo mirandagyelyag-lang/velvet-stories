@@ -275,3 +275,13 @@ html[data-theme="light"] .orv-cinema.orv-cinema--light,
     padding:16px clamp(24px,4vw,54px)!important;
   }
 }
+
+/* Tablet: lower the ENTER button and dialogue composition only. */
+@media (min-width:700px) and (max-width:1250px) {
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__actions {
+    margin-top:64px!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__theater--art {
+    margin-top:24px!important;
+  }
+}
