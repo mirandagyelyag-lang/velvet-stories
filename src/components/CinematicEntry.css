@@ -180,3 +180,35 @@
 .orv-cinema--light .orv-cinema__aura{background:rgba(178,154,128,.12)}
 .orv-cinema--light .orv-cinema__halo{background:radial-gradient(circle,rgba(178,154,128,.15),transparent 70%)}
 .orv-cinema--light .orv-cinema__themes button.is-active,.orv-cinema--light .orv-cinema__enter{color:#342c25}
+
+/* Definitive Light palette: override legacy rose styling throughout entry. */
+html[data-theme="light"] .orv-cinema.orv-cinema--light,
+.orv-cinema.orv-cinema--light {
+  --ink:#423a33 !important;
+  --muted:#827468 !important;
+  --line:rgba(153,132,110,.22) !important;
+  --accent:#b29a80 !important;
+  --glass:rgba(255,254,250,.92) !important;
+  color:#423a33 !important;
+  background:#faf9f6 !important;
+  background-image:radial-gradient(ellipse at 50% 38%,#fffefa 0%,#faf9f6 64%,#eee9e1 100%) !important;
+}
+.orv-cinema.orv-cinema--light .orv-cinema__aura--one,
+.orv-cinema.orv-cinema--light .orv-cinema__aura--two {
+  background:rgba(178,154,128,.10) !important;
+}
+.orv-cinema.orv-cinema--light .orv-cinema__copy h1,
+.orv-cinema.orv-cinema--light .orv-cinema__logo { color:#423a33 !important; }
+.orv-cinema.orv-cinema--light .orv-cinema__copy h1 em,
+.orv-cinema.orv-cinema--light .orv-cinema__eyebrow { color:#b29a80 !important; }
+.orv-cinema.orv-cinema--light .orv-cinema__themes button.is-active,
+.orv-cinema.orv-cinema--light .orv-cinema__enter {
+  background:#b29a80 !important;
+  border-color:#b29a80 !important;
+  color:#342c25 !important;
+}
+.orv-cinema.orv-cinema--light .orv-cinema__chat-bubble,
+.orv-cinema.orv-cinema--light .orv-cinema__message {
+  background:rgba(255,254,250,.94) !important;
+  border-color:rgba(153,132,110,.20) !important;
+}
