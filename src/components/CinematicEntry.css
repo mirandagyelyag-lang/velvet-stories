@@ -160,3 +160,17 @@
 /* Keep the delicate orbital circles behind the chat cards; hide only the globe. */
 .orv-cinema__core,.orv-cinema__globe{display:none!important}
 .orv-cinema__art-halo,.orv-cinema__art-ring{display:block!important}
+
+/* Share the selected theme's palette with the app interior. */
+.orv-cinema--dark {
+  --ink: #f0eef5;
+  --muted: #a3a9b7;
+  --line: rgba(163,169,183,.22);
+  --accent: #83b8d0;
+  --glass: rgba(26,34,45,.88);
+  background: radial-gradient(ellipse at 52% 44%, #202833 0%, #11151b 70%, #0c1016 100%);
+}
+.orv-cinema--dark .orv-cinema__aura--one { background: rgba(83,156,191,.13); }
+.orv-cinema--dark .orv-cinema__aura--two { background: rgba(91,137,164,.11); }
+.orv-cinema--dark .orv-cinema__enter,
+.orv-cinema--dark .orv-cinema__themes button.is-active { color: #11151b; }
