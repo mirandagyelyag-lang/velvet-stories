@@ -521,3 +521,8 @@ html:root[data-theme="comfort"] body .profile-reference-page .profile-reference_
   background:#f4faff !important;
   border-color:rgba(57,121,181,.25) !important;
 }
+
+/* Warm ivory and light coffee overrides for Light, shared throughout the app. */
+html:root[data-theme="light"],html:root[data-theme="light"] body{--stories-canvas:#faf9f6!important;--stories-atmosphere:linear-gradient(180deg,#faf9f6,#f2eee8)!important;--accent:#b29a80;--accent-dark:#8c745d;--text-primary:#423a33;--text-secondary:#827468;--surface:#fffefa;--surface-soft:#eee9e1;--border:rgba(153,132,110,.23)}
+html:root[data-theme="light"] body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio),html:root[data-theme="light"] body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .velvet-route-stage>:first-child{background-color:#faf9f6!important}
+html:root[data-theme="light"] body .profile-reference-page .profile-reference__identity,html:root[data-theme="light"] body .profile-reference-page .profile-reference__private-banner{background:#fffefa!important;border-color:rgba(153,132,110,.23)!important}
