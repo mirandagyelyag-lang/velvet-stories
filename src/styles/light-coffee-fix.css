@@ -1,0 +1,7 @@
+/* Light theme: consistent warm ivory and coffee. */
+html[data-theme="light"] body .chats-page--reference .reference-recent-stories h2{color:#8c745d!important;-webkit-text-fill-color:#8c745d!important}
+html[data-theme="light"] body .chats-page--reference .reference-story-row{background:#fffdf9!important;border-color:#ded3c6!important;color:#544537!important}
+html[data-theme="light"] body .chats-page--reference .reference-story-row :is(h3,p,time,small){color:#776758!important;-webkit-text-fill-color:#776758!important}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card:first-child :is(strong,small,.reference-collection-card__icon){color:#f5eadc!important;-webkit-text-fill-color:#f5eadc!important}
+html[data-theme="light"] body .chats-page--reference .reference-collection-card:first-child .reference-collection-card__shade{background:linear-gradient(0deg,rgba(18,14,12,.85),rgba(18,14,12,.08))!important}
+html[data-theme="light"] body .app .chats-page.chats-page--reference{background:#faf9f6!important}
