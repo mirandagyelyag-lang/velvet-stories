@@ -486,3 +486,38 @@ html:root body .profile-reference-page .profile-reference__private-banner {backg
 html:root body .profile-reference-page .profile-reference__menu>button {background:transparent!important;color:#e7edf2!important}
 html:root body .profile-reference-page .profile-reference__stats {display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}
 html:root body .profile-reference-page .profile-reference__stats>div {border:0!important;padding:16px 4px!important}
+
+/* Route canvas must follow the entry selection, including after authentication. */
+html:root[data-theme="light"],
+html:root[data-theme="light"] body {
+  --stories-canvas:#f7f0ed !important;
+  --stories-atmosphere:linear-gradient(180deg,#f7f0ed,#f2e7e9) !important;
+}
+html:root[data-theme="comfort"],
+html:root[data-theme="comfort"] body {
+  --stories-canvas:#e5f2fc !important;
+  --stories-atmosphere:linear-gradient(180deg,#e5f2fc,#dcecf9) !important;
+}
+html:root[data-theme="dark"],
+html:root[data-theme="dark"] body {
+  --stories-canvas:#11151b !important;
+  --stories-atmosphere:none !important;
+}
+html:root[data-theme="light"] body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio),
+html:root[data-theme="light"] body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .velvet-route-stage > :first-child {
+  background-color:#f7f0ed !important;
+}
+html:root[data-theme="comfort"] body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio),
+html:root[data-theme="comfort"] body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .velvet-route-stage > :first-child {
+  background-color:#e5f2fc !important;
+}
+html:root[data-theme="light"] body .profile-reference-page .profile-reference__identity,
+html:root[data-theme="light"] body .profile-reference-page .profile-reference__private-banner {
+  background:#fffaf8 !important;
+  border-color:rgba(157,111,135,.25) !important;
+}
+html:root[data-theme="comfort"] body .profile-reference-page .profile-reference__identity,
+html:root[data-theme="comfort"] body .profile-reference-page .profile-reference__private-banner {
+  background:#f4faff !important;
+  border-color:rgba(57,121,181,.25) !important;
+}
