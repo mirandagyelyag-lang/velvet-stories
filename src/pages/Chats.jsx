@@ -616,6 +616,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
       >
       <article
         className={`reference-story-row orvayne-story-inbox-row${conversation.is_pinned ? " reference-story-row--favorite" : ""}`}
+        style={theme === "light" ? { background: "linear-gradient(115deg, #fffdf9, #f2ebe2)", border: "1px solid #ded0c0", boxShadow: "0 4px 16px rgba(97,75,56,.05)", color: "#665446" } : undefined}
         onClick={() => !conversation.trashed_at && !conversation.archived_at && onOpenCharacter(character, conversation.id)}
       >
         <div className="reference-story-row__art">{art ? <img src={art} alt=""/> : <span>{character.initials}</span>}</div>
