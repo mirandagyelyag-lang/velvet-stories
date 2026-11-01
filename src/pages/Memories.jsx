@@ -591,6 +591,12 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
         background-image: none !important;
         text-shadow: 0 0 12px rgba(82,156,190,.16) !important;
       }
+      .memories-character-index .memories-reference__ocean-title,
+      .memories-character-index .memories-reference__ocean-title .memories-reference__ocean-small,
+      .memories-character-index .memories-reference__ocean-title .memories-reference__ocean-large {
+        color: var(--accent) !important;
+        -webkit-text-fill-color: var(--accent) !important;
+      }
       .memories-character-index .memories-reference__new { flex: 0 0 auto !important; }
       @media (max-width: 760px) {
         .memories-character-index .memories-reference__hero.memories-reference__hero--compact {
