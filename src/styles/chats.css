@@ -1525,3 +1525,37 @@ html[data-theme='comfort'] .chats-page--reference .reference-collection-card__ic
   color: var(--accent) !important;
   -webkit-text-fill-color: var(--accent) !important;
 }
+
+/* Theme selection must control Stories, not just the entrance screen. */
+html[data-theme="light"] body .app .chats-page.chats-page--reference,
+html[data-theme="light"] body .app .chats-page.chats-page--shelf {
+  background: linear-gradient(180deg,#f7f0ed,#f2e7e9) !important;
+  color: #493240 !important;
+  --stories-ink: #493240;
+  --stories-muted: #806575;
+  --stories-accent: #a4778d;
+  --stories-panel-solid: #fffaf8;
+  --stories-panel-strong: #fffaf8;
+  --stories-search: #fffaf8;
+}
+html[data-theme="comfort"] body .app .chats-page.chats-page--reference,
+html[data-theme="comfort"] body .app .chats-page.chats-page--shelf {
+  background: linear-gradient(180deg,#e5f2fc,#dcecf9) !important;
+  color: #183a61 !important;
+  --stories-ink: #183a61;
+  --stories-muted: #4e7094;
+  --stories-accent: #3979b5;
+  --stories-panel-solid: #f4faff;
+  --stories-panel-strong: #f4faff;
+  --stories-search: #f4faff;
+}
+html[data-theme="light"] body .chats-page .orvayne-library-head__classic-title,
+html[data-theme="light"] body .chats-page .orvayne-library-head__classic-title span {
+  color: #a4778d !important;
+  -webkit-text-fill-color: #a4778d !important;
+}
+html[data-theme="comfort"] body .chats-page .orvayne-library-head__classic-title,
+html[data-theme="comfort"] body .chats-page .orvayne-library-head__classic-title span {
+  color: #3979b5 !important;
+  -webkit-text-fill-color: #3979b5 !important;
+}
