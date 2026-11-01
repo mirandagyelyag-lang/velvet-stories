@@ -213,77 +213,65 @@ html[data-theme="light"] .orv-cinema.orv-cinema--light,
   border-color:rgba(153,132,110,.20) !important;
 }
 
-/* Tablet portrait and landscape: intentional compact, scroll-safe composition. */
-@media (min-width: 700px) and (max-width: 1250px) {
-  .orv-cinema:not(.orv-cinema--login){min-height:100dvh;height:auto;overflow-y:auto}
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__top{padding:22px clamp(26px,4vw,54px)}
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__stage{
-    width:100%;max-width:980px;margin:0 auto;display:flex!important;flex-direction:column!important;
-    align-items:center;justify-content:flex-start;gap:16px!important;
-    flex:1 0 auto;min-height:0!important;padding:24px 38px 24px!important;
-  }
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__copy{
-    width:100%;max-width:720px;text-align:center!important;flex:none;
-  }
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__copy h1.orv-cinema__slogan{
-    font-size:clamp(55px,7vw,80px)!important;line-height:1.05!important;margin:8px 0 16px!important;
-  }
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__copy>p{
-    max-width:620px;margin:0 auto;font-size:clamp(15px,1.7vw,19px);line-height:1.55;
-  }
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__actions{
-    margin-top:22px!important;justify-content:center;
-  }
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__theater--art{
-    width:min(100%,780px)!important;height:290px!important;min-height:290px!important;
-    margin:0 auto!important;flex:none;
-  }
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-preview{
-    inset:4% 3% 5%!important;width:94%!important;height:91%!important;max-width:none!important;
-  }
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-bubble{
-    width:40%!important;max-width:40%!important;min-height:0!important;
-    padding:11px 14px!important;gap:5px!important;border-radius:14px!important;
-  }
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-line{font-size:clamp(13px,1.5vw,17px)!important;line-height:1.3!important}
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-detail{font-size:10px!important;line-height:1.3!important}
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-bubble--card-1{top:0!important;left:3%!important}
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-bubble--card-2{top:27%!important;right:2%!important}
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-bubble--card-3{bottom:0!important;left:12%!important}
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__foot{
-    position:relative;flex:none;padding:14px 30px!important;font-size:9px;line-height:1.4;
-  }
-}
-
-/* Tablet refinement v2: fill the viewport and keep the footer at the bottom. */
+/* Tablet: a single responsive layout without competing viewport overrides. */
 @media (min-width:700px) and (max-width:1250px) {
   .orv-cinema:not(.orv-cinema--login) {
-    position:absolute!important;inset:0!important;
-    height:100%!important;min-height:100%!important;
+    position:relative!important;inset:auto!important;
+    width:100%!important;height:auto!important;min-height:100dvh!important;
+    overflow-x:hidden!important;overflow-y:visible!important;
     display:flex!important;flex-direction:column!important;
-    overflow-x:hidden!important;overflow-y:auto!important;
   }
   .orv-cinema:not(.orv-cinema--login) .orv-cinema__top {
-    flex:0 0 auto!important;min-height:92px!important;
-    padding:20px clamp(28px,4vw,56px)!important;
+    flex:0 0 auto!important;padding:24px clamp(24px,4vw,54px)!important;
   }
   .orv-cinema:not(.orv-cinema--login) .orv-cinema__stage {
-    flex:1 0 auto!important;min-height:0!important;
+    display:flex!important;flex-direction:column!important;
+    align-items:center!important;justify-content:center!important;
+    flex:1 1 auto!important;min-height:0!important;
     width:100%!important;max-width:960px!important;
-    padding:18px 36px 28px!important;
-    gap:12px!important;justify-content:center!important;
+    margin:0 auto!important;padding:24px 36px 32px!important;
+    gap:22px!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__copy {
+    width:100%!important;max-width:760px!important;
+    text-align:center!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__copy h1.orv-cinema__slogan {
+    font-size:clamp(54px,7vw,80px)!important;
+    line-height:1.06!important;margin:8px 0 16px!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__copy>p {
+    max-width:650px!important;margin:0 auto!important;
+    font-size:clamp(15px,1.7vw,19px)!important;line-height:1.55!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__actions {
+    justify-content:center!important;margin-top:22px!important;
   }
   .orv-cinema:not(.orv-cinema--login) .orv-cinema__theater--art {
-    height:265px!important;min-height:265px!important;
+    width:min(100%,780px)!important;height:280px!important;
+    min-height:280px!important;margin:0 auto!important;
   }
-  .orv-cinema:not(.orv-cinema--login) .orv-cinema__art-caption {
-    bottom:-8px!important;
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-preview {
+    inset:4% 3% 5%!important;width:94%!important;height:91%!important;
+    max-width:none!important;
   }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-bubble {
+    width:40%!important;max-width:40%!important;min-height:0!important;
+    padding:11px 14px!important;border-radius:14px!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-line {
+    font-size:clamp(13px,1.5vw,17px)!important;line-height:1.3!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-detail {
+    font-size:10px!important;line-height:1.3!important;
+  }
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-bubble--card-1 {top:0!important;left:3%!important}
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-bubble--card-2 {top:27%!important;right:2%!important}
+  .orv-cinema:not(.orv-cinema--login) .orv-cinema__chat-bubble--card-3 {bottom:0!important;left:12%!important}
   .orv-cinema:not(.orv-cinema--login) .orv-cinema__foot {
-    flex:0 0 auto!important;margin-top:auto!important;
+    position:relative!important;bottom:auto!important;
+    flex:0 0 auto!important;margin-top:0!important;
     width:100%!important;min-height:56px!important;
-    padding:16px clamp(28px,4vw,56px)!important;
-    display:flex!important;align-items:center!important;
-    justify-content:space-between!important;
+    padding:16px clamp(24px,4vw,54px)!important;
   }
 }
