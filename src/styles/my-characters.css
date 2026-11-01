@@ -1107,3 +1107,11 @@ html.velvet-discover-route, body.velvet-discover-route {
   background-image: none !important;
   text-shadow: 0 0 12px rgba(82,156,190,.16) !important;
 }
+
+/* Respect the active global theme rather than hardcoded ocean blue. */
+.characters-library .characters-library__hero-ink .characters-library__ocean-title,
+.characters-library .characters-library__hero-ink .characters-library__ocean-title .characters-library__ocean-small,
+.characters-library .characters-library__hero-ink .characters-library__ocean-title .characters-library__ocean-large {
+  color: var(--accent) !important;
+  -webkit-text-fill-color: var(--accent) !important;
+}
