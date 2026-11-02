@@ -691,3 +691,33 @@ body > .profile-editor-backdrop > .profile-editor {
     border-radius: 22px 22px 0 0;
   }
 }
+
+
+/* Profile menu must follow selected Sky Blue (comfort) theme. */
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu{
+  background:#e5f2fc!important;
+  border:1px solid #b9d4e8!important;
+  box-shadow:none!important;
+}
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu>button{
+  background:#e5f2fc!important;
+  color:#23496d!important;
+  border-color:#bdd7e9!important;
+}
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu>button:hover,
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu>button:focus-visible{
+  background:#d5eafa!important;
+}
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu-icon{
+  background:#d0e6f7!important;
+  color:#397cae!important;
+}
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu-icon svg,
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu>button>svg,
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu small,
+html[data-theme="comfort"] .profile-reference-page .profile-reference__version{
+  color:#477b9f!important;
+}
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu .profile-reference__logout{
+  color:#315b7a!important;
+}
