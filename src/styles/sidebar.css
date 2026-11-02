@@ -24,7 +24,7 @@
   cursor: pointer;
 }
 
-.sidebar__brand span {
+.sidebar__brand > .sidebar__brand-name {
   padding-left: .22em;
   font-family: "Cormorant Garamond", serif;
   font-size: 1.8rem;
@@ -326,3 +326,7 @@
 :root[data-theme="dark"] body .sidebar__avatar{
  background:#79569c!important;border-color:rgba(216,185,240,.35)!important;
 }
+
+/* Keep the three-stroke E inside the wordmark, not styled as a separate brand label. */
+.sidebar__brand > .sidebar__brand-name > span[aria-hidden="true"] { padding: 0 !important; font-size: inherit !important; letter-spacing: 0 !important; font-family: inherit !important; }
+.sidebar__brand > .sidebar__brand-name { max-width: 100%; padding-left: 0; letter-spacing: .12em; }
