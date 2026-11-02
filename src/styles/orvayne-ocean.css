@@ -526,3 +526,19 @@ html:root[data-theme="comfort"] body .profile-reference-page .profile-reference_
 html:root[data-theme="light"],html:root[data-theme="light"] body{--stories-canvas:#faf9f6!important;--stories-atmosphere:linear-gradient(180deg,#faf9f6,#f2eee8)!important;--accent:#b29a80;--accent-dark:#8c745d;--text-primary:#423a33;--text-secondary:#827468;--surface:#fffefa;--surface-soft:#eee9e1;--border:rgba(153,132,110,.23)}
 html:root[data-theme="light"] body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio),html:root[data-theme="light"] body.velvet-burgundy-route:not(.velvet-page--chat):not(.velvet-page--studio) .velvet-route-stage>:first-child{background-color:#faf9f6!important}
 html:root[data-theme="light"] body .profile-reference-page .profile-reference__identity,html:root[data-theme="light"] body .profile-reference-page .profile-reference__private-banner{background:#fffefa!important;border-color:rgba(153,132,110,.23)!important}
+
+
+/* Sky Blue characters search: light surfaces, never dark theme remnants. */
+html:root[data-theme="comfort"] body .characters-library__controls .discover-burgundy__search,
+html:root[data-theme="comfort"] body .characters-library__controls .discover-burgundy__search-wrap,
+html:root[data-theme="comfort"] body .characters-library__controls .discover-burgundy__search input {
+ background:#f6fbff!important;color:#315c7d!important;border-color:#bfd7e9!important;
+}
+html:root[data-theme="comfort"] body .characters-library__controls .discover-burgundy__search input::placeholder{color:#7896b1!important;opacity:1!important}
+html:root[data-theme="comfort"] body .characters-library__controls .discover-burgundy__search svg{color:#5388b2!important}
+html:root[data-theme="comfort"] body .characters-library__controls .discover-burgundy__chips button {
+ background:#f6fbff!important;color:#527fa5!important;border:1px solid #bfd7e9!important;
+}
+html:root[data-theme="comfort"] body .characters-library__controls .discover-burgundy__chips button:is(.active,.is-active,[aria-selected="true"]) {
+ background:#b7d9f0!important;color:#234c6b!important;border-color:#91bedc!important;
+}
