@@ -905,3 +905,18 @@ html[data-theme="comfort"] body .memories-reference__search-wrap input::placehol
   color:#6589a7!important;
   opacity:1!important;
 }
+
+
+/* Sky Blue: Memories header sparkle action must not inherit dark square. */
+html[data-theme="comfort"] body .memories-reference__hero .memories-reference__private,
+html[data-theme="comfort"] body .memories-reference__hero .memories-reference__new {
+  background:#e5f3fc!important;
+  border:1px solid #a9cee5!important;
+  border-radius:50%!important;
+  color:#326f9b!important;
+  box-shadow:none!important;
+}
+html[data-theme="comfort"] body .memories-reference__hero :is(.memories-reference__private,.memories-reference__new) :is(svg,path) {
+  color:#326f9b!important;
+  stroke:#326f9b!important;
+}
