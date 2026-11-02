@@ -721,3 +721,28 @@ html[data-theme="comfort"] .profile-reference-page .profile-reference__version{
 html[data-theme="comfort"] .profile-reference-page .profile-reference__menu .profile-reference__logout{
   color:#315b7a!important;
 }
+
+
+/* Sky Blue profile menu contrast repair: text and icon tiles. */
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu > button > span:nth-child(2),
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu > button > span:not(.profile-reference__menu-icon),
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu > button:not(.profile-reference__logout) {
+  color: #244a69 !important;
+  -webkit-text-fill-color: #244a69 !important;
+  text-shadow: none !important;
+}
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu .profile-reference__menu-icon {
+  background: #d0e6f7 !important;
+  color: #376f98 !important;
+  border-radius: 10px !important;
+  -webkit-text-fill-color: #376f98 !important;
+}
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu .profile-reference__menu-icon svg {
+  color: #376f98 !important;
+  stroke: currentColor !important;
+}
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu > button.profile-reference__logout,
+html[data-theme="comfort"] .profile-reference-page .profile-reference__menu > button.profile-reference__logout > span {
+  color: #315b7a !important;
+  -webkit-text-fill-color: #315b7a !important;
+}
