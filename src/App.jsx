@@ -171,6 +171,7 @@ function buildVelvetUrl({ mode = "page", page = "chats", characterId = null, con
 function App() {
   const nativeRuntime = isVelvetNativeRuntime();
   const { user, authLoading } = useAuth();
+  const canViewDiagnostics = user?.id === "bf41d53a-37f7-4969-b48e-dc9774c48190";
   const { createNewConversation } = useChats();
   const { characters, charactersLoading } = useCharacters();
   const initialNavigation = useRef(readVelvetLocation());
@@ -691,7 +692,7 @@ function App() {
 
     if (activePage === "settings") return <Settings onBack={() => goBackOr("profile")} onOpenDiagnostics={() => navigate("diagnostics")} />;
 
-    if (activePage === "diagnostics") return <Diagnostics onBack={() => goBackOr("profile")} />;
+    if (activePage === "diagnostics") return canViewDiagnostics ? <Diagnostics onBack={() => goBackOr("profile")} /> : <Profile onOpenSettings={() => navigate("settings")} />;
 
     if (activePage === "search") return <SearchPage onBack={() => goBackOr("profile")} onOpenCharacter={openCharacter} onOpenMemories={() => navigate("memories")} onOpenLorebooks={() => navigate("lorebooks")} onOpenStories={() => navigate("chats")} />;
 
