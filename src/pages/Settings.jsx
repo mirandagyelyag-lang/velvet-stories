@@ -168,27 +168,21 @@ function Settings({ onBack, onOpenDiagnostics }) {
   }
   const jumpTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: settings.reduceMotion ? "auto" : "smooth", block: "start" });
   return <section className="settings-page settings-page--editorial">
-    <header className="page-heading settings-page__heading"><div><button onClick={onBack}><ArrowLeft size={17}/>Profile</button><p>YOUR ORVAYNE</p><h1>Settings</h1><span>Everything you can shape, protect and update, in one calm place.</span></div></header>
-    <nav className="settings-page__nav" aria-label="Settings sections">
-      <button onClick={()=>jumpTo("settings-personalize")}><Sparkles size={14}/>Personalize</button>
-      <button onClick={()=>jumpTo("settings-storytelling")}><Heart size={14}/>Stories</button>
-      <button onClick={()=>jumpTo("settings-safety")}><ShieldCheck size={14}/>Safety</button>
-      <button onClick={()=>jumpTo("settings-updates")}><RefreshCw size={14}/>Updates</button>
-      <button onClick={()=>jumpTo("settings-system")}><Wrench size={14}/>System</button>
-    </nav>
-    <div className="settings-plan-card">
+    <header className="page-heading settings-page__heading"><div><button onClick={onBack}><ArrowLeft size={17}/>Profile</button><p>YOUR ORVAYNE</p><h1>Settings</h1><span>Make Orvayne yours.</span></div></header>
+    <details className="settings-fold settings-fold--plan"><summary><Crown size={17}/> My plan <span>View details</span></summary><div className="settings-plan-card">
       <span className="settings-plan-card__icon"><Crown size={20}/></span>
       <div className="settings-plan-card__copy"><small>ORVAYNE PLAN</small><strong>{plan.loading ? "Checking…" : plan.name === "owner" ? "Owner" : plan.name === "plus" ? "Orvayne+" : "Orvayne Free"}</strong><span>{plan.name === "owner" ? "Full access · no daily generation limit" : plan.name === "plus" ? "Up to 300 AI generations per day" : "30 AI generations per day"}</span></div>
       <div className="settings-plan-card__usage"><small>TODAY</small><strong>{plan.loading ? "…" : plan.dailyLimit ? `${plan.usedToday} / ${plan.dailyLimit}` : "∞"}</strong><span>{plan.name === "free" ? "Orvayne+ founder price · $2.990 CLP/month · coming soon" : plan.name === "plus" ? (plan.founder ? "Founder plan" : "Plus plan") : "Creator account"}</span></div>
     </div>
+    </details>
     <div className="settings-section-label" id="settings-personalize"><span>01</span><div><strong>Personalize</strong><small>How Orvayne looks and feels on your phone.</small></div></div>
     <div className="settings-group" id="settings-appearance"><header><Eye size={19}/><div><h2>Appearance</h2><p>Choose the light that feels best for reading.</p></div></header>
       <div className="setting-row"><strong>Theme</strong><div className="setting-segments">
-        <button className={theme==='light'?'active':''} onClick={()=>setTheme('light')}><Sun size={14}/> Blanco</button>
-        <button className={theme==='dark'?'active':''} onClick={()=>setTheme('dark')}><Moon size={14}/> Oscuro</button>
-        <button className={theme==='comfort'?'active':''} onClick={()=>setTheme('comfort')}><Eye size={14}/> Celeste</button>
+        <button className={theme==='dark'?'active':''} onClick={()=>setTheme('dark')}><Moon size={14}/> Dark</button>
+        <button className={theme==='comfort'?'active':''} onClick={()=>setTheme('comfort')}><Eye size={14}/> Sky Blue</button>
       </div></div>
     </div>
+    <details className="settings-fold"><summary><Type size={18}/><strong>Reading preferences</strong><span>Expand</span></summary>
     <div className="settings-group settings-group--reading"><header><Type size={19}/><div><h2>Reading experience</h2><p>Adjust stories without changing their content.</p></div></header>
       <SettingChoice label="Text size" value={settings.textSize} options={[['compact','Compact'],['comfortable','Comfortable'],['large','Large']]} onChange={(value)=>updateSetting('textSize',value)}/>
       <SettingChoice label="Interface density" value={settings.density} options={[['comfortable','Comfortable'],['compact','Compact']]} onChange={(value)=>updateSetting('density',value)}/>
@@ -199,7 +193,8 @@ function Settings({ onBack, onOpenDiagnostics }) {
       <SettingChoice label="Reading width" value={settings.readingWidth || "comfortable"} options={[["narrow","Narrow"],["comfortable","Comfortable"],["wide","Wide"]]} onChange={(value)=>updateSetting("readingWidth",value)}/>
       <SettingChoice label="Reading font" value={settings.readingFont || "clean"} options={[["clean","Clean"],["serif","Book serif"]]} onChange={(value)=>updateSetting("readingFont",value)}/>
     </div>
-    <div className="settings-section-label" id="settings-storytelling"><span>02</span><div><strong>Your stories</strong><small>Shape the reading and storytelling experience.</small></div></div>
+    </details>
+    <details className="settings-fold"><summary><Heart size={18}/><strong>Story preferences</strong><span>Expand</span></summary>
     <div className="settings-group settings-story-dna"><header><Heart size={19}/><div><h2>How I like stories</h2><p>Your global storytelling style. Character identity still comes first.</p></div></header>
       <SettingChoice label="Prose" value={settings.storyProse} options={[["contemporary","Natural"],["literary","Literary"],["minimal","Clean"]]} onChange={(value)=>updateSetting("storyProse",value)}/>
       <SettingChoice label="Conversation" value={settings.storyDialogue} options={[["dialogue_forward","Dialogue-forward"],["balanced","Balanced"],["narration_forward","Narration-forward"]]} onChange={(value)=>updateSetting("storyDialogue",value)}/>
@@ -223,7 +218,8 @@ function Settings({ onBack, onOpenDiagnostics }) {
         onRemove={removeStoryFeedback}
       />
     </div>
-    <div className="settings-section-label" id="settings-safety"><span>03</span><div><strong>Safety & data</strong><small>Backups, recovery and protection for your Orvayne world.</small></div></div>
+    </details>
+    <details className="settings-fold"><summary><ShieldCheck size={18}/><strong>Backups & privacy</strong><span>Expand</span></summary>
     <div className="settings-group settings-group--exports"><header><FileDown size={19}/><div><h2>Stories & backup</h2><p>Export one story normally, or keep a full safety copy of your Orvayne world.</p></div></header>
       <SettingChoice label="Default story export" value={settings.exportFormat} options={[["markdown","Markdown"],["text","Plain text"],["json","JSON story"]]} onChange={(value)=>updateSetting("exportFormat",value)}/>
       <div className="v312-backup-center v34915-safety-center">
@@ -244,7 +240,8 @@ function Settings({ onBack, onOpenDiagnostics }) {
     <div className="settings-group" id="settings-privacy"><header><ShieldCheck size={19}/><div><h2>Privacy & safety</h2><p>Protection against accidental destructive actions.</p></div></header>
       <Toggle label="Confirm before deleting" description="Ask before deleting characters, conversations and lore." checked={settings.confirmBeforeDelete} onChange={(value)=>updateSetting('confirmBeforeDelete',value)}/>
     </div>
-    <div className="settings-section-label" id="settings-updates"><span>04</span><div><strong>Updates</strong><small>You choose when this phone moves to a new Orvayne build.</small></div></div>
+    </details>
+    <details className="settings-fold"><summary><RefreshCw size={18}/><strong>App updates</strong><span>Expand</span></summary>
     <div className="settings-group settings-update-center"><header><RefreshCw size={19}/><div><h2>Orvayne updates</h2><p>You decide when the app on this phone changes.</p></div></header>
       <div className="settings-update-center__status">
         <div><small>APP ON THIS PHONE</small><strong>v{pwa.localVersion}</strong><em>{pwa.serverUpdateAvailable ? `v${pwa.serverVersion} is ready` : "Latest app installed ✓"}</em></div>
@@ -257,7 +254,8 @@ function Settings({ onBack, onOpenDiagnostics }) {
       </div>
       <p className="settings-update-center__note">Checking never installs anything. When a new app build is available, Orvayne waits for you to press Update.</p>
     </div>
-    <div className="settings-section-label" id="settings-system"><span>05</span><div><strong>System</strong><small>Installation, diagnostics and technical details.</small></div></div>
+    </details>
+    <details className="settings-fold"><summary><Wrench size={18}/><strong>Advanced settings</strong><span>Expand</span></summary>
     <div className="settings-group settings-diagnostics" id="settings-app"><header><Activity size={19}/><div><h2>AI & diagnostics</h2><p>Check the app version, mobile touch, Supabase, the Edge Function and Gemini separately.</p></div></header><div className="settings-install__body"><span className="settings-install__icon">✦</span><div><strong>Something acting weird?</strong><small>Open diagnostics before changing code or reinstalling the app.</small></div><button onClick={onOpenDiagnostics}><Activity size={17}/>Open diagnostics</button></div><div className={`settings-safe-mode${safeMode ? " is-active" : ""}`}><span><Wrench size={17}/><span><strong>Orvayne Safe Mode</strong><small>Temporarily disables motion-heavy extras, then clears only app cache. Stories, characters and Memories stay untouched.</small></span></span><button type="button" onClick={toggleSafeMode} disabled={safeModeBusy}>{safeModeBusy ? "Working…" : safeMode ? "Leave Safe Mode" : "Start Safe Mode"}</button></div></div>
     <div className="settings-group settings-install"><header><MonitorSmartphone size={19}/><div><h2>Orvayne on your phone</h2><p>Install it with its own icon and full-screen experience.</p></div></header>
       <div className="settings-install__body">
@@ -282,6 +280,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
       </div>
       <div className="settings-about__actions"><button onClick={()=>pwa.checkForUpdate({ silent:false })} disabled={pwa.checkingForUpdate}><RefreshCw size={16}/>{pwa.checkingForUpdate ? "Checking…" : "Check for update"}</button>{pwa.serverUpdateAvailable && <button className="primary" onClick={pwa.updateApp} disabled={pwa.updating}>{pwa.updating ? "Updating…" : "Update now"}</button>}{pwa.updateProblem && <button onClick={pwa.repairUpdate}>Repair updater</button>}</div>
     </div></details>
+    </details>
     <button className="settings-page__reset" onClick={confirmReset}><RotateCcw size={16}/>Reset preferences</button>
     <div className="settings-page__saved"><Check size={15}/>{storySyncReady ? "Story preferences sync to your Orvayne account." : "Saving preferences…"}</div>
   </section>;
