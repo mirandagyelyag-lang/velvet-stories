@@ -349,3 +349,10 @@
   letter-spacing: 0 !important;
   align-self: baseline;
 }
+
+/* Prevent legacy subtitle from sitting beside the wordmark. */
+.sidebar .sidebar__brand { display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:center !important; width:100%; overflow:hidden; }
+.sidebar .sidebar__brand::before, .sidebar .sidebar__brand::after,
+.sidebar .sidebar__brand-name::before, .sidebar .sidebar__brand-name::after { content:none !important; display:none !important; }
+.sidebar .sidebar__brand > :not(.sidebar__brand-name) { display:none !important; }
+.sidebar .sidebar__brand > .sidebar__brand-name { display:inline-flex !important; flex:0 0 auto; max-width:100%; }
