@@ -220,7 +220,7 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
       const payload = {
         ...(corrected ? { source_message_id: null, source_excerpt: null } : {}),
         content, category: draft.category, importance: draft.isImportant ? 5 : Number(draft.importance), is_pinned: Boolean(draft.isPinned || protectedMemory), is_canon: protectedMemory, scope: draft.scope,
-        why_remembered: protectedMemory ? "Marked as canon by you. Velvet should treat this as authoritative continuity." : "Added manually so Velvet can preserve this detail.",
+        why_remembered: protectedMemory ? "Marked as canon by you. Orvayne should treat this as authoritative continuity." : "Added manually so Orvayne can preserve this detail.",
         updated_at: new Date().toISOString(), source: "manual",
       };
       let saved;
@@ -278,7 +278,7 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
     try {
       setWorkingId(memory.id);
       const isCanon = !memory.is_canon;
-      const { error: requestError } = await supabase.from("memories").update({ is_canon: isCanon, is_pinned: isCanon ? true : memory.is_pinned, why_remembered: isCanon ? "Marked as canon by you. Velvet should treat this as authoritative continuity." : (memory.why_remembered || "Saved memory."), updated_at: new Date().toISOString() }).eq("id", memory.id);
+      const { error: requestError } = await supabase.from("memories").update({ is_canon: isCanon, is_pinned: isCanon ? true : memory.is_pinned, why_remembered: isCanon ? "Marked as canon by you. Orvayne should treat this as authoritative continuity." : (memory.why_remembered || "Saved memory."), updated_at: new Date().toISOString() }).eq("id", memory.id);
       if (requestError) throw requestError;
       setMemories((current) => current.map((item) => item.id === memory.id ? { ...item, is_canon: isCanon, is_pinned: isCanon ? true : item.is_pinned } : item).sort(sortMemoryRows));
       setMenuId(null);
@@ -496,7 +496,7 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
       </section>
 
       <nav className="v34915-memory-mode-tabs" aria-label="Memory Book views">
-        <button type="button" className={detailMode === "book" ? "is-active" : ""} onClick={()=>setDetailMode("book")}><span>Memory Book</span><small>What Velvet remembers</small></button>
+        <button type="button" className={detailMode === "book" ? "is-active" : ""} onClick={()=>setDetailMode("book")}><span>Memory Book</span><small>What Orvayne remembers</small></button>
         <button type="button" className={detailMode === "timeline" ? "is-active" : ""} onClick={()=>setDetailMode("timeline")}><span>Timeline</span><small>How the story changed</small></button>
         <button type="button" className={detailMode === "relationship" ? "is-active" : ""} onClick={()=>setDetailMode("relationship")}><span>Us</span><small>Relationship journal</small></button>
       </nav>
@@ -518,7 +518,7 @@ function Memories({ initialCharacterId = "", onBack, onBrowseCharacters, onOpenC
         {error && !editorOpen && <div className="memories-page__notice"><Sparkles size={17}/><span>{error}</span><button onClick={() => setError("")}><X size={16}/></button></div>}
 
         <section className="memory-character-detail__list">
-          <header><div><small>MEMORY BOOK</small><h3>{detailSearch ? `${selectedCharacterMemories.length} matching memories` : importanceFilter === "all" ? "Everything Velvet remembers" : `${selectedCharacterMemories.length} matching memories`}</h3></div><span>{selectedCharacterMemories.length}</span></header>
+          <header><div><small>MEMORY BOOK</small><h3>{detailSearch ? `${selectedCharacterMemories.length} matching memories` : importanceFilter === "all" ? "Everything Orvayne remembers" : `${selectedCharacterMemories.length} matching memories`}</h3></div><span>{selectedCharacterMemories.length}</span></header>
           {selectedCharacterMemories.length ? selectedCharacterMemories.map((memory) => <SwipeToTrash
             key={memory.id}
             className="swipe-trash--memory"
@@ -756,7 +756,7 @@ function MemoryRow({ memory, busy, menuOpen, onMenu, onCanon, onPin, onEdit, onD
     <div className="memories-reference__row-copy">
       <small>{groupLabel(memory)}{Number(memory.importance || 0) >= 5 ? " · IMPORTANT" : ""}{memory.is_canon ? " · CANON" : ""}{replaced ? " · REPLACED" : ""}</small>
       <p>{memory.content}</p>
-      <span>{character?.name || "Unknown character"} · {memory.scope === "conversation" ? "THIS STORY" : "ALL STORIES"} · {formatMemoryDate(memory.updated_at || memory.created_at)}</span>{memory.why_remembered && <details className="memories-reference__why"><summary><HelpCircle size={12}/> Why Velvet remembers this</summary><p>{memory.why_remembered}</p></details>}
+      <span>{character?.name || "Unknown character"} · {memory.scope === "conversation" ? "THIS STORY" : "ALL STORIES"} · {formatMemoryDate(memory.updated_at || memory.created_at)}</span>{memory.why_remembered && <details className="memories-reference__why"><summary><HelpCircle size={12}/> Why Orvayne remembers this</summary><p>{memory.why_remembered}</p></details>}
     </div>
     <div className="memories-reference__row-menu-wrap">
       <button className="memories-reference__row-menu" onClick={onMenu} disabled={busy} aria-label="Memory actions">{busy ? <LoaderCircle className="spin" size={17}/> : <MoreHorizontal size={19}/>}</button>
@@ -774,13 +774,13 @@ function MemoryEditor({ editingMemory, draft, setDraft, draftCharacterId, setDra
     <form className={`memory-editor memory-editor--${editingMemory ? "edit" : "create"}`} onSubmit={onSubmit}>
       <header className="memory-editor__header">
         <span className="memory-editor__header-icon"><Sparkles size={19}/></span>
-        <div><p>MEMORY BOOK</p><h2>{editingMemory ? "Refine this memory" : "Add something important"}</h2><small>Give Velvet one clear thing worth carrying into future scenes.</small></div>
+        <div><p>MEMORY BOOK</p><h2>{editingMemory ? "Refine this memory" : "Add something important"}</h2><small>Give Orvayne one clear thing worth carrying into future scenes.</small></div>
         <button type="button" onClick={onClose} disabled={saving} aria-label="Close memory editor"><X size={20}/></button>
       </header>
 
       <section className="memory-editor__primary">
         {!editingMemory && <label className="memory-editor__character"><span>Who is this about?</span><select value={draftCharacterId} onChange={(event) => { setDraftCharacterId(event.target.value); setDraft((current) => ({ ...current, replaceMemoryId: "" })); }} disabled={saving}><option value="">Choose a character</option>{characters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}</select></label>}
-        <label className="memory-editor__content"><span>What should Velvet remember?</span><textarea value={draft.content} onChange={(event) => { setDraft((current) => ({ ...current, content: event.target.value })); setError(""); }} maxLength={500} rows="5" placeholder="Example: He hates being touched when he is angry, but always stays nearby until the argument is resolved." autoFocus disabled={saving}/><small>{draft.content.length}/500</small></label>
+        <label className="memory-editor__content"><span>What should Orvayne remember?</span><textarea value={draft.content} onChange={(event) => { setDraft((current) => ({ ...current, content: event.target.value })); setError(""); }} maxLength={500} rows="5" placeholder="Example: He hates being touched when he is angry, but always stays nearby until the argument is resolved." autoFocus disabled={saving}/><small>{draft.content.length}/500</small></label>
       </section>
 
       <section className="memory-editor__category-block">
@@ -877,7 +877,7 @@ function groupDescription(group) {
     relationships: "Relationship shifts and promises",
     preferences: "Likes, dislikes and boundaries",
     places: "Locations and world details",
-  })[group] || "Everything Velvet remembers";
+  })[group] || "Everything Orvayne remembers";
 }
 function formatMemoryDate(value) {
   if (!value) return "";
