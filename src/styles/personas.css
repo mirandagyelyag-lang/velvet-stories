@@ -438,3 +438,29 @@
     grid-column: auto;
   }
 }
+
+
+/* Refined, compact Personas page title on desktop and mobile. */
+.personas-page .personas-page__heading h1 {
+  font-family:"Cormorant Garamond",Georgia,serif;
+  font-size:clamp(2.5rem,5vw,4.5rem)!important;
+  font-weight:500!important;
+  letter-spacing:-.025em!important;
+  line-height:1.04!important;
+  max-width:100%!important;
+  margin:8px 0 12px!important;
+  overflow-wrap:normal!important;
+  word-break:normal!important;
+}
+.personas-page .personas-page__heading > div {
+  min-width:0;
+  max-width:100%;
+}
+.personas-page .personas-page__heading > div > span {
+  display:block;
+  max-width:36rem;
+  line-height:1.5;
+}
+@media(max-width:700px) {
+  .personas-page .personas-page__heading h1 {font-size:clamp(2.3rem,10vw,3.4rem)!important;}
+}
