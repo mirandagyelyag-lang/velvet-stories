@@ -19,7 +19,7 @@ export default function CinematicEntry({ theme, onTheme, onEnter, entered=false,
       <div className="orv-cinema__logo" aria-label="ORVAYNE">ORVAYN<span className="orv-cinema__e"><i/><i/><i/></span></div>
       <div className="orv-cinema__topnote" aria-label="Characters, conversations and stories"><span>CHARACTERS</span><i aria-hidden="true"/><span>CONVERSATIONS</span><i aria-hidden="true"/><span>STORIES</span></div>
       <div className="orv-cinema__themes" aria-label="Apariencia">
-        {[["dark","Dark"],["light","Light"],["comfort","Sky Blue"]].map(([value,label])=><button key={value} type="button" className={theme===value?"is-active":""} aria-pressed={theme===value} onClick={()=>onTheme(value)}>{label}</button>)}
+        {[["dark","Dark"],["comfort","Sky Blue"]].map(([value,label])=><button key={value} type="button" className={theme===value?"is-active":""} aria-pressed={theme===value} onClick={()=>onTheme(value)}>{label}</button>)}
       </div>
     </header>
     <main className="orv-cinema__stage">
