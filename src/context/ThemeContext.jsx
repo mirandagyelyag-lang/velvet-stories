@@ -7,7 +7,7 @@ const THEMES = ["light", "dark", "comfort"];
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     try {
-      const saved = localStorage.getItem("velvet-theme");
+      const saved = sessionStorage.getItem("orvayne-selected-theme") || localStorage.getItem("velvet-theme");
       return THEMES.includes(saved) ? saved : "dark";
     } catch {
       return "dark";
@@ -16,12 +16,12 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    try { localStorage.setItem("velvet-theme", theme); } catch {}
+    try { localStorage.setItem("velvet-theme", theme); sessionStorage.setItem("orvayne-selected-theme", theme); } catch {}
     syncNativeChrome(theme);
   }, [theme]);
 
   function setTheme(nextTheme) {
-    if (THEMES.includes(nextTheme)) setThemeState(nextTheme);
+    if (THEMES.includes(nextTheme)) { try { sessionStorage.setItem("orvayne-selected-theme", nextTheme); localStorage.setItem("velvet-theme", nextTheme); } catch {} setThemeState(nextTheme); }
   }
 
   function toggleTheme() {
