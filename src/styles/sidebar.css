@@ -356,3 +356,6 @@
 .sidebar .sidebar__brand-name::before, .sidebar .sidebar__brand-name::after { content:none !important; display:none !important; }
 .sidebar .sidebar__brand > :not(.sidebar__brand-name) { display:none !important; }
 .sidebar .sidebar__brand > .sidebar__brand-name { display:inline-flex !important; flex:0 0 auto; max-width:100%; }
+
+/* Align the compact ORVAYNE wordmark with the sidebar navigation left edge. */
+.sidebar .sidebar__brand { align-items:flex-start !important; justify-items:start !important; padding-left: 12px !important; }
