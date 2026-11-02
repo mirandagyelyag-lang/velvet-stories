@@ -31,7 +31,7 @@ function Sidebar({ activePage, onNavigate }) {
     <>
       <aside className="sidebar">
         <button className="sidebar__brand" onClick={() => onNavigate("chats")}>
-          <span className="sidebar__brand-name" aria-label="ORVAYNE">ORVAYN<span aria-hidden="true" style={{ display: "inline-flex", width: "0.68em", height: "0.72em", flexDirection: "column", justifyContent: "space-between", verticalAlign: "baseline", marginLeft: "0.035em" }}><span style={{ height: "0.085em", background: "currentColor", width: "100%" }} /><span style={{ height: "0.085em", background: "currentColor", width: "100%" }} /><span style={{ height: "0.085em", background: "currentColor", width: "100%" }} /></span></span>
+          <span className="sidebar__brand-name" aria-label="ORVAYNE" style={{ display: "inline-flex", alignItems: "baseline", whiteSpace: "nowrap" }}>ORVAYN<span aria-hidden="true" style={{ display: "inline-block", position: "relative", width: "0.57em", height: "0.69em", marginLeft: "0.015em", flexShrink: 0, alignSelf: "baseline", background: "linear-gradient(to bottom, currentColor 0 8%, transparent 8% 46%, currentColor 46% 54%, transparent 54% 92%, currentColor 92% 100%)" }} /></span>
         </button>
 
         <nav className="sidebar__navigation" aria-label="Main navigation">
