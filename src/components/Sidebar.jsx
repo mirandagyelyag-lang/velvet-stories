@@ -26,6 +26,7 @@ function Sidebar({ activePage, onNavigate }) {
     user?.email?.split("@")[0] ||
     "Orvayne member";
   const initial = displayName.trim()[0]?.toUpperCase() || "V";
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || "";
 
   return (
     <>
@@ -52,7 +53,7 @@ function Sidebar({ activePage, onNavigate }) {
           </button>
 
           <button className="sidebar__profile" onClick={() => onNavigate("profile")}>
-            <span className="sidebar__avatar">{initial}</span>
+            <span className="sidebar__avatar">{avatarUrl ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" /> : initial}</span>
             <span className="sidebar__profile-copy">
               <strong>{displayName}</strong>
               <small>{user?.email}</small>
