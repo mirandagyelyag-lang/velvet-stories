@@ -510,3 +510,26 @@ html[data-reduce-motion="true"] *, html[data-reduce-motion="true"] *:before, htm
 .settings-plan-card__icon{display:grid;place-items:center;width:46px;height:46px;border-radius:15px;color:var(--gold);background:color-mix(in srgb,var(--accent) 13%,transparent);border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border))}
 .settings-plan-card__copy,.settings-plan-card__usage{display:grid;gap:3px}.settings-plan-card small{font-size:.53rem;letter-spacing:.12em;color:var(--text-secondary)}.settings-plan-card strong{font-family:"Cormorant Garamond",serif;font-size:1.25rem;color:var(--text-primary)}.settings-plan-card span{font-size:.59rem;line-height:1.4;color:var(--text-secondary)}.settings-plan-card__usage{text-align:right;padding-left:16px;border-left:1px solid var(--border)}.settings-plan-card__usage strong{font-family:inherit;font-size:.88rem}
 @media(max-width:650px){.settings-plan-card{grid-template-columns:auto 1fr;padding:16px}.settings-plan-card__usage{grid-column:1/-1;text-align:left;padding:12px 0 0;border-left:0;border-top:1px solid var(--border)}}
+
+
+/* Compact settings layout: progressive disclosure, consistent with both active themes. */
+.settings-page--editorial{max-width:850px;margin-inline:auto;padding-bottom:80px}
+.settings-page--editorial .settings-page__heading{margin-bottom:20px;padding-bottom:14px}
+.settings-page--editorial .settings-page__heading h1{font-size:clamp(36px,5vw,54px);letter-spacing:.015em;line-height:1.12;margin:8px 0}
+.settings-page--editorial .settings-section-label{margin:18px 0 12px}
+.settings-page--editorial .settings-section-label>span{display:none}
+.settings-page--editorial .settings-section-label small{display:none}
+.settings-page--editorial .settings-group{margin-bottom:12px}
+.settings-page--editorial .settings-group>header{margin-bottom:12px}
+.settings-page--editorial .settings-group>header h2{font-size:clamp(20px,2.8vw,26px)}
+.settings-page--editorial .settings-fold{margin:10px 0;border:1px solid var(--line,rgba(140,166,180,.28));border-radius:18px;overflow:hidden;background:var(--surface,rgba(130,155,175,.065))}
+.settings-page--editorial .settings-fold>summary{display:flex;align-items:center;gap:13px;min-height:66px;padding:16px 20px;cursor:pointer;list-style:none;color:inherit;font-size:16px}
+.settings-page--editorial .settings-fold>summary::-webkit-details-marker{display:none}
+.settings-page--editorial .settings-fold>summary>span{margin-left:auto;font-size:12px;opacity:.65}
+.settings-page--editorial .settings-fold[open]>summary{border-bottom:1px solid var(--line,rgba(140,166,180,.2))}
+.settings-page--editorial .settings-fold[open]>summary>span{font-size:0}
+.settings-page--editorial .settings-fold[open]>summary>span::after{content:"Collapse";font-size:12px}
+.settings-page--editorial .settings-fold>.settings-group,.settings-page--editorial .settings-fold>.settings-plan-card,.settings-page--editorial .settings-fold>.settings-about{margin:12px 16px}
+.settings-page--editorial .settings-fold>.settings-group{border:0;box-shadow:none}
+.settings-page--editorial .settings-fold--plan{margin-bottom:18px}
+@media(max-width:600px){.settings-page--editorial .settings-fold>summary{padding:14px;min-height:58px}.settings-page--editorial .settings-fold>.settings-group{margin:8px}.settings-page--editorial .setting-row{gap:10px;flex-wrap:wrap}.settings-page--editorial .setting-segments{max-width:100%;flex-wrap:wrap}}
