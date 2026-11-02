@@ -887,3 +887,21 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Sky Blue memories search: replace the inherited dark search shell. */
+html[data-theme="comfort"] body .memories-reference__search-wrap,
+html[data-theme="comfort"] body .memories-reference__search-wrap :is(.reference-search,.stories-search,.search-bar,.search-container) {
+  background:#e6f4ff!important;
+  border-color:#b9d9ef!important;
+  color:#234f75!important;
+}
+html[data-theme="comfort"] body .memories-reference__search-wrap :is(input,button) {
+  background:#f7fcff!important;
+  color:#234f75!important;
+  border-color:#b9d9ef!important;
+}
+html[data-theme="comfort"] body .memories-reference__search-wrap input::placeholder {
+  color:#6589a7!important;
+  opacity:1!important;
+}
