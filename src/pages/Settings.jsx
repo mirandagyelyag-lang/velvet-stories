@@ -168,7 +168,7 @@ function Settings({ onBack, onOpenDiagnostics }) {
   }
   const jumpTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: settings.reduceMotion ? "auto" : "smooth", block: "start" });
   return <section className="settings-page settings-page--editorial">
-    <header className="page-heading settings-page__heading"><div><button onClick={onBack}><ArrowLeft size={17}/>Profile</button><p>YOUR ORVAYNE</p><h1>Settings</h1><span>Make Orvayne yours.</span></div></header>
+    <header className="page-heading settings-page__heading settings-page__heading--refined"><div><button className="settings-page__back" onClick={onBack}><ArrowLeft size={17}/>Profile</button><p>YOUR SPACE</p><h1>Settings<span className="settings-page__heading-dot">.</span></h1><span>Personalize your experience, your way.</span></div></header>
     <details className="settings-fold settings-fold--plan"><summary><Crown size={17}/> My plan <span>View details</span></summary><div className="settings-plan-card">
       <span className="settings-plan-card__icon"><Crown size={20}/></span>
       <div className="settings-plan-card__copy"><small>ORVAYNE PLAN</small><strong>{plan.loading ? "Checking…" : plan.name === "owner" ? "Owner" : plan.name === "plus" ? "Orvayne+" : "Orvayne Free"}</strong><span>{plan.name === "owner" ? "Full access · no daily generation limit" : plan.name === "plus" ? "Up to 300 AI generations per day" : "30 AI generations per day"}</span></div>
