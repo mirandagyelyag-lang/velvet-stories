@@ -330,3 +330,22 @@
 /* Keep the three-stroke E inside the wordmark, not styled as a separate brand label. */
 .sidebar__brand > .sidebar__brand-name > span[aria-hidden="true"] { padding: 0 !important; font-size: inherit !important; letter-spacing: 0 !important; font-family: inherit !important; }
 .sidebar__brand > .sidebar__brand-name { max-width: 100%; padding-left: 0; letter-spacing: .12em; }
+
+/* Sidebar wordmark matches the entrance logo: geometric sans, three-stroke E. */
+.sidebar .sidebar__brand > .sidebar__brand-name {
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: clamp(1.2rem, 1.55vw, 1.55rem) !important;
+  font-weight: 600 !important;
+  letter-spacing: .095em !important;
+  padding-left: 0 !important;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.sidebar .sidebar__brand > .sidebar__brand-name > span[aria-hidden="true"] {
+  width: .62em !important;
+  height: .72em !important;
+  margin-left: .045em !important;
+  padding: 0 !important;
+  letter-spacing: 0 !important;
+  align-self: baseline;
+}
