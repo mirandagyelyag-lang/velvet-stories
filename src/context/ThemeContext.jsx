@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { syncNativeChrome } from "../native/velvetNative";
 
 const ThemeContext = createContext();
-const THEMES = ["light", "dark", "comfort"];
+const THEMES = ["dark", "comfort"];
 
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
