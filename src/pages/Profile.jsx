@@ -194,7 +194,7 @@ function Profile({
     { icon: Settings2, label: "Settings", action: onOpenSettings },
     { icon: UsersRound, label: "Roleplay Personas", value: personas.length, action: onManagePersonas },
     { icon: Globe2, label: "World & Lorebooks", value: lorebooks.length, action: onManageLorebooks },
-    { icon: Activity, label: "AI Status", action: onOpenDiagnostics },
+    ...(user?.id === "bf41d53a-37f7-4969-b48e-dc9774c48190" ? [{ icon: Activity, label: "AI Status", action: onOpenDiagnostics }] : []),
     { icon: LockKeyhole, label: "Profile & Access", action: () => setAccessOpen(true) },
     { icon: LogOut, label: signingOut ? "Logging out…" : "Log out", action: handleSignOut, isLogout: true },
   ];
