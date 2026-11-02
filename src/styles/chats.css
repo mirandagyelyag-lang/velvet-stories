@@ -1629,3 +1629,21 @@ html[data-theme="light"] body .chats-page--reference .velvet-identity-continue__
 html[data-theme="light"] body .chats-page--reference .velvet-identity-continue__corner {
   border-color:rgba(235,220,201,.72)!important;
 }
+
+
+/* Continue Reading play control: follow active theme, never legacy purple. */
+html[data-theme="comfort"] body .chats-page--reference .velvet-identity-continue__play {
+  background:#80b5d2!important;
+  border-color:#80b5d2!important;
+  color:#102b43!important;
+}
+html[data-theme="dark"] body .chats-page--reference .velvet-identity-continue__play {
+  background:#86b5cb!important;
+  border-color:#86b5cb!important;
+  color:#10212d!important;
+}
+html[data-theme="comfort"] body .chats-page--reference .velvet-identity-continue__play svg,
+html[data-theme="dark"] body .chats-page--reference .velvet-identity-continue__play svg {
+  color:inherit!important;
+  fill:currentColor;
+}
