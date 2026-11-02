@@ -596,3 +596,37 @@ html[data-reduce-motion="true"] *, html[data-reduce-motion="true"] *:before, htm
   .settings-page--editorial .settings-page__heading--refined{padding-top:4px;padding-bottom:20px}
   .settings-page--editorial .settings-page__heading--refined .settings-page__back{margin-bottom:22px}
 }
+
+
+/* Fix oversized heading inherited from global .page-heading rules. */
+.settings-page--editorial header.settings-page__heading--refined h1{
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  font-size:clamp(30px,3vw,39px)!important;
+  font-weight:650!important;
+  letter-spacing:-.045em!important;
+  line-height:1.15!important;
+  text-transform:none!important;
+  margin:0 0 7px!important;
+  padding:0!important;
+  width:auto!important;
+  max-width:100%!important;
+}
+.settings-page--editorial header.settings-page__heading--refined h1 .settings-page__heading-dot{
+  font-size:inherit!important;
+  letter-spacing:0!important;
+}
+.settings-page--editorial header.settings-page__heading--refined{
+  padding:0 0 18px!important;
+  margin:0 0 18px!important;
+}
+.settings-page--editorial header.settings-page__heading--refined .settings-page__back{
+  margin-bottom:18px!important;
+}
+.settings-page--editorial header.settings-page__heading--refined p{
+  font-size:10px!important;
+  letter-spacing:.16em!important;
+  margin-bottom:8px!important;
+}
+.settings-page--editorial header.settings-page__heading--refined>div>span{
+  font-size:13px!important;
+}
