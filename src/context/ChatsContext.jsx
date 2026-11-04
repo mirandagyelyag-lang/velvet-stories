@@ -860,6 +860,26 @@ export function ChatsProvider({
     const withSpeakerLock = (instruction) => [String(instruction || "").trim(), speakerLockInstruction].filter(Boolean).join("\\n\\n");
 
     const requestController = new AbortController();
+    let requestTimedOut = false;
+    // Bound the time spent waiting for HTTP headers; the SSE read watchdog
+    // below only starts AFTER fetch() has returned.
+    async function fetchWithHeaderDeadline(url, init, timeoutMs = 45000) {
+      let timer;
+      try {
+        return await Promise.race([
+          fetch(url, init),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              requestTimedOut = true;
+              reject(new Error("The AI server took too long to respond. Please try again."));
+              requestController.abort();
+            }, timeoutMs);
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    }
     const requestId = crypto.randomUUID();
     const generationId = crypto.randomUUID();
     const streamMessageId = `stream-${crypto.randomUUID()}`;
@@ -930,7 +950,7 @@ export function ChatsProvider({
     function requestWasCancelled() {
       const active = activeRequests.current[characterId];
       return (
-        requestController.signal.aborted ||
+        (requestController.signal.aborted && !requestTimedOut) ||
         active?.requestId !== requestId ||
         active?.cancelled === true
       );
@@ -1150,7 +1170,7 @@ export function ChatsProvider({
         typeof document !== "undefined" && document.hidden === true;
       let backgroundAccepted = false;
       if (shouldUseBackgroundDelivery) try {
-        const enqueueResponse = await fetch(functionUrl, {
+        const enqueueResponse = await fetchWithHeaderDeadline(functionUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1252,7 +1272,7 @@ export function ChatsProvider({
           }
         }
       } catch (error) {
-        if (requestWasCancelled() || error?.name === "AbortError") {
+        if (requestWasCancelled() || (error?.name === "AbortError" && !requestTimedOut)) {
           throw cancellationError();
         }
         // If enqueue itself failed before the server accepted the job, keep the
@@ -1311,11 +1331,11 @@ export function ChatsProvider({
       for (let attempt = 0; attempt < 2; attempt += 1) {
         updateGenerationTrace(diagnosticTraceRef, { phase: "edge-request", attempt: { phase: "edge-request", mode: "sse", elapsedMs: Date.now() - requestStartedAt, reason: `client-attempt-${attempt + 1}` } });
         try {
-          response = await fetch(functionUrl, liveRequestInit);
+          response = await fetchWithHeaderDeadline(functionUrl, liveRequestInit);
           updateGenerationTrace(diagnosticTraceRef, { phase: "edge-response", httpStatus: response.status, attempt: { phase: "edge-response", mode: "sse", status: response.status, elapsedMs: Date.now() - requestStartedAt } });
         } catch (error) {
           updateGenerationTrace(diagnosticTraceRef, { phase: "edge-fetch-error", errorCategory: classifyGenerationError(error), error, attempt: { phase: "edge-fetch-error", mode: "sse", elapsedMs: Date.now() - requestStartedAt, reason: classifyGenerationError(error) } });
-          if (requestWasCancelled() || error?.name === "AbortError") throw cancellationError();
+          if (requestWasCancelled() || (error?.name === "AbortError" && !requestTimedOut)) throw cancellationError();
           if (attempt === 0 && navigator.onLine && isRetryableNetworkError(error)) {
             await wait(260);
             continue;
