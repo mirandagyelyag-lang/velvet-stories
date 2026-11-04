@@ -861,6 +861,14 @@ export function ChatsProvider({
 
     const requestController = new AbortController();
     let requestTimedOut = false;
+    // Total foreground generation deadline, independent of SSE heartbeats.
+    // Background jobs have their own persistence recovery window.
+    const foregroundDeadline = typeof document === "undefined" || !document.hidden
+      ? setTimeout(() => {
+          requestTimedOut = true;
+          requestController.abort();
+        }, 75000)
+      : null;
     // Bound the time spent waiting for HTTP headers; the SSE read watchdog
     // below only starts AFTER fetch() has returned.
     async function fetchWithHeaderDeadline(url, init, timeoutMs = 45000) {
@@ -1272,7 +1280,8 @@ export function ChatsProvider({
           }
         }
       } catch (error) {
-        if (requestWasCancelled() || (error?.name === "AbortError" && !requestTimedOut)) {
+        if (requestTimedOut) throw new Error("The AI reply exceeded 75 seconds. Please try again.");
+          if (requestWasCancelled() || error?.name === "AbortError") {
           throw cancellationError();
         }
         // If enqueue itself failed before the server accepted the job, keep the
@@ -1335,7 +1344,8 @@ export function ChatsProvider({
           updateGenerationTrace(diagnosticTraceRef, { phase: "edge-response", httpStatus: response.status, attempt: { phase: "edge-response", mode: "sse", status: response.status, elapsedMs: Date.now() - requestStartedAt } });
         } catch (error) {
           updateGenerationTrace(diagnosticTraceRef, { phase: "edge-fetch-error", errorCategory: classifyGenerationError(error), error, attempt: { phase: "edge-fetch-error", mode: "sse", elapsedMs: Date.now() - requestStartedAt, reason: classifyGenerationError(error) } });
-          if (requestWasCancelled() || (error?.name === "AbortError" && !requestTimedOut)) throw cancellationError();
+          if (requestTimedOut) throw new Error("The AI reply exceeded 75 seconds. Please try again.");
+          if (requestWasCancelled() || error?.name === "AbortError") throw cancellationError();
           if (attempt === 0 && navigator.onLine && isRetryableNetworkError(error)) {
             await wait(260);
             continue;
@@ -1696,7 +1706,7 @@ export function ChatsProvider({
         }
       }
 
-      if (requestWasCancelled() || error?.name === "AbortError") {
+      if (!requestTimedOut && (requestWasCancelled() || error?.name === "AbortError")) {
         finishGenerationTrace(diagnosticTraceRef, { status: "cancelled", phase: "cancelled", model: diagnosticModel, firstTokenMs: diagnosticFirstTokenMs, durationMs: Date.now() - requestStartedAt });
         throw cancellationError();
       }
@@ -1723,6 +1733,7 @@ export function ChatsProvider({
       });
       throw error;
     } finally {
+      if (foregroundDeadline) clearTimeout(foregroundDeadline);
       clearStreamFlushTimer();
       if (reader && requestWasCancelled()) {
         try {
