@@ -16,7 +16,7 @@ export async function transport({qualityWriter=false}={}){
   let groqAuthorCooldownUntil=0;
   let qualityWriterCooldownUntil=0;
   const bridge=async(_url,options)=>{
-   const pause=Math.max(0,5500-(Date.now()-lastRequest));if(pause)await new Promise(resolve=>setTimeout(resolve,pause));lastRequest=Date.now();
+   const pause=Math.max(0,250-(Date.now()-lastRequest));if(pause)await new Promise(resolve=>setTimeout(resolve,pause));lastRequest=Date.now();
    const input=JSON.parse(options.body);
    const isAuthor=Boolean(input.response_format?.json_schema?.schema?.properties?.prose);
    const generationModel=isAuthor&&authorModel&&Date.now()>=qualityWriterCooldownUntil?authorModel:model;
