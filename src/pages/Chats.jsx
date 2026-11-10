@@ -38,6 +38,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [storyLanguage, setStoryLanguage] = useState("en");
   const [pickerExpanded, setPickerExpanded] = useState(false);
   const pickerDragRef = useRef(null);
   const pickerSheetRef = useRef(null);
@@ -277,7 +278,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
     try {
       setCreatingId(character.id);
       setError("");
-      const chat = await createNewConversation(character);
+      const chat = await createNewConversation(character, { language: storyLanguage });
       setPickerOpen(false);
       onOpenCharacter(character, chat.conversationId);
     } catch (requestError) {
@@ -854,6 +855,7 @@ function Chats({ onOpenCharacter, onBrowseCharacters, onOpenDiagnostics }) {
               <div><p>NEW STORY</p><h2 id="conversation-picker-title">Who is this story with?</h2><span>Choose a character. Velvet will create a fresh timeline.</span></div>
               <button onClick={() => { setPickerOpen(false); setPickerExpanded(false); }} disabled={Boolean(creatingId)} aria-label="Close"><X size={20}/></button>
             </header>
+            <label style={{display:"flex",alignItems:"center",gap:12,padding:"8px 20px"}}>Story language <select aria-label="Story language" value={storyLanguage} onChange={(event)=>setStoryLanguage(event.target.value)}><option value="en">English</option><option value="es">Español</option><option value="ko">한국어</option><option value="ja">日本語</option><option value="pt">Português</option><option value="fr">Français</option></select></label>
             <div className="conversation-picker__scroll">
             {characters.length > 0 ? (
               <div className="conversation-picker__list conversation-picker__list--editorial">
