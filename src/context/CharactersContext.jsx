@@ -368,6 +368,7 @@ export function CharactersProvider({ children }) {
         },
         body: JSON.stringify({
           action: "instant_story",
+          responseLanguage: (() => { try { return localStorage.getItem(`orvayne-language:${characterData?.id}`) || "auto"; } catch { return "auto"; } })(),
           draft: characterDraftPayload(freshCharacterData),
           idea: String(idea || "").slice(0, 700),
           variationKey,
