@@ -2528,7 +2528,7 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL, "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter(Boolean))];
-  const globalDeadlineMs = 20000;
+  const globalDeadlineMs = 32000;
   const attemptTimeoutMs = 14000;
   const controllers = new Set<AbortController>();
   const rejectedInstantCandidates = [];
@@ -3049,7 +3049,7 @@ RULES
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user. The character does not need to approach or speak to the user; independent/offscreen-adjacent action is a valid opening.
 - Output only finished prose.`;
 
-    const { response: rescue, data: rescueData, actualModel: rescueModel } = await requestOpening({ model: bestRejected?.model || GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 7000, maxOutputTokens: 1600, temperature: 0.82 });
+    const { response: rescue, data: rescueData, actualModel: rescueModel } = await requestOpening({ model: bestRejected?.model || GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 10000, maxOutputTokens: 1600, temperature: 0.82 });
     if (rescue.ok) {
       const rescueOpening = readOpening(rescueData);
       const rescueFinish = String(rescueData?.candidates?.[0]?.finishReason || "");
