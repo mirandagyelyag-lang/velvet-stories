@@ -1,3 +1,4 @@
+import { createTimedSupabaseFetch } from "./chatTiming.js";
 import { createClient } from "@supabase/supabase-js";
 
 const PROJECT_REF = "vwyudrmxatuukcbncats";
@@ -52,6 +53,14 @@ export const supabase = createClient(
   supabaseUrl,
   supabasePublishableKey,
   {
+    global: {
+      fetch: createTimedSupabaseFetch(globalThis.fetch.bind(globalThis), (timing) => {
+        // Opt-in diagnostics only; no chat content or credentials are recorded.
+        if (import.meta.env.DEV) {
+          console.debug("[orvayne-chat-timing]", timing);
+        }
+      }),
+    },
     auth: {
       persistSession: true,
       autoRefreshToken: true,
