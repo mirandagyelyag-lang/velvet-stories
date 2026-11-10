@@ -167,6 +167,14 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
   const conversation = getConversation(character.id);
 
   const [message, setMessage] = useState("");
+  const [storyLanguage, setStoryLanguage] = useState(() => {
+    try { return localStorage.getItem(`orvayne-language:${character.id}`) || "auto"; }
+    catch { return "auto"; }
+  });
+  const changeStoryLanguage = (value) => {
+    setStoryLanguage(value);
+    try { localStorage.setItem(`orvayne-language:${character.id}`, value); } catch {}
+  };
   const [replyAssistOpen, setReplyAssistOpen] = useState(false);
   const [replyAssistMode, setReplyAssistMode] = useState("ideas");
   const [replyAssistCustom, setReplyAssistCustom] = useState("");
@@ -2418,6 +2426,22 @@ function Chat({ character, conversationId, focusMessageId = null, onConversation
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setReadingMode((current) => !current); }}><Eye size={17} /> {readingMode ? "Exit immersive mode" : "Immersive mode"}</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); openDirector("next"); }} disabled={!conversationReady || busy}><Sparkles size={17} /> Guide the next beat</button>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setStoryHubOpen(true); refreshStoryMetadata(character.id).catch(() => {}); }} disabled={!conversationReady}><BookOpen size={17} /> Story Hub</button>
+              <label className="chat__menu-controls" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Globe2 size={17} />
+                <span>Story language</span>
+                <select aria-label="Story language" value={storyLanguage} onChange={(event) => changeStoryLanguage(event.target.value)} style={{ marginLeft: "auto", maxWidth: 145 }}>
+                  <option value="auto">Auto</option>
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                  <option value="ko">한국어</option>
+                  <option value="ja">日本語</option>
+                  <option value="fr">Français</option>
+                  <option value="pt">Português</option>
+                  <option value="de">Deutsch</option>
+                  <option value="it">Italiano</option>
+                  <option value="zh">中文</option>
+                </select>
+              </label>
               <div className="chat__menu-section-label">WORLD & CONTINUITY</div>
               <button className="chat__menu-controls" onClick={() => { setMenuOpen(false); setNpcCastOpen(true); }} disabled={!conversationReady || busy}><UsersRound size={17} /> NPC Cast</button>
               <button className="chat__menu-controls" onClick={openCanonDoctor} disabled={!conversationReady || busy}><ShieldCheck size={17} /> Canon Doctor</button>
