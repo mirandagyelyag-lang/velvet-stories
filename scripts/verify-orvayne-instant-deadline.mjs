@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const source = readFileSync(new URL("../supabase/functions/character-chat/index.ts", import.meta.url), "utf8");
+const start = source.indexOf("const globalDeadlineMs = 20000;");
+assert.ok(start >= 0, "Instant Story global budget must exist");
+const end = source.indexOf("const diagnose =", start);
+const section = source.slice(start, end);
+assert.match(section, /const deadlineAt = startedAt \+ globalDeadlineMs;/);
+assert.doesNotMatch(section, /startedAt \+ 36000/);
+assert.match(source.slice(start, start + 16000), /deadlineAt - Date\.now\(\)/);
+console.log("Instant Story global deadline wiring verified");
