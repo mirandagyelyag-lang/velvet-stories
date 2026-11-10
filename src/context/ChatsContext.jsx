@@ -1,3 +1,7 @@
+function readOrvayneLanguage(characterId) {
+  try { return localStorage.getItem(`orvayne-language:${characterId}`) || "auto"; }
+  catch { return "auto"; }
+}
 import { createSceneLedger, applySceneEvent, speakerPresenceInstructions } from "../lib/velvetSpeakerPresenceLock";
 import { insertMessageOnce, queuedMessageId } from "../utils/chatReliability";
 import {
@@ -1194,6 +1198,8 @@ export function ChatsProvider({
             regenerationFeedback: Array.isArray(options.feedbackCodes) ? options.feedbackCodes : [],
             directorInstruction: options.directorInstruction?.trim() || "",
             storyPreferences: buildStoryPreferencesPayload(settings, characterId),
+          responseLanguage: readOrvayneLanguage(characterId),
+            responseLanguage: readOrvayneLanguage(characterId),
             generationId,
           }),
           signal: requestController.signal,
