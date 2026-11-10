@@ -1,3 +1,4 @@
+import { createChatTimer } from "./chat-timing.ts";
 import {characterVoiceBrief} from "./experimental/character-voice.mjs";
 import {reviewScene} from "./experimental/review-scene.mjs";
 import {buildNarrativeRescuePrompt} from "./experimental/narrative-rescue.mjs";
@@ -13530,8 +13531,23 @@ function clampNumber(value, minimum, maximum, fallback) {
   if (!Number.isFinite(number)) return fallback;
   return Math.min(maximum, Math.max(minimum, number));
 }
+const orvayneStreamTimers = new WeakMap();
 function sendEvent(controller, data) {
   try {
+    if (data?.type === "start" && !orvayneStreamTimers.has(controller)) {
+      orvayneStreamTimers.set(controller, createChatTimer());
+    }
+    const timer = orvayneStreamTimers.get(controller);
+    if (timer && data?.type === "chunk" && !timer.snapshot().phases.first_token) {
+      timer.mark("first_token");
+    }
+    if (timer && (data?.type === "done" || data?.type === "error")) {
+      timer.mark("complete");
+      const { traceId, elapsedMs, phases } = timer.snapshot();
+      console.info("[orvayne-chat-stream-timing]", { traceId, elapsedMs, firstChunkMs: phases.first_token ?? null, outcome: data.type });
+      orvayneStreamTimers.delete(controller);
+    }
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
     controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
     return true;
   } catch {
