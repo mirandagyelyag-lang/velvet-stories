@@ -49,6 +49,7 @@ export default function CharacterDetail({
   const { lorebooks } = useLorebooks();
   const { theme } = useTheme();
   const [instantLoading, setInstantLoading] = useState(false);
+  const [instantLanguageOpen, setInstantLanguageOpen] = useState(false);
   const [instantError, setInstantError] = useState("");
   const [storyNotice, setStoryNotice] = useState("");
   const [loading, setLoading] = useState(true);
@@ -215,12 +216,14 @@ export default function CharacterDetail({
     setStorySetupOpen(true);
   }
 
-  async function handleInstantStory() {
+  async function handleInstantStory(selectedLanguage = storyLanguage) {
     if (instantLoading) return;
     try {
       setInstantLoading(true);
       setInstantError("");
-      try { localStorage.setItem(`orvayne-language:${character.id}`, storyLanguage); } catch { /* storage optional */ }
+      try { localStorage.setItem(`orvayne-language:${character.id}`, selectedLanguage); } catch { /* storage optional */ }
+      setStoryLanguage(selectedLanguage);
+      setInstantLanguageOpen(false);
       const result = await generateInstantStory(character, "", { includeMetadata: true });
       const opening = typeof result === "string" ? result : result.opening;
       if (result?.source === "creator_approved_fallback") {
@@ -403,7 +406,7 @@ export default function CharacterDetail({
               <MessageCircle size={18} />
               <span>{latestStory ? "Continue latest story" : "Begin story"}</span>
             </button>
-            <button className="character-profile__new" type="button" onClick={openStorySetup} aria-label="Start a new story"><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" type="button" onClick={handleInstantStory} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
+            <button className="character-profile__new" type="button" onClick={openStorySetup} aria-label="Start a new story"><Plus size={18} /><span>New story</span></button><button className="character-profile__instant" type="button" onClick={()=>{ try { setStoryLanguage(localStorage.getItem(`orvayne-language:${character.id}`) || "auto"); } catch { setStoryLanguage("auto"); } setInstantLanguageOpen(true); }} disabled={instantLoading}>{instantLoading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>}<span>{instantLoading ? "Opening…" : "Instant Story"}</span></button>
             {instantError && <p className="character-profile__instant-error" role="status">{instantError}</p>}
           </div>
         </div>
@@ -461,6 +464,18 @@ export default function CharacterDetail({
       />
 
       <StoryVoiceSheet open={styleOpen} onClose={()=>setStyleOpen(false)} character={character} />
+
+      {instantLanguageOpen && typeof document !== "undefined" && createPortal((
+        <div className="story-setup-backdrop story-setup-backdrop--portal" onMouseDown={(event)=>event.target===event.currentTarget && setInstantLanguageOpen(false)}>
+          <section className="story-setup-sheet" role="dialog" aria-modal="true" aria-label="Instant Story language">
+            <header><div><small>INSTANT STORY</small><h2>Choose your story language</h2><p>The character will start the story in your selected language.</p></div><button type="button" onClick={()=>setInstantLanguageOpen(false)} aria-label="Close"><X size={19}/></button></header>
+            <label style={{display:"grid",gap:8,margin:"14px 0"}}><span>Language</span><select value={storyLanguage} onChange={(event)=>setStoryLanguage(event.target.value)}>
+              <option value="auto">Automatic</option><option value="en">English</option><option value="es">Español</option><option value="ko">한국어 · Korean</option><option value="ja">日本語 · Japanese</option><option value="fr">Français</option><option value="pt">Português</option><option value="de">Deutsch</option><option value="it">Italiano</option>
+            </select></label>
+            <footer><button type="button" className="secondary" onClick={()=>setInstantLanguageOpen(false)}>Cancel</button><button type="button" className="primary" disabled={instantLoading} onClick={()=>handleInstantStory(storyLanguage)}><WandSparkles size={17}/>Generate Instant Story</button></footer>
+          </section>
+        </div>
+      ), document.body)}
 
       {storySetupOpen && typeof document !== "undefined" && createPortal((
         <div className="story-setup-backdrop story-setup-backdrop--portal" onMouseDown={(event)=>event.target === event.currentTarget && setStorySetupOpen(false)}>
