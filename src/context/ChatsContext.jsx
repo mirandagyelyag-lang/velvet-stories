@@ -236,7 +236,7 @@ export function ChatsProvider({
       }
 
       if (messages.length === 0) {
-        const firstMessage = await createFirstMessage(conversation.id, character);
+        const firstMessage = await createFirstMessage(conversation.id, character, options.language || "en");
         messages = [firstMessage];
         hasMoreMessages = false;
       }
@@ -474,11 +474,19 @@ export function ChatsProvider({
 
   async function createFirstMessage(
     conversationId,
-    character
+    character,
+    language = "en"
   ) {
-    const content =
-      character.firstMessage ||
-      `${character.name} glances over. “Hey. What’s going on?”`;
+    const localizedOpenings = {
+      es: `*${character.name} se acerca y te mira con curiosidad.* «Hola. ¿Qué está pasando?»`,
+      ko: `*${character.name}가 다가와 호기심 어린 눈으로 바라본다.* “안녕. 무슨 일이야?”`,
+      ja: `*${character.name}が近づき、興味深そうにあなたを見る。*「やあ、どうしたの？」`,
+      pt: `*${character.name} se aproxima e olha para você com curiosidade.* “Oi. O que está acontecendo?”`,
+      fr: `*${character.name} s’approche et te regarde avec curiosité.* « Salut. Qu’est-ce qui se passe ? »`,
+    };
+    const content = language !== "en" && localizedOpenings[language]
+      ? localizedOpenings[language]
+      : (character.firstMessage || `${character.name} glances over. “Hey. What’s going on?”`);
 
     const {
       data,
