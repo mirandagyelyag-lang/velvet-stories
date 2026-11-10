@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import { createTimedSupabaseFetch } from "../src/services/chatTiming.js";
+const events = [];
+let calls = 0;
+const mockFetch = async () => { calls++; return { status: 200 }; };
+const wrapped = createTimedSupabaseFetch(mockFetch, event => events.push(event));
+await wrapped("https://example.supabase.co/functions/v1/character-chat", {});
+assert.equal(calls, 1);
+assert.equal(events.length, 1);
+assert.equal(events[0].phase, "headers");
+assert.equal(events[0].status, 200);
+assert.equal(typeof events[0].elapsedMs, "number");
+assert.equal(Object.keys(events[0]).sort().join(","), "elapsedMs,phase,status,traceId");
+await wrapped("https://example.supabase.co/rest/v1/profiles", {});
+assert.equal(events.length, 1);
+console.log("ORVAYNE Supabase fetch timing adapter checks passed");
