@@ -3390,12 +3390,22 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
     });
   }
 
+  // Do not report editorial rejection as provider unavailability (503).
+  // The provider may have returned 200; the client should show a recoverable
+  // narrative-quality failure rather than an indefinite service spinner.
+  console.warn("[character-chat] instant_story_quality_exhausted", {
+    requestId,
+    candidateCount: rejectedInstantCandidates.length,
+    rejectionReasons: rejectionSummary,
+    elapsedMs: Date.now() - startedAt,
+  });
   return instantStoryResponse({
-    error: "Velvet couldn't create an Instant Story this time. Try again.",
+    error: "This opening didn't meet ORVAYNE's story rules. Please regenerate.",
+    code: "instant_story_quality_exhausted",
     retryable: true,
     openingFamily,
     rejectionReasons: rejectionSummary,
-  }, 503);
+  }, 422);
 }
 
 async function handleCharacterGenerate({ apiKey, concept }) {
