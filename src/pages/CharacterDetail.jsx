@@ -55,6 +55,7 @@ export default function CharacterDetail({
   const [storiesError, setStoriesError] = useState("");
   const [storySetupOpen, setStorySetupOpen] = useState(false);
   const [storyOpening, setStoryOpening] = useState("");
+  const [storyLanguage, setStoryLanguage] = useState("auto");
   const [storyPersonaId, setStoryPersonaId] = useState("");
   const [storyLorebookId, setStoryLorebookId] = useState("");
   const [memoryCount, setMemoryCount] = useState(0);
@@ -208,6 +209,7 @@ export default function CharacterDetail({
   function openStorySetup() {
     setStoryNotice("");
     setStoryOpening("");
+    try { setStoryLanguage(localStorage.getItem(`orvayne-language:${character.id}`) || "auto"); } catch { setStoryLanguage("auto"); }
     setStoryPersonaId(personas.find((item) => item.isDefault)?.id || "");
     setStoryLorebookId("");
     setStorySetupOpen(true);
@@ -218,6 +220,7 @@ export default function CharacterDetail({
     try {
       setInstantLoading(true);
       setInstantError("");
+      try { localStorage.setItem(`orvayne-language:${character.id}`, storyLanguage); } catch { /* storage optional */ }
       const result = await generateInstantStory(character, "", { includeMetadata: true });
       const opening = typeof result === "string" ? result : result.opening;
       if (result?.source === "creator_approved_fallback") {
@@ -467,6 +470,7 @@ export default function CharacterDetail({
               <button type="button" onClick={()=>setStorySetupOpen(false)} aria-label="Close new story setup"><X size={19}/></button>
             </header>
             {storyNotice && <p className="story-setup-sheet__persona-note" role="status">{storyNotice}</p>}
+            <label style={{display:"grid",gap:8,margin:"12px 0"}}><span>Story language</span><select value={storyLanguage} onChange={(event)=>setStoryLanguage(event.target.value)}><option value="auto">Automatic</option><option value="en">English</option><option value="es">Español</option><option value="ko">한국어 · Korean</option><option value="ja">日本語 · Japanese</option><option value="fr">Français</option><option value="pt">Português</option><option value="de">Deutsch</option><option value="it">Italiano</option></select></label>
             <div className="story-setup-sheet__identity-grid">
               <label><span>Your persona <small>this story only</small></span><select value={storyPersonaId} onChange={(event)=>setStoryPersonaId(event.target.value)}><option value="">Account identity</option>{personas.map((persona)=><option key={persona.id} value={persona.id}>{persona.isDefault ? "★ " : ""}{persona.name}{persona.role ? ` · ${persona.role}` : ""}</option>)}</select></label>
               <label><span>World / lorebook <small>optional</small></span><select value={storyLorebookId} onChange={(event)=>setStoryLorebookId(event.target.value)}><option value="">No linked world</option>{lorebooks.map((book)=><option key={book.id} value={book.id}>{book.name}{book.genre ? ` · ${book.genre}` : ""}</option>)}</select></label>
@@ -477,7 +481,7 @@ export default function CharacterDetail({
               <button type="button" onClick={()=>setStoryOpening("")} className={!storyOpening.trim() ? "is-active" : ""}><BookOpen size={16}/><span>Original opening<small>Use the character's saved scene</small></span></button>
               <button type="button" onClick={()=>document.querySelector(".story-setup-sheet textarea")?.focus()} className={storyOpening.trim() ? "is-active" : ""}><Sparkles size={16}/><span>Custom opening<small>Write what happens first</small></span></button>
             </div>
-            <footer><button type="button" className="secondary" onClick={()=>setStorySetupOpen(false)}>Cancel</button><button type="button" className="primary" onClick={()=>{ setStorySetupOpen(false); onNewStory({ ...character, firstMessage: storyOpening.trim() || character.firstMessage }, { personaId: storyPersonaId, lorebookId: storyLorebookId }); }}><MessageCircle size={17}/>Start story</button></footer>
+            <footer><button type="button" className="secondary" onClick={()=>setStorySetupOpen(false)}>Cancel</button><button type="button" className="primary" onClick={()=>{ try { localStorage.setItem(`orvayne-language:${character.id}`, storyLanguage); } catch { /* storage optional */ } setStorySetupOpen(false); onNewStory({ ...character, firstMessage: storyOpening.trim() || character.firstMessage }, { personaId: storyPersonaId, lorebookId: storyLorebookId }); }}><MessageCircle size={17}/>Start story</button></footer>
           </section>
         </div>
       ), document.body)}
