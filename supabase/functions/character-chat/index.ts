@@ -508,7 +508,7 @@ Deno.serve(async (request) => {
     const isMateoSpanishOnly = /^mateo(?:\s+silva)?$/i.test(String(configuredCharacter.name || "").trim());
     const responseLanguage = isMateoSpanishOnly
       ? "Español exclusivamente: narración, diálogos, pensamientos, aperturas Instant Story, regeneraciones y continuaciones deben estar en español. No mezcles inglés con español aunque el usuario escriba en inglés o haya respuestas anteriores en inglés. Conserva nombres propios y no traduzcas los mensajes del usuario."
-      : detectResponseLanguage(latestUserMessage, previousCharacterMessage);
+      : resolveOrvayneLanguage(body?.responseLanguage, latestUserMessage, previousCharacterMessage);
     const selectedMemories = selectLongStoryMemories(loaded.memories, { recentText: messages.slice(-20).map((message) => message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content).join(" "), latestUserMessage, characterName: configuredCharacter.name, userName: userIdentity.name });
     // An opening rewrite has no preceding transcript from which relevance can
     // be inferred. Keep the lorebook available instead of accidentally giving
@@ -10818,6 +10818,15 @@ function validateContinuityEnvelope(result = {}, options = {}) {
   if (driftRisk && !/^(?:none|no|stable|low|minimal|ninguno|estable)$/.test(driftRisk)) issues.push("identity_drift_risk");
 
   return [...new Set(issues)];
+}
+function resolveOrvayneLanguage(requested, latestUserMessage = "", previousCharacterMessage = "") {
+  const languages = {
+    en: "English", es: "Spanish", ko: "Korean", ja: "Japanese",
+    fr: "French", pt: "Portuguese", de: "German", it: "Italian", zh: "Chinese",
+  };
+  const selected = languages[String(requested || "").trim().toLowerCase()];
+  if (!selected) return detectResponseLanguage(latestUserMessage, previousCharacterMessage);
+  return `Write all narration and character dialogue in ${selected}. Keep proper names unchanged. Do not translate the user's messages. Respect the story's established facts, characters, and continuity. Do not mix languages unless the user explicitly requests it.`;
 }
 function detectResponseLanguage(latestUserMessage = "", previousCharacterMessage = "") {
   const latest = String(latestUserMessage || "").trim();
