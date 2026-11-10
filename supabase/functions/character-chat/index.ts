@@ -13548,7 +13548,6 @@ function sendEvent(controller, data) {
       orvayneStreamTimers.delete(controller);
     }
     controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-    controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
     return true;
   } catch {
     // v2.10.38 FOREGROUND STREAM DURABILITY: if Android/backgrounding closes
