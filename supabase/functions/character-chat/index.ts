@@ -2538,7 +2538,10 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   const requestId = /^[a-f0-9-]{36}$/i.test(String(variationKey)) ? variationKey : crypto.randomUUID();
   let primaryWinnerFound = false;
   const providerDiagnostics = [];
-  const deadlineAt = startedAt + 36000;
+  // Keep all primary/recovery model requests inside the existing global budget.
+  // Previously the per-request deadline was 36s despite globalDeadlineMs=20s,
+  // allowing repeated quality rescues to extend a failed opening substantially.
+  const deadlineAt = startedAt + globalDeadlineMs;
   const diagnose = (entry) => {
     const safeEntry = { ...entry, error: String(entry.error || "").replaceAll(apiKey, "[redacted]").slice(0, 240) };
     if (providerDiagnostics.length < 12) providerDiagnostics.push(safeEntry);
