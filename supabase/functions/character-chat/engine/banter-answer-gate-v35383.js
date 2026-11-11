@@ -62,7 +62,7 @@ function answersDirectQuestion(reply="",latest=""){
   const r=norm(dialogue(reply));
   const first=firstDialogueClause(reply);
   if(!r)return false;
-  if(info.binary&&/^(?:yes|yeah|yep|no|nah|not exactly|kind of|sort of|maybe|absolutely|definitely|technically yes|technically no|i am|i'm|im|i did|i do|i was|i wasn't|i wasnt|i don't|i dont|i didn't|i didnt|guilty|fair|maybe i am)\b/.test(first))return true;
+  if(info.binary&&/^(?:yes|yeah|yep|no|nah|not exactly|kind of|sort of|maybe|absolutely|definitely|technically yes|technically no|i am|i'm|im|i did|i do|i was|i wasn't|i wasnt|i don't|i dont|i didn't|i didnt|guilty|fair|maybe i am|si|claro|obvio|por supuesto|desde luego|para nada|ni hablar|depende|quizas|tal vez|puede ser|creo que si|creo que no)\b/.test(first))return true;
   // Keyword overlap alone is not an answer: "Why do you want the note?"
   // repeats the topic while dodging "What does the note say?".
   if(!first || /\?$/.test(dialogue(reply).split(/[.!]/)[0].trim()) ||
