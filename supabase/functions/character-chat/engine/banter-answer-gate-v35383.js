@@ -47,8 +47,8 @@ function contentTerms(question=""){
 function directQuestionInfo(latest=""){
   const clean=dialogue(latest).replace(/\*[^*]*\*/gs," ").replace(/\s+/g," ").trim();
   const n=norm(clean);
-  if(!clean||!(/\?/.test(clean)||/^(?:so\s+)?(?:are|is|was|were|do|does|did|have|has|can|could|would|will|why|what|how|when|where|who|which)\b/.test(n)))return null;
-  const binary=!/\b(?:why|what|how|when|where|who|which)\b/.test(n)&&(/^(?:so\s+)?(?:are|is|was|were|do|does|did|have|has|can|could|would|will)\b/.test(n)||/\b(?:admitting|admit|saying|mean)\b.*\?/.test(n));
+  if(!clean||!(/\?/.test(clean)||/^(?:so\s+)?(?:are|is|was|were|do|does|did|have|has|can|could|would|will|why|what|how|when|where|who|which|que|quien|cuando|donde|como|por que|para que|cual|cuales|puedes|podrias|quieres|vas|eres|estas|tienes|sabes)\b/.test(n)))return null;
+  const binary=!/\b(?:why|what|how|when|where|who|which|que|quien|cuando|donde|como|por que|para que|cual|cuales)\b/.test(n)&&(/^(?:so\s+)?(?:are|is|was|were|do|does|did|have|has|can|could|would|will|puedes|podrias|quieres|vas|eres|estas|tienes|sabes)\b/.test(n)||/\b(?:admitting|admit|saying|mean|admites|dices)\b.*\?/.test(n));
   return {clean,n,binary,terms:contentTerms(clean).slice(0,6)};
 }
 
@@ -66,13 +66,13 @@ function answersDirectQuestion(reply="",latest=""){
   // Keyword overlap alone is not an answer: "Why do you want the note?"
   // repeats the topic while dodging "What does the note say?".
   if(!first || /\?$/.test(dialogue(reply).split(/[.!]/)[0].trim()) ||
-    /^(?:(?:well|so|and|but)\s+)?(?:why|what|how|when|where|who|which|do you|are you|can you|would you)\b/.test(first))return false;
-  if(/\b(?:why|por que)\b/.test(info.n))return /\b(?:because|the reason|i wanted|i thought|i was trying|porque)\b/.test(first);
-  if(/\bwhere\b/.test(info.n))return /\b(?:at|in|on|near|behind|beside|inside|outside|upstairs|downstairs|here|there|home)\b/.test(first);
-  if(/\bwhen\b/.test(info.n))return /\b(?:at|before|after|tonight|today|tomorrow|yesterday|soon|now|later|noon|midnight|morning|evening|\d+)\b/.test(first);
+    /^(?:(?:well|so|and|but|bueno|pero|y)\s+)?(?:why|what|how|when|where|who|which|do you|are you|can you|would you|por que|que|como|cuando|donde|quien|cual|puedes|quieres)\b/.test(first))return false;
+  if(/\b(?:why|por que)\b/.test(info.n))return /\b(?:because|the reason|i wanted|i thought|i was trying|porque|por eso|queria|pense|intentaba|es que)\b/.test(first);
+  if(/\b(?:where|donde)\b/.test(info.n))return /\b(?:at|in|on|near|behind|beside|inside|outside|upstairs|downstairs|here|there|home|en|aqui|ahi|alla|cerca|dentro|fuera|junto|detras|delante)\b/.test(first);
+  if(/\b(?:when|cuando)\b/.test(info.n))return /\b(?:at|before|after|tonight|today|tomorrow|yesterday|soon|now|later|noon|midnight|morning|evening|antes|despues|hoy|manana|ayer|ahora|luego|tarde|noche|\d+)\b/.test(first);
   const overlap=info.terms.filter(t=>words(first).includes(t)).length;
   if(overlap && /\b(?:is|are|was|were|says|said|means|want|wanted|need|wrote|reads|contains|saying)\b/.test(first))return true;
-  if(/\b(?:because|the reason|what i mean|what i meant|i mean|i meant)\b/.test(first))return true;
+  if(/\b(?:because|the reason|what i mean|what i meant|i mean|i meant|porque|por eso|quiero decir|me refiero|significa|es que)\b/.test(first))return true;
   // This is a conservative heuristic, not a semantic proof. Do not fabricate
   // a replacement answer here; the caller decides whether to repair once.
 
