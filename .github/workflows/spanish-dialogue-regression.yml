@@ -1,0 +1,18 @@
+name: Spanish dialogue regression
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/character-chat/engine/banter-answer-gate-v35383.js'
+      - 'tests/banter-answer-gate-spanish.test.mjs'
+      - '.github/workflows/spanish-dialogue-regression.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/banter-answer-gate-spanish.test.mjs
+      - run: node scripts/verify-v35383-banter-answer-gate.mjs
