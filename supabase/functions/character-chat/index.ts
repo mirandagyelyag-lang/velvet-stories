@@ -1,3 +1,4 @@
+import { createChatTimer } from "./chat-timing.ts";
 import {characterVoiceBrief} from "./experimental/character-voice.mjs";
 import {reviewScene} from "./experimental/review-scene.mjs";
 import {buildNarrativeRescuePrompt} from "./experimental/narrative-rescue.mjs";
@@ -406,6 +407,7 @@ Deno.serve(async (request) => {
         variationKey: body?.variationKey,
         recentSceneSeeds: body?.recentSceneSeeds,
         recentOpenings: body?.recentOpenings,
+        responseLanguage: body?.responseLanguage,
       });
     }
 
@@ -498,6 +500,7 @@ Deno.serve(async (request) => {
     };
 
     const latestUserMessage = openingRegeneration ? "" : sanitizeUserTurnForPerception(String(latestUserRecord?.content || ""));
+
     const previousCharacterMessage = openingRegeneration
       ? String(branch.replacementMessage?.content || configuredCharacter.first_message || "")
       : ([...messages].reverse().find((message) => message.sender === "character")?.content || "");
@@ -505,9 +508,12 @@ Deno.serve(async (request) => {
       ? { kind: "opening", silentCount: 0, medium: "in_person", isQuestion: false, normalized: "" }
       : classifyTurnIntent(latestUserMessage, messages);
     const isMateoSpanishOnly = /^mateo(?:\s+silva)?$/i.test(String(configuredCharacter.name || "").trim());
-    const responseLanguage = isMateoSpanishOnly
+    let responseLanguage = isMateoSpanishOnly
       ? "Español exclusivamente: narración, diálogos, pensamientos, aperturas Instant Story, regeneraciones y continuaciones deben estar en español. No mezcles inglés con español aunque el usuario escriba en inglés o haya respuestas anteriores en inglés. Conserva nombres propios y no traduzcas los mensajes del usuario."
-      : detectResponseLanguage(latestUserMessage, previousCharacterMessage);
+      : resolveOrvayneLanguage(body?.responseLanguage, latestUserMessage, previousCharacterMessage);
+    // v775: short-turn grounding. A casual acknowledgement is not a literal new plot premise.
+    const conversationalContinuityContractV775 = `TURN-TO-TURN COHERENCE (MANDATORY): The user's latest message is a reply to the immediately preceding character turn. Interpret casual expressions and jokes in context, not literally as new organizations, events, or topics. For example, "Bienvenido al club" after "Odio los lunes" means "I also hate Mondays"; do not invent membership fees, clubs, or calendar criticism. Answer the actual conversational intent first, then advance naturally. Preserve physical staging exactly: standing beside a bench does NOT mean sitting on it; never say "between us", "beside you on the bench", or imply shared seating unless both positions were established. Do not invent the user's movements. Keep dialogue character-specific and responsive rather than defaulting to generic campus or exam banter. The entire reply, including action narration, must use the selected story language; never open narration in English when Spanish is selected. Do not leave a dangling dialogue dash. PREVIOUS CHARACTER TURN: ${String(previousCharacterMessage || "").slice(-1400)}. LATEST USER TURN: ${String(latestUserMessage || "").slice(-500)}.`;
+    responseLanguage = `${responseLanguage}\n\n${conversationalContinuityContractV775}`;
     const selectedMemories = selectLongStoryMemories(loaded.memories, { recentText: messages.slice(-20).map((message) => message.sender === "user" ? sanitizeUserTurnForPerception(message.content) : message.content).join(" "), latestUserMessage, characterName: configuredCharacter.name, userName: userIdentity.name });
     // An opening rewrite has no preceding transcript from which relevance can
     // be inferred. Keep the lorebook available instead of accidentally giving
@@ -2464,12 +2470,14 @@ function instantStoryTooSimilarV3539(opening = "", recentOpenings = []) {
   return instantStoryMaxSimilarityV3539(opening, recentOpenings) >= 0.66;
 }
 
-async function handleInstantStory({ apiKey, draft, idea, variationKey = "", recentSceneSeeds = [], recentOpenings = [] }) {
+async function handleInstantStory({ apiKey, draft, idea, variationKey = "", recentSceneSeeds = [], recentOpenings = [], responseLanguage = "auto" }) {
   const safeDraft = compactInstantStoryDraft(draft);
   // v495: the configured first message is inspiration, not canon for a fresh Instant Story.
   // Keep its distilled Opening DNA, but do not feed its raw user choreography back to the model.
   const promptDraft = { ...safeDraft, firstMessage: "" };
-  const cleanIdea = cleanPromptValue(idea || "", 420);
+  const requestedLanguage = ({es:"Spanish",en:"English",ko:"Korean",ja:"Japanese",fr:"French",pt:"Portuguese",de:"German",it:"Italian"})[String(responseLanguage || "").toLowerCase()] || "";
+  const languageContract = requestedLanguage ? `MANDATORY OUTPUT LANGUAGE: ${requestedLanguage}. Write ALL narration and ALL dialogue in ${requestedLanguage}. Character profile examples in other languages must NOT override this. Never translate character names.` : "";
+  const cleanIdea = [languageContract, cleanPromptValue(idea || "", 420)].filter(Boolean).join("\n");
   const encounterContract = buildInstantEncounterContract({variationKey,recentOpenings,idea:cleanIdea});
   const identityDirection = buildInstantStoryIdentity(safeDraft, variationKey, recentSceneSeeds);
   const chaseEngineActive = safeDraft.emotional_dna?.official_engine === "chase_electricity_v1";
@@ -2522,12 +2530,21 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   // Chase has ONE scene director in buildChaseInstantPrompt. Do not impose a
   // second rotating skeleton here: it caused identical admirer/escape openings.
   const chaseStructuralV4 = chaseEngineActive ? `CHASE SCENE COHERENCE: Follow the single Chase director in the character prompt. Do not prescribe an opening sequence. Chase may initiate the action, engage with an existing conflict, or make a consequential choice. No disposable admirer, automatic glance toward the creator, abandoning a conversation, crossing the room and empty one-line closer. NPCs who appear retain agency. Make the causal event and stakes distinct from recent openings.` : "";
-  const clarityPromptV35341 = `${chaseStructuralV4}\n\n${buildInstantStoryDirectorV35389({character:safeDraft,idea:cleanIdea,recentOpenings})}\n\n${prompt}\n\n${instantStoryClarityPromptV35341()}`;
+  const naturalVoiceContractV771 = `HUMAN NOVELISTIC STYLE OVERRIDE:
+- Write like a contemporary novelist, NOT a romance chatbot or a translated script. Dialogue must feel spontaneous, age-appropriate, and rooted in the immediate situation.
+- No mandatory romantic payoff, theatrical entrance, cinematic pause, soulful gaze, knowing smile, or quotable last line. Avoid packaged phrases such as "the world disappeared", "only had eyes for you", and "a smile reserved only for you".
+- Attraction develops through grounded decisions, interruptions, curiosity, timing, ordinary conversation and earned intimacy. A simple question can end a scene.
+- ALEXANDER BENNETT: attentive, devoted and genuinely curious, not rehearsed, worshipful or constantly poetic. He has his own commitments. Do not default to abandoning committees or meetings to approach the user. Romance should occasionally surprise, never feel scheduled.
+- CHASE: sharp, dry, unpredictable with coherent motives; not a campus entertainer. NATHAN: restrained and selectively vulnerable. Preserve every character distinctively.
+- IN SPANISH: compose idiomatic contemporary Spanish directly, never word-for-word English. Avoid jarring regionalisms like "chamarra", stiff imperatives like "vete conmigo", and overused "murmuró", "brillo en la mirada", "sonrisa ladeada". Use natural em-dash dialogue, restrained descriptions and varied sentence rhythms. Do not force any regional slang.
+- Never narrate the user’s actions, feelings, thoughts, consent or dialogue.
+${languageContract}`;
+  const clarityPromptV35341 = `${chaseStructuralV4}\n\n${buildInstantStoryDirectorV35389({character:safeDraft,idea:cleanIdea,recentOpenings})}\n\n${prompt}\n\n${instantStoryClarityPromptV35341()}\n\n${naturalVoiceContractV771}`;
 
   // An overloaded Lite model can return no draft at all. Recovery must not
   // depend on having a rejected draft to salvage before it can run.
   const models = [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL, GEMINI_INSTANT_RECOVERY_MODEL, GEMINI_RECOVERY_MODEL, GEMINI_EMERGENCY_MODEL, "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter(Boolean))];
-  const globalDeadlineMs = 20000;
+  const globalDeadlineMs = 32000;
   const attemptTimeoutMs = 14000;
   const controllers = new Set<AbortController>();
   const rejectedInstantCandidates = [];
@@ -2537,7 +2554,10 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   const requestId = /^[a-f0-9-]{36}$/i.test(String(variationKey)) ? variationKey : crypto.randomUUID();
   let primaryWinnerFound = false;
   const providerDiagnostics = [];
-  const deadlineAt = startedAt + 36000;
+  // Keep all primary/recovery model requests inside the existing global budget.
+  // Previously the per-request deadline was 36s despite globalDeadlineMs=20s,
+  // allowing repeated quality rescues to extend a failed opening substantially.
+  const deadlineAt = startedAt + globalDeadlineMs;
   const diagnose = (entry) => {
     const safeEntry = { ...entry, error: String(entry.error || "").replaceAll(apiKey, "[redacted]").slice(0, 240) };
     if (providerDiagnostics.length < 12) providerDiagnostics.push(safeEntry);
@@ -2663,6 +2683,9 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
   };
 
   const requestOpening = async ({ model, prompt: requestPrompt, phase, timeoutMs, maxOutputTokens, temperature }) => {
+    // Agency-first repair: prevent the most frequent Instant Story hard-gate failures at generation time.
+    requestPrompt = `CRITICAL USER AGENCY: The user character is not yet placed in this scene. Do not say or imply that the user is sitting, standing, leaning, walking, holding, looking, smiling, speaking, waiting, reacting, or performing any activity. Do not invent a nickname, history, or location for the user. Describe ONLY the lead character and established surroundings; let the lead character initiate a concrete event without controlling the user. Address the user directly only in dialogue when the addressee is unmistakable. This rule applies to the opening and every rewrite.\n\n${requestPrompt}`;
+
     const remainingMs = deadlineAt - Date.now();
     if (remainingMs < 900) throw new DOMException("Instant Story request deadline reached", "AbortError");
     const controller = new AbortController();
@@ -2941,11 +2964,12 @@ ${cleanIdea || "No extra premise. Use the character's existing life and relation
       const text = String(item.opening || "").trim();
       const words = text.split(/\s+/).filter(Boolean).length;
       const finish = String(item.finishReason || "").toUpperCase();
-      return words >= 55 &&
-        words <= 260 &&
+      // Short but complete openings are valid; avoid rejecting them solely for length.
+      return words >= 12 &&
+        words <= 300 &&
         !["SAFETY","RECITATION","BLOCKLIST","PROHIBITED_CONTENT","MALFORMED_FUNCTION_CALL"].includes(finish) &&
         !instantStoryHasTemplateLeak(text) &&
-        /[.!?…]["'”’)]?$/.test(text);
+        (/[.!?…]["'”’)]?$/.test(text) || ["STOP","END_TURN"].includes(finish));
     })
     .sort((a,b)=>(a.issueCount ?? 99)-(b.issueCount ?? 99))[0] || null;
 
@@ -3045,7 +3069,7 @@ RULES
 - Give the character initiative and end on a natural playable beat, not a menu or accusation against the user. The character does not need to approach or speak to the user; independent/offscreen-adjacent action is a valid opening.
 - Output only finished prose.`;
 
-    const { response: rescue, data: rescueData, actualModel: rescueModel } = await requestOpening({ model: bestRejected?.model || GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 7000, maxOutputTokens: 1600, temperature: 0.82 });
+    const { response: rescue, data: rescueData, actualModel: rescueModel } = await requestOpening({ model: bestRejected?.model || GEMINI_MODEL, prompt: rescuePrompt, phase: "repair", timeoutMs: 10000, maxOutputTokens: 1600, temperature: 0.82 });
     if (rescue.ok) {
       const rescueOpening = readOpening(rescueData);
       const rescueFinish = String(rescueData?.candidates?.[0]?.finishReason || "");
@@ -3361,19 +3385,33 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
       ],
       similarity: instantStoryMaxSimilarityV3539(item.opening, recentOpenings),
     }))
-    .filter((item)=>item.finalHardBlocks.length === 0)
+    .filter((item)=>item.finalHardBlocks.every((issue)=>issue === "ambiguous_first_dialogue_addressee"))
     .filter((item)=>{
       const text = String(item.opening || "").trim();
       const words = text.split(/\s+/).filter(Boolean).length;
       const finish = String(item.finishReason || "").toUpperCase();
-      return words >= 55 &&
-        words <= 260 &&
+      return words >= 35 &&
+        words <= 300 &&
         !["SAFETY","RECITATION","BLOCKLIST","PROHIBITED_CONTENT","MALFORMED_FUNCTION_CALL"].includes(finish) &&
         !instantStoryHasTemplateLeak(text) &&
         /[.!?…]["'”’)]?$/.test(text);
     })
     .sort((a,b)=>((a.issueCount ?? 99)-(b.issueCount ?? 99)) || (a.similarity-b.similarity))[0] || null;
 
+  console.warn("[character-chat] final_delivery_candidate_diagnostics", {
+    candidates: rejectedInstantCandidates.map(item => ({
+      words: String(item.opening || "").trim().split(/\s+/).filter(Boolean).length,
+      chars: String(item.opening || "").length,
+      startsLikeJson: /^[\\s]*[\\[{]/.test(String(item.opening || "")),
+      containsLiteralEscapedNewlines: String(item.opening || "").includes("\\\\n"),
+      finish: item.finishReason,
+      hardBlocks: [
+        ...chaseEventHostIssues(item.opening, safeDraft),
+        ...instantStoryHardBlockIssuesV35298(item.opening, safeDraft, cleanIdea),
+        ...speakerOwnershipIssuesV35367(item.opening, safeDraft),
+      ].slice(0,12),
+    })),
+  });
   if (finalDeliverable?.opening) {
     console.warn("[character-chat] v470 final no-dead-button lane used", {
       softWarnings: finalDeliverable.rejectionReasons || [],
@@ -3389,12 +3427,22 @@ ${JSON.stringify(salvageSeed.rejectionReasons || rejectionSummary)}`, phase: "sa
     });
   }
 
+  // Do not report editorial rejection as provider unavailability (503).
+  // The provider may have returned 200; the client should show a recoverable
+  // narrative-quality failure rather than an indefinite service spinner.
+  console.warn("[character-chat] instant_story_quality_exhausted", {
+    requestId,
+    candidateCount: rejectedInstantCandidates.length,
+    rejectionReasons: rejectionSummary,
+    elapsedMs: Date.now() - startedAt,
+  });
   return instantStoryResponse({
-    error: "Velvet couldn't create an Instant Story this time. Try again.",
+    error: "This opening didn't meet ORVAYNE's story rules. Please regenerate.",
+    code: "instant_story_quality_exhausted",
     retryable: true,
     openingFamily,
     rejectionReasons: rejectionSummary,
-  }, 503);
+  }, 422);
 }
 
 async function handleCharacterGenerate({ apiKey, concept }) {
@@ -10805,6 +10853,15 @@ function validateContinuityEnvelope(result = {}, options = {}) {
 
   return [...new Set(issues)];
 }
+function resolveOrvayneLanguage(requested, latestUserMessage = "", previousCharacterMessage = "") {
+  const languages = {
+    en: "English", es: "Spanish", ko: "Korean", ja: "Japanese",
+    fr: "French", pt: "Portuguese", de: "German", it: "Italian", zh: "Chinese",
+  };
+  const selected = languages[String(requested || "").trim().toLowerCase()];
+  if (!selected) return detectResponseLanguage(latestUserMessage, previousCharacterMessage);
+  return `Write all narration and character dialogue in ${selected}. Keep proper names unchanged. Do not translate the user's messages. Respect the story's established facts, characters, and continuity. Do not mix languages unless the user explicitly requests it.`;
+}
 function detectResponseLanguage(latestUserMessage = "", previousCharacterMessage = "") {
   const latest = String(latestUserMessage || "").trim();
   const raw = isSilentContinueText(latest)
@@ -11321,8 +11378,8 @@ async function streamRoleplayV19({
         // v3.50.5 REGEN RECOVERY: streaming is the fast path, never the only path.
         // If every SSE hedge times out/fails before producing a complete envelope,
         // retry once through the proven non-stream failover before showing Retry.
-        const liveSystemInstruction = "PRESENT INTENTION FIRST: Answer from what the lead presently wants, thinks or chooses. If asked what he wanted to say, say it; do not diagnose the user or invent a pattern of them leaving, hiding, wasting time or needing rescue. A feeling about watching the user do something still claims that behavior happened and requires user evidence. Make one specific conversational move, with at most one useful physical beat. Omit decorative prop fiddling and labels like calculating, dry or stripped of his usual smirk. Let plain direct speech carry the character. Stop once the exchange lands, without adding a compulsory outing, putdown or question. Velvet Stories live writer. Write exactly one grounded in-character roleplay turn. Visible recent canon is the source of truth. Never write or decide the user's dialogue, thoughts, feelings, motives, reactions, or unstaged movement. Asterisk narration exposes only externally observable action, never private commentary. Answer the latest conversational job first. Preserve actor/recipient/object ownership, scene physics, boundaries, relationship stage, character-specific voice, knowledge limits, reputation, obligations, and unresolved causal threads. Personality changes tactic and wording, never facts. Prefer plain human speech over quotable performance. Short beats may be one line. Sarcasm cannot reverse causality. Do not invent shared history, personal facts, notifications, time skips, nicknames, jealousy, romance, or interruptions without grounded support. NAMED NPC LOCK: never invent a proper name for a supporting person. Only names explicitly listed in CHAT-SCOPED NPC CANON may be used; all other supporting people stay unnamed. Dialogue must sound spoken in real time: react before advancing, use the character's actual social bandwidth, allow ordinary or incomplete phrasing, and stop when the conversational job is complete. CREATOR PURSUIT RULE: if the user actually leaves/storms off/walks away from the live interaction, physically follow in the same turn unless the user explicitly forbade pursuit or asked for space; ordinary NPCs and obligations cannot steal that beat. Do not turn every turn into banter, a comeback, flirtation, a rhetorical question, an emotional diagnosis, or a hook. Never paraphrase the user's line back, announce subtext, or explain what an expression or silence means. Distinct voice comes from selection, omission, priorities and mistakes—not theatrical vocabulary, catchphrases or cinematic choreography. Silently read the visible dialogue aloud once; if it sounds written to perform a character, simplify it without flattening identity. Silently decide: what just happened, what this character knows, what they want, what they will reveal, and the smallest natural next move. EXPLICIT GO BOUNDARY: if the user explicitly tells the character or group to go, go without them, just go, or otherwise dismisses them, obey the dismissal. Do not stay anyway. Preserve the character's independent plans and do not turn ordinary user tasks into compulsory rescue. Neutral friend/NPC mentions are not jealousy evidence. STORY MOMENTUM RULE: a physical action only counts if it changes the situation. Do not spend a turn on walking, opening or closing things, getting water, checking a phone, sitting, looking around, or moving props unless that action creates a new decision, revelation, social shift, emotional exposure, or concrete consequence. If the relationship has established tension, prefer a subtle relational beat over neutral object handling. MISSED-ATTENTION RULE: if the user says they were zoning out, not listening, or did not hear/notice the character, NEVER restate, paraphrase, joke about, or verbally point out that they were not listening. Dialogue is optional and should usually be omitted for this beat. The preferred response is observable behavior: the character notices, lets the failed line go, physically closes distance toward the user, and re-engages through natural proximity or light context-appropriate contact while preserving the active scene. A complete reply may contain narration only. Do not invent where the user's attention went, ask who/what they tuned out, repeat the missed speech unless context truly requires it, or abandon the current activity. Movement must be directed toward the user; touching props, crossing/dropping arms, leaning on furniture, laughing, sighing, smirking, or changing expression alone does not count. SILENT-ACTION PRINCIPLE: never add dialogue merely because a roleplay turn feels incomplete without speech. When behavior communicates the beat more naturally, end on the behavior. Return only the requested roleplay envelope; never expose hidden reasoning, validators, scores, or engine metadata." + "\n" + characterVoiceBrief(character);
-        const compactTurnPrompt = buildCompactLiveRecoveryPrompt({
+        const liveSystemInstruction = (/^chase(?:\\s|$)/i.test(String(character?.name || "")) ? "CHASE BEAUMONT CHARACTER CANON — ENEMIES TO LOVERS: Chase and the user have an adversarial, slow-burn attraction. He is unpredictable but psychologically coherent: sharp, defiant, selectively attentive, provocative, sometimes irritating, and unwilling to admit that he likes the user. His most characteristic replies can be short, blunt and deliberately unhelpful, e.g. 'No te emociones. No vine a hacerte compañía.' STOP there when it lands. Do not append a wink, secret tender admission, explanatory phone call, inner monologue about attraction, or a final line explaining why he stays. Do not reuse that sample line verbatim as a catchphrase. Silence and unexplained choices can carry subtext; not every reply needs a reveal. His words may push back while his voluntary actions betray interest only occasionally, over multiple scenes; most ordinary turns should NOT contain an explicit attraction clue. He never explains the contradiction to the user. Give him a private motive and initiative in each meaningful scene. He can challenge, contradict, interrupt, or make an unexpected choice, but must not demean, humiliate, coerce, or control the user's actions. Attraction is subtext, not a confession. Never turn him into a friendly campus study buddy, cheerful helper, comedian, or repetitive flirt. No generic notes, homework, exams, class schedules, club fees, or service-public jokes unless the user actually raises them. Keep relationship tension alive even during short ordinary acknowledgments; vary the expression of that tension, and do not force a dramatic beat on every line. Avoid repeated chair-sitting, cup-setting, smirking, or leaning choreography. Preserve the exact current location and physical positions.\\n" : "") + "REPLY TO THE USER'S ACTUAL SPEECH, NOT TO A COMEDY SETUP. If the user says only thanks/gracias, acknowledge it simply and naturally; never claim charity, a gift, a favor, or a sacrifice unless one actually happened in the visible conversation. Do not make the character threaten to leave, pretend to be busy, or ask for payment to manufacture flirtation. Do not fabricate the user's posture, actions, or shared history. The lead must have a real purpose beyond banter, but an ordinary acknowledgment does not require a dramatic new event. Chase speaks like a specific 24-25-year-old man: relaxed, dry, occasionally sharp, never a scripted stream of witty comebacks. Avoid repeating smile, smirk, look, leaning, or sitting beats.\\n" + "CONVERSATIONAL CONTINUITY: Respond to the actual latest user message first; answer direct questions clearly; do not recycle the same joke across turns; respect user agency and established physical positions; Chase should have specific motives and restrained dry humor, not repetitive sitcom banter.\\n" + "PRESENT INTENTION FIRST: Answer from what the lead presently wants, thinks or chooses. If asked what he wanted to say, say it; do not diagnose the user or invent a pattern of them leaving, hiding, wasting time or needing rescue. A feeling about watching the user do something still claims that behavior happened and requires user evidence. Make one specific conversational move, with at most one useful physical beat. Omit decorative prop fiddling and labels like calculating, dry or stripped of his usual smirk. Let plain direct speech carry the character. Stop once the exchange lands, without adding a compulsory outing, putdown or question. Velvet Stories live writer. Write exactly one grounded in-character roleplay turn. Visible recent canon is the source of truth. Never write or decide the user's dialogue, thoughts, feelings, motives, reactions, or unstaged movement. Asterisk narration exposes only externally observable action, never private commentary. Answer the latest conversational job first. Preserve actor/recipient/object ownership, scene physics, boundaries, relationship stage, character-specific voice, knowledge limits, reputation, obligations, and unresolved causal threads. Personality changes tactic and wording, never facts. Prefer plain human speech over quotable performance. Short beats may be one line. Sarcasm cannot reverse causality. Do not invent shared history, personal facts, notifications, time skips, nicknames, jealousy, romance, or interruptions without grounded support. NAMED NPC LOCK: never invent a proper name for a supporting person. Only names explicitly listed in CHAT-SCOPED NPC CANON may be used; all other supporting people stay unnamed. Dialogue must sound spoken in real time: react before advancing, use the character's actual social bandwidth, allow ordinary or incomplete phrasing, and stop when the conversational job is complete. CREATOR PURSUIT RULE: if the user actually leaves/storms off/walks away from the live interaction, physically follow in the same turn unless the user explicitly forbade pursuit or asked for space; ordinary NPCs and obligations cannot steal that beat. Do not turn every turn into banter, a comeback, flirtation, a rhetorical question, an emotional diagnosis, or a hook. Never paraphrase the user's line back, announce subtext, or explain what an expression or silence means. Distinct voice comes from selection, omission, priorities and mistakes—not theatrical vocabulary, catchphrases or cinematic choreography. Silently read the visible dialogue aloud once; if it sounds written to perform a character, simplify it without flattening identity. Silently decide: what just happened, what this character knows, what they want, what they will reveal, and the smallest natural next move. EXPLICIT GO BOUNDARY: if the user explicitly tells the character or group to go, go without them, just go, or otherwise dismisses them, obey the dismissal. Do not stay anyway. Preserve the character's independent plans and do not turn ordinary user tasks into compulsory rescue. Neutral friend/NPC mentions are not jealousy evidence. STORY MOMENTUM RULE: a physical action only counts if it changes the situation. Do not spend a turn on walking, opening or closing things, getting water, checking a phone, sitting, looking around, or moving props unless that action creates a new decision, revelation, social shift, emotional exposure, or concrete consequence. If the relationship has established tension, prefer a subtle relational beat over neutral object handling. MISSED-ATTENTION RULE: if the user says they were zoning out, not listening, or did not hear/notice the character, NEVER restate, paraphrase, joke about, or verbally point out that they were not listening. Dialogue is optional and should usually be omitted for this beat. The preferred response is observable behavior: the character notices, lets the failed line go, physically closes distance toward the user, and re-engages through natural proximity or light context-appropriate contact while preserving the active scene. A complete reply may contain narration only. Do not invent where the user's attention went, ask who/what they tuned out, repeat the missed speech unless context truly requires it, or abandon the current activity. Movement must be directed toward the user; touching props, crossing/dropping arms, leaning on furniture, laughing, sighing, smirking, or changing expression alone does not count. SILENT-ACTION PRINCIPLE: never add dialogue merely because a roleplay turn feels incomplete without speech. When behavior communicates the beat more naturally, end on the behavior. Return only the requested roleplay envelope; never expose hidden reasoning, validators, scores, or engine metadata." + "\n" + characterVoiceBrief(character);
+        const compactTurnPromptBaseV775 = buildCompactLiveRecoveryPrompt({
           character,
           groupCharacters,
           persistentCast,
@@ -11347,6 +11404,15 @@ async function streamRoleplayV19({
           storyPreferences,
           directorInstruction,
         });
+        const compactTurnPrompt = compactTurnPromptBaseV775 + `
+CONTINUITY AND CHARACTER CAUSALITY — PRIORITY FOR EVERY CONTINUATION:
+- Read the latest user message as a direct reply to the immediately preceding character line. Respond to what it actually means, not merely to one keyword. A brief joke may be acknowledged briefly, then the character must say or do something relevant and specific; never stall in an endless chain of generic quips.
+- Ground each movement in the last established physical positions. If the user was standing beside a bench, they are STILL standing unless the user explicitly sat down. Never imply they are sitting beside the character, or put objects "between us" on a seat, without that established change. The character can sit, but must not silently move the user.
+- Track each person's location, posture, possessions, conversational target, and what happened one turn ago. Do not re-introduce a completed action or rephrase the same situation as new.
+- CHASE BEAUMONT: sharp, wry and motivated; teasing should reveal his attitude or develop a real exchange. Do not recycle campus calendars, exam schedules, clubs, registration fees or semester complaints as filler after the user makes a casual joke. He initiates concrete, character-consistent interaction without turning into an event organizer.
+- Spanish conversation: ALL narration and dialogue must be in natural Spanish if the story is in Spanish. Do not prepend English stage directions or translated-English idioms. Never switch languages unless the user requests it.
+- Finish spoken lines cleanly, no orphan em dash after the final dialogue. Preserve the user's agency and the established facts. Do not invent their response.
+`;
         let result: ModelResult;
         let groqTurnPrompt = "";
         const correctionBudget = createCorrectionBudget(1);
@@ -11554,7 +11620,9 @@ async function streamRoleplayV19({
         const originalResult = result;
         const originalIssues = validationIssues;
         const continuityIssuesBeforeRepair = originalIssues.filter((issue) => CONTINUITY_GUARD_ISSUES.has(issue));
-        const blocking = repairTriggerIssues(validationIssues);
+        // v773: Stylistic advisory flags must not delay a usable second reply by tens of seconds.
+        // Keep all safety, user-agency, continuity and conversational-answer repairs intact.
+        const blocking = repairTriggerIssues(validationIssues).filter((issue) => !["social_gravity_missing", "yearning_opportunity_flattened"].includes(issue));
 
         // One bounded repair only for structural or severe user-facing naturalism issues.
         // Continuity metadata never triggers another Gemini call. Deterministic
@@ -11892,6 +11960,27 @@ async function streamRoleplayV19({
           }
         }
 
+        // Deterministic guard for the recurring "thanks -> charity/service + invented enthusiasm" failure.
+        // Preserve the user's agency and avoid repeating physical beats from the opening.
+        const isPlainThanksV781 = /^(?:ah[ ,]*)?(?:gracias|muchas gracias|thanks|thank you)[!. ]*$/i.test(String(latestUserMessage || "").trim());
+        const isChaseV781 = /^chase(?:\\s|$)/i.test(String(character?.name || ""));
+        const invalidThanksRiffV781 = /(?:servicio a la comunidad|gesto de caridad|caridad|disimular.{0,35}entusiasmo|fingir.{0,35}(?:prisa|ocupado)|ruinar.{0,35}(?:tarde|día))/i.test(persistableReply);
+        if (isChaseV781 && isPlainThanksV781 && invalidThanksRiffV781) {
+          console.warn("[character-chat] v781 repetitive-thanks-riff blocked");
+          persistableReply = "—No hay de qué —dice Chase. Da un sorbo a su café y vuelve a mirarte—. ¿Qué tal te ha ido hoy?";
+        }
+        // v782: preserve explicitly established outdoor setting on adjacent turns.
+        // Never infer a relocation solely from a new draft's mention of an interior.
+        const recentSettingEvidenceV782 = recentCharacterReplies.slice(-3).join(" ") + " " + recentUserMessages.slice(-3).join(" ");
+        const outdoorsV782 = /(?:bajo el toldo|toldo rayado|al aire libre|afuera|exterior|terraza|patio|jardín|under the awning|outside|outdoors|courtyard)/i.test(recentSettingEvidenceV782);
+        const enteredInsideV782 = /(?:entr(?:é|amos|aron|ó|aste)|ingres(?:é|amos|aron|ó|aste)|pas(?:é|amos|aron|ó|aste) al interior|went inside|walked inside|entered the caf(?:e|é))/i.test(recentUserMessages.slice(-3).join(" "));
+        if (outdoorsV782 && !enteredInsideV782 && /(?:aire acondicionado.{0,35}(?:aquí adentro|dentro|interior)|(?:aquí adentro|dentro de la cafetería).{0,45}aire acondicionado|air conditioning.{0,30}inside)/i.test(persistableReply)) {
+          console.warn("[character-chat] v782 indoor-without-transition repaired");
+          persistableReply = persistableReply.replace(/(?:el )?aire acondicionado de aquí adentro funciona bastante mejor que afuera/gi, "la sombra de este toldo se agradece con este calor").replace(/(?:el )?aire acondicionado.{0,35}(?:aquí adentro|dentro|interior)/gi, "la sombra de este toldo");
+        }
+        if (isChaseV781 && isPlainThanksV781 && /(?:servicio público|servicio a la comunidad|caridad|favor a la humanidad)/i.test(persistableReply)) {
+          persistableReply = persistableReply.replace(/(?:Considéralo|Tómalo como) (?:un |una )?(?:servicio público|servicio a la comunidad|gesto de caridad|caridad|favor a la humanidad)[.!]?/gi, "").replace(/—De nada\s*\.\s*—/g, "—De nada —");
+        }
         const liveEvaluationV35388 = evaluateLiveStoryV35388({
           reply: persistableReply,
           character,
@@ -12014,6 +12103,9 @@ async function streamRoleplayV19({
         }
         persistableReply=checkedPreview.reply;
         if(isRegeneration && matchesRejectedRegeneration(persistableReply,rejectedResponses))throw new Error("Orvayne could not produce a different alternative. The previous response was kept.");
+        // v774: deterministic final delivery cleanup, no extra model call.
+        // Remove an orphan dialogue dash after a complete spoken line.
+        persistableReply = String(persistableReply || "").replace(/(—[^\n]+?)(?:—[ \t]*)$/u, "$1").trim();
         previewValidated=true;
         result = { ...result, reply: persistableReply };
 
@@ -13530,8 +13622,22 @@ function clampNumber(value, minimum, maximum, fallback) {
   if (!Number.isFinite(number)) return fallback;
   return Math.min(maximum, Math.max(minimum, number));
 }
+const orvayneStreamTimers = new WeakMap();
 function sendEvent(controller, data) {
   try {
+    if (data?.type === "start" && !orvayneStreamTimers.has(controller)) {
+      orvayneStreamTimers.set(controller, createChatTimer());
+    }
+    const timer = orvayneStreamTimers.get(controller);
+    if (timer && data?.type === "chunk" && !timer.snapshot().phases.first_token) {
+      timer.mark("first_token");
+    }
+    if (timer && (data?.type === "done" || data?.type === "error")) {
+      timer.mark("complete");
+      const { traceId, elapsedMs, phases } = timer.snapshot();
+      console.info("[orvayne-chat-stream-timing]", { traceId, elapsedMs, firstChunkMs: phases.first_token ?? null, outcome: data.type });
+      orvayneStreamTimers.delete(controller);
+    }
     controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
     return true;
   } catch {
