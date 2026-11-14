@@ -32,7 +32,8 @@
     "verify:bedtime": "node scripts/verify-v3539-bedtime-peace.mjs",
     "verify:release": "npm run lint && npm run verify:edge-boot && node --experimental-strip-types scripts/verify-v3526-instant-story-rebuilt.mjs && node --experimental-strip-types scripts/verify-v35211-instant-story-template-firewall.mjs && node --experimental-strip-types scripts/verify-v35212-instant-story-naturalism.mjs && node scripts/verify-v35238-unified-app-instant-diversity.mjs && node scripts/verify-v35240-human-voices-instant-recovery.mjs && node scripts/verify-v35241-turbo-generation.mjs && node scripts/verify-v35243-regeneration-context.mjs && node --experimental-strip-types scripts/verify-v35244-instant-opening-regeneration.mjs && node --experimental-strip-types scripts/verify-v35245-instant-family-rotation.mjs && node --experimental-strip-types scripts/verify-v35246-clear-fallback-prose.mjs && npm run verify:regression",
     "verify:living-threads": "node --test tests/living-threads-v1.test.mjs && node --experimental-strip-types tests/living-threads-transport.test.mjs",
-    "verify:instant-story": "node --experimental-strip-types --test tests/instant-story-fresh.test.mjs"
+    "verify:instant-story": "node --experimental-strip-types --test tests/instant-story-fresh.test.mjs",
+    "verify:auth-guards": "node --test tests/character-chat-auth-guards.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.0",
