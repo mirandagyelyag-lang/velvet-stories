@@ -6,6 +6,7 @@ on:
       - 'supabase/functions/character-chat/**'
       - 'supabase/config.toml'
       - 'tests/character-chat-auth-guards.test.mjs'
+      - 'tests/character-chat-transport-safety.test.mjs'
       - 'package.json'
       - '.github/workflows/security-regression.yml'
   push:
@@ -26,4 +27,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run offline authentication regression guards
-        run: node --test tests/character-chat-auth-guards.test.mjs
+        run: node --test tests/character-chat-auth-guards.test.mjs tests/character-chat-transport-safety.test.mjs
