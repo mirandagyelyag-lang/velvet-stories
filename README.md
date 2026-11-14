@@ -1,49 +1,42 @@
-# Velvet Stories
+# ORVAYNE — AI Narrative Platform
 
-> An AI-powered narrative chat platform for persistent character-driven stories.
+> A character-driven storytelling application focused on narrative continuity, responsive conversations, and mobile-first interaction.
 
-Velvet Stories is a full-stack storytelling application built around long-running AI character conversations. The project focuses on narrative continuity, persistent context, character consistency, mobile-first interaction, and a story engine designed to keep scenes moving without requiring the user to direct every turn.
+**Repository note:** This project was previously named *Velvet Stories*. The repository and some internal package identifiers retain that legacy name to avoid disrupting existing integrations.
 
-## Highlights
+## Overview
 
-- AI-powered character conversations with persistent story context
-- Character and conversation management
-- Narrative continuity and relationship-state logic
-- Chat-scoped NPC and story-state systems
-- “Instant Story” generation and regeneration flows
-- Progressive Web App support with offline asset caching
-- Native Android build pipeline with Capacitor
-- Supabase-backed application architecture
-- Responsive, mobile-first chat experience
-- Automated regression and stability verification scripts
-- Production-oriented build metadata and release verification
+ORVAYNE explores a difficult product challenge: how to maintain coherent, engaging AI-generated stories across many conversational turns. The application combines a React interface with a Supabase-backed architecture and mobile delivery.
 
-## Tech stack
+### Product problems explored
 
-**Frontend:** React 19, Vite 8, Lucide React  
-**Backend & data:** Supabase  
-**Mobile:** Capacitor / Android  
-**PWA:** vite-plugin-pwa, Workbox  
-**Quality:** oxlint + custom regression, UI, mobile, story-engine and release verification scripts
+- **Continuity:** keeping scenes, character identities, and relationships consistent across turns
+- **Responsiveness:** reducing perceived delays and handling failed or slow generations
+- **User experience:** supporting story creation, regeneration, and mobile chat flows
+- **Reliability:** detecting regressions in story behavior and application interfaces
 
-## Engineering focus
+These are active engineering challenges, not claims that every issue has been fully solved.
 
-Velvet Stories is not only a chat interface. Much of the engineering work is centered on keeping an evolving fictional world coherent across turns.
+## Technology
 
-The project includes dedicated verification for areas such as scene continuity, dialogue integrity, character behavior, relationship dynamics, story momentum, user-authored scene control, NPC scoping, opening diversity, regeneration behavior, mobile layout stability, and regression protection.
+| Area | Tools |
+| --- | --- |
+| Web frontend | React 19, Vite 8, Lucide React |
+| Backend and data | Supabase |
+| Progressive web app | vite-plugin-pwa, Workbox |
+| Android | Capacitor |
+| Quality checks | oxlint and project-specific verification scripts |
 
-The web build is configured as an installable PWA, while Capacitor provides a separate Android build path. Runtime caching is intentionally conservative for navigation so new deployments do not leave users with stale HTML referencing outdated bundles.
+## Running locally
 
-## Local development
+Prerequisites: Node.js and npm. Features relying on hosted services require your own authorized configuration.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Create the required local environment configuration before running features that depend on external services. Secrets and local environment files are excluded from version control.
-
-## Quality checks
+For available checks:
 
 ```bash
 npm run lint
@@ -51,20 +44,33 @@ npm run build
 npm run verify
 ```
 
-The repository also contains targeted verification commands for story behavior, mobile UI, edge-function boot checks, regression protection, release validation, and Android builds.
+Some checks may require external configuration or services. Passing a local check is not a guarantee of production behavior.
 
-## Android
+## Product and engineering portfolio
 
-```bash
-npm run android:sync
-npm run android:open
-```
+This project can be discussed from both a product-management and engineering perspective:
 
-## Project status
+1. **Problem definition:** narrative coherence and conversation latency affect the user experience.
+2. **Feature decisions:** story generation, character management, and regeneration are central product flows.
+3. **Technical trade-offs:** PWA caching, backend orchestration, and automated checks create reliability challenges.
+4. **Next validation steps:** collect real latency metrics, document reproducible defects, and run user tests before claiming measurable improvements.
 
-Velvet Stories is an actively developed personal software project. Features and narrative systems are iterated frequently, with regression checks used to protect previously working behavior.
+### Evidence to add
+
+- [ ] Screenshots or a short demo with sensitive user data removed
+- [ ] Architecture diagram showing the major components
+- [ ] A documented case study: problem, options considered, implementation, and outcome
+- [ ] Performance metrics with methodology and dates
+- [ ] Clear description of individual contributions and any AI-assisted work
+
+## Security
+
+Never commit service-role keys, tokens, passwords, or private user data. Keep secrets in environment variables and review repository history before sharing publicly.
+
+## Status
+
+Actively developed. This README documents the project's current direction; it does not imply that all functionality is production-ready.
 
 ## Author
 
-**Antonia Miranda**  
-Software development portfolio project.
+Antonia — personal technology and product portfolio project.
