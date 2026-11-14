@@ -50,3 +50,11 @@ This document intentionally avoids claiming that the application is secure or th
 - Further work: inspect all privileged queries and special actions for ownership, run authenticated/unauthenticated integration tests, and verify secrets and quotas. No live settings changed.
 
 **Correction to earlier checklist:** handler source was retrieved successfully; the prior “remote function retrieval unavailable” entry is superseded by the findings above.
+
+## Source synchronization progress (2026-11-14)
+
+- Restored deployed `character-chat/index.ts` (v789, 1,083,162 characters) and the missing `character-chat/chat-timing.ts` to the audit branch. The large entrypoint is retrievable using GitHub's blob API; the contents API fetch can show an empty content field for large blobs despite a valid nonempty blob SHA.
+- Compared 20 of the other 122 deployed files against the audit branch: 18 identical, two differ, and one initially missing dependency was restored (the 20 include the restored dependency). **The remaining dependencies are not yet verified.**
+- `experimental/transport.mjs` differs in a provider-request pause: deployed 5,500 ms vs GitHub 250 ms. This is a significant performance/behavior difference and must not be overwritten blindly.
+- `engine/crisis-response.js` differs in safety-related Spanish crisis response wording; preserve and review separately rather than overwriting.
+- The branch is **not yet ready for merge/deployment**. Static checks and GitHub Actions run completion are not confirmed; integration tests with separate users remain outstanding.
