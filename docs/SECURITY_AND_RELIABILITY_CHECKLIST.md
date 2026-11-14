@@ -1,6 +1,6 @@
 # ORVAYNE — Security and Reliability Verification
 
-**Status: investigation required; not a certification.** No production configuration should be changed until the deployed handler is inspected and tested.
+**Status: live backend source and RLS policies inspected; not a penetration test or certification.** No production configuration should be changed until the deployed handler is inspected and tested.
 
 ## Authentication and authorization
 
@@ -39,3 +39,14 @@
 | Deploy production changes | Not performed |
 
 This document intentionally avoids claiming that the application is secure or that tests pass without evidence.
+
+## Verified live findings (2026-11-14)
+
+- Supabase project `Velvet Stories` is active; deployed `character-chat` function version **789** has `verify_jwt = false`.
+- Its deployed handler rejects missing Authorization headers with HTTP 401, constructs a Supabase client using the supplied bearer token, calls `supabase.auth.getUser()`, and rejects invalid sessions with HTTP 401. The effective `userId` comes from the verified user, not the request body.
+- All inspected public tables have row-level security enabled. The inspected `characters`, `conversations`, `messages`, and `generation_requests` policies scope access to `auth.uid() = user_id`; relevant INSERT and UPDATE policies include ownership checks.
+- Supabase Security Advisor reports **leaked password protection disabled** (warning): https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+- Advisor also reports `public.ai_provider_cooldowns` has RLS enabled but no policy (informational; can be intentional for server-only access): https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+- Further work: inspect all privileged queries and special actions for ownership, run authenticated/unauthenticated integration tests, and verify secrets and quotas. No live settings changed.
+
+**Correction to earlier checklist:** handler source was retrieved successfully; the prior “remote function retrieval unavailable” entry is superseded by the findings above.
