@@ -1,0 +1,26 @@
+name: ORVAYNE security regression checks
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/character-chat/**'
+      - 'supabase/config.toml'
+      - 'tests/character-chat-auth-guards.test.mjs'
+      - 'package.json'
+      - '.github/workflows/security-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auth-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run offline authentication regression guards
+        run: node --test tests/character-chat-auth-guards.test.mjs
