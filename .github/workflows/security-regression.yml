@@ -8,6 +8,9 @@ on:
       - 'tests/character-chat-auth-guards.test.mjs'
       - 'package.json'
       - '.github/workflows/security-regression.yml'
+  push:
+    branches:
+      - docs/portfolio-technical-audit-2026
   workflow_dispatch:
 
 permissions:
